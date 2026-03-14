@@ -1,0 +1,49 @@
+You are building Cova — an AI interior design iOS app.
+
+CRITICAL: Before writing ANY code, making ANY plan, or responding to ANY prompt, you MUST first read @BUILDGUIDE.md in full for the relevant phase and step. Every implementation decision must align with what is specified in that document. Do not deviate from it unless explicitly told to.
+
+Tech stack:
+
+- React Native + Expo (iOS only for V1)
+- Supabase (PostgreSQL, auth, storage, realtime)
+- React Three Fiber + Three.js for 3D room viewer
+- Supabase Edge Functions (Deno/TypeScript) for backend
+- Claude API (claude-sonnet-4-6) for chatbot
+- Replicate API for SDXL + ControlNet 2D renders
+- Zustand for global state
+- React Navigation for routing
+- pnpm + Turborepo monorepo
+
+Project structure:
+
+- apps/mobile — React Native Expo app
+- apps/web — Next.js realtor dashboard
+- packages/shared — shared TypeScript types and Supabase client
+- supabase/functions — Edge Functions
+- assets/3d/furniture — .glb 3D model files
+
+Key rules:
+
+- All shared types live in packages/shared/src/types/index.ts
+- Import shared code as @cova/shared
+- Supabase client is in packages/shared/src/supabase/client.ts
+- Never use inline styles — always StyleSheet.create()
+- Never commit .env.local
+- All colours use the Cova palette: navy #0B1729, gold #C9A84C, cream #FAF7F2
+- Bundle identifier is ai.cova.app
+- App name is Cova everywhere — never DesignDrop
+- Three.js units are metres (1 unit = 1m)
+- GLB files must be under 2MB — compress with Draco if larger
+- Edge Functions use Deno — not Node.js imports
+- Always handle loading and error states in every screen
+- Token costs: render=3, chat edit=2, product match=1
+
+Long-term vision:
+
+- V1: 3D interactive room viewer as primary feature, 2D AI render as companion, swipe onboarding, chatbot editing, shoppable product matching, realtor virtual staging, token economy
+- V2: Designer marketplace where professionals earn passive income, Depth Anything V2 for auto room detection, Wayfair 3D asset API, AR preview, social sharing flywheel
+- Business model: Hybrid token + subscription. Token packs ($5/$15/$40), subscriptions ($15/$29/$49/mo), affiliate commerce (3-8% on furniture purchases), realtor SaaS ($99-299/mo)
+- Target user: 83 million homeowners who design their own spaces because professional design starts at $3,000 per room
+- Core differentiators: 3D interactive viewer no competitor has, conversational chatbot editing, persistent Style Fingerprint that compounds over time, commerce layer tied directly to renders
+
+BUILDGUIDE.md contains the complete phase-by-phase implementation instructions. Always read the relevant section before writing any code. Every file path, every function name, every database column, and every API call must match what is specified in BUILDGUIDE.md exactly.
