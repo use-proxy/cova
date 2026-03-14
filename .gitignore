@@ -4,3 +4,5 @@ node_modules
 .pnpm-store
 .next
 dist
+.pnpm-store
+node_modules
