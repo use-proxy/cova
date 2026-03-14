@@ -1,0 +1,9 @@
+{
+  "name": "@cova/shared",
+  "version": "0.0.1",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  }
+}
