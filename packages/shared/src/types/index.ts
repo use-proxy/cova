@@ -115,7 +115,8 @@ export interface FurnitureCatalogItem {
     | 'lamp'
     | 'plant'
     | 'shelf'
-    | 'bed';
+    | 'bed'
+    | 'decor';
   styles: CavaStyle[];
   model_path: string; // path to .glb file
   dimensions: { w: number; d: number; h: number }; // in metres

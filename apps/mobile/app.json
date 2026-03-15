@@ -1,0 +1,74 @@
+{
+  "expo": {
+    "name": "Cova",
+    "slug": "cova",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B1729"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "ai.cova.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Cova needs camera access to capture your room for 3D design.",
+        "NSPhotoLibraryUsageDescription": "Cova needs photo library access to use your room photos for design.",
+        "NSPhotoLibraryAddUsageDescription": "Cova needs permission to save your 3D room screenshots to the camera roll.",
+        "NSUserNotificationsUsageDescription": "Cova can notify you when your AI render is ready."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0B1729",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "package": "ai.cova.app",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECEIVE_BOOT_COMPLETED"
+      ],
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Cova needs camera access to capture your room for 3D design."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Cova needs photo library access to use your room photos for design.",
+          "cameraPermission": "Cova needs camera access to capture your room."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Cova needs permission to save your 3D room screenshots to the camera roll.",
+          "savePhotosPermission": "Cova needs permission to save your 3D room screenshots to the camera roll."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#C9A84C",
+          "sounds": []
+        }
+      ]
+    ],
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
