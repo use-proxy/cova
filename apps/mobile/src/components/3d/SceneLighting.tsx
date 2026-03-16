@@ -1,62 +1,79 @@
 import React from 'react';
 import type { CavaStyle } from '@cova/shared';
 
-const STYLE_LIGHTING: Record<
-  CavaStyle,
-  {
-    ambient: number;
-    ambientColor: string;
-    dirColor: string;
-    dirIntensity: number;
-    dirPosition: [number, number, number];
-    pointColor: string;
-    pointIntensity: number;
-  }
-> = {
+interface StyleLight {
+  ambientColor: string;
+  ambientIntensity: number;
+  dirColor: string;
+  dirIntensity: number;
+  dirPosition: [number, number, number];
+  skyColor: string;
+  groundColor: string;
+  fillColor: string;
+  fillIntensity: number;
+  fillPosition: [number, number, number];
+}
+
+const STYLE_LIGHTING: Record<CavaStyle, StyleLight> = {
   japandi: {
-    ambient: 0.6,
     ambientColor: '#FFF8F0',
-    dirColor: '#FFE0A0',
-    dirIntensity: 1.2,
-    dirPosition: [4, 6, 3],
-    pointColor: '#FFE0A0',
-    pointIntensity: 0.4,
+    ambientIntensity: 0.5,
+    dirColor: '#FFF5E8',
+    dirIntensity: 1.8,
+    dirPosition: [6, 10, 6],
+    skyColor: '#FFF8F0',
+    groundColor: '#C9BEA8',
+    fillColor: '#FFF8F0',
+    fillIntensity: 0.36,
+    fillPosition: [-6, 4, -6],
   },
   midcentury: {
-    ambient: 0.5,
-    ambientColor: '#FFF5E0',
-    dirColor: '#FFD080',
-    dirIntensity: 1.5,
-    dirPosition: [3, 5, 2],
-    pointColor: '#FF8C00',
-    pointIntensity: 0.6,
+    ambientColor: '#FFF3E0',
+    ambientIntensity: 0.4,
+    dirColor: '#FFE0A0',
+    dirIntensity: 2.0,
+    dirPosition: [4, 8, 4],
+    skyColor: '#FFF3E0',
+    groundColor: '#C4946A',
+    fillColor: '#FFF3E0',
+    fillIntensity: 0.4,
+    fillPosition: [-4, 3, -4],
   },
   coastal: {
-    ambient: 0.8,
-    ambientColor: '#E8F4FF',
+    ambientColor: '#F0F8FF',
+    ambientIntensity: 0.7,
     dirColor: '#FFFFFF',
-    dirIntensity: 1.4,
-    dirPosition: [5, 8, 4],
-    pointColor: '#B0D8F0',
-    pointIntensity: 0.3,
+    dirIntensity: 2.2,
+    dirPosition: [8, 12, 6],
+    skyColor: '#E8F4FF',
+    groundColor: '#C2D4DC',
+    fillColor: '#E8F4FF',
+    fillIntensity: 0.44,
+    fillPosition: [-8, 4, -6],
   },
   industrial: {
-    ambient: 0.3,
     ambientColor: '#D0C8C0',
+    ambientIntensity: 0.25,
     dirColor: '#FFA040',
-    dirIntensity: 0.8,
-    dirPosition: [2, 4, 1],
-    pointColor: '#FF6020',
-    pointIntensity: 0.8,
+    dirIntensity: 1.5,
+    dirPosition: [2, 6, 2],
+    skyColor: '#4A4540',
+    groundColor: '#1A1A1A',
+    fillColor: '#D0C8C0',
+    fillIntensity: 0.3,
+    fillPosition: [-2, 3, -2],
   },
   bohemian: {
-    ambient: 0.55,
     ambientColor: '#FFE8D0',
-    dirColor: '#FF9040',
-    dirIntensity: 1.0,
-    dirPosition: [3, 5, 2],
-    pointColor: '#FF4080',
-    pointIntensity: 0.5,
+    ambientIntensity: 0.45,
+    dirColor: '#FFB060',
+    dirIntensity: 1.6,
+    dirPosition: [4, 7, 3],
+    skyColor: '#FFE8C8',
+    groundColor: '#8B4513',
+    fillColor: '#FFE8D0',
+    fillIntensity: 0.32,
+    fillPosition: [-4, 3, -3],
   },
 };
 
@@ -66,27 +83,33 @@ interface SceneLightingProps {
 
 export function SceneLighting({ style }: SceneLightingProps) {
   const L = STYLE_LIGHTING[style] ?? STYLE_LIGHTING.japandi;
-  const ambient = L?.ambient ?? STYLE_LIGHTING.japandi.ambient;
-  const ambientColor = L?.ambientColor ?? STYLE_LIGHTING.japandi.ambientColor;
-  const dirColor = L?.dirColor ?? STYLE_LIGHTING.japandi.dirColor;
-  const dirIntensity = L?.dirIntensity ?? STYLE_LIGHTING.japandi.dirIntensity;
-  const dirPosition = L?.dirPosition ?? STYLE_LIGHTING.japandi.dirPosition;
-  const pointColor = L?.pointColor ?? STYLE_LIGHTING.japandi.pointColor;
-  const pointIntensity =
-    L?.pointIntensity ?? STYLE_LIGHTING.japandi.pointIntensity;
 
   return (
     <>
-      <ambientLight intensity={ambient} color={ambientColor} />
+      <ambientLight intensity={L.ambientIntensity} color={L.ambientColor} />
+
       <directionalLight
-        position={dirPosition}
-        color={dirColor}
-        intensity={dirIntensity}
+        position={L.dirPosition}
+        color={L.dirColor}
+        intensity={L.dirIntensity}
+        castShadow
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
+        shadow-camera-far={30}
+        shadow-camera-left={-8}
+        shadow-camera-right={8}
+        shadow-camera-top={8}
+        shadow-camera-bottom={-8}
       />
-      <pointLight
-        position={[-3, 2.5, 2]}
-        color={pointColor}
-        intensity={pointIntensity}
+
+      <hemisphereLight
+        args={[L.skyColor, L.groundColor, 0.4]}
+      />
+
+      <directionalLight
+        position={L.fillPosition}
+        color={L.fillColor}
+        intensity={L.fillIntensity}
       />
     </>
   );

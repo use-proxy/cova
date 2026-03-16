@@ -1,5 +1,4 @@
 import React from 'react';
-import { BackSide } from 'three';
 import type { CavaStyle, RoomDimensions } from '@cova/shared';
 import { STYLE_COLORS } from '../../data/furnitureCatalog';
 
@@ -24,11 +23,11 @@ export function BoxRoom({ style, dimensions }: BoxRoomProps) {
 
   return (
     <group>
-      {/* Floor */}
+      {/* Floor — front face points up (inward), receives shadows */}
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
         position={[0, 0, 0]}
-        receiveShadow={false}
+        receiveShadow
         castShadow={false}
       >
         <planeGeometry args={[w, d]} />
@@ -39,10 +38,10 @@ export function BoxRoom({ style, dimensions }: BoxRoomProps) {
         />
       </mesh>
 
-      {/* Ceiling */}
+      {/* Ceiling — front face points down (inward) */}
       <mesh
         rotation={[Math.PI / 2, 0, 0]}
-        position={[0, h, -d / 2]}
+        position={[0, h, 0]}
         receiveShadow={false}
         castShadow={false}
       >
@@ -51,14 +50,14 @@ export function BoxRoom({ style, dimensions }: BoxRoomProps) {
           color={ceilingColor}
           roughness={0.95}
           metalness={0.0}
-          side={BackSide}
         />
       </mesh>
 
-      {/* Back wall */}
+      {/* Back wall — front face points toward +Z (toward camera) */}
       <mesh
-        position={[0, h / 2, -d]}
-        receiveShadow={false}
+        position={[0, h / 2, -d / 2]}
+        rotation={[0, 0, 0]}
+        receiveShadow
         castShadow={false}
       >
         <planeGeometry args={[w, h]} />
@@ -66,29 +65,14 @@ export function BoxRoom({ style, dimensions }: BoxRoomProps) {
           color={wallColor}
           roughness={0.9}
           metalness={0.0}
-          side={BackSide}
         />
       </mesh>
 
-      {/* Front wall (behind camera) - optional for closed room */}
+      {/* Left wall — front face points toward +X (inward) */}
       <mesh
-        position={[0, h / 2, d]}
-        receiveShadow={false}
-        castShadow={false}
-      >
-        <planeGeometry args={[w, h]} />
-        <meshStandardMaterial
-          color={wallColor}
-          roughness={0.9}
-          metalness={0.0}
-          side={BackSide}
-        />
-      </mesh>
-
-      {/* Left wall */}
-      <mesh
-        position={[-w / 2, h / 2, -d / 2]}
-        receiveShadow={false}
+        position={[-w / 2, h / 2, 0]}
+        rotation={[0, Math.PI / 2, 0]}
+        receiveShadow
         castShadow={false}
       >
         <planeGeometry args={[d, h]} />
@@ -96,14 +80,14 @@ export function BoxRoom({ style, dimensions }: BoxRoomProps) {
           color={wallColor}
           roughness={0.9}
           metalness={0.0}
-          side={BackSide}
         />
       </mesh>
 
-      {/* Right wall */}
+      {/* Right wall — front face points toward -X (inward) */}
       <mesh
-        position={[w / 2, h / 2, -d / 2]}
-        receiveShadow={false}
+        position={[w / 2, h / 2, 0]}
+        rotation={[0, -Math.PI / 2, 0]}
+        receiveShadow
         castShadow={false}
       >
         <planeGeometry args={[d, h]} />
@@ -111,23 +95,13 @@ export function BoxRoom({ style, dimensions }: BoxRoomProps) {
           color={wallColor}
           roughness={0.9}
           metalness={0.0}
-          side={BackSide}
         />
       </mesh>
 
-      {/* Baseboard trim - floor-wall intersections */}
+      {/* Baseboard trim */}
       {/* Back */}
       <mesh
-        position={[0, baseboardH / 2, -d + baseboardD / 2]}
-        receiveShadow={false}
-        castShadow={false}
-      >
-        <boxGeometry args={[w, baseboardH, baseboardD]} />
-        <meshStandardMaterial color={accentColor} roughness={0.8} metalness={0} />
-      </mesh>
-      {/* Front */}
-      <mesh
-        position={[0, baseboardH / 2, d - baseboardD / 2]}
+        position={[0, baseboardH / 2, -d / 2 + baseboardD / 2]}
         receiveShadow={false}
         castShadow={false}
       >
@@ -136,7 +110,7 @@ export function BoxRoom({ style, dimensions }: BoxRoomProps) {
       </mesh>
       {/* Left */}
       <mesh
-        position={[-w / 2 + baseboardD / 2, baseboardH / 2, -d / 2]}
+        position={[-w / 2 + baseboardD / 2, baseboardH / 2, 0]}
         receiveShadow={false}
         castShadow={false}
       >
@@ -145,7 +119,7 @@ export function BoxRoom({ style, dimensions }: BoxRoomProps) {
       </mesh>
       {/* Right */}
       <mesh
-        position={[w / 2 - baseboardD / 2, baseboardH / 2, -d / 2]}
+        position={[w / 2 - baseboardD / 2, baseboardH / 2, 0]}
         receiveShadow={false}
         castShadow={false}
       >

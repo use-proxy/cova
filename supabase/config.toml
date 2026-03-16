@@ -1,8 +1,4 @@
-# Supabase CLI config. Link to your project with: supabase link --project-ref YOUR_REF
-# Get YOUR_REF from Supabase Dashboard → Settings → General → Reference ID
 
-[project]
-project_id = ""
 
 [api]
 enabled = true
@@ -14,7 +10,7 @@ max_rows = 1000
 [db]
 port = 54322
 shadow_port = 54320
-major_version = 15
+major_version = 17
 
 [studio]
 enabled = true

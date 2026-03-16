@@ -1,6 +1,5 @@
-import React, { useRef, useState, Suspense, useEffect, useMemo } from 'react';
+import React, { useRef, Suspense, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
-import { useFrame, useThree } from '@react-three/fiber/native';
 import { useGLTF } from '@react-three/drei/native';
 import type { PlacedFurniture, CavaStyle } from '@cova/shared';
 import type { FURNITURE_CATALOG } from '../../data/furnitureCatalog';
@@ -12,9 +11,17 @@ interface FurniturePieceProps {
   piece: PlacedFurniture;
   catalog: CatalogItem;
   isSelected: boolean;
+  editMode: boolean;
   onSelect: (id: string) => void;
-  onDragEnd: (id: string, newPosition: [number, number, number]) => void;
+  onDragEnd: (id: string, pos: [number, number, number]) => void;
+  onDragStart?: () => void;
+  onDragStop?: () => void;
 }
+
+const FABRIC_CATEGORIES = new Set(['sofa', 'chair']);
+const TABLE_CATEGORIES = new Set(['table']);
+const ROOM_HALF_W = 2.2;
+const ROOM_HALF_D = 2.0;
 
 function FurnitureModel({
   catalog,
@@ -25,7 +32,6 @@ function FurnitureModel({
   isSelected: boolean;
   style: CavaStyle;
 }) {
-  // NOTE: useGLTF returns a cached GLTF-like object in native
   const gltf = useGLTF(catalog.model_path as unknown as string) as unknown as {
     scene?: THREE.Group;
   };
@@ -39,6 +45,9 @@ function FurnitureModel({
       clonedScene.traverse((child: THREE.Object3D) => {
         if (!(child as THREE.Mesh).isMesh) return;
         const mesh = child as THREE.Mesh;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+
         const styleMats = STYLE_MATERIALS[style];
         const catKey = catalog.category as keyof typeof styleMats;
         const styleMat = styleMats[catKey] ?? styleMats.sofa;
@@ -48,10 +57,21 @@ function FurnitureModel({
           if (!(mat instanceof THREE.MeshStandardMaterial)) return;
           if (!styleMat?.color) return;
           mat.color.set(styleMat.color);
-          mat.roughness =
-            styleMat.roughness !== undefined ? styleMat.roughness : 0.8;
-          mat.metalness =
-            styleMat.metalness !== undefined ? styleMat.metalness : 0.0;
+
+          let roughness = styleMat.roughness ?? 0.8;
+          let metalness = styleMat.metalness ?? 0.0;
+
+          if (FABRIC_CATEGORIES.has(catalog.category)) {
+            roughness = Math.min(1.0, roughness + 0.05);
+          }
+          if (TABLE_CATEGORIES.has(catalog.category)) {
+            metalness = Math.min(1.0, metalness + 0.05);
+          }
+
+          mat.roughness = roughness;
+          mat.metalness = metalness;
+          mat.envMapIntensity = 0.3;
+
           if (isSelected) {
             mat.emissive.set('#C9A84C');
             mat.emissiveIntensity = 0.3;
@@ -87,8 +107,6 @@ function FurnitureModel({
     <primitive
       object={clonedScene}
       scale={scale}
-      castShadow
-      receiveShadow
     />
   );
 }
@@ -97,48 +115,26 @@ export function FurniturePiece({
   piece,
   catalog,
   isSelected,
+  editMode,
   onSelect,
   onDragEnd,
+  onDragStart,
+  onDragStop,
 }: FurniturePieceProps) {
   const groupRef = useRef<THREE.Group>(null);
-  const [isDragging, setDragging] = useState(false);
-  const dragPlane = useRef(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0));
-  const { raycaster } = useThree();
+  const isDraggingRef = useRef(false);
 
-  const handlePointerDown = (e: { stopPropagation: () => void }) => {
-    e.stopPropagation();
-    onSelect(piece.id);
-    setDragging(true);
-  };
-
-  const handlePointerUp = () => {
-    if (isDragging && groupRef.current) {
-      const pos = groupRef.current.position;
-      onDragEnd(piece.id, [pos.x, pos.y, pos.z]);
+  useEffect(() => {
+    if (!isSelected) {
+      isDraggingRef.current = false;
     }
-    setDragging(false);
-  };
-
-  useFrame((state) => {
-    if (!isDragging || !groupRef.current) return;
-    const { pointer: p } = state;
-    raycaster.setFromCamera(p, state.camera);
-    const intersection = new THREE.Vector3();
-    raycaster.ray.intersectPlane(dragPlane.current, intersection);
-    if (intersection) {
-      groupRef.current.position.x = intersection.x;
-      groupRef.current.position.z = intersection.z;
-      groupRef.current.position.y = 0;
-    }
-  });
+  }, [isSelected]);
 
   return (
     <group
       ref={groupRef}
       position={piece.position}
       rotation={[0, piece.rotation_y, 0]}
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
     >
       <Suspense fallback={null}>
         <FurnitureModel
@@ -147,20 +143,84 @@ export function FurniturePiece({
           style={piece.style}
         />
       </Suspense>
+
+      <mesh
+        position={[0, catalog.dimensions.h / 2, 0]}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          if (!isSelected) {
+            onSelect(piece.id);
+          } else {
+            isDraggingRef.current = true;
+            onDragStart?.();
+            console.log('DRAG STARTED', piece.id);
+          }
+        }}
+        onPointerUp={(e) => {
+          e.stopPropagation();
+          if (isDraggingRef.current && groupRef.current) {
+            const pos = groupRef.current.position;
+            onDragEnd(piece.id, [pos.x, 0, pos.z]);
+          }
+          isDraggingRef.current = false;
+          onDragStop?.();
+        }}
+      >
+        <boxGeometry args={[
+          catalog.dimensions.w + 0.1,
+          catalog.dimensions.h + 0.1,
+          catalog.dimensions.d + 0.1,
+        ]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+
       {isSelected && (
-        <mesh>
-          <boxGeometry
-            args={[
-              catalog.dimensions.w + 0.1,
-              catalog.dimensions.h + 0.1,
-              catalog.dimensions.d + 0.1,
-            ]}
-          />
+        <mesh
+          rotation={[-Math.PI / 2, -piece.rotation_y, 0]}
+          position={[0, 0.002, 0]}
+          onPointerMove={(e) => {
+            console.log('PLANE MOVE', isDraggingRef.current, e.point);
+            if (!isDraggingRef.current || !groupRef.current) return;
+            e.stopPropagation();
+            const nx = Math.max(-ROOM_HALF_W, Math.min(ROOM_HALF_W, e.point.x));
+            const nz = Math.max(-ROOM_HALF_D, Math.min(ROOM_HALF_D, e.point.z));
+            groupRef.current.position.set(nx, 0, nz);
+            onDragEnd(piece.id, [nx, 0, nz]);
+          }}
+          onPointerUp={(e) => {
+            e.stopPropagation();
+            if (isDraggingRef.current && groupRef.current) {
+              const pos = groupRef.current.position;
+              onDragEnd(piece.id, [pos.x, 0, pos.z]);
+            }
+            isDraggingRef.current = false;
+            onDragStop?.();
+          }}
+          onPointerLeave={() => {
+            console.log('PLANE LEAVE', isDraggingRef.current);
+            if (isDraggingRef.current) {
+              isDraggingRef.current = false;
+              onDragStop?.();
+            }
+          }}
+        >
+          <planeGeometry args={[100, 100]} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
+      )}
+
+      {isSelected && (
+        <mesh position={[0, catalog.dimensions.h / 2, 0]}>
+          <boxGeometry args={[
+            catalog.dimensions.w + 0.08,
+            catalog.dimensions.h + 0.08,
+            catalog.dimensions.d + 0.08,
+          ]} />
           <meshBasicMaterial
             color="#C9A84C"
             wireframe
             transparent
-            opacity={0.4}
+            opacity={0.5}
           />
         </mesh>
       )}
