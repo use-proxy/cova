@@ -65,14 +65,23 @@ interface SceneLightingProps {
 }
 
 export function SceneLighting({ style }: SceneLightingProps) {
-  const L = STYLE_LIGHTING[style];
+  const L = STYLE_LIGHTING[style] ?? STYLE_LIGHTING.japandi;
+  const ambient = L?.ambient ?? STYLE_LIGHTING.japandi.ambient;
+  const ambientColor = L?.ambientColor ?? STYLE_LIGHTING.japandi.ambientColor;
+  const dirColor = L?.dirColor ?? STYLE_LIGHTING.japandi.dirColor;
+  const dirIntensity = L?.dirIntensity ?? STYLE_LIGHTING.japandi.dirIntensity;
+  const dirPosition = L?.dirPosition ?? STYLE_LIGHTING.japandi.dirPosition;
+  const pointColor = L?.pointColor ?? STYLE_LIGHTING.japandi.pointColor;
+  const pointIntensity =
+    L?.pointIntensity ?? STYLE_LIGHTING.japandi.pointIntensity;
+
   return (
     <>
-      <ambientLight intensity={L.ambient} color={L.ambientColor} />
+      <ambientLight intensity={ambient} color={ambientColor} />
       <directionalLight
-        position={L.dirPosition}
-        color={L.dirColor}
-        intensity={L.dirIntensity}
+        position={dirPosition}
+        color={dirColor}
+        intensity={dirIntensity}
         castShadow
         shadow-mapSize={[1024, 1024]}
         shadow-camera-far={20}
@@ -84,8 +93,8 @@ export function SceneLighting({ style }: SceneLightingProps) {
       />
       <pointLight
         position={[-3, 2.5, 2]}
-        color={L.pointColor}
-        intensity={L.pointIntensity}
+        color={pointColor}
+        intensity={pointIntensity}
       />
     </>
   );
