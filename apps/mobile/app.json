@@ -1,5 +1,7 @@
 {
   "expo": {
+    "jsEngine": "hermes",
+    "newArchEnabled": false,
     "name": "Cova",
     "slug": "cova",
     "version": "1.0.0",
@@ -65,7 +67,8 @@
           "color": "#C9A84C",
           "sounds": []
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "web": {
       "favicon": "./assets/favicon.png"
