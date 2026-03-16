@@ -25,7 +25,12 @@ export function BoxRoom({ style, dimensions }: BoxRoomProps) {
   return (
     <group>
       {/* Floor */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, 0, 0]}
+        receiveShadow={false}
+        castShadow={false}
+      >
         <planeGeometry args={[w, d]} />
         <meshStandardMaterial
           color={floorColor}
@@ -35,7 +40,12 @@ export function BoxRoom({ style, dimensions }: BoxRoomProps) {
       </mesh>
 
       {/* Ceiling */}
-      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, h, -d / 2]}>
+      <mesh
+        rotation={[Math.PI / 2, 0, 0]}
+        position={[0, h, -d / 2]}
+        receiveShadow={false}
+        castShadow={false}
+      >
         <planeGeometry args={[w, d]} />
         <meshStandardMaterial
           color={ceilingColor}
@@ -46,7 +56,11 @@ export function BoxRoom({ style, dimensions }: BoxRoomProps) {
       </mesh>
 
       {/* Back wall */}
-      <mesh position={[0, h / 2, -d]} receiveShadow>
+      <mesh
+        position={[0, h / 2, -d]}
+        receiveShadow={false}
+        castShadow={false}
+      >
         <planeGeometry args={[w, h]} />
         <meshStandardMaterial
           color={wallColor}
@@ -57,7 +71,11 @@ export function BoxRoom({ style, dimensions }: BoxRoomProps) {
       </mesh>
 
       {/* Front wall (behind camera) - optional for closed room */}
-      <mesh position={[0, h / 2, d]} receiveShadow>
+      <mesh
+        position={[0, h / 2, d]}
+        receiveShadow={false}
+        castShadow={false}
+      >
         <planeGeometry args={[w, h]} />
         <meshStandardMaterial
           color={wallColor}
@@ -68,7 +86,11 @@ export function BoxRoom({ style, dimensions }: BoxRoomProps) {
       </mesh>
 
       {/* Left wall */}
-      <mesh position={[-w / 2, h / 2, -d / 2]} receiveShadow>
+      <mesh
+        position={[-w / 2, h / 2, -d / 2]}
+        receiveShadow={false}
+        castShadow={false}
+      >
         <planeGeometry args={[d, h]} />
         <meshStandardMaterial
           color={wallColor}
@@ -79,7 +101,11 @@ export function BoxRoom({ style, dimensions }: BoxRoomProps) {
       </mesh>
 
       {/* Right wall */}
-      <mesh position={[w / 2, h / 2, -d / 2]} receiveShadow>
+      <mesh
+        position={[w / 2, h / 2, -d / 2]}
+        receiveShadow={false}
+        castShadow={false}
+      >
         <planeGeometry args={[d, h]} />
         <meshStandardMaterial
           color={wallColor}
@@ -91,22 +117,38 @@ export function BoxRoom({ style, dimensions }: BoxRoomProps) {
 
       {/* Baseboard trim - floor-wall intersections */}
       {/* Back */}
-      <mesh position={[0, baseboardH / 2, -d + baseboardD / 2]}>
+      <mesh
+        position={[0, baseboardH / 2, -d + baseboardD / 2]}
+        receiveShadow={false}
+        castShadow={false}
+      >
         <boxGeometry args={[w, baseboardH, baseboardD]} />
         <meshStandardMaterial color={accentColor} roughness={0.8} metalness={0} />
       </mesh>
       {/* Front */}
-      <mesh position={[0, baseboardH / 2, d - baseboardD / 2]}>
+      <mesh
+        position={[0, baseboardH / 2, d - baseboardD / 2]}
+        receiveShadow={false}
+        castShadow={false}
+      >
         <boxGeometry args={[w, baseboardH, baseboardD]} />
         <meshStandardMaterial color={accentColor} roughness={0.8} metalness={0} />
       </mesh>
       {/* Left */}
-      <mesh position={[-w / 2 + baseboardD / 2, baseboardH / 2, -d / 2]}>
+      <mesh
+        position={[-w / 2 + baseboardD / 2, baseboardH / 2, -d / 2]}
+        receiveShadow={false}
+        castShadow={false}
+      >
         <boxGeometry args={[baseboardD, baseboardH, d]} />
         <meshStandardMaterial color={accentColor} roughness={0.8} metalness={0} />
       </mesh>
       {/* Right */}
-      <mesh position={[w / 2 - baseboardD / 2, baseboardH / 2, -d / 2]}>
+      <mesh
+        position={[w / 2 - baseboardD / 2, baseboardH / 2, -d / 2]}
+        receiveShadow={false}
+        castShadow={false}
+      >
         <boxGeometry args={[baseboardD, baseboardH, d]} />
         <meshStandardMaterial color={accentColor} roughness={0.8} metalness={0} />
       </mesh>

@@ -1,30 +1,24 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
+  ScrollView,
   TouchableOpacity,
   StyleSheet,
-  ScrollView,
-  ActivityIndicator,
   Alert,
 } from 'react-native';
-import { Canvas } from '@react-three/fiber/native';
-import { OrbitControls } from '@react-three/drei/native';
-import ViewShot from 'react-native-view-shot';
 import * as MediaLibrary from 'expo-media-library';
-import { useRoute, RouteProp } from '@react-navigation/native';
-import { supabase } from '@cova/shared';
-import type { CavaStyle, PlacedFurniture, RoomDimensions } from '@cova/shared';
+import ViewShot, { captureRef } from 'react-native-view-shot';
+import { Canvas } from '@react-three/fiber/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../../../App';
 import { BoxRoom } from '../../components/3d/BoxRoom';
-import { FurniturePiece } from '../../components/3d/FurniturePiece';
 import { SceneLighting } from '../../components/3d/SceneLighting';
-import {
-  FURNITURE_CATALOG,
-  STYLE_DEFAULT_FURNITURE,
-} from '../../data/furnitureCatalog';
-import { useAppStore } from '../../store';
+import type { CavaStyle, RoomDimensions } from '@cova/shared';
+import { STYLE_DEFAULT_FURNITURE, FURNITURE_CATALOG } from '../../data/furnitureCatalog';
 
-type RouteParams = { room_id: string; image_url: string };
+type Props = NativeStackScreenProps<RootStackParamList, 'RoomViewer3D'>;
 
 const STYLES: { key: CavaStyle; label: string; emoji: string }[] = [
   { key: 'japandi', label: 'Japandi', emoji: '🌿' },
@@ -34,292 +28,147 @@ const STYLES: { key: CavaStyle; label: string; emoji: string }[] = [
   { key: 'bohemian', label: 'Bohemian', emoji: '🪬' },
 ];
 
-function buildDefaultFurniture(style: CavaStyle): PlacedFurniture[] {
-  return STYLE_DEFAULT_FURNITURE[style].map((key) => {
-    const cat = FURNITURE_CATALOG[key];
-    return {
-      id: `${style}_${key}`,
-      model_key: key,
-      position: cat.default_position,
-      rotation_y: cat.default_rotation_y,
-      style,
-    };
-  });
+const DEFAULT_DIMENSIONS: RoomDimensions = {
+  width_ft: 14,
+  depth_ft: 12,
+  height_ft: 9,
+};
+
+class ThreeDErrorBoundary extends React.Component<
+  { children: React.ReactNode; onError: () => void },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error: Error) {
+    console.warn('3D render error caught:', error.message);
+    this.props.onError();
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={styles.errorFallback}>
+          <Text style={styles.errorText}>Reloading scene...</Text>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
 }
 
-export function RoomViewer3DScreen() {
-  const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
-  const { room_id, image_url } = route.params ?? {};
-  const { user } = useAppStore();
-
-  const [style, setStyle] = useState<CavaStyle>('japandi');
-  const [furniture, setFurniture] = useState<PlacedFurniture[]>(() =>
-    buildDefaultFurniture('japandi')
-  );
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [dimensions, setDimensions] = useState<RoomDimensions>({
-    width_ft: 14,
-    depth_ft: 12,
-    height_ft: 9,
-  });
-  const [loading, setLoading] = useState(!!room_id);
-  const [saving, setSaving] = useState(false);
+export function RoomViewer3DScreen({ navigation }: Props) {
+  const [activeStyle, setActiveStyle] = useState<CavaStyle>('japandi');
+  const [sceneKey, setSceneKey] = useState(0);
+  const [errorCount, setErrorCount] = useState(0);
   const viewShotRef = useRef<ViewShot>(null);
 
-  useEffect(() => {
-    if (!room_id) {
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      const { data, error } = await supabase
-        .from('rooms')
-        .select('room_dimensions')
-        .eq('id', room_id)
-        .single();
-      if (!cancelled && !error && data?.room_dimensions) {
-        setDimensions(data.room_dimensions as RoomDimensions);
-      }
-      if (!cancelled) setLoading(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [room_id]);
-
-  const switchStyle = useCallback((newStyle: CavaStyle) => {
-    setStyle(newStyle);
-    setFurniture(buildDefaultFurniture(newStyle));
-    setSelectedId(null);
-  }, []);
-
-  const handleDragEnd = useCallback((id: string, newPos: [number, number, number]) => {
-    setFurniture((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, position: newPos } : p))
-    );
-  }, []);
-
-  const handleCapture = async () => {
+  const handleSave = async () => {
     try {
-      setSaving(true);
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Allow access to save photos.');
+        Alert.alert('Permission needed', 'Please allow photo library access to save screenshots.');
         return;
       }
-      const uri = await new Promise<string>((resolve, reject) => {
-        setTimeout(async () => {
-          try {
-            const u = await (viewShotRef.current as any)?.capture?.();
-            resolve(u ?? '');
-          } catch (e) {
-            reject(e);
-          }
-        }, 100);
+      const uri = await captureRef(viewShotRef, {
+        format: 'jpg',
+        quality: 0.9,
       });
-      if (uri) {
-        await MediaLibrary.saveToLibraryAsync(uri);
-        Alert.alert('Saved!', 'Your 3D room design has been saved to your photo library.');
-      }
-    } catch (e: any) {
-      Alert.alert('Error saving', e?.message ?? 'Failed to save');
-    } finally {
-      setSaving(false);
+      await MediaLibrary.saveToLibraryAsync(uri);
+      Alert.alert('Saved', 'Screenshot saved to your camera roll');
+    } catch (e) {
+      console.warn('Save error:', e);
+      Alert.alert('Error', 'Could not save screenshot');
     }
   };
 
-  const selectedFurnitureItem = furniture.find((f) => f.id === selectedId);
-  const selectedCatalogItem = selectedFurnitureItem
-    ? FURNITURE_CATALOG[selectedFurnitureItem.model_key]
-    : null;
+  const handleStyleChange = useCallback((newStyle: CavaStyle) => {
+    setActiveStyle(newStyle);
+    setSceneKey(prev => prev + 1);
+  }, []);
 
-  if (loading) {
-    return (
-      <View style={[s.container, s.centered]}>
-        <ActivityIndicator size="large" color="#C9A84C" />
-        <Text style={s.loadingText}>Loading room...</Text>
-      </View>
-    );
-  }
+  const handleError = useCallback(() => {
+    setErrorCount(prev => prev + 1);
+    if (errorCount < 3) {
+      setSceneKey(prev => prev + 1);
+    }
+  }, [errorCount]);
 
   return (
-    <View style={s.container}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={s.styleBar}
-        contentContainerStyle={s.styleBarContent}
-      >
-        {STYLES.map((st) => (
-          <TouchableOpacity
-            key={st.key}
-            style={[s.styleChip, style === st.key && s.styleChipActive]}
-            onPress={() => switchStyle(st.key)}
-          >
-            <Text style={s.styleEmoji}>{st.emoji}</Text>
-            <Text style={[s.styleLabel, style === st.key && s.styleLabelActive]}>
-              {st.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
+      <View style={styles.styleBar}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          {STYLES.map((s) => (
+            <TouchableOpacity
+              key={s.key}
+              style={[styles.chip, activeStyle === s.key && styles.chipActive]}
+              onPress={() => handleStyleChange(s.key)}
+            >
+              <Text style={styles.chipEmoji}>{s.emoji}</Text>
+              <Text style={[styles.chipLabel, activeStyle === s.key && styles.chipLabelActive]}>
+                {s.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
-      <ViewShot
-        ref={viewShotRef}
-        style={s.canvasContainer}
-        options={{ format: 'jpg', quality: 0.95 }}
-      >
-        <Canvas
-          style={s.canvas}
-          camera={{ position: [0, 2.5, 5], fov: 55, near: 0.1, far: 50 }}
-          shadows
-          onCreated={({ gl }) => {
-            gl.shadowMap.enabled = true;
-            gl.shadowMap.type = 2; // PCFSoftShadowMap
-          }}
-        >
-          <React.Suspense fallback={null}>
-            <SceneLighting style={style} />
-            <BoxRoom style={style} dimensions={dimensions} />
-            {furniture.map((piece) => {
-              const cat = FURNITURE_CATALOG[piece.model_key];
-              if (!cat) return null;
-              return (
-                <FurniturePiece
-                  key={piece.id}
-                  piece={piece}
-                  catalog={cat}
-                  isSelected={selectedId === piece.id}
-                  onSelect={setSelectedId}
-                  onDragEnd={handleDragEnd}
-                />
-              );
-            })}
-            <OrbitControls
-              enablePan={false}
-              minDistance={1.5}
-              maxDistance={8}
-              maxPolarAngle={Math.PI / 2.1}
-              target={[0, 1, 0]}
-            />
-          </React.Suspense>
-        </Canvas>
-      </ViewShot>
-
-      {selectedCatalogItem && (
-        <View style={s.selectedPanel}>
-          <Text style={s.selectedName}>{selectedCatalogItem.name}</Text>
-          <Text style={s.selectedHint}>
-            Drag to move · Tap elsewhere to deselect
-          </Text>
-          <TouchableOpacity
-            style={s.removeBtn}
-            onPress={() => {
-              setFurniture((prev) => prev.filter((p) => p.id !== selectedId));
-              setSelectedId(null);
+      <ViewShot ref={viewShotRef} style={styles.canvasContainer}>
+        <ThreeDErrorBoundary onError={handleError}>
+          <Canvas
+            key={sceneKey}
+            style={styles.canvas}
+            gl={{
+              powerPreference: 'default',
+              antialias: false,
+              depth: true,
+              stencil: false,
+              alpha: false,
+            }}
+            camera={{ position: [0, 2.5, 5], fov: 55, near: 0.1, far: 50 }}
+            shadows={false}
+            onCreated={({ gl }) => {
+              gl.setClearColor('#1a2a3a', 1);
             }}
           >
-            <Text style={s.removeBtnText}>Remove</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+            <SceneLighting style={activeStyle} />
+            <BoxRoom
+              style={activeStyle}
+              dimensions={DEFAULT_DIMENSIONS}
+            />
+          </Canvas>
+        </ThreeDErrorBoundary>
+      </ViewShot>
 
-      <View style={s.actionBar}>
-        <TouchableOpacity
-          style={s.actionBtn}
-          onPress={handleCapture}
-          disabled={saving}
-        >
-          {saving ? (
-            <ActivityIndicator color="#0B1729" size="small" />
-          ) : (
-            <Text style={s.actionBtnText}>📷 Save</Text>
-          )}
+      <View style={styles.actionBar}>
+        <TouchableOpacity style={styles.btnPrimary} onPress={handleSave}>
+          <Text style={styles.btnPrimaryText}>📷 Save</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[s.actionBtn, s.actionBtnSecondary]}
-          onPress={() => setSelectedId(null)}
-        >
-          <Text style={[s.actionBtnText, s.actionBtnTextSec]}>↩ Reset</Text>
+        <TouchableOpacity style={styles.btnGhost} onPress={() => setSceneKey(prev => prev + 1)}>
+          <Text style={styles.btnGhostText}>↺ Reset</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[s.actionBtn, s.actionBtnSecondary]}
-          onPress={() => {}}
-        >
-          <Text style={[s.actionBtnText, s.actionBtnTextSec]}>✦ AI Render</Text>
+        <TouchableOpacity style={styles.btnGhost} onPress={() => Alert.alert('AI Render', 'Coming soon')}>
+          <Text style={styles.btnGhostText}>✦ AI Render</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
-const s = StyleSheet.create({
+const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0B1729' },
-  centered: { justifyContent: 'center', alignItems: 'center' },
-  loadingText: { color: '#FAF7F2', marginTop: 12 },
-  styleBar: { flexGrow: 0, borderBottomWidth: 1, borderBottomColor: 'rgba(201,168,76,0.2)' },
-  styleBarContent: { paddingHorizontal: 12, paddingVertical: 10, gap: 8, flexDirection: 'row' },
-  styleChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.15)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  styleChipActive: {
-    backgroundColor: 'rgba(201,168,76,0.15)',
-    borderColor: '#C9A84C',
-  },
-  styleEmoji: { fontSize: 16 },
-  styleLabel: { color: '#8A8070', fontSize: 13, fontWeight: '600' },
-  styleLabelActive: { color: '#C9A84C' },
+  styleBar: { paddingVertical: 10, paddingHorizontal: 8, borderBottomWidth: 1, borderBottomColor: '#1E3050' },
+  chip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: '#2A3F5F', marginRight: 8, backgroundColor: '#0D1F35' },
+  chipActive: { borderColor: '#C9A84C', backgroundColor: 'rgba(201,168,76,0.15)' },
+  chipEmoji: { fontSize: 14, marginRight: 5 },
+  chipLabel: { fontSize: 13, color: '#8A9BB5', fontWeight: '500' },
+  chipLabelActive: { color: '#C9A84C' },
   canvasContainer: { flex: 1 },
   canvas: { flex: 1 },
-  selectedPanel: {
-    position: 'absolute',
-    bottom: 80,
-    left: 16,
-    right: 16,
-    backgroundColor: 'rgba(11,23,41,0.9)',
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(201,168,76,0.3)',
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  selectedName: { color: '#FAF7F2', fontWeight: '700', flex: 1 },
-  selectedHint: { color: '#8A8070', fontSize: 11, flex: 1 },
-  removeBtn: {
-    backgroundColor: 'rgba(139,32,32,0.3)',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  removeBtnText: { color: '#FF6B6B', fontSize: 12, fontWeight: '700' },
-  actionBar: {
-    flexDirection: 'row',
-    gap: 10,
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(201,168,76,0.2)',
-  },
-  actionBtn: {
-    flex: 1,
-    backgroundColor: '#C9A84C',
-    borderRadius: 10,
-    padding: 12,
-    alignItems: 'center',
-  },
-  actionBtnSecondary: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-  },
-  actionBtnText: { color: '#0B1729', fontWeight: '700', fontSize: 14 },
-  actionBtnTextSec: { color: '#FAF7F2' },
+  errorFallback: { flex: 1, backgroundColor: '#0B1729', justifyContent: 'center', alignItems: 'center' },
+  errorText: { color: '#C9A84C', fontSize: 16 },
+  actionBar: { flexDirection: 'row', padding: 12, gap: 10, borderTopWidth: 1, borderTopColor: '#1E3050' },
+  btnPrimary: { flex: 1, backgroundColor: '#C9A84C', borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
+  btnPrimaryText: { color: '#0B1729', fontWeight: '700', fontSize: 15 },
+  btnGhost: { flex: 1, borderRadius: 10, paddingVertical: 14, alignItems: 'center', borderWidth: 1.5, borderColor: '#2A3F5F' },
+  btnGhostText: { color: '#FAF7F2', fontWeight: '600', fontSize: 15 },
 });

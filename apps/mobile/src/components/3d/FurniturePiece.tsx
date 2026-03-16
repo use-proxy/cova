@@ -25,35 +25,52 @@ function FurnitureModel({
   isSelected: boolean;
   style: CavaStyle;
 }) {
-  const { scene } = useGLTF(catalog.model_path as unknown as string);
-  const clonedScene = React.useMemo(() => scene.clone(), [scene]);
+  // NOTE: useGLTF returns a cached GLTF-like object in native
+  const gltf = useGLTF(catalog.model_path as unknown as string) as unknown as {
+    scene?: THREE.Group;
+  };
+  if (!gltf || !gltf.scene) return null;
+  const clonedScene = React.useMemo(() => gltf.scene!.clone(), [gltf.scene]);
   const box = useRef<THREE.Box3>(new THREE.Box3());
   const size = useRef(new THREE.Vector3());
 
   useEffect(() => {
-    clonedScene.traverse((node: THREE.Object3D) => {
-      if ((node as THREE.Mesh).isMesh) {
-        const mesh = node as THREE.Mesh;
-        const mat = mesh.material as THREE.MeshStandardMaterial;
-        if (!mat) return;
+    try {
+      clonedScene.traverse((child: THREE.Object3D) => {
+        if (!(child as THREE.Mesh).isMesh) return;
+        const mesh = child as THREE.Mesh;
         const styleMats = STYLE_MATERIALS[style];
         const catKey = catalog.category as keyof typeof styleMats;
-        const materialProps = styleMats[catKey] ?? styleMats.sofa;
-        if (materialProps) {
-          mat.color.set(materialProps.color);
-          mat.roughness = materialProps.roughness;
-          mat.metalness = materialProps.metalness;
-        }
-        if (isSelected) {
-          mat.emissive.set('#C9A84C');
-          mat.emissiveIntensity = 0.3;
+        const styleMat = styleMats[catKey] ?? styleMats.sofa;
+        if (!styleMat?.color) return;
+
+        const applyMat = (mat: THREE.Material | null | undefined) => {
+          if (!(mat instanceof THREE.MeshStandardMaterial)) return;
+          if (!styleMat?.color) return;
+          mat.color.set(styleMat.color);
+          mat.roughness =
+            styleMat.roughness !== undefined ? styleMat.roughness : 0.8;
+          mat.metalness =
+            styleMat.metalness !== undefined ? styleMat.metalness : 0.0;
+          if (isSelected) {
+            mat.emissive.set('#C9A84C');
+            mat.emissiveIntensity = 0.3;
+          } else {
+            mat.emissive.set('#000000');
+            mat.emissiveIntensity = 0;
+          }
+          mat.needsUpdate = true;
+        };
+
+        if (Array.isArray(mesh.material)) {
+          mesh.material.forEach((m) => applyMat(m));
         } else {
-          mat.emissive.set('#000000');
-          mat.emissiveIntensity = 0;
+          applyMat(mesh.material);
         }
-        mat.needsUpdate = true;
-      }
-    });
+      });
+    } catch (e) {
+      console.warn('Material update skipped:', e);
+    }
   }, [clonedScene, isSelected, style, catalog.category]);
 
   const scale = useMemo(() => {

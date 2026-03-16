@@ -82,14 +82,6 @@ export function SceneLighting({ style }: SceneLightingProps) {
         position={dirPosition}
         color={dirColor}
         intensity={dirIntensity}
-        castShadow
-        shadow-mapSize={[1024, 1024]}
-        shadow-camera-far={20}
-        shadow-camera-near={0.1}
-        shadow-camera-left={-8}
-        shadow-camera-right={8}
-        shadow-camera-top={8}
-        shadow-camera-bottom={-8}
       />
       <pointLight
         position={[-3, 2.5, 2]}
