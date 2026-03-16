@@ -2,6 +2,13 @@ You are building Cova — an AI interior design iOS app.
 
 CRITICAL: Before writing ANY code, making ANY plan, or responding to ANY prompt, you MUST first read @BUILDGUIDE.md in full for the relevant phase and step. Every implementation decision must align with what is specified in that document. Do not deviate from it unless explicitly told to.
 
+CRITICAL LOCKED VERSIONS — NEVER CHANGE:
+- expo: ~52.0.49
+- react: 18.3.1 (EXACT — React 19 breaks @react-three/fiber)
+- @react-three/fiber: 8.17.10 (PINNED)
+- @react-three/drei: 9.88.0 (PINNED)
+- three: 0.155.0 (PINNED — higher versions crash on device)
+
 Tech stack:
 
 - React Native + Expo (iOS only for V1)
@@ -14,29 +21,54 @@ Tech stack:
 - React Navigation for routing
 - pnpm + Turborepo monorepo
 
-Project structure:
+Architecture:
 
-- apps/mobile — React Native Expo app
-- apps/web — Next.js realtor dashboard
-- packages/shared — shared TypeScript types and Supabase client
+- Monorepo: ~/Desktop/cova (pnpm workspaces + Turborepo)
+- Mobile: apps/mobile (React Native Expo iOS)
+- Web: apps/web (Next.js 14 realtor dashboard)
+- Shared: packages/shared (TypeScript types, Supabase client, utils)
+- Supabase project: xdeacbmkdwqrwxonqaqh
 - supabase/functions — Edge Functions
 - assets/3d/furniture — .glb 3D model files
+
+CRITICAL RULES:
+- NEVER use OrbitControls — causes 'touchAction of undefined' crash on React Native
+- NEVER use texture maps (roughnessMap, normalMap etc) — causes 'trim of undefined' crash
+- NEVER run pnpm install — tell the user to run it themselves
+- NEVER use inline styles — always StyleSheet.create()
+- NEVER commit .env.local
+- ALWAYS use @cova/shared for types — never redefine them
+- ALWAYS use deduct_tokens_atomic RPC for token deduction — never direct UPDATE
+- ALWAYS handle errors with try/catch and display user-friendly messages
+- For 3D scene style changes: increment sceneKey to force Canvas remount
 
 Key rules:
 
 - All shared types live in packages/shared/src/types/index.ts
 - Import shared code as @cova/shared
 - Supabase client is in packages/shared/src/supabase/client.ts
-- Never use inline styles — always StyleSheet.create()
-- Never commit .env.local
-- All colours use the Cova palette: navy #0B1729, gold #C9A84C, cream #FAF7F2
+- All colours use the Cova palette (see Design System below)
 - Bundle identifier is ai.cova.app
 - App name is Cova everywhere — never DesignDrop
 - Three.js units are metres (1 unit = 1m)
 - GLB files must be under 2MB — compress with Draco if larger
 - Edge Functions use Deno — not Node.js imports
 - Always handle loading and error states in every screen
-- Token costs: render=3, chat edit=2, product match=1
+
+Design system:
+
+- Primary: Navy #0B1729
+- Accent: Gold #C9A84C
+- Background secondary: Cream #FAF7F2
+- Text secondary: Muted #8A8070
+
+Token costs:
+
+- render_draft: 2 tokens
+- render_hd: 3 tokens
+- chat with re-render: 2 tokens
+- chat text only: 1 token
+- product_match: 1 token
 
 Long-term vision:
 
