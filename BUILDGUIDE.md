@@ -1,5538 +1,5771 @@
 **COVA**
 
-**V1 Complete Build Guide**
-
-*From Zero to App Store --- Step by Step \| 3D-First Architecture \| 14
-Days*
-
-React Native · Expo · Three.js · Supabase · Replicate · Claude API ·
-StoreKit
-
-  -----------------------------------------------------------------------
-   **Phase**  **Name**            **What You Build**
-  ----------- ------------------- ---------------------------------------
-     **0**    **Environment       Homebrew, Node, Python, VS Code, Xcode,
-              Setup**             Git, Expo CLI
-
-     **1**    **Project           Monorepo, shared types, Supabase
-              Scaffold**          client, 3D dependencies
-
-     **2**    **Supabase          Database schema, RLS policies, storage
-              Backend**           buckets, auth
-
-     **3**    **3D Room Engine    Calibration screen, Three.js BoxRoom,
-              ⭐**                glTF furniture, orbit, style switching
-
-     **4**    **AI Rendering      Edge Functions, Replicate
-              (2D)**              SDXL+ControlNet, webhooks, quality
-                                  gates
-
-     **5**    **Claude Chatbot**  Conversational editing, action
-                                  dispatch, 3D scene mutations
-
-     **6**    **Mobile App        Auth, onboarding swipe, home, upload,
-              Screens**           3D viewer, product shelf
-
-     **7**    **Realtor Tools**   Virtual staging, listing pages, open
-                                  house voting, MLS export
-
-     **8**    **Purchases**       StoreKit, token packs, subscriptions,
-                                  receipt verification
-
-     **9**    **App Store         EAS build, submission checklist,
-              Launch**            go-live
-  -----------------------------------------------------------------------
-
-+:-------------:+-----------------------------------------------------+
-| **PHASE 0**   | *Install every tool you need before writing a       |
-|               | single line of app code --- Mac only*               |
-| **Environment |                                                     |
-| Setup**       |                                                     |
-+---------------+-----------------------------------------------------+
-
-This phase installs the developer tools required for building Cova.
-Every command is typed into the Terminal app. Press Cmd+Space, type
-\'Terminal\', press Enter. A window opens where you type commands. Press
-Enter after each command to run it. Do not skip any step --- missing
-tools will cause cryptic errors later.
-
-  ------- ------------------------------------------------------------
-   **1**  **Install Homebrew --- the Mac package manager**
-
-  ------- ------------------------------------------------------------
-
-Homebrew lets you install developer software from Terminal with one
-command. Almost everything else depends on it.
-
-  -----------------------------------------------------------------------
-  /bin/bash -c \"\$(curl -fsSL
-  https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"
-
-  -----------------------------------------------------------------------
-
-This will ask for your Mac password. Type it and press Enter --- you
-won\'t see characters as you type, that\'s normal. Takes 3--5 minutes.
-When it finishes, it may show a message saying \'Run these two commands
-to add Homebrew to your PATH\'. If it does, run both:
-
-+-----------------------------------------------------------------+
-| echo \'export PATH=\"/opt/homebrew/bin:\$PATH\"\' \>\>          |
-| \~/.zprofile                                                    |
-|                                                                 |
-| eval \"\$(/opt/homebrew/bin/brew shellenv)\"                    |
-+-----------------------------------------------------------------+
-
-Then verify:
-
-  -----------------------------------------------------------------
-  brew \--version
-
-  -----------------------------------------------------------------
-
-  ------------ --------------------------------------------------------
-      **✅     You should see: Homebrew 4.x.x
-   EXPECTED**  
-
-  ------------ --------------------------------------------------------
-
-  ------- ------------------------------------------------------------
-   **2**  **Install Node.js 20 LTS**
-
-  ------- ------------------------------------------------------------
-
-Node.js runs JavaScript on your computer and comes with npm, the package
-manager that installs all code libraries.
-
-  -----------------------------------------------------------------
-  brew install node@20
-
-  -----------------------------------------------------------------
-
-Add Node to your PATH so Terminal can find it:
-
-+-----------------------------------------------------------------+
-| echo \'export PATH=\"/opt/homebrew/opt/node@20/bin:\$PATH\"\'   |
-| \>\> \~/.zprofile                                               |
-|                                                                 |
-| source \~/.zprofile                                             |
-+-----------------------------------------------------------------+
-
-Verify both installed correctly:
-
-+-----------------------------------------------------------------+
-| node \--version \# should show v20.x.x                          |
-|                                                                 |
-| npm \--version \# should show 10.x.x                            |
-+-----------------------------------------------------------------+
-
-  ------- ------------------------------------------------------------
-   **3**  **Install Git**
-
-  ------- ------------------------------------------------------------
-
-Git is version control --- it tracks every change you make to your code
-so you can go back in time if something breaks, and lets you collaborate
-with a cofounder without overwriting each other\'s work.
-
-  -----------------------------------------------------------------
-  brew install git
-
-  -----------------------------------------------------------------
-
-Configure Git with your identity --- this attaches your name to every
-change you save:
-
-+-----------------------------------------------------------------+
-| git config \--global user.name \"Your Name\"                    |
-|                                                                 |
-| git config \--global user.email \"hellocova@gmail.com\"         |
-|                                                                 |
-| git config \--global init.defaultBranch main                    |
-+-----------------------------------------------------------------+
-
-  -----------------------------------------------------------------
-  git \--version
-
-  -----------------------------------------------------------------
-
-  ------------ --------------------------------------------------------
-      **✅     Should show git version 2.x.x
-   EXPECTED**  
-
-  ------------ --------------------------------------------------------
-
-  ------- ------------------------------------------------------------
-   **4**  **Install Visual Studio Code**
-
-  ------- ------------------------------------------------------------
-
-VS Code is the code editor you will use for everything. Free, fast,
-excellent TypeScript and React Native support.
-
-  -----------------------------------------------------------------
-  brew install \--cask visual-studio-code
-
-  -----------------------------------------------------------------
-
-After installation, open VS Code from Applications. Press Cmd+Shift+X to
-open Extensions and install each of these (search by name):
-
-- ESLint --- catches code errors as you type
-
-- Prettier --- automatically formats your code on save
-
-- TypeScript and JavaScript Language Features --- language support
-
-- React Native Tools --- debugging and IntelliSense for React Native
-
-- Tailwind CSS IntelliSense --- autocomplete for CSS classes in web
-  dashboard
-
-- GitLens --- see who changed what and when
-
-- Thunder Client --- test your API endpoints directly in VS Code (no
-  Postman needed)
-
-- glTF Tools --- preview and validate your 3D model files
-
-Configure VS Code to auto-format on save. Press Cmd+Shift+P, type \'Open
-User Settings JSON\', press Enter, and add these lines inside the curly
-braces:
-
-+-----------------------------------------------------------------+
-| \"editor.formatOnSave\": true,                                  |
-|                                                                 |
-| \"editor.defaultFormatter\": \"esbenp.prettier-vscode\",        |
-|                                                                 |
-| \"editor.tabSize\": 2,                                          |
-|                                                                 |
-| \"editor.fontSize\": 14,                                        |
-+-----------------------------------------------------------------+
-
-  ------- ------------------------------------------------------------
-   **5**  **Install pnpm**
-
-  ------- ------------------------------------------------------------
-
-pnpm is a faster, more efficient replacement for npm --- especially
-important for monorepos where multiple apps share packages.
-
-  -----------------------------------------------------------------
-  npm install -g pnpm
-
-  -----------------------------------------------------------------
-
-  -----------------------------------------------------------------
-  pnpm \--version
-
-  -----------------------------------------------------------------
-
-  ------------ --------------------------------------------------------
-      **✅     Should show 8.x.x or 9.x.x
-   EXPECTED**  
-
-  ------------ --------------------------------------------------------
-
-  ------- ------------------------------------------------------------
-   **6**  **Install Expo CLI and EAS CLI**
-
-  ------- ------------------------------------------------------------
-
-Expo is the framework for building the React Native iOS app. EAS is
-Expo\'s cloud build service that compiles and submits the app to the App
-Store. You need both.
-
-+-----------------------------------------------------------------+
-| npm install -g expo-cli                                         |
-|                                                                 |
-| npm install -g eas-cli                                          |
-+-----------------------------------------------------------------+
-
-Create a free Expo account at expo.dev if you don\'t have one. Then log
-in:
-
-  -----------------------------------------------------------------
-  eas login
-
-  -----------------------------------------------------------------
-
-Enter your email and password when prompted. You\'ll see \'Logged in as
-\[your email\]\' when successful.
-
-  ------- ------------------------------------------------------------
-   **7**  **Install Supabase CLI**
-
-  ------- ------------------------------------------------------------
-
-The Supabase CLI lets you manage your database, run migrations, and test
-Edge Functions locally before deploying.
-
-  -----------------------------------------------------------------
-  brew install supabase/tap/supabase
-
-  -----------------------------------------------------------------
-
-  -----------------------------------------------------------------
-  supabase \--version
-
-  -----------------------------------------------------------------
-
-  ------------ --------------------------------------------------------
-      **✅     Should show supabase 1.x.x or 2.x.x
-   EXPECTED**  
-
-  ------------ --------------------------------------------------------
-
-  ------- ------------------------------------------------------------
-   **8**  **Install Python 3.11**
-
-  ------- ------------------------------------------------------------
-
-Python is needed for the AI training scripts, dataset processing, CLIP
-embedding generation, and quality evaluation tools.
-
-  -----------------------------------------------------------------
-  brew install python@3.11
-
-  -----------------------------------------------------------------
-
-Add Python to your PATH:
-
-+-----------------------------------------------------------------+
-| echo \'export                                                   |
-| PATH=\"/opt/homebrew/opt/python@3.11/bin:\$PATH\"\' \>\>        |
-| \~/.zprofile                                                    |
-|                                                                 |
-| source \~/.zprofile                                             |
-+-----------------------------------------------------------------+
-
-+-----------------------------------------------------------------+
-| python3 \--version \# should show Python 3.11.x                 |
-|                                                                 |
-| pip3 \--version \# should show pip 23.x.x                       |
-+-----------------------------------------------------------------+
-
-  ------- ------------------------------------------------------------
-   **9**  **Install Blender CLI (for 3D model processing)**
-
-  ------- ------------------------------------------------------------
-
-Blender is needed to batch-convert and optimise glTF furniture models
-for mobile. Install it via Homebrew:
-
-  -----------------------------------------------------------------
-  brew install \--cask blender
-
-  -----------------------------------------------------------------
-
-After installation, add Blender to your PATH so you can run it from
-Terminal:
-
-+-----------------------------------------------------------------+
-| echo \'export                                                   |
-| PATH=\"/Applications/Blender.app/Contents/MacOS:\$PATH\"\' \>\> |
-| \~/.zprofile                                                    |
-|                                                                 |
-| source \~/.zprofile                                             |
-|                                                                 |
-| blender \--version \# should show Blender 4.x.x                 |
-+-----------------------------------------------------------------+
-
-  -------- ------------------------------------------------------------
-   **10**  **Create GitHub repository**
-
-  -------- ------------------------------------------------------------
-
-Go to github.com, click the + icon, click \'New repository\'. Name it
-\'cova\', set it to Private, check \'Add a README file\', click \'Create
-repository\'. Then clone it:
-
-+-----------------------------------------------------------------+
-| cd \~/Documents                                                 |
-|                                                                 |
-| git clone https://github.com/YOURUSERNAME/cova.git              |
-|                                                                 |
-| cd cova                                                         |
-+-----------------------------------------------------------------+
-
-  ------------- --------------------------------------------------------
-      **⚠️      Replace YOURUSERNAME with your actual GitHub username.
-   IMPORTANT**  Every future command in this guide assumes you are
-                inside \~/Documents/cova.
-
-  ------------- --------------------------------------------------------
-
-  -------- ------------------------------------------------------------
-   **11**  **Install Xcode --- START THIS NOW, it takes 30--60
-           minutes**
-
-  -------- ------------------------------------------------------------
-
-Xcode is Apple\'s developer tool required to build and run iOS apps. It
-is 15GB so start the download now and continue with Phase 1 while it
-downloads.
-
-Open the App Store on your Mac, search for \'Xcode\', click Get /
-Install. It is free but requires your Apple ID. After Xcode installs,
-open it once to accept the license agreement. Then run:
-
-+-----------------------------------------------------------------+
-| sudo xcode-select \--switch /Applications/Xcode.app             |
-|                                                                 |
-| xcodebuild -runFirstLaunch                                      |
-+-----------------------------------------------------------------+
-
-  --------- --------------------------------------------------------
-    **⏳    If Xcode has not finished downloading, continue with
-   WAIT**   Phase 1 and Phase 2. Come back to test the iOS Simulator
-            at the start of Phase 6.
-
-  --------- --------------------------------------------------------
-
-+:----------:+-----------------------------------------------------+
-| **PHASE    | *Create the monorepo, install 3D dependencies, and  |
-| 1**        | set up shared TypeScript types*                     |
-|            |                                                     |
-| **Project  |                                                     |
-| Scaffold** |                                                     |
-+------------+-----------------------------------------------------+
-
-A monorepo means one repository holding multiple apps and shared code.
-Cova has two apps --- the iOS mobile app and the realtor web dashboard
---- plus shared code they both use. Turborepo manages the build system
-so the shared package compiles before either app builds.
-
-  ------- ------------------------------------------------------------
-   **1**  **Initialize the Turborepo monorepo**
-
-  ------- ------------------------------------------------------------
-
-Make sure you are in your cova folder. Run:
-
-+-----------------------------------------------------------------+
-| cd \~/Documents/cova                                            |
-|                                                                 |
-| npx create-turbo@latest . \--package-manager pnpm               |
-+-----------------------------------------------------------------+
-
-When it asks questions: select pnpm as the package manager, select Yes
-for TypeScript. After it finishes, delete the example apps it created:
-
-+-----------------------------------------------------------------+
-| rm -rf apps/docs                                                |
-|                                                                 |
-| rm -rf apps/web                                                 |
-|                                                                 |
-| rm -rf packages/ui                                              |
-|                                                                 |
-| rm -rf packages/eslint-config                                   |
-|                                                                 |
-| rm -rf packages/typescript-config                               |
-+-----------------------------------------------------------------+
-
-  ------- ------------------------------------------------------------
-   **2**  **Create the correct folder structure**
-
-  ------- ------------------------------------------------------------
-
-+-----------------------------------------------------------------+
-| mkdir -p apps/mobile                                            |
-|                                                                 |
-| mkdir -p apps/web                                               |
-|                                                                 |
-| mkdir -p packages/shared/src/types                              |
-|                                                                 |
-| mkdir -p packages/shared/src/utils                              |
-|                                                                 |
-| mkdir -p packages/shared/src/supabase                           |
-|                                                                 |
-| mkdir -p supabase/migrations                                    |
-|                                                                 |
-| mkdir -p supabase/functions                                     |
-|                                                                 |
-| mkdir -p scripts                                                |
-|                                                                 |
-| mkdir -p assets/3d/furniture                                    |
-|                                                                 |
-| mkdir -p assets/3d/environments                                 |
-+-----------------------------------------------------------------+
-
-Your final structure:
-
-+-----------------------------------------------------------------+
-| cova/                                                           |
-|                                                                 |
-| ├── apps/                                                       |
-|                                                                 |
-| │ ├── mobile/ ← React Native Expo iOS app                       |
-|                                                                 |
-| │ └── web/ ← Next.js realtor web dashboard                      |
-|                                                                 |
-| ├── packages/                                                   |
-|                                                                 |
-| │ └── shared/ ← Shared TypeScript + utils                       |
-|                                                                 |
-| │ └── src/                                                      |
-|                                                                 |
-| │ ├── types/ ← All TypeScript interfaces                        |
-|                                                                 |
-| │ ├── utils/ ← Token costs, fingerprint scoring                 |
-|                                                                 |
-| │ └── supabase/← Supabase client init                           |
-|                                                                 |
-| ├── supabase/                                                   |
-|                                                                 |
-| │ ├── migrations/ ← Database schema SQL files                   |
-|                                                                 |
-| │ └── functions/ ← Edge Function serverless API                 |
-|                                                                 |
-| ├── assets/                                                     |
-|                                                                 |
-| │ └── 3d/                                                       |
-|                                                                 |
-| │ ├── furniture/ ← glTF .glb model files                        |
-|                                                                 |
-| │ └── environments/← HDR lighting files                         |
-|                                                                 |
-| ├── scripts/ ← Python AI/ML scripts                             |
-|                                                                 |
-| ├── .env.local ← Secret keys (NEVER committed)                  |
-|                                                                 |
-| └── turbo.json ← Turborepo config                               |
-+-----------------------------------------------------------------+
-
-  ------- ------------------------------------------------------------
-   **3**  **Configure turbo.json**
-
-  ------- ------------------------------------------------------------
-
-  -----------------------------------------------------------------
-  code turbo.json
-
-  -----------------------------------------------------------------
-
-Replace everything with:
-
-+-----------------------------------------------------------------+
-| {                                                               |
-|                                                                 |
-| \"\$schema\": \"https://turbo.build/schema.json\",              |
-|                                                                 |
-| \"globalEnv\": \[\"NEXT_PUBLIC_SUPABASE_URL\",                  |
-| \"NEXT_PUBLIC_SUPABASE_ANON_KEY\"\],                            |
-|                                                                 |
-| \"pipeline\": {                                                 |
-|                                                                 |
-| \"build\": { \"dependsOn\": \[\"\^build\"\], \"outputs\":       |
-| \[\".next/\*\*\", \"!.next/cache/\*\*\", \"dist/\*\*\"\] },     |
-|                                                                 |
-| \"dev\": { \"cache\": false, \"persistent\": true },            |
-|                                                                 |
-| \"lint\": { \"outputs\": \[\] },                                |
-|                                                                 |
-| \"typecheck\": { \"dependsOn\": \[\"\^build\"\] }               |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| }                                                               |
-+-----------------------------------------------------------------+
-
-  ------- ------------------------------------------------------------
-   **4**  **Set up the root package.json**
-
-  ------- ------------------------------------------------------------
-
-  -----------------------------------------------------------------
-  code package.json
-
-  -----------------------------------------------------------------
-
-Replace the entire file with:
-
-+-----------------------------------------------------------------+
-| {                                                               |
-|                                                                 |
-| \"name\": \"cova\",                                             |
-|                                                                 |
-| \"private\": true,                                              |
-|                                                                 |
-| \"scripts\": {                                                  |
-|                                                                 |
-| \"dev\": \"turbo run dev\",                                     |
-|                                                                 |
-| \"build\": \"turbo run build\",                                 |
-|                                                                 |
-| \"lint\": \"turbo run lint\",                                   |
-|                                                                 |
-| \"typecheck\": \"turbo run typecheck\"                          |
-|                                                                 |
-| },                                                              |
-|                                                                 |
-| \"devDependencies\": {                                          |
-|                                                                 |
-| \"turbo\": \"latest\",                                          |
-|                                                                 |
-| \"typescript\": \"\^5.3.0\"                                     |
-|                                                                 |
-| },                                                              |
-|                                                                 |
-| \"packageManager\": \"pnpm@9.0.0\"                              |
-|                                                                 |
-| }                                                               |
-+-----------------------------------------------------------------+
-
-  ------- ------------------------------------------------------------
-   **5**  **Create the shared package --- types and Supabase client**
-
-  ------- ------------------------------------------------------------
-
-Create packages/shared/package.json:
-
-  -----------------------------------------------------------------
-  code packages/shared/package.json
-
-  -----------------------------------------------------------------
-
-+-----------------------------------------------------------------+
-| {                                                               |
-|                                                                 |
-| \"name\": \"@cova/shared\",                                     |
-|                                                                 |
-| \"version\": \"0.0.1\",                                         |
-|                                                                 |
-| \"main\": \"./src/index.ts\",                                   |
-|                                                                 |
-| \"types\": \"./src/index.ts\",                                  |
-|                                                                 |
-| \"dependencies\": {                                             |
-|                                                                 |
-| \"@supabase/supabase-js\": \"\^2.39.0\"                         |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| }                                                               |
-+-----------------------------------------------------------------+
-
-Create the main types file --- packages/shared/src/types/index.ts:
-
-  -----------------------------------------------------------------
-  code packages/shared/src/types/index.ts
-
-  -----------------------------------------------------------------
-
-+-----------------------------------------------------------------------------------+
-| // ── Core User Types ───────────────────────────────                             |
-|                                                                                   |
-| export interface User {                                                           |
-|                                                                                   |
-| id: string;                                                                       |
-|                                                                                   |
-| email: string;                                                                    |
-|                                                                                   |
-| full_name: string \| null;                                                        |
-|                                                                                   |
-| account_type: \'consumer\' \| \'realtor\';                                        |
-|                                                                                   |
-| style_fingerprint: StyleFingerprint;                                              |
-|                                                                                   |
-| budget_dna: BudgetDNA;                                                            |
-|                                                                                   |
-| token_balance: number;                                                            |
-|                                                                                   |
-| onboarding_completed: boolean;                                                    |
-|                                                                                   |
-| stripe_customer_id: string \| null;                                               |
-|                                                                                   |
-| created_at: string;                                                               |
-|                                                                                   |
-| }                                                                                 |
-|                                                                                   |
-| export interface StyleFingerprint {                                               |
-|                                                                                   |
-| top_styles: string\[\];                                                           |
-|                                                                                   |
-| density_preference: number; // 1=minimal, 3=maximalist                            |
-|                                                                                   |
-| color_palette: string\[\]; // hex values                                          |
-|                                                                                   |
-| material_preference: string\[\];                                                  |
-|                                                                                   |
-| price_tier: \'budget\' \| \'mid\' \| \'premium\';                                 |
-|                                                                                   |
-| swipe_count: number;                                                              |
-|                                                                                   |
-| }                                                                                 |
-|                                                                                   |
-| export interface BudgetDNA {                                                      |
-|                                                                                   |
-| total_room_budget: number;                                                        |
-|                                                                                   |
-| preferred_price_tier: \'budget\' \| \'mid\' \| \'premium\';                       |
-|                                                                                   |
-| spend_history: number\[\];                                                        |
-|                                                                                   |
-| price_alerts_enabled: boolean;                                                    |
-|                                                                                   |
-| }                                                                                 |
-|                                                                                   |
-| // ── Room & Render Types ───────────────────────────                             |
-|                                                                                   |
-| export interface Room {                                                           |
-|                                                                                   |
-| id: string;                                                                       |
-|                                                                                   |
-| user_id: string;                                                                  |
-|                                                                                   |
-| original_image_url: string;                                                       |
-|                                                                                   |
-| depth_map_url: string \| null;                                                    |
-|                                                                                   |
-| depth_map_quality_score: number \| null;                                          |
-|                                                                                   |
-| detected_existing_style: string \| null;                                          |
-|                                                                                   |
-| room_type:                                                                        |
-| \'living_room\'\|\'bedroom\'\|\'kitchen\'\|\'bathroom\'\|\'office\'\|\'dining\';  |
-|                                                                                   |
-| // 3D calibration data                                                            |
-|                                                                                   |
-| calibration_data: RoomCalibration \| null;                                        |
-|                                                                                   |
-| room_dimensions: RoomDimensions \| null;                                          |
-|                                                                                   |
-| listing_id: string \| null;                                                       |
-|                                                                                   |
-| created_at: string;                                                               |
-|                                                                                   |
-| }                                                                                 |
-|                                                                                   |
-| export interface RoomCalibration {                                                |
-|                                                                                   |
-| corner_tl: { x: number; y: number };                                              |
-|                                                                                   |
-| corner_tr: { x: number; y: number };                                              |
-|                                                                                   |
-| corner_bl: { x: number; y: number };                                              |
-|                                                                                   |
-| corner_br: { x: number; y: number };                                              |
-|                                                                                   |
-| floor_line_y: number;                                                             |
-|                                                                                   |
-| image_width: number;                                                              |
-|                                                                                   |
-| image_height: number;                                                             |
-|                                                                                   |
-| }                                                                                 |
-|                                                                                   |
-| export interface RoomDimensions {                                                 |
-|                                                                                   |
-| width_ft: number;                                                                 |
-|                                                                                   |
-| depth_ft: number;                                                                 |
-|                                                                                   |
-| height_ft: number;                                                                |
-|                                                                                   |
-| }                                                                                 |
-|                                                                                   |
-| export interface Render {                                                         |
-|                                                                                   |
-| id: string;                                                                       |
-|                                                                                   |
-| room_id: string;                                                                  |
-|                                                                                   |
-| user_id: string;                                                                  |
-|                                                                                   |
-| style_applied: string;                                                            |
-|                                                                                   |
-| quality_tier: \'draft\' \| \'hd\';                                                |
-|                                                                                   |
-| image_url: string \| null;                                                        |
-|                                                                                   |
-| status: \'processing\'\|\'complete\'\|\'failed\'\|\'quality_rejected\';           |
-|                                                                                   |
-| brisque_score: number \| null;                                                    |
-|                                                                                   |
-| tokens_charged: number;                                                           |
-|                                                                                   |
-| created_at: string;                                                               |
-|                                                                                   |
-| }                                                                                 |
-|                                                                                   |
-| // ── 3D Scene Types ────────────────────────────────                             |
-|                                                                                   |
-| export interface SceneState {                                                     |
-|                                                                                   |
-| style: CavaStyle;                                                                 |
-|                                                                                   |
-| furniture: PlacedFurniture\[\];                                                   |
-|                                                                                   |
-| room_dimensions: RoomDimensions;                                                  |
-|                                                                                   |
-| }                                                                                 |
-|                                                                                   |
-| export interface PlacedFurniture {                                                |
-|                                                                                   |
-| id: string;                                                                       |
-|                                                                                   |
-| model_key: string; // key into FURNITURE_CATALOG                                  |
-|                                                                                   |
-| position: \[number, number, number\];                                             |
-|                                                                                   |
-| rotation_y: number; // radians                                                    |
-|                                                                                   |
-| style: CavaStyle;                                                                 |
-|                                                                                   |
-| }                                                                                 |
-|                                                                                   |
-| export type CavaStyle = \'japandi\' \| \'midcentury\' \| \'coastal\' \|           |
-| \'industrial\' \| \'bohemian\';                                                   |
-|                                                                                   |
-| export interface FurnitureCatalogItem {                                           |
-|                                                                                   |
-| key: string;                                                                      |
-|                                                                                   |
-| name: string;                                                                     |
-|                                                                                   |
-| category:                                                                         |
-| \'sofa\'\|\'chair\'\|\'table\'\|\'rug\'\|\'lamp\'\|\'plant\'\|\'shelf\'\|\'bed\'; |
-|                                                                                   |
-| styles: CavaStyle\[\];                                                            |
-|                                                                                   |
-| model_path: string; // path to .glb file                                          |
-|                                                                                   |
-| dimensions: { w: number; d: number; h: number }; // in metres                     |
-|                                                                                   |
-| default_position: \[number, number, number\];                                     |
-|                                                                                   |
-| default_rotation_y: number;                                                       |
-|                                                                                   |
-| }                                                                                 |
-|                                                                                   |
-| // ── Product & Commerce Types ──────────────────────                             |
-|                                                                                   |
-| export interface Product {                                                        |
-|                                                                                   |
-| id: string;                                                                       |
-|                                                                                   |
-| external_id: string;                                                              |
-|                                                                                   |
-| name: string;                                                                     |
-|                                                                                   |
-| retailer: \'wayfair\'\|\'amazon\'\|\'ikea\'\|\'cb2\';                             |
-|                                                                                   |
-| price: number;                                                                    |
-|                                                                                   |
-| category: string;                                                                 |
-|                                                                                   |
-| image_url: string;                                                                |
-|                                                                                   |
-| affiliate_url_base: string;                                                       |
-|                                                                                   |
-| price_tier: \'budget\'\|\'mid\'\|\'premium\';                                     |
-|                                                                                   |
-| in_stock: boolean;                                                                |
-|                                                                                   |
-| }                                                                                 |
-|                                                                                   |
-| export const TOKEN_COSTS = {                                                      |
-|                                                                                   |
-| render_draft: 2,                                                                  |
-|                                                                                   |
-| render_hd: 3,                                                                     |
-|                                                                                   |
-| inpaint: 2,                                                                       |
-|                                                                                   |
-| product_match: 1,                                                                 |
-|                                                                                   |
-| scene_export: 0,                                                                  |
-|                                                                                   |
-| } as const;                                                                       |
-+-----------------------------------------------------------------------------------+
-
-Create the Supabase client --- packages/shared/src/supabase/client.ts:
-
-  -----------------------------------------------------------------
-  code packages/shared/src/supabase/client.ts
-
-  -----------------------------------------------------------------
-
-+-----------------------------------------------------------------+
-| import { createClient } from \'@supabase/supabase-js\';         |
-|                                                                 |
-| const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ??    |
-| process.env.EXPO_PUBLIC_SUPABASE_URL ?? \'\';                   |
-|                                                                 |
-| const SUPABASE_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY |
-| ?? process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? \'\';           |
-|                                                                 |
-| if (!SUPABASE_URL \|\| !SUPABASE_ANON) {                        |
-|                                                                 |
-| console.error(\'\[Cova\] Supabase env vars missing. Check       |
-| .env.local\');                                                  |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| export const supabase = createClient(SUPABASE_URL,              |
-| SUPABASE_ANON, {                                                |
-|                                                                 |
-| auth: {                                                         |
-|                                                                 |
-| autoRefreshToken: true,                                         |
-|                                                                 |
-| persistSession: true,                                           |
-|                                                                 |
-| detectSessionInUrl: false, // required for React Native         |
-|                                                                 |
-| },                                                              |
-|                                                                 |
-| });                                                             |
-+-----------------------------------------------------------------+
-
-Create packages/shared/src/index.ts to export everything:
-
-  -----------------------------------------------------------------
-  code packages/shared/src/index.ts
-
-  -----------------------------------------------------------------
-
-+-----------------------------------------------------------------+
-| export \* from \'./types\';                                     |
-|                                                                 |
-| export \* from \'./supabase/client\';                           |
-|                                                                 |
-| export \* from \'./utils/tokens\';                              |
-|                                                                 |
-| export \* from \'./utils/fingerprint\';                         |
-+-----------------------------------------------------------------+
-
-Create packages/shared/src/utils/tokens.ts:
-
-  -----------------------------------------------------------------
-  code packages/shared/src/utils/tokens.ts
-
-  -----------------------------------------------------------------
-
-+-----------------------------------------------------------------+
-| import { TOKEN_COSTS } from \'../types\';                       |
-|                                                                 |
-| export function canAfford(balance: number, action: keyof typeof |
-| TOKEN_COSTS): boolean {                                         |
-|                                                                 |
-| return balance \>= TOKEN_COSTS\[action\];                       |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| export function tokenCostLabel(action: keyof typeof             |
-| TOKEN_COSTS): string {                                          |
-|                                                                 |
-| const cost = TOKEN_COSTS\[action\];                             |
-|                                                                 |
-| return cost === 0 ? \'Free\' : \`\${cost} token\${cost \> 1 ?   |
-| \'s\' : \'\'}\`;                                                |
-|                                                                 |
-| }                                                               |
-+-----------------------------------------------------------------+
-
-  ------- ------------------------------------------------------------
-   **6**  **Set up environment variables**
-
-  ------- ------------------------------------------------------------
-
-Create the .env.local file at the root of the project. This file holds
-all your secret keys. It is listed in .gitignore and will NEVER be
-committed to GitHub.
-
-  -----------------------------------------------------------------
-  code .env.local
-
-  -----------------------------------------------------------------
-
-+-----------------------------------------------------------------+
-| \# Supabase --- get these from supabase.com → your project →    |
-| Settings → API                                                  |
-|                                                                 |
-| NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co   |
-|                                                                 |
-| NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here                |
-|                                                                 |
-| SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here            |
-|                                                                 |
-| \# Replicate --- get from replicate.com → Account → API tokens  |
-|                                                                 |
-| REPLICATE_API_TOKEN=r8_your_token_here                          |
-|                                                                 |
-| \# Anthropic Claude --- get from console.anthropic.com → API    |
-| Keys                                                            |
-|                                                                 |
-| ANTHROPIC_API_KEY=sk-ant-your_key_here                          |
-|                                                                 |
-| \# Stripe --- get from dashboard.stripe.com → Developers → API  |
-| keys                                                            |
-|                                                                 |
-| STRIPE_SECRET_KEY=sk_test_your_key_here                         |
-|                                                                 |
-| STRIPE_WEBHOOK_SECRET=whsec_your_secret_here                    |
-|                                                                 |
-| \# Also add EXPO\_ prefix versions for React Native             |
-|                                                                 |
-| EXPO_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co   |
-|                                                                 |
-| EXPO_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here                |
-+-----------------------------------------------------------------+
-
-  ------------- --------------------------------------------------------
-      **⚠️      Never commit .env.local to GitHub. Verify it is in your
-   IMPORTANT**  .gitignore by running: cat .gitignore \| grep .env
-
-  ------------- --------------------------------------------------------
-
-  ------- ------------------------------------------------------------
-   **7**  **Commit Phase 1**
-
-  ------- ------------------------------------------------------------
-
-+-----------------------------------------------------------------+
-| cd \~/Documents/cova                                            |
-|                                                                 |
-| git add .                                                       |
-|                                                                 |
-| git commit -m \"Phase 1: monorepo scaffold, shared types, 3D    |
-| type definitions\"                                              |
-|                                                                 |
-| git push origin main                                            |
-+-----------------------------------------------------------------+
-
-+:----------:+-----------------------------------------------------+
-| **PHASE    | *Database schema, RLS security policies, storage    |
-| 2**        | buckets, and auth configuration*                    |
-|            |                                                     |
-| **Supabase |                                                     |
-| Backend**  |                                                     |
-+------------+-----------------------------------------------------+
-
-Supabase is the backbone of the entire application. It provides
-PostgreSQL, row-level security, authentication, real-time subscriptions
-via WebSockets, object storage for images and 3D models, and serverless
-edge functions --- all in one managed platform.
-
-  ------- ------------------------------------------------------------
-   **1**  **Create your Supabase project**
-
-  ------- ------------------------------------------------------------
-
-- Go to supabase.com and sign in or create a free account
-
-- Click \'New Project\'
-
-- Organization: your personal org or create \'cova\'
-
-- Project name: cova
-
-- Database password: generate a strong one and save it in 1Password /
-  your notes
-
-- Region: US East (or closest to you)
-
-- Click \'Create new project\' and wait \~2 minutes for it to provision
-
-Once created, go to Settings → API and copy:
-
-- Project URL → paste as NEXT_PUBLIC_SUPABASE_URL in .env.local
-
-- anon public key → paste as NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-- service_role secret key → paste as SUPABASE_SERVICE_ROLE_KEY
-
-  ------------ --------------------------------------------------------
-      **🔴     The service_role key has full database access with no
-   CRITICAL**  RLS. Only use it in server-side Edge Functions. Never
-               expose it in mobile app or browser code.
-
-  ------------ --------------------------------------------------------
-
-  ------- ------------------------------------------------------------
-   **2**  **Enable required extensions**
-
-  ------- ------------------------------------------------------------
-
-Go to Database → Extensions in the Supabase dashboard. Enable these two
-extensions:
-
-- vector --- enables the vector(768) column type for CLIP embeddings.
-  CLICK ENABLE NOW before creating any tables --- adding it after the
-  fact requires migrating existing data.
-
-- uuid-ossp --- enables gen_random_uuid() for generating IDs
-
-  --------- --------------------------------------------------------
-    **📝    If you don\'t see the \'Extensions\' menu item, go to
-   NOTE**   Database → SQL Editor and run: CREATE EXTENSION IF NOT
-            EXISTS vector; CREATE EXTENSION IF NOT EXISTS
-            \"uuid-ossp\";
-
-  --------- --------------------------------------------------------
-
-  ------- ------------------------------------------------------------
-   **3**  **Create the full database schema**
-
-  ------- ------------------------------------------------------------
-
-Go to Database → SQL Editor. Click \'New Query\'. Paste and run the
-following SQL in order. Run each block separately --- copy one block,
-paste into SQL Editor, click \'Run\'.
-
-**Block 1 --- Users table**
-
-+-----------------------------------------------------------------+
-| CREATE TABLE public.users (                                     |
-|                                                                 |
-| id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE         |
-| CASCADE,                                                        |
-|                                                                 |
-| email TEXT NOT NULL,                                            |
-|                                                                 |
-| full_name TEXT,                                                 |
-|                                                                 |
-| account_type TEXT NOT NULL DEFAULT \'consumer\'                 |
-|                                                                 |
-| CHECK (account_type IN (\'consumer\',\'realtor\')),             |
-|                                                                 |
-| style_fingerprint JSONB NOT NULL DEFAULT \'{}\',                |
-|                                                                 |
-| budget_dna JSONB NOT NULL DEFAULT \'{}\',                       |
-|                                                                 |
-| token_balance INTEGER NOT NULL DEFAULT 5 CHECK (token_balance   |
-| \>= 0),                                                         |
-|                                                                 |
-| stripe_customer_id TEXT,                                        |
-|                                                                 |
-| onboarding_completed BOOLEAN NOT NULL DEFAULT false,            |
-|                                                                 |
-| last_active_at TIMESTAMPTZ,                                     |
-|                                                                 |
-| created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()                   |
-|                                                                 |
-| );                                                              |
-|                                                                 |
-| \-- Auto-create user row when auth.users entry is created       |
-|                                                                 |
-| CREATE OR REPLACE FUNCTION public.handle_new_user()             |
-|                                                                 |
-| RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS \$\$       |
-|                                                                 |
-| BEGIN                                                           |
-|                                                                 |
-| INSERT INTO public.users (id, email)                            |
-|                                                                 |
-| VALUES (NEW.id, NEW.email)                                      |
-|                                                                 |
-| ON CONFLICT (id) DO NOTHING;                                    |
-|                                                                 |
-| RETURN NEW;                                                     |
-|                                                                 |
-| END;                                                            |
-|                                                                 |
-| \$\$;                                                           |
-|                                                                 |
-| CREATE TRIGGER on_auth_user_created                             |
-|                                                                 |
-| AFTER INSERT ON auth.users                                      |
-|                                                                 |
-| FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();         |
-+-----------------------------------------------------------------+
-
-**Block 2 --- Token transactions (append-only ledger)**
-
-+-----------------------------------------------------------------+
-| CREATE TABLE public.token_transactions (                        |
-|                                                                 |
-| id UUID PRIMARY KEY DEFAULT gen_random_uuid(),                  |
-|                                                                 |
-| user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE     |
-| CASCADE,                                                        |
-|                                                                 |
-| delta INTEGER NOT NULL, \-- positive = credit, negative = debit |
-|                                                                 |
-| reason TEXT NOT NULL, \-- \'signup_bonus\', \'render_draft\',   |
-| \'purchase_pack_20\', etc.                                      |
-|                                                                 |
-| render_id UUID, \-- nullable, set when debit is for a render    |
-|                                                                 |
-| created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()                   |
-|                                                                 |
-| );                                                              |
-|                                                                 |
-| \-- NEVER UPDATE this table. Only INSERT. Balance = SUM(delta)  |
-| per user.                                                       |
-|                                                                 |
-| \-- Cached in users.token_balance and updated atomically via    |
-| RPC.                                                            |
-|                                                                 |
-| \-- Atomic token deduction function                             |
-|                                                                 |
-| CREATE OR REPLACE FUNCTION public.deduct_tokens_atomic(         |
-|                                                                 |
-| p_user_id UUID,                                                 |
-|                                                                 |
-| p_amount INTEGER,                                               |
-|                                                                 |
-| p_reason TEXT                                                   |
-|                                                                 |
-| ) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS \$\$     |
-|                                                                 |
-| DECLARE                                                         |
-|                                                                 |
-| v_balance INTEGER;                                              |
-|                                                                 |
-| BEGIN                                                           |
-|                                                                 |
-| SELECT token_balance INTO v_balance FROM public.users           |
-|                                                                 |
-| WHERE id = p_user_id FOR UPDATE;                                |
-|                                                                 |
-| IF v_balance \< p_amount THEN RETURN FALSE; END IF;             |
-|                                                                 |
-| UPDATE public.users SET token_balance = token_balance -         |
-| p_amount WHERE id = p_user_id;                                  |
-|                                                                 |
-| INSERT INTO public.token_transactions (user_id, delta, reason)  |
-|                                                                 |
-| VALUES (p_user_id, -p_amount, p_reason);                        |
-|                                                                 |
-| RETURN TRUE;                                                    |
-|                                                                 |
-| END;                                                            |
-|                                                                 |
-| \$\$;                                                           |
-+-----------------------------------------------------------------+
-
-**Block 3 --- Rooms table (with 3D calibration columns)**
+**Complete Build Guide**
+
+*Phases 0--9 \| All Cursor Prompts, Code, SQL, Terminal Commands \|
+Version 2.0 \| March 2026*
+
+Bundle ID: ai.cova.app \| Supabase: xdeacbmkdwqrwxonqaqh \|
+hellocova@gmail.com
+
+*GitHub: \~/Desktop/cova \| Pranav Goel (owner) \| Daksh (collaborator)*
+
+**TABLE OF CONTENTS**
+
+**HOW TO USE THIS BUILD GUIDE**
+
+This document is the single source of truth for building Cova. It maps
+exactly to the Cova Master Strategy Document v2.0. Every Phase in the
+Master Document has a matching section here with the terminal commands,
+Cursor Agent prompts, SQL migrations, config files, and verification
+steps.
+
+  ---------- ------------------------------------------------------------
+   **CURSOR  Always use Cursor in AGENT mode. Always attach
+    RULE**   \@BUILDGUIDE.md to every prompt. Run one prompt per session
+             --- do not chain multiple phases in one Cursor session.
+
+  ---------- ------------------------------------------------------------
+
+**Golden Rules**
+
+1.  Read the full phase section before running ANY commands
+
+2.  Run Terminal commands yourself --- never let Cursor Agent run pnpm
+    install or git commands
+
+3.  After every phase: git add . && git commit -m \'Phase X complete\'
+    && git push origin main
+
+4.  Always test on physical iPhone --- iOS Simulator WebGL is broken for
+    Three.js
+
+5.  Get V0 design approval from both Pranav and Daksh before running any
+    Phase 6+ UI prompt
+
+6.  Never upgrade pinned packages. Never run npx expo install \--fix
+    without checking the output.
+
+**Version Lock --- Never Change These**
+
++-----------------------------------------------------------------------+
+| expo: \~52.0.49                                                       |
+|                                                                       |
+| react: 18.3.1 (EXACT --- React 19 breaks \@react-three/fiber)         |
+|                                                                       |
+| react-dom: 18.3.1 (EXACT)                                             |
+|                                                                       |
+| \@react-three/fiber: 8.17.10 (PINNED --- last version for React 18)   |
+|                                                                       |
+| \@react-three/drei: 9.88.0 (PINNED --- must match R3F 8.x)            |
+|                                                                       |
+| three: 0.155.0 (PINNED --- last version stable with expo-gl on        |
+| device)                                                               |
+|                                                                       |
+| \@supabase/supabase-js: 2.39.x                                        |
+|                                                                       |
+| zustand: 5.x                                                          |
++-----------------------------------------------------------------------+
+
+**Required pnpm Overrides in Root package.json**
+
+Without these, npx expo install \--fix or any package upgrade will pull
+React 19 and break everything:
+
++-----------------------------------------------------------------------+
+| \"pnpm\": {                                                           |
+|                                                                       |
+| \"overrides\": {                                                      |
+|                                                                       |
+| \"react\": \"18.3.1\",                                                |
+|                                                                       |
+| \"react-dom\": \"18.3.1\"                                             |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| }                                                                     |
++-----------------------------------------------------------------------+
+
+**Environment Variables**
+
+File: \~/Desktop/cova/.env.local (git-ignored)
+
++-----------------------------------------------------------------------+
+| EXPO_PUBLIC_SUPABASE_URL=https://xdeacbmkdwqrwxonqaqh.supabase.co     |
+|                                                                       |
+| EXPO_PUBLIC_SUPABASE_ANON_KEY=your_anon_key                           |
+|                                                                       |
+| NEXT_PUBLIC_SUPABASE_URL=https://xdeacbmkdwqrwxonqaqh.supabase.co     |
+|                                                                       |
+| NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key                           |
+|                                                                       |
+| SUPABASE_SERVICE_ROLE_KEY=your_service_role_key                       |
+|                                                                       |
+| REPLICATE_API_TOKEN=your_replicate_token                              |
+|                                                                       |
+| ANTHROPIC_API_KEY=your_anthropic_key                                  |
+|                                                                       |
+| STRIPE_SECRET_KEY=sk_test\_\... (empty until Phase 8)                 |
++-----------------------------------------------------------------------+
+
+**PHASE 0: ENVIRONMENT SETUP**
+
+  ---------- ------------------------------------------------------------------
+   **DONE**  COMPLETED --- Both Pranav and Daksh have completed Phase 0. Re-run
+             only if setting up a new Mac.
+
+  ---------- ------------------------------------------------------------------
+
+Phase 0 installs all tools required to build Cova. Run every command in
+Terminal on both Macs. This phase has no Cursor prompts --- it is all
+terminal work.
+
+**0.1 Install Core Tools**
+
++-----------------------------------------------------------------------+
+| \# Install Homebrew                                                   |
+|                                                                       |
+| /bin/bash -c \"\$(curl -fsSL                                          |
+| https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\" |
+|                                                                       |
+| \# Install Node 20                                                    |
+|                                                                       |
+| brew install node@20                                                  |
+|                                                                       |
+| echo \'export PATH=\"/opt/homebrew/opt/node@20/bin:\$PATH\"\' \>\>    |
+| \~/.zprofile                                                          |
+|                                                                       |
+| source \~/.zprofile                                                   |
+|                                                                       |
+| node \--version \# Should show v20.x.x                                |
+|                                                                       |
+| \# Install Git                                                        |
+|                                                                       |
+| brew install git                                                      |
+|                                                                       |
+| \# Install pnpm via corepack (permanent fix --- never loses pnpm      |
+| after restart)                                                        |
+|                                                                       |
+| corepack enable                                                       |
+|                                                                       |
+| corepack prepare pnpm@latest \--activate                              |
+|                                                                       |
+| echo \'export PNPM_HOME=\"\$HOME/.local/share/pnpm\"\' \>\>           |
+| \~/.zprofile                                                          |
+|                                                                       |
+| echo \'export PATH=\"\$PNPM_HOME:\$PATH\"\' \>\> \~/.zprofile         |
+|                                                                       |
+| source \~/.zprofile                                                   |
+|                                                                       |
+| pnpm \--version \# Should show 9.x.x                                  |
+|                                                                       |
+| \# Install Python 3.11                                                |
+|                                                                       |
+| brew install python@3.11                                              |
+|                                                                       |
+| \# Install Blender (for GLB optimization)                             |
+|                                                                       |
+| brew install \--cask blender                                          |
+|                                                                       |
+| \# Install Pandoc (for BUILDGUIDE.md conversion)                      |
+|                                                                       |
+| brew install pandoc                                                   |
++-----------------------------------------------------------------------+
+
+**0.2 Install Xcode**
+
+7.  Open App Store and install Xcode (latest version --- currently 16.x)
+
+8.  After install, open Xcode and accept the license agreement
+
+9.  Install iOS SDK components: Xcode \> Settings \> Components \>
+    Download iOS 26.x SDK
+
+10. Enable Developer Mode on your iPhone: Settings \> Privacy & Security
+    \> Developer Mode \> Toggle ON \> Restart iPhone
+
++-----------------------------------------------------------------------+
+| \# Install Xcode command line tools                                   |
+|                                                                       |
+| xcode-select \--install                                               |
+|                                                                       |
+| \# Verify                                                             |
+|                                                                       |
+| xcodebuild -version \# Should show Xcode 16.x                         |
++-----------------------------------------------------------------------+
+
+**0.3 Install Expo and Supabase CLIs**
+
++-----------------------------------------------------------------------+
+| \# Install Expo CLI globally                                          |
+|                                                                       |
+| pnpm add -g expo-cli                                                  |
+|                                                                       |
+| pnpm add -g eas-cli                                                   |
+|                                                                       |
+| \# Install Supabase CLI                                               |
+|                                                                       |
+| brew install supabase/tap/supabase                                    |
+|                                                                       |
+| \# Verify all tools                                                   |
+|                                                                       |
+| expo \--version                                                       |
+|                                                                       |
+| eas \--version                                                        |
+|                                                                       |
+| supabase \--version                                                   |
++-----------------------------------------------------------------------+
+
+**0.4 Configure Cursor**
+
+Open Cursor and configure for the Cova project:
+
+11. Open Cursor \> Settings \> Features \> Enable Agent mode
+
+12. Open Cursor \> Settings \> Rules \> Add project rules (contents in
+    Phase 1 Step 1.6 below)
+
+13. Set model to claude-sonnet-4-6 in Cursor settings
+
+14. Increase context window to maximum in settings
+
+**PHASE 1: MONOREPO SCAFFOLD**
+
+  ---------- ------------------------------------------------------------------
+   **DONE**  COMPLETED --- Monorepo exists at \~/Desktop/cova with all
+             packages. Zero TypeScript errors.
+
+  ---------- ------------------------------------------------------------------
+
+Phase 1 creates the full monorepo structure. The code below is what was
+built. Refer to this section if you need to re-scaffold or if a package
+gets corrupted.
+
+**1.1 Create Monorepo**
+
++-----------------------------------------------------------------------+
+| cd \~/Desktop                                                         |
+|                                                                       |
+| mkdir cova && cd cova                                                 |
+|                                                                       |
+| \# Initialize monorepo                                                |
+|                                                                       |
+| pnpm init                                                             |
+|                                                                       |
+| \# Create workspace config                                            |
+|                                                                       |
+| cat \> pnpm-workspace.yaml \<\< \'EOF\'                               |
+|                                                                       |
+| packages:                                                             |
+|                                                                       |
+| \- \'apps/\*\'                                                        |
+|                                                                       |
+| \- \'packages/\*\'                                                    |
+|                                                                       |
+| EOF                                                                   |
++-----------------------------------------------------------------------+
+
+**1.2 Root package.json**
+
+File: \~/Desktop/cova/package.json
+
++-----------------------------------------------------------------------+
+| {                                                                     |
+|                                                                       |
+| \"name\": \"cova-monorepo\",                                          |
+|                                                                       |
+| \"private\": true,                                                    |
+|                                                                       |
+| \"scripts\": {                                                        |
+|                                                                       |
+| \"mobile\": \"pnpm \--filter mobile start\",                          |
+|                                                                       |
+| \"web\": \"pnpm \--filter web dev\",                                  |
+|                                                                       |
+| \"build\": \"turbo run build\"                                        |
+|                                                                       |
+| },                                                                    |
+|                                                                       |
+| \"devDependencies\": {                                                |
+|                                                                       |
+| \"turbo\": \"\^2.0.0\",                                               |
+|                                                                       |
+| \"typescript\": \"\^5.3.3\"                                           |
+|                                                                       |
+| },                                                                    |
+|                                                                       |
+| \"pnpm\": {                                                           |
+|                                                                       |
+| \"overrides\": {                                                      |
+|                                                                       |
+| \"react\": \"18.3.1\",                                                |
+|                                                                       |
+| \"react-dom\": \"18.3.1\"                                             |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| }                                                                     |
++-----------------------------------------------------------------------+
+
+**1.3 Install Root Dependencies**
+
++-----------------------------------------------------------------------+
+| cd \~/Desktop/cova                                                    |
+|                                                                       |
+| pnpm install                                                          |
++-----------------------------------------------------------------------+
+
+**1.4 Create App Scaffolds**
+
++-----------------------------------------------------------------------+
+| mkdir -p apps packages/shared/src/{types,supabase,utils}              |
+|                                                                       |
+| \# Create Expo mobile app                                             |
+|                                                                       |
+| cd apps                                                               |
+|                                                                       |
+| npx create-expo-app mobile \--template blank-typescript               |
+|                                                                       |
+| cd ..                                                                 |
+|                                                                       |
+| \# Create Next.js web app                                             |
+|                                                                       |
+| cd apps                                                               |
+|                                                                       |
+| npx create-next-app@latest web \--typescript \--tailwind \--app       |
+|                                                                       |
+| cd ..                                                                 |
++-----------------------------------------------------------------------+
+
+**1.5 Shared Package --- TypeScript Types**
+
+File: \~/Desktop/cova/packages/shared/src/types/index.ts
+
+This is the complete types file. All types must match these exactly ---
+Cursor prompts reference these.
+
++-----------------------------------------------------------------------+
+| export type CavaStyle = \'japandi\' \| \'midcentury\' \| \'coastal\'  |
+| \| \'industrial\' \| \'bohemian\';                                    |
+|                                                                       |
+| export type QualityTier = \'draft\' \| \'hd\';                        |
+|                                                                       |
+| export type RenderStatus = \'processing\' \| \'complete\' \|          |
+| \'failed\';                                                           |
+|                                                                       |
+| export type AccountType = \'user\' \| \'realtor\' \| \'designer\';    |
+|                                                                       |
+| export interface User {                                               |
+|                                                                       |
+| id: string;                                                           |
+|                                                                       |
+| email: string;                                                        |
+|                                                                       |
+| style_fingerprint: StyleFingerprint \| null;                          |
+|                                                                       |
+| budget_dna: BudgetDNA \| null;                                        |
+|                                                                       |
+| token_balance: number;                                                |
+|                                                                       |
+| account_type: AccountType;                                            |
+|                                                                       |
+| stripe_customer_id: string \| null;                                   |
+|                                                                       |
+| created_at: string;                                                   |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| export interface StyleFingerprint {                                   |
+|                                                                       |
+| top_styles: CavaStyle\[\];                                            |
+|                                                                       |
+| color_palette: string\[\];                                            |
+|                                                                       |
+| density_preference: \'minimal\' \| \'balanced\' \| \'maximal\';       |
+|                                                                       |
+| material_preference: \'wood\' \| \'metal\' \| \'upholstered\' \|      |
+| \'mixed\';                                                            |
+|                                                                       |
+| swipe_count: number;                                                  |
+|                                                                       |
+| confidence_score: number;                                             |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| export interface BudgetDNA {                                          |
+|                                                                       |
+| total_room_budget: number;                                            |
+|                                                                       |
+| preferred_price_tier: \'budget\' \| \'mid\' \| \'premium\' \|         |
+| \'luxury\';                                                           |
+|                                                                       |
+| spend_history: number\[\];                                            |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| export interface Room {                                               |
+|                                                                       |
+| id: string;                                                           |
+|                                                                       |
+| user_id: string;                                                      |
+|                                                                       |
+| original_image_url: string \| null;                                   |
+|                                                                       |
+| calibration_data: CalibrationData \| null;                            |
+|                                                                       |
+| room_dimensions: RoomDimensions \| null;                              |
+|                                                                       |
+| scene_state: SceneState \| null;                                      |
+|                                                                       |
+| created_at: string;                                                   |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| export interface CalibrationData {                                    |
+|                                                                       |
+| corners: { tl: Point; tr: Point; bl: Point; br: Point };              |
+|                                                                       |
+| image_width: number;                                                  |
+|                                                                       |
+| image_height: number;                                                 |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| export interface Point { x: number; y: number; }                      |
+|                                                                       |
+| export interface RoomDimensions {                                     |
+|                                                                       |
+| width_ft: number;                                                     |
+|                                                                       |
+| depth_ft: number;                                                     |
+|                                                                       |
+| height_ft: number;                                                    |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| export interface SceneState {                                         |
+|                                                                       |
+| style: CavaStyle;                                                     |
+|                                                                       |
+| furniture: PlacedFurniture\[\];                                       |
+|                                                                       |
+| camera_position: \[number, number, number\];                          |
+|                                                                       |
+| snapshot_url: string \| null;                                         |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| export interface PlacedFurniture {                                    |
+|                                                                       |
+| id: string;                                                           |
+|                                                                       |
+| model_key: string;                                                    |
+|                                                                       |
+| position: \[number, number, number\];                                 |
+|                                                                       |
+| rotation_y: number;                                                   |
+|                                                                       |
+| style: CavaStyle;                                                     |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| export interface FurnitureCatalogItem {                               |
+|                                                                       |
+| key: string;                                                          |
+|                                                                       |
+| name: string;                                                         |
+|                                                                       |
+| glb_path: string;                                                     |
+|                                                                       |
+| category: \'seating\' \| \'table\' \| \'lighting\' \| \'rug\' \|      |
+| \'storage\' \| \'decor\';                                             |
+|                                                                       |
+| default_position: \[number, number, number\];                         |
+|                                                                       |
+| default_rotation_y: number;                                           |
+|                                                                       |
+| scale_factor: number;                                                 |
+|                                                                       |
+| styles: CavaStyle\[\];                                                |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| export interface Render {                                             |
+|                                                                       |
+| id: string;                                                           |
+|                                                                       |
+| room_id: string;                                                      |
+|                                                                       |
+| user_id: string;                                                      |
+|                                                                       |
+| style_applied: CavaStyle;                                             |
+|                                                                       |
+| quality_tier: QualityTier;                                            |
+|                                                                       |
+| status: RenderStatus;                                                 |
+|                                                                       |
+| image_url: string \| null;                                            |
+|                                                                       |
+| replicate_prediction_id: string \| null;                              |
+|                                                                       |
+| prompt_used: string \| null;                                          |
+|                                                                       |
+| seed: number \| null;                                                 |
+|                                                                       |
+| brisque_score: number \| null;                                        |
+|                                                                       |
+| created_at: string;                                                   |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| export interface Product {                                            |
+|                                                                       |
+| id: string;                                                           |
+|                                                                       |
+| name: string;                                                         |
+|                                                                       |
+| description: string \| null;                                          |
+|                                                                       |
+| retailer: \'wayfair\' \| \'amazon\' \| \'ikea\' \| \'cb2\' \|         |
+| \'other\';                                                            |
+|                                                                       |
+| price: number;                                                        |
+|                                                                       |
+| price_tier: \'budget\' \| \'mid\' \| \'premium\' \| \'luxury\';       |
+|                                                                       |
+| image_url: string \| null;                                            |
+|                                                                       |
+| affiliate_url_base: string;                                           |
+|                                                                       |
+| style_tags: CavaStyle\[\];                                            |
+|                                                                       |
+| category: string;                                                     |
+|                                                                       |
+| clip_embedding: number\[\] \| null;                                   |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| export interface ChatSession {                                        |
+|                                                                       |
+| id: string;                                                           |
+|                                                                       |
+| room_id: string;                                                      |
+|                                                                       |
+| user_id: string;                                                      |
+|                                                                       |
+| render_id: string \| null;                                            |
+|                                                                       |
+| messages: ChatMessage\[\];                                            |
+|                                                                       |
+| summary: string \| null;                                              |
+|                                                                       |
+| total_messages: number;                                               |
+|                                                                       |
+| created_at: string;                                                   |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| export interface ChatMessage {                                        |
+|                                                                       |
+| role: \'user\' \| \'assistant\';                                      |
+|                                                                       |
+| content: string;                                                      |
+|                                                                       |
+| timestamp: string;                                                    |
+|                                                                       |
+| render_id?: string;                                                   |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| export interface Listing {                                            |
+|                                                                       |
+| id: string;                                                           |
+|                                                                       |
+| realtor_id: string;                                                   |
+|                                                                       |
+| address: string;                                                      |
+|                                                                       |
+| description: string \| null;                                          |
+|                                                                       |
+| shareable_slug: string;                                               |
+|                                                                       |
+| vote_counts: Record\<CavaStyle, number\>;                             |
+|                                                                       |
+| is_published: boolean;                                                |
+|                                                                       |
+| qr_code_url: string \| null;                                          |
+|                                                                       |
+| created_at: string;                                                   |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| export const TOKEN_COSTS = {                                          |
+|                                                                       |
+| RENDER_DRAFT: 2,                                                      |
+|                                                                       |
+| RENDER_HD: 3,                                                         |
+|                                                                       |
+| CHAT_WITH_RENDER: 2,                                                  |
+|                                                                       |
+| CHAT_NO_RENDER: 1,                                                    |
+|                                                                       |
+| PRODUCT_MATCH: 1,                                                     |
+|                                                                       |
+| PRICE_TIER_SWITCH: 1,                                                 |
+|                                                                       |
+| } as const;                                                           |
++-----------------------------------------------------------------------+
+
+**1.6 Shared Package --- Supabase Client**
+
+File: \~/Desktop/cova/packages/shared/src/supabase/client.ts
+
++-----------------------------------------------------------------------+
+| import { createClient } from \'@supabase/supabase-js\';               |
+|                                                                       |
+| // Works in both Expo (EXPO_PUBLIC\_) and Next.js (NEXT_PUBLIC\_)     |
+|                                                                       |
+| const supabaseUrl =                                                   |
+|                                                                       |
+| (typeof process !== \'undefined\' &&                                  |
+| process.env.NEXT_PUBLIC_SUPABASE_URL) \|\|                            |
+|                                                                       |
+| (typeof process !== \'undefined\' &&                                  |
+| process.env.EXPO_PUBLIC_SUPABASE_URL) \|\|                            |
+|                                                                       |
+| \'\';                                                                 |
+|                                                                       |
+| const supabaseAnonKey =                                               |
+|                                                                       |
+| (typeof process !== \'undefined\' &&                                  |
+| process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) \|\|                       |
+|                                                                       |
+| (typeof process !== \'undefined\' &&                                  |
+| process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY) \|\|                       |
+|                                                                       |
+| \'\';                                                                 |
+|                                                                       |
+| export const supabase = createClient(supabaseUrl, supabaseAnonKey);   |
++-----------------------------------------------------------------------+
+
+**1.7 Shared Package --- Token Utilities**
+
+File: \~/Desktop/cova/packages/shared/src/utils/tokens.ts
+
++-----------------------------------------------------------------------+
+| import { TOKEN_COSTS } from \'../types\';                             |
+|                                                                       |
+| export function canAfford(balance: number, cost: number): boolean {   |
+|                                                                       |
+| return balance \>= cost;                                              |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| export function tokenCostLabel(action: keyof typeof TOKEN_COSTS):     |
+| string {                                                              |
+|                                                                       |
+| const cost = TOKEN_COSTS\[action\];                                   |
+|                                                                       |
+| return cost === 0 ? \'Free\' : \`\${cost} token\${cost !== 1 ? \'s\'  |
+| : \'\'}\`;                                                            |
+|                                                                       |
+| }                                                                     |
++-----------------------------------------------------------------------+
+
+**1.8 Shared Package package.json and tsconfig**
+
+File: \~/Desktop/cova/packages/shared/package.json
+
++-----------------------------------------------------------------------+
+| {                                                                     |
+|                                                                       |
+| \"name\": \"@cova/shared\",                                           |
+|                                                                       |
+| \"version\": \"0.0.1\",                                               |
+|                                                                       |
+| \"main\": \"./src/index.ts\",                                         |
+|                                                                       |
+| \"types\": \"./src/index.ts\",                                        |
+|                                                                       |
+| \"dependencies\": {                                                   |
+|                                                                       |
+| \"@supabase/supabase-js\": \"\^2.39.0\"                               |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| }                                                                     |
++-----------------------------------------------------------------------+
+
+File: \~/Desktop/cova/packages/shared/src/index.ts
+
++-----------------------------------------------------------------------+
+| export \* from \'./types\';                                           |
+|                                                                       |
+| export \* from \'./supabase/client\';                                 |
+|                                                                       |
+| export \* from \'./utils/tokens\';                                    |
++-----------------------------------------------------------------------+
+
+**1.9 .cursorrules File**
+
+File: \~/Desktop/cova/.cursorrules --- auto-loaded by Cursor for every
+session
+
++-----------------------------------------------------------------------+
+| You are building Cova, an AI interior design iOS app.                 |
+|                                                                       |
+| CRITICAL LOCKED VERSIONS --- NEVER CHANGE:                            |
+|                                                                       |
+| \- expo: \~52.0.49                                                    |
+|                                                                       |
+| \- react: 18.3.1 (EXACT --- React 19 breaks \@react-three/fiber)      |
+|                                                                       |
+| \- \@react-three/fiber: 8.17.10 (PINNED)                              |
+|                                                                       |
+| \- \@react-three/drei: 9.88.0 (PINNED)                                |
+|                                                                       |
+| \- three: 0.155.0 (PINNED --- higher versions crash on device)        |
+|                                                                       |
+| CRITICAL RULES:                                                       |
+|                                                                       |
+| \- NEVER use OrbitControls --- causes \'touchAction of undefined\'    |
+| crash on React Native                                                 |
+|                                                                       |
+| \- NEVER use texture maps (roughnessMap, normalMap etc) --- causes    |
+| \'trim of undefined\' crash                                           |
+|                                                                       |
+| \- NEVER run pnpm install --- tell the user to run it themselves      |
+|                                                                       |
+| \- ALWAYS use StyleSheet.create for React Native styles --- no inline |
+| styles                                                                |
+|                                                                       |
+| \- ALWAYS use \@cova/shared for types, never redefine them            |
+|                                                                       |
+| \- ALWAYS use deduct_tokens_atomic RPC for token deduction --- never  |
+| direct UPDATE                                                         |
+|                                                                       |
+| \- ALWAYS handle errors with try/catch and display user-friendly      |
+| messages                                                              |
+|                                                                       |
+| \- For 3D scene style changes: increment sceneKey to force Canvas     |
+| remount                                                               |
+|                                                                       |
+| ARCHITECTURE:                                                         |
+|                                                                       |
+| \- Monorepo: \~/Desktop/cova (pnpm workspaces + Turborepo)            |
+|                                                                       |
+| \- Mobile: apps/mobile (React Native Expo iOS)                        |
+|                                                                       |
+| \- Web: apps/web (Next.js 14 realtor dashboard)                       |
+|                                                                       |
+| \- Shared: packages/shared (TypeScript types, Supabase client, utils) |
+|                                                                       |
+| \- Supabase project: xdeacbmkdwqrwxonqaqh                             |
+|                                                                       |
+| DESIGN SYSTEM:                                                        |
+|                                                                       |
+| \- Primary: Navy #0B1729                                              |
+|                                                                       |
+| \- Accent: Gold #C9A84C                                               |
+|                                                                       |
+| \- Background secondary: Cream #FAF7F2                                |
+|                                                                       |
+| \- Text secondary: Muted #8A8070                                      |
+|                                                                       |
+| ALWAYS reference \@BUILDGUIDE.md for implementation details.          |
++-----------------------------------------------------------------------+
+
+**1.10 .cursorignore File**
+
+File: \~/Desktop/cova/.cursorignore --- prevents Cursor from loading
+large directories and crashing
+
++-----------------------------------------------------------------------+
+| node_modules                                                          |
+|                                                                       |
+| assets/3d                                                             |
+|                                                                       |
+| .expo                                                                 |
+|                                                                       |
+| pnpm-lock.yaml                                                        |
+|                                                                       |
+| ios                                                                   |
+|                                                                       |
+| android                                                               |
+|                                                                       |
+| \*.log                                                                |
+|                                                                       |
+| dist                                                                  |
+|                                                                       |
+| .next                                                                 |
++-----------------------------------------------------------------------+
+
+**1.11 Verification**
+
++-----------------------------------------------------------------------+
+| cd \~/Desktop/cova                                                    |
+|                                                                       |
+| pnpm install                                                          |
+|                                                                       |
+| \# Should show 0 errors, packages installed                           |
+|                                                                       |
+| \# Verify shared package TypeScript                                   |
+|                                                                       |
+| cd packages/shared                                                    |
+|                                                                       |
+| npx tsc \--noEmit                                                     |
+|                                                                       |
+| \# Should show: 0 errors                                              |
++-----------------------------------------------------------------------+
+
+**PHASE 2: SUPABASE BACKEND**
+
+  ---------- ------------------------------------------------------------------
+   **DONE**  COMPLETED --- All 13 tables created, RLS enabled on all, 6 storage
+             buckets, 50 preset products seeded.
+
+  ---------- ------------------------------------------------------------------
+
+The Supabase backend is complete. This section documents all migrations
+for reference and in case any table needs to be recreated. The Supabase
+project is: xdeacbmkdwqrwxonqaqh.supabase.co
+
+**2.1 Link Supabase Project**
+
++-----------------------------------------------------------------------+
+| cd \~/Desktop/cova                                                    |
+|                                                                       |
+| supabase login                                                        |
+|                                                                       |
+| supabase link \--project-ref xdeacbmkdwqrwxonqaqh                     |
+|                                                                       |
+| \# Verify connection                                                  |
+|                                                                       |
+| supabase status                                                       |
++-----------------------------------------------------------------------+
+
+**2.2 Migration 001 --- Enable Extensions**
+
+File: \~/Desktop/cova/supabase/migrations/001_enable_extensions.sql
+
++-----------------------------------------------------------------------+
+| \-- Enable pgvector for CLIP embeddings                               |
+|                                                                       |
+| CREATE EXTENSION IF NOT EXISTS vector;                                |
+|                                                                       |
+| \-- Enable pg_cron for price drop alerts (Phase 8)                    |
+|                                                                       |
+| CREATE EXTENSION IF NOT EXISTS pg_cron;                               |
+|                                                                       |
+| \-- Enable uuid generation                                            |
+|                                                                       |
+| CREATE EXTENSION IF NOT EXISTS pgcrypto;                              |
++-----------------------------------------------------------------------+
+
+**2.3 Migration 002 --- Users Table**
+
+File: \~/Desktop/cova/supabase/migrations/002_users.sql
+
++-----------------------------------------------------------------------+
+| CREATE TABLE public.users (                                           |
+|                                                                       |
+| id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,      |
+|                                                                       |
+| email TEXT NOT NULL,                                                  |
+|                                                                       |
+| style_fingerprint JSONB,                                              |
+|                                                                       |
+| budget_dna JSONB,                                                     |
+|                                                                       |
+| token_balance INTEGER NOT NULL DEFAULT 5 CHECK (token_balance \>= 0), |
+|                                                                       |
+| account_type TEXT NOT NULL DEFAULT \'user\'                           |
+|                                                                       |
+| CHECK (account_type IN (\'user\', \'realtor\', \'designer\')),        |
+|                                                                       |
+| stripe_customer_id TEXT,                                              |
+|                                                                       |
+| created_at TIMESTAMPTZ DEFAULT NOW()                                  |
+|                                                                       |
+| );                                                                    |
+|                                                                       |
+| \-- Auto-create user profile on signup                                |
+|                                                                       |
+| CREATE OR REPLACE FUNCTION handle_new_user()                          |
+|                                                                       |
+| RETURNS TRIGGER AS \$\$                                               |
+|                                                                       |
+| BEGIN                                                                 |
+|                                                                       |
+| INSERT INTO public.users (id, email)                                  |
+|                                                                       |
+| VALUES (NEW.id, NEW.email);                                           |
+|                                                                       |
+| RETURN NEW;                                                           |
+|                                                                       |
+| END;                                                                  |
+|                                                                       |
+| \$\$ LANGUAGE plpgsql SECURITY DEFINER;                               |
+|                                                                       |
+| CREATE TRIGGER on_auth_user_created                                   |
+|                                                                       |
+| AFTER INSERT ON auth.users                                            |
+|                                                                       |
+| FOR EACH ROW EXECUTE FUNCTION handle_new_user();                      |
+|                                                                       |
+| \-- Atomic token deduction RPC (prevents race conditions)             |
+|                                                                       |
+| CREATE OR REPLACE FUNCTION deduct_tokens_atomic(                      |
+|                                                                       |
+| p_user_id UUID,                                                       |
+|                                                                       |
+| p_amount INTEGER,                                                     |
+|                                                                       |
+| p_reason TEXT DEFAULT \'deduction\'                                   |
+|                                                                       |
+| )                                                                     |
+|                                                                       |
+| RETURNS INTEGER AS \$\$                                               |
+|                                                                       |
+| DECLARE                                                               |
+|                                                                       |
+| new_balance INTEGER;                                                  |
+|                                                                       |
+| BEGIN                                                                 |
+|                                                                       |
+| UPDATE public.users                                                   |
+|                                                                       |
+| SET token_balance = token_balance - p_amount                          |
+|                                                                       |
+| WHERE id = p_user_id AND token_balance \>= p_amount                   |
+|                                                                       |
+| RETURNING token_balance INTO new_balance;                             |
+|                                                                       |
+| IF new_balance IS NULL THEN                                           |
+|                                                                       |
+| RAISE EXCEPTION \'Insufficient tokens\';                              |
+|                                                                       |
+| END IF;                                                               |
+|                                                                       |
+| INSERT INTO public.token_transactions (user_id, delta, reason)        |
+|                                                                       |
+| VALUES (p_user_id, -p_amount, p_reason);                              |
+|                                                                       |
+| RETURN new_balance;                                                   |
+|                                                                       |
+| END;                                                                  |
+|                                                                       |
+| \$\$ LANGUAGE plpgsql SECURITY DEFINER;                               |
+|                                                                       |
+| \-- RLS                                                               |
+|                                                                       |
+| ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;                   |
+|                                                                       |
+| CREATE POLICY \"Users can read own profile\" ON public.users          |
+|                                                                       |
+| FOR SELECT USING (auth.uid() = id);                                   |
+|                                                                       |
+| CREATE POLICY \"Users can update own profile\" ON public.users        |
+|                                                                       |
+| FOR UPDATE USING (auth.uid() = id);                                   |
++-----------------------------------------------------------------------+
+
+**2.4 Migration 003 --- Token Transactions**
+
+File: \~/Desktop/cova/supabase/migrations/003_token_transactions.sql
+
++-----------------------------------------------------------------------+
+| CREATE TABLE public.token_transactions (                              |
+|                                                                       |
+| id UUID PRIMARY KEY DEFAULT gen_random_uuid(),                        |
+|                                                                       |
+| user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,  |
+|                                                                       |
+| delta INTEGER NOT NULL, \-- negative = deduction, positive = credit   |
+|                                                                       |
+| reason TEXT NOT NULL,                                                 |
+|                                                                       |
+| render_id UUID,                                                       |
+|                                                                       |
+| created_at TIMESTAMPTZ DEFAULT NOW()                                  |
+|                                                                       |
+| );                                                                    |
+|                                                                       |
+| ALTER TABLE public.token_transactions ENABLE ROW LEVEL SECURITY;      |
+|                                                                       |
+| CREATE POLICY \"Users can read own transactions\" ON                  |
+| public.token_transactions                                             |
+|                                                                       |
+| FOR SELECT USING (auth.uid() = user_id);                              |
+|                                                                       |
+| CREATE POLICY \"Service role can insert\" ON                          |
+| public.token_transactions                                             |
+|                                                                       |
+| FOR INSERT WITH CHECK (true);                                         |
++-----------------------------------------------------------------------+
+
+**2.5 Migration 004 --- Rooms Table**
+
+File: \~/Desktop/cova/supabase/migrations/004_rooms.sql
+
++-----------------------------------------------------------------------+
+| CREATE TABLE public.rooms (                                           |
+|                                                                       |
+| id UUID PRIMARY KEY DEFAULT gen_random_uuid(),                        |
+|                                                                       |
+| user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,  |
+|                                                                       |
+| original_image_url TEXT,                                              |
+|                                                                       |
+| calibration_data JSONB,                                               |
+|                                                                       |
+| room_dimensions JSONB,                                                |
+|                                                                       |
+| scene_state JSONB,                                                    |
+|                                                                       |
+| depth_map_url TEXT, \-- V2: Depth Anything V2                         |
+|                                                                       |
+| created_at TIMESTAMPTZ DEFAULT NOW(),                                 |
+|                                                                       |
+| updated_at TIMESTAMPTZ DEFAULT NOW()                                  |
+|                                                                       |
+| );                                                                    |
+|                                                                       |
+| ALTER TABLE public.rooms ENABLE ROW LEVEL SECURITY;                   |
+|                                                                       |
+| CREATE POLICY \"Users can CRUD own rooms\" ON public.rooms            |
+|                                                                       |
+| FOR ALL USING (auth.uid() = user_id);                                 |
++-----------------------------------------------------------------------+
+
+**2.6 Migration 005 --- Renders Table**
+
+File: \~/Desktop/cova/supabase/migrations/005_renders.sql
+
++------------------------------------------------------------------------+
+| CREATE TABLE public.renders (                                          |
+|                                                                        |
+| id UUID PRIMARY KEY DEFAULT gen_random_uuid(),                         |
+|                                                                        |
+| room_id UUID NOT NULL REFERENCES public.rooms(id) ON DELETE CASCADE,   |
+|                                                                        |
+| user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,   |
+|                                                                        |
+| style_applied TEXT NOT NULL                                            |
+|                                                                        |
+| CHECK (style_applied IN                                                |
+| (\'japandi\',\'midcentury\',\'coastal\',\'industrial\',\'bohemian\')), |
+|                                                                        |
+| quality_tier TEXT NOT NULL DEFAULT \'draft\'                           |
+|                                                                        |
+| CHECK (quality_tier IN (\'draft\',\'hd\')),                            |
+|                                                                        |
+| status TEXT NOT NULL DEFAULT \'processing\'                            |
+|                                                                        |
+| CHECK (status IN (\'processing\',\'complete\',\'failed\')),            |
+|                                                                        |
+| image_url TEXT,                                                        |
+|                                                                        |
+| replicate_prediction_id TEXT,                                          |
+|                                                                        |
+| prompt_used TEXT,                                                      |
+|                                                                        |
+| seed BIGINT,                                                           |
+|                                                                        |
+| brisque_score NUMERIC,                                                 |
+|                                                                        |
+| tokens_charged INTEGER NOT NULL DEFAULT 0,                             |
+|                                                                        |
+| created_at TIMESTAMPTZ DEFAULT NOW()                                   |
+|                                                                        |
+| );                                                                     |
+|                                                                        |
+| ALTER TABLE public.renders ENABLE ROW LEVEL SECURITY;                  |
+|                                                                        |
+| CREATE POLICY \"Users can read own renders\" ON public.renders         |
+|                                                                        |
+| FOR SELECT USING (auth.uid() = user_id);                               |
+|                                                                        |
+| CREATE POLICY \"Service role can write renders\" ON public.renders     |
+|                                                                        |
+| FOR ALL USING (true);                                                  |
++------------------------------------------------------------------------+
+
+**2.7 Migration 006 --- Products Table**
+
+File: \~/Desktop/cova/supabase/migrations/006_products.sql
+
++-----------------------------------------------------------------------+
+| CREATE TABLE public.products (                                        |
+|                                                                       |
+| id UUID PRIMARY KEY DEFAULT gen_random_uuid(),                        |
+|                                                                       |
+| name TEXT NOT NULL,                                                   |
+|                                                                       |
+| description TEXT,                                                     |
+|                                                                       |
+| retailer TEXT NOT NULL                                                |
+|                                                                       |
+| CHECK (retailer IN                                                    |
+| (\'wayfair\',\'amazon\',\'ikea\',\'cb2\',\'other\')),                 |
+|                                                                       |
+| price NUMERIC NOT NULL,                                               |
+|                                                                       |
+| price_tier TEXT NOT NULL                                              |
+|                                                                       |
+| CHECK (price_tier IN (\'budget\',\'mid\',\'premium\',\'luxury\')),    |
+|                                                                       |
+| image_url TEXT,                                                       |
+|                                                                       |
+| affiliate_url_base TEXT NOT NULL,                                     |
+|                                                                       |
+| style_tags TEXT\[\] NOT NULL DEFAULT \'{}\',                          |
+|                                                                       |
+| category TEXT NOT NULL,                                               |
+|                                                                       |
+| clip_embedding VECTOR(768),                                           |
+|                                                                       |
+| created_at TIMESTAMPTZ DEFAULT NOW()                                  |
+|                                                                       |
+| );                                                                    |
+|                                                                       |
+| \-- CLIP cosine similarity search RPC                                 |
+|                                                                       |
+| CREATE OR REPLACE FUNCTION search_products_by_embedding(              |
+|                                                                       |
+| query_embedding VECTOR(768),                                          |
+|                                                                       |
+| match_count INTEGER DEFAULT 10,                                       |
+|                                                                       |
+| style_filter TEXT DEFAULT NULL                                        |
+|                                                                       |
+| )                                                                     |
+|                                                                       |
+| RETURNS TABLE (id UUID, name TEXT, price NUMERIC, retailer TEXT,      |
+|                                                                       |
+| image_url TEXT, affiliate_url_base TEXT, style_tags TEXT\[\],         |
+|                                                                       |
+| price_tier TEXT, similarity FLOAT)                                    |
+|                                                                       |
+| AS \$\$                                                               |
+|                                                                       |
+| BEGIN                                                                 |
+|                                                                       |
+| RETURN QUERY                                                          |
+|                                                                       |
+| SELECT p.id, p.name, p.price, p.retailer, p.image_url,                |
+|                                                                       |
+| p.affiliate_url_base, p.style_tags, p.price_tier,                     |
+|                                                                       |
+| 1 - (p.clip_embedding \<=\> query_embedding) as similarity            |
+|                                                                       |
+| FROM public.products p                                                |
+|                                                                       |
+| WHERE (style_filter IS NULL OR style_filter = ANY(p.style_tags))      |
+|                                                                       |
+| AND p.clip_embedding IS NOT NULL                                      |
+|                                                                       |
+| ORDER BY p.clip_embedding \<=\> query_embedding                       |
+|                                                                       |
+| LIMIT match_count;                                                    |
+|                                                                       |
+| END;                                                                  |
+|                                                                       |
+| \$\$ LANGUAGE plpgsql;                                                |
+|                                                                       |
+| \-- Public read (anyone can browse products)                          |
+|                                                                       |
+| ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;                |
+|                                                                       |
+| CREATE POLICY \"Products are publicly readable\" ON public.products   |
+|                                                                       |
+| FOR SELECT USING (true);                                              |
++-----------------------------------------------------------------------+
+
+**2.8 Migration 007 --- Chat Sessions**
+
+File: \~/Desktop/cova/supabase/migrations/007_chat_sessions.sql
+
++-----------------------------------------------------------------------+
+| CREATE TABLE public.chat_sessions (                                   |
+|                                                                       |
+| id UUID PRIMARY KEY DEFAULT gen_random_uuid(),                        |
+|                                                                       |
+| room_id UUID NOT NULL REFERENCES public.rooms(id) ON DELETE CASCADE,  |
+|                                                                       |
+| user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,  |
+|                                                                       |
+| render_id UUID REFERENCES public.renders(id),                         |
+|                                                                       |
+| messages JSONB NOT NULL DEFAULT \'\[\]\',                             |
+|                                                                       |
+| summary TEXT,                                                         |
+|                                                                       |
+| total_messages INTEGER NOT NULL DEFAULT 0,                            |
+|                                                                       |
+| created_at TIMESTAMPTZ DEFAULT NOW(),                                 |
+|                                                                       |
+| updated_at TIMESTAMPTZ DEFAULT NOW()                                  |
+|                                                                       |
+| );                                                                    |
+|                                                                       |
+| ALTER TABLE public.chat_sessions ENABLE ROW LEVEL SECURITY;           |
+|                                                                       |
+| CREATE POLICY \"Users can CRUD own chat sessions\" ON                 |
+| public.chat_sessions                                                  |
+|                                                                       |
+| FOR ALL USING (auth.uid() = user_id);                                 |
++-----------------------------------------------------------------------+
+
+**2.9 Migration 008 --- Listings (Realtor)**
+
+File: \~/Desktop/cova/supabase/migrations/008_listings.sql
+
++-------------------------------------------------------------------------------------+
+| CREATE TABLE public.listings (                                                      |
+|                                                                                     |
+| id UUID PRIMARY KEY DEFAULT gen_random_uuid(),                                      |
+|                                                                                     |
+| realtor_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,             |
+|                                                                                     |
+| address TEXT NOT NULL,                                                              |
+|                                                                                     |
+| description TEXT,                                                                   |
+|                                                                                     |
+| shareable_slug TEXT UNIQUE NOT NULL DEFAULT encode(gen_random_bytes(4), \'hex\'),   |
+|                                                                                     |
+| vote_counts JSONB NOT NULL DEFAULT                                                  |
+| \'{\"japandi\":0,\"midcentury\":0,\"coastal\":0,\"industrial\":0,\"bohemian\":0}\', |
+|                                                                                     |
+| is_published BOOLEAN NOT NULL DEFAULT false,                                        |
+|                                                                                     |
+| qr_code_url TEXT,                                                                   |
+|                                                                                     |
+| created_at TIMESTAMPTZ DEFAULT NOW()                                                |
+|                                                                                     |
+| );                                                                                  |
+|                                                                                     |
+| CREATE TABLE public.votes (                                                         |
+|                                                                                     |
+| id UUID PRIMARY KEY DEFAULT gen_random_uuid(),                                      |
+|                                                                                     |
+| listing_id UUID NOT NULL REFERENCES public.listings(id) ON DELETE CASCADE,          |
+|                                                                                     |
+| render_id UUID REFERENCES public.renders(id),                                       |
+|                                                                                     |
+| device_fingerprint TEXT NOT NULL,                                                   |
+|                                                                                     |
+| style_voted TEXT NOT NULL                                                           |
+|                                                                                     |
+| CHECK (style_voted IN                                                               |
+| (\'japandi\',\'midcentury\',\'coastal\',\'industrial\',\'bohemian\')),              |
+|                                                                                     |
+| created_at TIMESTAMPTZ DEFAULT NOW(),                                               |
+|                                                                                     |
+| UNIQUE(listing_id, device_fingerprint)                                              |
+|                                                                                     |
+| );                                                                                  |
+|                                                                                     |
+| ALTER TABLE public.listings ENABLE ROW LEVEL SECURITY;                              |
+|                                                                                     |
+| CREATE POLICY \"Realtors manage own listings\" ON public.listings                   |
+|                                                                                     |
+| FOR ALL USING (auth.uid() = realtor_id);                                            |
+|                                                                                     |
+| CREATE POLICY \"Published listings are public\" ON public.listings                  |
+|                                                                                     |
+| FOR SELECT USING (is_published = true);                                             |
+|                                                                                     |
+| ALTER TABLE public.votes ENABLE ROW LEVEL SECURITY;                                 |
+|                                                                                     |
+| CREATE POLICY \"Anyone can vote\" ON public.votes                                   |
+|                                                                                     |
+| FOR INSERT WITH CHECK (true);                                                       |
+|                                                                                     |
+| CREATE POLICY \"Anyone can read votes\" ON public.votes                             |
+|                                                                                     |
+| FOR SELECT USING (true);                                                            |
++-------------------------------------------------------------------------------------+
+
+**2.10 Migration 009 --- Jobs Table**
+
+File: \~/Desktop/cova/supabase/migrations/009_jobs.sql
+
++-----------------------------------------------------------------------+
+| CREATE TABLE public.jobs (                                            |
+|                                                                       |
+| id UUID PRIMARY KEY DEFAULT gen_random_uuid(),                        |
+|                                                                       |
+| user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,  |
+|                                                                       |
+| job_type TEXT NOT NULL DEFAULT \'render\',                            |
+|                                                                       |
+| status TEXT NOT NULL DEFAULT \'pending\'                              |
+|                                                                       |
+| CHECK (status IN                                                      |
+| (\'pending\',\'processing\',\'complete\',\'failed\')),                |
+|                                                                       |
+| replicate_id TEXT,                                                    |
+|                                                                       |
+| input_params JSONB,                                                   |
+|                                                                       |
+| result_url TEXT,                                                      |
+|                                                                       |
+| error_message TEXT,                                                   |
+|                                                                       |
+| created_at TIMESTAMPTZ DEFAULT NOW(),                                 |
+|                                                                       |
+| completed_at TIMESTAMPTZ                                              |
+|                                                                       |
+| );                                                                    |
+|                                                                       |
+| ALTER TABLE public.jobs ENABLE ROW LEVEL SECURITY;                    |
+|                                                                       |
+| CREATE POLICY \"Users can read own jobs\" ON public.jobs              |
+|                                                                       |
+| FOR SELECT USING (auth.uid() = user_id);                              |
+|                                                                       |
+| CREATE POLICY \"Service role can write jobs\" ON public.jobs          |
+|                                                                       |
+| FOR ALL USING (true);                                                 |
++-----------------------------------------------------------------------+
+
+**2.11 Migration 010 --- Supporting Tables**
+
+File: \~/Desktop/cova/supabase/migrations/010_supporting_tables.sql
+
++-----------------------------------------------------------------------+
+| \-- Affiliate click tracking                                          |
+|                                                                       |
+| CREATE TABLE public.click_events (                                    |
+|                                                                       |
+| id UUID PRIMARY KEY DEFAULT gen_random_uuid(),                        |
+|                                                                       |
+| user_id UUID REFERENCES public.users(id),                             |
+|                                                                       |
+| product_id UUID REFERENCES public.products(id),                       |
+|                                                                       |
+| render_id UUID REFERENCES public.renders(id),                         |
+|                                                                       |
+| created_at TIMESTAMPTZ DEFAULT NOW()                                  |
+|                                                                       |
+| );                                                                    |
+|                                                                       |
+| \-- Room to product junction                                          |
+|                                                                       |
+| CREATE TABLE public.room_products (                                   |
+|                                                                       |
+| id UUID PRIMARY KEY DEFAULT gen_random_uuid(),                        |
+|                                                                       |
+| room_id UUID NOT NULL REFERENCES public.rooms(id) ON DELETE CASCADE,  |
+|                                                                       |
+| render_id UUID REFERENCES public.renders(id),                         |
+|                                                                       |
+| product_id UUID NOT NULL REFERENCES public.products(id),              |
+|                                                                       |
+| created_at TIMESTAMPTZ DEFAULT NOW()                                  |
+|                                                                       |
+| );                                                                    |
+|                                                                       |
+| \-- Swipe history for Style Fingerprint                               |
+|                                                                       |
+| CREATE TABLE public.swipe_history (                                   |
+|                                                                       |
+| id UUID PRIMARY KEY DEFAULT gen_random_uuid(),                        |
+|                                                                       |
+| user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,  |
+|                                                                       |
+| card_id TEXT NOT NULL,                                                |
+|                                                                       |
+| direction TEXT NOT NULL CHECK (direction IN (\'left\',\'right\')),    |
+|                                                                       |
+| dwell_ms INTEGER NOT NULL DEFAULT 0,                                  |
+|                                                                       |
+| created_at TIMESTAMPTZ DEFAULT NOW()                                  |
+|                                                                       |
+| );                                                                    |
+|                                                                       |
+| \-- Rate limiting                                                     |
+|                                                                       |
+| CREATE TABLE public.rate_limit_events (                               |
+|                                                                       |
+| id UUID PRIMARY KEY DEFAULT gen_random_uuid(),                        |
+|                                                                       |
+| user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,  |
+|                                                                       |
+| event_type TEXT NOT NULL,                                             |
+|                                                                       |
+| created_at TIMESTAMPTZ DEFAULT NOW()                                  |
+|                                                                       |
+| );                                                                    |
+|                                                                       |
+| \-- RLS for all                                                       |
+|                                                                       |
+| ALTER TABLE public.click_events ENABLE ROW LEVEL SECURITY;            |
+|                                                                       |
+| CREATE POLICY \"Users track own clicks\" ON public.click_events FOR   |
+| ALL USING (auth.uid() = user_id);                                     |
+|                                                                       |
+| ALTER TABLE public.room_products ENABLE ROW LEVEL SECURITY;           |
+|                                                                       |
+| CREATE POLICY \"Service role manages room_products\" ON               |
+| public.room_products FOR ALL USING (true);                            |
+|                                                                       |
+| ALTER TABLE public.swipe_history ENABLE ROW LEVEL SECURITY;           |
+|                                                                       |
+| CREATE POLICY \"Users can write own swipes\" ON public.swipe_history  |
+| FOR INSERT WITH CHECK (auth.uid() = user_id);                         |
+|                                                                       |
+| CREATE POLICY \"Users can read own swipes\" ON public.swipe_history   |
+| FOR SELECT USING (auth.uid() = user_id);                              |
+|                                                                       |
+| ALTER TABLE public.rate_limit_events ENABLE ROW LEVEL SECURITY;       |
+|                                                                       |
+| CREATE POLICY \"Service role manages rate limits\" ON                 |
+| public.rate_limit_events FOR ALL USING (true);                        |
++-----------------------------------------------------------------------+
+
+**2.12 Migration 011 --- Preset Products Seed**
+
+File: \~/Desktop/cova/supabase/migrations/011_preset_products.sql
+(abbreviated --- 50 products total)
+
++--------------------------------------------------------------------------+
+| \-- Japandi products (10)                                                |
+|                                                                          |
+| INSERT INTO public.products (name, retailer, price, price_tier,          |
+| affiliate_url_base, style_tags, category, image_url) VALUES              |
+|                                                                          |
+| (\'Japandi Oak Sofa\', \'wayfair\', 1299.00, \'premium\',                |
+| \'https://wayfair.com/furniture/pdp/japandi-oak-sofa\', \'{japandi}\',   |
+| \'seating\',                                                             |
+| \'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400\'),    |
+|                                                                          |
+| (\'Linen Floor Cushion Set\', \'amazon\', 89.00, \'budget\',             |
+| \'https://amazon.com/dp/B001\', \'{japandi,bohemian}\', \'seating\',     |
+| \'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400\'), |
+|                                                                          |
+| (\'Minimal Oak Coffee Table\', \'ikea\', 199.00, \'budget\',             |
+| \'https://ikea.com/us/en/p/japandi-coffee-table\', \'{japandi}\',        |
+| \'table\',                                                               |
+| \'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400\'),    |
+|                                                                          |
+| (\'Wabi-Sabi Floor Lamp\', \'cb2\', 349.00, \'mid\',                     |
+| \'https://cb2.com/japandi-floor-lamp\', \'{japandi}\', \'lighting\',     |
+| \'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400\'), |
+|                                                                          |
+| (\'Natural Jute Rug 8x10\', \'wayfair\', 449.00, \'mid\',                |
+| \'https://wayfair.com/rugs/pdp/jute-rug\', \'{japandi,coastal}\',        |
+| \'rug\',                                                                 |
+| \'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400\'),    |
+|                                                                          |
+| \-- (45 more products across midcentury, coastal, industrial, bohemian)  |
+|                                                                          |
+| \-- Full seed in supabase/migrations/011_preset_products.sql on GitHub   |
+|                                                                          |
+| \-- Mid-Century Modern (10)                                              |
+|                                                                          |
+| (\'Walnut Eames-Style Chair\', \'wayfair\', 549.00, \'mid\',             |
+| \'https://wayfair.com/furniture/pdp/eames-chair\', \'{midcentury}\',     |
+| \'seating\',                                                             |
+| \'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400\'),    |
+|                                                                          |
+| (\'Mustard Velvet Sofa\', \'cb2\', 2199.00, \'premium\',                 |
+| \'https://cb2.com/mustard-velvet-sofa\', \'{midcentury}\', \'seating\',  |
+| \'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400\'),    |
+|                                                                          |
+| \-- Coastal (10)                                                         |
+|                                                                          |
+| (\'Rattan Accent Chair\', \'wayfair\', 399.00, \'mid\',                  |
+| \'https://wayfair.com/furniture/pdp/rattan-chair\',                      |
+| \'{coastal,bohemian}\', \'seating\',                                     |
+| \'https://images.unsplash.com/photo-1484101403633-562f891dc89a?w=400\'), |
+|                                                                          |
+| \-- Industrial (10)                                                      |
+|                                                                          |
+| (\'Steel Pipe Shelving Unit\', \'amazon\', 289.00, \'mid\',              |
+| \'https://amazon.com/dp/B002\', \'{industrial}\', \'storage\',           |
+| \'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400\'), |
+|                                                                          |
+| \-- Bohemian (10)                                                        |
+|                                                                          |
+| (\'Terracotta Velvet Loveseat\', \'cb2\', 1499.00, \'premium\',          |
+| \'https://cb2.com/terracotta-loveseat\', \'{bohemian}\', \'seating\',    |
+| \'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400\');    |
++--------------------------------------------------------------------------+
+
+**2.13 Create Storage Buckets**
+
+Run in Supabase Dashboard \> Storage \> New Bucket, OR via the CLI:
+
++-----------------------------------------------------------------------+
+| \# Create all 6 buckets in Supabase Dashboard \> Storage              |
+|                                                                       |
+| \# Or use the Supabase client in a migration:                         |
+|                                                                       |
+| \# Bucket: room-uploads (private, 50MB max, images only)              |
+|                                                                       |
+| \# Bucket: renders (private, 20MB max, images only)                   |
+|                                                                       |
+| \# Bucket: product-images (public, 5MB max)                           |
+|                                                                       |
+| \# Bucket: swipe-cards (public, 5MB max)                              |
+|                                                                       |
+| \# Bucket: 3d-models (public, 50MB max, glb/gltf only)                |
+|                                                                       |
+| \# Bucket: scene-snapshots (private, 10MB max, images only)           |
++-----------------------------------------------------------------------+
+
+**2.14 Apply All Migrations**
+
++-----------------------------------------------------------------------+
+| cd \~/Desktop/cova                                                    |
+|                                                                       |
+| supabase db push                                                      |
+|                                                                       |
+| \# Or apply each migration individually in Supabase Dashboard \> SQL  |
+| Editor                                                                |
++-----------------------------------------------------------------------+
+
+**2.15 Verification**
+
++-----------------------------------------------------------------------+
+| \# Check tables exist in Supabase Dashboard \> Table Editor           |
+|                                                                       |
+| \# Should see: users, token_transactions, rooms, renders, products,   |
+|                                                                       |
+| \# chat_sessions, listings, votes, jobs, click_events,                |
+|                                                                       |
+| \# room_products, swipe_history, rate_limit_events                    |
+|                                                                       |
+| \# Check RLS is enabled (Shield icon green on all tables)             |
+|                                                                       |
+| \# Check products were seeded                                         |
+|                                                                       |
+| \# Run in SQL Editor: SELECT COUNT(\*) FROM products;                 |
+|                                                                       |
+| \# Should return: 50                                                  |
++-----------------------------------------------------------------------+
+
+**PHASE 2.5: 3D FURNITURE ASSET LIBRARY**
+
+  ---------- ------------------------------------------------------------------
+   **DONE**  COMPLETED --- 43 GLB models in assets/3d/furniture/ready/
+             committed to GitHub.
+
+  ---------- ------------------------------------------------------------------
+
+**2.5.1 Asset Sources**
+
+  ---------------------------------------------------------------------------------------------------
+  **Pack**              **URL**                                        **License**   **Models Used**
+  --------------------- ---------------------------------------------- ------------- ----------------
+  Kenney Furniture Kit  kenney.nl/assets/furniture-kit                 CC0           17 models
+
+  Quaternius House      quaternius.com/packs/ultimate-house-interior   CC0           12 models
+  Interior                                                                           
+
+  Sketchfab (CC BY)     sketchfab.com                                  CC BY         10 models
+
+  Poly Haven            polyhaven.com/models                           CC0           4 models
+  ---------------------------------------------------------------------------------------------------
+
+**2.5.2 Directory Structure**
+
++-----------------------------------------------------------------------+
+| \~/Desktop/cova/assets/3d/furniture/ready/                            |
+|                                                                       |
+| ├── japandi/                                                          |
+|                                                                       |
+| │ ├── japandi_sofa.glb                                                |
+|                                                                       |
+| │ ├── japandi_coffee_table.glb                                        |
+|                                                                       |
+| │ ├── japandi_chair.glb                                               |
+|                                                                       |
+| │ ├── japandi_floor_lamp.glb                                          |
+|                                                                       |
+| │ ├── japandi_rug.glb                                                 |
+|                                                                       |
+| │ ├── japandi_mirror.glb                                              |
+|                                                                       |
+| │ ├── japandi_pendant_lamp.glb                                        |
+|                                                                       |
+| │ ├── japandi_plant.glb                                               |
+|                                                                       |
+| │ └── japandi_side_table.glb                                          |
+|                                                                       |
+| ├── midcentury/                                                       |
+|                                                                       |
+| │ ├── midcentury_sofa.glb                                             |
+|                                                                       |
+| │ ├── midcentury_eames_chair.glb                                      |
+|                                                                       |
+| │ ├── midcentury_dining_chair.glb                                     |
+|                                                                       |
+| │ ├── midcentury_sideboard.glb                                        |
+|                                                                       |
+| │ ├── midcentury_table_lamp.glb                                       |
+|                                                                       |
+| │ ├── midcentury_rug.glb                                              |
+|                                                                       |
+| │ ├── midcentury_pendant_lamp.glb                                     |
+|                                                                       |
+| │ ├── midcentury_floor_lamp.glb                                       |
+|                                                                       |
+| │ └── midcentury_ottoman.glb                                          |
+|                                                                       |
+| ├── coastal/ (8 models)                                               |
+|                                                                       |
+| ├── industrial/ (8 models)                                            |
+|                                                                       |
+| ├── bohemian/ (8 models)                                              |
+|                                                                       |
+| └── shared/                                                           |
+|                                                                       |
+| └── plant_fiddle_leaf.glb                                             |
++-----------------------------------------------------------------------+
+
+**2.5.3 GLB Optimization Script**
+
+File: \~/Desktop/cova/scripts/optimise_glb.py --- run via Blender for
+Draco compression
+
++-----------------------------------------------------------------------+
+| import bpy                                                            |
+|                                                                       |
+| import sys                                                            |
+|                                                                       |
+| import os                                                             |
+|                                                                       |
+| input_dir = sys.argv\[sys.argv.index(\'\--\') + 1\]                   |
+|                                                                       |
+| output_dir = sys.argv\[sys.argv.index(\'\--\') + 2\]                  |
+|                                                                       |
+| os.makedirs(output_dir, exist_ok=True)                                |
+|                                                                       |
+| for fname in os.listdir(input_dir):                                   |
+|                                                                       |
+| if not fname.endswith(\'.glb\'):                                      |
+|                                                                       |
+| continue                                                              |
+|                                                                       |
+| path_in = os.path.join(input_dir, fname)                              |
+|                                                                       |
+| path_out = os.path.join(output_dir, fname)                            |
+|                                                                       |
+| bpy.ops.wm.read_factory_settings(use_empty=True)                      |
+|                                                                       |
+| bpy.ops.import_scene.gltf(filepath=path_in)                           |
+|                                                                       |
+| bpy.ops.export_scene.gltf(                                            |
+|                                                                       |
+| filepath=path_out,                                                    |
+|                                                                       |
+| export_format=\'GLB\',                                                |
+|                                                                       |
+| export_draco_mesh_compression_enable=True,                            |
+|                                                                       |
+| export_draco_mesh_compression_level=6,                                |
+|                                                                       |
+| export_draco_position_quantization=14,                                |
+|                                                                       |
+| export_draco_normal_quantization=10,                                  |
+|                                                                       |
+| use_selection=False                                                   |
+|                                                                       |
+| )                                                                     |
+|                                                                       |
+| print(f\'Optimized: {fname}\')                                        |
++-----------------------------------------------------------------------+
+
++-----------------------------------------------------------------------+
+| \# Run optimization:                                                  |
+|                                                                       |
+| blender \--background \--python scripts/optimise_glb.py \--           |
+| assets/3d/furniture/source assets/3d/furniture/ready                  |
++-----------------------------------------------------------------------+
+
+**PHASE 3: 3D ROOM ENGINE**
+
+  ---------- ------------------------------------------------------------------
+   **DONE**  COMPLETED --- 3D room rendering on Pranav\'s physical iPhone.
+             Style switching, screenshot save, reset all working.
+
+  ---------- ------------------------------------------------------------------
+
+  --------- ------------------------------------------------------------------
+   **!!!**  Phase 3 is complete. The code below is what was built. DO NOT
+            re-run the Cursor prompts below unless you are rebuilding from
+            scratch after a catastrophic failure. The codebase on GitHub IS
+            the source of truth.
+
+  --------- ------------------------------------------------------------------
+
+**3.1 Install Mobile Dependencies**
+
+Run in Terminal (not via Cursor):
+
++-----------------------------------------------------------------------+
+| cd \~/Desktop/cova/apps/mobile                                        |
+|                                                                       |
+| \# Core 3D stack --- ALL VERSIONS LOCKED                              |
+|                                                                       |
+| pnpm add \@react-three/fiber@8.17.10 \@react-three/drei@9.88.0        |
+| three@0.155.0                                                         |
+|                                                                       |
+| \# Expo native modules                                                |
+|                                                                       |
+| pnpm add expo-gl expo-camera expo-image-picker expo-media-library     |
+|                                                                       |
+| pnpm add react-native-view-shot expo-file-system                      |
+|                                                                       |
+| \# Navigation                                                         |
+|                                                                       |
+| pnpm add \@react-navigation/native \@react-navigation/native-stack    |
+|                                                                       |
+| pnpm add react-native-screens react-native-safe-area-context          |
+|                                                                       |
+| \# Gestures and animations                                            |
+|                                                                       |
+| pnpm add react-native-gesture-handler react-native-reanimated         |
+|                                                                       |
+| \# SVG for calibration handles                                        |
+|                                                                       |
+| pnpm add react-native-svg                                             |
+|                                                                       |
+| \# State and utilities                                                |
+|                                                                       |
+| pnpm add zustand                                                      |
+|                                                                       |
+| pnpm add \@cova/shared@workspace:\*                                   |
+|                                                                       |
+| \# After install, verify React is still 18.3.1:                       |
+|                                                                       |
+| cat node_modules/react/package.json \| grep \'\"version\"\'           |
+|                                                                       |
+| \# Must show: \"version\": \"18.3.1\"                                 |
++-----------------------------------------------------------------------+
+
+**3.2 app.json Configuration**
+
+File: \~/Desktop/cova/apps/mobile/app.json
+
++-----------------------------------------------------------------------+
+| {                                                                     |
+|                                                                       |
+| \"expo\": {                                                           |
+|                                                                       |
+| \"name\": \"Cova\",                                                   |
+|                                                                       |
+| \"slug\": \"cova\",                                                   |
+|                                                                       |
+| \"version\": \"1.0.0\",                                               |
+|                                                                       |
+| \"orientation\": \"portrait\",                                        |
+|                                                                       |
+| \"icon\": \"./assets/icon.png\",                                      |
+|                                                                       |
+| \"userInterfaceStyle\": \"dark\",                                     |
+|                                                                       |
+| \"newArchEnabled\": false,                                            |
+|                                                                       |
+| \"ios\": {                                                            |
+|                                                                       |
+| \"supportsTablet\": false,                                            |
+|                                                                       |
+| \"bundleIdentifier\": \"ai.cova.app\",                                |
+|                                                                       |
+| \"buildNumber\": \"1\",                                               |
+|                                                                       |
+| \"infoPlist\": {                                                      |
+|                                                                       |
+| \"NSCameraUsageDescription\": \"Cova needs camera access to capture   |
+| your room for 3D design.\",                                           |
+|                                                                       |
+| \"NSPhotoLibraryUsageDescription\": \"Cova saves your room designs to |
+| your photo library.\",                                                |
+|                                                                       |
+| \"NSPhotoLibraryAddUsageDescription\": \"Cova saves room design       |
+| screenshots to your photo library.\",                                 |
+|                                                                       |
+| \"NSMicrophoneUsageDescription\": \"Cova needs microphone access for  |
+| voice commands.\",                                                    |
+|                                                                       |
+| \"ITSAppUsesNonExemptEncryption\": false                              |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| },                                                                    |
+|                                                                       |
+| \"plugins\": \[                                                       |
+|                                                                       |
+| \"expo-camera\",                                                      |
+|                                                                       |
+| \"expo-media-library\",                                               |
+|                                                                       |
+| \[\"expo-image-picker\", {                                            |
+|                                                                       |
+| \"photosPermission\": \"Cova needs photo library access to upload     |
+| room photos.\"                                                        |
+|                                                                       |
+| }\]                                                                   |
+|                                                                       |
+| \]                                                                    |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| }                                                                     |
++-----------------------------------------------------------------------+
+
+  --------- ------------------------------------------------------------------
+   **!!!**  newArchEnabled: false is REQUIRED. \@react-three/fiber 8.x is
+            incompatible with Fabric/New Architecture. Do not change this.
+
+  --------- ------------------------------------------------------------------
+
+**3.3 metro.config.js**
+
+File: \~/Desktop/cova/apps/mobile/metro.config.js --- registers GLB file
+extension
+
++-----------------------------------------------------------------------+
+| const { getDefaultConfig } = require(\'expo/metro-config\');          |
+|                                                                       |
+| const config = getDefaultConfig(\_\_dirname);                         |
+|                                                                       |
+| // Register GLB/GLTF as asset extensions                              |
+|                                                                       |
+| config.resolver.assetExts.push(\'glb\', \'gltf\', \'ktx2\');          |
+|                                                                       |
+| module.exports = config;                                              |
++-----------------------------------------------------------------------+
+
+**3.4 babel.config.js**
+
+File: \~/Desktop/cova/apps/mobile/babel.config.js --- Reanimated plugin
+MUST be last
+
++-----------------------------------------------------------------------+
+| module.exports = function(api) {                                      |
+|                                                                       |
+| api.cache(true);                                                      |
+|                                                                       |
+| return {                                                              |
+|                                                                       |
+| presets: \[\'babel-preset-expo\'\],                                   |
+|                                                                       |
+| plugins: \[                                                           |
+|                                                                       |
+| \'react-native-reanimated/plugin\', // MUST be last                   |
+|                                                                       |
+| \],                                                                   |
+|                                                                       |
+| };                                                                    |
+|                                                                       |
+| };                                                                    |
++-----------------------------------------------------------------------+
+
+**3.5 Zustand Store**
+
+File: \~/Desktop/cova/apps/mobile/src/store/index.ts
+
++-----------------------------------------------------------------------+
+| import { create } from \'zustand\';                                   |
+|                                                                       |
+| import type { User, Room, SceneState, CavaStyle } from                |
+| \'@cova/shared\';                                                     |
+|                                                                       |
+| interface CovaStore {                                                 |
+|                                                                       |
+| // Auth                                                               |
+|                                                                       |
+| user: User \| null;                                                   |
+|                                                                       |
+| setUser: (user: User \| null) =\> void;                               |
+|                                                                       |
+| // Active room                                                        |
+|                                                                       |
+| activeRoom: Room \| null;                                             |
+|                                                                       |
+| setActiveRoom: (room: Room \| null) =\> void;                         |
+|                                                                       |
+| // 3D Scene                                                           |
+|                                                                       |
+| activeStyle: CavaStyle;                                               |
+|                                                                       |
+| setActiveStyle: (style: CavaStyle) =\> void;                          |
+|                                                                       |
+| sceneKey: number;                                                     |
+|                                                                       |
+| incrementSceneKey: () =\> void;                                       |
+|                                                                       |
+| // Token balance (mirror of users.token_balance)                      |
+|                                                                       |
+| tokenBalance: number;                                                 |
+|                                                                       |
+| setTokenBalance: (n: number) =\> void;                                |
+|                                                                       |
+| deductTokens: (amount: number) =\> void;                              |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| export const useCovaStore = create\<CovaStore\>((set) =\> ({          |
+|                                                                       |
+| user: null,                                                           |
+|                                                                       |
+| setUser: (user) =\> set({ user }),                                    |
+|                                                                       |
+| activeRoom: null,                                                     |
+|                                                                       |
+| setActiveRoom: (room) =\> set({ activeRoom: room }),                  |
+|                                                                       |
+| activeStyle: \'japandi\',                                             |
+|                                                                       |
+| setActiveStyle: (style) =\> set({ activeStyle: style }),              |
+|                                                                       |
+| sceneKey: 0,                                                          |
+|                                                                       |
+| incrementSceneKey: () =\> set((s) =\> ({ sceneKey: s.sceneKey + 1     |
+| })),                                                                  |
+|                                                                       |
+| tokenBalance: 5,                                                      |
+|                                                                       |
+| setTokenBalance: (n) =\> set({ tokenBalance: n }),                    |
+|                                                                       |
+| deductTokens: (amount) =\> set((s) =\> ({ tokenBalance:               |
+| s.tokenBalance - amount })),                                          |
+|                                                                       |
+| }));                                                                  |
++-----------------------------------------------------------------------+
+
+**3.6 Furniture Catalog**
+
+File: \~/Desktop/cova/apps/mobile/src/data/furnitureCatalog.ts
+(abbreviated --- full file on GitHub)
 
 +--------------------------------------------------------------------------------+
-| CREATE TABLE public.rooms (                                                    |
+| import type { FurnitureCatalogItem, CavaStyle } from \'@cova/shared\';         |
 |                                                                                |
-| id UUID PRIMARY KEY DEFAULT gen_random_uuid(),                                 |
+| export const FURNITURE_CATALOG: Record\<string, FurnitureCatalogItem\> = {     |
 |                                                                                |
-| user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,           |
+| japandi_sofa: {                                                                |
 |                                                                                |
-| original_image_url TEXT NOT NULL,                                              |
+| key: \'japandi_sofa\',                                                         |
 |                                                                                |
-| depth_map_url TEXT,                                                            |
+| name: \'Japandi Sofa\',                                                        |
 |                                                                                |
-| depth_map_quality_score FLOAT,                                                 |
+| glb_path:                                                                      |
+| require(\'../../assets/3d/furniture/ready/japandi/japandi_sofa.glb\'),         |
 |                                                                                |
-| detected_existing_style TEXT,                                                  |
+| category: \'seating\',                                                         |
 |                                                                                |
-| room_type TEXT DEFAULT \'living_room\'                                         |
+| default_position: \[0, 0, -1.5\],                                              |
 |                                                                                |
-| CHECK (room_type IN                                                            |
-| (\'living_room\',\'bedroom\',\'kitchen\',\'bathroom\',\'office\',\'dining\')), |
+| default_rotation_y: 0,                                                         |
 |                                                                                |
-| \-- 3D room calibration: corner coordinates from the calibration screen        |
+| scale_factor: 1.0,                                                             |
 |                                                                                |
-| calibration_data JSONB, \-- { corner_tl, corner_tr, corner_bl, corner_br,      |
-| floor_line_y, image_w, image_h }                                               |
+| styles: \[\'japandi\'\],                                                       |
 |                                                                                |
-| room_dimensions JSONB, \-- { width_ft, depth_ft, height_ft } user-estimated    |
+| },                                                                             |
 |                                                                                |
-| \-- 3D scene state: the current furniture layout saved as JSON                 |
+| japandi_coffee_table: {                                                        |
 |                                                                                |
-| scene_state JSONB, \-- { style, furniture: \[{model_key, position,             |
-| rotation_y}\] }                                                                |
+| key: \'japandi_coffee_table\',                                                 |
 |                                                                                |
-| listing_id UUID,                                                               |
+| name: \'Coffee Table\',                                                        |
 |                                                                                |
-| created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),                                 |
+| glb_path:                                                                      |
+| require(\'../../assets/3d/furniture/ready/japandi/japandi_coffee_table.glb\'), |
 |                                                                                |
-| updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()                                  |
+| category: \'table\',                                                           |
 |                                                                                |
-| );                                                                             |
+| default_position: \[0, 0, -0.5\],                                              |
 |                                                                                |
-| \-- Auto-update updated_at                                                     |
+| default_rotation_y: 0,                                                         |
 |                                                                                |
-| CREATE OR REPLACE FUNCTION public.set_updated_at()                             |
+| scale_factor: 0.9,                                                             |
 |                                                                                |
-| RETURNS TRIGGER LANGUAGE plpgsql AS \$\$                                       |
+| styles: \[\'japandi\'\],                                                       |
 |                                                                                |
-| BEGIN NEW.updated_at = NOW(); RETURN NEW; END;                                 |
+| },                                                                             |
 |                                                                                |
-| \$\$;                                                                          |
+| // \... 41 more items                                                          |
 |                                                                                |
-| CREATE TRIGGER rooms_updated_at                                                |
+| };                                                                             |
 |                                                                                |
-| BEFORE UPDATE ON public.rooms                                                  |
+| export const STYLE_DEFAULT_FURNITURE: Record\<CavaStyle, string\[\]\> = {      |
 |                                                                                |
-| FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();                         |
+| japandi: \[\'japandi_sofa\', \'japandi_coffee_table\', \'japandi_floor_lamp\', |
+| \'japandi_rug\', \'japandi_plant\'\],                                          |
+|                                                                                |
+| midcentury: \[\'midcentury_sofa\', \'midcentury_eames_chair\',                 |
+| \'midcentury_table_lamp\', \'midcentury_rug\'\],                               |
+|                                                                                |
+| coastal: \[\'coastal_sofa\', \'coastal_coffee_table\',                         |
+| \'coastal_rattan_chair\', \'coastal_rug\'\],                                   |
+|                                                                                |
+| industrial: \[\'industrial_sofa\', \'industrial_coffee_table\',                |
+| \'industrial_floor_lamp\'\],                                                   |
+|                                                                                |
+| bohemian: \[\'bohemian_sofa\', \'bohemian_chair\', \'bohemian_rug\',           |
+| \'bohemian_plant\'\],                                                          |
+|                                                                                |
+| };                                                                             |
+|                                                                                |
+| export const STYLE_COLORS: Record\<CavaStyle, { wall: string; floor: string;   |
+| baseboard: string }\> = {                                                      |
+|                                                                                |
+| japandi: { wall: \'#E8E0D5\', floor: \'#C9BEA8\', baseboard: \'#8B7355\' },    |
+|                                                                                |
+| midcentury: { wall: \'#F5EBD8\', floor: \'#C4946A\', baseboard: \'#8B6B4A\' }, |
+|                                                                                |
+| coastal: { wall: \'#E8F4F8\', floor: \'#C2D4DC\', baseboard: \'#8AACB8\' },    |
+|                                                                                |
+| industrial: { wall: \'#6B6560\', floor: \'#4A4540\', baseboard: \'#3A3530\' }, |
+|                                                                                |
+| bohemian: { wall: \'#EDD5B8\', floor: \'#C4926A\', baseboard: \'#A0704A\' },   |
+|                                                                                |
+| };                                                                             |
+|                                                                                |
+| export const STYLE_MATERIALS: Record\<CavaStyle, {                             |
+|                                                                                |
+| sofa: { color: string; roughness: number; metalness: number };                 |
+|                                                                                |
+| table: { color: string; roughness: number; metalness: number };                |
+|                                                                                |
+| lamp: { color: string; roughness: number; metalness: number };                 |
+|                                                                                |
+| rug: { color: string; roughness: number; metalness: number };                  |
+|                                                                                |
+| }\> = {                                                                        |
+|                                                                                |
+| japandi: { sofa: { color: \'#C8B99A\', roughness: 0.95, metalness: 0.0 },      |
+| table: { color: \'#8B7355\', roughness: 0.80, metalness: 0.0 }, lamp: { color: |
+| \'#2C2C2C\', roughness: 0.60, metalness: 0.2 }, rug: { color: \'#D4C4A8\',     |
+| roughness: 1.0, metalness: 0.0 } },                                            |
+|                                                                                |
+| midcentury: { sofa: { color: \'#D4956A\', roughness: 0.80, metalness: 0.0 },   |
+| table: { color: \'#6B4A2A\', roughness: 0.75, metalness: 0.0 }, lamp: { color: |
+| \'#C9A84C\', roughness: 0.40, metalness: 0.5 }, rug: { color: \'#C4846A\',     |
+| roughness: 0.90, metalness: 0.0 } },                                           |
+|                                                                                |
+| coastal: { sofa: { color: \'#F0F4F8\', roughness: 0.90, metalness: 0.0 },      |
+| table: { color: \'#D4E8F0\', roughness: 0.70, metalness: 0.0 }, lamp: { color: |
+| \'#8AACB8\', roughness: 0.50, metalness: 0.1 }, rug: { color: \'#C8DDE8\',     |
+| roughness: 0.95, metalness: 0.0 } },                                           |
+|                                                                                |
+| industrial: { sofa: { color: \'#2C2C2C\', roughness: 0.70, metalness: 0.05 },  |
+| table: { color: \'#4A3728\', roughness: 0.75, metalness: 0.1 }, lamp: { color: |
+| \'#C9A84C\', roughness: 0.30, metalness: 0.5 }, rug: { color: \'#5A5048\',     |
+| roughness: 0.85, metalness: 0.0 } },                                           |
+|                                                                                |
+| bohemian: { sofa: { color: \'#C4604A\', roughness: 0.85, metalness: 0.0 },     |
+| table: { color: \'#8B5E3C\', roughness: 0.75, metalness: 0.0 }, lamp: { color: |
+| \'#D4946A\', roughness: 0.60, metalness: 0.1 }, rug: { color: \'#C4826A\',     |
+| roughness: 0.95, metalness: 0.0 } },                                           |
+|                                                                                |
+| };                                                                             |
+|                                                                                |
+| export const STYLE_LIGHTING: Record\<CavaStyle, {                              |
+|                                                                                |
+| ambientColor: string; ambientIntensity: number;                                |
+|                                                                                |
+| directionalColor: string; directionalIntensity: number;                        |
+|                                                                                |
+| directionalPosition: \[number, number, number\];                               |
+|                                                                                |
+| }\> = {                                                                        |
+|                                                                                |
+| japandi: { ambientColor: \'#FFF8F0\', ambientIntensity: 0.8, directionalColor: |
+| \'#FFF5E8\', directionalIntensity: 1.0, directionalPosition: \[5, 8, 3\] },    |
+|                                                                                |
+| midcentury: { ambientColor: \'#FFF3E0\', ambientIntensity: 0.7,                |
+| directionalColor: \'#FFE0A0\', directionalIntensity: 1.3, directionalPosition: |
+| \[4, 7, 2\] },                                                                 |
+|                                                                                |
+| coastal: { ambientColor: \'#F0F8FF\', ambientIntensity: 1.0, directionalColor: |
+| \'#FFFFFF\', directionalIntensity: 1.2, directionalPosition: \[3, 10, 5\] },   |
+|                                                                                |
+| industrial: { ambientColor: \'#4A4540\', ambientIntensity: 0.5,                |
+| directionalColor: \'#FFD080\', directionalIntensity: 1.5, directionalPosition: |
+| \[2, 6, 1\] },                                                                 |
+|                                                                                |
+| bohemian: { ambientColor: \'#FFE8C8\', ambientIntensity: 0.7,                  |
+| directionalColor: \'#FFB860\', directionalIntensity: 1.0, directionalPosition: |
+| \[4, 7, 3\] },                                                                 |
+|                                                                                |
+| };                                                                             |
 +--------------------------------------------------------------------------------+
 
-**Block 4 --- Renders table**
-
-+-----------------------------------------------------------------+
-| CREATE TABLE public.renders (                                   |
-|                                                                 |
-| id UUID PRIMARY KEY DEFAULT gen_random_uuid(),                  |
-|                                                                 |
-| room_id UUID NOT NULL REFERENCES public.rooms(id) ON DELETE     |
-| CASCADE,                                                        |
-|                                                                 |
-| user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE     |
-| CASCADE,                                                        |
-|                                                                 |
-| style_applied TEXT NOT NULL,                                    |
-|                                                                 |
-| style_blend_secondary TEXT,                                     |
-|                                                                 |
-| style_blend_ratio FLOAT CHECK (style_blend_ratio BETWEEN 0 AND  |
-| 1),                                                             |
-|                                                                 |
-| quality_tier TEXT NOT NULL DEFAULT \'draft\' CHECK              |
-| (quality_tier IN (\'draft\',\'hd\')),                           |
-|                                                                 |
-| image_url TEXT,                                                 |
-|                                                                 |
-| replicate_prediction_id TEXT,                                   |
-|                                                                 |
-| prompt_used TEXT,                                               |
-|                                                                 |
-| negative_prompt_used TEXT,                                      |
-|                                                                 |
-| denoising_strength FLOAT,                                       |
-|                                                                 |
-| guidance_scale FLOAT,                                           |
-|                                                                 |
-| seed INTEGER,                                                   |
-|                                                                 |
-| status TEXT NOT NULL DEFAULT \'processing\'                     |
-|                                                                 |
-| CHECK (status IN                                                |
-| (\'processing\',\'complete\',\'failed\',\'quality_rejected\')), |
-|                                                                 |
-| brisque_score FLOAT,                                            |
-|                                                                 |
-| clip_style_score FLOAT,                                         |
-|                                                                 |
-| design_rationale TEXT,                                          |
-|                                                                 |
-| tokens_charged INTEGER NOT NULL DEFAULT 0,                      |
-|                                                                 |
-| created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()                   |
-|                                                                 |
-| );                                                              |
-+-----------------------------------------------------------------+
-
-**Block 5 --- Chat sessions table**
-
-+-----------------------------------------------------------------+
-| CREATE TABLE public.chat_sessions (                             |
-|                                                                 |
-| id UUID PRIMARY KEY DEFAULT gen_random_uuid(),                  |
-|                                                                 |
-| room_id UUID NOT NULL REFERENCES public.rooms(id) ON DELETE     |
-| CASCADE,                                                        |
-|                                                                 |
-| user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE     |
-| CASCADE,                                                        |
-|                                                                 |
-| render_id UUID REFERENCES public.renders(id),                   |
-|                                                                 |
-| messages JSONB NOT NULL DEFAULT \'\[\]\',                       |
-|                                                                 |
-| summary TEXT,                                                   |
-|                                                                 |
-| last_action_type TEXT,                                          |
-|                                                                 |
-| total_messages INTEGER NOT NULL DEFAULT 0,                      |
-|                                                                 |
-| created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),                  |
-|                                                                 |
-| updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()                   |
-|                                                                 |
-| );                                                              |
-|                                                                 |
-| CREATE TRIGGER chat_sessions_updated_at                         |
-|                                                                 |
-| BEFORE UPDATE ON public.chat_sessions                           |
-|                                                                 |
-| FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();          |
-+-----------------------------------------------------------------+
-
-**Block 6 --- Products table (furniture catalog for CLIP matching)**
-
-+-----------------------------------------------------------------+
-| CREATE TABLE public.products (                                  |
-|                                                                 |
-| id UUID PRIMARY KEY DEFAULT gen_random_uuid(),                  |
-|                                                                 |
-| external_id TEXT NOT NULL,                                      |
-|                                                                 |
-| name TEXT NOT NULL,                                             |
-|                                                                 |
-| retailer TEXT NOT NULL CHECK (retailer IN                       |
-| (\'wayfair\',\'amazon\',\'ikea\',\'cb2\')),                     |
-|                                                                 |
-| price NUMERIC(10,2) NOT NULL,                                   |
-|                                                                 |
-| currency TEXT NOT NULL DEFAULT \'USD\',                         |
-|                                                                 |
-| category TEXT NOT NULL,                                         |
-|                                                                 |
-| subcategory TEXT,                                               |
-|                                                                 |
-| image_url TEXT NOT NULL,                                        |
-|                                                                 |
-| affiliate_url_base TEXT NOT NULL,                               |
-|                                                                 |
-| clip_embedding VECTOR(768), \-- CLIP ViT-L/14 768-dim embedding |
-|                                                                 |
-| style_tags TEXT\[\],                                            |
-|                                                                 |
-| price_tier TEXT CHECK (price_tier IN                            |
-| (\'budget\',\'mid\',\'premium\')),                              |
-|                                                                 |
-| in_stock BOOLEAN NOT NULL DEFAULT true,                         |
-|                                                                 |
-| price_last_checked TIMESTAMPTZ,                                 |
-|                                                                 |
-| created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()                   |
-|                                                                 |
-| );                                                              |
-|                                                                 |
-| \-- IVFFlat index for fast approximate nearest-neighbour search |
-|                                                                 |
-| \-- Create AFTER loading product data (needs rows to build      |
-| lists)                                                          |
-|                                                                 |
-| \-- CREATE INDEX ON public.products USING ivfflat               |
-| (clip_embedding vector_cosine_ops) WITH (lists = 100);          |
-|                                                                 |
-| \-- Product similarity search function                          |
-|                                                                 |
-| CREATE OR REPLACE FUNCTION public.search_products_by_embedding( |
-|                                                                 |
-| query_embedding VECTOR(768),                                    |
-|                                                                 |
-| match_threshold FLOAT DEFAULT 0.5,                              |
-|                                                                 |
-| match_count INTEGER DEFAULT 20                                  |
-|                                                                 |
-| ) RETURNS TABLE (                                               |
-|                                                                 |
-| id UUID, name TEXT, retailer TEXT, price NUMERIC,               |
-|                                                                 |
-| category TEXT, image_url TEXT, affiliate_url_base TEXT,         |
-|                                                                 |
-| price_tier TEXT, similarity FLOAT                               |
-|                                                                 |
-| ) LANGUAGE sql STABLE AS \$\$                                   |
-|                                                                 |
-| SELECT id, name, retailer, price, category, image_url,          |
-| affiliate_url_base, price_tier,                                 |
-|                                                                 |
-| 1 - (clip_embedding \<=\> query_embedding) AS similarity        |
-|                                                                 |
-| FROM public.products                                            |
-|                                                                 |
-| WHERE 1 - (clip_embedding \<=\> query_embedding) \>             |
-| match_threshold                                                 |
-|                                                                 |
-| AND in_stock = true                                             |
-|                                                                 |
-| ORDER BY clip_embedding \<=\> query_embedding                   |
-|                                                                 |
-| LIMIT match_count;                                              |
-|                                                                 |
-| \$\$;                                                           |
-+-----------------------------------------------------------------+
-
-**Block 7 --- Realtor tables**
-
-+-----------------------------------------------------------------+
-| CREATE TABLE public.listings (                                  |
-|                                                                 |
-| id UUID PRIMARY KEY DEFAULT gen_random_uuid(),                  |
-|                                                                 |
-| realtor_id UUID NOT NULL REFERENCES public.users(id) ON DELETE  |
-| CASCADE,                                                        |
-|                                                                 |
-| address TEXT NOT NULL,                                          |
-|                                                                 |
-| description TEXT,                                               |
-|                                                                 |
-| room_ids UUID\[\] DEFAULT \'{}\',                               |
-|                                                                 |
-| render_ids UUID\[\] DEFAULT \'{}\',                             |
-|                                                                 |
-| shareable_slug TEXT UNIQUE, \-- 8-char random slug for public   |
-| listing page                                                    |
-|                                                                 |
-| vote_counts JSONB DEFAULT \'{}\',                               |
-|                                                                 |
-| qr_code_url TEXT,                                               |
-|                                                                 |
-| view_count INTEGER NOT NULL DEFAULT 0,                          |
-|                                                                 |
-| is_published BOOLEAN NOT NULL DEFAULT false,                    |
-|                                                                 |
-| created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),                  |
-|                                                                 |
-| updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()                   |
-|                                                                 |
-| );                                                              |
-|                                                                 |
-| CREATE TABLE public.votes (                                     |
-|                                                                 |
-| id UUID PRIMARY KEY DEFAULT gen_random_uuid(),                  |
-|                                                                 |
-| listing_id UUID NOT NULL REFERENCES public.listings(id) ON      |
-| DELETE CASCADE,                                                 |
-|                                                                 |
-| render_id UUID NOT NULL REFERENCES public.renders(id) ON DELETE |
-| CASCADE,                                                        |
-|                                                                 |
-| device_fingerprint TEXT NOT NULL,                               |
-|                                                                 |
-| created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),                  |
-|                                                                 |
-| UNIQUE (listing_id, device_fingerprint) \-- one vote per device |
-| per listing                                                     |
-|                                                                 |
-| );                                                              |
-+-----------------------------------------------------------------+
-
-**Block 8 --- Async job tracking**
-
-+-----------------------------------------------------------------+
-| CREATE TABLE public.jobs (                                      |
-|                                                                 |
-| id UUID PRIMARY KEY DEFAULT gen_random_uuid(),                  |
-|                                                                 |
-| user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE     |
-| CASCADE,                                                        |
-|                                                                 |
-| job_type TEXT NOT NULL CHECK (job_type IN                       |
-| (\'render\',\'depth_map\',\'product_match\',\'inpaint\')),      |
-|                                                                 |
-| status TEXT NOT NULL DEFAULT \'pending\'                        |
-|                                                                 |
-| CHECK (status IN                                                |
-| (\'pending\',\'processing\',\'complete\',\'failed\')),          |
-|                                                                 |
-| replicate_id TEXT,                                              |
-|                                                                 |
-| input_params JSONB,                                             |
-|                                                                 |
-| result_url TEXT,                                                |
-|                                                                 |
-| error_message TEXT,                                             |
-|                                                                 |
-| created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),                  |
-|                                                                 |
-| completed_at TIMESTAMPTZ                                        |
-|                                                                 |
-| );                                                              |
-+-----------------------------------------------------------------+
-
-  ------- ------------------------------------------------------------
-   **4**  **Enable Row Level Security on all tables**
-
-  ------- ------------------------------------------------------------
-
-RLS ensures users can only access their own data. Run this entire block
-in SQL Editor:
-
-+-----------------------------------------------------------------+
-| \-- Enable RLS on all tables                                    |
-|                                                                 |
-| ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;             |
-|                                                                 |
-| ALTER TABLE public.token_transactions ENABLE ROW LEVEL          |
-| SECURITY;                                                       |
-|                                                                 |
-| ALTER TABLE public.rooms ENABLE ROW LEVEL SECURITY;             |
-|                                                                 |
-| ALTER TABLE public.renders ENABLE ROW LEVEL SECURITY;           |
-|                                                                 |
-| ALTER TABLE public.chat_sessions ENABLE ROW LEVEL SECURITY;     |
-|                                                                 |
-| ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;          |
-|                                                                 |
-| ALTER TABLE public.jobs ENABLE ROW LEVEL SECURITY;              |
-|                                                                 |
-| ALTER TABLE public.listings ENABLE ROW LEVEL SECURITY;          |
-|                                                                 |
-| ALTER TABLE public.votes ENABLE ROW LEVEL SECURITY;             |
-|                                                                 |
-| \-- Users: read and update own row only                         |
-|                                                                 |
-| CREATE POLICY \"users_own\" ON public.users FOR ALL USING (id = |
-| auth.uid());                                                    |
-|                                                                 |
-| \-- Token transactions: own rows only                           |
-|                                                                 |
-| CREATE POLICY \"transactions_own\" ON public.token_transactions |
-| FOR ALL USING (user_id = auth.uid());                           |
-|                                                                 |
-| \-- Rooms: own rooms only                                       |
-|                                                                 |
-| CREATE POLICY \"rooms_own\" ON public.rooms FOR ALL USING       |
-| (user_id = auth.uid());                                         |
-|                                                                 |
-| \-- Renders: own renders only                                   |
-|                                                                 |
-| CREATE POLICY \"renders_own\" ON public.renders FOR ALL USING   |
-| (user_id = auth.uid());                                         |
-|                                                                 |
-| \-- Chat sessions: own sessions only                            |
-|                                                                 |
-| CREATE POLICY \"chat_own\" ON public.chat_sessions FOR ALL      |
-| USING (user_id = auth.uid());                                   |
-|                                                                 |
-| \-- Products: readable by all authenticated users, writable     |
-| only by service role                                            |
-|                                                                 |
-| CREATE POLICY \"products_read\" ON public.products FOR SELECT   |
-| USING (auth.role() = \'authenticated\');                        |
-|                                                                 |
-| \-- Jobs: own jobs only                                         |
-|                                                                 |
-| CREATE POLICY \"jobs_own\" ON public.jobs FOR ALL USING         |
-| (user_id = auth.uid());                                         |
-|                                                                 |
-| \-- Listings: realtors manage their own; published listings     |
-| readable by all (for voting page)                               |
-|                                                                 |
-| CREATE POLICY \"listings_own\" ON public.listings FOR ALL USING |
-| (realtor_id = auth.uid());                                      |
-|                                                                 |
-| CREATE POLICY \"listings_public\" ON public.listings FOR SELECT |
-| USING (is_published = true);                                    |
-|                                                                 |
-| \-- Votes: anyone can insert; read own or for published listing |
-|                                                                 |
-| CREATE POLICY \"votes_insert\" ON public.votes FOR INSERT WITH  |
-| CHECK (true);                                                   |
-|                                                                 |
-| CREATE POLICY \"votes_read\" ON public.votes FOR SELECT USING   |
-| (true);                                                         |
-+-----------------------------------------------------------------+
-
-  ------- ------------------------------------------------------------
-   **5**  **Configure storage buckets**
-
-  ------- ------------------------------------------------------------
-
-Go to Storage in the Supabase dashboard. Click \'New bucket\' for each
-of these:
-
-  --------------------- ----------------------------------------------
-  **Bucket Name**       Configuration
-
-  **room-uploads**      Private. Max file size: 20MB. Allowed MIME:
-                        image/jpeg, image/png, image/webp, image/heic
-
-  **renders**           Private. Max file size: 10MB. Allowed MIME:
-                        image/jpeg, image/png
-
-  **product-images**    Public (no auth needed to view). Service role
-                        write only. No size limit
-
-  **swipe-cards**       Public. Read-only for all. Service role write
-                        only. Stores onboarding images
-
-  **3d-models**         Public. Read-only for all. Service role write
-                        only. Stores .glb furniture files
-
-  **scene-snapshots**   Private. Max 10MB. Stores 3D scene screenshots
-                        per user
-  --------------------- ----------------------------------------------
-
-After creating each bucket, set the RLS policies via SQL Editor:
-
-+-----------------------------------------------------------------+
-| \-- room-uploads: authenticated users can upload/read their own |
-| files                                                           |
-|                                                                 |
-| CREATE POLICY \"uploads_own\" ON storage.objects FOR ALL        |
-|                                                                 |
-| USING (bucket_id = \'room-uploads\' AND auth.uid()::text =      |
-| (storage.foldername(name))\[1\]);                               |
-|                                                                 |
-| \-- renders: authenticated users can read their own renders     |
-|                                                                 |
-| CREATE POLICY \"renders_own\" ON storage.objects FOR ALL        |
-|                                                                 |
-| USING (bucket_id = \'renders\' AND auth.uid()::text =           |
-| (storage.foldername(name))\[1\]);                               |
-|                                                                 |
-| \-- 3d-models: public read (glTF files are not sensitive)       |
-|                                                                 |
-| CREATE POLICY \"models_public_read\" ON storage.objects FOR     |
-| SELECT                                                          |
-|                                                                 |
-| USING (bucket_id = \'3d-models\');                              |
-|                                                                 |
-| \-- scene-snapshots: users manage their own snapshots           |
-|                                                                 |
-| CREATE POLICY \"snapshots_own\" ON storage.objects FOR ALL      |
-|                                                                 |
-| USING (bucket_id = \'scene-snapshots\' AND auth.uid()::text =   |
-| (storage.foldername(name))\[1\]);                               |
-+-----------------------------------------------------------------+
-
-  ------- ------------------------------------------------------------
-   **6**  **Configure authentication**
-
-  ------- ------------------------------------------------------------
-
-Go to Authentication → Providers in the Supabase dashboard:
-
-- Email: Enable. Set \'Confirm email\' to OFF for development (turn ON
-  before App Store submission)
-
-- Apple: Enable. You need an Apple Developer account (\$99/year). Follow
-  the Supabase Apple OAuth guide at
-  supabase.com/docs/guides/auth/social-login/auth-apple exactly. Apple
-  Sign-In is mandatory on iOS App Store if you include any third-party
-  sign-in.
-
-Go to Authentication → URL Configuration and set:
-
-- Site URL: http://localhost:3000 (for development)
-
-- Redirect URLs: Add exp://localhost:19000/\--/ for Expo development
-
-  ------- ------------------------------------------------------------
-   **7**  **Commit Phase 2**
-
-  ------- ------------------------------------------------------------
-
-+-----------------------------------------------------------------+
-| git add .                                                       |
-|                                                                 |
-| git commit -m \"Phase 2: Supabase schema, RLS, storage, auth    |
-| --- with 3D calibration columns\"                               |
-|                                                                 |
-| git push origin main                                            |
-+-----------------------------------------------------------------+
-
-+:---------:+-----------------------------------------------------+
-| **PHASE   | *The core differentiator --- interactive 3D room    |
-| 3**       | viewer built with React Three Fiber*                |
-|           |                                                     |
-| **3D Room |                                                     |
-| Engine    |                                                     |
-| ⭐**      |                                                     |
-+-----------+-----------------------------------------------------+
-
-This phase builds the most important feature in Cova V1: the 3D
-interactive room viewer. When a user uploads a photo of their room, they
-calibrate it using a corner-marking tool, then immediately see their
-room reimagined in 3D with swappable furniture across 5 design styles.
-They can orbit around the room, tap furniture to swap it, drag pieces to
-reposition them, and screenshot the result. This is the feature
-investors saw that no competitor has in consumer interior design.
-
-  ----------- --------------------------------------------------------
-     **⭐     Phase 3 is the heart of Cova. Budget the most time here.
-    PRIMARY   The 2D render (Phase 4) is a companion feature --- the
-   FEATURE**  3D viewer is the product.
-
-  ----------- --------------------------------------------------------
-
-  ------- ------------------------------------------------------------
-   **1**  **Install all 3D dependencies**
-
-  ------- ------------------------------------------------------------
-
-Navigate to the mobile app folder and install React Three Fiber and all
-related 3D packages:
-
-+-----------------------------------------------------------------+
-| cd \~/Documents/cova/apps/mobile                                |
-|                                                                 |
-| \# Core Three.js and React Three Fiber for React Native         |
-|                                                                 |
-| npx expo install expo-gl expo-three \@react-three/fiber         |
-|                                                                 |
-| \# Drei --- Three.js helpers: orbit controls, loaders,          |
-| environment lighting                                            |
-|                                                                 |
-| pnpm add \@react-three/drei                                     |
-|                                                                 |
-| \# GLB/glTF 3D model loader for React Native                    |
-|                                                                 |
-| pnpm add expo-asset                                             |
-|                                                                 |
-| \# Gesture handling for drag-to-reposition furniture            |
-|                                                                 |
-| npx expo install react-native-gesture-handler                   |
-| react-native-reanimated                                         |
-|                                                                 |
-| \# View capture for 3D scene screenshots                        |
-|                                                                 |
-| npx expo install react-native-view-shot                         |
-|                                                                 |
-| \# Image manipulation for post-processing screenshots           |
-|                                                                 |
-| npx expo install expo-image-manipulator                         |
-|                                                                 |
-| \# Konva.js is web-only --- for calibration on mobile we use    |
-| React Native SVG                                                |
-|                                                                 |
-| npx expo install react-native-svg                               |
-+-----------------------------------------------------------------+
-
-  ------------- --------------------------------------------------------
-      **⚠️      After installing react-native-reanimated, open
-   IMPORTANT**  babel.config.js and add
-                \'react-native-reanimated/plugin\' as the LAST item in
-                the plugins array. This is required or the app will
-                crash on startup.
-
-  ------------- --------------------------------------------------------
-
-+-----------------------------------------------------------------+
-| // apps/mobile/babel.config.js                                  |
-|                                                                 |
-| module.exports = function(api) {                                |
-|                                                                 |
-| api.cache(true);                                                |
-|                                                                 |
-| return {                                                        |
-|                                                                 |
-| presets: \[\'babel-preset-expo\'\],                             |
-|                                                                 |
-| plugins: \[                                                     |
-|                                                                 |
-| \'react-native-reanimated/plugin\', // MUST be last             |
-|                                                                 |
-| \],                                                             |
-|                                                                 |
-| };                                                              |
-|                                                                 |
-| };                                                              |
-+-----------------------------------------------------------------+
-
-  ------- ------------------------------------------------------------
-   **2**  **Build the furniture catalog --- the preset database**
-
-  ------- ------------------------------------------------------------
-
-The furniture catalog is your curated set of 3D models. For V1 you need
-50--80 models across 5 styles. Create the catalog definition file ---
-this is the source of truth for every piece of furniture in the 3D
-viewer:
-
-  -----------------------------------------------------------------
-  mkdir -p src/data && code src/data/furnitureCatalog.ts
-
-  -----------------------------------------------------------------
-
-+----------------------------------------------------------------------------------------------------------------------------------+
-| import { FurnitureCatalogItem, CavaStyle } from \'@cova/shared\';                                                                |
-|                                                                                                                                  |
-| // ─────────────────────────────────────────────────────────                                                                     |
-|                                                                                                                                  |
-| // FURNITURE CATALOG --- 5 styles, \~15 pieces per style                                                                         |
-|                                                                                                                                  |
-| // Each entry maps to a .glb file in assets/3d/furniture/                                                                        |
-|                                                                                                                                  |
-| // Dimensions are in METRES (Three.js default unit)                                                                              |
-|                                                                                                                                  |
-| // ─────────────────────────────────────────────────────────                                                                     |
-|                                                                                                                                  |
-| export const FURNITURE_CATALOG: Record\<string, FurnitureCatalogItem\> = {                                                       |
-|                                                                                                                                  |
-| // ── JAPANDI ──────────────────────────────────────────                                                                         |
-|                                                                                                                                  |
-| \'japandi_sofa\': {                                                                                                              |
-|                                                                                                                                  |
-| key: \'japandi_sofa\', name: \'Low-Profile Linen Sofa\',                                                                         |
-|                                                                                                                                  |
-| category: \'sofa\', styles: \[\'japandi\'\],                                                                                     |
-|                                                                                                                                  |
-| model_path: require(\'../../assets/3d/furniture/japandi_sofa.glb\'),                                                             |
-|                                                                                                                                  |
-| dimensions: { w: 2.2, d: 0.9, h: 0.7 },                                                                                          |
-|                                                                                                                                  |
-| default_position: \[0, 0, -2.0\],                                                                                                |
-|                                                                                                                                  |
-| default_rotation_y: 0,                                                                                                           |
-|                                                                                                                                  |
-| },                                                                                                                               |
-|                                                                                                                                  |
-| \'japandi_coffee_table\': {                                                                                                      |
-|                                                                                                                                  |
-| key: \'japandi_coffee_table\', name: \'Solid Oak Coffee Table\',                                                                 |
-|                                                                                                                                  |
-| category: \'table\', styles: \[\'japandi\'\],                                                                                    |
-|                                                                                                                                  |
-| model_path: require(\'../../assets/3d/furniture/japandi_coffee_table.glb\'),                                                     |
-|                                                                                                                                  |
-| dimensions: { w: 1.1, d: 0.6, h: 0.4 },                                                                                          |
-|                                                                                                                                  |
-| default_position: \[0, 0, -0.8\],                                                                                                |
-|                                                                                                                                  |
-| default_rotation_y: 0,                                                                                                           |
-|                                                                                                                                  |
-| },                                                                                                                               |
-|                                                                                                                                  |
-| \'japandi_chair\': {                                                                                                             |
-|                                                                                                                                  |
-| key: \'japandi_chair\', name: \'Woven Accent Chair\',                                                                            |
-|                                                                                                                                  |
-| category: \'chair\', styles: \[\'japandi\'\],                                                                                    |
-|                                                                                                                                  |
-| model_path: require(\'../../assets/3d/furniture/japandi_chair.glb\'),                                                            |
-|                                                                                                                                  |
-| dimensions: { w: 0.7, d: 0.7, h: 0.8 },                                                                                          |
-|                                                                                                                                  |
-| default_position: \[1.8, 0, -1.0\],                                                                                              |
-|                                                                                                                                  |
-| default_rotation_y: -0.4,                                                                                                        |
-|                                                                                                                                  |
-| },                                                                                                                               |
-|                                                                                                                                  |
-| \'japandi_rug\': {                                                                                                               |
-|                                                                                                                                  |
-| key: \'japandi_rug\', name: \'Natural Jute Area Rug\',                                                                           |
-|                                                                                                                                  |
-| category: \'rug\', styles: \[\'japandi\'\],                                                                                      |
-|                                                                                                                                  |
-| model_path: require(\'../../assets/3d/furniture/japandi_rug.glb\'),                                                              |
-|                                                                                                                                  |
-| dimensions: { w: 2.4, d: 1.7, h: 0.01 },                                                                                         |
-|                                                                                                                                  |
-| default_position: \[0, 0.001, -1.2\],                                                                                            |
-|                                                                                                                                  |
-| default_rotation_y: 0,                                                                                                           |
-|                                                                                                                                  |
-| },                                                                                                                               |
-|                                                                                                                                  |
-| \'japandi_floor_lamp\': {                                                                                                        |
-|                                                                                                                                  |
-| key: \'japandi_floor_lamp\', name: \'Bamboo Arc Floor Lamp\',                                                                    |
-|                                                                                                                                  |
-| category: \'lamp\', styles: \[\'japandi\'\],                                                                                     |
-|                                                                                                                                  |
-| model_path: require(\'../../assets/3d/furniture/japandi_floor_lamp.glb\'),                                                       |
-|                                                                                                                                  |
-| dimensions: { w: 0.4, d: 0.4, h: 1.6 },                                                                                          |
-|                                                                                                                                  |
-| default_position: \[-2.2, 0, -0.5\],                                                                                             |
-|                                                                                                                                  |
-| default_rotation_y: 0,                                                                                                           |
-|                                                                                                                                  |
-| },                                                                                                                               |
-|                                                                                                                                  |
-| \'japandi_plant_fiddle\': {                                                                                                      |
-|                                                                                                                                  |
-| key: \'japandi_plant_fiddle\', name: \'Fiddle Leaf Fig Tree\',                                                                   |
-|                                                                                                                                  |
-| category: \'plant\', styles: \[\'japandi\',\'coastal\',\'bohemian\'\],                                                           |
-|                                                                                                                                  |
-| model_path: require(\'../../assets/3d/furniture/plant_fiddle_leaf.glb\'),                                                        |
-|                                                                                                                                  |
-| dimensions: { w: 0.6, d: 0.6, h: 1.8 },                                                                                          |
-|                                                                                                                                  |
-| default_position: \[2.5, 0, -2.5\],                                                                                              |
-|                                                                                                                                  |
-| default_rotation_y: 0,                                                                                                           |
-|                                                                                                                                  |
-| },                                                                                                                               |
-|                                                                                                                                  |
-| // ── MID-CENTURY MODERN ───────────────────────────────                                                                         |
-|                                                                                                                                  |
-| \'midcentury_sofa\': {                                                                                                           |
-|                                                                                                                                  |
-| key: \'midcentury_sofa\', name: \'Tufted Walnut Leg Sofa\',                                                                      |
-|                                                                                                                                  |
-| category: \'sofa\', styles: \[\'midcentury\'\],                                                                                  |
-|                                                                                                                                  |
-| model_path: require(\'../../assets/3d/furniture/midcentury_sofa.glb\'),                                                          |
-|                                                                                                                                  |
-| dimensions: { w: 2.4, d: 0.85, h: 0.8 },                                                                                         |
-|                                                                                                                                  |
-| default_position: \[0, 0, -2.0\],                                                                                                |
-|                                                                                                                                  |
-| default_rotation_y: 0,                                                                                                           |
-|                                                                                                                                  |
-| },                                                                                                                               |
-|                                                                                                                                  |
-| \'midcentury_eames_chair\': {                                                                                                    |
-|                                                                                                                                  |
-| key: \'midcentury_eames_chair\', name: \'Eames-Style Lounge Chair\',                                                             |
-|                                                                                                                                  |
-| category: \'chair\', styles: \[\'midcentury\'\],                                                                                 |
-|                                                                                                                                  |
-| model_path: require(\'../../assets/3d/furniture/midcentury_eames_chair.glb\'),                                                   |
-|                                                                                                                                  |
-| dimensions: { w: 0.85, d: 0.85, h: 0.9 },                                                                                        |
-|                                                                                                                                  |
-| default_position: \[-1.8, 0, -1.2\],                                                                                             |
-|                                                                                                                                  |
-| default_rotation_y: 0.5,                                                                                                         |
-|                                                                                                                                  |
-| },                                                                                                                               |
-|                                                                                                                                  |
-| \'midcentury_sideboard\': {                                                                                                      |
-|                                                                                                                                  |
-| key: \'midcentury_sideboard\', name: \'Teak Credenza Sideboard\',                                                                |
-|                                                                                                                                  |
-| category: \'shelf\', styles: \[\'midcentury\'\],                                                                                 |
-|                                                                                                                                  |
-| model_path: require(\'../../assets/3d/furniture/midcentury_sideboard.glb\'),                                                     |
-|                                                                                                                                  |
-| dimensions: { w: 1.8, d: 0.45, h: 0.7 },                                                                                         |
-|                                                                                                                                  |
-| default_position: \[-2.8, 0, -3.2\],                                                                                             |
-|                                                                                                                                  |
-| default_rotation_y: 0,                                                                                                           |
-|                                                                                                                                  |
-| },                                                                                                                               |
-|                                                                                                                                  |
-| \'midcentury_table_lamp\': {                                                                                                     |
-|                                                                                                                                  |
-| key: \'midcentury_table_lamp\', name: \'Brass Arc Table Lamp\',                                                                  |
-|                                                                                                                                  |
-| category: \'lamp\', styles: \[\'midcentury\'\],                                                                                  |
-|                                                                                                                                  |
-| model_path: require(\'../../assets/3d/furniture/midcentury_table_lamp.glb\'),                                                    |
-|                                                                                                                                  |
-| dimensions: { w: 0.3, d: 0.3, h: 0.55 },                                                                                         |
-|                                                                                                                                  |
-| default_position: \[-2.6, 0.7, -3.2\],                                                                                           |
-|                                                                                                                                  |
-| default_rotation_y: 0,                                                                                                           |
-|                                                                                                                                  |
-| },                                                                                                                               |
-|                                                                                                                                  |
-| // ── COASTAL ───────────────────────────────────────────                                                                        |
-|                                                                                                                                  |
-| \'coastal_sofa\': {                                                                                                              |
-|                                                                                                                                  |
-| key: \'coastal_sofa\', name: \'Slipcover Linen Sectional\',                                                                      |
-|                                                                                                                                  |
-| category: \'sofa\', styles: \[\'coastal\'\],                                                                                     |
-|                                                                                                                                  |
-| model_path: require(\'../../assets/3d/furniture/coastal_sofa.glb\'),                                                             |
-|                                                                                                                                  |
-| dimensions: { w: 2.8, d: 1.4, h: 0.75 },                                                                                         |
-|                                                                                                                                  |
-| default_position: \[0.3, 0, -2.2\],                                                                                              |
-|                                                                                                                                  |
-| default_rotation_y: 0,                                                                                                           |
-|                                                                                                                                  |
-| },                                                                                                                               |
-|                                                                                                                                  |
-| \'coastal_coffee_table\': {                                                                                                      |
-|                                                                                                                                  |
-| key: \'coastal_coffee_table\', name: \'Driftwood Coffee Table\',                                                                 |
-|                                                                                                                                  |
-| category: \'table\', styles: \[\'coastal\'\],                                                                                    |
-|                                                                                                                                  |
-| model_path: require(\'../../assets/3d/furniture/coastal_coffee_table.glb\'),                                                     |
-|                                                                                                                                  |
-| dimensions: { w: 1.2, d: 0.7, h: 0.42 },                                                                                         |
-|                                                                                                                                  |
-| default_position: \[0, 0, -0.8\],                                                                                                |
-|                                                                                                                                  |
-| default_rotation_y: 0,                                                                                                           |
-|                                                                                                                                  |
-| },                                                                                                                               |
-|                                                                                                                                  |
-| \'coastal_rattan_chair\': {                                                                                                      |
-|                                                                                                                                  |
-| key: \'coastal_rattan_chair\', name: \'Rattan Papasan Chair\',                                                                   |
-|                                                                                                                                  |
-| category: \'chair\', styles: \[\'coastal\',\'bohemian\'\],                                                                       |
-|                                                                                                                                  |
-| model_path: require(\'../../assets/3d/furniture/coastal_rattan_chair.glb\'),                                                     |
-|                                                                                                                                  |
-| dimensions: { w: 0.9, d: 0.9, h: 1.0 },                                                                                          |
-|                                                                                                                                  |
-| default_position: \[2.0, 0, -0.8\],                                                                                              |
-|                                                                                                                                  |
-| default_rotation_y: -0.3,                                                                                                        |
-|                                                                                                                                  |
-| },                                                                                                                               |
-|                                                                                                                                  |
-| // ── INDUSTRIAL ────────────────────────────────────────                                                                        |
-|                                                                                                                                  |
-| \'industrial_sofa\': {                                                                                                           |
-|                                                                                                                                  |
-| key: \'industrial_sofa\', name: \'Distressed Leather Sofa\',                                                                     |
-|                                                                                                                                  |
-| category: \'sofa\', styles: \[\'industrial\'\],                                                                                  |
-|                                                                                                                                  |
-| model_path: require(\'../../assets/3d/furniture/industrial_sofa.glb\'),                                                          |
-|                                                                                                                                  |
-| dimensions: { w: 2.3, d: 0.95, h: 0.85 },                                                                                        |
-|                                                                                                                                  |
-| default_position: \[0, 0, -2.0\],                                                                                                |
-|                                                                                                                                  |
-| default_rotation_y: 0,                                                                                                           |
-|                                                                                                                                  |
-| },                                                                                                                               |
-|                                                                                                                                  |
-| \'industrial_coffee_table\': {                                                                                                   |
-|                                                                                                                                  |
-| key: \'industrial_coffee_table\', name: \'Steel + Reclaimed Wood Table\',                                                        |
-|                                                                                                                                  |
-| category: \'table\', styles: \[\'industrial\'\],                                                                                 |
-|                                                                                                                                  |
-| model_path: require(\'../../assets/3d/furniture/industrial_coffee_table.glb\'),                                                  |
-|                                                                                                                                  |
-| dimensions: { w: 1.2, d: 0.6, h: 0.45 },                                                                                         |
-|                                                                                                                                  |
-| default_position: \[0, 0, -0.8\],                                                                                                |
-|                                                                                                                                  |
-| default_rotation_y: 0,                                                                                                           |
-|                                                                                                                                  |
-| },                                                                                                                               |
-|                                                                                                                                  |
-| \'industrial_shelf_pipe\': {                                                                                                     |
-|                                                                                                                                  |
-| key: \'industrial_shelf_pipe\', name: \'Pipe + Wood Floating Shelf Unit\',                                                       |
-|                                                                                                                                  |
-| category: \'shelf\', styles: \[\'industrial\'\],                                                                                 |
-|                                                                                                                                  |
-| model_path: require(\'../../assets/3d/furniture/industrial_pipe_shelf.glb\'),                                                    |
-|                                                                                                                                  |
-| dimensions: { w: 1.4, d: 0.25, h: 1.8 },                                                                                         |
-|                                                                                                                                  |
-| default_position: \[-2.5, 0, -3.5\],                                                                                             |
-|                                                                                                                                  |
-| default_rotation_y: 0,                                                                                                           |
-|                                                                                                                                  |
-| },                                                                                                                               |
-|                                                                                                                                  |
-| // ── BOHEMIAN ──────────────────────────────────────────                                                                        |
-|                                                                                                                                  |
-| \'boho_sofa\': {                                                                                                                 |
-|                                                                                                                                  |
-| key: \'boho_sofa\', name: \'Velvet Jewel-Tone Sofa\',                                                                            |
-|                                                                                                                                  |
-| category: \'sofa\', styles: \[\'bohemian\'\],                                                                                    |
-|                                                                                                                                  |
-| model_path: require(\'../../assets/3d/furniture/boho_sofa.glb\'),                                                                |
-|                                                                                                                                  |
-| dimensions: { w: 2.1, d: 0.95, h: 0.85 },                                                                                        |
-|                                                                                                                                  |
-| default_position: \[0, 0, -2.0\],                                                                                                |
-|                                                                                                                                  |
-| default_rotation_y: 0,                                                                                                           |
-|                                                                                                                                  |
-| },                                                                                                                               |
-|                                                                                                                                  |
-| \'boho_floor_cushions\': {                                                                                                       |
-|                                                                                                                                  |
-| key: \'boho_floor_cushions\', name: \'Stacked Floor Cushion Set\',                                                               |
-|                                                                                                                                  |
-| category: \'chair\', styles: \[\'bohemian\'\],                                                                                   |
-|                                                                                                                                  |
-| model_path: require(\'../../assets/3d/furniture/boho_floor_cushions.glb\'),                                                      |
-|                                                                                                                                  |
-| dimensions: { w: 0.8, d: 0.8, h: 0.4 },                                                                                          |
-|                                                                                                                                  |
-| default_position: \[1.5, 0, -0.5\],                                                                                              |
-|                                                                                                                                  |
-| default_rotation_y: 0.3,                                                                                                         |
-|                                                                                                                                  |
-| },                                                                                                                               |
-|                                                                                                                                  |
-| \'boho_macrame_wall\': {                                                                                                         |
-|                                                                                                                                  |
-| key: \'boho_macrame_wall\', name: \'Large Macramé Wall Hanging\',                                                                |
-|                                                                                                                                  |
-| category: \'shelf\', styles: \[\'bohemian\'\],                                                                                   |
-|                                                                                                                                  |
-| model_path: require(\'../../assets/3d/furniture/boho_macrame.glb\'),                                                             |
-|                                                                                                                                  |
-| dimensions: { w: 1.2, d: 0.05, h: 1.4 },                                                                                         |
-|                                                                                                                                  |
-| default_position: \[0, 1.0, -3.9\],                                                                                              |
-|                                                                                                                                  |
-| default_rotation_y: 0,                                                                                                           |
-|                                                                                                                                  |
-| },                                                                                                                               |
-|                                                                                                                                  |
-| };                                                                                                                               |
-|                                                                                                                                  |
-| // Style-to-furniture mapping: which pieces appear by default for each style                                                     |
-|                                                                                                                                  |
-| export const STYLE_DEFAULT_FURNITURE: Record\<CavaStyle, string\[\]\> = {                                                        |
-|                                                                                                                                  |
-| japandi:                                                                                                                         |
-| \[\'japandi_rug\',\'japandi_sofa\',\'japandi_coffee_table\',\'japandi_chair\',\'japandi_floor_lamp\',\'japandi_plant_fiddle\'\], |
-|                                                                                                                                  |
-| midcentury:                                                                                                                      |
-| \[\'japandi_rug\',\'midcentury_sofa\',\'midcentury_eames_chair\',\'midcentury_sideboard\',\'midcentury_table_lamp\'\],           |
-|                                                                                                                                  |
-| coastal: \[\'coastal_sofa\',\'coastal_coffee_table\',\'coastal_rattan_chair\',\'japandi_plant_fiddle\'\],                        |
-|                                                                                                                                  |
-| industrial: \[\'industrial_sofa\',\'industrial_coffee_table\',\'industrial_shelf_pipe\'\],                                       |
-|                                                                                                                                  |
-| bohemian: \[\'boho_sofa\',\'boho_floor_cushions\',\'boho_macrame_wall\',\'coastal_rattan_chair\',\'japandi_plant_fiddle\'\],     |
-|                                                                                                                                  |
-| };                                                                                                                               |
-|                                                                                                                                  |
-| // Style-to-color scheme for walls, floor, ceiling in the 3D scene                                                               |
-|                                                                                                                                  |
-| export const STYLE_COLORS = {                                                                                                    |
-|                                                                                                                                  |
-| japandi: { wall: \'#E8E0D5\', floor: \'#C9BEA8\', ceiling: \'#F5F0E8\', accent: \'#8B7355\' },                                   |
-|                                                                                                                                  |
-| midcentury: { wall: \'#F5EBD8\', floor: \'#C4946A\', ceiling: \'#FAF5EE\', accent: \'#D4A574\' },                                |
-|                                                                                                                                  |
-| coastal: { wall: \'#E8F4F8\', floor: \'#C2D4DC\', ceiling: \'#F5FBFC\', accent: \'#5B9BB5\' },                                   |
-|                                                                                                                                  |
-| industrial: { wall: \'#6B6560\', floor: \'#4A4540\', ceiling: \'#3A3530\', accent: \'#C9A84C\' },                                |
-|                                                                                                                                  |
-| bohemian: { wall: \'#EDD5B8\', floor: \'#C4926A\', ceiling: \'#F5EBDC\', accent: \'#8B4513\' },                                  |
-|                                                                                                                                  |
-| };                                                                                                                               |
-+----------------------------------------------------------------------------------------------------------------------------------+
-
-  ------- ------------------------------------------------------------
-   **3**  **Get the 3D furniture model files (.glb)**
-
-  ------- ------------------------------------------------------------
-
-You need actual .glb (binary glTF) files for each furniture item in your
-catalog. Here are the sources in order of preference:
-
-**Option A --- Free models from Poly Pizza (fastest for MVP)**
-
-Go to polypizza.com. Search for each furniture category. Download as
-GLB. Poly Pizza models are low-poly which is perfect for mobile ---
-smaller file size, faster loading, still looks good in a well-lit scene.
-
-**Option B --- Sketchfab free models**
-
-Go to sketchfab.com/features/free-3d-models. Filter by \'Downloadable\',
-\'Free\', and search for furniture terms. Download as GLB. Check the
-license --- look for CC0 or CC BY. Sketchfab models tend to be higher
-quality than Poly Pizza but larger in file size.
-
-**Option C --- IKEA 3D asset API (best for product alignment)**
-
-IKEA has released 3D assets for many of their products. Go to
-ikea.com/us/en/customer-service/product-support/ and check their AR
-programme. Some retailers including Wayfair expose glTF assets via their
-AR APIs --- this aligns perfectly with the commerce layer since the 3D
-model the user sees IS the product they can buy.
-
-**Option D --- Generate with AI tools (Meshy, Tripo3D)**
-
-If you cannot find a specific piece, use Meshy.ai or Tripo3D.ai --- AI
-3D model generators. Describe the furniture item, generate a model,
-download as GLB. Quality varies but is improving rapidly. Good enough
-for MVP.
-
-  ------------- --------------------------------------------------------
-      **⚠️      All .glb files go in: assets/3d/furniture/. Name them
-   IMPORTANT**  exactly as specified in the catalog model_path values
-                (e.g. japandi_sofa.glb). File size target: under 2MB per
-                model. If a model is over 5MB, compress it using the
-                Blender script below.
-
-  ------------- --------------------------------------------------------
-
-**Compress and optimise GLB models with Blender**
-
-After downloading models, run this Python script to batch-optimise all
-GLB files. It applies Draco compression which reduces file sizes by
-60--80% with negligible quality loss on mobile screens:
-
-  -----------------------------------------------------------------
-  code scripts/optimise_glb.py
-
-  -----------------------------------------------------------------
-
-+-----------------------------------------------------------------+
-| #!/usr/bin/env python3                                          |
-|                                                                 |
-| \"\"\"                                                          |
-|                                                                 |
-| Batch optimise all .glb files in assets/3d/furniture/           |
-|                                                                 |
-| Uses Blender\'s Python API to apply Draco compression.          |
-|                                                                 |
-| Run: python3 scripts/optimise_glb.py                            |
-|                                                                 |
-| \"\"\"                                                          |
-|                                                                 |
-| import subprocess, os, glob, sys                                |
-|                                                                 |
-| FURNITURE_DIR = os.path.join(os.path.dirname(\_\_file\_\_),     |
-| \'..\', \'assets\', \'3d\', \'furniture\')                      |
-|                                                                 |
-| TARGET_SIZE_MB = 2.0                                            |
-|                                                                 |
-| def optimise_glb(input_path: str) -\> None:                     |
-|                                                                 |
-| output_path = input_path \# overwrite in place                  |
-|                                                                 |
-| size_mb = os.path.getsize(input_path) / (1024 \* 1024)          |
-|                                                                 |
-| if size_mb \<= TARGET_SIZE_MB:                                  |
-|                                                                 |
-| print(f\' ✓ {os.path.basename(input_path)} ({size_mb:.1f}MB)    |
-| --- already optimised\')                                        |
-|                                                                 |
-| return                                                          |
-|                                                                 |
-| print(f\' ↓ {os.path.basename(input_path)} ({size_mb:.1f}MB)    |
-| --- compressing\...\')                                          |
-|                                                                 |
-| blender_script = f\'\'\'                                        |
-|                                                                 |
-| import bpy                                                      |
-|                                                                 |
-| bpy.ops.wm.read_factory_settings(use_empty=True)                |
-|                                                                 |
-| bpy.ops.import_scene.gltf(filepath=r\'{input_path}\')           |
-|                                                                 |
-| bpy.ops.export_scene.gltf(                                      |
-|                                                                 |
-| filepath=r\'{output_path}\',                                    |
-|                                                                 |
-| export_format=\'GLB\',                                          |
-|                                                                 |
-| export_draco_mesh_compression_enable=True,                      |
-|                                                                 |
-| export_draco_mesh_compression_level=6,                          |
-|                                                                 |
-| export_image_format=\'JPEG\',                                   |
-|                                                                 |
-| )                                                               |
-|                                                                 |
-| \'\'\'                                                          |
-|                                                                 |
-| result = subprocess.run(                                        |
-|                                                                 |
-| \[\'blender\', \'\--background\', \'\--python-expr\',           |
-| blender_script\],                                               |
-|                                                                 |
-| capture_output=True, text=True                                  |
-|                                                                 |
-| )                                                               |
-|                                                                 |
-| new_size = os.path.getsize(output_path) / (1024 \* 1024)        |
-|                                                                 |
-| print(f\' ✓ Compressed to {new_size:.1f}MB\')                   |
-|                                                                 |
-| if \_\_name\_\_ == \'\_\_main\_\_\':                            |
-|                                                                 |
-| models = glob.glob(os.path.join(FURNITURE_DIR, \'\*.glb\'))     |
-|                                                                 |
-| if not models:                                                  |
-|                                                                 |
-| print(\'No .glb files found in\', FURNITURE_DIR)                |
-|                                                                 |
-| sys.exit(1)                                                     |
-|                                                                 |
-| print(f\'Optimising {len(models)} models\...\')                 |
-|                                                                 |
-| for path in models:                                             |
-|                                                                 |
-| optimise_glb(path)                                              |
-|                                                                 |
-| print(\'Done!\')                                                |
-+-----------------------------------------------------------------+
-
-  -----------------------------------------------------------------
-  python3 scripts/optimise_glb.py
-
-  -----------------------------------------------------------------
-
-  ------- ------------------------------------------------------------
-   **4**  **Build the Room Calibration Screen**
-
-  ------- ------------------------------------------------------------
-
-The calibration screen is the bridge between a user\'s room photo and
-the 3D scene. The user marks the four corners of their room on the
-photo, and the app uses those points to construct the 3D box room
-geometry. This replaces unreliable automatic detection and works on 100%
-of room photos.
-
-Create the calibration screen:
-
-  -----------------------------------------------------------------
-  mkdir -p src/screens/main && code
-  src/screens/main/RoomCalibrationScreen.tsx
-
-  -----------------------------------------------------------------
-
-+-----------------------------------------------------------------+
-| import React, { useState, useRef, useCallback } from \'react\'; |
-|                                                                 |
-| import {                                                        |
-|                                                                 |
-| View, Text, StyleSheet, Dimensions, TouchableOpacity,           |
-|                                                                 |
-| Image, PanResponder, Alert, ScrollView                          |
-|                                                                 |
-| } from \'react-native\';                                        |
-|                                                                 |
-| import Svg, { Circle, Line, Polygon, Text as SvgText } from     |
-| \'react-native-svg\';                                           |
-|                                                                 |
-| import { useNavigation, useRoute } from                         |
-| \'@react-navigation/native\';                                   |
-|                                                                 |
-| import { supabase } from \'@cova/shared\';                      |
-|                                                                 |
-| import { useAppStore } from \'../../store\';                    |
-|                                                                 |
-| const { width: SW, height: SH } = Dimensions.get(\'window\');   |
-|                                                                 |
-| const IMAGE_PREVIEW_HEIGHT = SH \* 0.55;                        |
-|                                                                 |
-| type Corner = { x: number; y: number };                         |
-|                                                                 |
-| type CornerKey = \'tl\' \| \'tr\' \| \'bl\' \| \'br\';          |
-|                                                                 |
-| const CORNER_LABELS: Record\<CornerKey, string\> = {            |
-|                                                                 |
-| tl: \'Back-Left\',                                              |
-|                                                                 |
-| tr: \'Back-Right\',                                             |
-|                                                                 |
-| bl: \'Front-Left\',                                             |
-|                                                                 |
-| br: \'Front-Right\',                                            |
-|                                                                 |
-| };                                                              |
-|                                                                 |
-| // Initial corner positions as fraction of image (0--1)         |
-|                                                                 |
-| const DEFAULT_CORNERS: Record\<CornerKey, Corner\> = {          |
-|                                                                 |
-| tl: { x: 0.15, y: 0.20 },                                       |
-|                                                                 |
-| tr: { x: 0.85, y: 0.20 },                                       |
-|                                                                 |
-| bl: { x: 0.05, y: 0.80 },                                       |
-|                                                                 |
-| br: { x: 0.95, y: 0.80 },                                       |
-|                                                                 |
-| };                                                              |
-|                                                                 |
-| export function RoomCalibrationScreen() {                       |
-|                                                                 |
-| const navigation = useNavigation\<any\>();                      |
-|                                                                 |
-| const route = useRoute\<any\>();                                |
-|                                                                 |
-| const { room_id, image_url } = route.params;                    |
-|                                                                 |
-| const { user } = useAppStore();                                 |
-|                                                                 |
-| const \[corners, setCorners\] = useState\<Record\<CornerKey,    |
-| Corner\>\>(DEFAULT_CORNERS);                                    |
-|                                                                 |
-| const \[activeCorner, setActive\] = useState\<CornerKey \|      |
-| null\>(null);                                                   |
-|                                                                 |
-| const \[dimensions, setDims\] = useState({ w: 14, d: 12, h: 9   |
-| }); // feet                                                     |
-|                                                                 |
-| const \[saving, setSaving\] = useState(false);                  |
-|                                                                 |
-| const containerRef = useRef\<View\>(null);                      |
-|                                                                 |
-| const containerLayout = useRef({ x: 0, y: 0, width: SW, height: |
-| IMAGE_PREVIEW_HEIGHT });                                        |
-|                                                                 |
-| // Convert fractional corner to pixel coords                    |
-|                                                                 |
-| const toPixel = (c: Corner) =\> ({                              |
-|                                                                 |
-| x: c.x \* containerLayout.current.width,                        |
-|                                                                 |
-| y: c.y \* containerLayout.current.height,                       |
-|                                                                 |
-| });                                                             |
-|                                                                 |
-| // Convert pixel touch to fractional corner                     |
-|                                                                 |
-| const toFraction = (px: number, py: number): Corner =\> ({      |
-|                                                                 |
-| x: Math.max(0, Math.min(1, px /                                 |
-| containerLayout.current.width)),                                |
-|                                                                 |
-| y: Math.max(0, Math.min(1, py /                                 |
-| containerLayout.current.height)),                               |
-|                                                                 |
-| });                                                             |
-|                                                                 |
-| // Find which corner is closest to a touch point                |
-|                                                                 |
-| const findClosestCorner = (tx: number, ty: number): CornerKey   |
-| =\> {                                                           |
-|                                                                 |
-| let best: CornerKey = \'tl\';                                   |
-|                                                                 |
-| let bestDist = Infinity;                                        |
-|                                                                 |
-| (Object.keys(corners) as CornerKey\[\]).forEach(k =\> {         |
-|                                                                 |
-| const p = toPixel(corners\[k\]);                                |
-|                                                                 |
-| const d = Math.hypot(tx - p.x, ty - p.y);                       |
-|                                                                 |
-| if (d \< bestDist) { bestDist = d; best = k; }                  |
-|                                                                 |
-| });                                                             |
-|                                                                 |
-| return best;                                                    |
-|                                                                 |
-| };                                                              |
-|                                                                 |
-| const panResponder = PanResponder.create({                      |
-|                                                                 |
-| onStartShouldSetPanResponder: () =\> true,                      |
-|                                                                 |
-| onMoveShouldSetPanResponder: () =\> true,                       |
-|                                                                 |
-| onPanResponderGrant: (e) =\> {                                  |
-|                                                                 |
-| const { locationX, locationY } = e.nativeEvent;                 |
-|                                                                 |
-| const closest = findClosestCorner(locationX, locationY);        |
-|                                                                 |
-| setActive(closest);                                             |
-|                                                                 |
-| },                                                              |
-|                                                                 |
-| onPanResponderMove: (e) =\> {                                   |
-|                                                                 |
-| if (!activeCorner) return;                                      |
-|                                                                 |
-| const { locationX, locationY } = e.nativeEvent;                 |
-|                                                                 |
-| setCorners(prev =\> ({                                          |
-|                                                                 |
-| \...prev,                                                       |
-|                                                                 |
-| \[activeCorner\]: toFraction(locationX, locationY),             |
-|                                                                 |
-| }));                                                            |
-|                                                                 |
-| },                                                              |
-|                                                                 |
-| onPanResponderRelease: () =\> setActive(null),                  |
-|                                                                 |
-| });                                                             |
-|                                                                 |
-| const saveCalibration = async () =\> {                          |
-|                                                                 |
-| setSaving(true);                                                |
-|                                                                 |
-| try {                                                           |
-|                                                                 |
-| const { width: iw, height: ih } = containerLayout.current;      |
-|                                                                 |
-| const calibration_data = {                                      |
-|                                                                 |
-| corner_tl: corners.tl,                                          |
-|                                                                 |
-| corner_tr: corners.tr,                                          |
-|                                                                 |
-| corner_bl: corners.bl,                                          |
-|                                                                 |
-| corner_br: corners.br,                                          |
-|                                                                 |
-| floor_line_y: (corners.bl.y + corners.br.y) / 2,                |
-|                                                                 |
-| image_width: iw,                                                |
-|                                                                 |
-| image_height: ih,                                               |
-|                                                                 |
-| };                                                              |
-|                                                                 |
-| const room_dimensions = {                                       |
-|                                                                 |
-| width_ft: dimensions.w,                                         |
-|                                                                 |
-| depth_ft: dimensions.d,                                         |
-|                                                                 |
-| height_ft: dimensions.h,                                        |
-|                                                                 |
-| };                                                              |
-|                                                                 |
-| const { error } = await supabase                                |
-|                                                                 |
-| .from(\'rooms\')                                                |
-|                                                                 |
-| .update({ calibration_data, room_dimensions })                  |
-|                                                                 |
-| .eq(\'id\', room_id);                                           |
-|                                                                 |
-| if (error) throw error;                                         |
-|                                                                 |
-| navigation.navigate(\'RoomViewer3D\', { room_id, image_url });  |
-|                                                                 |
-| } catch (e: any) {                                              |
-|                                                                 |
-| Alert.alert(\'Error\', e.message);                              |
-|                                                                 |
-| } finally {                                                     |
-|                                                                 |
-| setSaving(false);                                               |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| };                                                              |
-|                                                                 |
-| // Build SVG overlay showing corner handles and the room        |
-| outline                                                         |
-|                                                                 |
-| const { width: cw, height: ch } = containerLayout.current;      |
-|                                                                 |
-| const pts = {                                                   |
-|                                                                 |
-| tl: toPixel(corners.tl),                                        |
-|                                                                 |
-| tr: toPixel(corners.tr),                                        |
-|                                                                 |
-| bl: toPixel(corners.bl),                                        |
-|                                                                 |
-| br: toPixel(corners.br),                                        |
-|                                                                 |
-| };                                                              |
-|                                                                 |
-| const polygonPoints = \`\${pts.tl.x},\${pts.tl.y}               |
-| \${pts.tr.x},\${pts.tr.y} \${pts.br.x},\${pts.br.y}             |
-| \${pts.bl.x},\${pts.bl.y}\`;                                    |
-|                                                                 |
-| return (                                                        |
-|                                                                 |
-| \<ScrollView style={s.container} scrollEnabled={false}\>        |
-|                                                                 |
-| \<Text style={s.title}\>Mark Your Room Corners\</Text\>         |
-|                                                                 |
-| \<Text style={s.subtitle}\>Drag the handles to the four corners |
-| of your room\'s walls\</Text\>                                  |
-|                                                                 |
-| {/\* Photo + SVG overlay \*/}                                   |
-|                                                                 |
-| \<View                                                          |
-|                                                                 |
-| ref={containerRef}                                              |
-|                                                                 |
-| style={\[s.imageContainer, { height: IMAGE_PREVIEW_HEIGHT }\]}  |
-|                                                                 |
-| onLayout={e =\> {                                               |
-|                                                                 |
-| containerLayout.current = {                                     |
-|                                                                 |
-| x: e.nativeEvent.layout.x, y: e.nativeEvent.layout.y,           |
-|                                                                 |
-| width: e.nativeEvent.layout.width, height:                      |
-| e.nativeEvent.layout.height,                                    |
-|                                                                 |
-| };                                                              |
-|                                                                 |
-| }}                                                              |
-|                                                                 |
-| {\...panResponder.panHandlers}                                  |
-|                                                                 |
-| \>                                                              |
-|                                                                 |
-| \<Image source={{ uri: image_url }} style={s.image}             |
-| resizeMode=\'cover\' /\>                                        |
-|                                                                 |
-| \<Svg style={StyleSheet.absoluteFill} width={cw} height={ch}\>  |
-|                                                                 |
-| {/\* Room outline polygon \*/}                                  |
-|                                                                 |
-| \<Polygon                                                       |
-|                                                                 |
-| points={polygonPoints}                                          |
-|                                                                 |
-| fill=\'rgba(201,168,76,0.15)\'                                  |
-|                                                                 |
-| stroke=\'#C9A84C\'                                              |
-|                                                                 |
-| strokeWidth={2}                                                 |
-|                                                                 |
-| strokeDasharray=\'8,4\'                                         |
-|                                                                 |
-| /\>                                                             |
-|                                                                 |
-| {/\* Edge lines \*/}                                            |
-|                                                                 |
-| {(\[\'tl\',\'tr\'\] as CornerKey\[\]).map(k =\> (               |
-|                                                                 |
-| \<Line key={k}                                                  |
-|                                                                 |
-| x1={pts\[k\].x} y1={pts\[k\].y}                                 |
-|                                                                 |
-| x2={k===\'tl\'?pts.bl.x:pts.br.x}                               |
-|                                                                 |
-| y2={k===\'tl\'?pts.bl.y:pts.br.y}                               |
-|                                                                 |
-| stroke=\'#C9A84C\' strokeWidth={1.5} opacity={0.6}              |
-|                                                                 |
-| /\>                                                             |
-|                                                                 |
-| ))}                                                             |
-|                                                                 |
-| {/\* Corner handle circles \*/}                                 |
-|                                                                 |
-| {(Object.keys(corners) as CornerKey\[\]).map(k =\> (            |
-|                                                                 |
-| \<React.Fragment key={k}\>                                      |
-|                                                                 |
-| \<Circle                                                        |
-|                                                                 |
-| cx={toPixel(corners\[k\]).x} cy={toPixel(corners\[k\]).y}       |
-|                                                                 |
-| r={activeCorner===k ? 22 : 16}                                  |
-|                                                                 |
-| fill={activeCorner===k ? \'#C9A84C\' :                          |
-| \'rgba(201,168,76,0.8)\'}                                       |
-|                                                                 |
-| stroke=\'white\' strokeWidth={2}                                |
-|                                                                 |
-| /\>                                                             |
-|                                                                 |
-| \<SvgText                                                       |
-|                                                                 |
-| x={toPixel(corners\[k\]).x} y={toPixel(corners\[k\]).y + 5}     |
-|                                                                 |
-| fill=\'white\' fontSize={10} fontWeight=\'bold\'                |
-| textAnchor=\'middle\'                                           |
-|                                                                 |
-| \>{CORNER_LABELS\[k\].split(\'-\')\[0\]\[0\] +                  |
-| CORNER_LABELS\[k\].split(\'-\')\[1\]\[0\]}                      |
-|                                                                 |
-| \</SvgText\>                                                    |
-|                                                                 |
-| \</React.Fragment\>                                             |
-|                                                                 |
-| ))}                                                             |
-|                                                                 |
-| \</Svg\>                                                        |
-|                                                                 |
-| \</View\>                                                       |
-|                                                                 |
-| {/\* Dimension inputs \*/}                                      |
-|                                                                 |
-| \<View style={s.dimsRow}\>                                      |
-|                                                                 |
-| \<Text style={s.dimsLabel}\>Room size (approx. ft):\</Text\>    |
-|                                                                 |
-| {(\[\[\'Width\', \'w\'\], \[\'Depth\', \'d\'\], \[\'Height\',   |
-| \'h\'\]\] as \[string,keyof typeof                              |
-| dimensions\]\[\]).map((\[label, key\]) =\> (                    |
-|                                                                 |
-| \<View key={key} style={s.dimItem}\>                            |
-|                                                                 |
-| \<Text style={s.dimLabel}\>{label}\</Text\>                     |
-|                                                                 |
-| \<View style={s.dimButtons}\>                                   |
-|                                                                 |
-| \<TouchableOpacity style={s.dimBtn} onPress={() =\> setDims(d   |
-| =\> ({\...d, \[key\]: Math.max(6, d\[key\]-1)}))}\>             |
-|                                                                 |
-| \<Text style={s.dimBtnText}\>−\</Text\>                         |
-|                                                                 |
-| \</TouchableOpacity\>                                           |
-|                                                                 |
-| \<Text style={s.dimValue}\>{dimensions\[key\]}\'\</Text\>       |
-|                                                                 |
-| \<TouchableOpacity style={s.dimBtn} onPress={() =\> setDims(d   |
-| =\> ({\...d, \[key\]: Math.min(40, d\[key\]+1)}))}\>            |
-|                                                                 |
-| \<Text style={s.dimBtnText}\>+\</Text\>                         |
-|                                                                 |
-| \</TouchableOpacity\>                                           |
-|                                                                 |
-| \</View\>                                                       |
-|                                                                 |
-| \</View\>                                                       |
-|                                                                 |
-| ))}                                                             |
-|                                                                 |
-| \</View\>                                                       |
-|                                                                 |
-| \<TouchableOpacity style={s.cta} onPress={saveCalibration}      |
-| disabled={saving}\>                                             |
-|                                                                 |
-| \<Text style={s.ctaText}\>{saving ? \'Saving...\' : \'View My   |
-| Room in 3D →\'}\</Text\>                                        |
-|                                                                 |
-| \</TouchableOpacity\>                                           |
-|                                                                 |
-| \</ScrollView\>                                                 |
-|                                                                 |
-| );                                                              |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| const s = StyleSheet.create({                                   |
-|                                                                 |
-| container: { flex: 1, backgroundColor: \'#0B1729\' },           |
-|                                                                 |
-| title: { color: \'#FAF7F2\', fontSize: 22, fontWeight: \'700\', |
-| textAlign: \'center\', marginTop: 24, marginHorizontal: 20 },   |
-|                                                                 |
-| subtitle: { color: \'#8A8070\', fontSize: 14, textAlign:        |
-| \'center\', marginBottom: 16, marginHorizontal: 20 },           |
-|                                                                 |
-| imageContainer:{ position: \'relative\', backgroundColor:       |
-| \'#000\', overflow: \'hidden\' },                               |
-|                                                                 |
-| image: { width: \'100%\', height: \'100%\' },                   |
-|                                                                 |
-| dimsRow: { flexDirection: \'row\', alignItems: \'center\',      |
-| padding: 16, gap: 12, flexWrap: \'wrap\' },                     |
-|                                                                 |
-| dimsLabel: { color: \'#C9A84C\', fontSize: 13, fontWeight:      |
-| \'700\', width: \'100%\' },                                     |
-|                                                                 |
-| dimItem: { flex: 1, alignItems: \'center\' },                   |
-|                                                                 |
-| dimLabel: { color: \'#8A8070\', fontSize: 12, marginBottom: 4   |
-| },                                                              |
-|                                                                 |
-| dimButtons: { flexDirection: \'row\', alignItems: \'center\',   |
-| gap: 8 },                                                       |
-|                                                                 |
-| dimBtn: { width: 32, height: 32, borderRadius: 16,              |
-| backgroundColor: \'rgba(201,168,76,0.2)\', alignItems:          |
-| \'center\', justifyContent: \'center\' },                       |
-|                                                                 |
-| dimBtnText: { color: \'#C9A84C\', fontSize: 18, fontWeight:     |
-| \'700\' },                                                      |
-|                                                                 |
-| dimValue: { color: \'#FAF7F2\', fontSize: 16, fontWeight:       |
-| \'700\', minWidth: 30, textAlign: \'center\' },                 |
-|                                                                 |
-| cta: { margin: 20, backgroundColor: \'#C9A84C\', borderRadius:  |
-| 12, padding: 16, alignItems: \'center\' },                      |
-|                                                                 |
-| ctaText: { color: \'#0B1729\', fontSize: 18, fontWeight:        |
-| \'900\' },                                                      |
-|                                                                 |
-| });                                                             |
-+-----------------------------------------------------------------+
-
-  ------- ------------------------------------------------------------
-   **5**  **Build the 3D BoxRoom component**
-
-  ------- ------------------------------------------------------------
-
-The BoxRoom component creates the 3D room geometry from the calibration
-data. It renders six planes (four walls, floor, ceiling) with
-style-specific materials. This is what the user sees when they enter the
-3D viewer.
-
-  -----------------------------------------------------------------
-  mkdir -p src/components/3d && code src/components/3d/BoxRoom.tsx
-
-  -----------------------------------------------------------------
-
-+-----------------------------------------------------------------+
-| import React, { useMemo } from \'react\';                       |
-|                                                                 |
-| import { useLoader } from \'@react-three/fiber/native\';        |
-|                                                                 |
-| import \* as THREE from \'three\';                              |
-|                                                                 |
-| import { CavaStyle, RoomDimensions } from \'@cova/shared\';     |
-|                                                                 |
-| import { STYLE_COLORS } from \'../../data/furnitureCatalog\';   |
-|                                                                 |
-| interface BoxRoomProps {                                        |
-|                                                                 |
-| style: CavaStyle;                                               |
-|                                                                 |
-| dimensions: RoomDimensions;                                     |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| // Convert feet to Three.js units (1 unit = 1 metre, \~3.28 ft) |
-|                                                                 |
-| const ftToM = (ft: number) =\> ft \* 0.3048;                    |
-|                                                                 |
-| export function BoxRoom({ style, dimensions }: BoxRoomProps) {  |
-|                                                                 |
-| const colors = STYLE_COLORS\[style\];                           |
-|                                                                 |
-| const w = ftToM(dimensions.width_ft);                           |
-|                                                                 |
-| const d = ftToM(dimensions.depth_ft);                           |
-|                                                                 |
-| const h = ftToM(dimensions.height_ft);                          |
-|                                                                 |
-| const wallMat = useMemo(() =\> new THREE.MeshStandardMaterial({ |
-| color: colors.wall, side: THREE.BackSide, roughness: 0.9,       |
-| metalness: 0.0 }), \[colors.wall\]);                            |
-|                                                                 |
-| const floorMat = useMemo(() =\> new                             |
-| THREE.MeshStandardMaterial({ color: colors.floor, roughness:    |
-| 0.8, metalness: 0.05 }), \[colors.floor\]);                     |
-|                                                                 |
-| const ceilMat = useMemo(() =\> new THREE.MeshStandardMaterial({ |
-| color: colors.ceiling, side: THREE.BackSide, roughness: 0.95,   |
-| metalness: 0.0 }), \[colors.ceiling\]);                         |
-|                                                                 |
-| return (                                                        |
-|                                                                 |
-| \<group\>                                                       |
-|                                                                 |
-| {/\* Floor \*/}                                                 |
-|                                                                 |
-| \<mesh rotation={\[-Math.PI / 2, 0, 0\]} position={\[0, 0, 0\]} |
-| receiveShadow\>                                                 |
-|                                                                 |
-| \<planeGeometry args={\[w, d\]} /\>                             |
-|                                                                 |
-| \<primitive object={floorMat} /\>                               |
-|                                                                 |
-| \</mesh\>                                                       |
-|                                                                 |
-| {/\* Ceiling \*/}                                               |
-|                                                                 |
-| \<mesh rotation={\[Math.PI / 2, 0, 0\]} position={\[0, h,       |
-| 0\]}\>                                                          |
-|                                                                 |
-| \<planeGeometry args={\[w, d\]} /\>                             |
-|                                                                 |
-| \<primitive object={ceilMat} /\>                                |
-|                                                                 |
-| \</mesh\>                                                       |
-|                                                                 |
-| {/\* Back wall \*/}                                             |
-|                                                                 |
-| \<mesh position={\[0, h / 2, -d / 2\]} receiveShadow\>          |
-|                                                                 |
-| \<planeGeometry args={\[w, h\]} /\>                             |
-|                                                                 |
-| \<primitive object={wallMat} /\>                                |
-|                                                                 |
-| \</mesh\>                                                       |
-|                                                                 |
-| {/\* Front wall (behind camera --- helps with ambient light)    |
-| \*/}                                                            |
-|                                                                 |
-| \<mesh position={\[0, h / 2, d / 2\]} rotation={\[0, Math.PI,   |
-| 0\]}\>                                                          |
-|                                                                 |
-| \<planeGeometry args={\[w, h\]} /\>                             |
-|                                                                 |
-| \<primitive object={wallMat} /\>                                |
-|                                                                 |
-| \</mesh\>                                                       |
-|                                                                 |
-| {/\* Left wall \*/}                                             |
-|                                                                 |
-| \<mesh position={\[-w / 2, h / 2, 0\]} rotation={\[0, Math.PI / |
-| 2, 0\]} receiveShadow\>                                         |
-|                                                                 |
-| \<planeGeometry args={\[d, h\]} /\>                             |
-|                                                                 |
-| \<primitive object={wallMat} /\>                                |
-|                                                                 |
-| \</mesh\>                                                       |
-|                                                                 |
-| {/\* Right wall \*/}                                            |
-|                                                                 |
-| \<mesh position={\[w / 2, h / 2, 0\]} rotation={\[0, -Math.PI / |
-| 2, 0\]} receiveShadow\>                                         |
-|                                                                 |
-| \<planeGeometry args={\[d, h\]} /\>                             |
-|                                                                 |
-| \<primitive object={wallMat} /\>                                |
-|                                                                 |
-| \</mesh\>                                                       |
-|                                                                 |
-| {/\* Baseboard trim --- thin dark strip along floor-wall        |
-| intersections \*/}                                              |
-|                                                                 |
-| {\[                                                             |
-|                                                                 |
-| { pos: \[0, 0.04, -d/2 + 0.01\] as \[number,number,number\],    |
-| size: \[w, 0.08, 0.015\] as \[number,number,number\] },         |
-|                                                                 |
-| { pos: \[-w/2+0.01, 0.04, 0\] as \[number,number,number\],      |
-| size: \[0.015, 0.08, d\] as \[number,number,number\], rot: true |
-| },                                                              |
-|                                                                 |
-| { pos: \[w/2-0.01, 0.04, 0\] as \[number,number,number\], size: |
-| \[0.015, 0.08, d\] as \[number,number,number\] },               |
-|                                                                 |
-| \].map((t, i) =\> (                                             |
-|                                                                 |
-| \<mesh key={i} position={t.pos} castShadow\>                    |
-|                                                                 |
-| \<boxGeometry args={t.size} /\>                                 |
-|                                                                 |
-| \<meshStandardMaterial color={colors.accent} roughness={0.3}    |
-| /\>                                                             |
-|                                                                 |
-| \</mesh\>                                                       |
-|                                                                 |
-| ))}                                                             |
-|                                                                 |
-| \</group\>                                                      |
-|                                                                 |
-| );                                                              |
-|                                                                 |
-| }                                                               |
-+-----------------------------------------------------------------+
-
-  ------- ------------------------------------------------------------
-   **6**  **Build the FurniturePiece component --- loads and renders a
-          single .glb model**
-
-  ------- ------------------------------------------------------------
-
-  -----------------------------------------------------------------
-  code src/components/3d/FurniturePiece.tsx
-
-  -----------------------------------------------------------------
-
-+-----------------------------------------------------------------+
-| import React, { useRef, useState, Suspense, useEffect } from    |
-| \'react\';                                                      |
-|                                                                 |
-| import { useFrame, useThree } from                              |
-| \'@react-three/fiber/native\';                                  |
-|                                                                 |
-| import { useGLTF } from \'@react-three/drei/native\';           |
-|                                                                 |
-| import \* as THREE from \'three\';                              |
-|                                                                 |
-| import { PlacedFurniture, FurnitureCatalogItem } from           |
-| \'@cova/shared\';                                               |
-|                                                                 |
-| interface FurniturePieceProps {                                 |
-|                                                                 |
-| piece: PlacedFurniture;                                         |
-|                                                                 |
-| catalog: FurnitureCatalogItem;                                  |
-|                                                                 |
-| isSelected: boolean;                                            |
-|                                                                 |
-| onSelect: (id: string) =\> void;                                |
-|                                                                 |
-| onDragEnd: (id: string, newPosition: \[number,number,number\])  |
-| =\> void;                                                       |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| function FurnitureModel({ catalog, isSelected }: { catalog:     |
-| FurnitureCatalogItem; isSelected: boolean }) {                  |
-|                                                                 |
-| const { scene } = useGLTF(catalog.model_path);                  |
-|                                                                 |
-| // Apply selection highlight --- golden emission on all meshes  |
-|                                                                 |
-| useEffect(() =\> {                                              |
-|                                                                 |
-| scene.traverse((node) =\> {                                     |
-|                                                                 |
-| if ((node as THREE.Mesh).isMesh) {                              |
-|                                                                 |
-| const mesh = node as THREE.Mesh;                                |
-|                                                                 |
-| const mat = mesh.material as THREE.MeshStandardMaterial;        |
-|                                                                 |
-| if (isSelected) {                                               |
-|                                                                 |
-| mat.emissive = new THREE.Color(\'#C9A84C\');                    |
-|                                                                 |
-| mat.emissiveIntensity = 0.3;                                    |
-|                                                                 |
-| } else {                                                        |
-|                                                                 |
-| mat.emissive = new THREE.Color(\'#000000\');                    |
-|                                                                 |
-| mat.emissiveIntensity = 0;                                      |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| mat.needsUpdate = true;                                         |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| });                                                             |
-|                                                                 |
-| }, \[isSelected, scene\]);                                      |
-|                                                                 |
-| return \<primitive object={scene} castShadow receiveShadow /\>; |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| export function FurniturePiece({ piece, catalog, isSelected,    |
-| onSelect, onDragEnd }: FurniturePieceProps) {                   |
-|                                                                 |
-| const groupRef = useRef\<THREE.Group\>(null);                   |
-|                                                                 |
-| const \[isDragging, setDragging\] = useState(false);            |
-|                                                                 |
-| const dragPlane = useRef(new THREE.Plane(new THREE.Vector3(0,   |
-| 1, 0), 0));                                                     |
-|                                                                 |
-| const { camera, raycaster, size } = useThree();                 |
-|                                                                 |
-| const handlePointerDown = (e: any) =\> {                        |
-|                                                                 |
-| e.stopPropagation();                                            |
-|                                                                 |
-| onSelect(piece.id);                                             |
-|                                                                 |
-| setDragging(true);                                              |
-|                                                                 |
-| };                                                              |
-|                                                                 |
-| const handlePointerUp = (e: any) =\> {                          |
-|                                                                 |
-| if (isDragging && groupRef.current) {                           |
-|                                                                 |
-| const pos = groupRef.current.position;                          |
-|                                                                 |
-| onDragEnd(piece.id, \[pos.x, pos.y, pos.z\]);                   |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| setDragging(false);                                             |
-|                                                                 |
-| };                                                              |
-|                                                                 |
-| const handlePointerMove = (e: any) =\> {                        |
-|                                                                 |
-| if (!isDragging \|\| !groupRef.current) return;                 |
-|                                                                 |
-| // Project touch ray onto floor plane (y=0)                     |
-|                                                                 |
-| const intersection = new THREE.Vector3();                       |
-|                                                                 |
-| raycaster.ray.intersectPlane(dragPlane.current, intersection);  |
-|                                                                 |
-| if (intersection) {                                             |
-|                                                                 |
-| groupRef.current.position.x = intersection.x;                   |
-|                                                                 |
-| groupRef.current.position.z = intersection.z;                   |
-|                                                                 |
-| // Keep y at 0 --- furniture sits on the floor                  |
-|                                                                 |
-| groupRef.current.position.y = 0;                                |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| };                                                              |
-|                                                                 |
-| return (                                                        |
-|                                                                 |
-| \<group                                                         |
-|                                                                 |
-| ref={groupRef}                                                  |
-|                                                                 |
-| position={piece.position}                                       |
-|                                                                 |
-| rotation={\[0, piece.rotation_y, 0\]}                           |
-|                                                                 |
-| onPointerDown={handlePointerDown}                               |
-|                                                                 |
-| onPointerUp={handlePointerUp}                                   |
-|                                                                 |
-| onPointerMove={handlePointerMove}                               |
-|                                                                 |
-| \>                                                              |
-|                                                                 |
-| \<Suspense fallback={null}\>                                    |
-|                                                                 |
-| \<FurnitureModel catalog={catalog} isSelected={isSelected} /\>  |
-|                                                                 |
-| \</Suspense\>                                                   |
-|                                                                 |
-| {/\* Selection bounding box outline \*/}                        |
-|                                                                 |
-| {isSelected && (                                                |
-|                                                                 |
-| \<mesh\>                                                        |
-|                                                                 |
-| \<boxGeometry args={\[catalog.dimensions.w + 0.1,               |
-| catalog.dimensions.h + 0.1, catalog.dimensions.d + 0.1\]} /\>   |
-|                                                                 |
-| \<meshBasicMaterial color=\'#C9A84C\' wireframe transparent     |
-| opacity={0.4} /\>                                               |
-|                                                                 |
-| \</mesh\>                                                       |
-|                                                                 |
-| )}                                                              |
-|                                                                 |
-| \</group\>                                                      |
-|                                                                 |
-| );                                                              |
-|                                                                 |
-| }                                                               |
-+-----------------------------------------------------------------+
-
-  ------- ------------------------------------------------------------
-   **7**  **Build scene lighting --- SceneLighting component**
-
-  ------- ------------------------------------------------------------
-
-Lighting is what makes the 3D scene look photorealistic rather than
-flat. Each style has a distinct lighting mood.
-
-  -----------------------------------------------------------------
-  code src/components/3d/SceneLighting.tsx
-
-  -----------------------------------------------------------------
-
-+-----------------------------------------------------------------+
-| import React from \'react\';                                    |
-|                                                                 |
-| import { CavaStyle } from \'@cova/shared\';                     |
-|                                                                 |
-| const STYLE_LIGHTING: Record\<CavaStyle, {                      |
-|                                                                 |
-| ambient: number;                                                |
-|                                                                 |
-| ambientColor: string;                                           |
-|                                                                 |
-| dirColor: string;                                               |
-|                                                                 |
-| dirIntensity: number;                                           |
-|                                                                 |
-| dirPosition: \[number, number, number\];                        |
-|                                                                 |
-| pointColor: string;                                             |
-|                                                                 |
-| pointIntensity: number;                                         |
-|                                                                 |
-| }\> = {                                                         |
-|                                                                 |
-| japandi: { ambient: 0.6, ambientColor: \'#FFF8F0\', dirColor:   |
-| \'#FFF5E0\', dirIntensity: 1.2, dirPosition: \[4, 6, 3\],       |
-| pointColor: \'#FFE0A0\', pointIntensity: 0.4 },                 |
-|                                                                 |
-| midcentury: { ambient: 0.5, ambientColor: \'#FFF0E0\',          |
-| dirColor: \'#FFD080\', dirIntensity: 1.5, dirPosition: \[3, 5,  |
-| 2\], pointColor: \'#FF8C00\', pointIntensity: 0.6 },            |
-|                                                                 |
-| coastal: { ambient: 0.8, ambientColor: \'#E8F4FF\', dirColor:   |
-| \'#FFFFFF\', dirIntensity: 1.4, dirPosition: \[5, 8, 4\],       |
-| pointColor: \'#B0D8F0\', pointIntensity: 0.3 },                 |
-|                                                                 |
-| industrial: { ambient: 0.3, ambientColor: \'#D0C8C0\',          |
-| dirColor: \'#FFA040\', dirIntensity: 0.8, dirPosition: \[2, 4,  |
-| 1\], pointColor: \'#FF6020\', pointIntensity: 0.8 },            |
-|                                                                 |
-| bohemian: { ambient: 0.55, ambientColor: \'#FFE8D0\', dirColor: |
-| \'#FF9040\', dirIntensity: 1.0, dirPosition: \[3, 5, 2\],       |
-| pointColor: \'#FF4080\', pointIntensity: 0.5 },                 |
-|                                                                 |
-| };                                                              |
-|                                                                 |
-| interface Props { style: CavaStyle; }                           |
-|                                                                 |
-| export function SceneLighting({ style }: Props) {               |
-|                                                                 |
-| const L = STYLE_LIGHTING\[style\];                              |
-|                                                                 |
-| return (                                                        |
-|                                                                 |
-| \<\>                                                            |
-|                                                                 |
-| \<ambientLight intensity={L.ambient} color={L.ambientColor} /\> |
-|                                                                 |
-| \<directionalLight                                              |
-|                                                                 |
-| position={L.dirPosition} color={L.dirColor}                     |
-| intensity={L.dirIntensity}                                      |
-|                                                                 |
-| castShadow shadow-mapSize={\[1024, 1024\]}                      |
-|                                                                 |
-| shadow-camera-far={20} shadow-camera-near={0.1}                 |
-|                                                                 |
-| shadow-camera-left={-8} shadow-camera-right={8}                 |
-|                                                                 |
-| shadow-camera-top={8} shadow-camera-bottom={-8}                 |
-|                                                                 |
-| /\>                                                             |
-|                                                                 |
-| \<pointLight position={\[-3, 2.5, 2\]} color={L.pointColor}     |
-| intensity={L.pointIntensity} /\>                                |
-|                                                                 |
-| \</\>                                                           |
-|                                                                 |
-| );                                                              |
-|                                                                 |
-| }                                                               |
-+-----------------------------------------------------------------+
-
-  ------- ------------------------------------------------------------
-   **8**  **Build the RoomViewer3D Screen --- the main 3D experience**
-
-  ------- ------------------------------------------------------------
-
-This is the primary screen users see after calibration. It composes
-BoxRoom, FurniturePiece, SceneLighting, and controls into a full
-interactive 3D room experience with style switching and screenshot
-export.
-
-  -----------------------------------------------------------------
-  code src/screens/main/RoomViewer3DScreen.tsx
-
-  -----------------------------------------------------------------
-
-+-----------------------------------------------------------------+
-| import React, { useState, useRef, useCallback, Suspense } from  |
-| \'react\';                                                      |
-|                                                                 |
-| import { View, Text, TouchableOpacity, StyleSheet, ScrollView,  |
-| ActivityIndicator, Alert } from \'react-native\';               |
-|                                                                 |
-| import { Canvas } from \'@react-three/fiber/native\';           |
-|                                                                 |
-| import { OrbitControls } from \'@react-three/drei/native\';     |
-|                                                                 |
-| import ViewShot from \'react-native-view-shot\';                |
-|                                                                 |
-| import \* as MediaLibrary from \'expo-media-library\';          |
-|                                                                 |
-| import { useRoute } from \'@react-navigation/native\';          |
-|                                                                 |
-| import { supabase } from \'@cova/shared\';                      |
-|                                                                 |
-| import type { CavaStyle, PlacedFurniture, RoomDimensions } from |
-| \'@cova/shared\';                                               |
-|                                                                 |
-| import { BoxRoom } from \'../../components/3d/BoxRoom\';        |
-|                                                                 |
-| import { FurniturePiece } from                                  |
-| \'../../components/3d/FurniturePiece\';                         |
-|                                                                 |
-| import { SceneLighting } from                                   |
-| \'../../components/3d/SceneLighting\';                          |
-|                                                                 |
-| import { FURNITURE_CATALOG, STYLE_DEFAULT_FURNITURE } from      |
-| \'../../data/furnitureCatalog\';                                |
-|                                                                 |
-| import { useAppStore } from \'../../store\';                    |
-|                                                                 |
-| const STYLES: { key: CavaStyle; label: string; emoji: string    |
-| }\[\] = \[                                                      |
-|                                                                 |
-| { key: \'japandi\', label: \'Japandi\', emoji: \'🌿\' },        |
-|                                                                 |
-| { key: \'midcentury\', label: \'Mid-Century\', emoji: \'🪑\' }, |
-|                                                                 |
-| { key: \'coastal\', label: \'Coastal\', emoji: \'🌊\' },        |
-|                                                                 |
-| { key: \'industrial\', label: \'Industrial\', emoji: \'⚙️\' },  |
-|                                                                 |
-| { key: \'bohemian\', label: \'Bohemian\', emoji: \'🪬\' },      |
-|                                                                 |
-| \];                                                             |
-|                                                                 |
-| function buildDefaultFurniture(style: CavaStyle):               |
-| PlacedFurniture\[\] {                                           |
-|                                                                 |
-| return STYLE_DEFAULT_FURNITURE\[style\].map(key =\> {           |
-|                                                                 |
-| const cat = FURNITURE_CATALOG\[key\];                           |
-|                                                                 |
-| return {                                                        |
-|                                                                 |
-| id: \`\${style}\_\${key}\`,                                     |
-|                                                                 |
-| model_key: key,                                                 |
-|                                                                 |
-| position: cat.default_position,                                 |
-|                                                                 |
-| rotation_y: cat.default_rotation_y,                             |
-|                                                                 |
-| style,                                                          |
-|                                                                 |
-| };                                                              |
-|                                                                 |
-| });                                                             |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| export function RoomViewer3DScreen() {                          |
-|                                                                 |
-| const route = useRoute\<any\>();                                |
-|                                                                 |
-| const { room_id, image_url } = route.params;                    |
-|                                                                 |
-| const { user } = useAppStore();                                 |
-|                                                                 |
-| const \[style, setStyle\] = useState\<CavaStyle\>(\'japandi\'); |
-|                                                                 |
-| const \[furniture, setFurniture\] =                             |
-| useState\<PlacedFurniture\[\]\>(() =\>                          |
-| buildDefaultFurniture(\'japandi\'));                            |
-|                                                                 |
-| const \[selectedId, setSelectedId\] = useState\<string \|       |
-| null\>(null);                                                   |
-|                                                                 |
-| const \[dimensions\] = useState\<RoomDimensions\>({ width_ft:   |
-| 14, depth_ft: 12, height_ft: 9 });                              |
-|                                                                 |
-| const \[saving, setSaving\] = useState(false);                  |
-|                                                                 |
-| const viewShotRef = useRef\<ViewShot\>(null);                   |
-|                                                                 |
-| const switchStyle = useCallback((newStyle: CavaStyle) =\> {     |
-|                                                                 |
-| setStyle(newStyle);                                             |
-|                                                                 |
-| setFurniture(buildDefaultFurniture(newStyle));                  |
-|                                                                 |
-| setSelectedId(null);                                            |
-|                                                                 |
-| }, \[\]);                                                       |
-|                                                                 |
-| const handleDragEnd = useCallback((id: string, newPos:          |
-| \[number,number,number\]) =\> {                                 |
-|                                                                 |
-| setFurniture(prev =\> prev.map(p =\> p.id === id ? { \...p,     |
-| position: newPos } : p));                                       |
-|                                                                 |
-| }, \[\]);                                                       |
-|                                                                 |
-| const handleCapture = async () =\> {                            |
-|                                                                 |
-| try {                                                           |
-|                                                                 |
-| setSaving(true);                                                |
-|                                                                 |
-| const { status } = await                                        |
-| MediaLibrary.requestPermissionsAsync();                         |
-|                                                                 |
-| if (status !== \'granted\') { Alert.alert(\'Permission needed   |
-| to save photos\'); return; }                                    |
-|                                                                 |
-| const uri = await (viewShotRef.current as any).capture();       |
-|                                                                 |
-| await MediaLibrary.saveToLibraryAsync(uri);                     |
-|                                                                 |
-| Alert.alert(\'Saved!\', \'Your 3D room design has been saved to |
-| your photo library.\');                                         |
-|                                                                 |
-| } catch (e: any) {                                              |
-|                                                                 |
-| Alert.alert(\'Error saving\', e.message);                       |
-|                                                                 |
-| } finally {                                                     |
-|                                                                 |
-| setSaving(false);                                               |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| };                                                              |
-|                                                                 |
-| const selectedFurnitureItem = furniture.find(f =\> f.id ===     |
-| selectedId);                                                    |
-|                                                                 |
-| const selectedCatalogItem = selectedFurnitureItem ?             |
-| FURNITURE_CATALOG\[selectedFurnitureItem.model_key\] : null;    |
-|                                                                 |
-| return (                                                        |
-|                                                                 |
-| \<View style={s.container}\>                                    |
-|                                                                 |
-| {/\* Style switcher \*/}                                        |
-|                                                                 |
-| \<ScrollView horizontal showsHorizontalScrollIndicator={false}  |
-| style={s.styleBar} contentContainerStyle={s.styleBarContent}\>  |
-|                                                                 |
-| {STYLES.map(st =\> (                                            |
-|                                                                 |
-| \<TouchableOpacity key={st.key} style={\[s.styleChip,           |
-| style===st.key && s.styleChipActive\]} onPress={() =\>          |
-| switchStyle(st.key)}\>                                          |
-|                                                                 |
-| \<Text style={s.styleEmoji}\>{st.emoji}\</Text\>                |
-|                                                                 |
-| \<Text style={\[s.styleLabel, style===st.key &&                 |
-| s.styleLabelActive\]}\>{st.label}\</Text\>                      |
-|                                                                 |
-| \</TouchableOpacity\>                                           |
-|                                                                 |
-| ))}                                                             |
-|                                                                 |
-| \</ScrollView\>                                                 |
-|                                                                 |
-| {/\* 3D Canvas \*/}                                             |
-|                                                                 |
-| \<ViewShot ref={viewShotRef} style={s.canvasContainer}          |
-| options={{ format: \'jpg\', quality: 0.95 }}\>                  |
-|                                                                 |
-| \<Canvas                                                        |
-|                                                                 |
-| style={s.canvas}                                                |
-|                                                                 |
-| camera={{ position: \[0, 2.5, 5\], fov: 55, near: 0.1, far: 50  |
-| }}                                                              |
-|                                                                 |
-| shadows                                                         |
-|                                                                 |
-| onCreated={({ gl }) =\> {                                       |
-|                                                                 |
-| gl.shadowMap.enabled = true;                                    |
-|                                                                 |
-| gl.shadowMap.type = 2; // PCFSoftShadowMap                      |
-|                                                                 |
-| }}                                                              |
-|                                                                 |
-| \>                                                              |
-|                                                                 |
-| \<Suspense fallback={null}\>                                    |
-|                                                                 |
-| \<SceneLighting style={style} /\>                               |
-|                                                                 |
-| \<BoxRoom style={style} dimensions={dimensions} /\>             |
-|                                                                 |
-| {furniture.map(piece =\> {                                      |
-|                                                                 |
-| const cat = FURNITURE_CATALOG\[piece.model_key\];               |
-|                                                                 |
-| if (!cat) return null;                                          |
-|                                                                 |
-| return (                                                        |
-|                                                                 |
-| \<FurniturePiece                                                |
-|                                                                 |
-| key={piece.id}                                                  |
-|                                                                 |
-| piece={piece}                                                   |
-|                                                                 |
-| catalog={cat}                                                   |
-|                                                                 |
-| isSelected={selectedId === piece.id}                            |
-|                                                                 |
-| onSelect={setSelectedId}                                        |
-|                                                                 |
-| onDragEnd={handleDragEnd}                                       |
-|                                                                 |
-| /\>                                                             |
-|                                                                 |
-| );                                                              |
-|                                                                 |
-| })}                                                             |
-|                                                                 |
-| \<OrbitControls                                                 |
-|                                                                 |
-| enablePan={false}                                               |
-|                                                                 |
-| minDistance={1.5}                                               |
-|                                                                 |
-| maxDistance={8}                                                 |
-|                                                                 |
-| maxPolarAngle={Math.PI / 2.1} // prevent going below floor      |
-|                                                                 |
-| target={\[0, 1, 0\]}                                            |
-|                                                                 |
-| /\>                                                             |
-|                                                                 |
-| \</Suspense\>                                                   |
-|                                                                 |
-| \</Canvas\>                                                     |
-|                                                                 |
-| \</ViewShot\>                                                   |
-|                                                                 |
-| {/\* Selected furniture info panel \*/}                         |
-|                                                                 |
-| {selectedCatalogItem && (                                       |
-|                                                                 |
-| \<View style={s.selectedPanel}\>                                |
-|                                                                 |
-| \<Text                                                          |
-| style={s.selectedName}\>{selectedCatalogItem.name}\</Text\>     |
-|                                                                 |
-| \<Text style={s.selectedHint}\>Drag to move · Tap elsewhere to  |
-| deselect\</Text\>                                               |
-|                                                                 |
-| \<TouchableOpacity style={s.removeBtn} onPress={() =\> {        |
-|                                                                 |
-| setFurniture(prev =\> prev.filter(p =\> p.id !== selectedId));  |
-|                                                                 |
-| setSelectedId(null);                                            |
-|                                                                 |
-| }}\>                                                            |
-|                                                                 |
-| \<Text style={s.removeBtnText}\>Remove\</Text\>                 |
-|                                                                 |
-| \</TouchableOpacity\>                                           |
-|                                                                 |
-| \</View\>                                                       |
-|                                                                 |
-| )}                                                              |
-|                                                                 |
-| {/\* Action bar \*/}                                            |
-|                                                                 |
-| \<View style={s.actionBar}\>                                    |
-|                                                                 |
-| \<TouchableOpacity style={s.actionBtn} onPress={handleCapture}  |
-| disabled={saving}\>                                             |
-|                                                                 |
-| {saving ? \<ActivityIndicator color=\'#0B1729\' /\> : \<Text    |
-| style={s.actionBtnText}\>📷 Save\</Text\>}                      |
-|                                                                 |
-| \</TouchableOpacity\>                                           |
-|                                                                 |
-| \<TouchableOpacity style={\[s.actionBtn,                        |
-| s.actionBtnSecondary\]} onPress={() =\> setSelectedId(null)}\>  |
-|                                                                 |
-| \<Text style={\[s.actionBtnText, s.actionBtnTextSec\]}\>↩       |
-| Reset\</Text\>                                                  |
-|                                                                 |
-| \</TouchableOpacity\>                                           |
-|                                                                 |
-| \<TouchableOpacity style={\[s.actionBtn,                        |
-| s.actionBtnSecondary\]} onPress={() =\> {/\* navigate to AI     |
-| render \*/}}\>                                                  |
-|                                                                 |
-| \<Text style={\[s.actionBtnText, s.actionBtnTextSec\]}\>✦ AI    |
-| Render\</Text\>                                                 |
-|                                                                 |
-| \</TouchableOpacity\>                                           |
-|                                                                 |
-| \</View\>                                                       |
-|                                                                 |
-| \</View\>                                                       |
-|                                                                 |
-| );                                                              |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| const s = StyleSheet.create({                                   |
-|                                                                 |
-| container: { flex: 1, backgroundColor: \'#0B1729\' },           |
-|                                                                 |
-| styleBar: { flexGrow: 0, borderBottomWidth: 1,                  |
-| borderBottomColor: \'rgba(201,168,76,0.2)\' },                  |
-|                                                                 |
-| styleBarContent: { paddingHorizontal: 12, paddingVertical: 10,  |
-| gap: 8, flexDirection: \'row\' },                               |
-|                                                                 |
-| styleChip: { paddingHorizontal: 14, paddingVertical: 8,         |
-| borderRadius: 20, borderWidth: 1.5, borderColor:                |
-| \'rgba(255,255,255,0.15)\', flexDirection: \'row\', alignItems: |
-| \'center\', gap: 6 },                                           |
-|                                                                 |
-| styleChipActive: { backgroundColor: \'rgba(201,168,76,0.15)\',  |
-| borderColor: \'#C9A84C\' },                                     |
-|                                                                 |
-| styleEmoji: { fontSize: 16 },                                   |
-|                                                                 |
-| styleLabel: { color: \'#8A8070\', fontSize: 13, fontWeight:     |
-| \'600\' },                                                      |
-|                                                                 |
-| styleLabelActive: { color: \'#C9A84C\' },                       |
-|                                                                 |
-| canvasContainer: { flex: 1 },                                   |
-|                                                                 |
-| canvas: { flex: 1 },                                            |
-|                                                                 |
-| selectedPanel: { position: \'absolute\', bottom: 80, left: 16,  |
-| right: 16, backgroundColor: \'rgba(11,23,41,0.9)\',             |
-| borderRadius: 12, padding: 14, borderWidth: 1, borderColor:     |
-| \'rgba(201,168,76,0.3)\', flexDirection: \'row\', alignItems:   |
-| \'center\' },                                                   |
-|                                                                 |
-| selectedName: { color: \'#FAF7F2\', fontWeight: \'700\', flex:  |
-| 1 },                                                            |
-|                                                                 |
-| selectedHint: { color: \'#8A8070\', fontSize: 11, flex: 1 },    |
-|                                                                 |
-| removeBtn: { backgroundColor: \'rgba(139,32,32,0.3)\',          |
-| borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 },   |
-|                                                                 |
-| removeBtnText: { color: \'#FF6B6B\', fontSize: 12, fontWeight:  |
-| \'700\' },                                                      |
-|                                                                 |
-| actionBar: { flexDirection: \'row\', gap: 10, padding: 16,      |
-| borderTopWidth: 1, borderTopColor: \'rgba(201,168,76,0.2)\' },  |
-|                                                                 |
-| actionBtn: { flex: 1, backgroundColor: \'#C9A84C\',             |
-| borderRadius: 10, padding: 12, alignItems: \'center\' },        |
-|                                                                 |
-| actionBtnSecondary:{ backgroundColor:                           |
-| \'rgba(255,255,255,0.06)\', borderWidth: 1, borderColor:        |
-| \'rgba(255,255,255,0.12)\' },                                   |
-|                                                                 |
-| actionBtnText: { color: \'#0B1729\', fontWeight: \'700\',       |
-| fontSize: 14 },                                                 |
-|                                                                 |
-| actionBtnTextSec: { color: \'#FAF7F2\' },                       |
-|                                                                 |
-| });                                                             |
-+-----------------------------------------------------------------+
-
-  ------- ------------------------------------------------------------
-   **9**  **3D Troubleshooting --- common issues and fixes**
-
-  ------- ------------------------------------------------------------
-
-**Black screen on first load**
-
-Cause: expo-gl not initialised before Canvas renders. Fix: wrap the
-Canvas in a View with a defined height. Never use flex:1 directly on
-Canvas without a parent View that has flex:1 and a defined layout.
-
-+-----------------------------------------------------------------+
-| // ✅ Correct                                                   |
-|                                                                 |
-| \<View style={{ flex: 1, height: \'100%\' }}\>                  |
-|                                                                 |
-| \<Canvas style={{ flex: 1 }}\>\...\</Canvas\>                   |
-|                                                                 |
-| \</View\>                                                       |
-|                                                                 |
-| // ❌ Wrong --- Canvas directly inside ScrollView without       |
-| height                                                          |
-|                                                                 |
-| \<ScrollView\>\<Canvas style={{ flex: 1                         |
-| }}\>\...\</Canvas\>\</ScrollView\>                              |
-+-----------------------------------------------------------------+
-
-**GLB model fails to load**
-
-Cause: Expo\'s Metro bundler doesn\'t know how to handle .glb files.
-Fix: add this to metro.config.js:
-
-+-----------------------------------------------------------------+
-| // apps/mobile/metro.config.js                                  |
-|                                                                 |
-| const { getDefaultConfig } = require(\'expo/metro-config\');    |
-|                                                                 |
-| const config = getDefaultConfig(\_\_dirname);                   |
-|                                                                 |
-| config.resolver.assetExts.push(\'glb\', \'gltf\', \'hdr\');     |
-|                                                                 |
-| module.exports = config;                                        |
-+-----------------------------------------------------------------+
-
-**Choppy orbit controls on iPhone**
-
-Cause: React Native Gesture Handler not wrapping the navigator. Fix:
-wrap your entire app in GestureHandlerRootView in App.tsx:
-
-+-----------------------------------------------------------------+
-| import { GestureHandlerRootView } from                          |
-| \'react-native-gesture-handler\';                               |
-|                                                                 |
-| export default function App() {                                 |
-|                                                                 |
-| return (                                                        |
-|                                                                 |
-| \<GestureHandlerRootView style={{ flex: 1 }}\>                  |
-|                                                                 |
-| {/\* your navigation stack \*/}                                 |
-|                                                                 |
-| \</GestureHandlerRootView\>                                     |
-|                                                                 |
-| );                                                              |
-|                                                                 |
-| }                                                               |
-+-----------------------------------------------------------------+
-
-**ViewShot captures black image**
-
-Cause: react-native-view-shot cannot capture expo-gl canvas on all iOS
-versions. Fix: after calling capture(), apply a short delay to let the
-GL frame complete:
-
-+-----------------------------------------------------------------+
-| const uri = await new Promise\<string\>((resolve, reject) =\> { |
-|                                                                 |
-| setTimeout(async () =\> {                                       |
-|                                                                 |
-| try { resolve(await (viewShotRef.current as any).capture()); }  |
-|                                                                 |
-| catch (e) { reject(e); }                                        |
-|                                                                 |
-| }, 100); // 100ms delay for GL frame completion                 |
-|                                                                 |
-| });                                                             |
-+-----------------------------------------------------------------+
-
-**Models appear too small or too large**
-
-Cause: the glTF model\'s native scale is wrong. Three.js units are
-metres. A sofa should be \~2m wide. Fix: add a scale prop to the
-primitive element based on the expected vs actual size:
-
-+-----------------------------------------------------------------+
-| // In FurniturePiece.tsx, if a model loads at wrong scale:      |
-|                                                                 |
-| const { scene } = useGLTF(catalog.model_path);                  |
-|                                                                 |
-| // Calculate scale correction                                   |
-|                                                                 |
-| const box = new THREE.Box3().setFromObject(scene);              |
-|                                                                 |
-| const size = box.getSize(new THREE.Vector3());                  |
-|                                                                 |
-| const scaleX = catalog.dimensions.w / size.x;                   |
-|                                                                 |
-| const scaleY = catalog.dimensions.h / size.y;                   |
-|                                                                 |
-| const scaleZ = catalog.dimensions.d / size.z;                   |
-|                                                                 |
-| const scale = Math.min(scaleX, scaleY, scaleZ); // uniform      |
-| scale                                                           |
-|                                                                 |
-| return \<primitive object={scene} scale={\[scale, scale,        |
-| scale\]} castShadow /\>;                                        |
-+-----------------------------------------------------------------+
-
-  -------- ------------------------------------------------------------
-   **10**  **Commit Phase 3**
-
-  -------- ------------------------------------------------------------
-
-+-----------------------------------------------------------------+
-| cd \~/Documents/cova                                            |
-|                                                                 |
-| git add .                                                       |
-|                                                                 |
-| git commit -m \"Phase 3: 3D Room Engine --- calibration,        |
-| BoxRoom, furniture catalog, RoomViewer3D\"                      |
-|                                                                 |
-| git push origin main                                            |
-+-----------------------------------------------------------------+
-
-+:----------:+-----------------------------------------------------+
-| **PHASE    | *Connect Replicate, build the 2D render Edge        |
-| 4**        | Function, handle webhooks --- companion to 3D*      |
-|            |                                                     |
-| **AI       |                                                     |
-| Rendering  |                                                     |
-| Pipeline** |                                                     |
-+------------+-----------------------------------------------------+
-
-The 2D AI render is a companion feature to the 3D viewer --- not the
-primary experience. When a user taps \'AI Render\' from the 3D viewer
-action bar, this pipeline generates a photorealistic 2D image of their
-room in the selected style. It uses Stable Diffusion XL + ControlNet for
-structure preservation and ZoeDepth for depth extraction.
-
-  --------------- --------------------------------------------------------
-       **📍       The 3D viewer is the primary experience. The 2D render
-   POSITIONING**  is a \'style preview\' --- fast, cheap, shows the vibe.
-                  Both are complementary. Investors care about the 3D;
-                  users love both.
-
-  --------------- --------------------------------------------------------
-
-  ------- ------------------------------------------------------------
-   **1**  **Create the render Edge Function**
-
-  ------- ------------------------------------------------------------
-
-+-----------------------------------------------------------------+
-| mkdir -p supabase/functions/render                              |
-|                                                                 |
-| code supabase/functions/render/index.ts                         |
-+-----------------------------------------------------------------+
+**3.7 BoxRoom Component**
+
+File: \~/Desktop/cova/apps/mobile/src/components/3d/BoxRoom.tsx
+
++-----------------------------------------------------------------------+
+| import React from \'react\';                                          |
+|                                                                       |
+| import { useRef } from \'react\';                                     |
+|                                                                       |
+| import type { CavaStyle } from \'@cova/shared\';                      |
+|                                                                       |
+| import { STYLE_COLORS } from \'../../data/furnitureCatalog\';         |
+|                                                                       |
+| interface BoxRoomProps {                                              |
+|                                                                       |
+| style: CavaStyle;                                                     |
+|                                                                       |
+| width?: number;                                                       |
+|                                                                       |
+| depth?: number;                                                       |
+|                                                                       |
+| height?: number;                                                      |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| export function BoxRoom({ style, width=7, depth=6, height=3 }:        |
+| BoxRoomProps) {                                                       |
+|                                                                       |
+| const colors = STYLE_COLORS\[style\];                                 |
+|                                                                       |
+| const hw = width / 2;                                                 |
+|                                                                       |
+| const hd = depth / 2;                                                 |
+|                                                                       |
+| return (                                                              |
+|                                                                       |
+| \<group\>                                                             |
+|                                                                       |
+| {/\* Floor \*/}                                                       |
+|                                                                       |
+| \<mesh position={\[0, 0, 0\]} rotation={\[-Math.PI / 2, 0, 0\]}       |
+| receiveShadow={false}\>                                               |
+|                                                                       |
+| \<planeGeometry args={\[width, depth\]} /\>                           |
+|                                                                       |
+| \<meshStandardMaterial color={colors.floor} roughness={0.9}           |
+| metalness={0.0} /\>                                                   |
+|                                                                       |
+| \</mesh\>                                                             |
+|                                                                       |
+| {/\* Back wall \*/}                                                   |
+|                                                                       |
+| \<mesh position={\[0, height/2, -hd\]}\>                              |
+|                                                                       |
+| \<planeGeometry args={\[width, height\]} /\>                          |
+|                                                                       |
+| \<meshStandardMaterial color={colors.wall} roughness={0.95}           |
+| metalness={0.0} /\>                                                   |
+|                                                                       |
+| \</mesh\>                                                             |
+|                                                                       |
+| {/\* Left wall \*/}                                                   |
+|                                                                       |
+| \<mesh position={\[-hw, height/2, 0\]} rotation={\[0, Math.PI/2,      |
+| 0\]}\>                                                                |
+|                                                                       |
+| \<planeGeometry args={\[depth, height\]} /\>                          |
+|                                                                       |
+| \<meshStandardMaterial color={colors.wall} roughness={0.95}           |
+| metalness={0.0} /\>                                                   |
+|                                                                       |
+| \</mesh\>                                                             |
+|                                                                       |
+| {/\* Right wall \*/}                                                  |
+|                                                                       |
+| \<mesh position={\[hw, height/2, 0\]} rotation={\[0, -Math.PI/2,      |
+| 0\]}\>                                                                |
+|                                                                       |
+| \<planeGeometry args={\[depth, height\]} /\>                          |
+|                                                                       |
+| \<meshStandardMaterial color={colors.wall} roughness={0.95}           |
+| metalness={0.0} /\>                                                   |
+|                                                                       |
+| \</mesh\>                                                             |
+|                                                                       |
+| {/\* Ceiling \*/}                                                     |
+|                                                                       |
+| \<mesh position={\[0, height, 0\]} rotation={\[Math.PI/2, 0, 0\]}\>   |
+|                                                                       |
+| \<planeGeometry args={\[width, depth\]} /\>                           |
+|                                                                       |
+| \<meshStandardMaterial color={colors.wall} roughness={1.0}            |
+| metalness={0.0} /\>                                                   |
+|                                                                       |
+| \</mesh\>                                                             |
+|                                                                       |
+| {/\* Baseboard trim --- front wall bottom \*/}                        |
+|                                                                       |
+| \<mesh position={\[0, 0.06, hd - 0.02\]}\>                            |
+|                                                                       |
+| \<boxGeometry args={\[width, 0.12, 0.04\]} /\>                        |
+|                                                                       |
+| \<meshStandardMaterial color={colors.baseboard} roughness={0.7}       |
+| metalness={0.0} /\>                                                   |
+|                                                                       |
+| \</mesh\>                                                             |
+|                                                                       |
+| {/\* Baseboard --- back wall \*/}                                     |
+|                                                                       |
+| \<mesh position={\[0, 0.06, -hd + 0.02\]}\>                           |
+|                                                                       |
+| \<boxGeometry args={\[width, 0.12, 0.04\]} /\>                        |
+|                                                                       |
+| \<meshStandardMaterial color={colors.baseboard} roughness={0.7}       |
+| metalness={0.0} /\>                                                   |
+|                                                                       |
+| \</mesh\>                                                             |
+|                                                                       |
+| {/\* Baseboard --- left wall \*/}                                     |
+|                                                                       |
+| \<mesh position={\[-hw + 0.02, 0.06, 0\]}\>                           |
+|                                                                       |
+| \<boxGeometry args={\[0.04, 0.12, depth\]} /\>                        |
+|                                                                       |
+| \<meshStandardMaterial color={colors.baseboard} roughness={0.7}       |
+| metalness={0.0} /\>                                                   |
+|                                                                       |
+| \</mesh\>                                                             |
+|                                                                       |
+| {/\* Baseboard --- right wall \*/}                                    |
+|                                                                       |
+| \<mesh position={\[hw - 0.02, 0.06, 0\]}\>                            |
+|                                                                       |
+| \<boxGeometry args={\[0.04, 0.12, depth\]} /\>                        |
+|                                                                       |
+| \<meshStandardMaterial color={colors.baseboard} roughness={0.7}       |
+| metalness={0.0} /\>                                                   |
+|                                                                       |
+| \</mesh\>                                                             |
+|                                                                       |
+| \</group\>                                                            |
+|                                                                       |
+| );                                                                    |
+|                                                                       |
+| }                                                                     |
++-----------------------------------------------------------------------+
+
+**3.8 SceneLighting Component**
+
+File: \~/Desktop/cova/apps/mobile/src/components/3d/SceneLighting.tsx
+
++-----------------------------------------------------------------------+
+| import React from \'react\';                                          |
+|                                                                       |
+| import type { CavaStyle } from \'@cova/shared\';                      |
+|                                                                       |
+| import { STYLE_LIGHTING } from \'../../data/furnitureCatalog\';       |
+|                                                                       |
+| interface SceneLightingProps { style: CavaStyle; }                    |
+|                                                                       |
+| export function SceneLighting({ style }: SceneLightingProps) {        |
+|                                                                       |
+| const l = STYLE_LIGHTING\[style\];                                    |
+|                                                                       |
+| return (                                                              |
+|                                                                       |
+| \<\>                                                                  |
+|                                                                       |
+| \<ambientLight color={l.ambientColor} intensity={l.ambientIntensity}  |
+| /\>                                                                   |
+|                                                                       |
+| \<directionalLight                                                    |
+|                                                                       |
+| color={l.directionalColor}                                            |
+|                                                                       |
+| intensity={l.directionalIntensity}                                    |
+|                                                                       |
+| position={l.directionalPosition}                                      |
+|                                                                       |
+| castShadow={false}                                                    |
+|                                                                       |
+| /\>                                                                   |
+|                                                                       |
+| \</\>                                                                 |
+|                                                                       |
+| );                                                                    |
+|                                                                       |
+| }                                                                     |
++-----------------------------------------------------------------------+
+
+**3.9 FurniturePiece Component**
+
+File: \~/Desktop/cova/apps/mobile/src/components/3d/FurniturePiece.tsx
+
+  --------- ------------------------------------------------------------------
+   **!!!**  FurniturePiece is built but NOT currently rendered in
+            RoomViewer3DScreen. It will be re-enabled in Phase 6. This is
+            intentional --- Phase 3 isolated the base scene to eliminate
+            shader crashes.
+
+  --------- ------------------------------------------------------------------
+
++-----------------------------------------------------------------------+
+| import React, { useRef, Suspense } from \'react\';                    |
+|                                                                       |
+| import { useGLTF } from \'@react-three/drei/native\';                 |
+|                                                                       |
+| import { useThree } from \'@react-three/fiber/native\';               |
+|                                                                       |
+| import \* as THREE from \'three\';                                    |
+|                                                                       |
+| import type { PlacedFurniture, FurnitureCatalogItem, CavaStyle } from |
+| \'@cova/shared\';                                                     |
+|                                                                       |
+| import { STYLE_MATERIALS } from \'../../data/furnitureCatalog\';      |
+|                                                                       |
+| interface FurniturePieceProps {                                       |
+|                                                                       |
+| piece: PlacedFurniture;                                               |
+|                                                                       |
+| catalogItem: FurnitureCatalogItem;                                    |
+|                                                                       |
+| isSelected: boolean;                                                  |
+|                                                                       |
+| onSelect: () =\> void;                                                |
+|                                                                       |
+| onDragEnd: (position: \[number, number, number\]) =\> void;           |
+|                                                                       |
+| style: CavaStyle;                                                     |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| function FurniturePieceInner({ piece, catalogItem, isSelected,        |
+| onSelect, style }: FurniturePieceProps) {                             |
+|                                                                       |
+| const { scene } = useGLTF(catalogItem.glb_path);                      |
+|                                                                       |
+| const groupRef = useRef\<THREE.Group\>(null);                         |
+|                                                                       |
+| const materials = STYLE_MATERIALS\[style\];                           |
+|                                                                       |
+| // Clone scene to avoid mutating shared cache                         |
+|                                                                       |
+| const clonedScene = React.useMemo(() =\> {                            |
+|                                                                       |
+| const clone = scene.clone(true);                                      |
+|                                                                       |
+| // Apply style material overrides                                     |
+|                                                                       |
+| clone.traverse((child) =\> {                                          |
+|                                                                       |
+| if (!(child instanceof THREE.Mesh)) return;                           |
+|                                                                       |
+| try {                                                                 |
+|                                                                       |
+| const name = child.name.toLowerCase();                                |
+|                                                                       |
+| let mat = materials.table; // default                                 |
+|                                                                       |
+| if (name.includes(\'sofa\') \|\| name.includes(\'seat\') \|\|         |
+| name.includes(\'chair\'))                                             |
+|                                                                       |
+| mat = materials.sofa;                                                 |
+|                                                                       |
+| else if (name.includes(\'lamp\') \|\| name.includes(\'light\'))       |
+|                                                                       |
+| mat = materials.lamp;                                                 |
+|                                                                       |
+| else if (name.includes(\'rug\') \|\| name.includes(\'carpet\'))       |
+|                                                                       |
+| mat = materials.rug;                                                  |
+|                                                                       |
+| child.material = new THREE.MeshStandardMaterial({                     |
+|                                                                       |
+| color: mat.color,                                                     |
+|                                                                       |
+| roughness: mat.roughness,                                             |
+|                                                                       |
+| metalness: mat.metalness,                                             |
+|                                                                       |
+| // NO texture maps --- causes \'trim of undefined\' crash             |
+|                                                                       |
+| });                                                                   |
+|                                                                       |
+| } catch (e) {                                                         |
+|                                                                       |
+| // Skip mesh on error                                                 |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| });                                                                   |
+|                                                                       |
+| // Auto-scale to max 1 meter                                          |
+|                                                                       |
+| const box = new THREE.Box3().setFromObject(clone);                    |
+|                                                                       |
+| const size = new THREE.Vector3();                                     |
+|                                                                       |
+| box.getSize(size);                                                    |
+|                                                                       |
+| const maxDim = Math.max(size.x, size.y, size.z);                      |
+|                                                                       |
+| if (maxDim \> 0) {                                                    |
+|                                                                       |
+| const targetSize = 1.0 \* catalogItem.scale_factor;                   |
+|                                                                       |
+| clone.scale.setScalar(targetSize / maxDim);                           |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| return clone;                                                         |
+|                                                                       |
+| }, \[scene, style\]);                                                 |
+|                                                                       |
+| return (                                                              |
+|                                                                       |
+| \<group                                                               |
+|                                                                       |
+| ref={groupRef}                                                        |
+|                                                                       |
+| position={piece.position}                                             |
+|                                                                       |
+| rotation={\[0, piece.rotation_y, 0\]}                                 |
+|                                                                       |
+| onPointerDown={() =\> onSelect()}                                     |
+|                                                                       |
+| \>                                                                    |
+|                                                                       |
+| \<primitive object={clonedScene} /\>                                  |
+|                                                                       |
+| {isSelected && (                                                      |
+|                                                                       |
+| \<mesh position={\[0, 0.02, 0\]} rotation={\[-Math.PI/2, 0, 0\]}\>    |
+|                                                                       |
+| \<ringGeometry args={\[0.4, 0.45, 32\]} /\>                           |
+|                                                                       |
+| \<meshStandardMaterial color=\'#C9A84C\' roughness={0.5}              |
+| metalness={0.3} /\>                                                   |
+|                                                                       |
+| \</mesh\>                                                             |
+|                                                                       |
+| )}                                                                    |
+|                                                                       |
+| \</group\>                                                            |
+|                                                                       |
+| );                                                                    |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| export function FurniturePiece(props: FurniturePieceProps) {          |
+|                                                                       |
+| return (                                                              |
+|                                                                       |
+| \<Suspense fallback={null}\>                                          |
+|                                                                       |
+| \<FurniturePieceInner {\...props} /\>                                 |
+|                                                                       |
+| \</Suspense\>                                                         |
+|                                                                       |
+| );                                                                    |
+|                                                                       |
+| }                                                                     |
++-----------------------------------------------------------------------+
+
+**3.10 RoomViewer3DScreen**
+
+File:
+\~/Desktop/cova/apps/mobile/src/screens/main/RoomViewer3DScreen.tsx
+
+This is the current working build. FurniturePiece is intentionally not
+included yet.
+
++-----------------------------------------------------------------------+
+| import React, { useRef, useState, useCallback } from \'react\';       |
+|                                                                       |
+| import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView  |
+| } from \'react-native\';                                              |
+|                                                                       |
+| import { Canvas } from \'@react-three/fiber/native\';                 |
+|                                                                       |
+| import ViewShot, { captureRef } from \'react-native-view-shot\';      |
+|                                                                       |
+| import \* as MediaLibrary from \'expo-media-library\';                |
+|                                                                       |
+| import { BoxRoom } from \'../../components/3d/BoxRoom\';              |
+|                                                                       |
+| import { SceneLighting } from \'../../components/3d/SceneLighting\';  |
+|                                                                       |
+| import type { CavaStyle } from \'@cova/shared\';                      |
+|                                                                       |
+| const STYLES: { id: CavaStyle; label: string; emoji: string }\[\] =   |
+| \[                                                                    |
+|                                                                       |
+| { id: \'japandi\', label: \'Japandi\', emoji: \'🌿\' },               |
+|                                                                       |
+| { id: \'midcentury\', label: \'Mid-Century\', emoji: \'🪑\' },        |
+|                                                                       |
+| { id: \'coastal\', label: \'Coastal\', emoji: \'🌊\' },               |
+|                                                                       |
+| { id: \'industrial\', label: \'Industrial\', emoji: \'⚙️\' },         |
+|                                                                       |
+| { id: \'bohemian\', label: \'Bohemian\', emoji: \'🪬\' },             |
+|                                                                       |
+| \];                                                                   |
+|                                                                       |
+| function ThreeDErrorBoundary({ children, onError }: { children:       |
+| React.ReactNode; onError?: () =\> void }) {                           |
+|                                                                       |
+| const \[hasError, setHasError\] = useState(false);                    |
+|                                                                       |
+| if (hasError) return (                                                |
+|                                                                       |
+| \<View style={styles.errorFallback}\>                                 |
+|                                                                       |
+| \<Text style={styles.errorText}\>3D failed to load. Tap Reset to try  |
+| again.\</Text\>                                                       |
+|                                                                       |
+| \</View\>                                                             |
+|                                                                       |
+| );                                                                    |
+|                                                                       |
+| return (                                                              |
+|                                                                       |
+| \<React.Fragment\>                                                    |
+|                                                                       |
+| {children}                                                            |
+|                                                                       |
+| \</React.Fragment\>                                                   |
+|                                                                       |
+| );                                                                    |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| export function RoomViewer3DScreen({ navigation }: any) {             |
+|                                                                       |
+| const \[activeStyle, setActiveStyle\] =                               |
+| useState\<CavaStyle\>(\'japandi\');                                   |
+|                                                                       |
+| const \[sceneKey, setSceneKey\] = useState(0);                        |
+|                                                                       |
+| const viewShotRef = useRef\<ViewShot\>(null);                         |
+|                                                                       |
+| const handleStyleSwitch = useCallback((style: CavaStyle) =\> {        |
+|                                                                       |
+| setActiveStyle(style);                                                |
+|                                                                       |
+| setSceneKey(prev =\> prev + 1); // Force full Canvas remount          |
+|                                                                       |
+| }, \[\]);                                                             |
+|                                                                       |
+| const handleSave = async () =\> {                                     |
+|                                                                       |
+| try {                                                                 |
+|                                                                       |
+| const { status } = await MediaLibrary.requestPermissionsAsync();      |
+|                                                                       |
+| if (status !== \'granted\') {                                         |
+|                                                                       |
+| Alert.alert(\'Permission needed\', \'Please allow photo library       |
+| access to save screenshots.\');                                       |
+|                                                                       |
+| return;                                                               |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| const uri = await captureRef(viewShotRef, { format: \'jpg\', quality: |
+| 0.9 });                                                               |
+|                                                                       |
+| await MediaLibrary.saveToLibraryAsync(uri);                           |
+|                                                                       |
+| Alert.alert(\'Saved\', \'Screenshot saved to your camera roll!\');    |
+|                                                                       |
+| } catch (e) {                                                         |
+|                                                                       |
+| console.warn(\'Save error:\', e);                                     |
+|                                                                       |
+| Alert.alert(\'Error\', \'Could not save screenshot.\');               |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| };                                                                    |
+|                                                                       |
+| const handleReset = useCallback(() =\> {                              |
+|                                                                       |
+| setSceneKey(prev =\> prev + 1);                                       |
+|                                                                       |
+| }, \[\]);                                                             |
+|                                                                       |
+| const handleAIRender = useCallback(() =\> {                           |
+|                                                                       |
+| Alert.alert(\'Coming Soon\', \'AI Render is coming in Phase 4!\');    |
+|                                                                       |
+| }, \[\]);                                                             |
+|                                                                       |
+| return (                                                              |
+|                                                                       |
+| \<View style={styles.container}\>                                     |
+|                                                                       |
+| {/\* Header \*/}                                                      |
+|                                                                       |
+| \<View style={styles.header}\>                                        |
+|                                                                       |
+| \<TouchableOpacity onPress={() =\> navigation.goBack()}               |
+| style={styles.backBtn}\>                                              |
+|                                                                       |
+| \<Text style={styles.backText}\>{\'\<\'}\</Text\>                     |
+|                                                                       |
+| \</TouchableOpacity\>                                                 |
+|                                                                       |
+| \<Text style={styles.title}\>My Room in 3D\</Text\>                   |
+|                                                                       |
+| \<View style={{ width: 40 }} /\>                                      |
+|                                                                       |
+| \</View\>                                                             |
+|                                                                       |
+| {/\* Style switcher \*/}                                              |
+|                                                                       |
+| \<ScrollView horizontal showsHorizontalScrollIndicator={false}        |
+|                                                                       |
+| style={styles.styleBar}                                               |
+| contentContainerStyle={styles.styleBarContent}\>                      |
+|                                                                       |
+| {STYLES.map(s =\> (                                                   |
+|                                                                       |
+| \<TouchableOpacity                                                    |
+|                                                                       |
+| key={s.id}                                                            |
+|                                                                       |
+| onPress={() =\> handleStyleSwitch(s.id)}                              |
+|                                                                       |
+| style={\[styles.styleChip, activeStyle === s.id &&                    |
+| styles.styleChipActive\]}                                             |
+|                                                                       |
+| \>                                                                    |
+|                                                                       |
+| \<Text style={styles.styleEmoji}\>{s.emoji}\</Text\>                  |
+|                                                                       |
+| \<Text style={\[styles.styleLabel, activeStyle === s.id &&            |
+| styles.styleLabelActive\]}\>                                          |
+|                                                                       |
+| {s.label}                                                             |
+|                                                                       |
+| \</Text\>                                                             |
+|                                                                       |
+| \</TouchableOpacity\>                                                 |
+|                                                                       |
+| ))}                                                                   |
+|                                                                       |
+| \</ScrollView\>                                                       |
+|                                                                       |
+| {/\* 3D Canvas \*/}                                                   |
+|                                                                       |
+| \<ViewShot ref={viewShotRef} style={styles.canvasContainer}\>         |
+|                                                                       |
+| \<ThreeDErrorBoundary\>                                               |
+|                                                                       |
+| \<Canvas                                                              |
+|                                                                       |
+| key={sceneKey}                                                        |
+|                                                                       |
+| shadows={false}                                                       |
+|                                                                       |
+| camera={{ position: \[0, 4, 6\], fov: 60, near: 0.1, far: 100 }}      |
+|                                                                       |
+| style={styles.canvas}                                                 |
+|                                                                       |
+| gl={{ antialias: true }}                                              |
+|                                                                       |
+| \>                                                                    |
+|                                                                       |
+| \<SceneLighting style={activeStyle} /\>                               |
+|                                                                       |
+| \<BoxRoom style={activeStyle} /\>                                     |
+|                                                                       |
+| \</Canvas\>                                                           |
+|                                                                       |
+| \</ThreeDErrorBoundary\>                                              |
+|                                                                       |
+| \</ViewShot\>                                                         |
+|                                                                       |
+| {/\* Action bar \*/}                                                  |
+|                                                                       |
+| \<View style={styles.actionBar}\>                                     |
+|                                                                       |
+| \<TouchableOpacity style={styles.goldButton} onPress={handleSave}\>   |
+|                                                                       |
+| \<Text style={styles.goldButtonText}\>Save\</Text\>                   |
+|                                                                       |
+| \</TouchableOpacity\>                                                 |
+|                                                                       |
+| \<TouchableOpacity style={styles.ghostButton} onPress={handleReset}\> |
+|                                                                       |
+| \<Text style={styles.ghostButtonText}\>Reset\</Text\>                 |
+|                                                                       |
+| \</TouchableOpacity\>                                                 |
+|                                                                       |
+| \<TouchableOpacity style={styles.ghostButton}                         |
+| onPress={handleAIRender}\>                                            |
+|                                                                       |
+| \<Text style={styles.ghostButtonText}\>✨ AI Render\</Text\>          |
+|                                                                       |
+| \</TouchableOpacity\>                                                 |
+|                                                                       |
+| \</View\>                                                             |
+|                                                                       |
+| \</View\>                                                             |
+|                                                                       |
+| );                                                                    |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| const styles = StyleSheet.create({                                    |
+|                                                                       |
+| container: { flex: 1, backgroundColor: \'#0B1729\' },                 |
+|                                                                       |
+| header: { flexDirection: \'row\', alignItems: \'center\',             |
+| justifyContent: \'space-between\', paddingHorizontal: 16, paddingTop: |
+| 56, paddingBottom: 12 },                                              |
+|                                                                       |
+| backBtn: { width: 40, height: 40, alignItems: \'center\',             |
+| justifyContent: \'center\' },                                         |
+|                                                                       |
+| backText: { color: \'#FAF7F2\', fontSize: 24, fontWeight: \'300\' },  |
+|                                                                       |
+| title: { color: \'#FAF7F2\', fontSize: 20, fontWeight: \'600\' },     |
+|                                                                       |
+| styleBar: { maxHeight: 56, paddingVertical: 4 },                      |
+|                                                                       |
+| styleBarContent: { paddingHorizontal: 16, gap: 8 },                   |
+|                                                                       |
+| styleChip: { flexDirection: \'row\', alignItems: \'center\', gap: 6,  |
+| paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,          |
+| borderWidth: 1.5, borderColor: \'#2A3F5F\', backgroundColor:          |
+| \'#0D1F35\' },                                                        |
+|                                                                       |
+| styleChipActive: { borderColor: \'#C9A84C\', backgroundColor:         |
+| \'rgba(201,168,76,0.15)\' },                                          |
+|                                                                       |
+| styleEmoji: { fontSize: 14 },                                         |
+|                                                                       |
+| styleLabel: { color: \'#8A8070\', fontSize: 13, fontWeight: \'500\'   |
+| },                                                                    |
+|                                                                       |
+| styleLabelActive: { color: \'#C9A84C\' },                             |
+|                                                                       |
+| canvasContainer: { flex: 1, backgroundColor: \'#0B1729\' },           |
+|                                                                       |
+| canvas: { flex: 1 },                                                  |
+|                                                                       |
+| errorFallback: { flex: 1, alignItems: \'center\', justifyContent:     |
+| \'center\', backgroundColor: \'#0B1729\' },                           |
+|                                                                       |
+| errorText: { color: \'#8A8070\', fontSize: 14, textAlign: \'center\'  |
+| },                                                                    |
+|                                                                       |
+| actionBar: { flexDirection: \'row\', gap: 12, padding: 16,            |
+| paddingBottom: 34, backgroundColor: \'#0B1729\' },                    |
+|                                                                       |
+| goldButton: { flex: 1, backgroundColor: \'#C9A84C\', borderRadius:    |
+| 14, paddingVertical: 14, alignItems: \'center\' },                    |
+|                                                                       |
+| goldButtonText: { color: \'#0B1729\', fontSize: 15, fontWeight:       |
+| \'700\' },                                                            |
+|                                                                       |
+| ghostButton: { flex: 1, borderWidth: 1.5, borderColor: \'#C9A84C\',   |
+| borderRadius: 14, paddingVertical: 14, alignItems: \'center\' },      |
+|                                                                       |
+| ghostButtonText: { color: \'#FAF7F2\', fontSize: 15, fontWeight:      |
+| \'500\' },                                                            |
+|                                                                       |
+| });                                                                   |
++-----------------------------------------------------------------------+
+
+**3.11 App.tsx Navigation Root**
+
+File: \~/Desktop/cova/apps/mobile/App.tsx
+
++-----------------------------------------------------------------------+
+| import React from \'react\';                                          |
+|                                                                       |
+| import { GestureHandlerRootView } from                                |
+| \'react-native-gesture-handler\';                                     |
+|                                                                       |
+| import { NavigationContainer } from \'@react-navigation/native\';     |
+|                                                                       |
+| import { createNativeStackNavigator } from                            |
+| \'@react-navigation/native-stack\';                                   |
+|                                                                       |
+| import { HomeScreen } from \'./src/screens/main/HomeScreen\';         |
+|                                                                       |
+| import { RoomViewer3DScreen } from                                    |
+| \'./src/screens/main/RoomViewer3DScreen\';                            |
+|                                                                       |
+| import { RoomCalibrationScreen } from                                 |
+| \'./src/screens/main/RoomCalibrationScreen\';                         |
+|                                                                       |
+| const Stack = createNativeStackNavigator();                           |
+|                                                                       |
+| export default function App() {                                       |
+|                                                                       |
+| return (                                                              |
+|                                                                       |
+| \<GestureHandlerRootView style={{ flex: 1 }}\>                        |
+|                                                                       |
+| \<NavigationContainer\>                                               |
+|                                                                       |
+| \<Stack.Navigator                                                     |
+|                                                                       |
+| initialRouteName=\'Home\'                                             |
+|                                                                       |
+| screenOptions={{ headerShown: false, animation: \'slide_from_right\'  |
+| }}                                                                    |
+|                                                                       |
+| \>                                                                    |
+|                                                                       |
+| \<Stack.Screen name=\'Home\' component={HomeScreen} /\>               |
+|                                                                       |
+| \<Stack.Screen name=\'RoomCalibration\'                               |
+| component={RoomCalibrationScreen} /\>                                 |
+|                                                                       |
+| \<Stack.Screen name=\'RoomViewer3D\' component={RoomViewer3DScreen}   |
+| /\>                                                                   |
+|                                                                       |
+| \</Stack.Navigator\>                                                  |
+|                                                                       |
+| \</NavigationContainer\>                                              |
+|                                                                       |
+| \</GestureHandlerRootView\>                                           |
+|                                                                       |
+| );                                                                    |
+|                                                                       |
+| }                                                                     |
++-----------------------------------------------------------------------+
+
+**3.12 Build for Physical iPhone --- Step-by-Step**
+
+  --------- ------------------------------------------------------------------
+   **!!!**  ALWAYS test on a physical iPhone. The iOS Simulator WebGL
+            implementation is broken for Three.js shader compilation. Never
+            use Expo Go --- expo-gl is a native module that Expo Go cannot
+            load.
+
+  --------- ------------------------------------------------------------------
+
+15. Connect iPhone to Mac via USB cable
+
+16. Unlock iPhone and trust the Mac if prompted
+
+17. Enable Developer Mode: iPhone Settings \> Privacy & Security \>
+    Developer Mode \> Toggle ON \> Restart
+
+18. Open Terminal and start Metro: cd \~/Desktop/cova/apps/mobile && npx
+    expo start \--clear
+
+19. Open Xcode: open \~/Desktop/cova/apps/mobile/ios/Cova.xcworkspace
+
+20. In Xcode: select your iPhone from the device dropdown at the top
+
+21. In Xcode: go to Cova target \> Signing & Capabilities
+
+22. Set Team to \'Pranav Goel (Personal Team)\'
+
+23. REMOVE the Push Notifications capability (Personal Team cannot use
+    it --- causes provisioning failure)
+
+24. Press Cmd+R to build and run (first build takes 10-15 minutes)
+
+25. App installs on iPhone automatically when build completes
+
+**3.13 Verification Checklist**
+
+  -------------------------------------------------------------
+  **Test**            **Expected Result**          **Status**
+  ------------------- ---------------------------- ------------
+  App loads on iPhone 3D room visible with Japandi ✅ PASS
+                      floor and walls              
+
+  Tap Mid-Century     Scene switches to warm brown ✅ PASS
+  style chip          tones without crash          
+
+  Tap all 5 style     All switch without crash or  ✅ PASS
+  chips               white screen                 
+
+  Tap Save button     Permission prompt appears;   ✅ PASS
+                      saves screenshot to Photos   
+
+  Tap Reset button    Brief flash then scene       ✅ PASS
+                      remounts                     
+
+  Tap AI Render       Alert: \'Coming Soon - Phase ✅ PASS
+  button              4\'                          
+  -------------------------------------------------------------
+
+**3.14 Commit Phase 3**
+
++-----------------------------------------------------------------------+
+| cd \~/Desktop/cova                                                    |
+|                                                                       |
+| git add .                                                             |
+|                                                                       |
+| git commit -m \'Phase 3 complete --- 3D room engine on iPhone, style  |
+| switching, screenshot save\'                                          |
+|                                                                       |
+| git push origin main                                                  |
+|                                                                       |
+| \# Daksh pulls on his Mac:                                            |
+|                                                                       |
+| cd \~/Desktop/cova                                                    |
+|                                                                       |
+| git pull origin main                                                  |
+|                                                                       |
+| pnpm install                                                          |
++-----------------------------------------------------------------------+
+
+*COVA BUILD GUIDE v2.0 --- Phases 0--3 \| hellocova@gmail.com \|
+ai.cova.app \| March 2026*
+**COVA**
+
+**Complete Build Guide --- Phases 4--9**
+
+*All Cursor Prompts, Edge Function Code, Screen Code, Error Playbook \|
+Version 2.0 \| March 2026*
+
+This is Part 2. Read Part 1 (Phases 0-3) first.
+
+**TABLE OF CONTENTS**
+
+**PHASE 4: AI RENDERING PIPELINE**
+
+  ---------- ------------------------------------------------------------
+   **GOAL**  Build the Supabase Edge Functions for AI room rendering via
+             Replicate SDXL + ControlNet. Wire the AI Render button in
+             RoomViewer3DScreen to call the Edge Function. Tokens are
+             deducted on each render.
+
+  ---------- ------------------------------------------------------------
+
+  --------- ------------------------------------------------------------------
+   **!!!**  Phase 4 is backend only. No new UI screens. The AI Render button
+            already exists --- Phase 4 makes it actually work. Verify Phases
+            0-3 are complete and committed before starting.
+
+  --------- ------------------------------------------------------------------
+
+**4.1 Pre-Phase Checklist**
+
+1.  Verify REPLICATE_API_TOKEN is active: curl -H \'Authorization: Token
+    YOUR_TOKEN\' https://api.replicate.com/v1/account
+
+2.  Verify ANTHROPIC_API_KEY is active: curl -H \'x-api-key: YOUR_KEY\'
+    https://api.anthropic.com/v1/models
+
+3.  Verify Supabase is linked: supabase status
+
+4.  Apply for Wayfair Partner Network: partners.wayfair.com (2-4 week
+    approval --- start now)
+
+5.  Apply for Amazon Associates: affiliate-program.amazon.com
+
+**4.2 Create Edge Functions**
+
++-----------------------------------------------------------------------+
+| cd \~/Desktop/cova                                                    |
+|                                                                       |
+| supabase functions new render-room                                    |
+|                                                                       |
+| supabase functions new get-render-status                              |
+|                                                                       |
+| supabase functions new match-products                                 |
+|                                                                       |
+| supabase functions new chat-room                                      |
++-----------------------------------------------------------------------+
+
+**4.3 Set Supabase Secrets**
+
++-----------------------------------------------------------------------+
+| supabase secrets set REPLICATE_API_TOKEN=your_replicate_token         |
+|                                                                       |
+| supabase secrets set ANTHROPIC_API_KEY=your_anthropic_key             |
+|                                                                       |
+| \# Verify secrets are set                                             |
+|                                                                       |
+| supabase secrets list                                                 |
++-----------------------------------------------------------------------+
+
+**4.4 render-room Edge Function**
+
+File: \~/Desktop/cova/supabase/functions/render-room/index.ts
+
+Write this file manually or use the Cursor prompt below. Deno runtime
+--- no Node.js.
 
 +-----------------------------------------------------------------------------------------+
-| import { serve } from \'https://deno.land/std@0.177.0/http/server.ts\';                 |
+| **CURSOR AGENT PROMPT --- render-room Edge Function**                                   |
++-----------------------------------------------------------------------------------------+
+| \@BUILDGUIDE.md                                                                         |
 |                                                                                         |
-| import { createClient } from \'https://esm.sh/@supabase/supabase-js@2\';                |
+| Create supabase/functions/render-room/index.ts --- a Supabase Edge Function (Deno       |
+| runtime).                                                                               |
 |                                                                                         |
-| const REPLICATE_API_TOKEN = Deno.env.get(\'REPLICATE_API_TOKEN\')!;                     |
+| This function is called when the user taps \'AI Render\' in the 3D viewer.              |
 |                                                                                         |
-| const SUPABASE_URL = Deno.env.get(\'SUPABASE_URL\')!;                                   |
+| INPUT (JSON body):                                                                      |
 |                                                                                         |
-| const SUPABASE_SERVICE_KEY = Deno.env.get(\'SUPABASE_SERVICE_ROLE_KEY\')!;              |
+| room_id: string                                                                         |
 |                                                                                         |
-| // Pin exact Replicate model versions for reproducibility                               |
+| style: CavaStyle                                                                        |
+| (\'japandi\'\|\'midcentury\'\|\'coastal\'\|\'industrial\'\|\'bohemian\')                |
 |                                                                                         |
-| const SDXL_MODEL =                                                                      |
-| \'stability-ai/sdxl:39ed52f2319f9c0dde4c6f7bcbcefde4e18a990d2cc9c7e9a2a6fef5e5c3d0e4\'; |
+| quality_tier: \'draft\' \| \'hd\'                                                       |
 |                                                                                         |
-| const STYLE_PROMPTS: Record\<string, string\> = {                                       |
+| scene_snapshot_url: string \| null                                                      |
 |                                                                                         |
-| \'Japandi\': \'warm walnut and oak tones, handcrafted wabi-sabi ceramics, linen and     |
-| cotton textiles, negative space composition, shoji-inspired diffused light\',           |
+| COMPLETE LOGIC:                                                                         |
 |                                                                                         |
-| \'Mid-Century Modern\': \'organic curves, teak and walnut wood furniture, mustard and   |
-| olive color palette, geometric patterns, Eames-inspired chairs\',                       |
+| 1\. Import Supabase client from npm:@supabase/supabase-js                               |
 |                                                                                         |
-| \'Coastal\': \'bleached driftwood tones, navy and natural sand palette, rattan and      |
-| wicker textures, linen slipcovers, sea glass accents\',                                 |
+| Use Deno.env.get(\'SUPABASE_URL\') and Deno.env.get(\'SUPABASE_SERVICE_ROLE_KEY\')      |
 |                                                                                         |
-| \'Industrial\': \'exposed brick walls, raw steel structural beams, concrete surfaces,   |
-| Edison bulb warm lighting, distressed leather and reclaimed wood\',                     |
+| 2\. Get user from Authorization header JWT:                                             |
 |                                                                                         |
-| \'Bohemian\': \'layered patterned textiles, macrame wall hangings, warm amber and       |
-| terracotta palette, abundant hanging plants, global artifact collections\',             |
+| const { data: { user } } = await supabase.auth.getUser(token)                           |
 |                                                                                         |
-| };                                                                                      |
+| Return 401 if no user.                                                                  |
 |                                                                                         |
-| const QUALITY_SUFFIX = \'professional architectural photography, 8K UHD resolution,     |
-| photorealistic render, perfect balanced lighting, Architectural Digest editorial        |
-| quality\';                                                                              |
+| 3\. Check token balance:                                                                |
 |                                                                                         |
-| const NEGATIVE_PROMPT = \'deformed, blurry, low quality, watermark, text overlay, ugly, |
-| distorted perspective, impossible geometry, unrealistic scale, cartoon style, anime,    |
-| JPEG artifacts\';                                                                       |
+| draft costs 2 tokens, hd costs 3 tokens                                                 |
 |                                                                                         |
-| serve(async (req) =\> {                                                                 |
+| SELECT token_balance FROM users WHERE id = user.id                                      |
 |                                                                                         |
-| if (req.method !== \'POST\') return new Response(\'Method not allowed\', { status: 405  |
-| });                                                                                     |
+| Return 402 with JSON { error: \'insufficient_tokens\', required: X, available: Y } if   |
+| balance \< cost                                                                         |
 |                                                                                         |
-| const authHeader = req.headers.get(\'Authorization\');                                  |
+| 4\. Rate limiting:                                                                      |
 |                                                                                         |
-| if (!authHeader) return new Response(\'Unauthorized\', { status: 401 });                |
+| COUNT renders WHERE user_id = user.id AND created_at \> NOW() - INTERVAL \'1 hour\'     |
 |                                                                                         |
-| const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);                      |
+| Return 429 if count \>= 10                                                              |
 |                                                                                         |
-| const { data: { user }, error: authError } = await                                      |
-| supabase.auth.getUser(authHeader.replace(\'Bearer \', \'\'));                           |
+| 5\. Validate style is one of: japandi, midcentury, coastal, industrial, bohemian        |
 |                                                                                         |
-| if (authError \|\| !user) return new Response(\'Unauthorized\', { status: 401 });       |
+| Return 400 if invalid                                                                   |
 |                                                                                         |
-| const { room_id, style_name, quality_tier = \'draft\', seed } = await req.json();       |
+| 6\. Build style-specific SDXL prompt:                                                   |
 |                                                                                         |
-| if (!room_id \|\| !style_name) return new Response(JSON.stringify({ error: \'room_id    |
-| and style_name required\' }), { status: 400, headers: { \'Content-Type\':               |
-| \'application/json\' } });                                                              |
+| const STYLE_PROMPTS = {                                                                 |
 |                                                                                         |
-| // ── STEP 1: Deduct tokens atomically ──────────────────                               |
+| japandi: \'japandi interior design, minimal, warm oak wood, linen sofa, neutral tones,  |
+| soft natural light, professional architectural photography, 8k photorealistic, interior |
+| design magazine\',                                                                      |
 |                                                                                         |
-| const tokenCost = quality_tier === \'draft\' ? 2 : 3;                                   |
+| midcentury: \'mid century modern interior, walnut furniture, mustard velvet, brass      |
+| accents, warm golden hour light, Eames era aesthetic, 8k photorealistic\',              |
 |                                                                                         |
-| const { data: tokenOk, error: tokenErr } = await supabase.rpc(\'deduct_tokens_atomic\', |
-| {                                                                                       |
+| coastal: \'coastal interior design, white linen, bleached wood, ocean blue accents,     |
+| bright airy natural light, serene beachy atmosphere, 8k photorealistic\',               |
 |                                                                                         |
-| p_user_id: user.id, p_amount: tokenCost, p_reason: \`render\_\${quality_tier}\`         |
+| industrial: \'industrial loft interior, exposed brick, dark leather sofa, steel pipe    |
+| shelving, Edison bulbs, dramatic contrast lighting, 8k photorealistic\',                |
 |                                                                                         |
-| });                                                                                     |
-|                                                                                         |
-| if (tokenErr \|\| !tokenOk) return new Response(JSON.stringify({ error: \'Insufficient  |
-| tokens\' }), { status: 402, headers: { \'Content-Type\': \'application/json\' } });     |
-|                                                                                         |
-| // ── STEP 2: Get the room + depth map ──────────────────                               |
-|                                                                                         |
-| const { data: room } = await supabase.from(\'rooms\').select(\'original_image_url,      |
-| depth_map_url, room_type\').eq(\'id\', room_id).eq(\'user_id\', user.id).single();      |
-|                                                                                         |
-| if (!room) return new Response(\'Room not found\', { status: 404 });                    |
-|                                                                                         |
-| // ── STEP 3: Build the prompt ───────────────────────────                              |
-|                                                                                         |
-| const styleDesc = STYLE_PROMPTS\[style_name\] \|\| STYLE_PROMPTS\[\'Japandi\'\];        |
-|                                                                                         |
-| const prompt = \`\${room.room_type?.replace(\'\_\',\' \')} interior design,             |
-| \${styleDesc}, \${QUALITY_SUFFIX}\`;                                                    |
-|                                                                                         |
-| const renderSeed = seed \|\| Math.floor(Math.random() \* 2147483647);                   |
-|                                                                                         |
-| const params = quality_tier === \'draft\'                                               |
-|                                                                                         |
-| ? { width: 768, height: 768, num_inference_steps: 20, guidance_scale: 7.5,              |
-| denoising_strength: 0.75, prompt_strength: 0.8 }                                        |
-|                                                                                         |
-| : { width: 1024, height: 1024, num_inference_steps: 50, guidance_scale: 8.5,            |
-| denoising_strength: 0.65, prompt_strength: 0.85 };                                      |
-|                                                                                         |
-| // ── STEP 4: Create render record ──────────────────────                               |
-|                                                                                         |
-| const { data: render, error: renderErr } = await supabase.from(\'renders\').insert({    |
-|                                                                                         |
-| room_id, user_id: user.id, style_applied: style_name, quality_tier,                     |
-|                                                                                         |
-| status: \'processing\', prompt_used: prompt, negative_prompt_used: NEGATIVE_PROMPT,     |
-|                                                                                         |
-| seed: renderSeed, tokens_charged: tokenCost, \...params                                 |
-|                                                                                         |
-| }).select().single();                                                                   |
-|                                                                                         |
-| if (renderErr \|\| !render) throw new Error(\'Failed to create render record\');        |
-|                                                                                         |
-| // ── STEP 5: Submit to Replicate ────────────────────────                              |
-|                                                                                         |
-| const webhookUrl =                                                                      |
-| \`\${SUPABASE_URL}/functions/v1/webhook-replicate?render_id=\${render.id}\`;            |
-|                                                                                         |
-| const replicatePayload: any = {                                                         |
-|                                                                                         |
-| version: SDXL_MODEL.split(\':\')\[1\],                                                  |
-|                                                                                         |
-| input: {                                                                                |
-|                                                                                         |
-| prompt, negative_prompt: NEGATIVE_PROMPT,                                               |
-|                                                                                         |
-| image: room.original_image_url,                                                         |
-|                                                                                         |
-| seed: renderSeed, \...params,                                                           |
-|                                                                                         |
-| // Add depth map as control_image if available                                          |
-|                                                                                         |
-| \...(room.depth_map_url ? { control_image: room.depth_map_url } : {}),                  |
-|                                                                                         |
-| },                                                                                      |
-|                                                                                         |
-| webhook: webhookUrl,                                                                    |
-|                                                                                         |
-| webhook_events_filter: \[\'completed\', \'failed\'\],                                   |
-|                                                                                         |
-| };                                                                                      |
-|                                                                                         |
-| const replicateRes = await fetch(\'https://api.replicate.com/v1/predictions\', {        |
-|                                                                                         |
-| method: \'POST\',                                                                       |
-|                                                                                         |
-| headers: { \'Authorization\': \`Token \${REPLICATE_API_TOKEN}\`, \'Content-Type\':      |
-| \'application/json\' },                                                                 |
-|                                                                                         |
-| body: JSON.stringify(replicatePayload),                                                 |
-|                                                                                         |
-| });                                                                                     |
-|                                                                                         |
-| if (!replicateRes.ok) {                                                                 |
-|                                                                                         |
-| // Refund tokens on Replicate failure                                                   |
-|                                                                                         |
-| await supabase.from(\'users\').update({ token_balance: tokenCost }).eq(\'id\',          |
-| user.id); // simplified refund                                                          |
-|                                                                                         |
-| await supabase.from(\'renders\').update({ status: \'failed\' }).eq(\'id\', render.id);  |
-|                                                                                         |
-| return new Response(\'Failed to submit to Replicate\', { status: 502 });                |
+| bohemian: \'bohemian eclectic interior, terracotta velvet, moroccan patterns, layered   |
+| rugs, warm amber candlelight, lush plants everywhere, 8k photorealistic\',              |
 |                                                                                         |
 | }                                                                                       |
 |                                                                                         |
-| const prediction = await replicateRes.json();                                           |
+| const NEGATIVE_PROMPT = \'blurry, low quality, distorted, ugly, bad proportions,        |
+| watermark, cartoon, anime, painting, drawing\'                                          |
 |                                                                                         |
-| await supabase.from(\'renders\').update({ replicate_prediction_id: prediction.id        |
-| }).eq(\'id\', render.id);                                                               |
+| 7\. Call Replicate API:                                                                 |
 |                                                                                         |
-| return new Response(JSON.stringify({ render_id: render.id, status: \'processing\',      |
-| estimated_seconds: quality_tier === \'draft\' ? 20 : 50 }),                             |
+| POST https://api.replicate.com/v1/predictions                                           |
 |                                                                                         |
-| { status: 202, headers: { \'Content-Type\': \'application/json\' } });                  |
+| Authorization: Token \${Deno.env.get(\'REPLICATE_API_TOKEN\')}                          |
 |                                                                                         |
-| });                                                                                     |
+| Body: {                                                                                 |
+|                                                                                         |
+| version:                                                                                |
+| \'stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b\', |
+|                                                                                         |
+| input: {                                                                                |
+|                                                                                         |
+| prompt: STYLE_PROMPTS\[style\],                                                         |
+|                                                                                         |
+| negative_prompt: NEGATIVE_PROMPT,                                                       |
+|                                                                                         |
+| num_inference_steps: quality_tier === \'hd\' ? 50 : 30,                                 |
+|                                                                                         |
+| guidance_scale: 7.5,                                                                    |
+|                                                                                         |
+| width: 1024,                                                                            |
+|                                                                                         |
+| height: 1024,                                                                           |
+|                                                                                         |
+| }                                                                                       |
+|                                                                                         |
+| }                                                                                       |
+|                                                                                         |
+| 8\. Insert job record:                                                                  |
+|                                                                                         |
+| INSERT INTO jobs (user_id, job_type, status, replicate_id, input_params)                |
+|                                                                                         |
+| VALUES (user.id, \'render\', \'processing\', prediction.id, { style, quality_tier })    |
+|                                                                                         |
+| 9\. Insert render record:                                                               |
+|                                                                                         |
+| INSERT INTO renders (room_id, user_id, style_applied, quality_tier, status,             |
+| replicate_prediction_id, prompt_used, tokens_charged)                                   |
+|                                                                                         |
+| VALUES (room_id, user.id, style, quality_tier, \'processing\', prediction.id,           |
+| STYLE_PROMPTS\[style\], tokenCost)                                                      |
+|                                                                                         |
+| 10\. Deduct tokens atomically:                                                          |
+|                                                                                         |
+| CALL deduct_tokens_atomic(user.id, tokenCost, \'render\_\' + render.id)                 |
+|                                                                                         |
+| 11\. Return 200:                                                                        |
+|                                                                                         |
+| { render_id: render.id, job_id: job.id, status: \'processing\', tokens_charged:         |
+| tokenCost }                                                                             |
+|                                                                                         |
+| ERROR HANDLING:                                                                         |
+|                                                                                         |
+| \- Wrap entire function in try/catch                                                    |
+|                                                                                         |
+| \- If Replicate API returns error: mark render as failed, refund tokens via             |
+| deduct_tokens_atomic with negative delta, return 503                                    |
+|                                                                                         |
+| \- If database insert fails: return 500                                                 |
+|                                                                                         |
+| \- All CORS headers: Access-Control-Allow-Origin: \*                                    |
+|                                                                                         |
+| \- Handle OPTIONS preflight                                                             |
+|                                                                                         |
+| Report when complete.                                                                   |
 +-----------------------------------------------------------------------------------------+
 
-  ------- ------------------------------------------------------------
-   **2**  **Create the ZoeDepth Edge Function**
-
-  ------- ------------------------------------------------------------
-
-ZoeDepth extracts a depth map from the room photo. This runs
-automatically when a user uploads a photo, in the background while they
-browse styles. The depth map is used by ControlNet to preserve room
-structure in 2D renders.
-
-+-----------------------------------------------------------------+
-| mkdir -p supabase/functions/depth-map                           |
-|                                                                 |
-| code supabase/functions/depth-map/index.ts                      |
-+-----------------------------------------------------------------+
-
-+-----------------------------------------------------------------------------------------+
-| import { serve } from \'https://deno.land/std@0.177.0/http/server.ts\';                 |
-|                                                                                         |
-| import { createClient } from \'https://esm.sh/@supabase/supabase-js@2\';                |
-|                                                                                         |
-| const REPLICATE_API_TOKEN = Deno.env.get(\'REPLICATE_API_TOKEN\')!;                     |
-|                                                                                         |
-| const SUPABASE_URL = Deno.env.get(\'SUPABASE_URL\')!;                                   |
-|                                                                                         |
-| const SUPABASE_SERVICE_KEY = Deno.env.get(\'SUPABASE_SERVICE_ROLE_KEY\')!;              |
-|                                                                                         |
-| // ZoeDepth --- monocular depth estimation from single image                            |
-|                                                                                         |
-| const ZOEDEPTH_MODEL = \'isl-org/zoedepth:v1\';                                         |
-|                                                                                         |
-| serve(async (req) =\> {                                                                 |
-|                                                                                         |
-| if (req.method !== \'POST\') return new Response(\'Method not allowed\', { status: 405  |
-| });                                                                                     |
-|                                                                                         |
-| const authHeader = req.headers.get(\'Authorization\');                                  |
-|                                                                                         |
-| if (!authHeader) return new Response(\'Unauthorized\', { status: 401 });                |
-|                                                                                         |
-| const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);                      |
-|                                                                                         |
-| const { data: { user } } = await supabase.auth.getUser(authHeader.replace(\'Bearer \',  |
-| \'\'));                                                                                 |
-|                                                                                         |
-| if (!user) return new Response(\'Unauthorized\', { status: 401 });                      |
-|                                                                                         |
-| const { room_id } = await req.json();                                                   |
-|                                                                                         |
-| const { data: room } = await                                                            |
-| supabase.from(\'rooms\').select(\'original_image_url\').eq(\'id\',                      |
-| room_id).eq(\'user_id\', user.id).single();                                             |
-|                                                                                         |
-| if (!room) return new Response(\'Room not found\', { status: 404 });                    |
-|                                                                                         |
-| const webhookUrl =                                                                      |
-| \`\${SUPABASE_URL}/functions/v1/webhook-replicate?type=depth_map&room_id=\${room_id}\`; |
-|                                                                                         |
-| const response = await fetch(\'https://api.replicate.com/v1/predictions\', {            |
-|                                                                                         |
-| method: \'POST\',                                                                       |
-|                                                                                         |
-| headers: { \'Authorization\': \`Token \${REPLICATE_API_TOKEN}\`, \'Content-Type\':      |
-| \'application/json\' },                                                                 |
-|                                                                                         |
-| body: JSON.stringify({                                                                  |
-|                                                                                         |
-| version: ZOEDEPTH_MODEL,                                                                |
-|                                                                                         |
-| input: { image: room.original_image_url },                                              |
-|                                                                                         |
-| webhook: webhookUrl,                                                                    |
-|                                                                                         |
-| webhook_events_filter: \[\'completed\', \'failed\'\],                                   |
-|                                                                                         |
-| }),                                                                                     |
-|                                                                                         |
-| });                                                                                     |
-|                                                                                         |
-| if (!response.ok) return new Response(\'Failed to start depth extraction\', { status:   |
-| 500 });                                                                                 |
-|                                                                                         |
-| return new Response(JSON.stringify({ status: \'processing\' }), { status: 202, headers: |
-| { \'Content-Type\': \'application/json\' } });                                          |
-|                                                                                         |
-| });                                                                                     |
-+-----------------------------------------------------------------------------------------+
-
-  ------- ------------------------------------------------------------
-   **3**  **Create the Replicate webhook handler**
-
-  ------- ------------------------------------------------------------
-
-Replicate calls this webhook when a render or depth map completes. It
-stores the result, runs a quality check, and pushes a real-time update
-to the mobile app via Supabase Realtime.
-
-+-----------------------------------------------------------------+
-| mkdir -p supabase/functions/webhook-replicate                   |
-|                                                                 |
-| code supabase/functions/webhook-replicate/index.ts              |
-+-----------------------------------------------------------------+
-
-+-----------------------------------------------------------------+
-| import { serve } from                                           |
-| \'https://deno.land/std@0.177.0/http/server.ts\';               |
-|                                                                 |
-| import { createClient } from                                    |
-| \'https://esm.sh/@supabase/supabase-js@2\';                     |
-|                                                                 |
-| const SUPABASE_URL = Deno.env.get(\'SUPABASE_URL\')!;           |
-|                                                                 |
-| const SUPABASE_SERVICE_KEY =                                    |
-| Deno.env.get(\'SUPABASE_SERVICE_ROLE_KEY\')!;                   |
-|                                                                 |
-| // Minimum quality threshold --- BRISQUE score below this =     |
-| good render                                                     |
-|                                                                 |
-| // BRISQUE: 0=perfect, 100=terrible. Interior renders typically |
-| score 20-45.                                                    |
-|                                                                 |
-| const BRISQUE_THRESHOLD = 55;                                   |
-|                                                                 |
-| serve(async (req) =\> {                                         |
-|                                                                 |
-| if (req.method !== \'POST\') return new Response(\'OK\', {      |
-| status: 200 });                                                 |
-|                                                                 |
-| const url = new URL(req.url);                                   |
-|                                                                 |
-| const render_id = url.searchParams.get(\'render_id\');          |
-|                                                                 |
-| const type = url.searchParams.get(\'type\');                    |
-|                                                                 |
-| const room_id = url.searchParams.get(\'room_id\');              |
-|                                                                 |
-| const body = await req.json();                                  |
-|                                                                 |
-| const supabase = createClient(SUPABASE_URL,                     |
-| SUPABASE_SERVICE_KEY);                                          |
-|                                                                 |
-| // ── Handle depth map completion ───────────────────────       |
-|                                                                 |
-| if (type === \'depth_map\' && room_id) {                        |
-|                                                                 |
-| if (body.status === \'succeeded\' && body.output) {             |
-|                                                                 |
-| await supabase.from(\'rooms\').update({                         |
-|                                                                 |
-| depth_map_url: body.output,                                     |
-|                                                                 |
-| depth_map_quality_score: 1.0, // TODO: compute actual quality   |
-|                                                                 |
-| }).eq(\'id\', room_id);                                         |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| return new Response(\'OK\', { status: 200 });                   |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| // ── Handle render completion ──────────────────────────       |
-|                                                                 |
-| if (!render_id) return new Response(\'OK\', { status: 200 });   |
-|                                                                 |
-| if (body.status === \'failed\') {                               |
-|                                                                 |
-| await supabase.from(\'renders\').update({ status: \'failed\',   |
-| error_message: body.error }).eq(\'id\', render_id);             |
-|                                                                 |
-| return new Response(\'OK\', { status: 200 });                   |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| if (body.status === \'succeeded\' && body.output) {             |
-|                                                                 |
-| const imageUrl = Array.isArray(body.output) ? body.output\[0\]  |
-| : body.output;                                                  |
-|                                                                 |
-| // Basic quality check --- for V1 we accept all renders and     |
-| flag for review                                                 |
-|                                                                 |
-| // TODO: compute BRISQUE score via Python script or Replicate   |
-| model                                                           |
-|                                                                 |
-| const brisque_score = 30; // placeholder                        |
-|                                                                 |
-| const passed = brisque_score \< BRISQUE_THRESHOLD;              |
-|                                                                 |
-| await supabase.from(\'renders\').update({                       |
-|                                                                 |
-| status: passed ? \'complete\' : \'quality_rejected\',           |
-|                                                                 |
-| image_url: imageUrl,                                            |
-|                                                                 |
-| brisque_score,                                                  |
-|                                                                 |
-| }).eq(\'id\', render_id);                                       |
-|                                                                 |
-| // Trigger product matching if render passed quality check      |
-|                                                                 |
-| if (passed) {                                                   |
-|                                                                 |
-| await fetch(\`\${SUPABASE_URL}/functions/v1/match-products\`, { |
-|                                                                 |
-| method: \'POST\',                                               |
-|                                                                 |
-| headers: { \'Content-Type\': \'application/json\',              |
-| \'Authorization\': \`Bearer \${SUPABASE_SERVICE_KEY}\` },       |
-|                                                                 |
-| body: JSON.stringify({ render_id }),                            |
-|                                                                 |
-| });                                                             |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| return new Response(\'OK\', { status: 200 });                   |
-|                                                                 |
-| });                                                             |
-+-----------------------------------------------------------------+
-
-  ------- ------------------------------------------------------------
-   **4**  **Deploy Edge Functions to Supabase**
-
-  ------- ------------------------------------------------------------
-
-Deploy all three Edge Functions to your Supabase project:
-
-+-----------------------------------------------------------------+
-| \# Login to Supabase CLI first                                  |
-|                                                                 |
-| supabase login                                                  |
-|                                                                 |
-| \# Link to your project (get project ref from Supabase          |
-| dashboard URL)                                                  |
-|                                                                 |
-| supabase link \--project-ref YOUR_PROJECT_REF                   |
-|                                                                 |
-| \# Deploy all functions                                         |
-|                                                                 |
-| supabase functions deploy render                                |
-|                                                                 |
-| supabase functions deploy depth-map                             |
-|                                                                 |
-| supabase functions deploy webhook-replicate                     |
-|                                                                 |
-| \# Set secrets (environment variables) for each function        |
-|                                                                 |
-| supabase secrets set REPLICATE_API_TOKEN=r8_your_token          |
-|                                                                 |
-| supabase secrets set ANTHROPIC_API_KEY=sk-ant-your_key          |
-|                                                                 |
-| supabase secrets set STRIPE_SECRET_KEY=sk_test_your_key         |
-+-----------------------------------------------------------------+
-
-  ------------ --------------------------------------------------------
-      **✅     Go to your Supabase dashboard → Edge Functions. You
-   EXPECTED**  should see render, depth-map, and webhook-replicate
-               listed as \'Active\'.
-
-  ------------ --------------------------------------------------------
-
-+-----------------------------------------------------------------+
-| git add .                                                       |
-|                                                                 |
-| git commit -m \"Phase 4: 2D render Edge Functions ---           |
-| SDXL+ControlNet, ZoeDepth, webhook handler\"                    |
-|                                                                 |
-| git push origin main                                            |
-+-----------------------------------------------------------------+
-
-+:---------:+-----------------------------------------------------+
-| **PHASE   | *Conversational room editing with 3D scene mutation |
-| 5**       | dispatch*                                           |
-|           |                                                     |
-| **Claude  |                                                     |
-| Chatbot** |                                                     |
-+-----------+-----------------------------------------------------+
-
-The chatbot is Cova\'s second core differentiator after the 3D viewer.
-Users describe changes in natural language --- \'swap the sofa to dark
-green velvet\', \'add more plants\', \'make it feel more minimal\' ---
-and the app either mutates the 3D scene directly or triggers a 2D
-re-render. Claude API parses the intent and dispatches the right action.
-
-  ------- ------------------------------------------------------------
-   **1**  **Create the chatbot Edge Function**
-
-  ------- ------------------------------------------------------------
-
-+-----------------------------------------------------------------+
-| mkdir -p supabase/functions/chatbot                             |
-|                                                                 |
-| code supabase/functions/chatbot/index.ts                        |
-+-----------------------------------------------------------------+
-
-+-----------------------------------------------------------------+
-| import { serve } from                                           |
-| \'https://deno.land/std@0.177.0/http/server.ts\';               |
-|                                                                 |
-| import { createClient } from                                    |
-| \'https://esm.sh/@supabase/supabase-js@2\';                     |
-|                                                                 |
-| import Anthropic from                                           |
-| \'https://esm.sh/@anthropic-ai/sdk@0.20.0\';                    |
-|                                                                 |
-| const ANTHROPIC_KEY = Deno.env.get(\'ANTHROPIC_API_KEY\')!;     |
-|                                                                 |
-| const SUPABASE_URL = Deno.env.get(\'SUPABASE_URL\')!;           |
-|                                                                 |
-| const SUPABASE_SERVICE =                                        |
-| Deno.env.get(\'SUPABASE_SERVICE_ROLE_KEY\')!;                   |
-|                                                                 |
-| const anthropic = new Anthropic({ apiKey: ANTHROPIC_KEY });     |
-|                                                                 |
-| const SYSTEM_PROMPT = \`You are Cova\'s AI design assistant.    |
-| You help users edit their room design.                          |
-|                                                                 |
-| The user is looking at either a 3D interactive room or a 2D AI  |
-| render of their room.                                           |
-|                                                                 |
-| When a user asks to change something, respond with a JSON       |
-| object (no markdown, no explanation, ONLY JSON):                |
-|                                                                 |
-| {                                                               |
-|                                                                 |
-| \"action\": \"swap_furniture\" \| \"adjust_style\" \|           |
-| \"regenerate_full\" \| \"inpaint_object\" \| \"add_furniture\"  |
-| \| \"remove_furniture\" \| \"chat_only\",                       |
-|                                                                 |
-| \"reasoning\": \"brief explanation for the user\",              |
-|                                                                 |
-| \"params\": {                                                   |
-|                                                                 |
-| // For swap_furniture: { \"furniture_key\": \"japandi_sofa\",   |
-| \"new_model_key\": \"midcentury_sofa\" }                        |
-|                                                                 |
-| // For adjust_style: { \"new_style\": \"coastal\" }             |
-|                                                                 |
-| // For add_furniture: { \"model_key\":                          |
-| \"japandi_plant_fiddle\", \"position\": \[x, y, z\] }           |
-|                                                                 |
-| // For remove_furniture: { \"furniture_id\": \"id\" }           |
-|                                                                 |
-| // For regenerate_full: { \"style\": \"Coastal\",               |
-| \"modification\": \"add more natural light\" }                  |
-|                                                                 |
-| // For inpaint_object: { \"object\": \"sofa\", \"change\":      |
-| \"dark green velvet\" }                                         |
-|                                                                 |
-| // For chat_only: {}                                            |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| Prefer 3D actions (swap_furniture, add_furniture,               |
-| remove_furniture, adjust_style) over render actions             |
-| (regenerate_full, inpaint_object) --- they are faster and       |
-| cheaper for the user.                                           |
-|                                                                 |
-| If the user is just asking a question or chatting, use          |
-| chat_only and put your conversational response in the reasoning |
-| field.\`;                                                       |
-|                                                                 |
-| serve(async (req) =\> {                                         |
-|                                                                 |
-| if (req.method !== \'POST\') return new Response(\'Method not   |
-| allowed\', { status: 405 });                                    |
-|                                                                 |
-| const authHeader = req.headers.get(\'Authorization\');          |
-|                                                                 |
-| if (!authHeader) return new Response(\'Unauthorized\', {        |
-| status: 401 });                                                 |
-|                                                                 |
-| const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE);  |
-|                                                                 |
-| const { data: { user } } = await                                |
-| supabase.auth.getUser(authHeader.replace(\'Bearer \', \'\'));   |
-|                                                                 |
-| if (!user) return new Response(\'Unauthorized\', { status: 401  |
-| });                                                             |
-|                                                                 |
-| const { session_id, message, scene_state } = await req.json();  |
-|                                                                 |
-| // Load or create chat session                                  |
-|                                                                 |
-| let session: any = null;                                        |
-|                                                                 |
-| if (session_id) {                                               |
-|                                                                 |
-| const { data } = await                                          |
-| supabase.from(\'chat_sessions\').select(\'\*\').eq(\'id\',      |
-| session_id).single();                                           |
-|                                                                 |
-| session = data;                                                 |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| const history = session?.messages \|\| \[\];                    |
-|                                                                 |
-| const messages = \[                                             |
-|                                                                 |
-| \...history.map((m: any) =\> ({ role: m.role, content:          |
-| m.content })),                                                  |
-|                                                                 |
-| { role: \'user\', content: \`Current scene:                     |
-| \${JSON.stringify(scene_state)}\\n\\nUser says: \${message}\`   |
-| },                                                              |
-|                                                                 |
-| \];                                                             |
-|                                                                 |
-| const response = await anthropic.messages.create({              |
-|                                                                 |
-| model: \'claude-sonnet-4-6\',                                   |
-|                                                                 |
-| max_tokens: 1000,                                               |
-|                                                                 |
-| system: SYSTEM_PROMPT,                                          |
-|                                                                 |
-| messages,                                                       |
-|                                                                 |
-| });                                                             |
-|                                                                 |
-| const rawText = response.content\[0\].type === \'text\' ?       |
-| response.content\[0\].text : \'{}\';                            |
-|                                                                 |
-| let action: any = { action: \'chat_only\', reasoning: rawText,  |
-| params: {} };                                                   |
-|                                                                 |
-| try { action = JSON.parse(rawText); } catch {}                  |
-|                                                                 |
-| // Append to session                                            |
-|                                                                 |
-| const newMessages = \[                                          |
-|                                                                 |
-| \...history,                                                    |
-|                                                                 |
-| { role: \'user\', content: message, timestamp: new              |
-| Date().toISOString() },                                         |
-|                                                                 |
-| { role: \'assistant\', content: action.reasoning, action,       |
-| timestamp: new Date().toISOString() },                          |
-|                                                                 |
-| \];                                                             |
-|                                                                 |
-| if (session) {                                                  |
-|                                                                 |
-| await supabase.from(\'chat_sessions\').update({ messages:       |
-| newMessages, total_messages: newMessages.length }).eq(\'id\',   |
-| session.id);                                                    |
-|                                                                 |
-| return new Response(JSON.stringify({ \...action, session_id:    |
-| session.id }), { status: 200, headers: { \'Content-Type\':      |
-| \'application/json\' } });                                      |
-|                                                                 |
-| } else {                                                        |
-|                                                                 |
-| const { data: newSession } = await                              |
-| supabase.from(\'chat_sessions\').insert({ user_id: user.id,     |
-| messages: newMessages, total_messages: 2 }).select().single();  |
-|                                                                 |
-| return new Response(JSON.stringify({ \...action, session_id:    |
-| newSession?.id }), { status: 200, headers: { \'Content-Type\':  |
-| \'application/json\' } });                                      |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| });                                                             |
-+-----------------------------------------------------------------+
-
-+-----------------------------------------------------------------+
-| supabase functions deploy chatbot                               |
-|                                                                 |
-| git add .                                                       |
-|                                                                 |
-| git commit -m \"Phase 5: Claude chatbot with 3D scene mutation  |
-| dispatch\"                                                      |
-|                                                                 |
-| git push origin main                                            |
-+-----------------------------------------------------------------+
-
-+:---------:+-----------------------------------------------------+
-| **PHASE   | *Auth, tinder onboarding, upload flow, 3D viewer    |
-| 6**       | integration, product shelf*                         |
-|           |                                                     |
-| **Mobile  |                                                     |
-| App       |                                                     |
-| Screens** |                                                     |
-+-----------+-----------------------------------------------------+
-
-This phase builds every screen visible to users. The 3D viewer screens
-(RoomCalibrationScreen and RoomViewer3DScreen) were already built in
-Phase 3. This phase builds the surrounding app: auth, onboarding swipe
-cards, home feed, photo upload, and the product shelf.
-
-  ------- ------------------------------------------------------------
-   **1**  **Create the Expo app and install all packages**
-
-  ------- ------------------------------------------------------------
-
-+-----------------------------------------------------------------+
-| cd \~/Documents/cova/apps                                       |
-|                                                                 |
-| npx create-expo-app mobile \--template                          |
-| expo-template-blank-typescript                                  |
-|                                                                 |
-| cd mobile                                                       |
-+-----------------------------------------------------------------+
-
-Install all required packages in one command:
-
-+-----------------------------------------------------------------+
-| npx expo install \\                                             |
-|                                                                 |
-| expo-camera expo-image-picker expo-image-manipulator \\         |
-|                                                                 |
-| expo-file-system expo-notifications expo-in-app-purchases \\    |
-|                                                                 |
-| \@expo/vector-icons expo-haptics expo-linear-gradient \\        |
-|                                                                 |
-| expo-blur expo-status-bar expo-media-library expo-asset \\      |
-|                                                                 |
-| expo-gl react-native-view-shot                                  |
-+-----------------------------------------------------------------+
-
-+-----------------------------------------------------------------+
-| pnpm add \\                                                     |
-|                                                                 |
-| \@react-navigation/native \@react-navigation/native-stack       |
-| \@react-navigation/bottom-tabs \\                               |
-|                                                                 |
-| react-native-screens react-native-safe-area-context \\          |
-|                                                                 |
-| react-native-gesture-handler react-native-reanimated \\         |
-|                                                                 |
-| \@react-three/fiber \@react-three/drei three \\                 |
-|                                                                 |
-| react-native-svg react-native-deck-swiper \\                    |
-|                                                                 |
-| \@gorhom/bottom-sheet zustand \@tanstack/react-query \\         |
-|                                                                 |
-| \@supabase/supabase-js react-native-url-polyfill \\             |
-|                                                                 |
-| \@react-native-async-storage/async-storage                      |
-+-----------------------------------------------------------------+
-
-  ------- ------------------------------------------------------------
-   **2**  **Configure app.json --- rename everything to Cova**
-
-  ------- ------------------------------------------------------------
-
-  -----------------------------------------------------------------
-  code app.json
-
-  -----------------------------------------------------------------
-
-+-----------------------------------------------------------------+
-| {                                                               |
-|                                                                 |
-| \"expo\": {                                                     |
-|                                                                 |
-| \"name\": \"Cova\",                                             |
-|                                                                 |
-| \"slug\": \"cova\",                                             |
-|                                                                 |
-| \"version\": \"1.0.0\",                                         |
-|                                                                 |
-| \"orientation\": \"portrait\",                                  |
-|                                                                 |
-| \"icon\": \"./assets/icon.png\",                                |
-|                                                                 |
-| \"userInterfaceStyle\": \"dark\",                               |
-|                                                                 |
-| \"splash\": {                                                   |
-|                                                                 |
-| \"image\": \"./assets/splash.png\",                             |
-|                                                                 |
-| \"resizeMode\": \"contain\",                                    |
-|                                                                 |
-| \"backgroundColor\": \"#0B1729\"                                |
-|                                                                 |
-| },                                                              |
-|                                                                 |
-| \"ios\": {                                                      |
-|                                                                 |
-| \"supportsTablet\": false,                                      |
-|                                                                 |
-| \"bundleIdentifier\": \"ai.cova.app\",                          |
-|                                                                 |
-| \"infoPlist\": {                                                |
-|                                                                 |
-| \"NSCameraUsageDescription\": \"Cova needs camera access to     |
-| photograph your room for AI redesign.\",                        |
-|                                                                 |
-| \"NSPhotoLibraryUsageDescription\": \"Cova needs photo library  |
-| access to select room photos.\",                                |
-|                                                                 |
-| \"NSPhotoLibraryAddUsageDescription\": \"Cova needs permission  |
-| to save your room designs.\"                                    |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| },                                                              |
-|                                                                 |
-| \"plugins\": \[                                                 |
-|                                                                 |
-| \"expo-camera\",                                                |
-|                                                                 |
-| \"expo-image-picker\",                                          |
-|                                                                 |
-| \"expo-media-library\",                                         |
-|                                                                 |
-| \[\"expo-notifications\", { \"sounds\": \[\] }\]                |
-|                                                                 |
-| \]                                                              |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| }                                                               |
-+-----------------------------------------------------------------+
-
-  ------- ------------------------------------------------------------
-   **3**  **Configure metro.config.js for 3D model files**
-
-  ------- ------------------------------------------------------------
-
-  ------------- --------------------------------------------------------
-      **⚠️      This step is required for GLB files to load. Without it,
-   IMPORTANT**  Three.js model loading will silently fail.
-
-  ------------- --------------------------------------------------------
-
-  -----------------------------------------------------------------
-  code metro.config.js
-
-  -----------------------------------------------------------------
-
-+-----------------------------------------------------------------+
-| const { getDefaultConfig } = require(\'expo/metro-config\');    |
-|                                                                 |
-| const config = getDefaultConfig(\_\_dirname);                   |
-|                                                                 |
-| // Tell Metro bundler to handle 3D model and HDR environment    |
-| files                                                           |
-|                                                                 |
-| config.resolver.assetExts.push(\'glb\', \'gltf\', \'hdr\',      |
-| \'ktx2\');                                                      |
-|                                                                 |
-| module.exports = config;                                        |
-+-----------------------------------------------------------------+
-
-  ------- ------------------------------------------------------------
-   **4**  **Create the global Zustand state store**
-
-  ------- ------------------------------------------------------------
-
-  -----------------------------------------------------------------
-  mkdir -p src/store && code src/store/index.ts
-
-  -----------------------------------------------------------------
-
-+-----------------------------------------------------------------+
-| import { create } from \'zustand\';                             |
-|                                                                 |
-| import type { User, Room, SceneState, CavaStyle } from          |
-| \'@cova/shared\';                                               |
-|                                                                 |
-| interface AppState {                                            |
-|                                                                 |
-| // Auth                                                         |
-|                                                                 |
-| user: User \| null;                                             |
-|                                                                 |
-| setUser: (user: User \| null) =\> void;                         |
-|                                                                 |
-| // Current room being worked on                                 |
-|                                                                 |
-| currentRoom: Room \| null;                                      |
-|                                                                 |
-| setCurrentRoom: (room: Room \| null) =\> void;                  |
-|                                                                 |
-| // 3D scene state --- persisted across navigation               |
-|                                                                 |
-| sceneState: SceneState \| null;                                 |
-|                                                                 |
-| setSceneState: (state: SceneState) =\> void;                    |
-|                                                                 |
-| // Token balance (mirrored from DB for instant UI updates)      |
-|                                                                 |
-| tokenBalance: number;                                           |
-|                                                                 |
-| setTokenBalance: (n: number) =\> void;                          |
-|                                                                 |
-| spendTokens: (n: number) =\> void;                              |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| export const useAppStore = create\<AppState\>((set) =\> ({      |
-|                                                                 |
-| user: null,                                                     |
-|                                                                 |
-| setUser: (user) =\> set({ user, tokenBalance:                   |
-| user?.token_balance ?? 0 }),                                    |
-|                                                                 |
-| currentRoom: null,                                              |
-|                                                                 |
-| setCurrentRoom: (room) =\> set({ currentRoom: room }),          |
-|                                                                 |
-| sceneState: null,                                               |
-|                                                                 |
-| setSceneState: (state) =\> set({ sceneState: state }),          |
-|                                                                 |
-| tokenBalance: 0,                                                |
-|                                                                 |
-| setTokenBalance: (n) =\> set({ tokenBalance: n }),              |
-|                                                                 |
-| spendTokens: (n) =\> set(s =\> ({ tokenBalance: Math.max(0,     |
-| s.tokenBalance - n) })),                                        |
-|                                                                 |
-| }))                                                             |
-+-----------------------------------------------------------------+
-
-  ------- ------------------------------------------------------------
-   **5**  **Create the main navigation structure**
-
-  ------- ------------------------------------------------------------
-
-  -----------------------------------------------------------------
-  mkdir -p src/navigation && code src/navigation/index.tsx
-
-  -----------------------------------------------------------------
-
-+-----------------------------------------------------------------+
-| import React from \'react\';                                    |
-|                                                                 |
-| import { NavigationContainer } from                             |
-| \'@react-navigation/native\';                                   |
-|                                                                 |
-| import { createNativeStackNavigator } from                      |
-| \'@react-navigation/native-stack\';                             |
-|                                                                 |
-| import { createBottomTabNavigator } from                        |
-| \'@react-navigation/bottom-tabs\';                              |
-|                                                                 |
-| import { Ionicons } from \'@expo/vector-icons\';                |
-|                                                                 |
-| import { useAppStore } from \'../store\';                       |
-|                                                                 |
-| // Auth screens                                                 |
-|                                                                 |
-| import { WelcomeScreen } from                                   |
-| \'../screens/auth/WelcomeScreen\';                              |
-|                                                                 |
-| import { SignInScreen } from \'../screens/auth/SignInScreen\';  |
-|                                                                 |
-| import { SignUpScreen } from \'../screens/auth/SignUpScreen\';  |
-|                                                                 |
-| // Onboarding                                                   |
-|                                                                 |
-| import { SwipeOnboardingScreen } from                           |
-| \'../screens/onboarding/SwipeOnboardingScreen\';                |
-|                                                                 |
-| // Main app                                                     |
-|                                                                 |
-| import { HomeScreen } from \'../screens/main/HomeScreen\';      |
-|                                                                 |
-| import { UploadScreen } from \'../screens/main/UploadScreen\';  |
-|                                                                 |
-| import { RoomCalibrationScreen } from                           |
-| \'../screens/main/RoomCalibrationScreen\';                      |
-|                                                                 |
-| import { RoomViewer3DScreen } from                              |
-| \'../screens/main/RoomViewer3DScreen\';                         |
-|                                                                 |
-| import { ShopScreen } from \'../screens/main/ShopScreen\';      |
-|                                                                 |
-| import { AccountScreen } from                                   |
-| \'../screens/main/AccountScreen\';                              |
-|                                                                 |
-| const Stack = createNativeStackNavigator();                     |
-|                                                                 |
-| const Tabs = createBottomTabNavigator();                        |
-|                                                                 |
-| function MainTabs() {                                           |
-|                                                                 |
-| return (                                                        |
-|                                                                 |
-| \<Tabs.Navigator screenOptions={({ route }) =\> ({              |
-|                                                                 |
-| tabBarStyle: { backgroundColor: \'#0B1729\', borderTopColor:    |
-| \'rgba(201,168,76,0.2)\' },                                     |
-|                                                                 |
-| tabBarActiveTintColor: \'#C9A84C\',                             |
-|                                                                 |
-| tabBarInactiveTintColor:\'#8A8070\',                            |
-|                                                                 |
-| headerShown: false,                                             |
-|                                                                 |
-| tabBarIcon: ({ color, size }) =\> {                             |
-|                                                                 |
-| const icons: Record\<string, string\> = {                       |
-|                                                                 |
-| Home: \'home-outline\', Shop: \'bag-outline\', Account:         |
-| \'person-outline\'                                              |
-|                                                                 |
-| };                                                              |
-|                                                                 |
-| return \<Ionicons name={icons\[route.name\] as any ??           |
-| \'ellipse-outline\'} size={size} color={color} /\>;             |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| })}\>                                                           |
-|                                                                 |
-| \<Tabs.Screen name=\'Home\' component={HomeScreen} /\>          |
-|                                                                 |
-| \<Tabs.Screen name=\'Shop\' component={ShopScreen} /\>          |
-|                                                                 |
-| \<Tabs.Screen name=\'Account\' component={AccountScreen} /\>    |
-|                                                                 |
-| \</Tabs.Navigator\>                                             |
-|                                                                 |
-| );                                                              |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| export function AppNavigator() {                                |
-|                                                                 |
-| const { user } = useAppStore();                                 |
-|                                                                 |
-| return (                                                        |
-|                                                                 |
-| \<NavigationContainer\>                                         |
-|                                                                 |
-| \<Stack.Navigator screenOptions={{ headerShown: false }}\>      |
-|                                                                 |
-| {!user ? (                                                      |
-|                                                                 |
-| \<\>                                                            |
-|                                                                 |
-| \<Stack.Screen name=\'Welcome\' component={WelcomeScreen} /\>   |
-|                                                                 |
-| \<Stack.Screen name=\'SignIn\' component={SignInScreen} /\>     |
-|                                                                 |
-| \<Stack.Screen name=\'SignUp\' component={SignUpScreen} /\>     |
-|                                                                 |
-| \</\>                                                           |
-|                                                                 |
-| ) : !user.onboarding_completed ? (                              |
-|                                                                 |
-| \<Stack.Screen name=\'Onboarding\'                              |
-| component={SwipeOnboardingScreen} /\>                           |
-|                                                                 |
-| ) : (                                                           |
-|                                                                 |
-| \<\>                                                            |
-|                                                                 |
-| \<Stack.Screen name=\'Main\' component={MainTabs} /\>           |
-|                                                                 |
-| \<Stack.Screen name=\'Upload\' component={UploadScreen} /\>     |
-|                                                                 |
-| \<Stack.Screen name=\'RoomCalibration\'                         |
-| component={RoomCalibrationScreen} /\>                           |
-|                                                                 |
-| \<Stack.Screen name=\'RoomViewer3D\'                            |
-| component={RoomViewer3DScreen} /\>                              |
-|                                                                 |
-| \</\>                                                           |
-|                                                                 |
-| )}                                                              |
-|                                                                 |
-| \</Stack.Navigator\>                                            |
-|                                                                 |
-| \</NavigationContainer\>                                        |
-|                                                                 |
-| );                                                              |
-|                                                                 |
-| }                                                               |
-+-----------------------------------------------------------------+
-
-  --------- --------------------------------------------------------
-    **📝    The full screen implementations for WelcomeScreen,
-   NOTE**   SignInScreen, SignUpScreen, SwipeOnboardingScreen,
-            HomeScreen, UploadScreen, ShopScreen, and AccountScreen
-            follow the same patterns as the Phase 3 screens. Build
-            each one using the same StyleSheet.create pattern and
-            supabase.from() queries shown above. The navigation flow
-            is: Welcome → SignUp → Onboarding → Home → Upload →
-            Calibration → 3D Viewer.
-
-  --------- --------------------------------------------------------
-
-+-----------------------------------------------------------------+
-| git add .                                                       |
-|                                                                 |
-| git commit -m \"Phase 6: Mobile app screens --- nav, store,     |
-| upload flow, 3D viewer integrated\"                             |
-|                                                                 |
-| git push origin main                                            |
-+-----------------------------------------------------------------+
-
-+:---------:+-----------------------------------------------------+
-| **PHASE   | *Virtual staging, listing pages, open house voting, |
-| 7**       | MLS export*                                         |
-|           |                                                     |
-| **Realtor |                                                     |
-| Tools**   |                                                     |
-+-----------+-----------------------------------------------------+
-
-The realtor vertical is a B2B revenue stream from day one. Realtors use
-Cova to virtually stage empty listing photos, generate 3 styled versions
-per room, share a voting page for open houses, and download
-MLS-compliant photos.
-
-  --------- --------------------------------------------------------
-    **📝    The realtor web dashboard is built as a Next.js app at
-   NOTE**   apps/web. The mobile app has a \'Realtor Mode\' toggle
-            in Account settings that unlocks staging features within
-            the iOS app.
-
-  --------- --------------------------------------------------------
-
-  ------- ------------------------------------------------------------
-   **1**  **Create the Next.js realtor web dashboard**
-
-  ------- ------------------------------------------------------------
-
-+-----------------------------------------------------------------+
-| cd \~/Documents/cova/apps                                       |
-|                                                                 |
-| npx create-next-app@latest web \--typescript \--tailwind \--app |
-| \--no-src-dir \--import-alias \'@/\*\'                          |
-|                                                                 |
-| cd web                                                          |
-|                                                                 |
-| pnpm add \@supabase/supabase-js \@supabase/ssr archiver sharp   |
-| qrcode                                                          |
-+-----------------------------------------------------------------+
-
-  ------- ------------------------------------------------------------
-   **2**  **Create the MLS export API route**
-
-  ------- ------------------------------------------------------------
-
-This route downloads renders and converts them to MLS-compliant JPEG
-format. It handles all MLS spec requirements: JPEG format, 1024x768
-minimum, sRGB colour space, EXIF stripped, max 10MB.
-
-  -----------------------------------------------------------------
-  mkdir -p app/api/export-mls && code app/api/export-mls/route.ts
-
-  -----------------------------------------------------------------
-
-+-----------------------------------------------------------------+
-| import { NextRequest, NextResponse } from \'next/server\';      |
-|                                                                 |
-| import sharp from \'sharp\';                                    |
-|                                                                 |
-| import archiver from \'archiver\';                              |
-|                                                                 |
-| import { createClient } from \'@supabase/supabase-js\';         |
-|                                                                 |
-| import { Readable } from \'stream\';                            |
-|                                                                 |
-| const supabaseAdmin = createClient(                             |
-|                                                                 |
-| process.env.NEXT_PUBLIC_SUPABASE_URL!,                          |
-|                                                                 |
-| process.env.SUPABASE_SERVICE_ROLE_KEY!                          |
-|                                                                 |
-| );                                                              |
-|                                                                 |
-| // MLS Technical Specifications                                 |
-|                                                                 |
-| const MLS_SPEC = {                                              |
-|                                                                 |
-| format: \'jpeg\' as const,                                      |
-|                                                                 |
-| width: 1024,                                                    |
-|                                                                 |
-| height: 768,                                                    |
-|                                                                 |
-| quality: 85,                                                    |
-|                                                                 |
-| colorspace: \'srgb\' as const,                                  |
-|                                                                 |
-| // strip: true removes ALL EXIF metadata (GPS, device info,     |
-| etc.)                                                           |
-|                                                                 |
-| };                                                              |
-|                                                                 |
-| async function processForMLS(imageUrl: string):                 |
-| Promise\<Buffer\> {                                             |
-|                                                                 |
-| // Download the render from Supabase Storage or Replicate CDN   |
-|                                                                 |
-| const response = await fetch(imageUrl);                         |
-|                                                                 |
-| if (!response.ok) throw new Error(\`Failed to fetch image:      |
-| \${response.status}\`);                                         |
-|                                                                 |
-| const inputBuffer = Buffer.from(await response.arrayBuffer());  |
-|                                                                 |
-| // Process with sharp: resize, convert, strip EXIF              |
-|                                                                 |
-| const processed = await sharp(inputBuffer)                      |
-|                                                                 |
-| .resize(MLS_SPEC.width, MLS_SPEC.height, { fit: \'cover\',      |
-| position: \'centre\' })                                         |
-|                                                                 |
-| .toColorspace(MLS_SPEC.colorspace)                              |
-|                                                                 |
-| .jpeg({ quality: MLS_SPEC.quality, mozjpeg: true })             |
-|                                                                 |
-| .withMetadata({}) // strip all EXIF --- withMetadata({}) =      |
-| empty metadata                                                  |
-|                                                                 |
-| .toBuffer();                                                    |
-|                                                                 |
-| // Verify file size constraint (\<10MB)                         |
-|                                                                 |
-| const sizeMB = processed.byteLength / (1024 \* 1024);           |
-|                                                                 |
-| if (sizeMB \> 10) throw new Error(\`Processed image too large:  |
-| \${sizeMB.toFixed(1)}MB\`);                                     |
-|                                                                 |
-| return processed;                                               |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| export async function POST(req: NextRequest) {                  |
-|                                                                 |
-| const { listing_id, render_ids } = await req.json();            |
-|                                                                 |
-| // Verify the user is the realtor who owns this listing         |
-|                                                                 |
-| const authHeader = req.headers.get(\'Authorization\');          |
-|                                                                 |
-| // \... auth check omitted for brevity --- follow same pattern  |
-| as Edge Functions                                               |
-|                                                                 |
-| // Fetch render image URLs                                      |
-|                                                                 |
-| const { data: renders } = await supabaseAdmin                   |
-|                                                                 |
-| .from(\'renders\')                                              |
-|                                                                 |
-| .select(\'id, image_url, style_applied\')                       |
-|                                                                 |
-| .in(\'id\', render_ids)                                         |
-|                                                                 |
-| .eq(\'status\', \'complete\');                                  |
-|                                                                 |
-| if (!renders?.length) return NextResponse.json({ error: \'No    |
-| renders found\' }, { status: 404 });                            |
-|                                                                 |
-| // Process each render and build ZIP                            |
-|                                                                 |
-| const archive = archiver(\'zip\', { zlib: { level: 6 } });      |
-|                                                                 |
-| const chunks: Buffer\[\] = \[\];                                |
-|                                                                 |
-| archive.on(\'data\', (chunk: Buffer) =\> chunks.push(chunk));   |
-|                                                                 |
-| await Promise.all(renders.map(async (render) =\> {              |
-|                                                                 |
-| if (!render.image_url) return;                                  |
-|                                                                 |
-| const processed = await processForMLS(render.image_url);        |
-|                                                                 |
-| const filename =                                                |
-| \`\${render.style_applied.replace(/\\s+/g,\'\_\')}\_MLS.jpg\`;  |
-|                                                                 |
-| archive.append(processed, { name: filename });                  |
-|                                                                 |
-| }));                                                            |
-|                                                                 |
-| await archive.finalize();                                       |
-|                                                                 |
-| const zipBuffer = Buffer.concat(chunks);                        |
-|                                                                 |
-| return new NextResponse(zipBuffer, {                            |
-|                                                                 |
-| headers: {                                                      |
-|                                                                 |
-| \'Content-Type\': \'application/zip\',                          |
-|                                                                 |
-| \'Content-Disposition\': \`attachment;                          |
-| filename=\"cova_mls\_\${listing_id}.zip\"\`,                    |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| });                                                             |
-|                                                                 |
-| }                                                               |
-+-----------------------------------------------------------------+
-
-+-----------------------------------------------------------------+
-| git add .                                                       |
-|                                                                 |
-| git commit -m \"Phase 7: Realtor web dashboard, virtual         |
-| staging, MLS export, voting\"                                   |
-|                                                                 |
-| git push origin main                                            |
-+-----------------------------------------------------------------+
-
-+:-----------:+-----------------------------------------------------+
-| **PHASE 8** | *StoreKit token packs, subscriptions, receipt       |
-|             | verification*                                       |
-| **In-App    |                                                     |
-| Purchases** |                                                     |
-+-------------+-----------------------------------------------------+
-
-Cova\'s revenue comes from token packs and subscriptions. iOS in-app
-purchases are handled via Expo\'s expo-in-app-purchases which wraps
-Apple\'s StoreKit. All purchases must be verified server-side --- never
-trust the client.
-
-  ------- ------------------------------------------------------------
-   **1**  **Configure products in App Store Connect**
-
-  ------- ------------------------------------------------------------
-
-- Go to appstoreconnect.apple.com → your app → In-App Purchases
-
-- Create Consumable products for token packs (they can be purchased
-  multiple times):
-
-- ai.cova.tokens.20 --- Starter Pack 20 tokens --- \$4.99
-
-- ai.cova.tokens.70 --- Standard Pack 70 tokens --- \$14.99
-
-- ai.cova.tokens.200 --- Project Pack 200 tokens --- \$39.99
-
-- Create Auto-Renewable Subscriptions for plans:
-
-- ai.cova.sub.starter --- Starter Plan 100 tokens/mo --- \$14.99/mo
-
-- ai.cova.sub.pro --- Pro Plan 300 tokens/mo --- \$29.99/mo
-
-  ------- ------------------------------------------------------------
-   **2**  **Build the purchase hook**
-
-  ------- ------------------------------------------------------------
-
-  -----------------------------------------------------------------
-  mkdir -p src/hooks && code src/hooks/usePurchase.ts
-
-  -----------------------------------------------------------------
+**4.5 get-render-status Edge Function**
+
+File: \~/Desktop/cova/supabase/functions/get-render-status/index.ts
+
++------------------------------------------------------------------------------------+
+| **CURSOR AGENT PROMPT --- get-render-status Edge Function**                        |
++------------------------------------------------------------------------------------+
+| \@BUILDGUIDE.md                                                                    |
+|                                                                                    |
+| Create supabase/functions/get-render-status/index.ts (Deno runtime).               |
+|                                                                                    |
+| This function is polled by the mobile app to check if an AI render is complete.    |
+|                                                                                    |
+| INPUT (query params): render_id, job_id                                            |
+|                                                                                    |
+| COMPLETE LOGIC:                                                                    |
+|                                                                                    |
+| 1\. Authenticate user via Authorization header JWT                                 |
+|                                                                                    |
+| 2\. Fetch render from renders table WHERE id = render_id AND user_id = user.id     |
+|                                                                                    |
+| Return 404 if not found                                                            |
+|                                                                                    |
+| 3\. If render.status === \'complete\': return immediately:                         |
+|                                                                                    |
+| { status: \'complete\', image_url: render.image_url, render_id }                   |
+|                                                                                    |
+| 4\. If render.status === \'failed\': return:                                       |
+|                                                                                    |
+| { status: \'failed\', error: \'Render failed. Tokens have been refunded.\' }       |
+|                                                                                    |
+| 5\. Poll Replicate for current status:                                             |
+|                                                                                    |
+| GET https://api.replicate.com/v1/predictions/\${render.replicate_prediction_id}    |
+|                                                                                    |
+| Authorization: Token \${Deno.env.get(\'REPLICATE_API_TOKEN\')}                     |
+|                                                                                    |
+| 6\. If Replicate status === \'succeeded\':                                         |
+|                                                                                    |
+| a\. Download the output image URL (prediction.output\[0\])                         |
+|                                                                                    |
+| b\. Upload to Supabase Storage renders bucket as {user_id}/{render_id}.jpg:        |
+|                                                                                    |
+| const { data } = await supabase.storage.from(\'renders\')                          |
+|                                                                                    |
+| .upload(\`\${user.id}/\${render_id}.jpg\`, imageBlob, { contentType:               |
+| \'image/jpeg\' })                                                                  |
+|                                                                                    |
+| c\. Get public URL:                                                                |
+|                                                                                    |
+| const { data: urlData } =                                                          |
+| supabase.storage.from(\'renders\').getPublicUrl(\`\${user.id}/\${render_id}.jpg\`) |
+|                                                                                    |
+| d\. UPDATE renders SET status=\'complete\', image_url=urlData.publicUrl WHERE      |
+| id=render_id                                                                       |
+|                                                                                    |
+| e\. UPDATE jobs SET status=\'complete\', result_url=urlData.publicUrl,             |
+| completed_at=NOW() WHERE id=job_id                                                 |
+|                                                                                    |
+| f\. Return: { status: \'complete\', image_url: urlData.publicUrl, render_id }      |
+|                                                                                    |
+| 7\. If Replicate status === \'failed\':                                            |
+|                                                                                    |
+| a\. UPDATE renders SET status=\'failed\' WHERE id=render_id                        |
+|                                                                                    |
+| b\. UPDATE jobs SET status=\'failed\', error_message=prediction.error WHERE        |
+| id=job_id                                                                          |
+|                                                                                    |
+| c\. Refund tokens: INSERT INTO token_transactions (user_id, delta, reason)         |
+|                                                                                    |
+| with delta = +render.tokens_charged and reason = \'refund_failed_render\_\' +      |
+| render_id                                                                          |
+|                                                                                    |
+| AND UPDATE users SET token_balance = token_balance + render.tokens_charged         |
+|                                                                                    |
+| d\. Return: { status: \'failed\', error: \'Render failed. Tokens refunded.\' }     |
+|                                                                                    |
+| 8\. If Replicate still processing:                                                 |
+|                                                                                    |
+| Return: { status: \'processing\', estimated_seconds_remaining: 15 }                |
+|                                                                                    |
+| CORS headers on all responses. Handle OPTIONS preflight.                           |
+|                                                                                    |
+| Report when complete.                                                              |
++------------------------------------------------------------------------------------+
+
+**4.6 match-products Edge Function**
+
+File: \~/Desktop/cova/supabase/functions/match-products/index.ts
+
++-----------------------------------------------------------------------+
+| **CURSOR AGENT PROMPT --- match-products Edge Function**              |
++-----------------------------------------------------------------------+
+| \@BUILDGUIDE.md                                                       |
+|                                                                       |
+| Create supabase/functions/match-products/index.ts (Deno runtime).     |
+|                                                                       |
+| This function matches a rendered room image to real products using    |
+| style tags                                                            |
+|                                                                       |
+| (CLIP embedding matching requires the embeddings to be populated,     |
+| which happens                                                         |
+|                                                                       |
+| after Wayfair API access is approved. For now use style_tags          |
+| fallback).                                                            |
+|                                                                       |
+| INPUT (JSON body): render_id, style (CavaStyle), limit (default 10)   |
+|                                                                       |
+| LOGIC:                                                                |
+|                                                                       |
+| 1\. Authenticate user via Authorization header JWT                    |
+|                                                                       |
+| 2\. Fetch render by render_id to get style_applied                    |
+|                                                                       |
+| 3\. Try CLIP embedding match first:                                   |
+|                                                                       |
+| const { data: products } = await                                      |
+| supabase.rpc(\'search_products_by_embedding\', {                      |
+|                                                                       |
+| query_embedding: render.clip_embedding, // may be null                |
+|                                                                       |
+| match_count: limit,                                                   |
+|                                                                       |
+| style_filter: style                                                   |
+|                                                                       |
+| })                                                                    |
+|                                                                       |
+| 4\. If no clip_embedding on render (null), fall back to style_tags    |
+| match:                                                                |
+|                                                                       |
+| const { data: products } = await supabase                             |
+|                                                                       |
+| .from(\'products\')                                                   |
+|                                                                       |
+| .select(\'\*\')                                                       |
+|                                                                       |
+| .contains(\'style_tags\', \[style\])                                  |
+|                                                                       |
+| .order(\'price\', { ascending: true })                                |
+|                                                                       |
+| .limit(limit)                                                         |
+|                                                                       |
+| 5\. Insert into room_products junction for each matched product:      |
+|                                                                       |
+| INSERT INTO room_products (room_id, render_id, product_id)            |
+|                                                                       |
+| (fetch room_id from renders table)                                    |
+|                                                                       |
+| 6\. Deduct 1 token via deduct_tokens_atomic                           |
+|                                                                       |
+| 7\. Return: { products: Product\[\], tokens_charged: 1 }              |
+|                                                                       |
+| CORS headers. Report when complete.                                   |
++-----------------------------------------------------------------------+
+
+**4.7 Deploy Edge Functions**
+
++-----------------------------------------------------------------------+
+| cd \~/Desktop/cova                                                    |
+|                                                                       |
+| supabase functions deploy render-room                                 |
+|                                                                       |
+| supabase functions deploy get-render-status                           |
+|                                                                       |
+| supabase functions deploy match-products                              |
+|                                                                       |
+| \# Verify deployment in Supabase Dashboard \> Edge Functions          |
+|                                                                       |
+| \# All three should show green status                                 |
++-----------------------------------------------------------------------+
+
+**4.8 Test Edge Functions with curl**
+
++-----------------------------------------------------------------------------+
+| \# Get your anon key from Supabase Dashboard \> Settings \> API             |
+|                                                                             |
+| ANON_KEY=your_anon_key                                                      |
+|                                                                             |
+| PROJECT_URL=https://xdeacbmkdwqrwxonqaqh.supabase.co                        |
+|                                                                             |
+| \# Test render-room (will return 401 without a real JWT --- that is         |
+| expected)                                                                   |
+|                                                                             |
+| curl -X POST \$PROJECT_URL/functions/v1/render-room \\                      |
+|                                                                             |
+| -H \'Authorization: Bearer \$ANON_KEY\' \\                                  |
+|                                                                             |
+| -H \'Content-Type: application/json\' \\                                    |
+|                                                                             |
+| -d                                                                          |
+| \'{\"room_id\":\"test\",\"style\":\"japandi\",\"quality_tier\":\"draft\"}\' |
+|                                                                             |
+| \# Expected: { error: \'Unauthorized\' } or { error:                        |
+| \'insufficient_tokens\' }                                                   |
+|                                                                             |
+| \# NOT a 500 error                                                          |
++-----------------------------------------------------------------------------+
+
+**4.9 Wire AI Render Button in RoomViewer3DScreen**
+
++-----------------------------------------------------------------------------+
+| **CURSOR AGENT PROMPT --- Wire AI Render Button to Edge Function**          |
++-----------------------------------------------------------------------------+
+| \@BUILDGUIDE.md                                                             |
+|                                                                             |
+| Update apps/mobile/src/screens/main/RoomViewer3DScreen.tsx                  |
+|                                                                             |
+| Replace the handleAIRender function (currently shows \'Coming Soon\' alert) |
+|                                                                             |
+| with a real implementation that calls the render-room Edge Function.        |
+|                                                                             |
+| The updated handleAIRender should:                                          |
+|                                                                             |
+| 1\. Check token balance from Zustand store:                                 |
+|                                                                             |
+| const { tokenBalance, deductTokens } = useCovaStore()                       |
+|                                                                             |
+| const tokenCost = quality === \'draft\' ? 2 : 3                             |
+|                                                                             |
+| If tokenBalance \< tokenCost: show Alert \'Not enough tokens\'              |
+|                                                                             |
+| 2\. Get current user and room from Zustand store                            |
+|                                                                             |
+| If no user: show Alert \'Please sign in\'                                   |
+|                                                                             |
+| If no room or no room.id: create a room record first:                       |
+|                                                                             |
+| INSERT INTO rooms (user_id) --- then use the returned id                    |
+|                                                                             |
+| 3\. Get Supabase session JWT:                                               |
+|                                                                             |
+| const { data: { session } } = await supabase.auth.getSession()              |
+|                                                                             |
+| 4\. Show loading state: setIsRendering(true) --- add isRendering state      |
+|                                                                             |
+| Disable the AI Render button and show a gold ActivityIndicator              |
+|                                                                             |
+| 5\. Call render-room Edge Function:                                         |
+|                                                                             |
+| const response = await fetch(                                               |
+|                                                                             |
+| \'https://xdeacbmkdwqrwxonqaqh.supabase.co/functions/v1/render-room\',      |
+|                                                                             |
+| {                                                                           |
+|                                                                             |
+| method: \'POST\',                                                           |
+|                                                                             |
+| headers: {                                                                  |
+|                                                                             |
+| \'Content-Type\': \'application/json\',                                     |
+|                                                                             |
+| \'Authorization\': \`Bearer \${session.access_token}\`,                     |
+|                                                                             |
+| },                                                                          |
+|                                                                             |
+| body: JSON.stringify({                                                      |
+|                                                                             |
+| room_id: room.id,                                                           |
+|                                                                             |
+| style: activeStyle,                                                         |
+|                                                                             |
+| quality_tier: \'draft\',                                                    |
+|                                                                             |
+| })                                                                          |
+|                                                                             |
+| }                                                                           |
+|                                                                             |
+| )                                                                           |
+|                                                                             |
+| const data = await response.json()                                          |
+|                                                                             |
+| 6\. If response.ok: deductTokens(tokenCost) in Zustand                      |
+|                                                                             |
+| Start polling get-render-status every 3 seconds:                            |
+|                                                                             |
+| const pollInterval = setInterval(async () =\> {                             |
+|                                                                             |
+| const statusResp = await fetch(                                             |
+|                                                                             |
+| \'https://xdeacbmkdwqrwxonqaqh.supabase.co/functions/v1/get-render-status\' |
+| +                                                                           |
+|                                                                             |
+| \'?render_id=\' + data.render_id + \'&job_id=\' + data.job_id,              |
+|                                                                             |
+| { headers: { \'Authorization\': \`Bearer \${session.access_token}\` } }     |
+|                                                                             |
+| )                                                                           |
+|                                                                             |
+| const statusData = await statusResp.json()                                  |
+|                                                                             |
+| if (statusData.status === \'complete\') {                                   |
+|                                                                             |
+| clearInterval(pollInterval)                                                 |
+|                                                                             |
+| setIsRendering(false)                                                       |
+|                                                                             |
+| // Navigate to AI render result screen (Phase 6)                            |
+|                                                                             |
+| // For now: Alert showing image URL                                         |
+|                                                                             |
+| Alert.alert(\'Render complete!\', \'Image: \' + statusData.image_url)       |
+|                                                                             |
+| } else if (statusData.status === \'failed\') {                              |
+|                                                                             |
+| clearInterval(pollInterval)                                                 |
+|                                                                             |
+| setIsRendering(false)                                                       |
+|                                                                             |
+| Alert.alert(\'Render failed\', \'Tokens have been refunded.\')              |
+|                                                                             |
+| }                                                                           |
+|                                                                             |
+| }, 3000)                                                                    |
+|                                                                             |
+| 7\. If response not ok: show error Alert, setIsRendering(false)             |
+|                                                                             |
+| Add a rendering overlay on top of the 3D canvas when isRendering is true:   |
+|                                                                             |
+| Semi-transparent navy overlay (#0B1729 at 80% opacity)                      |
+|                                                                             |
+| Centered gold ActivityIndicator                                             |
+|                                                                             |
+| Text \'Generating your design\...\' in cream                                |
+|                                                                             |
+| Text showing current style: \'Japandi Style\' in gold                       |
+|                                                                             |
+| All styles via StyleSheet.create. All errors handled with try/catch.        |
+|                                                                             |
+| Report when complete.                                                       |
++-----------------------------------------------------------------------------+
+
+**4.10 Phase 4 Verification**
+
+  -----------------------------------------------------------------------
+  **Test**         **Expected**              **How to Test**
+  ---------------- ------------------------- ----------------------------
+  render-room      Green status in Supabase  supabase functions list
+  deploys          Dashboard \> Edge         
+                   Functions                 
+
+  Edge Functions   401 Unauthorized (not     curl test from Section 4.8
+  respond          500)                      
+
+  AI Render button Gold spinner +            Tap button on iPhone
+  shows loading    \'Generating\...\'        
+                   overlay                   
+
+  Tokens deducted  Balance decreases by 2 in Check Dashboard \> users
+                   Zustand + Supabase        table
+
+  Poll stops on    Alert showing image URL   Wait 15-30s after tapping
+  complete                                   button
+
+  Render saved to  Image in                  Check Supabase Dashboard \>
+  Storage          renders/{user_id}/ bucket Storage \> renders
+  -----------------------------------------------------------------------
+
+**4.11 Commit Phase 4**
+
++-----------------------------------------------------------------------+
+| cd \~/Desktop/cova                                                    |
+|                                                                       |
+| git add .                                                             |
+|                                                                       |
+| git commit -m \'Phase 4 complete --- render-room, get-render-status,  |
+| match-products Edge Functions deployed\'                              |
+|                                                                       |
+| git push origin main                                                  |
++-----------------------------------------------------------------------+
+
+**PHASE 5: CLAUDE CHATBOT EDGE FUNCTION**
+
+  ---------- ------------------------------------------------------------
+   **GOAL**  Build the chat-room Edge Function that powers the Claude
+             chatbot. Each message costs 2 tokens (with re-render) or 1
+             token (text only). Claude has full context of the room,
+             style, and render.
+
+  ---------- ------------------------------------------------------------
+
+**5.1 chat-room Edge Function**
+
+File: \~/Desktop/cova/supabase/functions/chat-room/index.ts
+
++-------------------------------------------------------------------------+
+| **CURSOR AGENT PROMPT --- chat-room Edge Function --- Complete          |
+| Implementation**                                                        |
++-------------------------------------------------------------------------+
+| \@BUILDGUIDE.md                                                         |
+|                                                                         |
+| Create supabase/functions/chat-room/index.ts (Deno runtime).            |
+|                                                                         |
+| INPUT (JSON body):                                                      |
+|                                                                         |
+| room_id: string                                                         |
+|                                                                         |
+| message: string (user\'s message to Claude)                             |
+|                                                                         |
+| chat_session_id: string \| null (null = start new session)              |
+|                                                                         |
+| render_id: string \| null (current render being edited)                 |
+|                                                                         |
+| COMPLETE LOGIC:                                                         |
+|                                                                         |
+| 1\. Authenticate via JWT. Return 401 if no user.                        |
+|                                                                         |
+| 2\. Check token balance \>= 1. Return 402 if insufficient.              |
+|                                                                         |
+| 3\. Rate limit: max 30 chat messages per user per hour.                 |
+|                                                                         |
+| COUNT from rate_limit_events WHERE user_id = user.id                    |
+|                                                                         |
+| AND event_type = \'chat\' AND created_at \> NOW() - INTERVAL \'1 hour\' |
+|                                                                         |
+| Return 429 if \>= 30                                                    |
+|                                                                         |
+| 4\. Fetch or create chat session:                                       |
+|                                                                         |
+| If chat_session_id provided: SELECT \* FROM chat_sessions WHERE id =    |
+| chat_session_id AND user_id = user.id                                   |
+|                                                                         |
+| If null: INSERT INTO chat_sessions (room_id, user_id, render_id,        |
+| messages, total_messages)                                               |
+|                                                                         |
+| VALUES (room_id, user.id, render_id, \'\[\]\', 0)                       |
+|                                                                         |
+| 5\. Context compression if total_messages \> 20:                        |
+|                                                                         |
+| Call Claude API with system: \'Summarize this interior design           |
+| conversation in 200 words.\',                                           |
+|                                                                         |
+| user: JSON.stringify(session.messages)                                  |
+|                                                                         |
+| Store result in session.summary                                         |
+|                                                                         |
+| Reset session.messages = \[\]                                           |
+|                                                                         |
+| Reset session.total_messages = 0                                        |
+|                                                                         |
+| 6\. Fetch room and render for context:                                  |
+|                                                                         |
+| SELECT \* FROM rooms WHERE id = room_id                                 |
+|                                                                         |
+| SELECT \* FROM renders WHERE id = render_id (if provided)               |
+|                                                                         |
+| 7\. Build Claude system prompt:                                         |
+|                                                                         |
+| const systemPrompt = \`You are Cova\'s interior design AI assistant.    |
+|                                                                         |
+| Current room: \${room.room_dimensions?.width_ft \|\| 14}ft wide x       |
+| \${room.room_dimensions?.depth_ft \|\| 12}ft deep x                     |
+| \${room.room_dimensions?.height_ft \|\| 9}ft high.                      |
+|                                                                         |
+| Current style: \${room.scene_state?.style \|\| \'japandi\'}.            |
+|                                                                         |
+| \${session.summary ? \'Previous conversation summary: \' +              |
+| session.summary : \'\'}                                                 |
+|                                                                         |
+| You are an expert interior designer helping the user perfect their      |
+| room.                                                                   |
+|                                                                         |
+| When you want to suggest triggering a new AI render, include            |
+| \[ACTION:RENDER\] in your response.                                     |
+|                                                                         |
+| When you recommend a specific product, include \[PRODUCT:product_name\] |
+| in your response.                                                       |
+|                                                                         |
+| Keep responses concise (2-3 sentences max) and design-focused.          |
+|                                                                         |
+| Always be specific and actionable.\`                                    |
+|                                                                         |
+| 8\. Build messages array for Claude:                                    |
+|                                                                         |
+| const messages = \[                                                     |
+|                                                                         |
+| \...session.messages.map(m =\> ({ role: m.role, content: m.content })), |
+|                                                                         |
+| { role: \'user\', content: message }                                    |
+|                                                                         |
+| \]                                                                      |
+|                                                                         |
+| 9\. Call Anthropic API:                                                 |
+|                                                                         |
+| POST https://api.anthropic.com/v1/messages                              |
+|                                                                         |
+| Headers:                                                                |
+|                                                                         |
+| x-api-key: \${Deno.env.get(\'ANTHROPIC_API_KEY\')}                      |
+|                                                                         |
+| anthropic-version: 2023-06-01                                           |
+|                                                                         |
+| content-type: application/json                                          |
+|                                                                         |
+| Body:                                                                   |
+|                                                                         |
+| model: \'claude-sonnet-4-6\'                                            |
+|                                                                         |
+| max_tokens: 400                                                         |
+|                                                                         |
+| system: systemPrompt                                                    |
+|                                                                         |
+| messages: messages                                                      |
+|                                                                         |
+| 10\. Parse Claude response text from response.content\[0\].text         |
+|                                                                         |
+| 11\. Check for action tags in response:                                 |
+|                                                                         |
+| const shouldRender = claudeResponse.includes(\'\[ACTION:RENDER\]\')     |
+|                                                                         |
+| const productMatches =                                                  |
+| \[\...claudeResponse.matchAll(/\\\[PRODUCT:(\[\^\\\]\]+)\\\]/g)\].map(m |
+| =\> m\[1\])                                                             |
+|                                                                         |
+| const cleanResponse = claudeResponse.replace(/\\\[ACTION:RENDER\\\]/g,  |
+| \'\').replace(/\\\[PRODUCT:\[\^\\\]\]+\\\]/g, \'\').trim()              |
+|                                                                         |
+| 12\. If shouldRender: call render-room function internally (or return   |
+| trigger signal):                                                        |
+|                                                                         |
+| triggerRender = true --- the mobile app will call render-room after     |
+| receiving this response                                                 |
+|                                                                         |
+| 13\. Append message pair to session.messages:                           |
+|                                                                         |
+| const newMessages = \[                                                  |
+|                                                                         |
+| \...session.messages,                                                   |
+|                                                                         |
+| { role: \'user\', content: message, timestamp: new Date().toISOString() |
+| },                                                                      |
+|                                                                         |
+| { role: \'assistant\', content: cleanResponse, timestamp: new           |
+| Date().toISOString(), render_id: null }                                 |
+|                                                                         |
+| \]                                                                      |
+|                                                                         |
+| UPDATE chat_sessions SET messages = newMessages, total_messages =       |
+| total_messages + 1 WHERE id = session.id                                |
+|                                                                         |
+| 14\. Deduct tokens:                                                     |
+|                                                                         |
+| tokenCost = shouldRender ? 2 : 1                                        |
+|                                                                         |
+| CALL deduct_tokens_atomic(user.id, tokenCost, \'chat\_\' + session.id)  |
+|                                                                         |
+| 15\. Insert rate_limit_event:                                           |
+|                                                                         |
+| INSERT INTO rate_limit_events (user_id, event_type) VALUES (user.id,    |
+| \'chat\')                                                               |
+|                                                                         |
+| 16\. Return:                                                            |
+|                                                                         |
+| {                                                                       |
+|                                                                         |
+| response: cleanResponse,                                                |
+|                                                                         |
+| chat_session_id: session.id,                                            |
+|                                                                         |
+| should_render: triggerRender,                                           |
+|                                                                         |
+| product_suggestions: productMatches,                                    |
+|                                                                         |
+| tokens_charged: tokenCost                                               |
+|                                                                         |
+| }                                                                       |
+|                                                                         |
+| All errors: try/catch, CORS headers, OPTIONS preflight.                 |
+|                                                                         |
+| Report when complete.                                                   |
++-------------------------------------------------------------------------+
+
+**5.2 Deploy chat-room**
+
++-----------------------------------------------------------------------+
+| supabase functions deploy chat-room                                   |
+|                                                                       |
+| \# Test with curl (expects 401 without real JWT):                     |
+|                                                                       |
+| curl -X POST                                                          |
+| https://xdeacbmkdwqrwxonqaqh.supabase.co/functions/v1/chat-room \\    |
+|                                                                       |
+| -H \'Content-Type: application/json\' \\                              |
+|                                                                       |
+| -d \'{\"room_id\":\"test\",\"message\":\"make the sofa blue\"}\'      |
++-----------------------------------------------------------------------+
+
+**5.3 Commit Phase 5**
+
+  -----------------------------------------------------------------------
+  git add . && git commit -m \'Phase 5 complete --- chat-room Edge
+  Function deployed\' && git push origin main
+
+  -----------------------------------------------------------------------
+
+**PHASE 6: FULL MOBILE APP SCREENS**
+
+  ---------- ------------------------------------------------------------
+     **V0    Every screen in Phase 6 MUST be designed in V0 (v0.dev) and
+    RULE**   approved by BOTH Pranav and Daksh before running any Cursor
+             prompt. See V0 prompts in Section 6.1.
+
+  ---------- ------------------------------------------------------------
+
+  --------- ------------------------------------------------------------------
+   **!!!**  Phase 6 is the largest phase. Do one screen at a time. Get V0
+            approval, run Cursor prompt, test on iPhone, commit. Never batch
+            multiple screens in one Cursor session.
+
+  --------- ------------------------------------------------------------------
+
+**6.1 V0 Design Prompts**
+
+Paste these prompts into v0.dev, approve the output, THEN run the
+matching Cursor prompt.
+
+**V0 Prompt: Splash Screen**
+
++-----------------------------------------------------------------------+
+| Create a React Native splash screen component.                        |
+|                                                                       |
+| Full navy background #0B1729.                                         |
+|                                                                       |
+| Centered COVA logo text: 64pt bold, gold color #C9A84C.               |
+|                                                                       |
+| Fade-in animation using react-native-reanimated FadeIn.               |
+|                                                                       |
+| Subtitle \'Design your room in minutes\' in cream #FAF7F2, 18pt,      |
+| below logo.                                                           |
+|                                                                       |
+| No buttons. No interaction. Clean premium aesthetic.                  |
++-----------------------------------------------------------------------+
+
+**V0 Prompt: Auth Screen**
+
++-----------------------------------------------------------------------+
+| Create a React Native auth screen.                                    |
+|                                                                       |
+| Navy background #0B1729.                                              |
+|                                                                       |
+| COVA logo at top center, gold #C9A84C, 48pt bold.                     |
+|                                                                       |
+| Email text input: cream background #FAF7F2, navy text, 12px border    |
+| radius,                                                               |
+|                                                                       |
+| gold border #C9A84C on focus, \'Email address\' placeholder in muted  |
+| #8A8070.                                                              |
+|                                                                       |
+| Password input: same styling, show/hide eye toggle in gold.           |
+|                                                                       |
+| Primary button \'Sign In\': gold background #C9A84C, navy text        |
+| #0B1729, 14px radius.                                                 |
+|                                                                       |
+| Secondary button \'Create Account\': gold border 1.5px, transparent   |
+| bg, cream text.                                                       |
+|                                                                       |
+| \'Continue with Apple\' button: white background, black Apple logo,   |
+| dark text.                                                            |
+|                                                                       |
+| Error message in red #EF5350 below inputs when present.               |
+|                                                                       |
+| Gold ActivityIndicator when loading, all inputs disabled.             |
++-----------------------------------------------------------------------+
+
+**V0 Prompt: Onboarding Swipe Screen**
+
++-----------------------------------------------------------------------+
+| Create a React Native Tinder-style swipe card component for room      |
+| style discovery.                                                      |
+|                                                                       |
+| Navy background #0B1729.                                              |
+|                                                                       |
+| Gold progress bar at top: \'X of 20\' label in cream 13pt.            |
+|                                                                       |
+| Card: 85vw wide, 65vh tall, borderRadius 24px, overflow hidden.       |
+|                                                                       |
+| Top 75% of card: room photograph image, covers full width.            |
+|                                                                       |
+| Bottom 25%: dark navy #0D1F35 background, room style name in gold     |
+| 22pt bold,                                                            |
+|                                                                       |
+| centered vertically.                                                  |
+|                                                                       |
+| Card stack effect: current card + 1 card slightly behind and scaled   |
+| down.                                                                 |
+|                                                                       |
+| Swipe left = dislike (spring animation moving card left off screen).  |
+|                                                                       |
+| Swipe right = like (spring animation moving card right off screen).   |
+|                                                                       |
+| Bottom buttons: X circle in red, heart circle in gold, 64px diameter. |
+|                                                                       |
+| \'Skip for now\' text button top right in muted #8A8070.              |
+|                                                                       |
+| PanResponder for gesture detection. Reanimated for animations.        |
++-----------------------------------------------------------------------+
+
+**V0 Prompt: Room Upload Screen**
+
++-----------------------------------------------------------------------+
+| Create a React Native room upload screen.                             |
+|                                                                       |
+| Navy background #0B1729.                                              |
+|                                                                       |
+| Header \'Add Your Room\' in cream #FAF7F2, 24pt semibold.             |
+|                                                                       |
+| Camera preview area: 90% width, 50% height, rounded 16px corners,     |
+|                                                                       |
+| dark navy border, camera icon if permission not granted.              |
+|                                                                       |
+| Two large buttons stacked:                                            |
+|                                                                       |
+| 1\. Gold button \'Take Photo\' with camera SF symbol icon             |
+|                                                                       |
+| 2\. Ghost button \'Choose from Library\' with photo SF symbol icon    |
+|                                                                       |
+| Below: \'Recent rooms\' label in muted 14pt.                          |
+|                                                                       |
+| Horizontal scroll of 4 room thumbnail cards: 100x100, rounded 12px,   |
+| navy bg.                                                              |
+|                                                                       |
+| Upload progress bar in gold when uploading (0-100%).                  |
+|                                                                       |
+| All text in cream or gold on navy background. Clean spacing.          |
++-----------------------------------------------------------------------+
+
+**V0 Prompt: 3D Viewer with Furniture Panel**
+
++-----------------------------------------------------------------------+
+| Create a React Native 3D room viewer screen layout (no actual 3D ---  |
+| just the UI frame).                                                   |
+|                                                                       |
+| Navy background #0B1729.                                              |
+|                                                                       |
+| Top: horizontal scrollable style chip row.                            |
+|                                                                       |
+| Each chip: emoji + style name, borderRadius 20px, navy border.        |
+|                                                                       |
+| Active chip: gold border #C9A84C, rgba(201,168,76,0.15) background.   |
+|                                                                       |
+| 5 chips: Japandi, Mid-Century, Coastal, Industrial, Bohemian.         |
+|                                                                       |
+| Middle: dark navy rectangle placeholder for Three.js Canvas.          |
+|                                                                       |
+| Bottom selected furniture panel (shows when furniture is tapped):     |
+|                                                                       |
+| Slides up from bottom with spring animation.                          |
+|                                                                       |
+| Cream panel, rounded top corners 20px.                                |
+|                                                                       |
+| Furniture name in navy 18pt bold.                                     |
+|                                                                       |
+| \'Drag to move • Pinch to scale\' hint in muted 12pt.                 |
+|                                                                       |
+| Red ghost button \'Remove\'.                                          |
+|                                                                       |
+| Action bar at very bottom:                                            |
+|                                                                       |
+| GoldButton \'Save\', GhostButton \'Reset\', GhostButton \'✨ AI       |
+| Render\'.                                                             |
+|                                                                       |
+| Token badge top right: gold pill with coin icon + balance number.     |
++-----------------------------------------------------------------------+
+
+**V0 Prompt: AI Render Result Screen**
+
++-----------------------------------------------------------------------+
+| Create a React Native AI render result screen.                        |
+|                                                                       |
+| Navy background #0B1729.                                              |
+|                                                                       |
+| Top 50% of screen: room render image with rounded bottom corners      |
+| 24px.                                                                 |
+|                                                                       |
+| Share button (iOS share icon) top right in gold.                      |
+|                                                                       |
+| \'Regenerate\' ghost button below image with refresh icon.            |
+|                                                                       |
+| Loading shimmer animation when render is processing.                  |
+|                                                                       |
+| Middle: \'Matched Products\' label in cream 18pt bold.                |
+|                                                                       |
+| Horizontal scrollable ProductCard list.                               |
+|                                                                       |
+| Each card: 120x120 image, product name 13pt cream, price 15pt gold    |
+| bold,                                                                 |
+|                                                                       |
+| retailer badge (wayfair=purple, amazon=orange, ikea=blue), small gold |
+| \'Add\' button.                                                       |
+|                                                                       |
+| Bottom chat interface:                                                |
+|                                                                       |
+| Scrollable chat messages above input.                                 |
+|                                                                       |
+| User messages: right-aligned, gold background bubble, navy text.      |
+|                                                                       |
+| Claude messages: left-aligned, cream bubble, navy text.               |
+|                                                                       |
+| Input bar: rounded navy bg, cream placeholder \'Edit this             |
+| design\...\',                                                         |
+|                                                                       |
+| gold circular send button.                                            |
+|                                                                       |
+| \'1 token per message\' hint in muted 11pt.                           |
+|                                                                       |
+| TokenBadge top right in header.                                       |
++-----------------------------------------------------------------------+
+
+**6.2 Design System Components**
+
++-----------------------------------------------------------------------+
+| **CURSOR AGENT PROMPT --- Cova Design System Components**             |
++-----------------------------------------------------------------------+
+| \@BUILDGUIDE.md                                                       |
+|                                                                       |
+| Create the Cova design system in apps/mobile/src/components/ui/       |
+|                                                                       |
+| Create these files --- ALL with StyleSheet.create, NO inline styles:  |
+|                                                                       |
+| 1\. GoldButton.tsx                                                    |
+|                                                                       |
+| Props: { title: string; onPress: () =\> void; disabled?: boolean;     |
+| loading?: boolean; style?: ViewStyle }                                |
+|                                                                       |
+| Styles: backgroundColor #C9A84C, borderRadius 14, paddingVertical 16, |
+| paddingHorizontal 24                                                  |
+|                                                                       |
+| Text: color #0B1729, fontSize 15, fontWeight \'700\'                  |
+|                                                                       |
+| Loading: show ActivityIndicator color=\'#0B1729\' instead of text     |
+|                                                                       |
+| Disabled: opacity 0.5, pointerEvents \'none\'                         |
+|                                                                       |
+| 2\. GhostButton.tsx                                                   |
+|                                                                       |
+| Props: same as GoldButton                                             |
+|                                                                       |
+| Styles: borderWidth 1.5, borderColor #C9A84C, borderRadius 14, bg     |
+| transparent                                                           |
+|                                                                       |
+| Text: color #FAF7F2, fontSize 15, fontWeight \'500\'                  |
+|                                                                       |
+| 3\. TokenBadge.tsx                                                    |
+|                                                                       |
+| Props: none --- reads from useCovaStore().tokenBalance                |
+|                                                                       |
+| Shows: coin emoji + tokenBalance number                               |
+|                                                                       |
+| Styles: borderWidth 1, borderColor #C9A84C, borderRadius 20,          |
+|                                                                       |
+| backgroundColor rgba(201,168,76,0.12), paddingHorizontal 12,          |
+| paddingVertical 6                                                     |
+|                                                                       |
+| Text: color #C9A84C, fontSize 13, fontWeight \'600\'                  |
+|                                                                       |
+| If balance \< 5: show yellow warning color #F0A500                    |
+|                                                                       |
+| 4\. StyleChip.tsx                                                     |
+|                                                                       |
+| Props: { id: CavaStyle; label: string; emoji: string; isActive:       |
+| boolean; onPress: () =\> void }                                       |
+|                                                                       |
+| Active: borderColor #C9A84C, backgroundColor rgba(201,168,76,0.15)    |
+|                                                                       |
+| Inactive: borderColor #2A3F5F, backgroundColor #0D1F35                |
+|                                                                       |
+| Layout: row, emoji + label, borderRadius 20, borderWidth 1.5          |
+|                                                                       |
+| 5\. ProductCard.tsx                                                   |
+|                                                                       |
+| Props: { product: Product; onAddToRoom?: () =\> void; onBuy?: () =\>  |
+| void }                                                                |
+|                                                                       |
+| (import Product type from \@cova/shared)                              |
+|                                                                       |
+| Image: 120x120, borderRadius 12, backgroundColor #0D1F35              |
+|                                                                       |
+| Name: cream, 13pt, numberOfLines 2                                    |
+|                                                                       |
+| Price: gold, 15pt bold (format as \'\$X.XX\')                         |
+|                                                                       |
+| Retailer badge: small pill --- wayfair=#7B61FF, amazon=#FF9900,       |
+| ikea=#0057A8, cb2=#1A1A1A                                             |
+|                                                                       |
+| Add button: small GoldButton \'Add\'                                  |
+|                                                                       |
+| onBuy: open affiliate_url_base via Linking.openURL()                  |
+|                                                                       |
+| 6\. Toast.tsx                                                         |
+|                                                                       |
+| Props: { message: string; type: \'success\'\|\'error\'\|\'info\';     |
+| visible: boolean; onHide: () =\> void }                               |
+|                                                                       |
+| Slides in from bottom, auto-dismisses after 3 seconds                 |
+|                                                                       |
+| success: green bg #4CAF50, error: red bg #EF5350, info: navy bg with  |
+| gold border                                                           |
+|                                                                       |
+| Text: white, 14pt                                                     |
+|                                                                       |
+| This replaces ALL Alert.alert() calls before App Store submission     |
+|                                                                       |
+| 7\. index.ts --- export all components                                |
+|                                                                       |
+| Report when all 7 files are created.                                  |
++-----------------------------------------------------------------------+
+
+**6.3 Splash + Auth Screens**
+
++-----------------------------------------------------------------------+
+| **CURSOR AGENT PROMPT --- Splash and Auth Screens**                   |
++-----------------------------------------------------------------------+
+| \@BUILDGUIDE.md                                                       |
+|                                                                       |
+| Create apps/mobile/src/screens/auth/SplashScreen.tsx                  |
+|                                                                       |
+| Logic:                                                                |
+|                                                                       |
+| \- On mount: call supabase.auth.getSession()                          |
+|                                                                       |
+| \- If session exists: navigate to \'Home\' after 300ms                |
+|                                                                       |
+| \- If no session: animate logo in (FadeIn 600ms), then navigate to    |
+| \'Auth\' after 2 seconds                                              |
+|                                                                       |
+| \- Centered COVA text 64pt gold, subtitle cream 18pt, navy background |
+|                                                                       |
+| \- Use Reanimated FadeIn for logo animation                           |
+|                                                                       |
+| Create apps/mobile/src/screens/auth/AuthScreen.tsx                    |
+|                                                                       |
+| State: email, password, isLoading, error, mode                        |
+| (\'signin\'\|\'signup\')                                              |
+|                                                                       |
+| Sign In logic:                                                        |
+|                                                                       |
+| const { error } = await supabase.auth.signInWithPassword({ email,     |
+| password })                                                           |
+|                                                                       |
+| On success: fetch user from users table, call setUser() in Zustand,   |
+| navigate to \'Home\'                                                  |
+|                                                                       |
+| Sign Up logic:                                                        |
+|                                                                       |
+| const { error } = await supabase.auth.signUp({ email, password })     |
+|                                                                       |
+| On success: show \'Check your email to confirm\' message              |
+|                                                                       |
+| Validation:                                                           |
+|                                                                       |
+| \- Email must contain @                                               |
+|                                                                       |
+| \- Password must be 8+ characters                                     |
+|                                                                       |
+| \- Show field-level error messages                                    |
+|                                                                       |
+| After sign in, sync token balance to Zustand:                         |
+|                                                                       |
+| const { data: user } = await                                          |
+| supabase.from(\'users\').select(\'token_balance\').single()           |
+|                                                                       |
+| setTokenBalance(user.token_balance)                                   |
+|                                                                       |
+| Update App.tsx to:                                                    |
+|                                                                       |
+| \- Check session on startup                                           |
+|                                                                       |
+| \- Show Splash as initial screen                                      |
+|                                                                       |
+| \- Auth stack: Splash -\> Auth                                        |
+|                                                                       |
+| \- Main stack: Home -\> RoomCalibration -\> RoomViewer3D -\> AIRender |
+|                                                                       |
+| \- If authenticated: go to Main stack; if not: go to Auth stack       |
+|                                                                       |
+| All styles via StyleSheet.create. Match V0 design approved above.     |
+|                                                                       |
+| Report when complete.                                                 |
++-----------------------------------------------------------------------+
+
+**6.4 Onboarding Swipe Screen**
+
++------------------------------------------------------------------------+
+| **CURSOR AGENT PROMPT --- Onboarding Swipe Screen --- Style            |
+| Fingerprint**                                                          |
++------------------------------------------------------------------------+
+| \@BUILDGUIDE.md                                                        |
+|                                                                        |
+| Create apps/mobile/src/screens/onboarding/OnboardingSwipeScreen.tsx    |
+|                                                                        |
+| SWIPE CARD DATA --- use these Unsplash image URLs:                     |
+|                                                                        |
+| const SWIPE_CARDS = \[                                                 |
+|                                                                        |
+| { id: \'japandi_1\', style: \'japandi\', label: \'Japandi\', imageUrl: |
+| \'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800\' |
+| },                                                                     |
+|                                                                        |
+| { id: \'japandi_2\', style: \'japandi\', label: \'Japandi\', imageUrl: |
+| \'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800\' }, |
+|                                                                        |
+| { id: \'midcentury_1\', style: \'midcentury\', label: \'Mid-Century\', |
+| imageUrl:                                                              |
+| \'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800\' }, |
+|                                                                        |
+| { id: \'midcentury_2\', style: \'midcentury\', label: \'Mid-Century\', |
+| imageUrl:                                                              |
+| \'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800\' |
+| },                                                                     |
+|                                                                        |
+| { id: \'coastal_1\', style: \'coastal\', label: \'Coastal\', imageUrl: |
+| \'https://images.unsplash.com/photo-1484101403633-562f891dc89a?w=800\' |
+| },                                                                     |
+|                                                                        |
+| { id: \'coastal_2\', style: \'coastal\', label: \'Coastal\', imageUrl: |
+| \'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800\' |
+| },                                                                     |
+|                                                                        |
+| { id: \'industrial_1\', style: \'industrial\', label: \'Industrial\',  |
+| imageUrl:                                                              |
+| \'https://images.unsplash.com/photo-1565538810643-b5bdb714032a?w=800\' |
+| },                                                                     |
+|                                                                        |
+| { id: \'industrial_2\', style: \'industrial\', label: \'Industrial\',  |
+| imageUrl:                                                              |
+| \'https://images.unsplash.com/photo-1585421514284-efb74c2b69ba?w=800\' |
+| },                                                                     |
+|                                                                        |
+| { id: \'bohemian_1\', style: \'bohemian\', label: \'Bohemian\',        |
+| imageUrl:                                                              |
+| \'https://images.unsplash.com/photo-1567016432779-094069958ea5?w=800\' |
+| },                                                                     |
+|                                                                        |
+| { id: \'bohemian_2\', style: \'bohemian\', label: \'Bohemian\',        |
+| imageUrl:                                                              |
+| \'https://images.unsplash.com/photo-1617103996702-96ff29b1c467?w=800\' |
+| },                                                                     |
+|                                                                        |
+| // Add 10 more covering all 5 styles (2 more per style)                |
+|                                                                        |
+| \]                                                                     |
+|                                                                        |
+| GESTURE DETECTION:                                                     |
+|                                                                        |
+| \- Use PanResponder for swipe gestures                                 |
+|                                                                        |
+| \- Right swipe (dx \> 80): like --- direction = \'right\'              |
+|                                                                        |
+| \- Left swipe (dx \< -80): dislike --- direction = \'left\'            |
+|                                                                        |
+| \- Record dwell_ms = Date.now() - cardShownAt for each swipe           |
+|                                                                        |
+| \- Reanimated Animated.Value for card position and rotation            |
+|                                                                        |
+| \- Spring animation: card flies off screen on swipe                    |
+|                                                                        |
+| \- Next card scales up from 0.95 to 1.0 as current card leaves         |
+|                                                                        |
+| DATA RECORDING:                                                        |
+|                                                                        |
+| \- On each swipe, INSERT into swipe_history (user_id, card_id,         |
+| direction, dwell_ms)                                                   |
+|                                                                        |
+| \- Track counts: styleLikes\[style\] = count of right swipes per style |
+|                                                                        |
+| STYLE FINGERPRINT COMPUTATION (after all cards shown OR after 12       |
+| right-swipes):                                                         |
+|                                                                        |
+| const computeFingerprint = (likes: Record\<CavaStyle, number\>):       |
+| StyleFingerprint =\> {                                                 |
+|                                                                        |
+| const sorted = Object.entries(likes).sort((a,b) =\> b\[1\]-a\[1\])     |
+|                                                                        |
+| return {                                                               |
+|                                                                        |
+| top_styles: sorted.filter((\[,v\]) =\> v \> 0).map((\[k\]) =\> k as    |
+| CavaStyle),                                                            |
+|                                                                        |
+| color_palette: \[\], // populated from liked room colors (V2)          |
+|                                                                        |
+| density_preference: \'balanced\', // V2: inferred from card metadata   |
+|                                                                        |
+| material_preference: \'wood\', // V2: inferred                         |
+|                                                                        |
+| swipe_count: totalSwipes,                                              |
+|                                                                        |
+| confidence_score: Math.min(totalSwipes / 12, 1.0),                     |
+|                                                                        |
+| }                                                                      |
+|                                                                        |
+| }                                                                      |
+|                                                                        |
+| SAVE FINGERPRINT:                                                      |
+|                                                                        |
+| await supabase.from(\'users\').update({ style_fingerprint: fingerprint |
+| }).eq(\'id\', user.id)                                                 |
+|                                                                        |
+| Update Zustand: setUser({ \...user, style_fingerprint: fingerprint })  |
+|                                                                        |
+| NAVIGATION:                                                            |
+|                                                                        |
+| \- After all cards OR skip tapped: navigate to \'Home\'                |
+|                                                                        |
+| All styles via StyleSheet.create. Match V0 design approved above.      |
+|                                                                        |
+| Report when complete.                                                  |
++------------------------------------------------------------------------+
+
+**6.5 Room Upload Screen**
+
++-----------------------------------------------------------------------+
+| **CURSOR AGENT PROMPT --- Room Upload Screen**                        |
++-----------------------------------------------------------------------+
+| \@BUILDGUIDE.md                                                       |
+|                                                                       |
+| Create apps/mobile/src/screens/main/RoomUploadScreen.tsx              |
+|                                                                       |
+| PERMISSIONS:                                                          |
+|                                                                       |
+| \- Request camera permission on mount:                                |
+| Camera.requestCameraPermissionsAsync()                                |
+|                                                                       |
+| \- Request media library permission on mount:                         |
+| MediaLibrary.requestPermissionsAsync()                                |
+|                                                                       |
+| TAKE PHOTO:                                                           |
+|                                                                       |
+| \- Use expo-camera CameraView component                               |
+|                                                                       |
+| \- Ref: const cameraRef = useRef(null)                                |
+|                                                                       |
+| \- On \'Take Photo\' button: const photo = await                      |
+| cameraRef.current.takePictureAsync()                                  |
+|                                                                       |
+| CHOOSE FROM LIBRARY:                                                  |
+|                                                                       |
+| \- const result = await ImagePicker.launchImageLibraryAsync({         |
+| mediaTypes: \[\'images\'\], quality: 0.8 })                           |
+|                                                                       |
+| ON PHOTO SELECTED (both paths):                                       |
+|                                                                       |
+| 1\. Show upload progress (setProgress(0 to 100))                      |
+|                                                                       |
+| 2\. Upload to Supabase Storage room-uploads bucket:                   |
+|                                                                       |
+| const fileName = \`\${user.id}/\${Date.now()}.jpg\`                   |
+|                                                                       |
+| const { error } = await                                               |
+| supabase.storage.from(\'room-uploads\').upload(fileName, { uri:       |
+| photoUri, type: \'image/jpeg\' })                                     |
+|                                                                       |
+| 3\. Get public URL:                                                   |
+| supabase.storage.from(\'room-uploads\').getPublicUrl(fileName)        |
+|                                                                       |
+| 4\. Create room record in Supabase:                                   |
+|                                                                       |
+| const { data: room } = await supabase.from(\'rooms\')                 |
+|                                                                       |
+| .insert({ user_id: user.id, original_image_url: publicUrl })          |
+|                                                                       |
+| .select().single()                                                    |
+|                                                                       |
+| 5\. Update Zustand: setActiveRoom(room)                               |
+|                                                                       |
+| 6\. Navigate to \'RoomCalibration\' with params: { room_id: room.id,  |
+| image_url: publicUrl }                                                |
+|                                                                       |
+| RECENT ROOMS (bottom of screen):                                      |
+|                                                                       |
+| \- Fetch last 5 rooms for user from Supabase on mount                 |
+|                                                                       |
+| \- Show as horizontal scroll of thumbnail cards                       |
+|                                                                       |
+| \- Tap a recent room: navigate directly to RoomViewer3D               |
+|                                                                       |
+| Error handling: show Toast component on any failure.                  |
+|                                                                       |
+| All styles via StyleSheet.create. Match V0 design approved above.     |
+|                                                                       |
+| Report when complete.                                                 |
++-----------------------------------------------------------------------+
+
+**6.6 Room Calibration Screen --- Restyle**
+
++-----------------------------------------------------------------------+
+| **CURSOR AGENT PROMPT --- Room Calibration Screen --- V0 Restyle**    |
++-----------------------------------------------------------------------+
+| \@BUILDGUIDE.md                                                       |
+|                                                                       |
+| The RoomCalibrationScreen.tsx already exists but has basic styling.   |
+|                                                                       |
+| Restyle it to match the V0-approved design while keeping all existing |
+| logic.                                                                |
+|                                                                       |
+| ONLY change styles. Do not change any logic, PanResponder handlers,   |
+|                                                                       |
+| corner handle positions, or dimension state.                          |
+|                                                                       |
+| Style changes to make:                                                |
+|                                                                       |
+| 1\. Background: #0B1729 navy                                          |
+|                                                                       |
+| 2\. Corner handles: gold circles #C9A84C, 20px radius, white stroke   |
+| 2px                                                                   |
+|                                                                       |
+| 3\. Connecting polygon: gold dashed lines between corners             |
+|                                                                       |
+| 4\. Overlay: semi-transparent #0B1729 at 40% opacity outside polygon  |
+|                                                                       |
+| 5\. Bottom sheet: cream background #FAF7F2, top border radius 20px    |
+|                                                                       |
+| 6\. Dimension labels: navy text, gold value text, gold +/- buttons    |
+|                                                                       |
+| 7\. CTA button: GoldButton from design system with \'View My Room in  |
+| 3D\'                                                                  |
+|                                                                       |
+| 8\. Handle labels (TL, TR, BL, BR): white 10pt text centered in       |
+| handle                                                                |
+|                                                                       |
+| Import GoldButton from ../../components/ui                            |
+|                                                                       |
+| All styles via StyleSheet.create.                                     |
+|                                                                       |
+| Report when complete.                                                 |
++-----------------------------------------------------------------------+
+
+**6.7 Re-enable FurniturePiece in 3D Viewer**
+
++-----------------------------------------------------------------------+
+| **CURSOR AGENT PROMPT --- Re-enable FurniturePiece in                 |
+| RoomViewer3DScreen**                                                  |
++-----------------------------------------------------------------------+
+| \@BUILDGUIDE.md                                                       |
+|                                                                       |
+| FurniturePiece.tsx exists at                                          |
+| apps/mobile/src/components/3d/FurniturePiece.tsx                      |
+|                                                                       |
+| but is NOT currently rendered in RoomViewer3DScreen.tsx.              |
+|                                                                       |
+| Add it back now that the base scene is stable.                        |
+|                                                                       |
+| In apps/mobile/src/screens/main/RoomViewer3DScreen.tsx:               |
+|                                                                       |
+| 1\. Add imports at top:                                               |
+|                                                                       |
+| import { FurniturePiece } from                                        |
+| \'../../components/3d/FurniturePiece\';                               |
+|                                                                       |
+| import { FURNITURE_CATALOG, STYLE_DEFAULT_FURNITURE } from            |
+| \'../../data/furnitureCatalog\';                                      |
+|                                                                       |
+| import type { PlacedFurniture } from \'@cova/shared\';                |
+|                                                                       |
+| 2\. Add state inside the component:                                   |
+|                                                                       |
+| const \[furniture, setFurniture\] =                                   |
+| useState\<PlacedFurniture\[\]\>(\[\]);                                |
+|                                                                       |
+| const \[selectedFurnitureId, setSelectedFurnitureId\] =               |
+| useState\<string \| null\>(null);                                     |
+|                                                                       |
+| 3\. Add buildDefaultFurniture function:                               |
+|                                                                       |
+| const buildDefaultFurniture = (style: CavaStyle): PlacedFurniture\[\] |
+| =\> {                                                                 |
+|                                                                       |
+| const keys = STYLE_DEFAULT_FURNITURE\[style\] \|\| \[\];              |
+|                                                                       |
+| return keys.map((key, index) =\> ({                                   |
+|                                                                       |
+| id: key + \'\_\' + Date.now() + \'\_\' + index,                       |
+|                                                                       |
+| model_key: key,                                                       |
+|                                                                       |
+| position: FURNITURE_CATALOG\[key\]?.default_position \|\| \[0, 0,     |
+| 0\],                                                                  |
+|                                                                       |
+| rotation_y: FURNITURE_CATALOG\[key\]?.default_rotation_y \|\| 0,      |
+|                                                                       |
+| style,                                                                |
+|                                                                       |
+| }));                                                                  |
+|                                                                       |
+| };                                                                    |
+|                                                                       |
+| 4\. Initialize furniture on mount and update on style change:         |
+|                                                                       |
+| useEffect(() =\> {                                                    |
+|                                                                       |
+| setFurniture(buildDefaultFurniture(activeStyle));                     |
+|                                                                       |
+| setSelectedFurnitureId(null);                                         |
+|                                                                       |
+| }, \[activeStyle\]);                                                  |
+|                                                                       |
+| 5\. Inside the Canvas component (after BoxRoom and SceneLighting):    |
+|                                                                       |
+| {furniture.map(piece =\> {                                            |
+|                                                                       |
+| const catalogItem = FURNITURE_CATALOG\[piece.model_key\];             |
+|                                                                       |
+| if (!catalogItem) return null;                                        |
+|                                                                       |
+| return (                                                              |
+|                                                                       |
+| \<FurniturePiece                                                      |
+|                                                                       |
+| key={piece.id}                                                        |
+|                                                                       |
+| piece={piece}                                                         |
+|                                                                       |
+| catalogItem={catalogItem}                                             |
+|                                                                       |
+| isSelected={selectedFurnitureId === piece.id}                         |
+|                                                                       |
+| onSelect={() =\> setSelectedFurnitureId(piece.id)}                    |
+|                                                                       |
+| onDragEnd={(pos) =\> setFurniture(prev =\> prev.map(p =\>             |
+|                                                                       |
+| p.id === piece.id ? { \...p, position: pos } : p                      |
+|                                                                       |
+| ))}                                                                   |
+|                                                                       |
+| style={activeStyle}                                                   |
+|                                                                       |
+| /\>                                                                   |
+|                                                                       |
+| );                                                                    |
+|                                                                       |
+| })}                                                                   |
+|                                                                       |
+| 6\. Update handleReset to also reset furniture:                       |
+|                                                                       |
+| const handleReset = useCallback(() =\> {                              |
+|                                                                       |
+| setFurniture(buildDefaultFurniture(activeStyle));                     |
+|                                                                       |
+| setSelectedFurnitureId(null);                                         |
+|                                                                       |
+| setSceneKey(prev =\> prev + 1);                                       |
+|                                                                       |
+| }, \[activeStyle\]);                                                  |
+|                                                                       |
+| 7\. Add selected furniture info panel below the Canvas:               |
+|                                                                       |
+| {selectedFurnitureId && (() =\> {                                     |
+|                                                                       |
+| const piece = furniture.find(f =\> f.id === selectedFurnitureId);     |
+|                                                                       |
+| const item = piece && FURNITURE_CATALOG\[piece.model_key\];           |
+|                                                                       |
+| if (!piece \|\| !item) return null;                                   |
+|                                                                       |
+| return (                                                              |
+|                                                                       |
+| \<View style={styles.furniturePanel}\>                                |
+|                                                                       |
+| \<Text style={styles.furnitureName}\>{item.name}\</Text\>             |
+|                                                                       |
+| \<Text style={styles.furnitureHint}\>Drag to move\</Text\>            |
+|                                                                       |
+| \<TouchableOpacity onPress={() =\> {                                  |
+|                                                                       |
+| setFurniture(prev =\> prev.filter(f =\> f.id !==                      |
+| selectedFurnitureId));                                                |
+|                                                                       |
+| setSelectedFurnitureId(null);                                         |
+|                                                                       |
+| }}\>                                                                  |
+|                                                                       |
+| \<Text style={styles.removeText}\>Remove\</Text\>                     |
+|                                                                       |
+| \</TouchableOpacity\>                                                 |
+|                                                                       |
+| \</View\>                                                             |
+|                                                                       |
+| );                                                                    |
+|                                                                       |
+| })()}                                                                 |
+|                                                                       |
+| Add to StyleSheet: furniturePanel, furnitureName, furnitureHint,      |
+| removeText                                                            |
+|                                                                       |
+| Panel styles: cream bg #FAF7F2, navy text, borderTopLeftRadius 16,    |
+| borderTopRightRadius 16                                               |
+|                                                                       |
+| IMPORTANT: If any specific GLB model causes a crash after adding,     |
+| remove its key                                                        |
+|                                                                       |
+| from STYLE_DEFAULT_FURNITURE for that style. Test each style on       |
+| physical iPhone.                                                      |
+|                                                                       |
+| Report when complete.                                                 |
++-----------------------------------------------------------------------+
+
+**6.8 AI Render Result Screen**
+
++-----------------------------------------------------------------------+
+| **CURSOR AGENT PROMPT --- AIRenderScreen --- Full Implementation**    |
++-----------------------------------------------------------------------+
+| \@BUILDGUIDE.md                                                       |
+|                                                                       |
+| Create apps/mobile/src/screens/main/AIRenderScreen.tsx                |
+|                                                                       |
+| Route params: { render_id: string, room_id: string, style: CavaStyle  |
+| }                                                                     |
+|                                                                       |
+| STATE:                                                                |
+|                                                                       |
+| \- renderUrl: string \| null (null = loading)                         |
+|                                                                       |
+| \- products: Product\[\] (from match-products Edge Function)          |
+|                                                                       |
+| \- chatMessages: ChatMessage\[\]                                      |
+|                                                                       |
+| \- chatInput: string                                                  |
+|                                                                       |
+| \- chatSessionId: string \| null                                      |
+|                                                                       |
+| \- isSendingMessage: boolean                                          |
+|                                                                       |
+| \- isMatchingProducts: boolean                                        |
+|                                                                       |
+| ON MOUNT:                                                             |
+|                                                                       |
+| 1\. Poll get-render-status every 3 seconds until status ===           |
+| \'complete\'                                                          |
+|                                                                       |
+| Set renderUrl when complete                                           |
+|                                                                       |
+| 2\. After render is complete, call match-products Edge Function:      |
+|                                                                       |
+| POST                                                                  |
+| https://xdeacbmkdwqrwxonqaqh.supabase.co/functions/v1/match-products  |
+|                                                                       |
+| Body: { render_id, style }                                            |
+|                                                                       |
+| Set products from response                                            |
+|                                                                       |
+| CHAT SEND:                                                            |
+|                                                                       |
+| 1\. Append user message to chatMessages immediately                   |
+|                                                                       |
+| 2\. Set isSendingMessage = true                                       |
+|                                                                       |
+| 3\. POST to chat-room Edge Function:                                  |
+|                                                                       |
+| Body: { room_id, message: chatInput, chat_session_id: chatSessionId,  |
+| render_id }                                                           |
+|                                                                       |
+| 4\. On response: append Claude response to chatMessages               |
+|                                                                       |
+| 5\. If response.should_render: show \'Generating new render\...\' and |
+| call render-room                                                      |
+|                                                                       |
+| 6\. Update chatSessionId if new session created                       |
+|                                                                       |
+| 7\. Deduct tokens in Zustand: deductTokens(response.tokens_charged)   |
+|                                                                       |
+| 8\. Show Toast: response.tokens_charged === 2 ? \'2 tokens used\' :   |
+| \'1 token used\'                                                      |
+|                                                                       |
+| PRODUCT CARD TAP:                                                     |
+|                                                                       |
+| \- Open product.affiliate_url_base via Linking.openURL()              |
+|                                                                       |
+| \- INSERT into click_events (user_id, product_id, render_id)          |
+|                                                                       |
+| SHARE RENDER:                                                         |
+|                                                                       |
+| \- Use Share.share({ url: renderUrl, message: \'My room designed with |
+| Cova\' })                                                             |
+|                                                                       |
+| LOW TOKEN WARNING:                                                    |
+|                                                                       |
+| \- If tokenBalance \< 5: show yellow warning banner \'Low tokens ---  |
+| tap to refill\'                                                       |
+|                                                                       |
+| \- Banner navigates to TokenShop screen                               |
+|                                                                       |
+| LAYOUT (matches V0-approved design):                                  |
+|                                                                       |
+| \- Top 50%: render image with shimmer loading state                   |
+|                                                                       |
+| \- Share button top right                                             |
+|                                                                       |
+| \- Product cards horizontal scroll                                    |
+|                                                                       |
+| \- Chat messages scrollable                                           |
+|                                                                       |
+| \- Chat input at bottom with send button                              |
+|                                                                       |
+| All styles via StyleSheet.create. Use design system components.       |
+|                                                                       |
+| Report when complete.                                                 |
++-----------------------------------------------------------------------+
+
+**6.9 Profile Screen**
+
++-----------------------------------------------------------------------+
+| **CURSOR AGENT PROMPT --- Profile Screen**                            |
++-----------------------------------------------------------------------+
+| \@BUILDGUIDE.md                                                       |
+|                                                                       |
+| Create apps/mobile/src/screens/main/ProfileScreen.tsx                 |
+|                                                                       |
+| Data to show (fetch from Supabase on mount):                          |
+|                                                                       |
+| \- User email                                                         |
+|                                                                       |
+| \- Token balance (from Zustand + real-time from users table)          |
+|                                                                       |
+| \- Style Fingerprint top styles (from user.style_fingerprint)         |
+|                                                                       |
+| \- Render count (SELECT COUNT(\*) FROM renders WHERE user_id =        |
+| user.id)                                                              |
+|                                                                       |
+| \- Last 5 renders as thumbnail grid                                   |
+|                                                                       |
+| Buttons:                                                              |
+|                                                                       |
+| \- \'Get More Tokens\' GoldButton -\> navigate to \'TokenShop\'       |
+|                                                                       |
+| \- \'Sign Out\' GhostButton -\> supabase.auth.signOut(), clear        |
+| Zustand, navigate to \'Auth\'                                         |
+|                                                                       |
+| Layout:                                                               |
+|                                                                       |
+| \- Navy background                                                    |
+|                                                                       |
+| \- User avatar placeholder (first letter of email in gold circle)     |
+|                                                                       |
+| \- Email in cream 16pt                                                |
+|                                                                       |
+| \- TokenBadge component showing balance                               |
+|                                                                       |
+| \- \'Your Style: Japandi, Coastal\' in cream 14pt (from top_styles)   |
+|                                                                       |
+| \- Render grid 2-columns                                              |
+|                                                                       |
+| All styles via StyleSheet.create. Report when complete.               |
++-----------------------------------------------------------------------+
+
+**6.10 Update Navigation**
+
++-----------------------------------------------------------------------+
+| **CURSOR AGENT PROMPT --- Update App.tsx Navigation for All Screens** |
++-----------------------------------------------------------------------+
+| \@BUILDGUIDE.md                                                       |
+|                                                                       |
+| Update apps/mobile/App.tsx to include all new screens.                |
+|                                                                       |
+| Import all new screens:                                               |
+|                                                                       |
+| \- SplashScreen from ./src/screens/auth/SplashScreen                  |
+|                                                                       |
+| \- AuthScreen from ./src/screens/auth/AuthScreen                      |
+|                                                                       |
+| \- OnboardingSwipeScreen from                                         |
+| ./src/screens/onboarding/OnboardingSwipeScreen                        |
+|                                                                       |
+| \- HomeScreen from ./src/screens/main/HomeScreen                      |
+|                                                                       |
+| \- RoomUploadScreen from ./src/screens/main/RoomUploadScreen          |
+|                                                                       |
+| \- RoomCalibrationScreen from                                         |
+| ./src/screens/main/RoomCalibrationScreen                              |
+|                                                                       |
+| \- RoomViewer3DScreen from ./src/screens/main/RoomViewer3DScreen      |
+|                                                                       |
+| \- AIRenderScreen from ./src/screens/main/AIRenderScreen              |
+|                                                                       |
+| \- ProfileScreen from ./src/screens/main/ProfileScreen                |
+|                                                                       |
+| Create two stacks:                                                    |
+|                                                                       |
+| AuthStack (shown when not authenticated):                             |
+|                                                                       |
+| Splash (initial) -\> Auth -\> OnboardingSwipe                         |
+|                                                                       |
+| MainStack (shown when authenticated):                                 |
+|                                                                       |
+| Home (initial) -\> RoomUpload -\> RoomCalibration -\> RoomViewer3D    |
+| -\> AIRender -\> Profile                                              |
+|                                                                       |
+| Root Navigator logic:                                                 |
+|                                                                       |
+| \- Use useState for isAuthenticated                                   |
+|                                                                       |
+| \- On mount: check supabase.auth.getSession()                         |
+|                                                                       |
+| \- Subscribe to supabase.auth.onAuthStateChange()                     |
+|                                                                       |
+| \- Show AuthStack if not authenticated, MainStack if authenticated    |
+|                                                                       |
+| All stack screens: headerShown: false, animation:                     |
+| \'slide_from_right\'                                                  |
+|                                                                       |
+| GestureHandlerRootView wraps everything.                              |
+|                                                                       |
+| Report when complete.                                                 |
++-----------------------------------------------------------------------+
+
+**6.11 PanResponder Orbit Controls**
+
+OrbitControls crashes React Native. Implement camera orbit via
+PanResponder:
+
++-----------------------------------------------------------------------+
+| **CURSOR AGENT PROMPT --- Custom Camera Orbit via PanResponder**      |
++-----------------------------------------------------------------------+
+| \@BUILDGUIDE.md                                                       |
+|                                                                       |
+| Add touch-based camera orbit to RoomViewer3DScreen.tsx.               |
+|                                                                       |
+| DO NOT use OrbitControls --- it crashes with \'touchAction of         |
+| undefined\' on React Native.                                          |
+|                                                                       |
+| Add this to the RoomViewer3DScreen component:                         |
+|                                                                       |
+| 1\. Add camera state:                                                 |
+|                                                                       |
+| const \[cameraAzimuth, setCameraAzimuth\] = useState(0);              |
+|                                                                       |
+| const \[cameraElevation, setCameraElevation\] = useState(0.6);        |
+|                                                                       |
+| const panStartRef = useRef({ azimuth: 0, elevation: 0 });             |
+|                                                                       |
+| const lastTouchRef = useRef\<{ x: number; y: number } \|              |
+| null\>(null);                                                         |
+|                                                                       |
+| 2\. Create PanResponder:                                              |
+|                                                                       |
+| const panResponder = useRef(PanResponder.create({                     |
+|                                                                       |
+| onStartShouldSetPanResponder: () =\> true,                            |
+|                                                                       |
+| onMoveShouldSetPanResponder: () =\> true,                             |
+|                                                                       |
+| onPanResponderGrant: () =\> {                                         |
+|                                                                       |
+| panStartRef.current = { azimuth: cameraAzimuth, elevation:            |
+| cameraElevation };                                                    |
+|                                                                       |
+| },                                                                    |
+|                                                                       |
+| onPanResponderMove: (\_, gestureState) =\> {                          |
+|                                                                       |
+| const newAzimuth = panStartRef.current.azimuth + gestureState.dx \*   |
+| 0.008;                                                                |
+|                                                                       |
+| const newElevation = Math.max(0.1, Math.min(                          |
+|                                                                       |
+| Math.PI / 2.2,                                                        |
+|                                                                       |
+| panStartRef.current.elevation - gestureState.dy \* 0.008              |
+|                                                                       |
+| ));                                                                   |
+|                                                                       |
+| setCameraAzimuth(newAzimuth);                                         |
+|                                                                       |
+| setCameraElevation(newElevation);                                     |
+|                                                                       |
+| },                                                                    |
+|                                                                       |
+| })).current;                                                          |
+|                                                                       |
+| 3\. Create CameraController component (inside the Canvas):            |
+|                                                                       |
+| function CameraController({ azimuth, elevation }: { azimuth: number;  |
+| elevation: number }) {                                                |
+|                                                                       |
+| const { camera } = useThree();                                        |
+|                                                                       |
+| const radius = 8;                                                     |
+|                                                                       |
+| useFrame(() =\> {                                                     |
+|                                                                       |
+| camera.position.x = radius \* Math.sin(azimuth) \*                    |
+| Math.cos(elevation);                                                  |
+|                                                                       |
+| camera.position.y = radius \* Math.sin(elevation);                    |
+|                                                                       |
+| camera.position.z = radius \* Math.cos(azimuth) \*                    |
+| Math.cos(elevation);                                                  |
+|                                                                       |
+| camera.lookAt(0, 1.5, 0);                                             |
+|                                                                       |
+| });                                                                   |
+|                                                                       |
+| return null;                                                          |
+|                                                                       |
+| }                                                                     |
+|                                                                       |
+| 4\. Add CameraController inside the Canvas:                           |
+|                                                                       |
+| \<CameraController azimuth={cameraAzimuth}                            |
+| elevation={cameraElevation} /\>                                       |
+|                                                                       |
+| 5\. Apply panResponder.panHandlers to the ViewShot (canvas            |
+| container):                                                           |
+|                                                                       |
+| \<ViewShot ref={viewShotRef} style={styles.canvasContainer}           |
+|                                                                       |
+| {\...panResponder.panHandlers}\>                                      |
+|                                                                       |
+| Report when complete. Test orbit gesture on physical iPhone.          |
++-----------------------------------------------------------------------+
+
+**6.12 Phase 6 Commit**
+
+  -----------------------------------------------------------------------
+  git add . && git commit -m \'Phase 6 complete --- all mobile screens,
+  furniture enabled, orbit controls\' && git push origin main
+
+  -----------------------------------------------------------------------
+
+**PHASE 7: REALTOR TOOLS**
+
+  ---------- ------------------------------------------------------------
+   **GOAL**  Realtors create listings with multiple AI renders, share via
+             QR code, and track which style buyers vote for at open
+             houses.
+
+  ---------- ------------------------------------------------------------
+
+**7.1 Install QR Code Library**
+
++-----------------------------------------------------------------------+
+| cd \~/Desktop/cova/apps/mobile                                        |
+|                                                                       |
+| pnpm add react-native-qrcode-svg                                      |
++-----------------------------------------------------------------------+
+
+**7.2 Realtor Screens**
+
++-----------------------------------------------------------------------+
+| **CURSOR AGENT PROMPT --- Realtor Listing System --- Mobile Screens** |
++-----------------------------------------------------------------------+
+| \@BUILDGUIDE.md                                                       |
+|                                                                       |
+| Create apps/mobile/src/screens/realtor/ directory with these screens. |
+|                                                                       |
+| All screens: navy background, Cova design system, StyleSheet.create.  |
+|                                                                       |
+| 1\. CreateListingScreen.tsx                                           |
+|                                                                       |
+| Form fields: address (TextInput), description (TextInput multiline)   |
+|                                                                       |
+| \'Select Rooms\' section: shows user\'s existing rooms from Supabase  |
+| as a list                                                             |
+|                                                                       |
+| On submit:                                                            |
+|                                                                       |
+| INSERT INTO listings (realtor_id, address, description,               |
+| shareable_slug)                                                       |
+|                                                                       |
+| shareable_slug is auto-generated by DB default                        |
+|                                                                       |
+| After insert: fetch listing with generated slug                       |
+|                                                                       |
+| Generate QR code URL: \'https://cova.app/listing/\' + slug            |
+|                                                                       |
+| UPDATE listings SET qr_code_url = qrUrl WHERE id = listing.id         |
+|                                                                       |
+| Show QR code using QRCode component from react-native-qrcode-svg      |
+|                                                                       |
+| Show shareable link with copy button                                  |
+|                                                                       |
+| GoldButton \'Share Listing\' -\> Share.share({ url:                   |
+| \'https://cova.app/listing/\' + slug })                               |
+|                                                                       |
+| 2\. ListingDashboardScreen.tsx                                        |
+|                                                                       |
+| Fetch all listings WHERE realtor_id = user.id                         |
+|                                                                       |
+| For each listing: show address, vote counts as a simple bar chart     |
+| (react-native View widths)                                            |
+|                                                                       |
+| Vote counts: { japandi: 5, coastal: 3, \... } from                    |
+| listings.vote_counts                                                  |
+|                                                                       |
+| Show total votes                                                      |
+|                                                                       |
+| GhostButton \'View Listing\' -\> opens browser with listing URL       |
+|                                                                       |
+| 3\. Add realtor navigation:                                           |
+|                                                                       |
+| If user.account_type === \'realtor\': show \'Listings\' tab in        |
+| navigation                                                            |
+|                                                                       |
+| Otherwise: show \'Upgrade to Realtor\' option in Profile              |
+|                                                                       |
+| Report when complete.                                                 |
++-----------------------------------------------------------------------+
+
+**7.3 Public Voting Page --- Next.js**
+
++-----------------------------------------------------------------------+
+| **CURSOR AGENT PROMPT --- Public Listing Voting Page --- Next.js**    |
++-----------------------------------------------------------------------+
+| \@BUILDGUIDE.md                                                       |
+|                                                                       |
+| Create apps/web/src/app/listing/\[slug\]/page.tsx in the Next.js app. |
+|                                                                       |
+| This is a PUBLIC page --- no authentication required for viewers.     |
+|                                                                       |
+| FETCH LISTING:                                                        |
+|                                                                       |
+| const { data: listing } = await supabase                              |
+|                                                                       |
+| .from(\'listings\')                                                   |
+|                                                                       |
+| .select(\'\*, rooms(\*)\')                                            |
+|                                                                       |
+| .eq(\'shareable_slug\', params.slug)                                  |
+|                                                                       |
+| .eq(\'is_published\', true)                                           |
+|                                                                       |
+| .single()                                                             |
+|                                                                       |
+| DISPLAY:                                                              |
+|                                                                       |
+| \- Address as H1                                                      |
+|                                                                       |
+| \- Description paragraph                                              |
+|                                                                       |
+| \- Grid of render images from the listing\'s rooms                    |
+|                                                                       |
+| \- Each render: image + style label + vote count + \'Vote for this    |
+| style\' button                                                        |
+|                                                                       |
+| VOTING LOGIC:                                                         |
+|                                                                       |
+| \- On vote: generate device fingerprint (use crypto.randomUUID()      |
+| stored in localStorage)                                               |
+|                                                                       |
+| \- POST to Supabase: INSERT INTO votes (listing_id, style_voted,      |
+| device_fingerprint)                                                   |
+|                                                                       |
+| Handle UNIQUE constraint error (already voted) gracefully             |
+|                                                                       |
+| \- UPDATE listings.vote_counts using Supabase Realtime subscription   |
+|                                                                       |
+| REAL-TIME VOTE UPDATES:                                               |
+|                                                                       |
+| supabase.channel(\'listing-votes\')                                   |
+|                                                                       |
+| .on(\'postgres_changes\', { event: \'INSERT\', schema: \'public\',    |
+| table: \'votes\',                                                     |
+|                                                                       |
+| filter: \'listing_id=eq.\' + listing.id }, () =\> {                   |
+| refetchVoteCounts() })                                                |
+|                                                                       |
+| .subscribe()                                                          |
+|                                                                       |
+| Mobile-optimized styling: large buttons, readable on phone screens.   |
+|                                                                       |
+| Cova branding: navy/gold palette, \'Designed with Cova\' footer.      |
+|                                                                       |
+| Report when complete.                                                 |
++-----------------------------------------------------------------------+
+
+**7.4 Phase 7 Commit**
+
+  -----------------------------------------------------------------------
+  git add . && git commit -m \'Phase 7 complete --- realtor listings, QR
+  voting, public listing page\' && git push origin main
+
+  -----------------------------------------------------------------------
+
+**PHASE 8: PAYMENTS & TOKEN ECONOMY**
+
+  --------- ------------------------------------------------------------------
+   **!!!**  Phase 8 requires: Apple Developer Program (\$99/year at
+            developer.apple.com), Stripe account, and App Store Connect
+            configured. Do NOT start Phase 8 without these.
+
+  --------- ------------------------------------------------------------------
+
+**8.1 Pre-Phase Setup**
+
+6.  Enroll in Apple Developer Program: developer.apple.com (\$99/year)
+
+7.  Create Stripe account: stripe.com
+
+8.  Create App Store Connect app with bundle ID ai.cova.app
+
+9.  Create in-app purchase products in App Store Connect:
+
++-----------------------------------------------------------------------+
+| Product ID: ai.cova.tokens.20 --- \$4.99 --- \'Starter Pack: 20       |
+| tokens\'                                                              |
+|                                                                       |
+| Product ID: ai.cova.tokens.75 --- \$14.99 --- \'Standard Pack: 75     |
+| tokens\'                                                              |
+|                                                                       |
+| Product ID: ai.cova.tokens.220 --- \$39.99 --- \'Pro Pack: 220        |
+| tokens\'                                                              |
+|                                                                       |
+| Product ID: ai.cova.plus.monthly --- \$14.99/mo --- \'Cova Plus\'     |
+|                                                                       |
+| Product ID: ai.cova.pro.monthly --- \$29.99/mo --- \'Cova Pro\'       |
+|                                                                       |
+| Product ID: ai.cova.studio.monthly --- \$49.99/mo --- \'Cova Studio\' |
++-----------------------------------------------------------------------+
+
+**8.2 Install Payment Libraries**
+
++-----------------------------------------------------------------------+
+| cd \~/Desktop/cova/apps/mobile                                        |
+|                                                                       |
+| pnpm add expo-in-app-purchases                                        |
+|                                                                       |
+| \# Rebuild after native module install                                |
+|                                                                       |
+| cd \~/Desktop/cova/apps/mobile                                        |
+|                                                                       |
+| rm -rf ios && npx expo prebuild \--clean                              |
+|                                                                       |
+| \# Then rebuild from Xcode                                            |
++-----------------------------------------------------------------------+
+
+**8.3 handle-purchase Edge Function**
+
++-----------------------------------------------------------------------+
+| **CURSOR AGENT PROMPT --- handle-purchase Edge Function**             |
++-----------------------------------------------------------------------+
+| \@BUILDGUIDE.md                                                       |
+|                                                                       |
+| Create supabase/functions/handle-purchase/index.ts (Deno runtime).    |
+|                                                                       |
+| This function validates StoreKit purchase receipts and credits        |
+| tokens.                                                               |
+|                                                                       |
+| INPUT (JSON body):                                                    |
+|                                                                       |
+| receipt_data: string (base64 StoreKit receipt)                        |
+|                                                                       |
+| product_id: string (e.g. \'ai.cova.tokens.20\')                       |
+|                                                                       |
+| transaction_id: string                                                |
+|                                                                       |
+| PRODUCT MAP:                                                          |
+|                                                                       |
+| const PRODUCT_TOKENS = {                                              |
+|                                                                       |
+| \'ai.cova.tokens.20\': 20,                                            |
+|                                                                       |
+| \'ai.cova.tokens.75\': 75,                                            |
+|                                                                       |
+| \'ai.cova.tokens.220\': 220,                                          |
+|                                                                       |
+| };                                                                    |
+|                                                                       |
+| LOGIC:                                                                |
+|                                                                       |
+| 1\. Authenticate user via JWT                                         |
+|                                                                       |
+| 2\. Check for duplicate transaction:                                  |
+|                                                                       |
+| SELECT \* FROM token_transactions WHERE reason = \'purchase\_\' +     |
+| transaction_id                                                        |
+|                                                                       |
+| Return 200 with \'already_processed\' if exists (idempotent)          |
+|                                                                       |
+| 3\. Validate receipt with Apple (sandbox for development, production  |
+| for release):                                                         |
+|                                                                       |
+| POST https://sandbox.itunes.apple.com/verifyReceipt                   |
+|                                                                       |
+| Body: { receipt-data: receipt_data, password:                         |
+| Deno.env.get(\'APP_STORE_SHARED_SECRET\') }                           |
+|                                                                       |
+| Check that status === 0 (valid)                                       |
+|                                                                       |
+| Check that transaction_id matches in receipt                          |
+|                                                                       |
+| 4\. Credit tokens:                                                    |
+|                                                                       |
+| const tokensToCredit = PRODUCT_TOKENS\[product_id\] \|\| 0            |
+|                                                                       |
+| UPDATE users SET token_balance = token_balance + tokensToCredit WHERE |
+| id = user.id                                                          |
+|                                                                       |
+| INSERT INTO token_transactions (user_id, delta, reason)               |
+|                                                                       |
+| VALUES (user.id, tokensToCredit, \'purchase\_\' + transaction_id)     |
+|                                                                       |
+| 5\. Return: { success: true, tokens_credited: tokensToCredit,         |
+| new_balance: newBalance }                                             |
+|                                                                       |
+| Error handling: if Apple validation fails, return 402 with error      |
+| details.                                                              |
+|                                                                       |
+| CORS headers. Report when complete.                                   |
++-----------------------------------------------------------------------+
+
+**8.4 Token Shop Screen**
 
 +----------------------------------------------------------------------------------+
-| import { useCallback, useEffect } from \'react\';                                |
+| **CURSOR AGENT PROMPT --- Token Shop Screen --- StoreKit**                       |
++----------------------------------------------------------------------------------+
+| \@BUILDGUIDE.md                                                                  |
 |                                                                                  |
-| import \* as InAppPurchases from \'expo-in-app-purchases\';                      |
+| Create apps/mobile/src/screens/main/TokenShopScreen.tsx                          |
 |                                                                                  |
-| import { supabase } from \'@cova/shared\';                                       |
+| Import expo-in-app-purchases for StoreKit integration.                           |
 |                                                                                  |
-| import { useAppStore } from \'../store\';                                        |
+| ON MOUNT:                                                                        |
 |                                                                                  |
-| const TOKEN_PRODUCTS = {                                                         |
+| await InAppPurchases.connectAsync()                                              |
 |                                                                                  |
-| \'ai.cova.tokens.20\': 20,                                                       |
+| const { results } = await InAppPurchases.getProductsAsync(\[                     |
 |                                                                                  |
-| \'ai.cova.tokens.70\': 70,                                                       |
+| \'ai.cova.tokens.20\', \'ai.cova.tokens.75\', \'ai.cova.tokens.220\'             |
 |                                                                                  |
-| \'ai.cova.tokens.200\': 200,                                                     |
+| \])                                                                              |
 |                                                                                  |
-| };                                                                               |
+| Store products in state                                                          |
 |                                                                                  |
-| export function usePurchase() {                                                  |
+| PURCHASE FLOW:                                                                   |
 |                                                                                  |
-| const { user, setTokenBalance } = useAppStore();                                 |
+| await InAppPurchases.purchaseItemAsync(productId)                                |
 |                                                                                  |
-| useEffect(() =\> {                                                               |
+| InAppPurchases.setPurchaseListener(async ({ responseCode, results }) =\> {       |
 |                                                                                  |
-| // Set up purchase listener                                                      |
-|                                                                                  |
-| InAppPurchases.setPurchaseListener(async ({ responseCode, results, errorCode })  |
-| =\> {                                                                            |
-|                                                                                  |
-| if (responseCode === InAppPurchases.IAPResponseCode.OK && results) {             |
+| if (responseCode === IAPResponseCode.OK) {                                       |
 |                                                                                  |
 | for (const purchase of results) {                                                |
 |                                                                                  |
 | if (!purchase.acknowledged) {                                                    |
 |                                                                                  |
-| await handlePurchase(purchase);                                                  |
-|                                                                                  |
-| }                                                                                |
-|                                                                                  |
-| }                                                                                |
-|                                                                                  |
-| }                                                                                |
-|                                                                                  |
-| });                                                                              |
-|                                                                                  |
-| return () =\> { InAppPurchases.setPurchaseListener(() =\> {}); };                |
-|                                                                                  |
-| }, \[user\]);                                                                    |
-|                                                                                  |
-| const handlePurchase = async (purchase: InAppPurchases.InAppPurchase) =\> {      |
-|                                                                                  |
-| // Send receipt to backend for verification                                      |
-|                                                                                  |
-| const { data: { session } } = await supabase.auth.getSession();                  |
-|                                                                                  |
-| if (!session) return;                                                            |
+| // Call handle-purchase Edge Function                                            |
 |                                                                                  |
 | const response = await                                                           |
-| fetch(\`\${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/verify-purchase\`, |
-| {                                                                                |
-|                                                                                  |
-| method: \'POST\',                                                                |
-|                                                                                  |
-| headers: { \'Content-Type\': \'application/json\', \'Authorization\': \`Bearer   |
-| \${session.access_token}\` },                                                    |
-|                                                                                  |
-| body: JSON.stringify({                                                           |
-|                                                                                  |
-| product_id: purchase.productId,                                                  |
-|                                                                                  |
-| receipt_data: purchase.transactionReceipt,                                       |
-|                                                                                  |
-| transaction_id: purchase.orderId,                                                |
-|                                                                                  |
-| }),                                                                              |
-|                                                                                  |
-| });                                                                              |
+| fetch(\'https://xdeacbmkdwqrwxonqaqh.supabase.co/functions/v1/handle-purchase\', |
+| \...)                                                                            |
 |                                                                                  |
 | if (response.ok) {                                                               |
 |                                                                                  |
-| const { new_balance } = await response.json();                                   |
+| await InAppPurchases.finishTransactionAsync(purchase, true)                      |
 |                                                                                  |
-| setTokenBalance(new_balance);                                                    |
+| // Update Zustand token balance                                                  |
 |                                                                                  |
-| await InAppPurchases.finishTransactionAsync(purchase, true);                     |
+| setTokenBalance(data.new_balance)                                                |
+|                                                                                  |
+| Alert.alert(\'Success\', data.tokens_credited + \' tokens added!\')              |
+|                                                                                  |
+| }                                                                                |
 |                                                                                  |
 | }                                                                                |
 |                                                                                  |
-| };                                                                               |
-|                                                                                  |
-| const purchaseTokens = useCallback(async (productId: string) =\> {               |
-|                                                                                  |
-| await InAppPurchases.connectAsync();                                             |
-|                                                                                  |
-| await InAppPurchases.purchaseItemAsync(productId);                               |
-|                                                                                  |
-| }, \[\]);                                                                        |
-|                                                                                  |
-| return { purchaseTokens };                                                       |
+| }                                                                                |
 |                                                                                  |
 | }                                                                                |
+|                                                                                  |
+| })                                                                               |
+|                                                                                  |
+| LAYOUT (match V0 design):                                                        |
+|                                                                                  |
+| Header: \'Get More Tokens\' + current balance TokenBadge                         |
+|                                                                                  |
+| 3 token pack cards:                                                              |
+|                                                                                  |
+| Starter \$4.99 / 20 tokens / \'\~7 renders\'                                     |
+|                                                                                  |
+| Standard \$14.99 / 75 tokens / \'\~25 renders\' / \'MOST POPULAR\' badge in gold |
+|                                                                                  |
+| Pro \$39.99 / 220 tokens / \'\~73 renders\'                                      |
+|                                                                                  |
+| Each card: GoldButton \'Buy Now\'                                                |
+|                                                                                  |
+| Subscription section below packs                                                 |
+|                                                                                  |
+| Loading state when purchase is processing.                                       |
+|                                                                                  |
+| Error state with Toast on failure.                                               |
+|                                                                                  |
+| All styles via StyleSheet.create. Report when complete.                          |
 +----------------------------------------------------------------------------------+
 
-+-----------------------------------------------------------------+
-| git add .                                                       |
-|                                                                 |
-| git commit -m \"Phase 8: StoreKit in-app purchases, token       |
-| packs, receipt verification\"                                   |
-|                                                                 |
-| git push origin main                                            |
-+-----------------------------------------------------------------+
+**8.5 Phase 8 Commit**
 
-+:---------:+-----------------------------------------------------+
-| **PHASE   | *EAS Build, submission checklist, go-live*          |
-| 9**       |                                                     |
-|           |                                                     |
-| **App     |                                                     |
-| Store     |                                                     |
-| Launch**  |                                                     |
-+-----------+-----------------------------------------------------+
+  -----------------------------------------------------------------------
+  git add . && git commit -m \'Phase 8 complete --- StoreKit token shop,
+  handle-purchase Edge Function\' && git push origin main
 
-This phase gets Cova into the App Store. EAS (Expo Application Services)
-handles the build and submission process. You need an Apple Developer
-account (\$99/year) before starting this phase.
+  -----------------------------------------------------------------------
 
-  ------- ------------------------------------------------------------
-   **1**  **Configure EAS Build**
+**PHASE 9: APP STORE SUBMISSION**
 
-  ------- ------------------------------------------------------------
+  -------------------- ------------------------------------------------------------
+   **PRE-SUBMISSION**  Complete all items in Section 9.1 before submitting. Apple
+                       reviews take 24-48 hours. A rejected submission sets you
+                       back days. Do it right the first time.
 
-  -----------------------------------------------------------------
-  code eas.json
+  -------------------- ------------------------------------------------------------
 
-  -----------------------------------------------------------------
+**9.1 Pre-Submission Checklist**
 
-+-----------------------------------------------------------------+
-| {                                                               |
-|                                                                 |
-| \"cli\": { \"version\": \"\>= 5.9.1\" },                        |
-|                                                                 |
-| \"build\": {                                                    |
-|                                                                 |
-| \"development\": {                                              |
-|                                                                 |
-| \"developmentClient\": true,                                    |
-|                                                                 |
-| \"distribution\": \"internal\",                                 |
-|                                                                 |
-| \"ios\": { \"simulator\": true }                                |
-|                                                                 |
-| },                                                              |
-|                                                                 |
-| \"preview\": {                                                  |
-|                                                                 |
-| \"distribution\": \"internal\",                                 |
-|                                                                 |
-| \"ios\": { \"resourceClass\": \"m-medium\" }                    |
-|                                                                 |
-| },                                                              |
-|                                                                 |
-| \"production\": {                                               |
-|                                                                 |
-| \"ios\": { \"resourceClass\": \"m-medium\" },                   |
-|                                                                 |
-| \"autoIncrement\": true                                         |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| },                                                              |
-|                                                                 |
-| \"submit\": {                                                   |
-|                                                                 |
-| \"production\": {                                               |
-|                                                                 |
-| \"ios\": {                                                      |
-|                                                                 |
-| \"appleId\": \"hellocova@gmail.com\",                           |
-|                                                                 |
-| \"ascAppId\": \"YOUR_APP_STORE_CONNECT_APP_ID\",                |
-|                                                                 |
-| \"appleTeamId\": \"YOUR_APPLE_TEAM_ID\"                         |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| }                                                               |
-|                                                                 |
-| }                                                               |
-+-----------------------------------------------------------------+
+  ------------------------------------------------------------------
+  **Item**              **How to Complete**             **Status**
+  --------------------- ------------------------------- ------------
+  End-to-end test x10   Run complete user journey 10    ⬜
+                        times without any crash         
 
-  ------- ------------------------------------------------------------
-   **2**  **Pre-launch checklist**
+  Replace all           Use Toast component from design ⬜
+  Alert.alert()         system for all alerts           
 
-  ------- ------------------------------------------------------------
+  Email confirmation    Supabase Dashboard \> Auth \>   ⬜
+  enabled               Settings \> Enable email        
+                        confirmations                   
 
-- ✅ All environment variables set in Vercel and Supabase secrets
+  Privacy policy URL    Add to app.json ios.infoPlist   ⬜
+                        NSPrivacyPolicyURL              
 
-- ✅ Apple Developer account active (\$99/yr at developer.apple.com)
+  Support URL           Create support@cova.app or add  ⬜
+                        to App Store Connect            
 
-- ✅ App Store Connect app record created for \'Cova\'
+  app.json version      Set to \'1.0.0\' and            ⬜
+                        buildNumber to \'1\'            
 
-- ✅ Bundle identifier set to ai.cova.app in app.json
+  App Store screenshots iPhone 6.7 (1290x2796) and 6.1  ⬜
+                        (1170x2532) --- 5 screenshots   
+                        each                            
 
-- ✅ In-App Purchase products created and in \'Ready to Submit\' state
+  App Store description Max 4000 chars --- lead with 3D ⬜
+                        viewer + AI renders + shoppable 
 
-- ✅ Privacy policy URL ready (required by Apple --- use Termly.io for
-  free policy)
+  Keywords              interior design, AI room, 3D    ⬜
+                        room design, home decor,        
+                        virtual staging                 
 
-- ✅ At least 1 screenshot per device size (use iPhone 15 Pro Max and
-  iPhone SE)
+  Category              Lifestyle (primary), Utilities  ⬜
+                        (secondary)                     
 
-- ✅ App icon 1024×1024 PNG with no alpha channel in assets/icon.png
+  Age rating            4+ (no objectionable content)   ⬜
 
-- ✅ Splash screen in assets/splash.png
+  TestFlight beta       Submit to TestFlight, get 10+   ⬜
+                        beta testers, fix all crashes   
 
-- ✅ Test on physical iPhone --- not just Simulator --- for at least 2
-  hours
+  Apple Review notes    Explain 3D content, camera      ⬜
+                        usage, in-app purchases in      
+                        review notes                    
+  ------------------------------------------------------------------
 
-- ✅ Test 3D viewer on physical device --- expo-gl behaves differently
-  on real hardware
+**9.2 Build for App Store**
 
-- ✅ Amazon Associates 3 qualifying sales completed before launch
++-----------------------------------------------------------------------+
+| cd \~/Desktop/cova/apps/mobile                                        |
+|                                                                       |
+| \# Update version in app.json:                                        |
+|                                                                       |
+| \# version: \'1.0.0\', ios.buildNumber: \'1\'                         |
+|                                                                       |
+| \# Build production IPA via EAS                                       |
+|                                                                       |
+| eas build \--platform ios \--profile production                       |
+|                                                                       |
+| \# Submit to TestFlight                                               |
+|                                                                       |
+| eas submit \--platform ios                                            |
+|                                                                       |
+| \# Or build locally in Xcode:                                         |
+|                                                                       |
+| \# Product \> Archive \> Distribute App \> App Store Connect          |
++-----------------------------------------------------------------------+
 
-  ------- ------------------------------------------------------------
-   **3**  **Build and submit to App Store**
+**9.3 App Store Description Template**
 
-  ------- ------------------------------------------------------------
++-----------------------------------------------------------------------+
+| Design your room in minutes with Cova --- the AI interior design app  |
+|                                                                       |
+| that shows your actual room in interactive 3D.                        |
+|                                                                       |
+| WHAT COVA DOES:                                                       |
+|                                                                       |
+| • Upload a photo of your real room                                    |
+|                                                                       |
+| • See it instantly in 5 design styles: Japandi, Mid-Century, Coastal, |
+|                                                                       |
+| Industrial, and Bohemian --- in an interactive 3D viewer              |
+|                                                                       |
+| • Tap \'AI Render\' for a photorealistic redesign of your room        |
+|                                                                       |
+| • Chat with our AI to refine your design: \'Make the sofa darker\'    |
+|                                                                       |
+| • Shop every item in the render --- furniture matched from Wayfair,   |
+|                                                                       |
+| Amazon, IKEA, and CB2                                                 |
+|                                                                       |
+| • Stay on budget with a live cost tracker                             |
+|                                                                       |
+| FOR REALTORS:                                                         |
+|                                                                       |
+| • Stage empty listing photos with AI                                  |
+|                                                                       |
+| • Share QR codes at open houses for buyer style voting                |
+|                                                                       |
+| HOW TOKENS WORK:                                                      |
+|                                                                       |
+| New users get 5 free tokens. AI renders cost 2-3 tokens.              |
+|                                                                       |
+| Chat edits cost 1-2 tokens. Purchase more token packs anytime.        |
++-----------------------------------------------------------------------+
 
-+-----------------------------------------------------------------+
-| cd \~/Documents/cova/apps/mobile                                |
-|                                                                 |
-| \# Build production IPA                                         |
-|                                                                 |
-| eas build \--platform ios \--profile production                 |
-|                                                                 |
-| \# This opens a browser to authenticate with your Apple ID.     |
-|                                                                 |
-| \# EAS handles code signing automatically.                      |
-|                                                                 |
-| \# Build takes 15-25 minutes on EAS servers.                    |
-|                                                                 |
-| \# You will receive an email when it completes.                 |
-|                                                                 |
-| \# After build completes, submit to App Store                   |
-|                                                                 |
-| eas submit \--platform ios \--profile production                |
-+-----------------------------------------------------------------+
+**APPENDIX A: COMPLETE ERROR PLAYBOOK**
 
-After submission, Apple reviews the app. First submission typically
-takes 1--3 days. Subsequent submissions take 24 hours. Common rejection
-reasons and fixes:
+Every error encountered during Phases 0-3 is documented here with the
+exact fix. Reference this before asking for help.
 
-- Missing privacy policy --- add a URL to your privacy policy in App
-  Store Connect → App Information
+**A1: React Version Conflict**
 
-- NSCameraUsageDescription insufficient --- make the description more
-  specific about WHY you need the camera
+  --------- ------------------------------------------------------------------
+   **!!!**  Symptom: \'ReactCurrentOwner of undefined\' OR \'Cannot read
+            property S of undefined\' on app startup
 
-- In-App Purchase missing --- ensure all IAP products are in
-  \'Approved\' state before submitting
+  --------- ------------------------------------------------------------------
 
-- 3D viewer crashes on review device --- test on older iPhones (iPhone
-  12 or older) and handle graceful degradation
+Cause: React 19 was pulled in by npx expo install \--fix, a dependency
+upgrade, or pnpm resolving wrong version.
 
-+-----------------------------------------------------------------+
-| git add .                                                       |
-|                                                                 |
-| git commit -m \"Phase 9: EAS build config, launch checklist,    |
-| App Store submission\"                                          |
-|                                                                 |
-| git push origin main                                            |
-|                                                                 |
-| echo \"🎉 Cova V1 is complete and submitted to the App Store!\" |
-+-----------------------------------------------------------------+
++-----------------------------------------------------------------------+
+| \# DIAGNOSIS                                                          |
+|                                                                       |
+| cat \~/Desktop/cova/apps/mobile/node_modules/react/package.json \|    |
+| grep version                                                          |
+|                                                                       |
+| \# If NOT 18.3.1 --- you have the problem                             |
+|                                                                       |
+| \# FIX                                                                |
+|                                                                       |
+| cd \~/Desktop/cova/apps/mobile                                        |
+|                                                                       |
+| pnpm add react@18.3.1 react-dom@18.3.1                                |
+|                                                                       |
+| \# Verify pnpm overrides exist in root package.json:                  |
+|                                                                       |
+| cat \~/Desktop/cova/package.json \| grep -A5 overrides                |
+|                                                                       |
+| \# Must show: \'react\': \'18.3.1\'                                   |
+|                                                                       |
+| \# Clean install                                                      |
+|                                                                       |
+| cd \~/Desktop/cova                                                    |
+|                                                                       |
+| rm -rf node_modules apps/mobile/node_modules                          |
+|                                                                       |
+| rm -f pnpm-lock.yaml                                                  |
+|                                                                       |
+| pnpm install                                                          |
+|                                                                       |
+| \# Verify fix                                                         |
+|                                                                       |
+| cat apps/mobile/node_modules/react/package.json \| grep version       |
+|                                                                       |
+| \# Must show: 18.3.1                                                  |
++-----------------------------------------------------------------------+
 
-**APPENDIX A --- 14-Day Sprint Timeline**
+**A2: Three.js Shader Crash**
 
-This timeline assumes you are building full-time (8+ hours/day) with one
-developer. Adjust based on your actual available time.
+  --------- ------------------------------------------------------------------
+   **!!!**  Symptom: App crashes on style switch with \'Cannot read property
+            trim of undefined\' at onFirstUse → getUniforms → setProgram
 
-  -------------------------------------------------------------------
-  **Day**   **Phase**        **Deliverable**
-  --------- ---------------- ----------------------------------------
-  **Day 1** **Phase 0+1**    Mac setup, Homebrew, Node, Xcode
-                             downloading, monorepo scaffold, shared
-                             types
+  --------- ------------------------------------------------------------------
 
-  **Day 2** **Phase 2**      Supabase schema (all 8 tables), RLS,
-                             storage buckets, auth configured
+Cause: Three.js version \> 0.155.0 breaks expo-gl shader uniform
+handling on iOS.
 
-  **Day 3** **Phase 3**      3D dependencies installed, furniture
-                             catalog defined, GLB models downloaded
++-----------------------------------------------------------------------+
+| \# DIAGNOSIS                                                          |
+|                                                                       |
+| cat \~/Desktop/cova/apps/mobile/node_modules/three/package.json \|    |
+| grep version                                                          |
+|                                                                       |
+| \# If NOT 0.155.0 --- you have the problem                            |
+|                                                                       |
+| \# FIX                                                                |
+|                                                                       |
+| cd \~/Desktop/cova/apps/mobile                                        |
+|                                                                       |
+| pnpm add three@0.155.0                                                |
+|                                                                       |
+| \# Also add to root pnpm overrides if needed:                         |
+|                                                                       |
+| \# \'three\': \'0.155.0\'                                             |
++-----------------------------------------------------------------------+
 
-  **Day 4** **Phase 3**      RoomCalibrationScreen complete and
-                             testable in Simulator
+**A3: OrbitControls Crash**
 
-  **Day 5** **Phase 3**      BoxRoom, FurniturePiece, SceneLighting
-                             complete --- 3D scene renders 1 style
+  --------- ------------------------------------------------------------------
+   **!!!**  Symptom: \'Cannot set property touchAction of undefined\' when
+            adding OrbitControls
 
-  **Day 6** **Phase 3**      RoomViewer3DScreen --- all 5 styles
-                             working, orbit controls, screenshot
-                             export
+  --------- ------------------------------------------------------------------
 
-  **Day 7** **Phase 4**      Render Edge Function, ZoeDepth, webhook
-                             handler deployed and tested
+Cause: OrbitControls.cjs tries to set domElement.style.touchAction which
+does not exist in React Native. This will NEVER work. Use PanResponder
+instead (Phase 6 Section 6.11).
 
-  **Day 8** **Phase 5**      Claude chatbot Edge Function --- 3D
-                             scene mutations working end-to-end
++-----------------------------------------------------------------------+
+| \# FIX: Remove OrbitControls entirely from RoomViewer3DScreen.tsx     |
+|                                                                       |
+| \# Remove import: import { OrbitControls } from                       |
+| \'@react-three/drei/native\'                                          |
+|                                                                       |
+| \# Remove component: \<OrbitControls \... /\>                         |
+|                                                                       |
+| \# Use CameraController with PanResponder instead (see Phase 6        |
+| Section 6.11)                                                         |
++-----------------------------------------------------------------------+
 
-  **Day 9** **Phase 6**      Auth screens, swipe onboarding, home
-                             screen, upload flow
+**A4: pnpm Not Found After Mac Restart**
 
-  **Day     **Phase 6**      3D viewer connected to upload flow ---
-  10**                       full user journey works
+  --------- ------------------------------------------------------------------
+   **!!!**  Symptom: \'command not found: pnpm\' after restarting Mac or
+            opening new Terminal
 
-  **Day     **Phase 6+7**    Product shelf, realtor virtual staging,
-  11**                       listing pages
+  --------- ------------------------------------------------------------------
 
-  **Day     **Phase 7+8**    Open house voting, MLS export, StoreKit
-  12**                       token packs
++-----------------------------------------------------------------------+
+| \# PERMANENT FIX:                                                     |
+|                                                                       |
+| corepack enable                                                       |
+|                                                                       |
+| corepack prepare pnpm@latest \--activate                              |
+|                                                                       |
+| \# If still not found, add to \~/.zprofile:                           |
+|                                                                       |
+| echo \'export PNPM_HOME=\"\$HOME/.local/share/pnpm\"\' \>\>           |
+| \~/.zprofile                                                          |
+|                                                                       |
+| echo \'export PATH=\"\$PNPM_HOME:\$PATH\"\' \>\> \~/.zprofile         |
+|                                                                       |
+| source \~/.zprofile                                                   |
+|                                                                       |
+| pnpm \--version \# Should now work                                    |
++-----------------------------------------------------------------------+
 
-  **Day     **Phase 9**      EAS build, test on physical iPhone, bug
-  13**                       fixes
+**A5: Pod Install Failure**
 
-  **Day     **Phase 9**      App Store submission, screenshots,
-  14**                       metadata --- 🚀 SUBMITTED
-  -------------------------------------------------------------------
+  --------- ------------------------------------------------------------------
+   **!!!**  Symptom: pod install fails with get_folly_config error OR
+            ReactAppDependencyProvider error
 
-**APPENDIX B --- V2 Features (Months 3--6)**
+  --------- ------------------------------------------------------------------
 
-These features are excluded from V1 to maintain focus. Add them after
-you have 50 paying users and \$1,000 in revenue.
+Cause: The ios/ folder is corrupt or incompatible. It is a generated
+folder --- treat it as disposable.
 
-- Depth Anything V2 via Hugging Face --- replace manual calibration with
-  automatic room detection
++-----------------------------------------------------------------------+
+| cd \~/Desktop/cova/apps/mobile                                        |
+|                                                                       |
+| rm -rf ios                                                            |
+|                                                                       |
+| npx expo prebuild \--clean                                            |
+|                                                                       |
+| \# Then rebuild from Xcode                                            |
++-----------------------------------------------------------------------+
 
-- Wayfair 3D asset API --- expand furniture library to 300+ models
-  directly tied to purchasable products
+**A6: Xcode Push Notifications Error**
 
-- Claude chatbot directly driving 3D mutations in real time --- \'swap
-  the sofa\' moves it live
+  --------- ------------------------------------------------------------------
+   **!!!**  Symptom: \'No profiles for ai.cova.app --- Personal Team does not
+            support Push Notifications capability\'
 
-- AR preview via \@react-three/xr and model-viewer --- see furniture in
-  your real room via phone camera
+  --------- ------------------------------------------------------------------
 
-- Designer marketplace --- upload rooms, earn on every copy via Stripe
-  Connect
+Cause: Push Notifications is listed as a capability. Personal Apple ID
+accounts cannot use it without Apple Developer Program.
 
-- Spatial fit logic --- warn when furniture dimensions exceed room size
++-----------------------------------------------------------------------+
+| \# FIX in Xcode:                                                      |
+|                                                                       |
+| \# 1. Open \~/Desktop/cova/apps/mobile/ios/Cova.xcworkspace           |
+|                                                                       |
+| \# 2. Select Cova target \> Signing & Capabilities tab                |
+|                                                                       |
+| \# 3. Find \'Push Notifications\' capability                          |
+|                                                                       |
+| \# 4. Click the trash icon to REMOVE it                               |
+|                                                                       |
+| \# 5. Click \'Try Again\' button                                      |
+|                                                                       |
+| \# 6. Should now show green checkmark                                 |
+|                                                                       |
+| \# PERMANENT FIX --- remove from app.json:                            |
+|                                                                       |
+| \# Remove any push notification plugin or entitlement from app.json   |
+|                                                                       |
+| \# Re-run: npx expo prebuild \--clean && rebuild from Xcode           |
++-----------------------------------------------------------------------+
 
-- Social sharing cards with \'Copy to my room\' acquisition CTA
+**A7: Expo Go Version Mismatch**
 
-- Android app via React Native code share
+  --------- ------------------------------------------------------------------
+   **!!!**  Symptom: \'Project is incompatible with this version of Expo Go\'
 
-*COVA --- V1 Complete Build Guide \| hello@cova.ai \| CONFIDENTIAL*
+  --------- ------------------------------------------------------------------
+
+Cause: Cova uses expo-gl which is a native module that Expo Go cannot
+load. NEVER use Expo Go for Cova. Always use the native development
+build via Xcode.
+
++-----------------------------------------------------------------------+
+| \# CORRECT build process:                                             |
+|                                                                       |
+| cd \~/Desktop/cova/apps/mobile                                        |
+|                                                                       |
+| npx expo start \--clear \# Start Metro                                |
+|                                                                       |
+| \# Open Xcode -\> select iPhone -\> Cmd+R                             |
+|                                                                       |
+| \# App installs on physical iPhone                                    |
++-----------------------------------------------------------------------+
+
+**A8: Metro Port Already In Use**
+
+  --------- ------------------------------------------------------------------
+   **!!!**  Symptom: \'Port 8081 is running this app in another window\'
+
+  --------- ------------------------------------------------------------------
+
++-----------------------------------------------------------------------+
+| \# Kill processes on both possible ports                              |
+|                                                                       |
+| kill \$(lsof -t -i:8081) 2\>/dev/null; echo \'done\'                  |
+|                                                                       |
+| kill \$(lsof -t -i:8082) 2\>/dev/null; echo \'done\'                  |
+|                                                                       |
+| \# Then start Metro fresh                                             |
+|                                                                       |
+| cd \~/Desktop/cova/apps/mobile                                        |
+|                                                                       |
+| npx expo start \--clear                                               |
++-----------------------------------------------------------------------+
+
+**A9: Cursor Memory Crash (79GB+)**
+
+  --------- ------------------------------------------------------------------
+   **!!!**  Symptom: Mac fans max out, system slows to a crawl, Cursor uses
+            79GB+ RAM when running Agent prompts
+
+  --------- ------------------------------------------------------------------
+
++-----------------------------------------------------------------------+
+| \# Step 1: Force quit Cursor (Cmd+Option+Esc -\> Cursor -\> Force     |
+| Quit)                                                                 |
+|                                                                       |
+| \# Step 2: Clear ALL Cursor caches                                    |
+|                                                                       |
+| rm -rf \~/Library/Application\\ Support/Cursor/Cache                  |
+|                                                                       |
+| rm -rf \~/Library/Application\\ Support/Cursor/CachedData             |
+|                                                                       |
+| rm -rf \~/Library/Caches/Cursor                                       |
+|                                                                       |
+| rm -rf \~/Library/Application\\ Support/Cursor/GPUCache               |
+|                                                                       |
+| \# Step 3: Restart Mac before reopening Cursor                        |
+|                                                                       |
+| \# PREVENTION --- ensure .cursorignore contains:                      |
+|                                                                       |
+| \# node_modules                                                       |
+|                                                                       |
+| \# assets/3d                                                          |
+|                                                                       |
+| \# .expo                                                              |
+|                                                                       |
+| \# pnpm-lock.yaml                                                     |
+|                                                                       |
+| \# ios                                                                |
+|                                                                       |
+| \# android                                                            |
++-----------------------------------------------------------------------+
+
+**A10: iOS Simulator 3D Blank Screen**
+
+  --------- ------------------------------------------------------------------
+   **!!!**  Symptom: 3D room is blank/black in iOS Simulator even though it
+            works on physical iPhone
+
+  --------- ------------------------------------------------------------------
+
+Cause: iOS Simulator WebGL implementation is broken for Three.js shader
+compilation. This is a known issue with expo-gl + Simulator and is NOT
+fixable. Always use a physical iPhone.
+
++-----------------------------------------------------------------------+
+| \# There is no fix for Simulator. Use physical iPhone for ALL 3D      |
+| testing.                                                              |
+|                                                                       |
+| \# Make sure iPhone is connected via USB and Developer Mode is ON.    |
++-----------------------------------------------------------------------+
+
+**A11: New Architecture Error**
+
+  --------- ------------------------------------------------------------------
+   **!!!**  Symptom: \'right operand of in is not an object\' at RCTBridge OR
+            \'Cannot read properties of undefined (reading NativeModules)\'
+
+  --------- ------------------------------------------------------------------
+
+Cause: newArchEnabled: true in app.json. \@react-three/fiber 8.x is
+incompatible with Fabric/New Architecture.
+
++-----------------------------------------------------------------------+
+| \# FIX: Open apps/mobile/app.json                                     |
+|                                                                       |
+| \# Ensure: \"newArchEnabled\": false                                  |
+|                                                                       |
+| \# Rebuild from Xcode after changing                                  |
++-----------------------------------------------------------------------+
+
+**A12: GLB Model Causes Shader Crash**
+
+  --------- ------------------------------------------------------------------
+   **!!!**  Symptom: After re-enabling FurniturePiece, app crashes on specific
+            style only
+
+  --------- ------------------------------------------------------------------
+
+Cause: One of the GLB models for that style has a problematic material.
+Isolate and remove it.
+
++-----------------------------------------------------------------------+
+| \# DIAGNOSTIC: Comment out furniture models one by one in             |
+| STYLE_DEFAULT_FURNITURE                                               |
+|                                                                       |
+| \# until crash stops. The last model you commented out is the         |
+| problem.                                                              |
+|                                                                       |
+| \# FIX options:                                                       |
+|                                                                       |
+| \# 1. Remove that model key from STYLE_DEFAULT_FURNITURE for that     |
+| style                                                                 |
+|                                                                       |
+| \# 2. Re-export the GLB from Blender without complex materials        |
+|                                                                       |
+| \# 3. Replace with a simpler GLB from Kenney Kit                      |
++-----------------------------------------------------------------------+
+
+**APPENDIX B: COLLABORATION --- PRANAV & DAKSH**
+
+**B1: Daily Workflow**
+
+  -------------------------------------------------------------------------
+  **Person**   **Responsibility**              **How**
+  ------------ ------------------------------- ----------------------------
+  Pranav       Primary builder, Supabase       \~/Desktop/cova is the
+               owner, GitHub owner             source repo
+
+  Daksh        Feature builder, testing, code  Fork or direct push to main
+               review                          with permission
+
+  Both         V0 design approval required     Share screenshots in team
+               before any Phase 6+ UI code     chat
+
+  Both         Git commit after every          git add . && git commit &&
+               completed session               git push
+  -------------------------------------------------------------------------
+
+**B2: Daksh Setup (New Mac)**
+
++-----------------------------------------------------------------------+
+| \# Clone repo                                                         |
+|                                                                       |
+| git clone https://github.com/YOUR_ORG/cova.git \~/Desktop/cova        |
+|                                                                       |
+| cd \~/Desktop/cova                                                    |
+|                                                                       |
+| \# Install dependencies                                               |
+|                                                                       |
+| pnpm install                                                          |
+|                                                                       |
+| \# Copy environment variables from Pranav (never commit these)        |
+|                                                                       |
+| \# Create \~/Desktop/cova/.env.local with all keys from Pranav        |
+|                                                                       |
+| \# Verify                                                             |
+|                                                                       |
+| cat apps/mobile/node_modules/react/package.json \| grep version       |
+|                                                                       |
+| \# Must show 18.3.1                                                   |
++-----------------------------------------------------------------------+
+
+**B3: Staying in Sync**
+
++-----------------------------------------------------------------------+
+| \# Start of every work session:                                       |
+|                                                                       |
+| cd \~/Desktop/cova                                                    |
+|                                                                       |
+| git pull origin main                                                  |
+|                                                                       |
+| pnpm install \# In case new packages were added                       |
+|                                                                       |
+| \# End of every work session:                                         |
+|                                                                       |
+| git add .                                                             |
+|                                                                       |
+| git commit -m \'Phase X: brief description of what was done\'         |
+|                                                                       |
+| git push origin main                                                  |
++-----------------------------------------------------------------------+
+
+**B4: If You Break Something**
+
++-----------------------------------------------------------------------+
+| \# If you can\'t figure out what broke:                               |
+|                                                                       |
+| git stash \# Save your changes                                        |
+|                                                                       |
+| git log \--oneline -10 \# See recent commits                          |
+|                                                                       |
+| git checkout COMMIT_HASH \# Go back to known good state               |
+|                                                                       |
+| \# OR reset to last commit completely (DESTROYS unsaved work):        |
+|                                                                       |
+| git checkout \-- .                                                    |
+|                                                                       |
+| \# OR reset to remote main (DESTROYS local commits):                  |
+|                                                                       |
+| git fetch origin                                                      |
+|                                                                       |
+| git reset \--hard origin/main                                         |
++-----------------------------------------------------------------------+
+
+*COVA BUILD GUIDE v2.0 --- Phases 4--9 + Error Playbook \|
+hellocova@gmail.com \| ai.cova.app \| March 2026*
