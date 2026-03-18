@@ -1,5 +1,5 @@
 import React from 'react';
-import type { CavaStyle } from '@cova/shared';
+import type { StyleName } from '@cova/shared';
 
 interface StyleLight {
   ambientColor: string;
@@ -14,7 +14,7 @@ interface StyleLight {
   fillPosition: [number, number, number];
 }
 
-const STYLE_LIGHTING: Record<CavaStyle, StyleLight> = {
+const STYLE_LIGHTING: Record<StyleName, StyleLight> = {
   japandi: {
     ambientColor: '#FFF8F0',
     ambientIntensity: 0.5,
@@ -27,17 +27,17 @@ const STYLE_LIGHTING: Record<CavaStyle, StyleLight> = {
     fillIntensity: 0.36,
     fillPosition: [-6, 4, -6],
   },
-  midcentury: {
+  mid_century: {
     ambientColor: '#FFF3E0',
-    ambientIntensity: 0.4,
-    dirColor: '#FFE0A0',
-    dirIntensity: 2.0,
-    dirPosition: [4, 8, 4],
+    ambientIntensity: 0.45,
+    dirColor: '#FFD080',
+    dirIntensity: 1.8,
+    dirPosition: [5, 9, 5] as [number, number, number],
     skyColor: '#FFF3E0',
-    groundColor: '#C4946A',
-    fillColor: '#FFF3E0',
-    fillIntensity: 0.4,
-    fillPosition: [-4, 3, -4],
+    groundColor: '#8B6914',
+    fillColor: '#FFE8C0',
+    fillIntensity: 0.35,
+    fillPosition: [-5, 3, -5] as [number, number, number],
   },
   coastal: {
     ambientColor: '#F0F8FF',
@@ -51,18 +51,6 @@ const STYLE_LIGHTING: Record<CavaStyle, StyleLight> = {
     fillIntensity: 0.44,
     fillPosition: [-8, 4, -6],
   },
-  industrial: {
-    ambientColor: '#D0C8C0',
-    ambientIntensity: 0.25,
-    dirColor: '#FFA040',
-    dirIntensity: 1.5,
-    dirPosition: [2, 6, 2],
-    skyColor: '#4A4540',
-    groundColor: '#1A1A1A',
-    fillColor: '#D0C8C0',
-    fillIntensity: 0.3,
-    fillPosition: [-2, 3, -2],
-  },
   bohemian: {
     ambientColor: '#FFE8D0',
     ambientIntensity: 0.45,
@@ -75,10 +63,22 @@ const STYLE_LIGHTING: Record<CavaStyle, StyleLight> = {
     fillIntensity: 0.32,
     fillPosition: [-4, 3, -3],
   },
+  minimalist: {
+    ambientColor: '#FFFFFF',
+    ambientIntensity: 0.6,
+    dirColor: '#FFFFFF',
+    dirIntensity: 2.0,
+    dirPosition: [6, 10, 6] as [number, number, number],
+    skyColor: '#F5F5F5',
+    groundColor: '#D0D0D0',
+    fillColor: '#FFFFFF',
+    fillIntensity: 0.4,
+    fillPosition: [-6, 4, -6] as [number, number, number],
+  },
 };
 
 interface SceneLightingProps {
-  style: CavaStyle;
+  style: StyleName;
 }
 
 export function SceneLighting({ style }: SceneLightingProps) {
@@ -87,7 +87,6 @@ export function SceneLighting({ style }: SceneLightingProps) {
   return (
     <>
       <ambientLight intensity={L.ambientIntensity} color={L.ambientColor} />
-
       <directionalLight
         position={L.dirPosition}
         color={L.dirColor}
@@ -101,11 +100,7 @@ export function SceneLighting({ style }: SceneLightingProps) {
         shadow-camera-top={8}
         shadow-camera-bottom={-8}
       />
-
-      <hemisphereLight
-        args={[L.skyColor, L.groundColor, 0.4]}
-      />
-
+      <hemisphereLight args={[L.skyColor, L.groundColor, 0.4]} />
       <directionalLight
         position={L.fillPosition}
         color={L.fillColor}

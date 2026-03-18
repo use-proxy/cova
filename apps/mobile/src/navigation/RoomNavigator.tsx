@@ -2,14 +2,14 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import RoomCaptureScreen from '../screens/main/RoomCaptureScreen';
 import StyleQuizScreen from '../screens/main/StyleQuizScreen';
-import { RoomViewer3DScreen } from '../screens/main/RoomViewer3DScreen';
+import RoomViewer3DScreen from '../screens/main/RoomViewer3DScreen';
 import RenderViewScreen from '../screens/main/RenderViewScreen';
 
 export type RoomStackParamList = {
   RoomCapture: undefined;
   StyleQuiz: undefined;
-  Viewer3D: undefined;
-  RenderView: undefined;
+  Viewer3D: { room_id?: string };
+  RenderView: { room_id?: string };
 };
 
 const Stack = createNativeStackNavigator<RoomStackParamList>();

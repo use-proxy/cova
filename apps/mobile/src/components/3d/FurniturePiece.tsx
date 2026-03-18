@@ -1,42 +1,35 @@
 import React, { useRef, Suspense, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { useGLTF } from '@react-three/drei/native';
-import type { PlacedFurniture, CavaStyle } from '@cova/shared';
-import type { FURNITURE_CATALOG } from '../../data/furnitureCatalog';
-import { STYLE_MATERIALS } from '../../data/furnitureCatalog';
-
-type CatalogItem = (typeof FURNITURE_CATALOG)[string];
+import type { FurniturePiece as FurniturePieceType, FurnitureCatalogItem } from '@cova/shared';
 
 interface FurniturePieceProps {
-  piece: PlacedFurniture;
-  catalog: CatalogItem;
+  piece: FurniturePieceType;
+  catalog: FurnitureCatalogItem;
   isSelected: boolean;
-  editMode: boolean;
   onSelect: (id: string) => void;
   onDragEnd: (id: string, pos: [number, number, number]) => void;
   onDragStart?: () => void;
   onDragStop?: () => void;
 }
 
-const FABRIC_CATEGORIES = new Set(['sofa', 'chair']);
-const TABLE_CATEGORIES = new Set(['table']);
 const ROOM_HALF_W = 2.2;
 const ROOM_HALF_D = 2.0;
 
 function FurnitureModel({
   catalog,
   isSelected,
-  style,
+  colorOverride,
 }: {
-  catalog: CatalogItem;
+  catalog: FurnitureCatalogItem;
   isSelected: boolean;
-  style: CavaStyle;
+  colorOverride: string | null;
 }) {
-  const gltf = useGLTF(catalog.model_path as unknown as string) as unknown as {
+  const gltf = useGLTF(catalog.glb_path as unknown as string) as unknown as {
     scene?: THREE.Group;
   };
   if (!gltf || !gltf.scene) return null;
-  const clonedScene = React.useMemo(() => gltf.scene!.clone(), [gltf.scene]);
+  const clonedScene = useMemo(() => gltf.scene!.clone(), [gltf.scene]);
   const box = useRef<THREE.Box3>(new THREE.Box3());
   const size = useRef(new THREE.Vector3());
 
@@ -48,32 +41,15 @@ function FurnitureModel({
         mesh.castShadow = true;
         mesh.receiveShadow = true;
 
-        const styleMats = STYLE_MATERIALS[style];
-        const catKey = catalog.category as keyof typeof styleMats;
-        const styleMat = styleMats[catKey] ?? styleMats.sofa;
-        if (!styleMat?.color) return;
-
         const applyMat = (mat: THREE.Material | null | undefined) => {
           if (!(mat instanceof THREE.MeshStandardMaterial)) return;
-          if (!styleMat?.color) return;
-          mat.color.set(styleMat.color);
 
-          let roughness = styleMat.roughness ?? 0.8;
-          let metalness = styleMat.metalness ?? 0.0;
-
-          if (FABRIC_CATEGORIES.has(catalog.category)) {
-            roughness = Math.min(1.0, roughness + 0.05);
+          if (colorOverride) {
+            mat.color.set(colorOverride);
           }
-          if (TABLE_CATEGORIES.has(catalog.category)) {
-            metalness = Math.min(1.0, metalness + 0.05);
-          }
-
-          mat.roughness = roughness;
-          mat.metalness = metalness;
-          mat.envMapIntensity = 0.3;
 
           if (isSelected) {
-            mat.emissive.set('#C9A84C');
+            mat.emissive.set('#C47B3C');
             mat.emissiveIntensity = 0.3;
           } else {
             mat.emissive.set('#000000');
@@ -91,31 +67,26 @@ function FurnitureModel({
     } catch (e) {
       console.warn('Material update skipped:', e);
     }
-  }, [clonedScene, isSelected, style, catalog.category]);
+  }, [clonedScene, isSelected, colorOverride]);
 
   const scale = useMemo(() => {
     box.current.setFromObject(clonedScene);
     box.current.getSize(size.current);
-    const sx = catalog.dimensions.w / size.current.x;
-    const sy = catalog.dimensions.h / size.current.y;
-    const sz = catalog.dimensions.d / size.current.z;
+    if (size.current.x === 0 || size.current.y === 0 || size.current.z === 0) return [1, 1, 1] as [number, number, number];
+    const sx = catalog.width / size.current.x;
+    const sy = catalog.height / size.current.y;
+    const sz = catalog.depth / size.current.z;
     const s = Math.min(sx, sy, sz);
     return [s, s, s] as [number, number, number];
-  }, [clonedScene, catalog.dimensions.w, catalog.dimensions.h, catalog.dimensions.d]);
+  }, [clonedScene, catalog.width, catalog.height, catalog.depth]);
 
-  return (
-    <primitive
-      object={clonedScene}
-      scale={scale}
-    />
-  );
+  return <primitive object={clonedScene} scale={scale} />;
 }
 
 export function FurniturePiece({
   piece,
   catalog,
   isSelected,
-  editMode,
   onSelect,
   onDragEnd,
   onDragStart,
@@ -133,30 +104,29 @@ export function FurniturePiece({
   return (
     <group
       ref={groupRef}
-      position={piece.position}
+      position={[piece.position.x, 0, piece.position.y]}
       rotation={[0, piece.rotation_y, 0]}
     >
       <Suspense fallback={null}>
         <FurnitureModel
           catalog={catalog}
           isSelected={isSelected}
-          style={piece.style}
+          colorOverride={piece.color_override}
         />
       </Suspense>
 
       <mesh
-        position={[0, catalog.dimensions.h / 2, 0]}
-        onPointerDown={(e) => {
+        position={[0, catalog.height / 2, 0]}
+        onPointerDown={(e: any) => {
           e.stopPropagation();
           if (!isSelected) {
             onSelect(piece.id);
           } else {
             isDraggingRef.current = true;
             onDragStart?.();
-            console.log('DRAG STARTED', piece.id);
           }
         }}
-        onPointerUp={(e) => {
+        onPointerUp={(e: any) => {
           e.stopPropagation();
           if (isDraggingRef.current && groupRef.current) {
             const pos = groupRef.current.position;
@@ -167,9 +137,9 @@ export function FurniturePiece({
         }}
       >
         <boxGeometry args={[
-          catalog.dimensions.w + 0.1,
-          catalog.dimensions.h + 0.1,
-          catalog.dimensions.d + 0.1,
+          catalog.width + 0.1,
+          catalog.height + 0.1,
+          catalog.depth + 0.1,
         ]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
@@ -178,8 +148,7 @@ export function FurniturePiece({
         <mesh
           rotation={[-Math.PI / 2, -piece.rotation_y, 0]}
           position={[0, 0.002, 0]}
-          onPointerMove={(e) => {
-            console.log('PLANE MOVE', isDraggingRef.current, e.point);
+          onPointerMove={(e: any) => {
             if (!isDraggingRef.current || !groupRef.current) return;
             e.stopPropagation();
             const nx = Math.max(-ROOM_HALF_W, Math.min(ROOM_HALF_W, e.point.x));
@@ -187,7 +156,7 @@ export function FurniturePiece({
             groupRef.current.position.set(nx, 0, nz);
             onDragEnd(piece.id, [nx, 0, nz]);
           }}
-          onPointerUp={(e) => {
+          onPointerUp={(e: any) => {
             e.stopPropagation();
             if (isDraggingRef.current && groupRef.current) {
               const pos = groupRef.current.position;
@@ -197,7 +166,6 @@ export function FurniturePiece({
             onDragStop?.();
           }}
           onPointerLeave={() => {
-            console.log('PLANE LEAVE', isDraggingRef.current);
             if (isDraggingRef.current) {
               isDraggingRef.current = false;
               onDragStop?.();
@@ -210,18 +178,13 @@ export function FurniturePiece({
       )}
 
       {isSelected && (
-        <mesh position={[0, catalog.dimensions.h / 2, 0]}>
+        <mesh position={[0, catalog.height / 2, 0]}>
           <boxGeometry args={[
-            catalog.dimensions.w + 0.08,
-            catalog.dimensions.h + 0.08,
-            catalog.dimensions.d + 0.08,
+            catalog.width + 0.08,
+            catalog.height + 0.08,
+            catalog.depth + 0.08,
           ]} />
-          <meshBasicMaterial
-            color="#C9A84C"
-            wireframe
-            transparent
-            opacity={0.5}
-          />
+          <meshBasicMaterial color="#C47B3C" wireframe transparent opacity={0.5} />
         </mesh>
       )}
     </group>
