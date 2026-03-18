@@ -25,6 +25,8 @@ interface AppState {
   currentRender: Render | null;
   renderStatus: 'idle' | 'processing' | 'completed' | 'failed';
   renderError: string | null;
+  renderProgressStage: string;
+  renderProgress: number;
 
   // cart & products
   cartItems: CartItem[];
@@ -53,6 +55,8 @@ interface AppActions {
   setCurrentRender: (render: Render | null) => void;
   setRenderStatus: (status: AppState['renderStatus']) => void;
   setRenderError: (error: string | null) => void;
+  setRenderProgressStage: (stage: string) => void;
+  setRenderProgress: (progress: number) => void;
 
   // cart & products
   addToCart: (item: CartItem) => void;
@@ -121,6 +125,8 @@ export const useAppStore = create<AppState & AppActions>()(
     currentRender: null,
     renderStatus: 'idle',
     renderError: null,
+    renderProgressStage: '',
+    renderProgress: 0,
 
     setCurrentRender: (render) =>
       set((state) => {
@@ -133,6 +139,14 @@ export const useAppStore = create<AppState & AppActions>()(
     setRenderError: (error) =>
       set((state) => {
         state.renderError = error;
+      }),
+    setRenderProgressStage: (stage) =>
+      set((state) => {
+        state.renderProgressStage = stage;
+      }),
+    setRenderProgress: (progress) =>
+      set((state) => {
+        state.renderProgress = progress;
       }),
 
     // ── cart & products defaults ──
