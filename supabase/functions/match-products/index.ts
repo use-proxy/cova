@@ -1,7 +1,5 @@
-import { createClient } from 'npm:@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
-
-type CavaStyle = 'japandi' | 'midcentury' | 'coastal' | 'industrial' | 'bohemian';
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -14,7 +12,6 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // 1. Authenticate user
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -23,11 +20,8 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const token = authHeader.replace('Bearer ', '');
-    const {
-      data: { user },
-    } = await supabase.auth.getUser(token);
-
+    const authToken = authHeader.replace('Bearer ', '');
+    const { data: { user } } = await supabase.auth.getUser(authToken);
     if (!user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
@@ -35,95 +29,60 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // 2. Parse body
-    const { render_id, style, limit = 10 } = await req.json();
+    const { render_embedding, room_type, style_blend, budget, limit } = await req.json();
 
-    if (!render_id || !style) {
+    if (!render_embedding || !Array.isArray(render_embedding) || render_embedding.length === 0) {
       return new Response(
-        JSON.stringify({ error: 'render_id and style are required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        JSON.stringify({ products: [] }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
-    // 3. Fetch render to get style_applied and room_id
-    const { data: render, error: renderError } = await supabase
-      .from('renders')
-      .select('id, room_id, clip_embedding, style_applied')
-      .eq('id', render_id)
-      .single();
+    const matchCount = limit ?? 15;
 
-    if (renderError || !render) {
-      return new Response(JSON.stringify({ error: 'Render not found' }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // 4. Check token balance (costs 1 token)
-    const { data: userData } = await supabase
-      .from('users')
-      .select('token_balance')
-      .eq('id', user.id)
-      .single();
-
-    if (!userData || userData.token_balance < 1) {
-      return new Response(
-        JSON.stringify({ error: 'insufficient_tokens', required: 1, available: userData?.token_balance ?? 0 }),
-        { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
-    }
-
-    let products = null;
-
-    // 5. Try CLIP embedding match first
-    if (render.clip_embedding) {
-      const { data: embeddingResults } = await supabase.rpc('search_products_by_embedding', {
-        query_embedding: render.clip_embedding,
-        match_count: limit,
-        style_filter: style,
-      });
-      products = embeddingResults;
-    }
-
-    // 6. Fall back to style_tags match if no CLIP embedding
-    if (!products || products.length === 0) {
-      const { data: tagResults } = await supabase
-        .from('products')
-        .select('*')
-        .contains('style_tags', [style])
-        .order('price', { ascending: true })
-        .limit(limit);
-      products = tagResults ?? [];
-    }
-
-    // 7. Insert into room_products junction table
-    if (products.length > 0 && render.room_id) {
-      const junctionRows = products.map((p: { id: string }) => ({
-        room_id: render.room_id,
-        render_id: render.id,
-        product_id: p.id,
-      }));
-
-      await supabase.from('room_products').upsert(junctionRows, {
-        onConflict: 'room_id,render_id,product_id',
-        ignoreDuplicates: true,
-      });
-    }
-
-    // 8. Deduct 1 token atomically
-    const { error: deductError } = await supabase.rpc('deduct_tokens_atomic', {
-      p_user_id: user.id,
-      p_amount: 1,
-      p_reason: `product_match_${render_id}`,
+    // Try RPC-based vector search first
+    const { data: rpcResults, error: rpcError } = await supabase.rpc('search_products_by_embedding', {
+      query_embedding: render_embedding,
+      match_threshold: 0.3,
+      match_count: matchCount,
     });
 
-    if (deductError) {
-      console.error('Token deduction error:', deductError);
+    if (!rpcError && rpcResults && rpcResults.length > 0) {
+      return new Response(
+        JSON.stringify({ products: rpcResults }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
     }
 
-    // 9. Return matched products
+    // Fallback: style tag matching using top style from blend
+    let topStyle = 'coastal';
+    if (style_blend && typeof style_blend === 'object') {
+      const entries = Object.entries(style_blend) as [string, number][];
+      if (entries.length > 0) {
+        entries.sort(([, a], [, b]) => b - a);
+        topStyle = entries[0][0];
+      }
+    }
+
+    let query = supabase
+      .from('products')
+      .select('id, name, description, price, retailer, affiliate_url, category, room_types, style_tags, image_url, width_inches, depth_inches, height_inches')
+      .contains('style_tags', [topStyle]);
+
+    if (room_type) {
+      query = query.contains('room_types', [room_type]);
+    }
+
+    if (budget && budget > 0) {
+      query = query.lte('price', budget);
+    }
+
+    const { data: fallbackResults } = await query
+      .order('price', { ascending: true })
+      .limit(matchCount);
+
     return new Response(
-      JSON.stringify({ products, tokens_charged: 1 }),
+      JSON.stringify({ products: fallbackResults ?? [] }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (err) {
