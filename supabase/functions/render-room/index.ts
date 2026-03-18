@@ -1,21 +1,21 @@
-import { createClient } from 'npm:@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 
-type CavaStyle = 'japandi' | 'midcentury' | 'coastal' | 'industrial' | 'bohemian';
+type StyleName = 'coastal' | 'japandi' | 'bohemian' | 'mid_century' | 'minimalist';
 
-const VALID_STYLES: CavaStyle[] = ['japandi', 'midcentury', 'coastal', 'industrial', 'bohemian'];
+const VALID_STYLES: StyleName[] = ['coastal', 'japandi', 'bohemian', 'mid_century', 'minimalist'];
 
-const STYLE_PROMPTS: Record<CavaStyle, string> = {
-  japandi:
-    'japandi interior design, minimal, warm oak wood, linen sofa, neutral tones, soft natural light, professional architectural photography, 8k photorealistic, interior design magazine',
-  midcentury:
-    'mid century modern interior, walnut furniture, mustard velvet, brass accents, warm golden hour light, Eames era aesthetic, 8k photorealistic',
+const STYLE_PROMPTS: Record<StyleName, string> = {
   coastal:
-    'coastal interior design, white linen, bleached wood, ocean blue accents, bright airy natural light, serene beachy atmosphere, 8k photorealistic',
-  industrial:
-    'industrial loft interior, exposed brick, dark leather sofa, steel pipe shelving, Edison bulbs, dramatic contrast lighting, 8k photorealistic',
+    'coastal style, light natural textures, white and blue palette, natural driftwood, linen fabrics, nautical accents, airy and bright',
+  japandi:
+    'japandi style, clean minimal lines, natural wood and stone, muted earth tones, zen calm atmosphere, functional simplicity',
   bohemian:
-    'bohemian eclectic interior, terracotta velvet, moroccan patterns, layered rugs, warm amber candlelight, lush plants everywhere, 8k photorealistic',
+    'bohemian style, rich warm colors, layered textiles, mixed patterns, plants and natural elements, eclectic collected feel',
+  mid_century:
+    'mid-century modern style, clean organic shapes, warm wood tones, bold accent colors, retro-futurist furniture',
+  minimalist:
+    'minimalist style, pure clean lines, neutral white and grey palette, maximum negative space, hidden storage, serene',
 };
 
 const NEGATIVE_PROMPT =
@@ -117,7 +117,7 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify({
         version: 'stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b',
         input: {
-          prompt: STYLE_PROMPTS[style as CavaStyle],
+          prompt: STYLE_PROMPTS[style as StyleName],
           negative_prompt: NEGATIVE_PROMPT,
           num_inference_steps: quality_tier === 'hd' ? 50 : 30,
           guidance_scale: 7.5,
@@ -169,7 +169,7 @@ Deno.serve(async (req: Request) => {
         quality_tier,
         status: 'processing',
         replicate_prediction_id: prediction.id,
-        prompt_used: STYLE_PROMPTS[style as CavaStyle],
+        prompt_used: STYLE_PROMPTS[style as StyleName],
         tokens_charged: tokenCost,
       })
       .select()
