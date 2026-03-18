@@ -8,5 +8,9 @@ config.resolver.nodeModulesPaths = [
   path.resolve(__dirname, 'node_modules'),
   path.resolve(__dirname, '../..', 'node_modules'),
 ];
+config.resolver.extraNodeModules = {
+  '@cova/shared': path.resolve(__dirname, '../../packages/shared/src/index.ts'),
+};
+config.resolver.resolverMainFields = ['react-native', 'browser', 'main'];
 
 module.exports = config;

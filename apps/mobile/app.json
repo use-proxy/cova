@@ -4,6 +4,7 @@
     "newArchEnabled": false,
     "name": "Cova",
     "slug": "cova",
+    "scheme": "cova",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -11,10 +12,10 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0B1729"
+      "backgroundColor": "#1B3A2D"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "ai.cova.app",
       "infoPlist": {
         "NSCameraUsageDescription": "Cova needs camera access to capture your room for 3D design.",
@@ -25,7 +26,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#0B1729",
+        "backgroundColor": "#1B3A2D",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -64,10 +65,11 @@
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
-          "color": "#C9A84C",
+          "color": "#C47B3C",
           "sounds": []
         }
       ],
+      "expo-apple-authentication",
       "expo-asset",
       "expo-secure-store",
       "expo-tracking-transparency",
