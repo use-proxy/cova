@@ -68,7 +68,10 @@
           "sounds": []
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-secure-store",
+      "expo-tracking-transparency",
+      "expo-build-properties"
     ],
     "web": {
       "favicon": "./assets/favicon.png"
