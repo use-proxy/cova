@@ -8,6 +8,8 @@ import {
   Alert,
   ActivityIndicator,
   PanResponder,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import * as THREE from 'three';
 import * as MediaLibrary from 'expo-media-library';
@@ -22,12 +24,16 @@ import { SceneLighting } from '../../components/3d/SceneLighting';
 import { FurniturePiece } from '../../components/3d/FurniturePiece';
 import { CameraController } from '../../components/3d/CameraController';
 import type { CameraControlState } from '../../components/3d/CameraController';
-import type { StyleName, RoomDimensions, FurniturePiece as FurniturePieceType } from '@cova/shared';
+import type { StyleName, RoomDimensions, FurniturePiece as FurniturePieceType, FurnitureCatalogItem } from '@cova/shared';
 import { FURNITURE_CATALOG, STYLE_COLORS, getFurnitureForRoom } from '../../data/furnitureCatalog';
-import { supabase, callEdgeFunction } from '../../lib/supabase';
 import { useAppStore } from '../../store';
 
 type Props = NativeStackScreenProps<RoomStackParamList, 'Viewer3D'>;
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+const PHI_MIN = 0.3;
+const PHI_MAX = Math.PI / 2 - 0.05;
 
 const STYLES: { key: StyleName; label: string }[] = [
   { key: 'coastal', label: 'Ocean Breeze' },
@@ -37,12 +43,20 @@ const STYLES: { key: StyleName; label: string }[] = [
   { key: 'minimalist', label: 'Pure Lines' },
 ];
 
+const PRICE_RANGE_LABELS: Record<string, string> = {
+  budget: '$',
+  mid: '$$',
+  premium: '$$$',
+};
+
 const DEFAULT_DIMENSIONS: RoomDimensions = {
   width: 16,
   depth: 14,
   height: 9,
   unit: 'ft',
 };
+
+const MAX_UNDO_HISTORY = 10;
 
 function buildDefaultFurniture(style: StyleName): FurniturePieceType[] {
   const equalBlend = { coastal: 0.2, japandi: 0.2, bohemian: 0.2, mid_century: 0.2, minimalist: 0.2 };
@@ -62,6 +76,10 @@ function buildDefaultFurniture(style: StyleName): FurniturePieceType[] {
     depth: item.depth,
     height: item.height,
   }));
+}
+
+function cloneFurniture(arr: FurniturePieceType[]): FurniturePieceType[] {
+  return arr.map((f) => ({ ...f, position: { ...f.position } }));
 }
 
 class ThreeDErrorBoundary extends React.Component<
@@ -98,15 +116,22 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [forceUpdate, setForceUpdate] = useState(0);
+  const [actionHistory, setActionHistory] = useState<FurniturePieceType[][]>([]);
+  const [productInfoItem, setProductInfoItem] = useState<FurnitureCatalogItem | null>(null);
+  const [show2D, setShow2D] = useState(false);
   const viewShotRef = useRef<ViewShot>(null);
 
   const selectedIdRef = useRef<string | null>(null);
   const isDraggingRef = useRef(false);
+  const furnitureRef = useRef(placedFurniture);
+  furnitureRef.current = placedFurniture;
+
+  const productSheetAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 
   const controlRef = useRef<CameraControlState>({
-    theta: 0,
+    theta: Math.PI,
     phi: 1.25,
-    radius: 4.5,
+    radius: 5.0,
   });
 
   const lastTouchRef = useRef<{ x: number; y: number } | null>(null);
@@ -115,6 +140,56 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
 
   const user = useAppStore((s) => s.user);
   const currentRoom = useAppStore((s) => s.currentRoom);
+
+  // ── Undo helpers ──
+
+  const pushHistory = useCallback(() => {
+    setActionHistory((prev) => {
+      const snapshot = cloneFurniture(furnitureRef.current);
+      const next = [...prev, snapshot];
+      return next.length > MAX_UNDO_HISTORY ? next.slice(-MAX_UNDO_HISTORY) : next;
+    });
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    setActionHistory((prev) => {
+      if (prev.length === 0) return prev;
+      const restored = prev[prev.length - 1];
+      setPlacedFurniture(restored);
+      setSelectedId(null);
+      selectedIdRef.current = null;
+      return prev.slice(0, -1);
+    });
+  }, []);
+
+  // ── Product info sheet ──
+
+  const showProductInfo = useCallback((catalogItem: FurnitureCatalogItem) => {
+    setProductInfoItem(catalogItem);
+    Animated.spring(productSheetAnim, {
+      toValue: 0,
+      useNativeDriver: true,
+      friction: 8,
+    }).start();
+  }, [productSheetAnim]);
+
+  const hideProductInfo = useCallback(() => {
+    Animated.timing(productSheetAnim, {
+      toValue: SCREEN_HEIGHT,
+      duration: 250,
+      useNativeDriver: true,
+    }).start(() => setProductInfoItem(null));
+  }, [productSheetAnim]);
+
+  const handleLongPress = useCallback((pieceId: string) => {
+    const piece = furnitureRef.current.find((p) => p.id === pieceId);
+    if (!piece) return;
+    const catalogItem = FURNITURE_CATALOG.find((c) => c.id === piece.catalog_id);
+    if (!catalogItem) return;
+    showProductInfo(catalogItem);
+  }, [showProductInfo]);
+
+  // ── Selection + drag ──
 
   const updateSelectedId = useCallback((id: string | null) => {
     selectedIdRef.current = id;
@@ -175,8 +250,8 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
           lastTouchRef.current = { x: touches[0].pageX, y: touches[0].pageY };
           controlRef.current.theta -= dx * 0.007;
           controlRef.current.phi = Math.max(
-            1.1,
-            Math.min(1.45, controlRef.current.phi + dy * 0.005),
+            PHI_MIN,
+            Math.min(PHI_MAX, controlRef.current.phi + dy * 0.005),
           );
         } else if (touches.length === 1) {
           lastTouchRef.current = { x: touches[0].pageX, y: touches[0].pageY };
@@ -201,7 +276,11 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
     [updateSelectedId],
   );
 
-  const handleDragStart = useCallback(() => updateIsDragging(true), [updateIsDragging]);
+  const handleDragStart = useCallback(() => {
+    pushHistory();
+    updateIsDragging(true);
+  }, [pushHistory, updateIsDragging]);
+
   const handleDragStop = useCallback(() => updateIsDragging(false), [updateIsDragging]);
 
   const handlePointerMissed = useCallback(() => {
@@ -231,6 +310,7 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
       setActiveStyle(newStyle);
       setPlacedFurniture(buildDefaultFurniture(newStyle));
       updateSelectedId(null);
+      setActionHistory([]);
       setSceneKey((prev) => prev + 1);
     },
     [updateSelectedId],
@@ -257,10 +337,11 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
   );
 
   const handleReset = useCallback(() => {
+    pushHistory();
     setPlacedFurniture(buildDefaultFurniture(activeStyle));
     updateSelectedId(null);
     setSceneKey((prev) => prev + 1);
-  }, [activeStyle, updateSelectedId]);
+  }, [activeStyle, updateSelectedId, pushHistory]);
 
   const handleAIRender = async () => {
     if (!user) {
@@ -268,67 +349,70 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
       return;
     }
 
-    let roomId = currentRoom?.id;
-    if (!roomId) {
-      try {
-        const { data: newRoom, error } = await supabase
-          .from('rooms')
-          .insert({ user_id: user.id })
-          .select()
-          .single();
-        if (error || !newRoom) {
-          Alert.alert('Error', 'Could not create room.');
-          return;
-        }
-        roomId = newRoom.id;
-      } catch {
-        Alert.alert('Error', 'Could not create room.');
-        return;
-      }
-    }
-
     setIsRendering(true);
     try {
-      const data = await callEdgeFunction<{ render_id: string; job_id: string }>(
-        'render-room',
-        { room_id: roomId, style: activeStyle, quality_tier: 'draft' },
-      );
-
-      const pollInterval = setInterval(async () => {
-        try {
-          const statusData = await callEdgeFunction<{ status: string; image_url?: string }>(
-            'get-render-status',
-            { render_id: data.render_id, job_id: data.job_id },
-          );
-          if (statusData.status === 'complete') {
-            clearInterval(pollInterval);
-            setIsRendering(false);
-            Alert.alert('Render complete!', 'Image: ' + statusData.image_url);
-          } else if (statusData.status === 'failed') {
-            clearInterval(pollInterval);
-            setIsRendering(false);
-            Alert.alert('Render failed', 'Tokens have been refunded.');
-          }
-        } catch {
-          clearInterval(pollInterval);
-          setIsRendering(false);
-          Alert.alert('Error', 'Lost connection while checking render status.');
-        }
-      }, 3000);
+      const uri = await captureRef(viewShotRef, { format: 'jpg', quality: 0.9 });
+      useAppStore.getState().setCapturedImageUri(uri);
+      setIsRendering(false);
+      navigation.navigate('RenderView', { room_id: currentRoom?.id });
     } catch {
       setIsRendering(false);
-      Alert.alert('Error', 'Could not reach the render service.');
+      Alert.alert('Error', 'Could not capture room screenshot.');
     }
   };
 
   const findCatalogItem = (catalogId: string) =>
     FURNITURE_CATALOG.find((c) => c.id === catalogId);
 
+  const ceilingColor = STYLE_COLORS[activeStyle]?.ceiling ?? '#F5F0E8';
+
+  const roomW = DEFAULT_DIMENSIONS.width;
+  const roomD = DEFAULT_DIMENSIONS.depth;
+  const floorAspect = roomW / roomD;
+  const floorContainerW = SCREEN_WIDTH - 48;
+  const floorContainerH = floorContainerW / floorAspect;
+  const floorColor = STYLE_COLORS[activeStyle]?.floor ?? '#C8B89A';
+
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: STYLE_COLORS[activeStyle]?.ceiling ?? '#F5F0E8' }]}
-    >
-      <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers}>
+    <SafeAreaView style={[styles.container, { backgroundColor: ceilingColor }]}>
+      {show2D ? (
+        <View style={styles.floorPlanWrapper}>
+          <View
+            style={[
+              styles.floorPlanRoom,
+              {
+                width: floorContainerW,
+                height: floorContainerH,
+                backgroundColor: floorColor,
+              },
+            ]}
+          >
+            {placedFurniture.map((piece) => {
+              const screenX = ((piece.position.x / (roomW / 2) + 1) / 2) * floorContainerW;
+              const screenY = ((piece.position.y / (roomD / 2) + 1) / 2) * floorContainerH;
+              const pieceW = Math.max((piece.width / roomW) * floorContainerW, 16);
+              const pieceH = Math.max((piece.depth / roomD) * floorContainerH, 16);
+              return (
+                <View
+                  key={piece.id}
+                  style={[
+                    styles.floorPlanPiece,
+                    {
+                      left: screenX - pieceW / 2,
+                      top: screenY - pieceH / 2,
+                      width: pieceW,
+                      height: pieceH,
+                    },
+                  ]}
+                >
+                  <Text style={styles.floorPlanPieceLabel} numberOfLines={1}>{piece.name}</Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      ) : (
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: ceilingColor }]} {...panResponder.panHandlers}>
         <ViewShot ref={viewShotRef} style={styles.canvasContainer}>
           <ThreeDErrorBoundary onError={handleError}>
             <Canvas
@@ -345,13 +429,13 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
               camera={{ fov: 75, near: 0.1, far: 50 }}
               shadows
               onCreated={({ gl }) => {
-                gl.setClearColor(STYLE_COLORS[activeStyle]?.ceiling ?? '#F5F0E8', 1);
+                gl.setClearColor(ceilingColor, 1);
                 gl.shadowMap.enabled = true;
                 gl.shadowMap.type = THREE.PCFSoftShadowMap;
               }}
               onPointerMissed={handlePointerMissed}
             >
-              <color attach="background" args={[STYLE_COLORS[activeStyle]?.ceiling ?? '#F5F0E8']} />
+              <color attach="background" args={[ceilingColor]} />
               <CameraController controlRef={controlRef} />
               <Suspense fallback={null}>
                 <SceneLighting style={activeStyle} />
@@ -369,6 +453,7 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
                       onDragEnd={updateFurniturePosition}
                       onDragStart={handleDragStart}
                       onDragStop={handleDragStop}
+                      onLongPress={handleLongPress}
                     />
                   );
                 })}
@@ -388,7 +473,17 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
           </ThreeDErrorBoundary>
         </ViewShot>
       </View>
+      )}
 
+      {/* 2D/3D toggle */}
+      <TouchableOpacity
+        style={[styles.toggle2DBtn, show2D && styles.toggle2DBtnActive]}
+        onPress={() => setShow2D((v) => !v)}
+      >
+        <Text style={styles.toggle2DBtnText}>{show2D ? '3D' : '2D'}</Text>
+      </TouchableOpacity>
+
+      {/* Style chips */}
       <View style={styles.chipRow} pointerEvents="box-none">
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {STYLES.map((s) => (
@@ -405,13 +500,51 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
         </ScrollView>
       </View>
 
-      {selectedId && (
+      {/* Undo button */}
+      {actionHistory.length > 0 && (
+        <TouchableOpacity style={styles.undoBtn} onPress={handleUndo}>
+          <Text style={styles.undoBtnText}>↩ Undo</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Selected piece panel */}
+      {selectedId && (() => {
+        const selectedPiece = placedFurniture.find((p) => p.id === selectedId);
+        const selectedCatalog = selectedPiece ? findCatalogItem(selectedPiece.catalog_id) : undefined;
+        const colorOptions = selectedCatalog?.colors ?? [];
+        return (
         <View style={styles.selectedPanel}>
           <Text style={styles.selectedPanelText}>Tap & drag to move</Text>
+          {colorOptions.length > 0 && (
+            <View style={styles.colorSwatchRow}>
+              {colorOptions.map((color) => (
+                <TouchableOpacity
+                  key={color}
+                  style={[
+                    styles.colorSwatch,
+                    { backgroundColor: color },
+                    selectedPiece?.color_override === color && styles.colorSwatchSelected,
+                  ]}
+                  onPress={() => {
+                    pushHistory();
+                    setPlacedFurniture((prev) =>
+                      prev.map((item) =>
+                        item.id === selectedId
+                          ? { ...item, color_override: item.color_override === color ? null : color }
+                          : item,
+                      ),
+                    );
+                    setForceUpdate((p) => p + 1);
+                  }}
+                />
+              ))}
+            </View>
+          )}
           <View style={styles.selectedPanelActions}>
             <TouchableOpacity
               style={styles.rotateBtn}
               onPress={() => {
+                pushHistory();
                 setPlacedFurniture((prev) =>
                   prev.map((item) =>
                     item.id === selectedId
@@ -427,6 +560,7 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
             <TouchableOpacity
               style={styles.rotateBtn}
               onPress={() => {
+                pushHistory();
                 setPlacedFurniture((prev) =>
                   prev.map((item) =>
                     item.id === selectedId
@@ -442,6 +576,7 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
             <TouchableOpacity
               style={styles.removeBtn}
               onPress={() => {
+                pushHistory();
                 setPlacedFurniture((prev) => prev.filter((i) => i.id !== selectedId));
                 updateSelectedId(null);
               }}
@@ -453,8 +588,10 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
             </TouchableOpacity>
           </View>
         </View>
-      )}
+        );
+      })()}
 
+      {/* Action bar */}
       <View style={styles.actionBar} pointerEvents="box-none">
         <TouchableOpacity style={styles.btnSave} onPress={handleSave}>
           <Text style={styles.btnSaveText}>Save</Text>
@@ -471,6 +608,7 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
         </TouchableOpacity>
       </View>
 
+      {/* Rendering overlay */}
       {isRendering && (
         <View style={styles.renderingOverlay}>
           <ActivityIndicator size="large" color="#C47B3C" />
@@ -478,6 +616,69 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
           <Text style={styles.renderingStyle}>
             {STYLES.find((s) => s.key === activeStyle)?.label ?? activeStyle}
           </Text>
+        </View>
+      )}
+
+      {/* Product info bottom sheet */}
+      {productInfoItem && (
+        <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+          <TouchableOpacity
+            style={styles.sheetBackdrop}
+            activeOpacity={1}
+            onPress={hideProductInfo}
+          />
+          <Animated.View
+            style={[
+              styles.productSheet,
+              { transform: [{ translateY: productSheetAnim }] },
+            ]}
+          >
+            <View style={styles.sheetHeader}>
+              <View style={styles.sheetDragHandle} />
+              <TouchableOpacity style={styles.sheetCloseBtn} onPress={hideProductInfo}>
+                <Text style={styles.sheetCloseBtnText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.sheetTitle}>{productInfoItem.name}</Text>
+            <Text style={styles.sheetCategory}>{productInfoItem.category}</Text>
+
+            <View style={styles.sheetBadgeRow}>
+              <View style={styles.priceBadge}>
+                <Text style={styles.priceBadgeText}>
+                  {PRICE_RANGE_LABELS[productInfoItem.price_range] ?? productInfoItem.price_range}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.sheetDimensionsRow}>
+              <Text style={styles.sheetDimLabel}>
+                {productInfoItem.width}ft W × {productInfoItem.depth}ft D × {productInfoItem.height}ft H
+              </Text>
+            </View>
+
+            <View style={styles.sheetTagRow}>
+              {productInfoItem.style_tags.map((tag) => (
+                <View key={tag} style={styles.styleTagPill}>
+                  <Text style={styles.styleTagText}>{tag.replace('_', ' ')}</Text>
+                </View>
+              ))}
+            </View>
+
+            {productInfoItem.colors.length > 0 && (
+              <View style={styles.sheetColorRow}>
+                <Text style={styles.sheetColorLabel}>Colors</Text>
+                <View style={styles.colorSwatches}>
+                  {productInfoItem.colors.map((color) => (
+                    <View
+                      key={color}
+                      style={[styles.colorSwatch, { backgroundColor: color }]}
+                    />
+                  ))}
+                </View>
+              </View>
+            )}
+          </Animated.View>
         </View>
       )}
     </SafeAreaView>
@@ -524,6 +725,72 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   chipLabelActive: { color: '#C47B3C' },
+
+  // 2D floor plan
+  floorPlanWrapper: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  floorPlanRoom: {
+    borderWidth: 2,
+    borderColor: '#1B3A2D',
+    borderRadius: 4,
+  },
+  floorPlanPiece: {
+    position: 'absolute',
+    backgroundColor: '#C47B3C',
+    opacity: 0.7,
+    borderRadius: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  floorPlanPieceLabel: {
+    fontSize: 7,
+    color: 'white',
+    fontWeight: '700',
+    textAlign: 'center',
+    paddingHorizontal: 1,
+  },
+  toggle2DBtn: {
+    position: 'absolute',
+    top: 100,
+    right: 16,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 16,
+    zIndex: 20,
+  },
+  toggle2DBtnActive: {
+    backgroundColor: '#C47B3C',
+  },
+  toggle2DBtnText: {
+    color: 'white',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  // Undo
+  undoBtn: {
+    position: 'absolute',
+    top: 140,
+    right: 16,
+    backgroundColor: 'rgba(27,58,45,0.85)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#C47B3C',
+    zIndex: 10,
+  },
+  undoBtnText: {
+    color: '#C47B3C',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
   actionBar: {
     position: 'absolute',
     bottom: 0,
@@ -561,6 +828,7 @@ const styles = StyleSheet.create({
   },
   btnResetText: { color: '#FFFFFF', fontWeight: '600', fontSize: 14 },
   btnDisabled: { opacity: 0.5 },
+
   selectedPanel: {
     position: 'absolute',
     bottom: 90,
@@ -579,6 +847,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     flex: 1,
     marginRight: 12,
+  },
+  colorSwatchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+    paddingHorizontal: 4,
+  },
+  colorSwatch: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  colorSwatchSelected: {
+    borderColor: '#C47B3C',
+    borderWidth: 3,
   },
   selectedPanelActions: {
     flexDirection: 'row',
@@ -650,5 +936,121 @@ const styles = StyleSheet.create({
     color: '#C47B3C',
     fontSize: 14,
     marginTop: 6,
+  },
+
+  // Product info bottom sheet
+  sheetBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  productSheet: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#F5F0E8',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+    minHeight: 280,
+    zIndex: 30,
+  },
+  sheetHeader: {
+    alignItems: 'center',
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  sheetDragHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#CCC',
+  },
+  sheetCloseBtn: {
+    position: 'absolute',
+    top: 12,
+    right: 0,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sheetCloseBtnText: {
+    fontSize: 16,
+    color: '#1B3A2D',
+    fontWeight: '700',
+  },
+  sheetTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1B3A2D',
+    marginTop: 4,
+  },
+  sheetCategory: {
+    fontSize: 14,
+    color: '#888888',
+    marginTop: 4,
+    textTransform: 'capitalize',
+  },
+  sheetBadgeRow: {
+    flexDirection: 'row',
+    marginTop: 12,
+    gap: 8,
+  },
+  priceBadge: {
+    backgroundColor: 'rgba(196,123,60,0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#C47B3C',
+  },
+  priceBadgeText: {
+    color: '#C47B3C',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  sheetDimensionsRow: {
+    marginTop: 12,
+  },
+  sheetDimLabel: {
+    fontSize: 14,
+    color: '#1A1A1A',
+  },
+  sheetTagRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 12,
+    gap: 8,
+  },
+  styleTagPill: {
+    backgroundColor: 'rgba(27,58,45,0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  styleTagText: {
+    color: '#1B3A2D',
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'capitalize',
+  },
+  sheetColorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+    gap: 12,
+  },
+  sheetColorLabel: {
+    color: '#1A1A1A',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  colorSwatches: {
+    flexDirection: 'row',
+    gap: 8,
   },
 });

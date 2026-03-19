@@ -18,10 +18,9 @@
       "supportsTablet": false,
       "bundleIdentifier": "ai.cova.app",
       "infoPlist": {
-        "NSCameraUsageDescription": "Cova needs camera access to capture your room for 3D design.",
-        "NSPhotoLibraryUsageDescription": "Cova needs photo library access to use your room photos for design.",
-        "NSPhotoLibraryAddUsageDescription": "Cova needs permission to save your 3D room screenshots to the camera roll.",
-        "NSUserNotificationsUsageDescription": "Cova can notify you when your AI render is ready."
+        "NSCameraUsageDescription": "Cova needs camera access to scan your room for 3D modeling.",
+        "NSPhotoLibraryUsageDescription": "Cova needs photo library access to import your room photo.",
+        "NSUserTrackingUsageDescription": "Cova uses this to improve your design recommendations."
       }
     },
     "android": {
@@ -41,39 +40,10 @@
       "predictiveBackGestureEnabled": false
     },
     "plugins": [
-      [
-        "expo-camera",
-        {
-          "cameraPermission": "Cova needs camera access to capture your room for 3D design."
-        }
-      ],
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": "Cova needs photo library access to use your room photos for design.",
-          "cameraPermission": "Cova needs camera access to capture your room."
-        }
-      ],
-      [
-        "expo-media-library",
-        {
-          "photosPermission": "Cova needs permission to save your 3D room screenshots to the camera roll.",
-          "savePhotosPermission": "Cova needs permission to save your 3D room screenshots to the camera roll."
-        }
-      ],
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/icon.png",
-          "color": "#C47B3C",
-          "sounds": []
-        }
-      ],
       "expo-apple-authentication",
-      "expo-asset",
-      "expo-secure-store",
-      "expo-tracking-transparency",
-      "expo-build-properties"
+      "expo-camera",
+      "expo-image-picker",
+      "expo-tracking-transparency"
     ],
     "web": {
       "favicon": "./assets/favicon.png"

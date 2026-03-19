@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useEffect, Suspense } from 'react';
+import { useLoader } from '@react-three/fiber/native';
+import * as THREE from 'three';
 import type { StyleName, RoomDimensions } from '@cova/shared';
 import { STYLE_COLORS } from '../../data/furnitureCatalog';
 
@@ -9,20 +11,90 @@ interface BoxRoomProps {
   dimensions: RoomDimensions;
 }
 
+// ── Error boundary for texture loading ──
+
+class TextureErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: Error) {
+    console.warn('PBR texture load failed, using solid color fallback:', error.message);
+  }
+  render() {
+    if (this.state.hasError) return null;
+    return this.props.children;
+  }
+}
+
+// ── PBR textured floor (loaded on top of solid color fallback) ──
+
+const FLOOR_DIFF = require('../../../../../assets/textures/floor/wood_floor_diff_1k.jpg');
+const FLOOR_NOR = require('../../../../../assets/textures/floor/wood_floor_nor_1k.jpg');
+const FLOOR_ROUGH = require('../../../../../assets/textures/floor/wood_floor_rough_1k.jpg');
+
+function TexturedFloor({ w, d }: { w: number; d: number }) {
+  const textures = useLoader(THREE.TextureLoader, [
+    FLOOR_DIFF,
+    FLOOR_NOR,
+    FLOOR_ROUGH,
+  ]) as THREE.Texture[];
+
+  useEffect(() => {
+    textures.forEach((t) => {
+      t.repeat.set(w / 4, d / 4);
+      t.wrapS = THREE.RepeatWrapping;
+      t.wrapT = THREE.RepeatWrapping;
+      t.needsUpdate = true;
+    });
+  }, [textures, w, d]);
+
+  return (
+    <mesh
+      rotation={[-Math.PI / 2, 0, 0]}
+      position={[0, 0.001, 0]}
+      receiveShadow
+      castShadow={false}
+    >
+      <planeGeometry args={[w, d]} />
+      <meshStandardMaterial
+        map={textures[0]}
+        normalMap={textures[1]}
+        roughnessMap={textures[2]}
+        roughness={0.8}
+        metalness={0.05}
+      />
+    </mesh>
+  );
+}
+
 export function BoxRoom({ style, dimensions }: BoxRoomProps) {
-  const w = ftToM(dimensions.width);
-  const d = ftToM(dimensions.depth);
-  const h = ftToM(dimensions.height);
+  const toMeters = dimensions.unit === 'm' ? (v: number) => v : ftToM;
+  const w = toMeters(dimensions.width);
+  const d = toMeters(dimensions.depth);
+  const h = toMeters(dimensions.height);
   const palette = STYLE_COLORS[style];
   const wallColor = palette?.wall ?? '#E8E0D5';
   const floorColor = palette?.floor ?? '#C9BEA8';
   const ceilingColor = palette?.ceiling ?? '#F5F0E8';
   const accentColor = palette?.accent ?? '#8B7355';
+  const trimColor = palette?.accent ?? '#8B7355';
+  const windowEmissive = new THREE.Color(palette?.accent ?? '#B8D4E8');
   const baseboardH = 0.08;
   const baseboardD = 0.03;
+  const crownH = 0.1;
+  const crownD = 0.1;
+  const doorH = 2.4;
+  const doorFrameW = 0.1;
+  const doorFrameD = 0.1;
+  const windowH = 2.5;
 
   return (
     <group>
+      {/* Solid color floor (always rendered as fallback) */}
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
         position={[0, 0, 0]}
@@ -32,6 +104,13 @@ export function BoxRoom({ style, dimensions }: BoxRoomProps) {
         <planeGeometry args={[w, d]} />
         <meshStandardMaterial color={floorColor} roughness={0.8} metalness={0.05} />
       </mesh>
+
+      {/* PBR textured floor overlay */}
+      <TextureErrorBoundary>
+        <Suspense fallback={null}>
+          <TexturedFloor w={w} d={d} />
+        </Suspense>
+      </TextureErrorBoundary>
 
       <mesh
         rotation={[Math.PI / 2, 0, 0]}
@@ -58,18 +137,66 @@ export function BoxRoom({ style, dimensions }: BoxRoomProps) {
         <meshStandardMaterial color={wallColor} roughness={0.9} metalness={0.0} />
       </mesh>
 
+      {/* ── Baseboards ── */}
       <mesh position={[0, baseboardH / 2, -d / 2 + baseboardD / 2]} receiveShadow={false} castShadow={false}>
         <boxGeometry args={[w, baseboardH, baseboardD]} />
-        <meshStandardMaterial color={accentColor} roughness={0.8} metalness={0} />
+        <meshStandardMaterial color={trimColor} roughness={0.3} metalness={0} />
       </mesh>
       <mesh position={[-w / 2 + baseboardD / 2, baseboardH / 2, 0]} receiveShadow={false} castShadow={false}>
         <boxGeometry args={[baseboardD, baseboardH, d]} />
-        <meshStandardMaterial color={accentColor} roughness={0.8} metalness={0} />
+        <meshStandardMaterial color={trimColor} roughness={0.3} metalness={0} />
       </mesh>
       <mesh position={[w / 2 - baseboardD / 2, baseboardH / 2, 0]} receiveShadow={false} castShadow={false}>
         <boxGeometry args={[baseboardD, baseboardH, d]} />
-        <meshStandardMaterial color={accentColor} roughness={0.8} metalness={0} />
+        <meshStandardMaterial color={trimColor} roughness={0.3} metalness={0} />
       </mesh>
+
+      {/* ── Crown molding ── */}
+      <mesh position={[0, h - crownH / 2, -d / 2 + crownD / 2]}>
+        <boxGeometry args={[w, crownH, crownD]} />
+        <meshStandardMaterial color={trimColor} roughness={0.3} metalness={0} />
+      </mesh>
+      <mesh position={[-w / 2 + crownD / 2, h - crownH / 2, 0]}>
+        <boxGeometry args={[crownD, crownH, d]} />
+        <meshStandardMaterial color={trimColor} roughness={0.3} metalness={0} />
+      </mesh>
+      <mesh position={[w / 2 - crownD / 2, h - crownH / 2, 0]}>
+        <boxGeometry args={[crownD, crownH, d]} />
+        <meshStandardMaterial color={trimColor} roughness={0.3} metalness={0} />
+      </mesh>
+
+      {/* ── Door frame (front entrance) ── */}
+      <mesh position={[-0.6, doorH / 2, d / 2 - doorFrameD / 2]}>
+        <boxGeometry args={[doorFrameW, doorH, doorFrameD]} />
+        <meshStandardMaterial color={trimColor} roughness={0.3} metalness={0} />
+      </mesh>
+      <mesh position={[0.6, doorH / 2, d / 2 - doorFrameD / 2]}>
+        <boxGeometry args={[doorFrameW, doorH, doorFrameD]} />
+        <meshStandardMaterial color={trimColor} roughness={0.3} metalness={0} />
+      </mesh>
+      <mesh position={[0, doorH + doorFrameW / 2, d / 2 - doorFrameD / 2]}>
+        <boxGeometry args={[1.3, doorFrameW, doorFrameD]} />
+        <meshStandardMaterial color={trimColor} roughness={0.3} metalness={0} />
+      </mesh>
+
+      {/* ── Window plane (back wall, emitting light) ── */}
+      <mesh position={[0, h * 0.55, -d / 2 + 0.01]}>
+        <planeGeometry args={[1.5, windowH]} />
+        <meshStandardMaterial
+          emissive={windowEmissive}
+          emissiveIntensity={0.5}
+          color="#B8D4E8"
+          transparent
+          opacity={0.35}
+        />
+      </mesh>
+      <directionalLight
+        position={[0, h * 0.8, -d / 2 + 1]}
+        intensity={1.5}
+        castShadow
+        shadow-mapSize-width={512}
+        shadow-mapSize-height={512}
+      />
     </group>
   );
 }

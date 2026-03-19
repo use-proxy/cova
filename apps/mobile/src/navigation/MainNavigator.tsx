@@ -19,7 +19,12 @@ function DiscoverPlaceholder() {
   return null;
 }
 
-export default function MainNavigator() {
+export default function MainNavigator({ initialRoute = 'Home' }: { initialRoute?: string }) {
+  const HomeStackWithRoute = React.useMemo(
+    () => () => <HomeStack initialRouteName={initialRoute as 'Home' | 'NewRoom'} />,
+    [initialRoute],
+  );
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -32,7 +37,7 @@ export default function MainNavigator() {
     >
       <Tab.Screen
         name="RoomsTab"
-        component={HomeStack}
+        component={HomeStackWithRoute}
         options={{
           tabBarLabel: 'Rooms',
           tabBarIcon: ({ color }) => <Text style={[styles.tabIcon, { color }]}>⌂</Text>,
@@ -60,7 +65,7 @@ export default function MainNavigator() {
         listeners={{
           tabPress: (e) => {
             e.preventDefault();
-            Alert.alert('Coming Soon', 'Discover is coming in a future update');
+            Alert.alert('Coming Soon', 'Discover is coming soon. You\'ll be able to browse and get inspired by rooms from other Cova users.');
           },
         }}
         options={{

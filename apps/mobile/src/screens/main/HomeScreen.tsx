@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   ScrollView,
   RefreshControl,
   Image,
+  ImageBackground,
+  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -15,7 +17,8 @@ import type { HomeStackParamList } from '../../navigation/HomeStack';
 import { useAppStore } from '../../store';
 import { supabase } from '../../lib/supabase';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import type { Room } from '@cova/shared';
+import type { Room, StyleName } from '@cova/shared';
+import TokenBadge from '../../components/TokenBadge';
 
 const STYLE_LABELS: Record<string, { label: string; color: string }> = {
   coastal: { label: 'Ocean Breeze', color: '#5B9BD5' },
@@ -35,9 +38,18 @@ const ROOM_TYPE_ICONS: Record<string, string> = {
   entryway: '🚪',
 };
 
+const ALL_INSPIRATION_CARDS = [
+  { id: '1', key: 'coastal' as StyleName, ...STYLE_LABELS.coastal },
+  { id: '2', key: 'japandi' as StyleName, ...STYLE_LABELS.japandi },
+  { id: '3', key: 'bohemian' as StyleName, ...STYLE_LABELS.bohemian },
+  { id: '4', key: 'mid_century' as StyleName, ...STYLE_LABELS.mid_century },
+  { id: '5', key: 'minimalist' as StyleName, ...STYLE_LABELS.minimalist },
+];
+
 export default function HomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
   const user = useAppStore((s) => s.user);
+  const currentRoom = useAppStore((s) => s.currentRoom);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -70,41 +82,72 @@ export default function HomeScreen() {
     return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
-  const renderRoomCard = ({ item }: { item: Room }) => (
-    <TouchableOpacity style={styles.roomCard} onPress={() => navigation.navigate('Room')}>
-      <View style={styles.roomCardLeft}>
-        <Text style={styles.roomName}>{item.name}</Text>
-        <Text style={styles.roomType}>{item.room_type.replace('_', ' ')}</Text>
-        <Text style={styles.roomDimensions}>
-          {(item.dimensions as any)?.width ?? 16}×{(item.dimensions as any)?.depth ?? 14} ft
-        </Text>
-      </View>
-      <View style={styles.roomCardRight}>
-        {item.latest_render_url ? (
-          <Image source={{ uri: item.latest_render_url }} style={styles.roomThumbnail} resizeMode="cover" />
-        ) : (
-          <View style={styles.roomPlaceholder}>
-            <Text style={styles.roomPlaceholderIcon}>{ROOM_TYPE_ICONS[item.room_type] ?? '🏠'}</Text>
-          </View>
-        )}
-      </View>
-    </TouchableOpacity>
-  );
+  const handleRoomTap = (room: Room) => {
+    useAppStore.getState().setCurrentRoom(room);
+    navigation.navigate('Room', { initialRoute: 'RenderView', room_id: room.id });
+  };
 
-  const inspirationCards = [
-    { id: '1', key: 'coastal', ...STYLE_LABELS.coastal },
-    { id: '2', key: 'japandi', ...STYLE_LABELS.japandi },
-    { id: '3', key: 'bohemian', ...STYLE_LABELS.bohemian },
-  ];
+  const sortedInspirationCards = useMemo(() => {
+    const blend = currentRoom?.style_blend;
+    if (!blend) return ALL_INSPIRATION_CARDS.slice(0, 3);
+
+    return [...ALL_INSPIRATION_CARDS].sort((a, b) => {
+      const weightA = blend[a.key] ?? 0;
+      const weightB = blend[b.key] ?? 0;
+      return weightB - weightA;
+    });
+  }, [currentRoom?.style_blend]);
+
+  const renderRoomCard = ({ item }: { item: Room }) => {
+    if (item.latest_render_url) {
+      return (
+        <TouchableOpacity style={styles.roomCard} onPress={() => handleRoomTap(item)}>
+          <ImageBackground
+            source={{ uri: item.latest_render_url }}
+            style={styles.roomCardImage}
+            imageStyle={styles.roomCardImageInner}
+            resizeMode="cover"
+          >
+            <View style={styles.roomCardOverlay}>
+              <Text style={styles.roomNameLight}>{item.name}</Text>
+              <Text style={styles.roomTypeLight}>{item.room_type.replace('_', ' ')}</Text>
+            </View>
+          </ImageBackground>
+        </TouchableOpacity>
+      );
+    }
+
+    return (
+      <TouchableOpacity style={styles.roomCard} onPress={() => handleRoomTap(item)}>
+        <View style={styles.roomCardSolid}>
+          <View style={styles.roomCardLeft}>
+            <Text style={styles.roomName}>{item.name}</Text>
+            <Text style={styles.roomType}>{item.room_type.replace('_', ' ')}</Text>
+            <Text style={styles.roomDimensions}>
+              {(item.dimensions as any)?.width ?? 16}×{(item.dimensions as any)?.depth ?? 14} ft
+            </Text>
+          </View>
+          <View style={styles.roomCardRight}>
+            <View style={styles.roomPlaceholder}>
+              <Text style={styles.roomPlaceholderIcon}>{ROOM_TYPE_ICONS[item.room_type] ?? '🏠'}</Text>
+            </View>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerLogo}>COVA</Text>
-        <TouchableOpacity style={styles.avatarCircle}>
-          <Text style={styles.avatarText}>{getInitials(user?.full_name ?? user?.email)}</Text>
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TokenBadge />
+          <TouchableOpacity style={styles.avatarCircle}>
+            <Text style={styles.avatarText}>{getInitials(user?.full_name ?? user?.email)}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -144,15 +187,22 @@ export default function HomeScreen() {
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.inspirationRow}>
-          {inspirationCards.map((card) => (
-            <TouchableOpacity
-              key={card.id}
-              style={[styles.inspirationCard, { backgroundColor: card.color }]}
-              onPress={() => navigation.navigate('Room')}
-            >
-              <Text style={styles.inspirationLabel}>{card.label}</Text>
-              <Text style={styles.inspirationArrow}>→</Text>
-            </TouchableOpacity>
+          {sortedInspirationCards.map((card) => (
+            <View key={card.id} style={[styles.inspirationCard, { backgroundColor: card.color }]}>
+              <TouchableOpacity
+                style={styles.inspirationContent}
+                onPress={() => navigation.navigate('Room', { initialRoute: 'StyleQuiz' })}
+              >
+                <Text style={styles.inspirationLabel}>{card.label}</Text>
+                <Text style={styles.inspirationArrow}>→</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.recreateBtn}
+                onPress={() => Alert.alert('Coming Soon', 'Recreating inspiration rooms is coming in a future update.')}
+              >
+                <Text style={styles.recreateBtnText}>Recreate ✦</Text>
+              </TouchableOpacity>
+            </View>
           ))}
         </ScrollView>
 
@@ -185,6 +235,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#C47B3C',
     letterSpacing: 4,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   avatarCircle: {
     width: 36,
@@ -221,18 +276,48 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   roomCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 16,
     height: 120,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 12,
     elevation: 4,
+  },
+  roomCardImage: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  roomCardImageInner: {
+    borderRadius: 16,
+  },
+  roomCardOverlay: {
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+  },
+  roomNameLight: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  roomTypeLight: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.8)',
+    textTransform: 'capitalize',
+    marginTop: 2,
+  },
+  roomCardSolid: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   roomCardLeft: {
     flex: 1,
@@ -254,11 +339,6 @@ const styles = StyleSheet.create({
   },
   roomCardRight: {
     marginLeft: 12,
-  },
-  roomThumbnail: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
   },
   roomPlaceholder: {
     width: 80,
@@ -301,13 +381,17 @@ const styles = StyleSheet.create({
     width: 160,
     height: 200,
     borderRadius: 16,
-    padding: 16,
-    justifyContent: 'flex-end',
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 12,
     elevation: 4,
+  },
+  inspirationContent: {
+    flex: 1,
+    padding: 16,
+    justifyContent: 'flex-end',
   },
   inspirationLabel: {
     fontSize: 16,
@@ -319,6 +403,20 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: 'rgba(255,255,255,0.8)',
     fontWeight: '600',
+  },
+  recreateBtn: {
+    marginHorizontal: 12,
+    marginBottom: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#C47B3C',
+    alignItems: 'center',
+  },
+  recreateBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#C47B3C',
   },
   fab: {
     position: 'absolute',

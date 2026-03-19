@@ -58,7 +58,7 @@ export default function NewRoomScreen() {
     if (error) return Alert.alert('Error', error.message);
     useAppStore.getState().addRoom(data as Room);
     useAppStore.getState().setCurrentRoom(data as Room);
-    navigation.navigate('Room');
+    navigation.navigate('Room', {});
   };
 
   return (

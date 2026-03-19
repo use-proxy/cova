@@ -14,9 +14,13 @@ export type RoomStackParamList = {
 
 const Stack = createNativeStackNavigator<RoomStackParamList>();
 
-export default function RoomNavigator() {
+export default function RoomNavigator({
+  initialRouteName = 'RoomCapture',
+}: {
+  initialRouteName?: keyof RoomStackParamList;
+}) {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={initialRouteName}>
       <Stack.Screen name="RoomCapture" component={RoomCaptureScreen} />
       <Stack.Screen name="StyleQuiz" component={StyleQuizScreen} />
       <Stack.Screen name="Viewer3D" component={RoomViewer3DScreen} />

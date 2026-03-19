@@ -6,24 +6,25 @@ import {
   StyleSheet,
   FlatList,
   Image,
-  Linking,
 } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { useAppStore } from '../../store';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { CartItem, Product } from '@cova/shared';
+import TokenBadge from '../../components/TokenBadge';
 
-type ShopTab = 'cart' | 'matched';
+type ShopTab = 'cart' | 'matched' | 'saved' | 'orders';
 
 export default function ShopScreen() {
   const [activeTab, setActiveTab] = useState<ShopTab>('cart');
-  const { cartItems, matchedProducts, addToCart, removeFromCart } = useAppStore();
+  const { cartItems, matchedProducts, addToCart, removeFromCart, savedProducts, removeFromSaved } = useAppStore();
 
   const formatPrice = (price: number) => `$${price.toLocaleString()}`;
 
   const handleCheckout = () => {
     cartItems.forEach((item) => {
       if (item.product.affiliate_url) {
-        Linking.openURL(item.product.affiliate_url);
+        WebBrowser.openBrowserAsync(item.product.affiliate_url);
       }
     });
   };
@@ -67,11 +68,14 @@ export default function ShopScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Shop</Text>
-        {cartItems.length > 0 && (
-          <View style={styles.cartBadge}>
-            <Text style={styles.cartBadgeText}>{cartItems.length}</Text>
-          </View>
-        )}
+        <View style={styles.headerRight}>
+          {cartItems.length > 0 && (
+            <View style={styles.cartBadge}>
+              <Text style={styles.cartBadgeText}>{cartItems.length}</Text>
+            </View>
+          )}
+          <TokenBadge />
+        </View>
       </View>
 
       {/* Tabs */}
@@ -88,10 +92,22 @@ export default function ShopScreen() {
         >
           <Text style={[styles.tabText, activeTab === 'matched' && styles.tabTextActive]}>Matched</Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'saved' && styles.tabActive]}
+          onPress={() => setActiveTab('saved')}
+        >
+          <Text style={[styles.tabText, activeTab === 'saved' && styles.tabTextActive]}>Saved</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'orders' && styles.tabActive]}
+          onPress={() => setActiveTab('orders')}
+        >
+          <Text style={[styles.tabText, activeTab === 'orders' && styles.tabTextActive]}>Orders</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Content */}
-      {activeTab === 'cart' ? (
+      {activeTab === 'cart' && (
         <>
           <FlatList
             data={cartItems}
@@ -114,7 +130,8 @@ export default function ShopScreen() {
             </View>
           )}
         </>
-      ) : (
+      )}
+      {activeTab === 'matched' && (
         <FlatList
           data={matchedProducts}
           renderItem={renderMatchedProduct}
@@ -128,6 +145,48 @@ export default function ShopScreen() {
             </View>
           }
         />
+      )}
+      {activeTab === 'saved' && (
+        <FlatList
+          data={savedProducts}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }: { item: Product }) => (
+            <View style={styles.card}>
+              <Image source={{ uri: item.image_url }} style={styles.cardImage} resizeMode="cover" />
+              <View style={styles.cardInfo}>
+                <Text style={styles.cardName} numberOfLines={2}>{item.name}</Text>
+                <Text style={styles.cardRetailer}>{item.retailer}</Text>
+                <Text style={styles.cardPrice}>{formatPrice(item.price)}</Text>
+                <View style={styles.savedBtnRow}>
+                  <TouchableOpacity
+                    style={styles.addToCartButton}
+                    onPress={() => addToCart({ id: item.id, product: item, quantity: 1, added_at: new Date().toISOString() })}
+                  >
+                    <Text style={styles.addToCartText}>Add to Cart</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => removeFromSaved(item.id)} style={styles.removeButton}>
+                    <Text style={styles.removeIcon}>🗑</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          )}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyIcon}>♡</Text>
+              <Text style={styles.emptyTitle}>No saved products</Text>
+              <Text style={styles.emptySubtext}>Save products from your renders to see them here</Text>
+            </View>
+          }
+        />
+      )}
+      {activeTab === 'orders' && (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyIcon}>🔒</Text>
+          <Text style={styles.emptyTitle}>Order History Coming Soon</Text>
+          <Text style={styles.emptySubtext}>Your purchase history will appear here in a future update.</Text>
+        </View>
       )}
     </SafeAreaView>
   );
@@ -145,6 +204,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 14,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   headerTitle: {
     fontSize: 20,
@@ -254,6 +318,11 @@ const styles = StyleSheet.create({
   },
   removeIcon: {
     fontSize: 18,
+  },
+  savedBtnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   addToCartButton: {
     backgroundColor: '#1B3A2D',

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Animated,
   PanResponder,
   Image,
+  Modal,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -19,20 +20,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SWIPE_THRESHOLD = 80;
-
-const FALLBACK_CARDS: SwipeCard[] = [
-  { id: 'f1', image_url: 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=800', room_type: 'living_room', style_weights: { coastal: 0.8, minimalist: 0.2 }, active: true },
-  { id: 'f2', image_url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800', room_type: 'living_room', style_weights: { japandi: 0.8, minimalist: 0.2 }, active: true },
-  { id: 'f3', image_url: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800', room_type: 'living_room', style_weights: { bohemian: 0.8, mid_century: 0.2 }, active: true },
-  { id: 'f4', image_url: 'https://images.unsplash.com/photo-1598928506311-c55ez363776c?w=800', room_type: 'living_room', style_weights: { mid_century: 0.8, japandi: 0.2 }, active: true },
-  { id: 'f5', image_url: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800', room_type: 'living_room', style_weights: { minimalist: 0.8, coastal: 0.2 }, active: true },
-];
+const QUIZ_TIMEOUT_MS = 180_000;
 
 const STYLE_KEYS: StyleName[] = ['coastal', 'japandi', 'bohemian', 'mid_century', 'minimalist'];
 
+const EQUAL_BLEND: StyleBlend = {
+  coastal: 0.2, japandi: 0.2, bohemian: 0.2, mid_century: 0.2, minimalist: 0.2,
+};
+
 function normalizeBlend(blend: StyleBlend): StyleBlend {
   const sum = STYLE_KEYS.reduce((acc, k) => acc + blend[k], 0);
-  if (sum === 0) return { coastal: 0.2, japandi: 0.2, bohemian: 0.2, mid_century: 0.2, minimalist: 0.2 };
+  if (sum === 0) return { ...EQUAL_BLEND };
   const normalized = { ...blend };
   for (const k of STYLE_KEYS) {
     normalized[k] = blend[k] / sum;
@@ -40,16 +38,37 @@ function normalizeBlend(blend: StyleBlend): StyleBlend {
   return normalized;
 }
 
+function isNonDefaultBlend(blend: StyleBlend | undefined | null): boolean {
+  if (!blend) return false;
+  const threshold = 0.01;
+  return STYLE_KEYS.some((k) => Math.abs(blend[k] - 0.2) > threshold);
+}
+
+type QuizPhase = 'instructions' | 'quiz';
+
 export default function StyleQuizScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RoomStackParamList>>();
   const { updateRoom, currentRoom } = useAppStore();
 
+  const [phase, setPhase] = useState<QuizPhase>('instructions');
   const [cards, setCards] = useState<SwipeCard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [styleBlend, setStyleBlend] = useState<StyleBlend>({
-    coastal: 0.2, japandi: 0.2, bohemian: 0.2, mid_century: 0.2, minimalist: 0.2,
-  });
+  const [styleBlend, setStyleBlend] = useState<StyleBlend>({ ...EQUAL_BLEND });
   const [loading, setLoading] = useState(true);
+  const [showBlendModal, setShowBlendModal] = useState(false);
+
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const completedRef = useRef(false);
+
+  const roomType = currentRoom?.room_type ?? 'living_room';
+
+  const fallbackCards: SwipeCard[] = [
+    { id: 'f1', image_url: 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=800', room_type: roomType, style_weights: { coastal: 0.8, minimalist: 0.2 }, active: true },
+    { id: 'f2', image_url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800', room_type: roomType, style_weights: { japandi: 0.8, minimalist: 0.2 }, active: true },
+    { id: 'f3', image_url: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800', room_type: roomType, style_weights: { bohemian: 0.8, mid_century: 0.2 }, active: true },
+    { id: 'f4', image_url: 'https://images.unsplash.com/photo-1598928506311-c55ez363776c?w=800', room_type: roomType, style_weights: { mid_century: 0.8, japandi: 0.2 }, active: true },
+    { id: 'f5', image_url: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800', room_type: roomType, style_weights: { minimalist: 0.8, coastal: 0.2 }, active: true },
+  ];
 
   const swipeAnim = useRef(new Animated.ValueXY()).current;
   const rotateAnim = swipeAnim.x.interpolate({
@@ -76,25 +95,90 @@ export default function StyleQuizScreen() {
     loadCards();
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
   const loadCards = async () => {
     try {
       const { data, error } = await supabase
         .from('swipe_cards')
         .select('*')
         .eq('active', true)
+        .eq('room_type', roomType)
         .limit(20);
 
       if (error || !data || data.length === 0) {
-        setCards(FALLBACK_CARDS);
+        setCards(fallbackCards);
       } else {
         setCards(data as SwipeCard[]);
       }
     } catch {
-      setCards(FALLBACK_CARDS);
+      setCards(fallbackCards);
     } finally {
       setLoading(false);
     }
   };
+
+  const startQuizTimer = () => {
+    timerRef.current = setTimeout(() => {
+      if (!completedRef.current) {
+        handleComplete();
+      }
+    }, QUIZ_TIMEOUT_MS);
+  };
+
+  const handleStartQuiz = () => {
+    if (isNonDefaultBlend(currentRoom?.style_blend)) {
+      setShowBlendModal(true);
+    } else {
+      setPhase('quiz');
+      startQuizTimer();
+    }
+  };
+
+  const handleUseExistingStyle = () => {
+    setShowBlendModal(false);
+    navigation.navigate('RoomCapture');
+  };
+
+  const handleStartFresh = () => {
+    setShowBlendModal(false);
+    setStyleBlend({ ...EQUAL_BLEND });
+    setPhase('quiz');
+    startQuizTimer();
+  };
+
+  const handleSkipToCapture = () => {
+    if (currentRoom) {
+      updateRoom(currentRoom.id, { style_blend: { ...EQUAL_BLEND } });
+    }
+    navigation.navigate('RoomCapture');
+  };
+
+  const handleComplete = useCallback(() => {
+    if (completedRef.current) return;
+    completedRef.current = true;
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    const finalBlend = normalizeBlend(styleBlend);
+    if (currentRoom) {
+      updateRoom(currentRoom.id, { style_blend: finalBlend });
+    }
+    const userId = useAppStore.getState().user?.id;
+    if (userId) {
+      supabase
+        .from('users')
+        .update({ style_blend: finalBlend })
+        .eq('id', userId)
+        .then(() => {});
+    }
+    navigation.navigate('RoomCapture');
+  }, [styleBlend, currentRoom, updateRoom, navigation]);
 
   const handleSwipeRight = () => {
     const card = cards[currentIndex];
@@ -136,16 +220,8 @@ export default function StyleQuizScreen() {
     });
   };
 
-  const handleComplete = () => {
-    const finalBlend = normalizeBlend(styleBlend);
-    if (currentRoom) {
-      updateRoom(currentRoom.id, { style_blend: finalBlend });
-    }
-    navigation.navigate('Viewer3D', {});
-  };
-
-  const handleSkip = () => {
-    advanceCard('left');
+  const handleNeutral = () => {
+    advanceCard('right');
   };
 
   const panResponder = useRef(
@@ -172,6 +248,59 @@ export default function StyleQuizScreen() {
     }),
   ).current;
 
+  // ── Instruction screen ──
+  if (phase === 'instructions') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <TouchableOpacity style={styles.skipCorner} onPress={handleSkipToCapture}>
+          <Text style={styles.skipCornerText}>Skip</Text>
+        </TouchableOpacity>
+
+        <View style={styles.instructionsBody}>
+          <Text style={styles.instructionsTitle}>Discover Your Style</Text>
+
+          <View style={styles.instructionsRows}>
+            <View style={styles.instructionRow}>
+              <Text style={styles.instructionIcon}>👉</Text>
+              <Text style={styles.instructionText}>Swipe right if you love it</Text>
+            </View>
+            <View style={styles.instructionRow}>
+              <Text style={styles.instructionIcon}>👈</Text>
+              <Text style={styles.instructionText}>Swipe left if you don't</Text>
+            </View>
+            <View style={styles.instructionRow}>
+              <Text style={styles.instructionIcon}>😐</Text>
+              <Text style={styles.instructionText}>Tap Neutral if you're unsure</Text>
+            </View>
+          </View>
+
+          <TouchableOpacity style={styles.letsGoBtn} onPress={handleStartQuiz}>
+            <Text style={styles.letsGoBtnText}>Let's Go</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Returning user style blend modal */}
+        <Modal visible={showBlendModal} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Your Style Profile</Text>
+              <Text style={styles.modalBody}>
+                Use your previous style blend or discover something new?
+              </Text>
+              <TouchableOpacity style={styles.modalPrimaryBtn} onPress={handleUseExistingStyle}>
+                <Text style={styles.modalPrimaryBtnText}>Use My Style</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalOutlineBtn} onPress={handleStartFresh}>
+                <Text style={styles.modalOutlineBtnText}>Start Fresh</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      </SafeAreaView>
+    );
+  }
+
+  // ── Loading ──
   if (loading) {
     return (
       <View style={[styles.container, styles.center]}>
@@ -180,6 +309,7 @@ export default function StyleQuizScreen() {
     );
   }
 
+  // ── Done ──
   if (currentIndex >= cards.length || cards.length === 0) {
     return (
       <View style={[styles.container, styles.center]}>
@@ -190,9 +320,9 @@ export default function StyleQuizScreen() {
 
   const currentCard = cards[currentIndex];
   const nextCard = currentIndex + 1 < cards.length ? cards[currentIndex + 1] : null;
-
   const progressDots = Array.from({ length: Math.min(cards.length, 10) }, (_, i) => i);
 
+  // ── Quiz screen ──
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -208,14 +338,12 @@ export default function StyleQuizScreen() {
       </View>
 
       <View style={styles.cardStack}>
-        {/* Next card (background) */}
         {nextCard && (
           <Animated.View style={[styles.card, styles.cardBehind, { transform: [{ scale: nextCardScale }] }]}>
             <Image source={{ uri: nextCard.image_url }} style={styles.cardImage} resizeMode="cover" />
           </Animated.View>
         )}
 
-        {/* Current card */}
         <Animated.View
           style={[
             styles.card,
@@ -231,24 +359,25 @@ export default function StyleQuizScreen() {
         >
           <Image source={{ uri: currentCard.image_url }} style={styles.cardImage} resizeMode="cover" />
 
-          {/* LIKE overlay */}
           <Animated.View style={[styles.badge, styles.likeBadge, { opacity: likeOpacity }]}>
-            <Text style={styles.likeBadgeText}>LIKE</Text>
+            <Text style={styles.likeBadgeText}>LOVE</Text>
           </Animated.View>
 
-          {/* NOPE overlay */}
           <Animated.View style={[styles.badge, styles.nopeBadge, { opacity: nopeOpacity }]}>
-            <Text style={styles.nopeBadgeText}>NOPE</Text>
+            <Text style={styles.nopeBadgeText}>PASS</Text>
           </Animated.View>
         </Animated.View>
       </View>
 
+      <View style={styles.progressBarContainer}>
+        <View style={[styles.progressBarFill, { width: `${Math.min(100, ((currentIndex + 1) / Math.max(cards.length, 1)) * 100)}%` }]} />
+      </View>
       <View style={styles.bottomRow}>
         <TouchableOpacity style={styles.actionBtn} onPress={handleSwipeLeft}>
           <Text style={styles.nopeBtnText}>✕</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.skipBtn} onPress={handleSkip}>
-          <Text style={styles.skipBtnText}>Skip</Text>
+        <TouchableOpacity style={styles.neutralBtn} onPress={handleNeutral}>
+          <Text style={styles.neutralBtnText}>Neutral</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.actionBtn} onPress={handleSwipeRight}>
           <Text style={styles.likeBtnText}>♥</Text>
@@ -280,6 +409,124 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
   },
+
+  // ── Instructions ──
+  skipCorner: {
+    position: 'absolute',
+    top: 60,
+    right: 24,
+    zIndex: 10,
+    padding: 8,
+  },
+  skipCornerText: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  instructionsBody: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  instructionsTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#F5F0E8',
+    marginBottom: 40,
+    textAlign: 'center',
+  },
+  instructionsRows: {
+    gap: 24,
+    marginBottom: 48,
+    width: '100%',
+  },
+  instructionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  instructionIcon: {
+    fontSize: 28,
+  },
+  instructionText: {
+    fontSize: 17,
+    color: '#F5F0E8',
+    fontWeight: '500',
+    flex: 1,
+  },
+  letsGoBtn: {
+    backgroundColor: '#C47B3C',
+    paddingVertical: 16,
+    paddingHorizontal: 48,
+    borderRadius: 28,
+  },
+  letsGoBtnText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+
+  // ── Modal ──
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    backgroundColor: '#F5F0E8',
+    borderRadius: 20,
+    padding: 28,
+    width: '100%',
+    maxWidth: 340,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#1B3A2D',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  modalBody: {
+    fontSize: 15,
+    color: '#1A1A1A',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  modalPrimaryBtn: {
+    backgroundColor: '#C47B3C',
+    height: 52,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 12,
+  },
+  modalPrimaryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  modalOutlineBtn: {
+    height: 52,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    borderWidth: 2,
+    borderColor: '#1B3A2D',
+  },
+  modalOutlineBtnText: {
+    color: '#1B3A2D',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+
+  // ── Quiz header ──
   header: {
     paddingHorizontal: 24,
     paddingTop: 16,
@@ -305,6 +552,8 @@ const styles = StyleSheet.create({
   progressDotActive: {
     backgroundColor: '#C47B3C',
   },
+
+  // ── Card stack ──
   cardStack: {
     flex: 1,
     alignItems: 'center',
@@ -359,6 +608,20 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 2,
   },
+
+  // ── Bottom row ──
+  progressBarContainer: {
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 2,
+    marginHorizontal: 24,
+    marginBottom: 12,
+  },
+  progressBarFill: {
+    height: 4,
+    backgroundColor: '#C47B3C',
+    borderRadius: 2,
+  },
   bottomRow: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -386,14 +649,14 @@ const styles = StyleSheet.create({
     color: '#2E7D32',
     fontWeight: '800',
   },
-  skipBtn: {
+  neutralBtn: {
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 24,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.3)',
   },
-  skipBtnText: {
+  neutralBtnText: {
     color: 'rgba(255,255,255,0.6)',
     fontSize: 15,
     fontWeight: '600',

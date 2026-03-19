@@ -22,6 +22,8 @@ const MAX_X = SCREEN_WIDTH - 20;
 
 export default function BeforeAfterSlider({ beforeImageUri, afterImageUri, onClose }: BeforeAfterSliderProps) {
   const sliderX = useRef(new Animated.Value(SCREEN_WIDTH / 2)).current;
+  const dividerLeft = useRef(Animated.subtract(sliderX, new Animated.Value(1))).current;
+  const handleLeft = useRef(Animated.subtract(sliderX, new Animated.Value(22))).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const currentX = useRef(SCREEN_WIDTH / 2);
 
@@ -55,10 +57,10 @@ export default function BeforeAfterSlider({ beforeImageUri, afterImageUri, onClo
         <Image source={{ uri: beforeImageUri }} style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }} resizeMode="cover" />
       </Animated.View>
 
-      <Animated.View style={[styles.divider, { left: Animated.subtract(sliderX, new Animated.Value(1)) }]} />
+      <Animated.View style={[styles.divider, { left: dividerLeft }]} />
 
       <Animated.View
-        style={[styles.handle, { left: Animated.subtract(sliderX, new Animated.Value(22)) }]}
+        style={[styles.handle, { left: handleLeft }]}
         {...panResponder.panHandlers}
       >
         <Text style={styles.handleArrows}>◀ ▶</Text>

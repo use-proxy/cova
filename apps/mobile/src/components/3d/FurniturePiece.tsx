@@ -11,10 +11,12 @@ interface FurniturePieceProps {
   onDragEnd: (id: string, pos: [number, number, number]) => void;
   onDragStart?: () => void;
   onDragStop?: () => void;
+  onLongPress?: (id: string) => void;
 }
 
 const ROOM_HALF_W = 2.2;
 const ROOM_HALF_D = 2.0;
+const LONG_PRESS_MS = 500;
 
 function FurnitureModel({
   catalog,
@@ -91,15 +93,30 @@ export function FurniturePiece({
   onDragEnd,
   onDragStart,
   onDragStop,
+  onLongPress,
 }: FurniturePieceProps) {
   const groupRef = useRef<THREE.Group>(null);
   const isDraggingRef = useRef(false);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!isSelected) {
       isDraggingRef.current = false;
     }
   }, [isSelected]);
+
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    };
+  }, []);
+
+  const cancelLongPress = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
 
   return (
     <group
@@ -119,6 +136,12 @@ export function FurniturePiece({
         position={[0, catalog.height / 2, 0]}
         onPointerDown={(e: any) => {
           e.stopPropagation();
+
+          longPressTimerRef.current = setTimeout(() => {
+            longPressTimerRef.current = null;
+            onLongPress?.(piece.id);
+          }, LONG_PRESS_MS);
+
           if (!isSelected) {
             onSelect(piece.id);
           } else {
@@ -128,6 +151,7 @@ export function FurniturePiece({
         }}
         onPointerUp={(e: any) => {
           e.stopPropagation();
+          cancelLongPress();
           if (isDraggingRef.current && groupRef.current) {
             const pos = groupRef.current.position;
             onDragEnd(piece.id, [pos.x, 0, pos.z]);
@@ -151,6 +175,7 @@ export function FurniturePiece({
           onPointerMove={(e: any) => {
             if (!isDraggingRef.current || !groupRef.current) return;
             e.stopPropagation();
+            cancelLongPress();
             const nx = Math.max(-ROOM_HALF_W, Math.min(ROOM_HALF_W, e.point.x));
             const nz = Math.max(-ROOM_HALF_D, Math.min(ROOM_HALF_D, e.point.z));
             groupRef.current.position.set(nx, 0, nz);
@@ -158,6 +183,7 @@ export function FurniturePiece({
           }}
           onPointerUp={(e: any) => {
             e.stopPropagation();
+            cancelLongPress();
             if (isDraggingRef.current && groupRef.current) {
               const pos = groupRef.current.position;
               onDragEnd(piece.id, [pos.x, 0, pos.z]);
@@ -166,6 +192,7 @@ export function FurniturePiece({
             onDragStop?.();
           }}
           onPointerLeave={() => {
+            cancelLongPress();
             if (isDraggingRef.current) {
               isDraggingRef.current = false;
               onDragStop?.();

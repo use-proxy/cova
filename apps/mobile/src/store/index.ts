@@ -27,6 +27,7 @@ interface AppState {
   renderError: string | null;
   renderProgressStage: string;
   renderProgress: number;
+  capturedImageUri: string | null;
 
   // cart & products
   cartItems: CartItem[];
@@ -35,6 +36,10 @@ interface AppState {
   // chat
   messages: ChatMessage[];
   chatLoading: boolean;
+
+  // preferences
+  colorScheme: 'dark' | 'light';
+  savedProducts: Product[];
 }
 
 // ── Actions ──────────────────────────────────────
@@ -57,6 +62,7 @@ interface AppActions {
   setRenderError: (error: string | null) => void;
   setRenderProgressStage: (stage: string) => void;
   setRenderProgress: (progress: number) => void;
+  setCapturedImageUri: (uri: string | null) => void;
 
   // cart & products
   addToCart: (item: CartItem) => void;
@@ -68,6 +74,11 @@ interface AppActions {
   addMessage: (message: ChatMessage) => void;
   setMessages: (messages: ChatMessage[]) => void;
   setChatLoading: (loading: boolean) => void;
+
+  // preferences
+  setColorScheme: (scheme: 'dark' | 'light') => void;
+  addToSaved: (product: Product) => void;
+  removeFromSaved: (productId: string) => void;
 }
 
 // ── Store ────────────────────────────────────────
@@ -127,6 +138,7 @@ export const useAppStore = create<AppState & AppActions>()(
     renderError: null,
     renderProgressStage: '',
     renderProgress: 0,
+    capturedImageUri: null,
 
     setCurrentRender: (render) =>
       set((state) => {
@@ -147,6 +159,10 @@ export const useAppStore = create<AppState & AppActions>()(
     setRenderProgress: (progress) =>
       set((state) => {
         state.renderProgress = progress;
+      }),
+    setCapturedImageUri: (uri) =>
+      set((state) => {
+        state.capturedImageUri = uri;
       }),
 
     // ── cart & products defaults ──
@@ -190,6 +206,25 @@ export const useAppStore = create<AppState & AppActions>()(
     setChatLoading: (loading) =>
       set((state) => {
         state.chatLoading = loading;
+      }),
+
+    // ── preferences defaults ──
+    colorScheme: 'dark',
+    savedProducts: [],
+
+    setColorScheme: (scheme) =>
+      set((state) => {
+        state.colorScheme = scheme;
+      }),
+    addToSaved: (product) =>
+      set((state) => {
+        if (!state.savedProducts.find((p) => p.id === product.id)) {
+          state.savedProducts.push(product);
+        }
+      }),
+    removeFromSaved: (productId) =>
+      set((state) => {
+        state.savedProducts = state.savedProducts.filter((p) => p.id !== productId);
       }),
   })),
 );

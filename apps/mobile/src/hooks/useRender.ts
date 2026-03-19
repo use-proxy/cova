@@ -95,7 +95,8 @@ export function useRender() {
         render_type: params.renderType,
       });
       setRenderProgressStage('Applying your style...');
-      await pollRenderStatus(res.render_id, params.roomType, params.styleBlend, 250000);
+      const roomBudget = useAppStore.getState().currentRoom?.budget ?? 250000;
+      await pollRenderStatus(res.render_id, params.roomType, params.styleBlend, roomBudget);
     } catch (e: unknown) {
       setRenderStatus('failed');
       setRenderError(e instanceof Error ? e.message : 'Failed to start render.');

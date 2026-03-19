@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,33 +10,86 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Animated,
+  Easing,
 } from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+import * as Crypto from 'expo-crypto';
 import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+WebBrowser.maybeCompleteAuthSession();
+
 type AuthMode = 'signin' | 'signup';
+type Phase = 'splash' | 'auth';
 
 export default function AuthScreen() {
+  const [phase, setPhase] = useState<Phase>('splash');
   const [mode, setMode] = useState<AuthMode>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
 
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const buttonsOpacity = useRef(new Animated.Value(0)).current;
+
+  const [_googleRequest, googleResponse, googlePromptAsync] = Google.useIdTokenAuthRequest({
+    clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? '',
+  });
+
+  useEffect(() => {
+    if (googleResponse?.type === 'success') {
+      const idToken = googleResponse.params.id_token;
+      if (idToken) {
+        handleGoogleToken(idToken);
+      }
+    }
+  }, [googleResponse]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.timing(logoOpacity, {
+        toValue: 1,
+        duration: 2000,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
+      Animated.delay(300),
+      Animated.timing(buttonsOpacity, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setPhase('auth');
+    });
+  }, [logoOpacity, buttonsOpacity]);
+
   const handleAppleSignIn = async () => {
     try {
       setAuthLoading(true);
+      const rawBytes = new Uint8Array(32);
+      crypto.getRandomValues(rawBytes);
+      const rawNonce = Array.from(rawBytes, (b) => b.toString(16).padStart(2, '0')).join('');
+      const hashedNonce = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        rawNonce,
+      );
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
           AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
           AppleAuthentication.AppleAuthenticationScope.EMAIL,
         ],
+        nonce: hashedNonce,
       });
       const { data, error } = await supabase.auth.signInWithIdToken({
         provider: 'apple',
         token: credential.identityToken!,
+        nonce: rawNonce,
       });
       if (error) throw error;
       if (data.user) {
@@ -52,12 +105,39 @@ export default function AuthScreen() {
     }
   };
 
-  const handleGoogleSignIn = () => {
-    Alert.alert('Coming Soon', 'Google Sign In will be available in the next update.');
+  const handleGoogleToken = async (idToken: string) => {
+    try {
+      setAuthLoading(true);
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: 'google',
+        token: idToken,
+      });
+      if (error) throw error;
+      if (data.user) {
+        useAppStore.getState().setUser(data.user as any);
+        useAppStore.getState().setSession(data.session);
+      }
+    } catch (e: any) {
+      Alert.alert('Sign In Failed', e.message);
+    } finally {
+      setAuthLoading(false);
+    }
   };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      await googlePromptAsync();
+    } catch (e: any) {
+      Alert.alert('Sign In Failed', e.message);
+    }
+  };
+
+  const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
   const handleEmailSignIn = async () => {
     if (!email || !password) return Alert.alert('Missing fields', 'Please enter email and password.');
+    if (!isValidEmail(email)) return Alert.alert('Invalid email', 'Please enter a valid email address.');
+    if (password.length < 8) return Alert.alert('Password too short', 'Password must be at least 8 characters.');
     setAuthLoading(true);
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     setAuthLoading(false);
@@ -68,6 +148,8 @@ export default function AuthScreen() {
 
   const handleEmailSignUp = async () => {
     if (!email || !password || !fullName) return Alert.alert('Missing fields', 'Please fill all fields.');
+    if (!isValidEmail(email)) return Alert.alert('Invalid email', 'Please enter a valid email address.');
+    if (password.length < 8) return Alert.alert('Password too short', 'Password must be at least 8 characters.');
     setAuthLoading(true);
     const { data: _data, error } = await supabase.auth.signUp({
       email, password, options: { data: { full_name: fullName } },
@@ -82,18 +164,31 @@ export default function AuthScreen() {
     else handleEmailSignUp();
   };
 
+  if (phase === 'splash') {
+    return (
+      <View style={styles.container}>
+        <Animated.View style={[styles.splashCenter, { opacity: logoOpacity }]}>
+          <View style={styles.logoMark} />
+          <Text style={styles.logoWordmark}>cova</Text>
+          <Text style={styles.logoTagline}>tinder for your home</Text>
+        </Animated.View>
+      </View>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           {/* Logo */}
           <View style={styles.logoSection}>
-            <Text style={styles.logoText}>COVA</Text>
-            <Text style={styles.tagline}>tinder for your home</Text>
+            <View style={styles.logoMark} />
+            <Text style={styles.logoWordmark}>cova</Text>
+            <Text style={styles.logoTagline}>tinder for your home</Text>
           </View>
 
           {/* Auth buttons */}
-          <View style={styles.authSection}>
+          <Animated.View style={[styles.authSection, { opacity: buttonsOpacity }]}>
             <TouchableOpacity style={styles.socialButton} onPress={handleAppleSignIn} disabled={authLoading}>
               {authLoading ? (
                 <ActivityIndicator color="#1A1A1A" />
@@ -161,7 +256,7 @@ export default function AuthScreen() {
                 {mode === 'signin' ? 'New here? Create account' : 'Already have an account? Sign in'}
               </Text>
             </TouchableOpacity>
-          </View>
+          </Animated.View>
 
           {/* Terms */}
           <View style={styles.termsSection}>
@@ -183,29 +278,43 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
+  splashCenter: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoMark: {
+    width: 64,
+    height: 32,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    backgroundColor: '#C47B3C',
+    marginBottom: 12,
+  },
+  logoWordmark: {
+    fontSize: 32,
+    fontWeight: '300',
+    color: '#C47B3C',
+    letterSpacing: 8,
+  },
+  logoTagline: {
+    fontSize: 12,
+    color: '#C47B3C',
+    fontStyle: 'italic',
+    letterSpacing: 2,
+    marginTop: 4,
+  },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'space-between',
     paddingHorizontal: 24,
   },
   logoSection: {
-    flex: 0.4,
+    flex: 0.35,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 40,
-  },
-  logoText: {
-    fontSize: 48,
-    fontWeight: '800',
-    color: '#C47B3C',
-    letterSpacing: 8,
-  },
-  tagline: {
-    fontSize: 16,
-    color: '#F5F0E8',
-    fontStyle: 'italic',
-    marginTop: 8,
-    letterSpacing: 2,
+    paddingTop: 24,
+    marginBottom: 40,
   },
   authSection: {
     gap: 12,

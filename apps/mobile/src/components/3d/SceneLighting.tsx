@@ -1,5 +1,14 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import type { StyleName } from '@cova/shared';
+
+// Attempt to import Environment from drei/native — may not be available
+let EnvironmentComponent: React.ComponentType<any> | null = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  EnvironmentComponent = require('@react-three/drei/native').Environment ?? null;
+} catch {
+  EnvironmentComponent = null;
+}
 
 interface StyleLight {
   ambientColor: string;
@@ -77,6 +86,41 @@ const STYLE_LIGHTING: Record<StyleName, StyleLight> = {
   },
 };
 
+const HDRI_FILES: Record<StyleName, any> = {
+  coastal: require('../../../../../assets/textures/hdri/sunset_fairway_1k.hdr'),
+  japandi: require('../../../../../assets/textures/hdri/small_empty_room_1k.hdr'),
+  bohemian: require('../../../../../assets/textures/hdri/colorful_studio_1k.hdr'),
+  mid_century: require('../../../../../assets/textures/hdri/loft_hall_1k.hdr'),
+  minimalist: require('../../../../../assets/textures/hdri/grey_room_1k.hdr'),
+};
+
+// ── Error boundary for HDRI loading ──
+
+class HDRIErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: Error) {
+    console.warn('HDRI load failed, using hemisphere + ambient lights:', error.message);
+  }
+  render() {
+    if (this.state.hasError) return null;
+    return this.props.children;
+  }
+}
+
+function HDRIEnvironment({ style }: { style: StyleName }) {
+  if (!EnvironmentComponent) return null;
+  const hdriFile = HDRI_FILES[style];
+  if (!hdriFile) return null;
+
+  return <EnvironmentComponent files={hdriFile} background={false} />;
+}
+
 interface SceneLightingProps {
   style: StyleName;
 }
@@ -106,6 +150,13 @@ export function SceneLighting({ style }: SceneLightingProps) {
         color={L.fillColor}
         intensity={L.fillIntensity}
       />
+
+      {/* HDRI environment — falls back silently to lights above if loading fails */}
+      <HDRIErrorBoundary>
+        <Suspense fallback={null}>
+          <HDRIEnvironment style={style} />
+        </Suspense>
+      </HDRIErrorBoundary>
     </>
   );
 }

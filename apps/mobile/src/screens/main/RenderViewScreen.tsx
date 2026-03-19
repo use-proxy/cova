@@ -1,19 +1,24 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   StyleSheet,
   Dimensions,
   Animated,
   PanResponder,
   Share,
   Easing,
-  Linking,
   FlatList,
   Image,
+  Modal,
+  type GestureResponderEvent,
+  type LayoutChangeEvent,
 } from 'react-native';
 import * as MediaLibrary from 'expo-media-library';
+import * as WebBrowser from 'expo-web-browser';
+import Slider from '@react-native-community/slider';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RoomStackParamList } from '../../navigation/RoomNavigator';
@@ -32,19 +37,38 @@ export default function RenderViewScreen() {
   const room_id = route.params?.room_id ?? 'default';
 
   const { startRender, renderStatus, renderProgressStage, renderProgress, renderError, currentRender } = useRender();
-  const { matchedProducts, addToCart, setRenderStatus } = useAppStore();
+  const { matchedProducts, addToCart, cartItems, setRenderStatus, currentRoom, capturedImageUri } = useAppStore();
 
   const [showControls, setShowControls] = useState(true);
   const [showBeforeAfter, setShowBeforeAfter] = useState(false);
   const [showProductPanel, setShowProductPanel] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [similarCategory, setSimilarCategory] = useState<string | null>(null);
+  const [budgetOverride, setBudgetOverride] = useState<number | null>(null);
+  const [showBudgetSlider, setShowBudgetSlider] = useState(false);
+  const [tapCoords, setTapCoords] = useState<{ x: number; y: number } | null>(null);
 
   const controlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const imageDimsRef = useRef({ width: SCREEN_WIDTH, height: SCREEN_HEIGHT });
   const panOffset = useRef(new Animated.ValueXY()).current;
   const controlsOpacity = useRef(new Animated.Value(1)).current;
   const productPanelX = useRef(new Animated.Value(-SCREEN_WIDTH * 0.75)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const progressWidth = useRef(new Animated.Value(0)).current;
+
+  const roomBudgetCents = currentRoom?.budget ?? 250000;
+  const roomBudgetDollars = Math.round(roomBudgetCents / 100);
+  const activeBudgetDollars = budgetOverride ?? roomBudgetDollars;
+
+  const filteredProducts = useMemo(() => {
+    const maxCents = activeBudgetDollars * 100;
+    return matchedProducts.filter((p) => p.price <= maxCents);
+  }, [matchedProducts, activeBudgetDollars]);
+
+  const similarProducts = useMemo(() => {
+    if (!similarCategory) return [];
+    return matchedProducts.filter((p) => p.category === similarCategory);
+  }, [matchedProducts, similarCategory]);
 
   useEffect(() => {
     if (renderStatus === 'idle') {
@@ -129,13 +153,11 @@ export default function RenderViewScreen() {
   const handleSave = async () => {
     if (!currentRender?.image_url) return;
     const { status } = await MediaLibrary.requestPermissionsAsync();
-    if (status !== 'granted') {
-      return;
-    }
+    if (status !== 'granted') return;
     try {
       await MediaLibrary.saveToLibraryAsync(currentRender.image_url);
     } catch {
-      // Save may fail if image_url is remote; would need to download first
+      // Remote URL may need download first
     }
   };
 
@@ -144,26 +166,76 @@ export default function RenderViewScreen() {
     try {
       await Share.share({ url: currentRender.image_url });
     } catch {
-      // Share cancelled
+      // cancelled
     }
   };
 
   const handleRegenerate = () => {
-    const equalBlend = { coastal: 0.2, japandi: 0.2, bohemian: 0.2, mid_century: 0.2, minimalist: 0.2 };
+    const blend = currentRoom?.style_blend ?? { coastal: 0.2, japandi: 0.2, bohemian: 0.2, mid_century: 0.2, minimalist: 0.2 };
+    const roomType = currentRoom?.room_type ?? 'living_room';
     startRender({
       roomId: room_id,
-      roomType: 'living_room',
-      styleBlend: equalBlend,
-      imageBase64: '',
+      roomType,
+      styleBlend: blend,
+      imageBase64: currentRender?.image_url ?? '',
       renderType: 'draft',
     });
   };
 
-  const formatPrice = (price: number) => {
-    return `$${price.toLocaleString()}`;
-  };
+  const handleAddAllToCart = useCallback(() => {
+    const existingIds = new Set(cartItems.map((ci) => ci.id));
+    filteredProducts.forEach((p) => {
+      if (!existingIds.has(p.id)) {
+        addToCart({ id: p.id, product: p, quantity: 1, added_at: new Date().toISOString() });
+      }
+    });
+  }, [filteredProducts, cartItems, addToCart]);
+
+  const handleImageLayout = useCallback((e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    imageDimsRef.current = { width, height };
+  }, []);
+
+  const handleImageTap = useCallback((e: GestureResponderEvent) => {
+    const { locationX, locationY } = e.nativeEvent;
+    const { width, height } = imageDimsRef.current;
+    if (width > 0 && height > 0) {
+      setTapCoords({
+        x: (locationX / width) * 100,
+        y: (locationY / height) * 100,
+      });
+    }
+  }, []);
+
+  const formatPrice = (price: number) => `$${price.toLocaleString()}`;
+  const formatBudget = (b: number) => `$${b.toLocaleString()}`;
 
   const renderProductCard = ({ item }: { item: Product }) => (
+    <View style={styles.productCard}>
+      <Image source={{ uri: item.image_url }} style={styles.productImage} resizeMode="cover" />
+      <View style={styles.productInfo}>
+        <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
+        <Text style={styles.productPrice}>{formatPrice(item.price)}</Text>
+        <Text style={styles.productRetailer}>{item.retailer}</Text>
+        <View style={styles.productActions}>
+          <TouchableOpacity
+            style={styles.addToCartBtn}
+            onPress={() => addToCart({ id: item.id, product: item, quantity: 1, added_at: new Date().toISOString() })}
+          >
+            <Text style={styles.addToCartText}>Add to Cart</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.viewSimilarBtn}
+            onPress={() => setSimilarCategory(item.category)}
+          >
+            <Text style={styles.viewSimilarText}>View Similar</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+
+  const renderSimilarCard = ({ item }: { item: Product }) => (
     <View style={styles.productCard}>
       <Image source={{ uri: item.image_url }} style={styles.productImage} resizeMode="cover" />
       <View style={styles.productInfo}>
@@ -228,15 +300,35 @@ export default function RenderViewScreen() {
   // Complete state
   return (
     <View style={styles.fullScreen}>
-      <Animated.Image
-        source={{ uri: currentRender?.image_url ?? '' }}
-        style={[
-          StyleSheet.absoluteFill,
-          { transform: panOffset.getTranslateTransform() },
-        ]}
-        resizeMode="cover"
-        {...imagePanResponder.panHandlers}
-      />
+      <View style={StyleSheet.absoluteFill} onLayout={handleImageLayout}>
+        <TouchableWithoutFeedback onPress={handleImageTap}>
+          <Animated.Image
+            source={{ uri: currentRender?.image_url ?? '' }}
+            style={[
+              StyleSheet.absoluteFill,
+              { transform: panOffset.getTranslateTransform() },
+            ]}
+            resizeMode="cover"
+            {...imagePanResponder.panHandlers}
+          />
+        </TouchableWithoutFeedback>
+      </View>
+
+      {/* Tap pin indicator */}
+      {tapCoords && (
+        <View
+          style={[
+            styles.tapPin,
+            {
+              left: (tapCoords.x / 100) * imageDimsRef.current.width - 12,
+              top: (tapCoords.y / 100) * imageDimsRef.current.height - 24,
+            },
+          ]}
+          pointerEvents="none"
+        >
+          <Text style={styles.tapPinEmoji}>📍</Text>
+        </View>
+      )}
 
       {/* HUD */}
       {showControls && (
@@ -295,8 +387,43 @@ export default function RenderViewScreen() {
             <Text style={styles.productPanelClose}>✕</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Budget display & slider */}
+        <View style={styles.budgetRow}>
+          <Text style={styles.budgetLabel}>Budget: {formatBudget(activeBudgetDollars)}</Text>
+          <TouchableOpacity onPress={() => setShowBudgetSlider(!showBudgetSlider)}>
+            <Text style={styles.budgetEditIcon}>✏️</Text>
+          </TouchableOpacity>
+        </View>
+        {showBudgetSlider && (
+          <View style={styles.budgetSliderWrap}>
+            <Slider
+              style={styles.budgetSlider}
+              minimumValue={500}
+              maximumValue={10000}
+              step={500}
+              value={activeBudgetDollars}
+              onValueChange={(v: number) => setBudgetOverride(v)}
+              minimumTrackTintColor="#C47B3C"
+              maximumTrackTintColor="#E8E0D0"
+              thumbTintColor="#C47B3C"
+            />
+            <View style={styles.budgetSliderLabels}>
+              <Text style={styles.budgetSliderTick}>$500</Text>
+              <Text style={styles.budgetSliderTick}>$10,000</Text>
+            </View>
+          </View>
+        )}
+
+        {/* Add All to Cart */}
+        {filteredProducts.length > 0 && (
+          <TouchableOpacity style={styles.addAllBtn} onPress={handleAddAllToCart}>
+            <Text style={styles.addAllBtnText}>Add All to Cart ({filteredProducts.length})</Text>
+          </TouchableOpacity>
+        )}
+
         <FlatList
-          data={matchedProducts}
+          data={filteredProducts}
           renderItem={renderProductCard}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.productList}
@@ -316,7 +443,7 @@ export default function RenderViewScreen() {
       {/* Before/After overlay */}
       {showBeforeAfter && (
         <BeforeAfterSlider
-          beforeImageUri="placeholder-before"
+          beforeImageUri={capturedImageUri ?? currentRender?.image_url ?? ''}
           afterImageUri={currentRender?.image_url ?? ''}
           onClose={() => setShowBeforeAfter(false)}
         />
@@ -326,9 +453,39 @@ export default function RenderViewScreen() {
       {showChat && (
         <ChatPanel
           roomId={room_id}
+          renderImageBase64={currentRender?.image_url ?? undefined}
+          tapX={tapCoords?.x}
+          tapY={tapCoords?.y}
           onClose={() => setShowChat(false)}
+          onMessageSent={() => setTapCoords(null)}
         />
       )}
+
+      {/* Similar items bottom sheet */}
+      <Modal visible={similarCategory !== null} transparent animationType="slide">
+        <View style={styles.similarOverlay}>
+          <TouchableOpacity style={styles.similarBackdrop} activeOpacity={1} onPress={() => setSimilarCategory(null)} />
+          <View style={styles.similarSheet}>
+            <View style={styles.similarHeader}>
+              <Text style={styles.similarTitle}>
+                Similar {similarCategory ? similarCategory.replace(/_/g, ' ') : ''} Items
+              </Text>
+              <TouchableOpacity onPress={() => setSimilarCategory(null)}>
+                <Text style={styles.similarClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={similarProducts}
+              renderItem={renderSimilarCard}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.productList}
+              ListEmptyComponent={
+                <Text style={styles.emptyProducts}>No similar items found.</Text>
+              }
+            />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -578,6 +735,61 @@ const styles = StyleSheet.create({
     color: '#1B3A2D',
     fontWeight: '600',
   },
+
+  // Budget
+  budgetRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.06)',
+  },
+  budgetLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1B3A2D',
+  },
+  budgetEditIcon: {
+    fontSize: 16,
+  },
+  budgetSliderWrap: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.06)',
+  },
+  budgetSlider: {
+    width: '100%',
+    height: 32,
+  },
+  budgetSliderLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  budgetSliderTick: {
+    fontSize: 11,
+    color: '#888',
+    fontWeight: '500',
+  },
+
+  // Add All to Cart
+  addAllBtn: {
+    marginHorizontal: 12,
+    marginTop: 12,
+    marginBottom: 4,
+    backgroundColor: '#C47B3C',
+    borderRadius: 28,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  addAllBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
   productList: {
     padding: 12,
   },
@@ -616,14 +828,30 @@ const styles = StyleSheet.create({
     color: '#888',
     marginBottom: 8,
   },
+  productActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
   addToCartBtn: {
     backgroundColor: '#1B3A2D',
     borderRadius: 8,
     paddingVertical: 8,
-    alignItems: 'center',
+    paddingHorizontal: 12,
   },
   addToCartText: {
     color: 'white',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  viewSimilarBtn: {
+    borderWidth: 1.5,
+    borderColor: '#C47B3C',
+    borderRadius: 8,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+  },
+  viewSimilarText: {
+    color: '#C47B3C',
     fontSize: 13,
     fontWeight: '700',
   },
@@ -632,6 +860,13 @@ const styles = StyleSheet.create({
     color: '#888',
     marginTop: 40,
     fontSize: 14,
+  },
+  tapPin: {
+    position: 'absolute',
+    zIndex: 5,
+  },
+  tapPinEmoji: {
+    fontSize: 24,
   },
   chatBubble: {
     position: 'absolute',
@@ -651,5 +886,43 @@ const styles = StyleSheet.create({
   },
   chatBubbleText: {
     fontSize: 24,
+  },
+
+  // Similar items bottom sheet
+  similarOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  similarBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  similarSheet: {
+    backgroundColor: '#F5F0E8',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: SCREEN_HEIGHT * 0.6,
+    paddingBottom: 32,
+  },
+  similarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.08)',
+  },
+  similarTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1B3A2D',
+    textTransform: 'capitalize',
+  },
+  similarClose: {
+    fontSize: 20,
+    color: '#1B3A2D',
+    fontWeight: '600',
   },
 });
