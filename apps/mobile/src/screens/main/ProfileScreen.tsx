@@ -2,753 +2,473 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
   Alert,
   Linking,
-  FlatList,
   Image,
-  Modal,
-  Share,
-  Dimensions,
-  ActivityIndicator,
-  Platform,
+  Switch,
 } from 'react-native';
-import * as MediaLibrary from 'expo-media-library';
+import Svg, { Path, Circle as SvgCircle, Polyline, Rect, Line } from 'react-native-svg';
 import Constants from 'expo-constants';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
-import { useAppStore } from '../../store';
-import { supabase } from '../../lib/supabase';
-import { callEdgeFunction } from '../../lib/supabase';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAppStore } from '../../store';
+import { supabase, callEdgeFunction } from '../../lib/supabase';
 import type { StyleName } from '@cova/shared';
-import TokenBadge from '../../components/TokenBadge';
+import type { HomeStackParamList } from '../../navigation/HomeStack';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const GALLERY_GAP = 8;
-const GALLERY_CELL = (SCREEN_WIDTH - 32 - 40 - GALLERY_GAP) / 2;
+const BG = '#0A1628';
+const GOLD = '#C4A45A';
+const CREAM = '#F5F0E8';
 
-const STYLE_DISPLAY: Record<StyleName, string> = {
-  coastal: 'Ocean Breeze',
-  japandi: 'Zen Garden',
-  bohemian: 'Boho Spirit',
-  mid_century: 'Mid-Century',
-  minimalist: 'Pure Lines',
+const STYLE_MAP: Record<StyleName, { label: string; color: string }> = {
+  coastal: { label: 'Ocean Breeze', color: '#5B9A9A' },
+  japandi: { label: 'Zen Garden', color: '#8BA888' },
+  bohemian: { label: 'Boho Spirit', color: '#D4A853' },
+  mid_century: { label: 'Mid-Century', color: '#A67C52' },
+  minimalist: { label: 'Pure Lines', color: '#8B8B8B' },
 };
-
 const STYLE_KEYS: StyleName[] = ['coastal', 'japandi', 'bohemian', 'mid_century', 'minimalist'];
 
-const UNITS_KEY = 'cova_units';
-type UnitPref = 'ft' | 'm';
+// ── SVG Icons ──
 
-interface RenderItem {
-  id: string;
-  image_url: string;
-  created_at: string;
-  status: string;
+function PersonIcon({ color = BG }: { color?: string }) {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <SvgCircle cx={12} cy={8} r={4} stroke={color} strokeWidth={1.5} />
+      <Path d="M4 20c0-4 4-6 8-6s8 2 8 6" stroke={color} strokeWidth={1.5} />
+    </Svg>
+  );
 }
 
+function MailIcon({ color = BG }: { color?: string }) {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Rect x={2} y={4} width={20} height={16} rx={2} stroke={color} strokeWidth={1.5} />
+      <Path d="M22 6L12 13 2 6" stroke={color} strokeWidth={1.5} />
+    </Svg>
+  );
+}
+
+function LockIcon({ color = BG }: { color?: string }) {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Rect x={5} y={11} width={14} height={10} rx={2} stroke={color} strokeWidth={1.5} />
+      <Path d="M8 11V7a4 4 0 018 0v4" stroke={color} strokeWidth={1.5} />
+    </Svg>
+  );
+}
+
+function LogoutIcon({ color = '#DC3545' }: { color?: string }) {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" stroke={color} strokeWidth={1.5} />
+      <Polyline points="16,17 21,12 16,7" stroke={color} strokeWidth={1.5} fill="none" />
+      <Line x1={21} y1={12} x2={9} y2={12} stroke={color} strokeWidth={1.5} />
+    </Svg>
+  );
+}
+
+function TrashIcon({ color = '#DC3545' }: { color?: string }) {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Polyline points="3,6 5,6 21,6" stroke={color} strokeWidth={1.5} fill="none" />
+      <Path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" stroke={color} strokeWidth={1.5} />
+    </Svg>
+  );
+}
+
+function ChevronRight() {
+  return (
+    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+      <Polyline points="9,18 15,12 9,6" stroke="rgba(0,0,0,0.3)" strokeWidth={2} fill="none" />
+    </Svg>
+  );
+}
+
+function BellIcon({ color = BG }: { color?: string }) {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" stroke={color} strokeWidth={1.5} />
+      <Path d="M13.73 21a2 2 0 01-3.46 0" stroke={color} strokeWidth={1.5} />
+    </Svg>
+  );
+}
+
+function CreditCardIcon({ color = BG }: { color?: string }) {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Rect x={1} y={4} width={22} height={16} rx={2} stroke={color} strokeWidth={1.5} />
+      <Line x1={1} y1={10} x2={23} y2={10} stroke={color} strokeWidth={1.5} />
+    </Svg>
+  );
+}
+
+function HelpIcon({ color = BG }: { color?: string }) {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <SvgCircle cx={12} cy={12} r={10} stroke={color} strokeWidth={1.5} />
+      <Path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" stroke={color} strokeWidth={1.5} />
+      <Line x1={12} y1={17} x2={12.01} y2={17} stroke={color} strokeWidth={1.5} />
+    </Svg>
+  );
+}
+
+function DocIcon({ color = BG }: { color?: string }) {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke={color} strokeWidth={1.5} />
+      <Polyline points="14,2 14,8 20,8" stroke={color} strokeWidth={1.5} fill="none" />
+    </Svg>
+  );
+}
+
+function BackIcon() {
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+      <Polyline points="15,18 9,12 15,6" stroke="white" strokeWidth={2} fill="none" />
+    </Svg>
+  );
+}
+
+// ── Row separator ──
+function Separator() {
+  return <View style={styles.separator} />;
+}
+
+// ── Saved items placeholder ──
+const SAVED_IMAGES = [
+  'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=200&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=200&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=200&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=200&h=200&fit=crop',
+];
+
+// ══════════════════════════════════════════════════
+// Screen
+// ══════════════════════════════════════════════════
+
 export default function ProfileScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
+  const insets = useSafeAreaInsets();
   const user = useAppStore((s) => s.user);
   const currentRoom = useAppStore((s) => s.currentRoom);
-  const colorScheme = useAppStore((s) => s.colorScheme);
+  const savedProducts = useAppStore((s) => s.savedProducts);
 
-  const [renders, setRenders] = useState<RenderItem[]>([]);
-  const [rendersLoading, setRendersLoading] = useState(true);
-  const [selectedRender, setSelectedRender] = useState<RenderItem | null>(null);
-  const [units, setUnits] = useState<UnitPref>('ft');
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [deleting, setDeleting] = useState(false);
-  const [editMode, setEditMode] = useState(false);
-  const [editName, setEditName] = useState(user?.full_name ?? '');
 
-  const styleBlend = currentRoom?.style_blend ?? {
+  const blend = user?.style_blend ?? currentRoom?.style_blend ?? {
     coastal: 0.2, japandi: 0.2, bohemian: 0.2, mid_century: 0.2, minimalist: 0.2,
   };
 
+  const styleSegments = STYLE_KEYS.map((k) => ({
+    ...STYLE_MAP[k],
+    key: k,
+    percent: Math.round((blend[k] ?? 0.2) * 100),
+  }));
+
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
-  useEffect(() => {
-    fetchRenders();
-    loadUnits();
-  }, []);
-
-  const fetchRenders = useCallback(async () => {
-    if (!user) return;
-    setRendersLoading(true);
-    const { data } = await supabase
-      .from('renders')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('status', 'completed')
-      .order('created_at', { ascending: false });
-    if (data) setRenders(data as RenderItem[]);
-    setRendersLoading(false);
-  }, [user]);
-
-  const loadUnits = async () => {
-    const stored = await AsyncStorage.getItem(UNITS_KEY);
-    if (stored === 'ft' || stored === 'm') setUnits(stored);
-  };
-
-  const setUnitPref = async (u: UnitPref) => {
-    setUnits(u);
-    await AsyncStorage.setItem(UNITS_KEY, u);
-  };
-
-  const getInitials = (name: string | null | undefined, email: string | undefined) => {
-    if (name) return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
-    if (email) return email[0].toUpperCase();
+  const getInitials = () => {
+    if (user?.full_name) return user.full_name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
+    if (user?.email) return user.email[0].toUpperCase();
     return '?';
   };
 
   const handleSignOut = () => {
-    Alert.alert('Sign Out', 'Are you sure?', [
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
       { text: 'Cancel' },
-      {
-        text: 'Sign Out',
-        style: 'destructive',
-        onPress: async () => {
-          await supabase.auth.signOut();
-          useAppStore.getState().signOut();
-        },
-      },
+      { text: 'Sign Out', style: 'destructive', onPress: async () => {
+        await supabase.auth.signOut();
+        useAppStore.getState().signOut();
+      }},
     ]);
   };
 
-  const handleDeleteAccount = async () => {
-    if (!user) return;
-    setDeleting(true);
+  const handleDeleteAccount = () => {
+    Alert.alert('Delete your account?', 'This cannot be undone.', [
+      { text: 'Cancel' },
+      { text: 'Continue', style: 'destructive', onPress: () => {
+        Alert.alert('All your rooms, renders, and data will be permanently deleted.', '', [
+          { text: 'Cancel' },
+          { text: 'Delete Forever', style: 'destructive', onPress: async () => {
+            setDeleting(true);
+            try {
+              await callEdgeFunction('delete-account', {});
+              useAppStore.getState().signOut();
+            } catch (e: any) {
+              Alert.alert('Error', e.message ?? 'Could not delete account.');
+            } finally { setDeleting(false); }
+          }},
+        ]);
+      }},
+    ]);
+  };
+
+  const handlePasswordReset = async () => {
+    if (!user?.email) return;
     try {
-      await callEdgeFunction('delete-account', {});
-      useAppStore.getState().signOut();
-    } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'Could not delete account. Please try again.');
-    } finally {
-      setDeleting(false);
-    }
+      await supabase.auth.resetPasswordForEmail(user.email);
+      Alert.alert('Password Reset', 'Password reset email sent.');
+    } catch { Alert.alert('Error', 'Could not send reset email.'); }
   };
 
-  const confirmDeleteAccount = () => {
-    Alert.alert(
-      'Delete Account',
-      'This permanently deletes all your rooms, renders, and data. This cannot be undone.',
-      [
-        { text: 'Cancel' },
-        { text: 'Delete Everything', style: 'destructive', onPress: handleDeleteAccount },
-      ],
-    );
+  const handleRetakeQuiz = () => {
+    Alert.alert('Retake the style quiz for your current room?', '', [
+      { text: 'Cancel' },
+      { text: 'Retake', onPress: () => navigation.navigate('Room', { initialRoute: 'StyleQuiz' }) },
+    ]);
   };
-
-  const handleSaveProfile = async () => {
-    if (!user) return;
-    try {
-      const { error } = await supabase
-        .from('users')
-        .update({ full_name: editName })
-        .eq('id', user.id);
-      if (error) throw error;
-      useAppStore.getState().setUser({ ...user, full_name: editName } as any);
-      setEditMode(false);
-    } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'Could not update profile.');
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setEditName(user?.full_name ?? '');
-    setEditMode(false);
-  };
-
-  const handleSaveRender = async (imageUrl: string) => {
-    try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Allow photo library access to save.');
-        return;
-      }
-      await MediaLibrary.saveToLibraryAsync(imageUrl);
-      Alert.alert('Saved', 'Render saved to your camera roll.');
-    } catch {
-      Alert.alert('Error', 'Could not save render.');
-    }
-  };
-
-  const handleShareRender = async (imageUrl: string) => {
-    try {
-      await Share.share({ url: imageUrl });
-    } catch {
-      // user cancelled
-    }
-  };
-
-  const renderGalleryCell = ({ item }: { item: RenderItem }) => (
-    <TouchableOpacity
-      style={styles.galleryCell}
-      onPress={() => setSelectedRender(item)}
-    >
-      <Image source={{ uri: item.image_url }} style={styles.galleryCellImage} resizeMode="cover" />
-    </TouchableOpacity>
-  );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      {/* ── Header ── */}
+      <View style={[styles.header, { paddingTop: 16 }]}>
+        <TouchableOpacity style={styles.headerBack} onPress={() => navigation.goBack()}>
+          <BackIcon />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Profile</Text>
-        <TokenBadge />
+        <View style={{ width: 32 }} />
       </View>
 
-      <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
-        {/* User card */}
-        <View style={styles.userCard}>
-          <View style={styles.avatarLarge}>
-            <Text style={styles.avatarLargeText}>
-              {getInitials(user?.full_name, user?.email)}
-            </Text>
-          </View>
-          {editMode ? (
-            <>
-              <TextInput
-                style={styles.editNameInput}
-                value={editName}
-                onChangeText={setEditName}
-                autoFocus
-                returnKeyType="done"
-                onSubmitEditing={handleSaveProfile}
-              />
-              <View style={styles.editBtnRow}>
-                <TouchableOpacity style={styles.editSaveBtn} onPress={handleSaveProfile}>
-                  <Text style={styles.editSaveBtnText}>Save</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.editCancelBtn} onPress={handleCancelEdit}>
-                  <Text style={styles.editCancelBtnText}>Cancel</Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          ) : (
-            <View style={styles.nameRow}>
-              <Text style={styles.userName}>{user?.full_name ?? 'Cova User'}</Text>
-              <TouchableOpacity onPress={() => { setEditName(user?.full_name ?? ''); setEditMode(true); }}>
-                <Text style={styles.editPencil}>✏️</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-          <Text style={styles.userEmail}>{user?.email}</Text>
-          <View style={styles.accountBadge}>
-            <Text style={styles.accountBadgeText}>
-              {user?.account_type === 'realtor' ? 'Realtor' : 'Consumer'}
-            </Text>
-          </View>
+      {/* ── Profile hero ── */}
+      <View style={styles.hero}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{getInitials()}</Text>
         </View>
-
-        {/* Style DNA */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Your Style DNA</Text>
-          {STYLE_KEYS.map((key) => {
-            const value = styleBlend[key] ?? 0.2;
-            const pct = Math.round(value * 100);
-            return (
-              <View key={key} style={styles.blendRow}>
-                <Text style={styles.blendLabel}>{STYLE_DISPLAY[key]}</Text>
-                <View style={styles.blendBarBg}>
-                  <View style={[styles.blendBarFill, { width: `${pct}%` }]} />
-                </View>
-                <Text style={styles.blendPct}>{pct}%</Text>
-              </View>
-            );
-          })}
-          <TouchableOpacity onPress={() => (navigation as any).navigate('RoomsTab', { screen: 'Room', params: { screen: 'StyleQuiz' } })}>
-            <Text style={styles.retakeLink}>Retake Style Quiz</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Render Gallery */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Render Gallery</Text>
-          {rendersLoading ? (
-            <ActivityIndicator color="#C47B3C" style={{ marginVertical: 20 }} />
-          ) : renders.length === 0 ? (
-            <Text style={styles.galleryEmpty}>Complete a render to see it here.</Text>
-          ) : (
-            <FlatList
-              data={renders}
-              renderItem={renderGalleryCell}
-              keyExtractor={(item) => item.id}
-              numColumns={2}
-              scrollEnabled={false}
-              columnWrapperStyle={styles.galleryRow}
-              contentContainerStyle={styles.galleryContainer}
-            />
-          )}
-        </View>
-
-        {/* Settings */}
-        <View style={styles.sectionCard}>
-          <SettingsRow label="Account Type" value={user?.account_type === 'realtor' ? 'Realtor' : 'Consumer'} />
-          <SettingsRow label="Token Balance" value="🪙 999" />
-
-          {/* Units toggle */}
-          <View style={[styles.settingsRow, styles.settingsRowBorder]}>
-            <Text style={styles.settingsLabel}>Units</Text>
-            <View style={styles.unitToggle}>
-              <TouchableOpacity
-                style={[styles.unitPill, units === 'ft' && styles.unitPillActive]}
-                onPress={() => setUnitPref('ft')}
-              >
-                <Text style={[styles.unitPillText, units === 'ft' && styles.unitPillTextActive]}>ft</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.unitPill, units === 'm' && styles.unitPillActive]}
-                onPress={() => setUnitPref('m')}
-              >
-                <Text style={[styles.unitPillText, units === 'm' && styles.unitPillTextActive]}>m</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <SettingsRow label="Notifications" value="On" />
-
-          {/* Appearance toggle */}
-          <View style={[styles.settingsRow, styles.settingsRowBorder]}>
-            <Text style={styles.settingsLabel}>Appearance</Text>
-            <View style={styles.unitToggle}>
-              <TouchableOpacity
-                style={[styles.unitPill, colorScheme === 'dark' && styles.unitPillActive]}
-                onPress={() => useAppStore.getState().setColorScheme('dark')}
-              >
-                <Text style={[styles.unitPillText, colorScheme === 'dark' && styles.unitPillTextActive]}>Dark</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.unitPill, colorScheme === 'light' && styles.unitPillActive]}
-                onPress={() => useAppStore.getState().setColorScheme('light')}
-              >
-                <Text style={[styles.unitPillText, colorScheme === 'light' && styles.unitPillTextActive]}>Light</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <SettingsRow
-            label="Transaction History"
-            value="›"
-            onPress={() => (navigation as any).navigate('TokenHistory')}
-          />
-          <SettingsRow
-            label="Privacy Policy"
-            value="›"
-            onPress={() => Linking.openURL('https://ai.cova.app/privacy')}
-          />
-          <SettingsRow
-            label="Terms of Service"
-            value="›"
-            onPress={() => Linking.openURL('https://ai.cova.app/terms')}
-          />
-          <TouchableOpacity
-            style={styles.settingsRow}
-            onPress={confirmDeleteAccount}
-            disabled={deleting}
-          >
-            <Text style={styles.deleteLabel}>Delete Account</Text>
-            {deleting ? (
-              <ActivityIndicator color="#CC3333" size="small" />
-            ) : (
-              <Text style={styles.deleteChevron}>›</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {/* Sign out */}
-        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-          <Text style={styles.signOutText}>Sign Out</Text>
+        <Text style={styles.heroName}>{user?.full_name ?? 'User'}</Text>
+        <Text style={styles.heroEmail}>{user?.email ?? ''}</Text>
+        <TouchableOpacity onPress={() => Alert.alert('Edit Profile', 'Edit profile coming soon.')}>
+          <Text style={styles.editLink}>Edit Profile</Text>
         </TouchableOpacity>
+      </View>
 
-        {/* App version */}
-        <Text style={styles.versionText}>Cova V{appVersion}</Text>
+      {/* ── Body ── */}
+      <ScrollView style={styles.body} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
 
-        <View style={{ height: 40 }} />
-      </ScrollView>
-
-      {/* Full-screen render modal */}
-      <Modal visible={selectedRender !== null} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity style={styles.modalClose} onPress={() => setSelectedRender(null)}>
-            <Text style={styles.modalCloseText}>✕</Text>
+        {/* ── Account card ── */}
+        <View style={styles.card}>
+          <Text style={styles.cardLabel}>ACCOUNT</Text>
+          <Separator />
+          <TouchableOpacity style={styles.row} onPress={() => Alert.alert('Edit Profile', 'Edit profile coming soon.')}>
+            <View style={styles.rowIcon}><PersonIcon /></View>
+            <Text style={styles.rowLabel}>Full Name</Text>
+            <Text style={styles.rowValue}>{user?.full_name ?? '—'}</Text>
+            <ChevronRight />
           </TouchableOpacity>
-
-          {selectedRender && (
-            <Image
-              source={{ uri: selectedRender.image_url }}
-              style={styles.modalImage}
-              resizeMode="contain"
-            />
-          )}
-
-          <View style={styles.modalActions}>
-            <TouchableOpacity
-              style={styles.modalActionBtn}
-              onPress={() => selectedRender && handleSaveRender(selectedRender.image_url)}
-            >
-              <Text style={styles.modalActionText}>Save</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.modalActionBtn}
-              onPress={() => selectedRender && handleShareRender(selectedRender.image_url)}
-            >
-              <Text style={styles.modalActionText}>Share</Text>
-            </TouchableOpacity>
-          </View>
+          <Separator />
+          <TouchableOpacity style={styles.row} onPress={() => Alert.alert('Email', user?.email ?? '—')}>
+            <View style={styles.rowIcon}><MailIcon /></View>
+            <Text style={styles.rowLabel}>Email</Text>
+            <Text style={styles.rowValue} numberOfLines={1}>{user?.email ?? '—'}</Text>
+            <ChevronRight />
+          </TouchableOpacity>
+          <Separator />
+          <TouchableOpacity style={styles.row} onPress={handlePasswordReset}>
+            <View style={styles.rowIcon}><LockIcon /></View>
+            <Text style={styles.rowLabel}>Password</Text>
+            <Text style={styles.rowValue}>••••••••</Text>
+            <ChevronRight />
+          </TouchableOpacity>
+          <Separator />
+          <TouchableOpacity style={styles.row} onPress={handleSignOut}>
+            <View style={styles.rowIcon}><LogoutIcon /></View>
+            <Text style={[styles.rowLabel, { color: '#DC3545' }]}>Sign Out</Text>
+          </TouchableOpacity>
+          <Separator />
+          <TouchableOpacity style={styles.row} onPress={handleDeleteAccount} disabled={deleting}>
+            <View style={styles.rowIcon}><TrashIcon /></View>
+            <Text style={[styles.rowLabel, { color: '#DC3545' }]}>Delete Account</Text>
+          </TouchableOpacity>
         </View>
-      </Modal>
+
+        {/* ── My Style card ── */}
+        <View style={[styles.card, { paddingBottom: 16 }]}>
+          <Text style={styles.cardLabel}>MY STYLE</Text>
+
+          {/* Segmented bar */}
+          <View style={styles.styleBar}>
+            {styleSegments.map((s) => (
+              <View key={s.key} style={{ flexGrow: s.percent, backgroundColor: s.color, height: 8 }} />
+            ))}
+          </View>
+
+          {/* Percent labels */}
+          <View style={styles.styleLabelRow}>
+            {styleSegments.map((s) => (
+              <Text key={s.key} style={[styles.stylePercent, { flexGrow: s.percent }]}>{s.percent}%</Text>
+            ))}
+          </View>
+
+          {/* Name labels */}
+          <View style={styles.styleLabelRow}>
+            {styleSegments.map((s) => (
+              <Text key={s.key} style={[styles.styleName, { flexGrow: s.percent }]} numberOfLines={1}>{s.label}</Text>
+            ))}
+          </View>
+
+          {/* Retake quiz */}
+          <TouchableOpacity style={styles.retakeBtn} onPress={handleRetakeQuiz}>
+            <Text style={styles.retakeBtnText}>Retake Style Quiz</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Saved Items card ── */}
+        <View style={[styles.card, { paddingBottom: 16 }]}>
+          <View style={styles.savedHeader}>
+            <Text style={styles.cardLabel}>SAVED ITEMS</Text>
+            <TouchableOpacity><Text style={styles.viewAll}>View All</Text></TouchableOpacity>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.savedScroll}>
+            {(savedProducts.length > 0
+              ? savedProducts.map((p) => (
+                <View key={p.id} style={styles.savedThumb}>
+                  <Image source={{ uri: p.image_url }} style={styles.savedImg} resizeMode="cover" />
+                </View>
+              ))
+              : SAVED_IMAGES.map((uri, i) => (
+                <View key={i} style={styles.savedThumb}>
+                  <Image source={{ uri }} style={styles.savedImg} resizeMode="cover" />
+                </View>
+              ))
+            )}
+          </ScrollView>
+        </View>
+
+        {/* ── Preferences card ── */}
+        <View style={styles.card}>
+          <Text style={styles.cardLabel}>PREFERENCES</Text>
+          <Separator />
+          <View style={styles.row}>
+            <View style={styles.rowIcon}><BellIcon /></View>
+            <Text style={styles.rowLabel}>Notifications</Text>
+            <Switch
+              value={notificationsEnabled}
+              onValueChange={setNotificationsEnabled}
+              trackColor={{ false: 'rgba(0,0,0,0.15)', true: GOLD }}
+              thumbColor="#FFF"
+            />
+          </View>
+          <Separator />
+          <TouchableOpacity style={styles.row} onPress={() => navigation.navigate('TokenShop')}>
+            <View style={styles.rowIcon}><CreditCardIcon /></View>
+            <Text style={styles.rowLabel}>Get More Tokens</Text>
+            <Text style={[styles.rowValue, { color: GOLD }]}>999</Text>
+            <ChevronRight />
+          </TouchableOpacity>
+          <Separator />
+          <TouchableOpacity style={styles.row} onPress={() => navigation.navigate('TokenHistory')}>
+            <View style={styles.rowIcon}><CreditCardIcon /></View>
+            <Text style={styles.rowLabel}>Transaction History</Text>
+            <ChevronRight />
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Support card ── */}
+        <View style={styles.card}>
+          <Text style={styles.cardLabel}>SUPPORT</Text>
+          <Separator />
+          <TouchableOpacity style={styles.row} onPress={() => Linking.openURL('mailto:hellocova@gmail.com')}>
+            <View style={styles.rowIcon}><HelpIcon /></View>
+            <Text style={styles.rowLabel}>Help Center</Text>
+            <ChevronRight />
+          </TouchableOpacity>
+          <Separator />
+          <TouchableOpacity style={styles.row} onPress={() => Linking.openURL('https://cova.ai/terms')}>
+            <View style={styles.rowIcon}><DocIcon /></View>
+            <Text style={styles.rowLabel}>Terms & Privacy</Text>
+            <ChevronRight />
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Version footer ── */}
+        <Text style={styles.version}>Cova v{appVersion}</Text>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
-function SettingsRow({
-  label,
-  value,
-  onPress,
-  isLast,
-}: {
-  label: string;
-  value: string;
-  onPress?: () => void;
-  isLast?: boolean;
-}) {
-  const Wrapper = onPress ? TouchableOpacity : View;
-  return (
-    <Wrapper onPress={onPress} style={[styles.settingsRow, !isLast && styles.settingsRowBorder]}>
-      <Text style={styles.settingsLabel}>{label}</Text>
-      <Text style={styles.settingsValue}>{value}</Text>
-    </Wrapper>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F0E8',
-  },
+  safeArea: { flex: 1, backgroundColor: BG },
+
+  // ── Header ──
   header: {
-    backgroundColor: '#1B3A2D',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    flexDirection: 'row',
+    backgroundColor: BG,
+    paddingHorizontal: 20, paddingBottom: 16,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+  },
+  headerBack: { position: 'absolute', left: 16, padding: 4 },
+  headerTitle: { color: 'white', fontSize: 18, letterSpacing: 1 },
+
+  // ── Hero ──
+  hero: {
+    backgroundColor: BG,
+    paddingBottom: 28, paddingHorizontal: 20,
     alignItems: 'center',
-    justifyContent: 'space-between',
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: 'white',
+  avatar: {
+    width: 88, height: 88, borderRadius: 44,
+    backgroundColor: 'rgba(196,164,90,0.2)',
+    borderWidth: 2, borderColor: GOLD,
+    alignItems: 'center', justifyContent: 'center',
   },
-  body: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
-  userCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-    marginTop: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  avatarLarge: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#C47B3C',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  avatarLargeText: {
-    color: 'white',
-    fontSize: 28,
-    fontWeight: '700',
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 2,
-  },
-  userName: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1B3A2D',
-  },
-  editPencil: {
-    fontSize: 16,
-  },
-  editNameInput: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1B3A2D',
-    borderBottomWidth: 2,
-    borderBottomColor: '#C47B3C',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    minWidth: 180,
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  editBtnRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 4,
-  },
-  editSaveBtn: {
-    backgroundColor: '#C47B3C',
-    borderRadius: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-  },
-  editSaveBtnText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  editCancelBtn: {
-    borderWidth: 1.5,
-    borderColor: '#1B3A2D',
-    borderRadius: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 7,
-  },
-  editCancelBtnText: {
-    color: '#1B3A2D',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  userEmail: {
-    fontSize: 14,
-    color: '#888888',
-    marginBottom: 8,
-  },
-  accountBadge: {
-    backgroundColor: 'rgba(27,58,45,0.08)',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-  },
-  accountBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#1B3A2D',
-  },
-  sectionCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    marginTop: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#1B3A2D',
-    marginBottom: 16,
-  },
-  blendRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  blendLabel: {
-    width: 90,
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#1A1A1A',
-  },
-  blendBarBg: {
-    flex: 1,
-    height: 8,
-    backgroundColor: '#E8E0D0',
-    borderRadius: 4,
-    marginHorizontal: 8,
+  avatarText: { color: GOLD, fontSize: 32, fontWeight: '400' },
+  heroName: { color: 'white', fontSize: 22, fontWeight: '400', marginTop: 12, letterSpacing: 1 },
+  heroEmail: { color: 'rgba(255,255,255,0.55)', fontSize: 14, marginTop: 4 },
+  editLink: { color: GOLD, fontSize: 14, marginTop: 8, letterSpacing: 0.5 },
+
+  // ── Body ──
+  body: { flex: 1, backgroundColor: CREAM },
+
+  // ── Card ──
+  card: {
+    backgroundColor: 'white', borderRadius: 16,
+    marginHorizontal: 16, marginTop: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
     overflow: 'hidden',
   },
-  blendBarFill: {
-    height: '100%',
-    backgroundColor: '#C47B3C',
-    borderRadius: 4,
-  },
-  blendPct: {
-    width: 36,
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#C47B3C',
-    textAlign: 'right',
-  },
-  retakeLink: {
-    color: '#C47B3C',
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 12,
-    textAlign: 'center',
+  cardLabel: {
+    fontSize: 13, fontWeight: '500', letterSpacing: 1,
+    color: BG, opacity: 0.5,
+    paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8,
   },
 
-  // Render Gallery
-  galleryContainer: {
-    gap: GALLERY_GAP,
+  // ── Row ──
+  row: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 14,
   },
-  galleryRow: {
-    gap: GALLERY_GAP,
-  },
-  galleryCell: {
-    width: GALLERY_CELL,
-    height: GALLERY_CELL,
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  galleryCellImage: {
-    width: '100%',
-    height: '100%',
-  },
-  galleryEmpty: {
-    color: '#888888',
-    fontSize: 14,
-    textAlign: 'center',
-    paddingVertical: 16,
-  },
+  rowIcon: { width: 20, height: 20, opacity: 0.6, alignItems: 'center', justifyContent: 'center' },
+  rowLabel: { color: BG, fontSize: 16, flex: 1, marginLeft: 12 },
+  rowValue: { color: 'rgba(0,0,0,0.4)', fontSize: 14, marginRight: 8 },
+  separator: { height: 0.5, backgroundColor: 'rgba(0,0,0,0.06)', marginLeft: 16 },
 
-  // Settings
-  settingsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 14,
+  // ── Style bar ──
+  styleBar: {
+    flexDirection: 'row', height: 8, borderRadius: 4,
+    marginHorizontal: 16, overflow: 'hidden',
   },
-  settingsRowBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.06)',
-  },
-  settingsLabel: {
-    fontSize: 15,
-    color: '#1A1A1A',
-  },
-  settingsValue: {
-    fontSize: 15,
-    color: '#888888',
-    fontWeight: '500',
-  },
+  styleLabelRow: { flexDirection: 'row', marginHorizontal: 16, marginTop: 4 },
+  stylePercent: { fontSize: 11, color: 'rgba(0,0,0,0.5)', textAlign: 'center' },
+  styleName: { fontSize: 9, color: 'rgba(0,0,0,0.4)', textAlign: 'center', paddingHorizontal: 2 },
+  retakeBtn: { alignSelf: 'center', marginTop: 16 },
+  retakeBtnText: { color: GOLD, fontSize: 14, letterSpacing: 0.5 },
 
-  // Units toggle
-  unitToggle: {
-    flexDirection: 'row',
-    gap: 6,
+  // ── Saved items ──
+  savedHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12,
   },
-  unitPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 5,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#1B3A2D',
-  },
-  unitPillActive: {
-    backgroundColor: '#1B3A2D',
-  },
-  unitPillText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#1B3A2D',
-  },
-  unitPillTextActive: {
-    color: '#FFFFFF',
-  },
+  viewAll: { fontSize: 13, color: GOLD, letterSpacing: 0.5 },
+  savedScroll: { paddingHorizontal: 16, gap: 10 },
+  savedThumb: { width: 72, height: 72, borderRadius: 10, overflow: 'hidden' },
+  savedImg: { width: 72, height: 72 },
 
-  // Delete Account
-  deleteLabel: {
-    fontSize: 15,
-    color: '#CC3333',
-    fontWeight: '600',
-  },
-  deleteChevron: {
-    fontSize: 15,
-    color: '#CC3333',
-    fontWeight: '500',
-  },
-
-  // Sign Out
-  signOutButton: {
-    backgroundColor: 'rgba(204,51,51,0.1)',
-    borderRadius: 28,
-    height: 52,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  signOutText: {
-    color: '#CC3333',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-
-  // Version
-  versionText: {
-    color: '#888888',
-    fontSize: 12,
-    textAlign: 'center',
-    marginTop: 20,
-  },
-
-  // Full-screen modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.92)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalClose: {
-    position: 'absolute',
-    top: 56,
-    right: 20,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  modalCloseText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  modalImage: {
-    width: SCREEN_WIDTH - 32,
-    height: SCREEN_WIDTH - 32,
-    borderRadius: 12,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 16,
-    marginTop: 24,
-  },
-  modalActionBtn: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 28,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  modalActionText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
-  },
+  // ── Version ──
+  version: { textAlign: 'center', marginTop: 20, marginBottom: 20, fontSize: 12, color: 'rgba(0,0,0,0.3)' },
 });

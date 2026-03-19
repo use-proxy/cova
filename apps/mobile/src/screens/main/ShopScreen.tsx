@@ -4,376 +4,370 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  FlatList,
+  ScrollView,
   Image,
+  Linking,
+  Alert,
 } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
+import Svg, { Path } from 'react-native-svg';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppStore } from '../../store';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import type { CartItem, Product } from '@cova/shared';
-import TokenBadge from '../../components/TokenBadge';
 
-type ShopTab = 'cart' | 'matched' | 'saved' | 'orders';
+const BG = '#0A1628';
+const GOLD = '#C4A45A';
+const CREAM = '#F5F0E8';
+
+// ── SVG Icons ──
+
+function BagIcon() {
+  return (
+    <Svg width={64} height={64} viewBox="0 0 64 64" fill="none">
+      <Path d="M16 20h32v36c0 2-1.5 4-4 4H20c-2.5 0-4-2-4-4V20z" stroke={GOLD} strokeWidth={2.5} />
+      <Path d="M24 20V16c0-4.4 3.6-8 8-8s8 3.6 8 8v4" stroke={GOLD} strokeWidth={2.5} />
+    </Svg>
+  );
+}
+
+function HeartIcon({ filled = false }: { filled?: boolean }) {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill={filled ? GOLD : 'none'}>
+      <Path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" stroke={GOLD} strokeWidth={2} />
+    </Svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+      <Path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="rgba(0,0,0,0.4)" strokeWidth={2} />
+    </Svg>
+  );
+}
+
+function BookmarkIcon() {
+  return (
+    <Svg width={48} height={48} viewBox="0 0 48 48" fill="none">
+      <Path d="M12 8h24v36l-12-8-12 8V8z" stroke={GOLD} strokeWidth={2} />
+    </Svg>
+  );
+}
+
+function PackageIcon() {
+  return (
+    <Svg width={48} height={48} viewBox="0 0 48 48" fill="none">
+      <Path d="M6 14l18-10 18 10v20l-18 10-18-10V14z" stroke={GOLD} strokeWidth={2} />
+      <Path d="M6 14l18 10 18-10M24 44V24" stroke={GOLD} strokeWidth={2} />
+    </Svg>
+  );
+}
+
+function ChevronRight() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path d="M9 18l6-6-6-6" stroke="rgba(0,0,0,0.3)" strokeWidth={2} />
+    </Svg>
+  );
+}
+
+// ── Helpers ──
+
+function formatDollars(cents: number): string {
+  return `$${(cents / 100).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+}
+
+// ── Tabs ──
+
+type Tab = 'cart' | 'saved' | 'orders';
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'cart', label: 'Cart' },
+  { id: 'saved', label: 'Saved' },
+  { id: 'orders', label: 'Orders' },
+];
+
+// ══════════════════════════════════════════════════
+// Screen
+// ══════════════════════════════════════════════════
 
 export default function ShopScreen() {
-  const [activeTab, setActiveTab] = useState<ShopTab>('cart');
-  const { cartItems, matchedProducts, addToCart, removeFromCart, savedProducts, removeFromSaved } = useAppStore();
+  const insets = useSafeAreaInsets();
+  const [activeTab, setActiveTab] = useState<Tab>('cart');
+  const { cartItems, addToCart, removeFromCart, savedProducts, removeFromSaved } = useAppStore();
 
-  const formatPrice = (price: number) => `$${price.toLocaleString()}`;
+  const cartTotalCents = cartItems.reduce((sum, ci) => sum + ci.product.price * ci.quantity, 0);
 
-  const handleCheckout = () => {
-    cartItems.forEach((item) => {
-      if (item.product.affiliate_url) {
-        WebBrowser.openBrowserAsync(item.product.affiliate_url);
-      }
-    });
+  const handleShopAtRetailer = (url: string) => {
+    if (url) Linking.openURL(url);
   };
 
-  const renderCartItem = ({ item }: { item: CartItem }) => (
-    <View style={styles.card}>
-      <Image source={{ uri: item.product.image_url }} style={styles.cardImage} resizeMode="cover" />
-      <View style={styles.cardInfo}>
-        <Text style={styles.cardName} numberOfLines={2}>{item.product.name}</Text>
-        <Text style={styles.cardRetailer}>{item.product.retailer}</Text>
-        <Text style={styles.cardPrice}>{formatPrice(item.product.price)}</Text>
-        <View style={styles.quantityRow}>
-          <Text style={styles.quantityText}>Qty: {item.quantity}</Text>
-          <TouchableOpacity onPress={() => removeFromCart(item.id)} style={styles.removeButton}>
-            <Text style={styles.removeIcon}>🗑</Text>
+  const handleShopAll = () => {
+    if (cartItems.length === 0) return;
+    Alert.alert(
+      'Opening retailer sites',
+      'You may need to check out separately on each retailer\'s website.',
+      [{ text: 'OK', onPress: () => {
+        const first = cartItems[0]?.product.affiliate_url;
+        if (first) Linking.openURL(first);
+      }}],
+    );
+  };
+
+  const handleRemoveCart = (id: string) => {
+    removeFromCart(id);
+  };
+
+  const handleAddToCartFromSaved = (product: Product) => {
+    addToCart({ id: product.id, product, quantity: 1, added_at: new Date().toISOString() });
+  };
+
+  // ── Cart content ──
+  const renderCartTab = () => {
+    if (cartItems.length === 0) {
+      return (
+        <View style={styles.emptyWrap}>
+          <BagIcon />
+          <Text style={styles.emptyTitle}>Your cart is empty</Text>
+          <Text style={styles.emptySub}>Start designing a room to add products</Text>
+          <TouchableOpacity style={styles.emptyBtn} activeOpacity={0.85}>
+            <Text style={styles.emptyBtnText}>Go to Rooms</Text>
           </TouchableOpacity>
         </View>
-      </View>
-    </View>
-  );
+      );
+    }
 
-  const renderMatchedProduct = ({ item }: { item: Product }) => (
-    <View style={styles.card}>
-      <Image source={{ uri: item.image_url }} style={styles.cardImage} resizeMode="cover" />
-      <View style={styles.cardInfo}>
-        <Text style={styles.cardName} numberOfLines={2}>{item.name}</Text>
-        <Text style={styles.cardRetailer}>{item.retailer}</Text>
-        <Text style={styles.cardPrice}>{formatPrice(item.price)}</Text>
-        <TouchableOpacity
-          style={styles.addToCartButton}
-          onPress={() => addToCart({ id: item.id, product: item, quantity: 1, added_at: new Date().toISOString() })}
-        >
-          <Text style={styles.addToCartText}>Add to Cart</Text>
-        </TouchableOpacity>
-      </View>
+    return (
+      <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+        {cartItems.map((ci) => (
+          <View key={ci.id} style={styles.itemCard}>
+            <Image source={{ uri: ci.product.image_url }} style={styles.itemImage} resizeMode="cover" />
+            <View style={styles.itemInfo}>
+              <Text style={styles.itemName} numberOfLines={2}>{ci.product.name}</Text>
+              <View style={styles.retailerBadge}>
+                <Text style={styles.retailerBadgeText}>{ci.product.retailer}</Text>
+              </View>
+              <Text style={styles.itemPrice}>{formatDollars(ci.product.price)}</Text>
+              <View style={styles.itemActions}>
+                <TouchableOpacity
+                  style={styles.shopRetailerBtn}
+                  onPress={() => handleShopAtRetailer(ci.product.affiliate_url)}
+                >
+                  <Text style={styles.shopRetailerText}>Shop at Retailer</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.trashBtn} onPress={() => handleRemoveCart(ci.id)}>
+                  <TrashIcon />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        ))}
+
+        {/* Cart summary */}
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Subtotal ({cartItems.length} items)</Text>
+            <Text style={styles.summaryValue}>{formatDollars(cartTotalCents)}</Text>
+          </View>
+          <Text style={styles.summaryNote}>Prices and availability from retailer sites</Text>
+          <TouchableOpacity style={styles.shopAllBtn} activeOpacity={0.85} onPress={handleShopAll}>
+            <Text style={styles.shopAllBtnText}>Shop All Items</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    );
+  };
+
+  // ── Saved content ──
+  const renderSavedTab = () => {
+    if (savedProducts.length === 0) {
+      return (
+        <View style={styles.emptyWrap}>
+          <BookmarkIcon />
+          <Text style={styles.emptyTitle}>No saved items</Text>
+          <Text style={styles.emptySub}>Tap the heart on products to save them for later</Text>
+        </View>
+      );
+    }
+
+    return (
+      <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+        {savedProducts.map((p) => (
+          <View key={p.id} style={styles.itemCard}>
+            <Image source={{ uri: p.image_url }} style={styles.itemImage} resizeMode="cover" />
+            <View style={styles.itemInfo}>
+              <View style={styles.savedTitleRow}>
+                <Text style={[styles.itemName, { flex: 1 }]} numberOfLines={2}>{p.name}</Text>
+                <TouchableOpacity onPress={() => removeFromSaved(p.id)}>
+                  <HeartIcon filled />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.retailerBadge}>
+                <Text style={styles.retailerBadgeText}>{p.retailer}</Text>
+              </View>
+              <Text style={styles.itemPrice}>{formatDollars(p.price)}</Text>
+              <TouchableOpacity style={styles.addToCartBtn} onPress={() => handleAddToCartFromSaved(p)}>
+                <Text style={styles.addToCartBtnText}>Add to Cart</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ))}
+      </ScrollView>
+    );
+  };
+
+  // ── Orders content (always Coming Soon in V1) ──
+  const renderOrdersTab = () => (
+    <View style={styles.emptyWrap}>
+      <PackageIcon />
+      <Text style={styles.emptyTitle}>Order History Coming Soon</Text>
+      <Text style={styles.emptySub}>Your purchase history will appear here in a future update.</Text>
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      {/* ── Header ── */}
+      <View style={[styles.header, { paddingTop: 16 }]}>
+        <View style={{ width: 60 }} />
         <Text style={styles.headerTitle}>Shop</Text>
-        <View style={styles.headerRight}>
-          {cartItems.length > 0 && (
-            <View style={styles.cartBadge}>
-              <Text style={styles.cartBadgeText}>{cartItems.length}</Text>
-            </View>
-          )}
-          <TokenBadge />
+        <View style={styles.tokenPill}>
+          <View style={styles.tokenDot} />
+          <Text style={styles.tokenText}>999</Text>
         </View>
       </View>
 
-      {/* Tabs */}
+      {/* ── Tab bar ── */}
       <View style={styles.tabBar}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'cart' && styles.tabActive]}
-          onPress={() => setActiveTab('cart')}
-        >
-          <Text style={[styles.tabText, activeTab === 'cart' && styles.tabTextActive]}>Cart</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'matched' && styles.tabActive]}
-          onPress={() => setActiveTab('matched')}
-        >
-          <Text style={[styles.tabText, activeTab === 'matched' && styles.tabTextActive]}>Matched</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'saved' && styles.tabActive]}
-          onPress={() => setActiveTab('saved')}
-        >
-          <Text style={[styles.tabText, activeTab === 'saved' && styles.tabTextActive]}>Saved</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'orders' && styles.tabActive]}
-          onPress={() => setActiveTab('orders')}
-        >
-          <Text style={[styles.tabText, activeTab === 'orders' && styles.tabTextActive]}>Orders</Text>
-        </TouchableOpacity>
+        {TABS.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <TouchableOpacity
+              key={tab.id}
+              style={styles.tab}
+              activeOpacity={0.7}
+              onPress={() => setActiveTab(tab.id)}
+            >
+              <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{tab.label}</Text>
+              {isActive && <View style={styles.tabIndicator} />}
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
-      {/* Content */}
-      {activeTab === 'cart' && (
-        <>
-          <FlatList
-            data={cartItems}
-            renderItem={renderCartItem}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.listContent}
-            ListEmptyComponent={
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyIcon}>🛒</Text>
-                <Text style={styles.emptyTitle}>Your cart is empty</Text>
-                <Text style={styles.emptySubtext}>Browse matched products to add items</Text>
-              </View>
-            }
-          />
-          {cartItems.length > 0 && (
-            <View style={styles.checkoutBar}>
-              <TouchableOpacity style={styles.checkoutButton} onPress={handleCheckout}>
-                <Text style={styles.checkoutText}>Checkout</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </>
-      )}
-      {activeTab === 'matched' && (
-        <FlatList
-          data={matchedProducts}
-          renderItem={renderMatchedProduct}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>✨</Text>
-              <Text style={styles.emptyTitle}>No matched products yet</Text>
-              <Text style={styles.emptySubtext}>Complete a render to see matched products</Text>
-            </View>
-          }
-        />
-      )}
-      {activeTab === 'saved' && (
-        <FlatList
-          data={savedProducts}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          renderItem={({ item }: { item: Product }) => (
-            <View style={styles.card}>
-              <Image source={{ uri: item.image_url }} style={styles.cardImage} resizeMode="cover" />
-              <View style={styles.cardInfo}>
-                <Text style={styles.cardName} numberOfLines={2}>{item.name}</Text>
-                <Text style={styles.cardRetailer}>{item.retailer}</Text>
-                <Text style={styles.cardPrice}>{formatPrice(item.price)}</Text>
-                <View style={styles.savedBtnRow}>
-                  <TouchableOpacity
-                    style={styles.addToCartButton}
-                    onPress={() => addToCart({ id: item.id, product: item, quantity: 1, added_at: new Date().toISOString() })}
-                  >
-                    <Text style={styles.addToCartText}>Add to Cart</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => removeFromSaved(item.id)} style={styles.removeButton}>
-                    <Text style={styles.removeIcon}>🗑</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          )}
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>♡</Text>
-              <Text style={styles.emptyTitle}>No saved products</Text>
-              <Text style={styles.emptySubtext}>Save products from your renders to see them here</Text>
-            </View>
-          }
-        />
-      )}
-      {activeTab === 'orders' && (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyIcon}>🔒</Text>
-          <Text style={styles.emptyTitle}>Order History Coming Soon</Text>
-          <Text style={styles.emptySubtext}>Your purchase history will appear here in a future update.</Text>
-        </View>
-      )}
+      {/* ── Content ── */}
+      <View style={styles.content}>
+        {activeTab === 'cart' && renderCartTab()}
+        {activeTab === 'saved' && renderSavedTab()}
+        {activeTab === 'orders' && renderOrdersTab()}
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F0E8',
-  },
+  safeArea: { flex: 1, backgroundColor: BG },
+
+  // ── Header ──
   header: {
-    backgroundColor: '#1B3A2D',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+    backgroundColor: BG,
+    paddingBottom: 16, paddingHorizontal: 20,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: 'white',
+    color: 'white', fontSize: 18, letterSpacing: 1, fontWeight: '400',
+    flex: 1, textAlign: 'center',
   },
-  cartBadge: {
-    backgroundColor: '#C47B3C',
-    borderRadius: 12,
-    minWidth: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 8,
+  tokenPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 20,
+    paddingHorizontal: 12, paddingVertical: 6,
   },
-  cartBadgeText: {
-    color: 'white',
-    fontSize: 13,
-    fontWeight: '700',
-  },
+  tokenDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: GOLD },
+  tokenText: { color: 'white', fontSize: 14, fontWeight: '500' },
+
+  // ── Tab bar ──
   tabBar: {
+    backgroundColor: 'white',
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.08)',
   },
   tab: {
-    flex: 1,
-    height: 40,
-    borderRadius: 28,
-    backgroundColor: '#F5F0E8',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(27,58,45,0.15)',
+    flex: 1, height: 48,
+    alignItems: 'center', justifyContent: 'center',
   },
-  tabActive: {
-    backgroundColor: '#1B3A2D',
-    borderColor: '#1B3A2D',
+  tabText: { fontSize: 15, color: 'rgba(0,0,0,0.4)' },
+  tabTextActive: { color: GOLD, fontWeight: '500' },
+  tabIndicator: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    height: 2, backgroundColor: GOLD,
   },
-  tabText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1B3A2D',
+
+  // ── Content ──
+  content: { flex: 1, backgroundColor: CREAM },
+  tabContent: { flex: 1 },
+
+  // ── Empty states ──
+  emptyWrap: {
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 40, minHeight: 400,
   },
-  tabTextActive: {
-    color: 'white',
+  emptyTitle: { fontSize: 20, fontWeight: '400', color: BG, marginTop: 16 },
+  emptySub: { color: 'rgba(0,0,0,0.45)', fontSize: 14, marginTop: 8, textAlign: 'center', paddingHorizontal: 40 },
+  emptyBtn: {
+    marginTop: 24, backgroundColor: GOLD, borderRadius: 24,
+    paddingHorizontal: 32, paddingVertical: 14,
   },
-  listContent: {
-    padding: 16,
-    gap: 12,
-    flexGrow: 1,
+  emptyBtnText: { color: BG, fontSize: 15, fontWeight: '600' },
+
+  // ── Item card ──
+  itemCard: {
+    backgroundColor: 'white', borderRadius: 12, marginBottom: 10,
+    padding: 12, flexDirection: 'row',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2,
   },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    flexDirection: 'row',
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  cardImage: {
-    width: 80,
-    height: 80,
-    margin: 12,
-    borderRadius: 8,
-  },
-  cardInfo: {
-    flex: 1,
-    padding: 12,
-    paddingLeft: 0,
-    justifyContent: 'center',
-  },
-  cardName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1A1A1A',
-    marginBottom: 2,
-  },
-  cardRetailer: {
-    fontSize: 12,
-    color: '#888888',
-    marginBottom: 4,
-  },
-  cardPrice: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#C47B3C',
-    marginBottom: 6,
-  },
-  quantityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  quantityText: {
-    fontSize: 13,
-    color: '#888888',
-    fontWeight: '600',
-  },
-  removeButton: {
-    padding: 4,
-  },
-  removeIcon: {
-    fontSize: 18,
-  },
-  savedBtnRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  addToCartButton: {
-    backgroundColor: '#1B3A2D',
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+  itemImage: { width: 80, height: 80, borderRadius: 8 },
+  itemInfo: { flex: 1, marginLeft: 12 },
+  itemName: { fontSize: 15, fontWeight: '600', color: BG },
+  retailerBadge: {
     alignSelf: 'flex-start',
+    backgroundColor: 'rgba(196,164,90,0.15)', borderRadius: 10,
+    paddingHorizontal: 8, paddingVertical: 3, marginTop: 4,
   },
-  addToCartText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '700',
+  retailerBadgeText: { color: GOLD, fontSize: 11 },
+  itemPrice: { color: GOLD, fontSize: 17, fontWeight: '600', marginTop: 6, marginBottom: 8 },
+  itemActions: { flexDirection: 'row', gap: 8 },
+  shopRetailerBtn: {
+    borderWidth: 1, borderColor: GOLD, borderRadius: 16,
+    paddingHorizontal: 14, paddingVertical: 8,
   },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
+  shopRetailerText: { color: GOLD, fontSize: 12, fontWeight: '500' },
+  trashBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.04)',
+    alignItems: 'center', justifyContent: 'center',
   },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: 16,
+
+  // ── Saved tab ──
+  savedTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  addToCartBtn: {
+    alignSelf: 'flex-start',
+    backgroundColor: GOLD, borderRadius: 16,
+    paddingHorizontal: 14, paddingVertical: 8,
   },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1B3A2D',
-    marginBottom: 4,
+  addToCartBtnText: { color: BG, fontSize: 12, fontWeight: '500' },
+
+  // ── Summary ──
+  summaryCard: {
+    backgroundColor: 'white', borderRadius: 12, padding: 16, marginTop: 16,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2,
   },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#888888',
-    textAlign: 'center',
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  summaryLabel: { color: 'rgba(0,0,0,0.5)', fontSize: 14 },
+  summaryValue: { color: BG, fontSize: 14, fontWeight: '500' },
+  summaryNote: { color: 'rgba(0,0,0,0.4)', fontSize: 12, fontStyle: 'italic', marginBottom: 12 },
+  shopAllBtn: {
+    width: '100%', backgroundColor: GOLD, borderRadius: 24,
+    paddingVertical: 14, alignItems: 'center',
   },
-  checkoutBar: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    paddingBottom: 24,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.06)',
-  },
-  checkoutButton: {
-    backgroundColor: '#C47B3C',
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkoutText: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '700',
-  },
+  shopAllBtnText: { color: BG, fontSize: 15, fontWeight: '600' },
 });

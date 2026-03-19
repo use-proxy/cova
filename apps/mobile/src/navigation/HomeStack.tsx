@@ -4,6 +4,7 @@ import HomeScreen from '../screens/main/HomeScreen';
 import NewRoomScreen from '../screens/main/NewRoomScreen';
 import TokenShopScreen from '../screens/main/TokenShopScreen';
 import TokenHistoryScreen from '../screens/main/TokenHistoryScreen';
+import RenderGalleryScreen from '../screens/main/RenderGalleryScreen';
 import RoomNavigator from './RoomNavigator';
 import type { RoomStackParamList } from './RoomNavigator';
 
@@ -13,6 +14,7 @@ export type HomeStackParamList = {
   Room: { initialRoute?: keyof RoomStackParamList; room_id?: string };
   TokenShop: undefined;
   TokenHistory: undefined;
+  RenderGallery: undefined;
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -30,6 +32,7 @@ export default function HomeStack({ initialRouteName = 'Home' }: { initialRouteN
       <Stack.Screen name="Room" component={RoomNavigatorWrapper as any} />
       <Stack.Screen name="TokenShop" component={TokenShopScreen} />
       <Stack.Screen name="TokenHistory" component={TokenHistoryScreen} />
+      <Stack.Screen name="RenderGallery" component={RenderGalleryScreen} />
     </Stack.Navigator>
   );
 }

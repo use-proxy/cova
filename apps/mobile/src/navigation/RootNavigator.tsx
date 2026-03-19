@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { NavigationContainer, NavigationContainerRef, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { useAppStore } from '../store';
 import { supabase } from '../lib/supabase';
@@ -43,11 +43,19 @@ export default function RootNavigator() {
   }, [user]);
 
   if (isLoading) {
-    return <View style={styles.splash} />;
+    return (
+      <View style={styles.splash}>
+        <ActivityIndicator size="large" color="#C4A45A" />
+      </View>
+    );
   }
 
   if (user && !checkedRooms) {
-    return <View style={styles.splash} />;
+    return (
+      <View style={styles.splash}>
+        <ActivityIndicator size="large" color="#C4A45A" />
+      </View>
+    );
   }
 
   return (
@@ -60,6 +68,8 @@ export default function RootNavigator() {
 const styles = StyleSheet.create({
   splash: {
     flex: 1,
-    backgroundColor: '#1B3A2D',
+    backgroundColor: '#0A1628',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

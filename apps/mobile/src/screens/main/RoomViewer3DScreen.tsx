@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, Suspense } from 'react';
+import React, { useState, useRef, useCallback, Suspense, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,13 +10,16 @@ import {
   PanResponder,
   Animated,
   Dimensions,
+  FlatList,
+  Modal,
 } from 'react-native';
 import * as THREE from 'three';
 import * as MediaLibrary from 'expo-media-library';
 import ViewShot, { captureRef } from 'react-native-view-shot';
 import { Canvas } from '@react-three/fiber/native';
 import { EffectComposer, SSAO } from '@react-three/postprocessing';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Path, Circle, Rect, Polygon, Line } from 'react-native-svg';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RoomStackParamList } from '../../navigation/RoomNavigator';
 import { BoxRoom } from '../../components/3d/BoxRoom';
@@ -24,7 +27,7 @@ import { SceneLighting } from '../../components/3d/SceneLighting';
 import { FurniturePiece } from '../../components/3d/FurniturePiece';
 import { CameraController } from '../../components/3d/CameraController';
 import type { CameraControlState } from '../../components/3d/CameraController';
-import type { StyleName, RoomDimensions, FurniturePiece as FurniturePieceType, FurnitureCatalogItem } from '@cova/shared';
+import type { StyleName, RoomDimensions, FurniturePiece as FurniturePieceType, FurnitureCatalogItem, FurnitureCategory } from '@cova/shared';
 import { FURNITURE_CATALOG, STYLE_COLORS, getFurnitureForRoom } from '../../data/furnitureCatalog';
 import { useAppStore } from '../../store';
 
@@ -58,6 +61,80 @@ const DEFAULT_DIMENSIONS: RoomDimensions = {
 
 const MAX_UNDO_HISTORY = 10;
 
+const CATALOG_CATEGORIES: { key: FurnitureCategory | 'all'; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'seating', label: 'Seating' },
+  { key: 'tables', label: 'Tables' },
+  { key: 'storage', label: 'Storage' },
+  { key: 'lighting', label: 'Lighting' },
+  { key: 'decor', label: 'Decor' },
+  { key: 'plants', label: 'Plants' },
+];
+
+// ── SVG Icon Components ──────────────────────────
+
+function BackIcon() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path d="M19 12H5M12 19l-7-7 7-7" stroke="white" strokeWidth={2} />
+    </Svg>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 5v14M5 12h14" stroke="white" strokeWidth={2.5} />
+    </Svg>
+  );
+}
+
+function RotateLeftIcon() {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <Path d="M3 12a9 9 0 019-9c2.52 0 4.93 1 6.74 2.74L21 8" stroke="white" strokeWidth={2} />
+      <Path d="M21 3v5h-5" stroke="white" strokeWidth={2} />
+    </Svg>
+  );
+}
+
+function RotateRightIcon() {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <Path d="M21 12a9 9 0 01-9 9c-2.52 0-4.93-1-6.74-2.74L3 16" stroke="white" strokeWidth={2} />
+      <Path d="M3 21v-5h5" stroke="white" strokeWidth={2} />
+    </Svg>
+  );
+}
+
+function DeleteIcon() {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <Path d="M3 6h18" stroke="#ff6464" strokeWidth={2} />
+      <Path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" stroke="#ff6464" strokeWidth={2} />
+    </Svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <Path d="M20 6L9 17l-5-5" stroke="#C4A45A" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+function UndoIcon() {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+      <Path d="M3 12a9 9 0 019-9c2.52 0 4.93 1 6.74 2.74L21 8" stroke="#C4A45A" strokeWidth={2} />
+      <Path d="M21 3v5h-5" stroke="#C4A45A" strokeWidth={2} />
+    </Svg>
+  );
+}
+
+// ── Helpers ──────────────────────────────────────
+
 function buildDefaultFurniture(style: StyleName): FurniturePieceType[] {
   const equalBlend = { coastal: 0.2, japandi: 0.2, bohemian: 0.2, mid_century: 0.2, minimalist: 0.2 };
   const items = getFurnitureForRoom('living_room', { ...equalBlend, [style]: 1.0 });
@@ -81,6 +158,8 @@ function buildDefaultFurniture(style: StyleName): FurniturePieceType[] {
 function cloneFurniture(arr: FurniturePieceType[]): FurniturePieceType[] {
   return arr.map((f) => ({ ...f, position: { ...f.position } }));
 }
+
+// ── Error boundary for 3D ────────────────────────
 
 class ThreeDErrorBoundary extends React.Component<
   { children: React.ReactNode; onError: () => void },
@@ -106,7 +185,11 @@ class ThreeDErrorBoundary extends React.Component<
   }
 }
 
+// ── Main Component ──────────────────────────────
+
 export default function RoomViewer3DScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
+
   const [activeStyle, setActiveStyle] = useState<StyleName>('japandi');
   const [sceneKey, setSceneKey] = useState(0);
   const [errorCount, setErrorCount] = useState(0);
@@ -115,12 +198,14 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
     () => buildDefaultFurniture('japandi'),
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [forceUpdate, setForceUpdate] = useState(0);
+  const [, setForceUpdate] = useState(0);
   const [actionHistory, setActionHistory] = useState<FurniturePieceType[][]>([]);
   const [productInfoItem, setProductInfoItem] = useState<FurnitureCatalogItem | null>(null);
   const [show2D, setShow2D] = useState(false);
-  const viewShotRef = useRef<ViewShot>(null);
+  const [showCatalog, setShowCatalog] = useState(false);
+  const [catalogCategory, setCatalogCategory] = useState<FurnitureCategory | 'all'>('all');
 
+  const viewShotRef = useRef<ViewShot>(null);
   const selectedIdRef = useRef<string | null>(null);
   const isDraggingRef = useRef(false);
   const furnitureRef = useRef(placedFurniture);
@@ -289,6 +374,8 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
     }
   }, [updateSelectedId]);
 
+  // ── Actions ──
+
   const handleSave = async () => {
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
@@ -348,7 +435,6 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
       Alert.alert('Please sign in', 'You must be signed in to render.');
       return;
     }
-
     setIsRendering(true);
     try {
       const uri = await captureRef(viewShotRef, { format: 'jpg', quality: 0.9 });
@@ -361,10 +447,42 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
     }
   };
 
+  const handleAddFurniture = useCallback((item: FurnitureCatalogItem) => {
+    pushHistory();
+    const newPiece: FurniturePieceType = {
+      id: `piece-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      catalog_id: item.id,
+      name: item.name,
+      category: item.category,
+      glb_path: item.glb_path,
+      position: { x: 0, y: 0 },
+      rotation_y: 0,
+      scale: 1,
+      color_override: null,
+      width: item.width,
+      depth: item.depth,
+      height: item.height,
+    };
+    setPlacedFurniture((prev) => [...prev, newPiece]);
+    setShowCatalog(false);
+  }, [pushHistory]);
+
   const findCatalogItem = (catalogId: string) =>
     FURNITURE_CATALOG.find((c) => c.id === catalogId);
 
   const ceilingColor = STYLE_COLORS[activeStyle]?.ceiling ?? '#F5F0E8';
+
+  // ── Catalog data ──
+
+  const catalogItems = useMemo(() => {
+    const roomType = currentRoom?.room_type ?? 'living_room';
+    const blend = currentRoom?.style_blend ?? { coastal: 0.2, japandi: 0.2, bohemian: 0.2, mid_century: 0.2, minimalist: 0.2 };
+    const all = getFurnitureForRoom(roomType, blend);
+    if (catalogCategory === 'all') return all;
+    return all.filter((item) => item.category === catalogCategory);
+  }, [currentRoom, catalogCategory]);
+
+  // ── 2D floor plan dimensions ──
 
   const roomW = DEFAULT_DIMENSIONS.width;
   const roomD = DEFAULT_DIMENSIONS.depth;
@@ -373,18 +491,21 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
   const floorContainerH = floorContainerW / floorAspect;
   const floorColor = STYLE_COLORS[activeStyle]?.floor ?? '#C8B89A';
 
+  // ── Selected piece data ──
+
+  const selectedPiece = selectedId ? placedFurniture.find((p) => p.id === selectedId) : undefined;
+  const selectedCatalog = selectedPiece ? findCatalogItem(selectedPiece.catalog_id) : undefined;
+  const colorOptions = selectedCatalog?.colors ?? [];
+
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: ceilingColor }]}>
+    <View style={[styles.container, { backgroundColor: ceilingColor }]}>
+      {/* ── 3D Canvas / 2D Floor Plan ── */}
       {show2D ? (
         <View style={styles.floorPlanWrapper}>
           <View
             style={[
               styles.floorPlanRoom,
-              {
-                width: floorContainerW,
-                height: floorContainerH,
-                backgroundColor: floorColor,
-              },
+              { width: floorContainerW, height: floorContainerH, backgroundColor: floorColor },
             ]}
           >
             {placedFurniture.map((piece) => {
@@ -397,12 +518,7 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
                   key={piece.id}
                   style={[
                     styles.floorPlanPiece,
-                    {
-                      left: screenX - pieceW / 2,
-                      top: screenY - pieceH / 2,
-                      width: pieceW,
-                      height: pieceH,
-                    },
+                    { left: screenX - pieceW / 2, top: screenY - pieceH / 2, width: pieceW, height: pieceH },
                   ]}
                 >
                   <Text style={styles.floorPlanPieceLabel} numberOfLines={1}>{piece.name}</Text>
@@ -412,137 +528,195 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
           </View>
         </View>
       ) : (
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: ceilingColor }]} {...panResponder.panHandlers}>
-        <ViewShot ref={viewShotRef} style={styles.canvasContainer}>
-          <ThreeDErrorBoundary onError={handleError}>
-            <Canvas
-              key={sceneKey}
-              style={styles.canvas}
-              gl={{
-                powerPreference: 'default',
-                antialias: false,
-                depth: true,
-                stencil: false,
-                alpha: false,
-                preserveDrawingBuffer: true,
-              }}
-              camera={{ fov: 75, near: 0.1, far: 50 }}
-              shadows
-              onCreated={({ gl }) => {
-                gl.setClearColor(ceilingColor, 1);
-                gl.shadowMap.enabled = true;
-                gl.shadowMap.type = THREE.PCFSoftShadowMap;
-              }}
-              onPointerMissed={handlePointerMissed}
-            >
-              <color attach="background" args={[ceilingColor]} />
-              <CameraController controlRef={controlRef} />
-              <Suspense fallback={null}>
-                <SceneLighting style={activeStyle} />
-                <BoxRoom style={activeStyle} dimensions={DEFAULT_DIMENSIONS} />
-                {placedFurniture.map((item) => {
-                  const catalog = findCatalogItem(item.catalog_id);
-                  if (!catalog) return null;
-                  return (
-                    <FurniturePiece
-                      key={item.id}
-                      piece={item}
-                      catalog={catalog}
-                      isSelected={selectedId === item.id}
-                      onSelect={handleSelectId}
-                      onDragEnd={updateFurniturePosition}
-                      onDragStart={handleDragStart}
-                      onDragStop={handleDragStop}
-                      onLongPress={handleLongPress}
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: ceilingColor }]} {...panResponder.panHandlers}>
+          <ViewShot ref={viewShotRef} style={styles.canvasContainer}>
+            <ThreeDErrorBoundary onError={handleError}>
+              <Canvas
+                key={sceneKey}
+                style={styles.canvas}
+                gl={{
+                  powerPreference: 'default',
+                  antialias: false,
+                  depth: true,
+                  stencil: false,
+                  alpha: false,
+                  preserveDrawingBuffer: true,
+                }}
+                camera={{ fov: 75, near: 0.1, far: 50 }}
+                shadows
+                onCreated={({ gl }) => {
+                  gl.setClearColor(ceilingColor, 1);
+                  gl.shadowMap.enabled = true;
+                  gl.shadowMap.type = THREE.PCFSoftShadowMap;
+                }}
+                onPointerMissed={handlePointerMissed}
+              >
+                <color attach="background" args={[ceilingColor]} />
+                <CameraController controlRef={controlRef} />
+                <Suspense fallback={null}>
+                  <SceneLighting style={activeStyle} />
+                  <BoxRoom style={activeStyle} dimensions={DEFAULT_DIMENSIONS} />
+                  {placedFurniture.map((item) => {
+                    const catalog = findCatalogItem(item.catalog_id);
+                    if (!catalog) return null;
+                    return (
+                      <FurniturePiece
+                        key={item.id}
+                        piece={item}
+                        catalog={catalog}
+                        isSelected={selectedId === item.id}
+                        onSelect={handleSelectId}
+                        onDragEnd={updateFurniturePosition}
+                        onDragStart={handleDragStart}
+                        onDragStop={handleDragStop}
+                        onLongPress={handleLongPress}
+                      />
+                    );
+                  })}
+                  <EffectComposer>
+                    <SSAO
+                      radius={0.05}
+                      intensity={15}
+                      luminanceInfluence={0.6}
+                      worldDistanceThreshold={20}
+                      worldDistanceFalloff={5}
+                      worldProximityThreshold={0.4}
+                      worldProximityFalloff={0.1}
                     />
-                  );
-                })}
-                <EffectComposer>
-                  <SSAO
-                  radius={0.05}
-                  intensity={15}
-                  luminanceInfluence={0.6}
-                  worldDistanceThreshold={20}
-                  worldDistanceFalloff={5}
-                  worldProximityThreshold={0.4}
-                  worldProximityFalloff={0.1}
-                />
-                </EffectComposer>
-              </Suspense>
-            </Canvas>
-          </ThreeDErrorBoundary>
-        </ViewShot>
-      </View>
+                  </EffectComposer>
+                </Suspense>
+              </Canvas>
+            </ThreeDErrorBoundary>
+          </ViewShot>
+        </View>
       )}
+
+      {/* ── HUD Overlay ── */}
+
+      {/* Back button */}
+      <TouchableOpacity
+        style={[styles.backBtn, { top: insets.top + 16 }]}
+        onPress={() => navigation.goBack()}
+        activeOpacity={0.8}
+      >
+        <BackIcon />
+      </TouchableOpacity>
 
       {/* 2D/3D toggle */}
       <TouchableOpacity
-        style={[styles.toggle2DBtn, show2D && styles.toggle2DBtnActive]}
+        style={[
+          styles.toggle2DBtn,
+          { top: insets.top + 60 },
+          show2D && styles.toggle2DBtnActive,
+        ]}
         onPress={() => setShow2D((v) => !v)}
       >
-        <Text style={styles.toggle2DBtnText}>{show2D ? '3D' : '2D'}</Text>
+        <Text style={[styles.toggle2DBtnText, show2D && styles.toggle2DBtnTextActive]}>
+          {show2D ? '3D' : '2D'}
+        </Text>
       </TouchableOpacity>
-
-      {/* Style chips */}
-      <View style={styles.chipRow} pointerEvents="box-none">
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {STYLES.map((s) => (
-            <TouchableOpacity
-              key={s.key}
-              style={[styles.chip, activeStyle === s.key && styles.chipActive]}
-              onPress={() => handleStyleChange(s.key)}
-            >
-              <Text style={[styles.chipLabel, activeStyle === s.key && styles.chipLabelActive]}>
-                {s.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
 
       {/* Undo button */}
       {actionHistory.length > 0 && (
-        <TouchableOpacity style={styles.undoBtn} onPress={handleUndo}>
-          <Text style={styles.undoBtnText}>↩ Undo</Text>
+        <TouchableOpacity
+          style={[styles.undoBtn, { top: insets.top + 100 }]}
+          onPress={handleUndo}
+        >
+          <UndoIcon />
+          <Text style={styles.undoBtnText}>Undo</Text>
         </TouchableOpacity>
       )}
 
-      {/* Selected piece panel */}
-      {selectedId && (() => {
-        const selectedPiece = placedFurniture.find((p) => p.id === selectedId);
-        const selectedCatalog = selectedPiece ? findCatalogItem(selectedPiece.catalog_id) : undefined;
-        const colorOptions = selectedCatalog?.colors ?? [];
-        return (
-        <View style={styles.selectedPanel}>
-          <Text style={styles.selectedPanelText}>Tap & drag to move</Text>
+      {/* Style chips row */}
+      <View style={[styles.chipRow, { top: insets.top + 16 }]} pointerEvents="box-none">
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 56 }}>
+          {STYLES.map((s) => {
+            const isActive = activeStyle === s.key;
+            return (
+              <TouchableOpacity
+                key={s.key}
+                style={[styles.chip, isActive && styles.chipActive]}
+                onPress={() => handleStyleChange(s.key)}
+              >
+                <Text style={[styles.chipLabel, isActive && styles.chipLabelActive]}>
+                  {s.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* Add furniture FAB */}
+      {!selectedId && (
+        <TouchableOpacity
+          style={styles.addFab}
+          onPress={() => setShowCatalog(true)}
+          activeOpacity={0.85}
+        >
+          <PlusIcon />
+        </TouchableOpacity>
+      )}
+
+      {/* Generate Render button */}
+      {!selectedId && !showCatalog && (
+        <View style={styles.renderBtnRow} pointerEvents="box-none">
+          <TouchableOpacity
+            style={[styles.renderBtn, isRendering && styles.btnDisabled]}
+            onPress={handleAIRender}
+            disabled={isRendering}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.renderBtnText}>Generate Render</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* ── Furniture Selection Panel ── */}
+      {selectedId && (
+        <View style={styles.selectionPanel}>
+          {/* Drag handle */}
+          <View style={styles.panelHandleRow}>
+            <View style={styles.panelHandle} />
+          </View>
+
+          {/* Color swatches */}
           {colorOptions.length > 0 && (
-            <View style={styles.colorSwatchRow}>
-              {colorOptions.map((color) => (
-                <TouchableOpacity
-                  key={color}
-                  style={[
-                    styles.colorSwatch,
-                    { backgroundColor: color },
-                    selectedPiece?.color_override === color && styles.colorSwatchSelected,
-                  ]}
-                  onPress={() => {
-                    pushHistory();
-                    setPlacedFurniture((prev) =>
-                      prev.map((item) =>
-                        item.id === selectedId
-                          ? { ...item, color_override: item.color_override === color ? null : color }
-                          : item,
-                      ),
-                    );
-                    setForceUpdate((p) => p + 1);
-                  }}
-                />
-              ))}
-            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.swatchScroll}>
+              <View style={styles.swatchRow}>
+                {colorOptions.map((color) => {
+                  const isActive = selectedPiece?.color_override === color;
+                  return (
+                    <TouchableOpacity
+                      key={color}
+                      style={[
+                        styles.colorSwatch,
+                        { backgroundColor: color },
+                        isActive && styles.colorSwatchSelected,
+                      ]}
+                      onPress={() => {
+                        pushHistory();
+                        setPlacedFurniture((prev) =>
+                          prev.map((item) =>
+                            item.id === selectedId
+                              ? { ...item, color_override: item.color_override === color ? null : color }
+                              : item,
+                          ),
+                        );
+                        setForceUpdate((p) => p + 1);
+                      }}
+                    />
+                  );
+                })}
+              </View>
+            </ScrollView>
           )}
-          <View style={styles.selectedPanelActions}>
+
+          {/* Action buttons */}
+          <View style={styles.actionBtnRow}>
+            {/* Rotate Left */}
             <TouchableOpacity
-              style={styles.rotateBtn}
+              style={styles.actionCircleBtn}
               onPress={() => {
                 pushHistory();
                 setPlacedFurniture((prev) =>
@@ -555,10 +729,13 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
                 setForceUpdate((p) => p + 1);
               }}
             >
-              <Text style={styles.rotateBtnText}>{'↺'}</Text>
+              <RotateLeftIcon />
+              <Text style={styles.actionBtnLabel}>Rotate</Text>
             </TouchableOpacity>
+
+            {/* Rotate Right */}
             <TouchableOpacity
-              style={styles.rotateBtn}
+              style={styles.actionCircleBtn}
               onPress={() => {
                 pushHistory();
                 setPlacedFurniture((prev) =>
@@ -571,47 +748,58 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
                 setForceUpdate((p) => p + 1);
               }}
             >
-              <Text style={styles.rotateBtnText}>{'↻'}</Text>
+              <RotateRightIcon />
+              <Text style={styles.actionBtnLabel}>Rotate</Text>
             </TouchableOpacity>
+
+            {/* Delete */}
             <TouchableOpacity
-              style={styles.removeBtn}
+              style={[styles.actionCircleBtn, styles.actionCircleBtnDelete]}
               onPress={() => {
-                pushHistory();
-                setPlacedFurniture((prev) => prev.filter((i) => i.id !== selectedId));
-                updateSelectedId(null);
+                Alert.alert('Delete Furniture', 'Remove this piece from the room?', [
+                  { text: 'Cancel' },
+                  {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: () => {
+                      pushHistory();
+                      setPlacedFurniture((prev) => prev.filter((i) => i.id !== selectedId));
+                      updateSelectedId(null);
+                    },
+                  },
+                ]);
               }}
             >
-              <Text style={styles.removeBtnText}>Delete</Text>
+              <DeleteIcon />
+              <Text style={styles.actionBtnLabelDelete}>Delete</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.doneBtn} onPress={() => updateSelectedId(null)}>
-              <Text style={styles.doneBtnText}>Done</Text>
+
+            {/* Done */}
+            <TouchableOpacity
+              style={styles.actionCircleBtn}
+              onPress={() => updateSelectedId(null)}
+            >
+              <CheckIcon />
+              <Text style={styles.actionBtnLabelGold}>Done</Text>
             </TouchableOpacity>
           </View>
         </View>
-        );
-      })()}
+      )}
 
-      {/* Action bar */}
-      <View style={styles.actionBar} pointerEvents="box-none">
-        <TouchableOpacity style={styles.btnSave} onPress={handleSave}>
-          <Text style={styles.btnSaveText}>Save</Text>
+      {/* ── Bottom action bar (Save / Reset) ── */}
+      <View style={styles.bottomBar} pointerEvents="box-none">
+        <TouchableOpacity style={styles.bottomBarBtn} onPress={handleSave}>
+          <Text style={styles.bottomBarBtnText}>Save</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.btnRender, isRendering && styles.btnDisabled]}
-          onPress={handleAIRender}
-          disabled={isRendering}
-        >
-          <Text style={styles.btnRenderText}>Render Room</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.btnReset} onPress={handleReset}>
-          <Text style={styles.btnResetText}>Reset</Text>
+        <TouchableOpacity style={styles.bottomBarBtn} onPress={handleReset}>
+          <Text style={styles.bottomBarBtnText}>Reset</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Rendering overlay */}
+      {/* ── Rendering overlay ── */}
       {isRendering && (
         <View style={styles.renderingOverlay}>
-          <ActivityIndicator size="large" color="#C47B3C" />
+          <ActivityIndicator size="large" color="#C4A45A" />
           <Text style={styles.renderingText}>Generating your design...</Text>
           <Text style={styles.renderingStyle}>
             {STYLES.find((s) => s.key === activeStyle)?.label ?? activeStyle}
@@ -619,7 +807,7 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
         </View>
       )}
 
-      {/* Product info bottom sheet */}
+      {/* ── Product info bottom sheet ── */}
       {productInfoItem && (
         <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
           <TouchableOpacity
@@ -628,10 +816,7 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
             onPress={hideProductInfo}
           />
           <Animated.View
-            style={[
-              styles.productSheet,
-              { transform: [{ translateY: productSheetAnim }] },
-            ]}
+            style={[styles.productSheet, { transform: [{ translateY: productSheetAnim }] }]}
           >
             <View style={styles.sheetHeader}>
               <View style={styles.sheetDragHandle} />
@@ -670,10 +855,7 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
                 <Text style={styles.sheetColorLabel}>Colors</Text>
                 <View style={styles.colorSwatches}>
                   {productInfoItem.colors.map((color) => (
-                    <View
-                      key={color}
-                      style={[styles.colorSwatch, { backgroundColor: color }]}
-                    />
+                    <View key={color} style={[styles.sheetColorSwatch, { backgroundColor: color }]} />
                   ))}
                 </View>
               </View>
@@ -681,65 +863,317 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
           </Animated.View>
         </View>
       )}
-    </SafeAreaView>
+
+      {/* ── Add Furniture Catalog Modal ── */}
+      <Modal
+        visible={showCatalog}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowCatalog(false)}
+      >
+        <View style={styles.catalogOverlay}>
+          <TouchableOpacity style={styles.catalogDismiss} onPress={() => setShowCatalog(false)} />
+          <View style={styles.catalogSheet}>
+            <View style={styles.catalogHeader}>
+              <View style={styles.panelHandle} />
+              <Text style={styles.catalogTitle}>Add Furniture</Text>
+              <TouchableOpacity onPress={() => setShowCatalog(false)}>
+                <Text style={styles.catalogCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Category tabs */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catalogTabScroll}>
+              {CATALOG_CATEGORIES.map((cat) => {
+                const isActive = catalogCategory === cat.key;
+                return (
+                  <TouchableOpacity
+                    key={cat.key}
+                    style={[styles.catalogTab, isActive && styles.catalogTabActive]}
+                    onPress={() => setCatalogCategory(cat.key)}
+                  >
+                    <Text style={[styles.catalogTabText, isActive && styles.catalogTabTextActive]}>
+                      {cat.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            {/* Items list */}
+            <FlatList
+              data={catalogItems}
+              keyExtractor={(item) => item.id}
+              numColumns={2}
+              contentContainerStyle={styles.catalogList}
+              columnWrapperStyle={styles.catalogRow}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.catalogItem}
+                  onPress={() => handleAddFurniture(item)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.catalogItemIcon}>
+                    <Text style={styles.catalogItemEmoji}>🪑</Text>
+                  </View>
+                  <Text style={styles.catalogItemName} numberOfLines={2}>{item.name}</Text>
+                  <Text style={styles.catalogItemMeta}>
+                    {PRICE_RANGE_LABELS[item.price_range] ?? item.price_range}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={
+                <View style={styles.catalogEmpty}>
+                  <Text style={styles.catalogEmptyText}>No items in this category</Text>
+                </View>
+              }
+            />
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 }
 
+// ── Styles ──────────────────────────────────────
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  canvasContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
+  canvasContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   canvas: { flex: 1 },
+  errorFallback: { flex: 1, backgroundColor: '#1a1a2e', justifyContent: 'center', alignItems: 'center' },
+  errorText: { color: '#C4A45A', fontSize: 16 },
+
+  // ── Back button ──
+  backBtn: {
+    position: 'absolute',
+    left: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(10,22,40,0.7)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 20,
+  },
+
+  // ── 2D/3D toggle ──
+  toggle2DBtn: {
+    position: 'absolute',
+    right: 16,
+    backgroundColor: 'rgba(10,22,40,0.7)',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    zIndex: 20,
+  },
+  toggle2DBtnActive: {
+    backgroundColor: '#C4A45A',
+    borderColor: '#C4A45A',
+  },
+  toggle2DBtnText: {
+    color: 'white',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  toggle2DBtnTextActive: {
+    color: '#0A1628',
+  },
+
+  // ── Undo ──
+  undoBtn: {
+    position: 'absolute',
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(10,22,40,0.7)',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    zIndex: 20,
+  },
+  undoBtnText: {
+    color: '#C4A45A',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+
+  // ── Style chips ──
   chipRow: {
     position: 'absolute',
-    top: 0,
     left: 0,
     right: 0,
-    paddingTop: 52,
-    paddingHorizontal: 12,
-    paddingBottom: 10,
-    backgroundColor: 'rgba(27,58,45,0.55)',
     zIndex: 10,
   },
   chip: {
+    borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.2)',
     marginRight: 8,
-    backgroundColor: 'rgba(27,58,45,0.6)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   chipActive: {
-    borderColor: '#C47B3C',
-    backgroundColor: 'rgba(196,123,60,0.15)',
+    backgroundColor: '#C4A45A',
+    borderColor: '#C4A45A',
   },
   chipLabel: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.6)',
     fontWeight: '500',
+    color: 'rgba(255,255,255,0.7)',
   },
-  chipLabelActive: { color: '#C47B3C' },
+  chipLabelActive: {
+    color: '#0A1628',
+  },
 
-  // 2D floor plan
-  floorPlanWrapper: {
-    flex: 1,
+  // ── Add furniture FAB ──
+  addFab: {
+    position: 'absolute',
+    bottom: 120,
+    right: 20,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#C4A45A',
+    alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+
+  // ── Render button ──
+  renderBtnRow: {
+    position: 'absolute',
+    bottom: 120,
+    left: 0,
+    right: 80,
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  renderBtn: {
+    backgroundColor: '#C4A45A',
+    borderRadius: 24,
+    paddingHorizontal: 28,
+    paddingVertical: 13,
+  },
+  renderBtnText: {
+    color: '#0A1628',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  btnDisabled: { opacity: 0.5 },
+
+  // ── Selection panel ──
+  selectionPanel: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(10,22,40,0.92)',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 40,
+    zIndex: 30,
+  },
+  panelHandleRow: {
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  panelHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+  },
+  swatchScroll: {
+    marginBottom: 16,
+  },
+  swatchRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  colorSwatch: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  colorSwatchSelected: {
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  actionBtnRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  actionCircleBtn: {
     alignItems: 'center',
   },
-  floorPlanRoom: {
-    borderWidth: 2,
-    borderColor: '#1B3A2D',
-    borderRadius: 4,
+  actionCircleBtnDelete: {},
+  actionBtnLabel: {
+    fontSize: 11,
+    color: 'white',
+    marginTop: 6,
   },
+  actionBtnLabelDelete: {
+    fontSize: 11,
+    color: '#ff6464',
+    marginTop: 6,
+  },
+  actionBtnLabelGold: {
+    fontSize: 11,
+    color: '#C4A45A',
+    marginTop: 6,
+  },
+
+  // ── Bottom bar ──
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 32,
+    backgroundColor: 'rgba(10,22,40,0.95)',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.1)',
+    zIndex: 10,
+  },
+  bottomBarBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  bottomBarBtnText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+
+  // ── 2D floor plan ──
+  floorPlanWrapper: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  floorPlanRoom: { borderWidth: 2, borderColor: '#1B3A2D', borderRadius: 4 },
   floorPlanPiece: {
     position: 'absolute',
-    backgroundColor: '#C47B3C',
+    backgroundColor: '#C4A45A',
     opacity: 0.7,
     borderRadius: 4,
     justifyContent: 'center',
@@ -753,178 +1187,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 1,
   },
-  toggle2DBtn: {
-    position: 'absolute',
-    top: 100,
-    right: 16,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 16,
-    zIndex: 20,
-  },
-  toggle2DBtnActive: {
-    backgroundColor: '#C47B3C',
-  },
-  toggle2DBtnText: {
-    color: 'white',
-    fontSize: 13,
-    fontWeight: '700',
-  },
 
-  // Undo
-  undoBtn: {
-    position: 'absolute',
-    top: 140,
-    right: 16,
-    backgroundColor: 'rgba(27,58,45,0.85)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: '#C47B3C',
-    zIndex: 10,
-  },
-  undoBtnText: {
-    color: '#C47B3C',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-
-  actionBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    padding: 12,
-    paddingBottom: 28,
-    gap: 10,
-    backgroundColor: 'rgba(27,58,45,0.65)',
-    zIndex: 10,
-  },
-  btnSave: {
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    borderRadius: 28,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  btnSaveText: { color: '#FFFFFF', fontWeight: '600', fontSize: 14 },
-  btnRender: {
-    flex: 1,
-    backgroundColor: '#C47B3C',
-    borderRadius: 28,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  btnRenderText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
-  btnReset: {
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    borderRadius: 28,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  btnResetText: { color: '#FFFFFF', fontWeight: '600', fontSize: 14 },
-  btnDisabled: { opacity: 0.5 },
-
-  selectedPanel: {
-    position: 'absolute',
-    bottom: 90,
-    left: 16,
-    right: 16,
-    backgroundColor: 'rgba(27,58,45,0.9)',
-    borderRadius: 16,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    zIndex: 10,
-  },
-  selectedPanelText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    flex: 1,
-    marginRight: 12,
-  },
-  colorSwatchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 10,
-    paddingHorizontal: 4,
-  },
-  colorSwatch: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  colorSwatchSelected: {
-    borderColor: '#C47B3C',
-    borderWidth: 3,
-  },
-  selectedPanelActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  rotateBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(196,123,60,0.2)',
-    borderWidth: 1.5,
-    borderColor: '#C47B3C',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rotateBtnText: {
-    color: '#C47B3C',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  doneBtn: {
-    backgroundColor: 'rgba(196,123,60,0.15)',
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderWidth: 1.5,
-    borderColor: '#C47B3C',
-  },
-  doneBtnText: {
-    color: '#C47B3C',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  removeBtn: {
-    backgroundColor: 'rgba(255,80,80,0.2)',
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255,80,80,0.5)',
-  },
-  removeBtnText: {
-    color: '#FF6B6B',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  errorFallback: {
-    flex: 1,
-    backgroundColor: '#1B3A2D',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorText: { color: '#C47B3C', fontSize: 16 },
+  // ── Rendering overlay ──
   renderingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(27,58,45,0.85)',
+    backgroundColor: 'rgba(10,22,40,0.85)',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 20,
+    zIndex: 40,
   },
   renderingText: {
     color: '#FFFFFF',
@@ -933,12 +1203,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   renderingStyle: {
-    color: '#C47B3C',
+    color: '#C4A45A',
     fontSize: 14,
     marginTop: 6,
   },
 
-  // Product info bottom sheet
+  // ── Product info sheet ──
   sheetBackdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.4)',
@@ -956,17 +1226,8 @@ const styles = StyleSheet.create({
     minHeight: 280,
     zIndex: 30,
   },
-  sheetHeader: {
-    alignItems: 'center',
-    paddingTop: 12,
-    paddingBottom: 8,
-  },
-  sheetDragHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#CCC',
-  },
+  sheetHeader: { alignItems: 'center', paddingTop: 12, paddingBottom: 8 },
+  sheetDragHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: '#CCC' },
   sheetCloseBtn: {
     position: 'absolute',
     top: 12,
@@ -978,79 +1239,139 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sheetCloseBtnText: {
-    fontSize: 16,
-    color: '#1B3A2D',
-    fontWeight: '700',
-  },
-  sheetTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#1B3A2D',
-    marginTop: 4,
-  },
-  sheetCategory: {
-    fontSize: 14,
-    color: '#888888',
-    marginTop: 4,
-    textTransform: 'capitalize',
-  },
-  sheetBadgeRow: {
-    flexDirection: 'row',
-    marginTop: 12,
-    gap: 8,
-  },
+  sheetCloseBtnText: { fontSize: 16, color: '#1B3A2D', fontWeight: '700' },
+  sheetTitle: { fontSize: 20, fontWeight: '800', color: '#1B3A2D', marginTop: 4 },
+  sheetCategory: { fontSize: 14, color: '#888888', marginTop: 4 },
+  sheetBadgeRow: { flexDirection: 'row', marginTop: 12, gap: 8 },
   priceBadge: {
-    backgroundColor: 'rgba(196,123,60,0.15)',
+    backgroundColor: 'rgba(196,164,90,0.15)',
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#C47B3C',
+    borderColor: '#C4A45A',
   },
-  priceBadgeText: {
-    color: '#C47B3C',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  sheetDimensionsRow: {
-    marginTop: 12,
-  },
-  sheetDimLabel: {
-    fontSize: 14,
-    color: '#1A1A1A',
-  },
-  sheetTagRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 12,
-    gap: 8,
-  },
+  priceBadgeText: { color: '#C4A45A', fontWeight: '700', fontSize: 14 },
+  sheetDimensionsRow: { marginTop: 12 },
+  sheetDimLabel: { fontSize: 14, color: '#1A1A1A' },
+  sheetTagRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12, gap: 8 },
   styleTagPill: {
     backgroundColor: 'rgba(27,58,45,0.1)',
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
   },
-  styleTagText: {
-    color: '#1B3A2D',
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'capitalize',
+  styleTagText: { color: '#1B3A2D', fontSize: 12, fontWeight: '600' },
+  sheetColorRow: { flexDirection: 'row', alignItems: 'center', marginTop: 16, gap: 12 },
+  sheetColorLabel: { color: '#1A1A1A', fontSize: 14, fontWeight: '600' },
+  colorSwatches: { flexDirection: 'row', gap: 8 },
+  sheetColorSwatch: { width: 28, height: 28, borderRadius: 14 },
+
+  // ── Catalog modal ──
+  catalogOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
   },
-  sheetColorRow: {
+  catalogDismiss: {
+    flex: 1,
+  },
+  catalogSheet: {
+    backgroundColor: '#0A1628',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: SCREEN_HEIGHT * 0.65,
+  },
+  catalogHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 16,
-    gap: 12,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 12,
   },
-  sheetColorLabel: {
-    color: '#1A1A1A',
-    fontSize: 14,
+  catalogTitle: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  catalogCloseText: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 20,
     fontWeight: '600',
   },
-  colorSwatches: {
-    flexDirection: 'row',
-    gap: 8,
+  catalogTabScroll: {
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  catalogTab: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginRight: 8,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  catalogTabActive: {
+    backgroundColor: '#C4A45A',
+    borderColor: '#C4A45A',
+  },
+  catalogTabText: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  catalogTabTextActive: {
+    color: '#0A1628',
+  },
+  catalogList: {
+    paddingHorizontal: 16,
+    paddingBottom: 40,
+  },
+  catalogRow: {
+    gap: 12,
+    marginBottom: 12,
+  },
+  catalogItem: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  catalogItemIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(196,164,90,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  catalogItemEmoji: {
+    fontSize: 22,
+  },
+  catalogItemName: {
+    color: 'white',
+    fontSize: 13,
+    fontWeight: '500',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  catalogItemMeta: {
+    color: '#C4A45A',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  catalogEmpty: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  catalogEmptyText: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 14,
   },
 });

@@ -9,6 +9,7 @@ import {
   Animated,
   PanResponder,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 
 interface BeforeAfterSliderProps {
   beforeImageUri: string;
@@ -51,21 +52,31 @@ export default function BeforeAfterSlider({ beforeImageUri, afterImageUri, onClo
 
   return (
     <Animated.View style={[styles.container, { opacity }]}>
+      {/* After image (full background) */}
       <Image source={{ uri: afterImageUri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
 
+      {/* Before image (clipped to left of slider) */}
       <Animated.View style={[StyleSheet.absoluteFill, { width: sliderX, overflow: 'hidden' }]}>
         <Image source={{ uri: beforeImageUri }} style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }} resizeMode="cover" />
       </Animated.View>
 
+      {/* Divider line */}
       <Animated.View style={[styles.divider, { left: dividerLeft }]} />
 
+      {/* Draggable handle */}
       <Animated.View
         style={[styles.handle, { left: handleLeft }]}
         {...panResponder.panHandlers}
       >
-        <Text style={styles.handleArrows}>◀ ▶</Text>
+        <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+          <Path d="M15 18l-6-6 6-6" stroke="#0A1628" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+        <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+          <Path d="M9 18l6-6-6-6" stroke="#0A1628" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
       </Animated.View>
 
+      {/* Labels */}
       <View style={styles.labelLeft}>
         <Text style={styles.labelText}>BEFORE</Text>
       </View>
@@ -73,6 +84,7 @@ export default function BeforeAfterSlider({ beforeImageUri, afterImageUri, onClo
         <Text style={styles.labelText}>AFTER</Text>
       </View>
 
+      {/* Close button */}
       <TouchableOpacity style={styles.closeButton} onPress={onClose}>
         <Text style={styles.closeText}>✕</Text>
       </TouchableOpacity>
@@ -90,7 +102,7 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: 2,
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(255,255,255,0.8)',
   },
   handle: {
     position: 'absolute',
@@ -99,6 +111,7 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     backgroundColor: 'white',
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -107,25 +120,20 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
-  handleArrows: {
-    fontSize: 12,
-    color: '#1B3A2D',
-    fontWeight: '700',
-  },
   labelLeft: {
     position: 'absolute',
-    bottom: 60,
+    top: 20,
     left: 20,
   },
   labelRight: {
     position: 'absolute',
-    bottom: 60,
+    top: 20,
     right: 20,
   },
   labelText: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 14,
-    fontWeight: '700',
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
     letterSpacing: 2,
   },
   closeButton: {

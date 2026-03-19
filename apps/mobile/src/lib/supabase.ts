@@ -1,3 +1,6 @@
+// IMPORTANT: In Supabase dashboard → Authentication → Providers → Email → disable "Confirm email" for development.
+// IMPORTANT: In Supabase dashboard → Authentication → Providers → Email → ensure Email provider is ENABLED.
+
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -5,7 +8,7 @@ const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('[Cova] Supabase env vars missing. Check .env.local');
+  console.error('[Cova] Supabase env vars missing. Check .env');
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {

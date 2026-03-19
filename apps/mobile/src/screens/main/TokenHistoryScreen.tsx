@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { TouchableOpacity } from 'react-native';
+import Svg, { Path, Rect } from 'react-native-svg';
 import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store';
 
@@ -15,12 +15,12 @@ interface TokenTransaction {
   created_at: string;
 }
 
-const TYPE_CONFIG: Record<string, { label: string; color: string }> = {
-  purchase: { label: 'Purchase', color: '#C47B3C' },
-  render_draft: { label: 'Draft Render', color: '#3B82F6' },
-  render_hd: { label: 'HD Render', color: '#8B5CF6' },
-  bonus: { label: 'Bonus', color: '#22C55E' },
-  refund: { label: 'Refund', color: '#888888' },
+const TYPE_CONFIG: Record<string, { label: string; bgColor: string; textColor: string }> = {
+  purchase: { label: 'Purchase', bgColor: 'rgba(196,164,90,0.15)', textColor: '#C4A45A' },
+  render_draft: { label: 'Draft Render', bgColor: 'rgba(59,130,246,0.15)', textColor: '#3B82F6' },
+  render_hd: { label: 'HD Render', bgColor: 'rgba(139,92,246,0.15)', textColor: '#8B5CF6' },
+  bonus: { label: 'Bonus', bgColor: 'rgba(34,197,94,0.15)', textColor: '#22C55E' },
+  refund: { label: 'Refund', bgColor: 'rgba(136,136,136,0.15)', textColor: '#888888' },
 };
 
 function formatRelativeDate(dateStr: string): string {
@@ -37,8 +37,27 @@ function formatRelativeDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString();
 }
 
+function BackChevron() {
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+      <Path d="M15 18L9 12L15 6" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+function ReceiptIcon() {
+  return (
+    <Svg width={48} height={48} viewBox="0 0 24 24" fill="none">
+      <Path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="#C4A45A" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M14 2v6h6" stroke="#C4A45A" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M16 13H8M16 17H8M10 9H8" stroke="#C4A45A" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
 export default function TokenHistoryScreen() {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const user = useAppStore((s) => s.user);
   const [transactions, setTransactions] = useState<TokenTransaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,64 +75,53 @@ export default function TokenHistoryScreen() {
     })();
   }, [user]);
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.backBtn}>←</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Transaction History</Text>
-          <View style={{ width: 32 }} />
-        </View>
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color="#C47B3C" />
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backBtn}>←</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <BackChevron />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Transaction History</Text>
-        <View style={{ width: 32 }} />
+        <View style={{ width: 24 }} />
       </View>
 
-      <FlatList
-        data={transactions}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => {
-          const config = TYPE_CONFIG[item.type] ?? { label: item.type, color: '#888888' };
-          return (
-            <View style={styles.row}>
-              <View style={[styles.typeBadge, { backgroundColor: config.color }]}>
-                <Text style={styles.typeBadgeText}>{config.label}</Text>
-              </View>
-              <View style={styles.rowInfo}>
-                <Text style={[styles.amount, item.amount > 0 ? styles.amountPositive : styles.amountNegative]}>
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#C4A45A" />
+        </View>
+      ) : (
+        <FlatList
+          data={transactions}
+          keyExtractor={(item) => item.id}
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => {
+            const config = TYPE_CONFIG[item.type] ?? { label: item.type, bgColor: 'rgba(136,136,136,0.15)', textColor: '#888888' };
+            return (
+              <View style={styles.row}>
+                <View style={[styles.typeBadge, { backgroundColor: config.bgColor }]}>
+                  <Text style={[styles.typeBadgeText, { color: config.textColor }]}>{config.label}</Text>
+                </View>
+                <Text style={[styles.amount, item.amount >= 0 ? styles.amountPos : styles.amountNeg]}>
                   {item.amount > 0 ? '+' : ''}{item.amount}
                 </Text>
                 <Text style={styles.date}>{formatRelativeDate(item.created_at)}</Text>
               </View>
+            );
+          }}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <ReceiptIcon />
+              <Text style={styles.emptyTitle}>No transactions yet</Text>
+              <Text style={styles.emptySubtext}>
+                All features are free during our launch period.
+              </Text>
             </View>
-          );
-        }}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>📜</Text>
-            <Text style={styles.emptyTitle}>No transactions yet</Text>
-            <Text style={styles.emptySubtext}>
-              All features are free during our launch period.
-            </Text>
-          </View>
-        }
-      />
-    </SafeAreaView>
+          }
+        />
+      )}
+    </View>
   );
 }
 
@@ -123,76 +131,76 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F0E8',
   },
   header: {
-    backgroundColor: '#1B3A2D',
+    backgroundColor: '#0A1628',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 14,
   },
   backBtn: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: '600',
-    width: 32,
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
+    color: 'white',
     fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontWeight: '400',
+    letterSpacing: 1,
   },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  list: {
+    flex: 1,
+  },
   listContent: {
     padding: 16,
-    gap: 10,
     flexGrow: 1,
   },
   row: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'white',
     borderRadius: 12,
-    padding: 14,
+    padding: 16,
+    marginBottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
     elevation: 2,
   },
   typeBadge: {
-    borderRadius: 8,
+    borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
   typeBadgeText: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  rowInfo: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    fontWeight: '600',
   },
   amount: {
+    flex: 1,
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '600',
+    marginLeft: 12,
+    color: '#0A1628',
   },
-  amountPositive: {
+  amountPos: {
     color: '#22C55E',
   },
-  amountNegative: {
+  amountNeg: {
     color: '#EF4444',
   },
   date: {
-    fontSize: 12,
-    color: '#888888',
+    fontSize: 13,
+    color: 'rgba(0,0,0,0.4)',
   },
   emptyState: {
     flex: 1,
@@ -200,20 +208,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 80,
   },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: 16,
-  },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1B3A2D',
-    marginBottom: 8,
+    fontSize: 20,
+    fontWeight: '400',
+    color: '#0A1628',
+    marginTop: 16,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#888888',
+    color: 'rgba(0,0,0,0.45)',
     textAlign: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: 40,
+    marginTop: 8,
   },
 });

@@ -1,55 +1,124 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  FlatList,
   ScrollView,
   RefreshControl,
   Image,
-  ImageBackground,
   Alert,
+  Dimensions,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import type { HomeStackParamList } from '../../navigation/HomeStack';
 import { useAppStore } from '../../store';
 import { supabase } from '../../lib/supabase';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import type { Room, StyleName } from '@cova/shared';
+import type { Room, RoomType } from '@cova/shared';
 import TokenBadge from '../../components/TokenBadge';
 
-const STYLE_LABELS: Record<string, { label: string; color: string }> = {
-  coastal: { label: 'Ocean Breeze', color: '#5B9BD5' },
-  japandi: { label: 'Zen Garden', color: '#8B7355' },
-  bohemian: { label: 'Boho Spirit', color: '#D4956A' },
-  mid_century: { label: 'Mid-Century', color: '#C47B3C' },
-  minimalist: { label: 'Pure Lines', color: '#A0A0A0' },
-};
+const BG = '#0A1628';
+const CREAM = '#F5F0E8';
+const GOLD = '#C4A45A';
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const CARD_WIDTH = SCREEN_WIDTH * 0.82;
 
-const ROOM_TYPE_ICONS: Record<string, string> = {
-  living_room: '🛋',
-  bedroom: '🛏',
-  dining_room: '🍽',
-  home_office: '💻',
-  kitchen: '🍳',
-  bathroom: '🛁',
-  entryway: '🚪',
-};
+// ── Double Arch mark ──
 
-const ALL_INSPIRATION_CARDS = [
-  { id: '1', key: 'coastal' as StyleName, ...STYLE_LABELS.coastal },
-  { id: '2', key: 'japandi' as StyleName, ...STYLE_LABELS.japandi },
-  { id: '3', key: 'bohemian' as StyleName, ...STYLE_LABELS.bohemian },
-  { id: '4', key: 'mid_century' as StyleName, ...STYLE_LABELS.mid_century },
-  { id: '5', key: 'minimalist' as StyleName, ...STYLE_LABELS.minimalist },
+function DoubleArch({ size = 'small' }: { size?: 'small' | 'tiny' }) {
+  const d = size === 'small'
+    ? { ow: 28, oh: 36, iw: 20, ih: 26, so: 2, si: 1.5 }
+    : { ow: 24, oh: 32, iw: 17, ih: 22, so: 1.5, si: 1 };
+
+  return (
+    <View style={{ width: d.ow, height: d.oh }}>
+      <Svg
+        width={d.ow}
+        height={d.oh}
+        viewBox={`0 0 ${d.ow} ${d.oh}`}
+        fill="none"
+        style={StyleSheet.absoluteFill}
+      >
+        <Path
+          d={`M2 ${d.oh} V${(d.oh * 0.35).toFixed(1)} Q2 2 ${d.ow / 2} 2 Q${d.ow - 2} 2 ${d.ow - 2} ${(d.oh * 0.35).toFixed(1)} V${d.oh}`}
+          stroke={GOLD}
+          strokeWidth={d.so}
+          fill="none"
+          strokeLinecap="round"
+        />
+      </Svg>
+      <Svg
+        width={d.iw}
+        height={d.ih}
+        viewBox={`0 0 ${d.iw} ${d.ih}`}
+        fill="none"
+        style={{ position: 'absolute', left: (d.ow - d.iw) / 2, top: d.oh - d.ih }}
+      >
+        <Path
+          d={`M2 ${d.ih} V${(d.ih * 0.35).toFixed(1)} Q2 2 ${d.iw / 2} 2 Q${d.iw - 2} 2 ${d.iw - 2} ${(d.ih * 0.35).toFixed(1)} V${d.ih}`}
+          stroke={GOLD}
+          strokeWidth={d.si}
+          fill="none"
+          strokeLinecap="round"
+        />
+      </Svg>
+    </View>
+  );
+}
+
+// ── Helpers ──
+
+function relativeDate(iso: string): string {
+  const now = Date.now();
+  const then = new Date(iso).getTime();
+  const diffMs = now - then;
+  const mins = Math.floor(diffMs / 60_000);
+  if (mins < 60) return `Updated ${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `Updated ${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `Updated ${days}d ago`;
+  const weeks = Math.floor(days / 7);
+  return `Updated ${weeks}w ago`;
+}
+
+function formatRoomType(rt: string): string {
+  return rt.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+// ── Inspiration data ──
+
+const INSPIRATIONS = [
+  {
+    id: '1',
+    match: '92% Style Match',
+    image: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800&h=400&fit=crop',
+  },
+  {
+    id: '2',
+    match: '87% Style Match',
+    image: 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=800&h=400&fit=crop',
+  },
 ];
+
+const ROOM_TYPES: { key: RoomType; label: string }[] = [
+  { key: 'living_room', label: 'Living Room' },
+  { key: 'bedroom', label: 'Bedroom' },
+  { key: 'dining_room', label: 'Dining Room' },
+  { key: 'home_office', label: 'Home Office' },
+  { key: 'kitchen', label: 'Kitchen' },
+  { key: 'bathroom', label: 'Bathroom' },
+  { key: 'entryway', label: 'Entryway' },
+];
+
+// ── Screen ──
 
 export default function HomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
   const user = useAppStore((s) => s.user);
-  const currentRoom = useAppStore((s) => s.currentRoom);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -61,9 +130,7 @@ export default function HomeScreen() {
       .select('*')
       .eq('user_id', user.id)
       .order('updated_at', { ascending: false });
-    if (!error && data) {
-      setRooms(data as Room[]);
-    }
+    if (!error && data) setRooms(data as Room[]);
     setLoading(false);
   }, [user]);
 
@@ -77,140 +144,185 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
-  const getInitials = (name: string | null | undefined) => {
-    if (!name) return '?';
-    return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
-  };
-
   const handleRoomTap = (room: Room) => {
     useAppStore.getState().setCurrentRoom(room);
     navigation.navigate('Room', { initialRoute: 'RenderView', room_id: room.id });
   };
 
-  const sortedInspirationCards = useMemo(() => {
-    const blend = currentRoom?.style_blend;
-    if (!blend) return ALL_INSPIRATION_CARDS.slice(0, 3);
-
-    return [...ALL_INSPIRATION_CARDS].sort((a, b) => {
-      const weightA = blend[a.key] ?? 0;
-      const weightB = blend[b.key] ?? 0;
-      return weightB - weightA;
-    });
-  }, [currentRoom?.style_blend]);
-
-  const renderRoomCard = ({ item }: { item: Room }) => {
-    if (item.latest_render_url) {
-      return (
-        <TouchableOpacity style={styles.roomCard} onPress={() => handleRoomTap(item)}>
-          <ImageBackground
-            source={{ uri: item.latest_render_url }}
-            style={styles.roomCardImage}
-            imageStyle={styles.roomCardImageInner}
-            resizeMode="cover"
-          >
-            <View style={styles.roomCardOverlay}>
-              <Text style={styles.roomNameLight}>{item.name}</Text>
-              <Text style={styles.roomTypeLight}>{item.room_type.replace('_', ' ')}</Text>
-            </View>
-          </ImageBackground>
-        </TouchableOpacity>
-      );
-    }
-
-    return (
-      <TouchableOpacity style={styles.roomCard} onPress={() => handleRoomTap(item)}>
-        <View style={styles.roomCardSolid}>
-          <View style={styles.roomCardLeft}>
-            <Text style={styles.roomName}>{item.name}</Text>
-            <Text style={styles.roomType}>{item.room_type.replace('_', ' ')}</Text>
-            <Text style={styles.roomDimensions}>
-              {(item.dimensions as any)?.width ?? 16}×{(item.dimensions as any)?.depth ?? 14} ft
-            </Text>
-          </View>
-          <View style={styles.roomCardRight}>
-            <View style={styles.roomPlaceholder}>
-              <Text style={styles.roomPlaceholderIcon}>{ROOM_TYPE_ICONS[item.room_type] ?? '🏠'}</Text>
-            </View>
-          </View>
-        </View>
-      </TouchableOpacity>
+  const handleNewRoom = () => {
+    Alert.alert(
+      'Select Room Type',
+      undefined,
+      [
+        ...ROOM_TYPES.map((rt) => ({
+          text: rt.label,
+          onPress: () => createAndNavigate(rt.key, rt.label),
+        })),
+        { text: 'Cancel', style: 'cancel' as const },
+      ],
     );
   };
 
+  const createAndNavigate = async (roomType: RoomType, label: string) => {
+    if (!user) return;
+    const name = `My ${label}`;
+    const defaultBlend = {
+      coastal: 0.2,
+      japandi: 0.2,
+      bohemian: 0.2,
+      mid_century: 0.2,
+      minimalist: 0.2,
+    };
+
+    const { data, error } = await supabase
+      .from('rooms')
+      .insert({
+        user_id: user.id,
+        name,
+        room_type: roomType,
+        budget: 5000,
+        style_blend: defaultBlend,
+        dimensions_json: { width: 16, depth: 14, height: 9, unit: 'ft' },
+      })
+      .select()
+      .single();
+
+    if (error) return Alert.alert('Error', error.message);
+
+    useAppStore.getState().addRoom(data as Room);
+    useAppStore.getState().setCurrentRoom(data as Room);
+
+    const blend = user.style_blend;
+    const hasStyle = blend && Object.values(blend).some((v) => v > 0.25);
+
+    if (hasStyle) {
+      Alert.alert('Use your previous style?', 'Would you like to keep your current style blend?', [
+        { text: 'Yes', onPress: () => navigation.navigate('Room', { initialRoute: 'RoomCapture' }) },
+        { text: 'No, start fresh', onPress: () => navigation.navigate('Room', { initialRoute: 'StyleQuiz' }) },
+      ]);
+    } else {
+      navigation.navigate('Room', { initialRoute: 'StyleQuiz' });
+    }
+  };
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      {/* ── Header ── */}
       <View style={styles.header}>
-        <Text style={styles.headerLogo}>COVA</Text>
-        <View style={styles.headerRight}>
-          <TokenBadge />
-          <TouchableOpacity style={styles.avatarCircle}>
-            <Text style={styles.avatarText}>{getInitials(user?.full_name ?? user?.email)}</Text>
-          </TouchableOpacity>
+        <View style={styles.headerLeft}>
+          <DoubleArch size="small" />
+          <Text style={styles.headerWordmark}>cova</Text>
         </View>
+        <TokenBadge />
       </View>
 
+      {/* ── Content ── */}
       <ScrollView
         style={styles.body}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#C47B3C" />}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.bodyContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={GOLD} />
+        }
       >
-        {/* My Rooms */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>My Rooms</Text>
-        </View>
+        {/* ── My Rooms ── */}
+        <Text style={styles.sectionTitle}>My Rooms</Text>
 
         {loading ? (
-          <View style={styles.emptyState}>
+          <View style={styles.emptyWrap}>
             <Text style={styles.emptyText}>Loading...</Text>
           </View>
         ) : rooms.length === 0 ? (
-          <View style={styles.emptyState}>
+          <View style={styles.emptyWrap}>
             <Text style={styles.emptyIcon}>🏠</Text>
             <Text style={styles.emptyTitle}>No rooms yet</Text>
-            <Text style={styles.emptySubtext}>Tap + to scan your first room</Text>
+            <Text style={styles.emptyText}>Tap + to scan your first room</Text>
           </View>
         ) : (
-          <FlatList
-            data={rooms}
-            renderItem={renderRoomCard}
-            keyExtractor={(item) => item.id}
-            scrollEnabled={false}
-            contentContainerStyle={styles.roomList}
-          />
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.roomScroll}
+          >
+            {rooms.map((room) => (
+              <TouchableOpacity
+                key={room.id}
+                style={styles.roomCard}
+                activeOpacity={0.9}
+                onPress={() => handleRoomTap(room)}
+              >
+                {room.latest_render_url ? (
+                  <Image
+                    source={{ uri: room.latest_render_url }}
+                    style={StyleSheet.absoluteFill}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={[StyleSheet.absoluteFill, styles.roomPlaceholderBg]} />
+                )}
+
+                {/* gradient overlay */}
+                <View style={styles.roomGradient} />
+
+                {/* info */}
+                <View style={styles.roomInfo}>
+                  <View style={styles.roomInfoLeft}>
+                    <Text style={styles.roomName}>{room.name}</Text>
+                    <Text style={styles.roomDate}>{relativeDate(room.updated_at)}</Text>
+                  </View>
+                  <View style={styles.roomTypeBadge}>
+                    <Text style={styles.roomTypeBadgeText}>{formatRoomType(room.room_type)}</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+
+            {/* New Room card */}
+            <TouchableOpacity
+              style={styles.newRoomCard}
+              activeOpacity={0.8}
+              onPress={handleNewRoom}
+            >
+              <DoubleArch size="tiny" />
+              <Text style={styles.newRoomText}>New Room</Text>
+            </TouchableOpacity>
+          </ScrollView>
         )}
 
-        {/* Suggested For You */}
-        <View style={[styles.sectionHeader, { marginTop: 24 }]}>
-          <Text style={styles.sectionTitle}>Suggested For You</Text>
-          <Text style={styles.sectionSubtitle}>Based on your style</Text>
-        </View>
+        {/* ── Suggested For You ── */}
+        <Text style={[styles.sectionTitle, { marginTop: 28 }]}>Suggested For You</Text>
+        <Text style={styles.sectionSub}>Based on your style</Text>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.inspirationRow}>
-          {sortedInspirationCards.map((card) => (
-            <View key={card.id} style={[styles.inspirationCard, { backgroundColor: card.color }]}>
-              <TouchableOpacity
-                style={styles.inspirationContent}
-                onPress={() => navigation.navigate('Room', { initialRoute: 'StyleQuiz' })}
-              >
-                <Text style={styles.inspirationLabel}>{card.label}</Text>
-                <Text style={styles.inspirationArrow}>→</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.recreateBtn}
-                onPress={() => Alert.alert('Coming Soon', 'Recreating inspiration rooms is coming in a future update.')}
-              >
-                <Text style={styles.recreateBtnText}>Recreate ✦</Text>
-              </TouchableOpacity>
+        {INSPIRATIONS.map((item) => (
+          <View key={item.id} style={styles.inspoCard}>
+            <Image
+              source={{ uri: item.image }}
+              style={StyleSheet.absoluteFill}
+              resizeMode="cover"
+            />
+            <View style={styles.inspoOverlay} />
+            <View style={styles.inspoMatchBadge}>
+              <Text style={styles.inspoMatchText}>{item.match}</Text>
             </View>
-          ))}
-        </ScrollView>
+            <TouchableOpacity
+              style={styles.inspoRecreateBtn}
+              onPress={() =>
+                Alert.alert(
+                  'Coming Soon',
+                  'Recreating inspiration rooms will be available in a future update.',
+                )
+              }
+            >
+              <Text style={styles.inspoRecreateBtnText}>Recreate This Room</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: 32 }} />
       </ScrollView>
 
-      {/* FAB */}
-      <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('NewRoom')}>
+      {/* ── FAB ── */}
+      <TouchableOpacity style={styles.fab} activeOpacity={0.85} onPress={handleNewRoom}>
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
     </SafeAreaView>
@@ -218,140 +330,137 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: '#F5F0E8',
+    backgroundColor: BG,
   },
+
+  // ── Header ──
   header: {
-    backgroundColor: '#1B3A2D',
+    backgroundColor: BG,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 16,
   },
-  headerLogo: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#C47B3C',
-    letterSpacing: 4,
-  },
-  headerRight: {
+  headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
-  avatarCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#C47B3C',
-    justifyContent: 'center',
-    alignItems: 'center',
+  headerWordmark: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    letterSpacing: 3,
   },
-  avatarText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '700',
-  },
+
+  // ── Body ──
   body: {
     flex: 1,
-    paddingHorizontal: 16,
+    backgroundColor: CREAM,
   },
-  sectionHeader: {
-    marginTop: 20,
+  bodyContent: {
+    paddingBottom: 100,
+  },
+
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '500',
+    color: BG,
+    marginLeft: 20,
+    marginTop: 24,
     marginBottom: 12,
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#1B3A2D',
-  },
-  sectionSubtitle: {
+  sectionSub: {
     fontSize: 13,
-    color: '#888888',
-    marginTop: 2,
+    color: 'rgba(0,0,0,0.45)',
+    marginLeft: 20,
+    marginBottom: 12,
+    marginTop: -4,
   },
-  roomList: {
-    gap: 12,
+
+  // ── Rooms ──
+  roomScroll: {
+    paddingLeft: 20,
+    paddingRight: 8,
+    gap: 16,
+    paddingBottom: 4,
   },
   roomCard: {
+    width: CARD_WIDTH,
+    height: 210,
     borderRadius: 16,
-    height: 120,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 4,
   },
-  roomCardImage: {
-    flex: 1,
-    justifyContent: 'flex-end',
+  roomPlaceholderBg: {
+    backgroundColor: '#1B3A2D',
   },
-  roomCardImageInner: {
+  roomGradient: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'transparent',
     borderRadius: 16,
+    // Simulated bottom gradient
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    // RN doesn't support linear-gradient natively, use a semi-transparent overlay
+    // positioned at the bottom
   },
-  roomCardOverlay: {
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+  roomInfo: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    padding: 16,
+    backgroundColor: 'rgba(0,0,0,0.45)',
     borderBottomLeftRadius: 16,
     borderBottomRightRadius: 16,
   },
-  roomNameLight: {
-    fontSize: 16,
-    fontWeight: '700',
+  roomInfoLeft: {},
+  roomName: {
     color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '600',
   },
-  roomTypeLight: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.8)',
-    textTransform: 'capitalize',
+  roomDate: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 11,
     marginTop: 2,
   },
-  roomCardSolid: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
+  roomTypeBadge: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  roomTypeBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+  },
+
+  newRoomCard: {
+    width: 180,
+    height: 210,
     borderRadius: 16,
-    padding: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: GOLD,
     alignItems: 'center',
-  },
-  roomCardLeft: {
-    flex: 1,
-    gap: 4,
-  },
-  roomName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1B3A2D',
-  },
-  roomType: {
-    fontSize: 13,
-    color: '#888888',
-    textTransform: 'capitalize',
-  },
-  roomDimensions: {
-    fontSize: 12,
-    color: '#888888',
-  },
-  roomCardRight: {
-    marginLeft: 12,
-  },
-  roomPlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    backgroundColor: '#E8E0D0',
     justifyContent: 'center',
-    alignItems: 'center',
+    marginRight: 20,
   },
-  roomPlaceholderIcon: {
-    fontSize: 32,
+  newRoomText: {
+    color: GOLD,
+    fontSize: 16,
+    marginTop: 8,
   },
-  emptyState: {
+
+  // ── Empty ──
+  emptyWrap: {
     alignItems: 'center',
     paddingVertical: 40,
   },
@@ -362,62 +471,56 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1B3A2D',
+    color: BG,
     marginBottom: 4,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#888888',
   },
   emptyText: {
     fontSize: 14,
-    color: '#888888',
+    color: 'rgba(0,0,0,0.45)',
   },
-  inspirationRow: {
-    gap: 12,
-    paddingRight: 16,
-  },
-  inspirationCard: {
-    width: 160,
+
+  // ── Inspiration ──
+  inspoCard: {
+    marginHorizontal: 20,
     height: 200,
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 4,
+    marginBottom: 16,
   },
-  inspirationContent: {
-    flex: 1,
-    padding: 16,
-    justifyContent: 'flex-end',
+  inspoOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.25)',
   },
-  inspirationLabel: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: 'white',
-    marginBottom: 4,
-  },
-  inspirationArrow: {
-    fontSize: 18,
-    color: 'rgba(255,255,255,0.8)',
-    fontWeight: '600',
-  },
-  recreateBtn: {
-    marginHorizontal: 12,
-    marginBottom: 12,
+  inspoMatchBadge: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderRadius: 20,
+    paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 14,
+  },
+  inspoMatchText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+  },
+  inspoRecreateBtn: {
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
     borderWidth: 1.5,
-    borderColor: '#C47B3C',
-    alignItems: 'center',
+    borderColor: GOLD,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    backgroundColor: 'transparent',
   },
-  recreateBtnText: {
+  inspoRecreateBtnText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#C47B3C',
+    color: GOLD,
   },
+
+  // ── FAB ──
   fab: {
     position: 'absolute',
     bottom: 24,
@@ -425,9 +528,9 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#C47B3C',
-    justifyContent: 'center',
+    backgroundColor: GOLD,
     alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
@@ -435,8 +538,8 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   fabText: {
+    color: BG,
     fontSize: 28,
-    color: 'white',
     fontWeight: '400',
     marginTop: -2,
   },

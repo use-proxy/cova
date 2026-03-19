@@ -10,6 +10,7 @@ import {
   Image,
   Modal,
 } from 'react-native';
+import Svg, { Path, Line, Circle as SvgCircle } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RoomStackParamList } from '../../navigation/RoomNavigator';
@@ -19,11 +20,17 @@ import type { SwipeCard, StyleBlend, StyleName } from '@cova/shared';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const SWIPE_THRESHOLD = 80;
+const SWIPE_THRESHOLD = 120;
 const QUIZ_TIMEOUT_MS = 180_000;
+const MIN_SWIPES_BEFORE_COMPLETE = 10;
+const CONFIDENCE_THRESHOLD = 0.65;
+const CARD_W = SCREEN_WIDTH - 32;
+const CARD_H = CARD_W / 0.74;
+
+const BG = '#0A1628';
+const GOLD = '#C4A45A';
 
 const STYLE_KEYS: StyleName[] = ['coastal', 'japandi', 'bohemian', 'mid_century', 'minimalist'];
-
 const EQUAL_BLEND: StyleBlend = {
   coastal: 0.2, japandi: 0.2, bohemian: 0.2, mid_century: 0.2, minimalist: 0.2,
 };
@@ -31,18 +38,127 @@ const EQUAL_BLEND: StyleBlend = {
 function normalizeBlend(blend: StyleBlend): StyleBlend {
   const sum = STYLE_KEYS.reduce((acc, k) => acc + blend[k], 0);
   if (sum === 0) return { ...EQUAL_BLEND };
-  const normalized = { ...blend };
-  for (const k of STYLE_KEYS) {
-    normalized[k] = blend[k] / sum;
-  }
-  return normalized;
+  const out = { ...blend };
+  for (const k of STYLE_KEYS) out[k] = blend[k] / sum;
+  return out;
+}
+
+function calcConfidence(blend: StyleBlend): number {
+  return Math.max(...STYLE_KEYS.map((k) => blend[k]));
 }
 
 function isNonDefaultBlend(blend: StyleBlend | undefined | null): boolean {
   if (!blend) return false;
-  const threshold = 0.01;
-  return STYLE_KEYS.some((k) => Math.abs(blend[k] - 0.2) > threshold);
+  return STYLE_KEYS.some((k) => Math.abs(blend[k] - 0.2) > 0.01);
 }
+
+// ── Double arch SVG ──
+
+function DoubleArch({ size = 'small' }: { size?: 'small' | 'large' }) {
+  const d = size === 'large'
+    ? { ow: 60, oh: 80, iw: 42, ih: 55, so: 3, si: 2 }
+    : { ow: 24, oh: 32, iw: 17, ih: 22, so: 2, si: 1.5 };
+
+  return (
+    <View style={{ width: d.ow, height: d.oh }}>
+      <Svg
+        width={d.ow}
+        height={d.oh}
+        viewBox={`0 0 ${d.ow} ${d.oh}`}
+        fill="none"
+        style={StyleSheet.absoluteFill}
+      >
+        <Path
+          d={`M ${d.so} ${d.oh} V ${d.ow / 2} A ${d.ow / 2 - d.so} ${d.ow / 2 - d.so} 0 0 1 ${d.ow - d.so} ${d.ow / 2} V ${d.oh}`}
+          stroke={GOLD}
+          strokeWidth={d.so}
+          strokeLinecap="round"
+          fill="none"
+        />
+      </Svg>
+      <Svg
+        width={d.iw}
+        height={d.ih}
+        viewBox={`0 0 ${d.iw} ${d.ih}`}
+        fill="none"
+        style={{
+          position: 'absolute',
+          left: (d.ow - d.iw) / 2,
+          top: d.oh - d.ih,
+        }}
+      >
+        <Path
+          d={`M ${d.si} ${d.ih} V ${d.iw / 2} A ${d.iw / 2 - d.si} ${d.iw / 2 - d.si} 0 0 1 ${d.iw - d.si} ${d.iw / 2} V ${d.ih}`}
+          stroke={GOLD}
+          strokeWidth={d.si}
+          strokeLinecap="round"
+          fill="none"
+        />
+      </Svg>
+    </View>
+  );
+}
+
+// ── Instruction icon helpers ──
+
+function HeartIcon() {
+  return (
+    <View style={[styles.instrCircle, { backgroundColor: 'rgba(34,197,94,0.2)' }]}>
+      <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+        <Path
+          d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+          stroke="#22c55e"
+          strokeWidth={2.5}
+          fill="none"
+        />
+      </Svg>
+    </View>
+  );
+}
+
+function XIcon() {
+  return (
+    <View style={[styles.instrCircle, { backgroundColor: 'rgba(156,163,175,0.2)' }]}>
+      <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+        <Line x1={18} y1={6} x2={6} y2={18} stroke="#9ca3af" strokeWidth={2.5} />
+        <Line x1={6} y1={6} x2={18} y2={18} stroke="#9ca3af" strokeWidth={2.5} />
+      </Svg>
+    </View>
+  );
+}
+
+function QuestionIcon() {
+  return (
+    <View style={[styles.instrCircle, { backgroundColor: 'rgba(196,164,90,0.2)' }]}>
+      <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+        <SvgCircle cx={12} cy={12} r={10} stroke={GOLD} strokeWidth={2.5} fill="none" />
+        <Path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke={GOLD} strokeWidth={2.5} fill="none" />
+        <Line x1={12} y1={17} x2={12.01} y2={17} stroke={GOLD} strokeWidth={2.5} />
+      </Svg>
+    </View>
+  );
+}
+
+// ── Fallback cards ──
+
+function makeFallbackCards(roomType: string): SwipeCard[] {
+  return [
+    { id: 'f1', image_url: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=800&q=80', room_type: roomType as any, style_weights: { coastal: 0.6, minimalist: 0.4 }, active: true },
+    { id: 'f2', image_url: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800&q=80', room_type: roomType as any, style_weights: { japandi: 0.7, minimalist: 0.3 }, active: true },
+    { id: 'f3', image_url: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800&q=80', room_type: roomType as any, style_weights: { mid_century: 0.8, bohemian: 0.2 }, active: true },
+    { id: 'f4', image_url: 'https://images.unsplash.com/photo-1567225557594-88d73e55f2cb?w=800&q=80', room_type: roomType as any, style_weights: { bohemian: 0.7, coastal: 0.3 }, active: true },
+    { id: 'f5', image_url: 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=800&q=80', room_type: roomType as any, style_weights: { minimalist: 0.6, japandi: 0.4 }, active: true },
+    { id: 'f6', image_url: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&q=80', room_type: roomType as any, style_weights: { coastal: 0.5, mid_century: 0.5 }, active: true },
+    { id: 'f7', image_url: 'https://images.unsplash.com/photo-1617806118233-18e1de247200?w=800&q=80', room_type: roomType as any, style_weights: { japandi: 0.8, minimalist: 0.2 }, active: true },
+    { id: 'f8', image_url: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=80', room_type: roomType as any, style_weights: { coastal: 0.8, bohemian: 0.2 }, active: true },
+    { id: 'f9', image_url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80', room_type: roomType as any, style_weights: { mid_century: 0.6, minimalist: 0.4 }, active: true },
+    { id: 'f10', image_url: 'https://images.unsplash.com/photo-1598928506311-c55ez363776c?w=800&q=80', room_type: roomType as any, style_weights: { bohemian: 0.5, japandi: 0.5 }, active: true },
+  ];
+}
+
+// ══════════════════════════════════════════════════
+// Screen
+// ══════════════════════════════════════════════════
 
 type QuizPhase = 'instructions' | 'quiz';
 
@@ -56,44 +172,62 @@ export default function StyleQuizScreen() {
   const [styleBlend, setStyleBlend] = useState<StyleBlend>({ ...EQUAL_BLEND });
   const [loading, setLoading] = useState(true);
   const [showBlendModal, setShowBlendModal] = useState(false);
+  const [swipeCount, setSwipeCount] = useState(0);
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completedRef = useRef(false);
+  const quizStartTime = useRef(0);
 
   const roomType = currentRoom?.room_type ?? 'living_room';
+  const totalCards = 20;
 
-  const fallbackCards: SwipeCard[] = [
-    { id: 'f1', image_url: 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=800', room_type: roomType, style_weights: { coastal: 0.8, minimalist: 0.2 }, active: true },
-    { id: 'f2', image_url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800', room_type: roomType, style_weights: { japandi: 0.8, minimalist: 0.2 }, active: true },
-    { id: 'f3', image_url: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800', room_type: roomType, style_weights: { bohemian: 0.8, mid_century: 0.2 }, active: true },
-    { id: 'f4', image_url: 'https://images.unsplash.com/photo-1598928506311-c55ez363776c?w=800', room_type: roomType, style_weights: { mid_century: 0.8, japandi: 0.2 }, active: true },
-    { id: 'f5', image_url: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800', room_type: roomType, style_weights: { minimalist: 0.8, coastal: 0.2 }, active: true },
-  ];
+  // ── Animated values ──
+  const position = useRef(new Animated.ValueXY()).current;
 
-  const swipeAnim = useRef(new Animated.ValueXY()).current;
-  const rotateAnim = swipeAnim.x.interpolate({
+  const rotation = position.x.interpolate({
     inputRange: [-200, 0, 200],
     outputRange: ['-15deg', '0deg', '15deg'],
   });
-  const likeOpacity = swipeAnim.x.interpolate({
-    inputRange: [0, 80],
+  const loveBadgeOpacity = position.x.interpolate({
+    inputRange: [0, 100],
     outputRange: [0, 1],
     extrapolate: 'clamp',
   });
-  const nopeOpacity = swipeAnim.x.interpolate({
-    inputRange: [-80, 0],
+  const passBadgeOpacity = position.x.interpolate({
+    inputRange: [-100, 0],
     outputRange: [1, 0],
     extrapolate: 'clamp',
   });
-  const nextCardScale = swipeAnim.x.interpolate({
+  const nextCardScale = position.x.interpolate({
     inputRange: [-200, 0, 200],
-    outputRange: [1, 0.95, 1],
+    outputRange: [1, 0.92, 1],
     extrapolate: 'clamp',
   });
 
+  const progress = ((currentIndex + 1) / totalCards) * 100;
+
+  // ── Load cards ──
   useEffect(() => {
-    loadCards();
-  }, []);
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('swipe_cards')
+          .select('*')
+          .eq('active', true)
+          .eq('room_type', roomType)
+          .limit(20);
+        if (error || !data || data.length === 0) {
+          setCards(makeFallbackCards(roomType));
+        } else {
+          setCards(data as SwipeCard[]);
+        }
+      } catch {
+        setCards(makeFallbackCards(roomType));
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [roomType]);
 
   useEffect(() => {
     return () => {
@@ -101,32 +235,130 @@ export default function StyleQuizScreen() {
     };
   }, []);
 
-  const loadCards = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('swipe_cards')
-        .select('*')
-        .eq('active', true)
-        .eq('room_type', roomType)
-        .limit(20);
+  // ── Complete handler ──
+  const handleComplete = useCallback(() => {
+    if (completedRef.current) return;
+    completedRef.current = true;
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
 
-      if (error || !data || data.length === 0) {
-        setCards(fallbackCards);
-      } else {
-        setCards(data as SwipeCard[]);
-      }
-    } catch {
-      setCards(fallbackCards);
-    } finally {
-      setLoading(false);
+    const finalBlend = normalizeBlend(styleBlend);
+    if (currentRoom) updateRoom(currentRoom.id, { style_blend: finalBlend });
+
+    const userId = useAppStore.getState().user?.id;
+    if (userId) {
+      supabase.from('users').update({ style_blend: finalBlend }).eq('id', userId).then(() => {});
     }
-  };
+    navigation.navigate('RoomCapture');
+  }, [styleBlend, currentRoom, updateRoom, navigation]);
 
-  const startQuizTimer = () => {
-    timerRef.current = setTimeout(() => {
-      if (!completedRef.current) {
+  // ── Termination check ──
+  const checkTermination = useCallback(
+    (nextSwipeCount: number, nextIndex: number) => {
+      const elapsed = Date.now() - quizStartTime.current;
+      const confidence = calcConfidence(normalizeBlend(styleBlend));
+      if (
+        (nextSwipeCount >= MIN_SWIPES_BEFORE_COMPLETE && confidence >= CONFIDENCE_THRESHOLD) ||
+        elapsed > QUIZ_TIMEOUT_MS ||
+        nextIndex >= cards.length
+      ) {
         handleComplete();
       }
+    },
+    [styleBlend, cards.length, handleComplete],
+  );
+
+  // ── Swipe handlers ──
+  const animateOff = (toX: number, cb: () => void) => {
+    Animated.timing(position, {
+      toValue: { x: toX, y: 0 },
+      duration: 250,
+      useNativeDriver: true,
+    }).start(() => {
+      position.setValue({ x: 0, y: 0 });
+      cb();
+    });
+  };
+
+  const handleSwipeRight = () => {
+    const card = cards[currentIndex];
+    if (!card) return;
+    const newBlend = { ...styleBlend };
+    for (const k of STYLE_KEYS) {
+      newBlend[k] = newBlend[k] * (1 + (card.style_weights[k] ?? 0) * 0.3);
+    }
+    const normalized = normalizeBlend(newBlend);
+    setStyleBlend(normalized);
+
+    animateOff(SCREEN_WIDTH + 100, () => {
+      const nextIdx = currentIndex + 1;
+      const nextCount = swipeCount + 1;
+      setCurrentIndex(nextIdx);
+      setSwipeCount(nextCount);
+      checkTermination(nextCount, nextIdx);
+    });
+  };
+
+  const handleSwipeLeft = () => {
+    const card = cards[currentIndex];
+    if (!card) return;
+    const newBlend = { ...styleBlend };
+    for (const k of STYLE_KEYS) {
+      newBlend[k] = newBlend[k] * (1 - (card.style_weights[k] ?? 0) * 0.3);
+    }
+    const normalized = normalizeBlend(newBlend);
+    setStyleBlend(normalized);
+
+    animateOff(-SCREEN_WIDTH - 100, () => {
+      const nextIdx = currentIndex + 1;
+      const nextCount = swipeCount + 1;
+      setCurrentIndex(nextIdx);
+      setSwipeCount(nextCount);
+      checkTermination(nextCount, nextIdx);
+    });
+  };
+
+  const handleNotSure = () => {
+    animateOff(SCREEN_WIDTH + 100, () => {
+      const nextIdx = currentIndex + 1;
+      setCurrentIndex(nextIdx);
+      if (nextIdx >= cards.length) handleComplete();
+    });
+  };
+
+  const resetCard = () => {
+    Animated.spring(position, {
+      toValue: { x: 0, y: 0 },
+      useNativeDriver: true,
+      friction: 5,
+    }).start();
+  };
+
+  // ── PanResponder ──
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 10,
+      onPanResponderMove: Animated.event(
+        [null, { dx: position.x, dy: position.y }],
+        { useNativeDriver: false },
+      ),
+      onPanResponderRelease: (_, gs) => {
+        if (gs.dx > SWIPE_THRESHOLD) {
+          handleSwipeRight();
+        } else if (gs.dx < -SWIPE_THRESHOLD) {
+          handleSwipeLeft();
+        } else {
+          resetCard();
+        }
+      },
+    }),
+  ).current;
+
+  // ── Phase handlers ──
+  const startQuizTimer = () => {
+    quizStartTime.current = Date.now();
+    timerRef.current = setTimeout(() => {
+      if (!completedRef.current) handleComplete();
     }, QUIZ_TIMEOUT_MS);
   };
 
@@ -151,135 +383,53 @@ export default function StyleQuizScreen() {
     startQuizTimer();
   };
 
-  const handleSkipToCapture = () => {
-    if (currentRoom) {
-      updateRoom(currentRoom.id, { style_blend: { ...EQUAL_BLEND } });
-    }
+  const handleSkip = () => {
+    if (currentRoom) updateRoom(currentRoom.id, { style_blend: { ...EQUAL_BLEND } });
     navigation.navigate('RoomCapture');
   };
 
-  const handleComplete = useCallback(() => {
-    if (completedRef.current) return;
-    completedRef.current = true;
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-    const finalBlend = normalizeBlend(styleBlend);
-    if (currentRoom) {
-      updateRoom(currentRoom.id, { style_blend: finalBlend });
-    }
-    const userId = useAppStore.getState().user?.id;
-    if (userId) {
-      supabase
-        .from('users')
-        .update({ style_blend: finalBlend })
-        .eq('id', userId)
-        .then(() => {});
-    }
-    navigation.navigate('RoomCapture');
-  }, [styleBlend, currentRoom, updateRoom, navigation]);
-
-  const handleSwipeRight = () => {
-    const card = cards[currentIndex];
-    if (!card) return;
-    const newBlend = { ...styleBlend };
-    for (const key of STYLE_KEYS) {
-      const weight = card.style_weights[key] ?? 0;
-      newBlend[key] = newBlend[key] * (1 + weight * 0.3);
-    }
-    setStyleBlend(normalizeBlend(newBlend));
-    advanceCard('right');
-  };
-
-  const handleSwipeLeft = () => {
-    const card = cards[currentIndex];
-    if (!card) return;
-    const newBlend = { ...styleBlend };
-    for (const key of STYLE_KEYS) {
-      const weight = card.style_weights[key] ?? 0;
-      newBlend[key] = newBlend[key] * (1 - weight * 0.3);
-    }
-    setStyleBlend(normalizeBlend(newBlend));
-    advanceCard('left');
-  };
-
-  const advanceCard = (direction: 'left' | 'right') => {
-    const toValue = direction === 'right' ? SCREEN_WIDTH + 100 : -SCREEN_WIDTH - 100;
-    Animated.timing(swipeAnim, {
-      toValue: { x: toValue, y: 0 },
-      duration: 220,
-      useNativeDriver: true,
-    }).start(() => {
-      swipeAnim.setValue({ x: 0, y: 0 });
-      const nextIndex = currentIndex + 1;
-      setCurrentIndex(nextIndex);
-      if (nextIndex >= 10 || nextIndex >= cards.length) {
-        handleComplete();
-      }
-    });
-  };
-
-  const handleNeutral = () => {
-    advanceCard('right');
-  };
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 10,
-      onPanResponderMove: Animated.event(
-        [null, { dx: swipeAnim.x, dy: swipeAnim.y }],
-        { useNativeDriver: false },
-      ),
-      onPanResponderRelease: (_, gs) => {
-        if (gs.dx > SWIPE_THRESHOLD) {
-          handleSwipeRight();
-        } else if (gs.dx < -SWIPE_THRESHOLD) {
-          handleSwipeLeft();
-        } else {
-          Animated.spring(swipeAnim, {
-            toValue: { x: 0, y: 0 },
-            useNativeDriver: true,
-            friction: 5,
-          }).start();
-        }
-      },
-    }),
-  ).current;
-
-  // ── Instruction screen ──
+  // ══════════════════════════════════════════════════
+  // Instruction overlay
+  // ══════════════════════════════════════════════════
   if (phase === 'instructions') {
     return (
-      <SafeAreaView style={styles.container}>
-        <TouchableOpacity style={styles.skipCorner} onPress={handleSkipToCapture}>
-          <Text style={styles.skipCornerText}>Skip</Text>
-        </TouchableOpacity>
+      <SafeAreaView style={styles.root}>
+        <View style={styles.instrBody}>
+          <DoubleArch size="large" />
 
-        <View style={styles.instructionsBody}>
-          <Text style={styles.instructionsTitle}>Discover Your Style</Text>
+          <Text style={styles.instrTitle}>Discover your style</Text>
+          <Text style={styles.instrSub}>
+            Swipe through rooms and we'll learn what you love
+          </Text>
 
-          <View style={styles.instructionsRows}>
-            <View style={styles.instructionRow}>
-              <Text style={styles.instructionIcon}>👉</Text>
-              <Text style={styles.instructionText}>Swipe right if you love it</Text>
+          <View style={styles.instrRows}>
+            <View style={styles.instrRow}>
+              <HeartIcon />
+              <Text style={styles.instrRowText}>Swipe right if you love it</Text>
             </View>
-            <View style={styles.instructionRow}>
-              <Text style={styles.instructionIcon}>👈</Text>
-              <Text style={styles.instructionText}>Swipe left if you don't</Text>
+            <View style={styles.instrRow}>
+              <XIcon />
+              <Text style={styles.instrRowText}>Swipe left to pass</Text>
             </View>
-            <View style={styles.instructionRow}>
-              <Text style={styles.instructionIcon}>😐</Text>
-              <Text style={styles.instructionText}>Tap Neutral if you're unsure</Text>
+            <View style={styles.instrRow}>
+              <QuestionIcon />
+              <Text style={styles.instrRowText}>Tap "Not sure" to skip</Text>
             </View>
           </View>
 
-          <TouchableOpacity style={styles.letsGoBtn} onPress={handleStartQuiz}>
-            <Text style={styles.letsGoBtnText}>Let's Go</Text>
+          <TouchableOpacity style={styles.startBtn} activeOpacity={0.85} onPress={handleStartQuiz}>
+            <Text style={styles.startBtnText}>Start Swiping</Text>
+          </TouchableOpacity>
+
+          <Text style={styles.instrCount}>{totalCards} rooms to discover</Text>
+
+          {/* Skip button */}
+          <TouchableOpacity style={styles.skipBtn} onPress={handleSkip}>
+            <Text style={styles.skipBtnText}>Skip</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Returning user style blend modal */}
+        {/* Returning user modal */}
         <Modal visible={showBlendModal} transparent animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={styles.modalCard}>
@@ -300,19 +450,23 @@ export default function StyleQuizScreen() {
     );
   }
 
-  // ── Loading ──
+  // ══════════════════════════════════════════════════
+  // Loading
+  // ══════════════════════════════════════════════════
   if (loading) {
     return (
-      <View style={[styles.container, styles.center]}>
+      <View style={[styles.root, styles.center]}>
         <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
 
-  // ── Done ──
+  // ══════════════════════════════════════════════════
+  // Exhausted
+  // ══════════════════════════════════════════════════
   if (currentIndex >= cards.length || cards.length === 0) {
     return (
-      <View style={[styles.container, styles.center]}>
+      <View style={[styles.root, styles.center]}>
         <Text style={styles.doneText}>Style profile complete!</Text>
       </View>
     );
@@ -320,151 +474,192 @@ export default function StyleQuizScreen() {
 
   const currentCard = cards[currentIndex];
   const nextCard = currentIndex + 1 < cards.length ? cards[currentIndex + 1] : null;
-  const progressDots = Array.from({ length: Math.min(cards.length, 10) }, (_, i) => i);
+  const thirdCard = currentIndex + 2 < cards.length ? cards[currentIndex + 2] : null;
 
-  // ── Quiz screen ──
+  // ══════════════════════════════════════════════════
+  // Swipe screen
+  // ══════════════════════════════════════════════════
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Discover Your Style</Text>
-        <View style={styles.progressRow}>
-          {progressDots.map((i) => (
-            <View
-              key={i}
-              style={[styles.progressDot, i <= currentIndex ? styles.progressDotActive : null]}
-            />
-          ))}
+    <SafeAreaView style={styles.root}>
+      {/* ── Top bar ── */}
+      <View style={styles.topBar}>
+        <DoubleArch size="small" />
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: `${Math.min(progress, 100)}%` }]} />
         </View>
       </View>
 
-      <View style={styles.cardStack}>
-        {nextCard && (
-          <Animated.View style={[styles.card, styles.cardBehind, { transform: [{ scale: nextCardScale }] }]}>
-            <Image source={{ uri: nextCard.image_url }} style={styles.cardImage} resizeMode="cover" />
-          </Animated.View>
-        )}
+      {/* ── Card stack ── */}
+      <View style={styles.cardArea}>
+        <View style={styles.stackWrap}>
+          {/* Back card (third) */}
+          {thirdCard && (
+            <View
+              style={[
+                styles.card,
+                { transform: [{ scale: 0.92 }, { translateY: 16 }], opacity: 0.5 },
+              ]}
+            >
+              <Image source={{ uri: thirdCard.image_url }} style={styles.cardImg} resizeMode="cover" />
+            </View>
+          )}
 
-        <Animated.View
-          style={[
-            styles.card,
-            {
-              transform: [
-                { translateX: swipeAnim.x },
-                { translateY: swipeAnim.y },
-                { rotate: rotateAnim },
-              ],
-            },
-          ]}
-          {...panResponder.panHandlers}
-        >
-          <Image source={{ uri: currentCard.image_url }} style={styles.cardImage} resizeMode="cover" />
+          {/* Middle card (next) */}
+          {nextCard && (
+            <Animated.View
+              style={[
+                styles.card,
+                { transform: [{ scale: nextCardScale }, { translateY: 8 }], opacity: 0.75 },
+              ]}
+            >
+              <Image source={{ uri: nextCard.image_url }} style={styles.cardImg} resizeMode="cover" />
+            </Animated.View>
+          )}
 
-          <Animated.View style={[styles.badge, styles.likeBadge, { opacity: likeOpacity }]}>
-            <Text style={styles.likeBadgeText}>LOVE</Text>
-          </Animated.View>
+          {/* Top card (draggable) */}
+          <Animated.View
+            style={[
+              styles.card,
+              {
+                transform: [
+                  { translateX: position.x },
+                  { translateY: position.y },
+                  { rotate: rotation },
+                ],
+              },
+            ]}
+            {...panResponder.panHandlers}
+          >
+            <Image source={{ uri: currentCard.image_url }} style={styles.cardImg} resizeMode="cover" />
 
-          <Animated.View style={[styles.badge, styles.nopeBadge, { opacity: nopeOpacity }]}>
-            <Text style={styles.nopeBadgeText}>PASS</Text>
+            {/* Bottom gradient overlay */}
+            <View style={styles.cardGradient} />
+
+            {/* LOVE badge */}
+            <Animated.View style={[styles.badge, styles.loveBadge, { opacity: loveBadgeOpacity }]}>
+              <Svg width={20} height={20} viewBox="0 0 24 24" fill="white">
+                <Path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" fill="white" />
+              </Svg>
+              <Text style={styles.loveBadgeText}>LOVE</Text>
+            </Animated.View>
+
+            {/* PASS badge */}
+            <Animated.View style={[styles.badge, styles.passBadge, { opacity: passBadgeOpacity }]}>
+              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                <Line x1={18} y1={6} x2={6} y2={18} stroke="white" strokeWidth={3} />
+                <Line x1={6} y1={6} x2={18} y2={18} stroke="white" strokeWidth={3} />
+              </Svg>
+              <Text style={styles.passBadgeText}>PASS</Text>
+            </Animated.View>
           </Animated.View>
-        </Animated.View>
+        </View>
       </View>
 
-      <View style={styles.progressBarContainer}>
-        <View style={[styles.progressBarFill, { width: `${Math.min(100, ((currentIndex + 1) / Math.max(cards.length, 1)) * 100)}%` }]} />
-      </View>
-      <View style={styles.bottomRow}>
-        <TouchableOpacity style={styles.actionBtn} onPress={handleSwipeLeft}>
-          <Text style={styles.nopeBtnText}>✕</Text>
+      {/* ── Not sure button ── */}
+      <View style={styles.bottomArea}>
+        <TouchableOpacity style={styles.notSureBtn} activeOpacity={0.8} onPress={handleNotSure}>
+          <Text style={styles.notSureBtnText}>Not sure</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.neutralBtn} onPress={handleNeutral}>
-          <Text style={styles.neutralBtnText}>Neutral</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionBtn} onPress={handleSwipeRight}>
-          <Text style={styles.likeBtnText}>♥</Text>
-        </TouchableOpacity>
+        <Text style={styles.progressLabel}>
+          {currentIndex + 1} of {totalCards}
+        </Text>
       </View>
     </SafeAreaView>
   );
 }
 
-const CARD_WIDTH = SCREEN_WIDTH - 48;
-const CARD_HEIGHT = SCREEN_HEIGHT * 0.55;
+// ══════════════════════════════════════════════════
+// Styles
+// ══════════════════════════════════════════════════
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
-    backgroundColor: '#1B3A2D',
+    backgroundColor: BG,
   },
   center: {
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
-    color: '#F5F0E8',
+    color: 'rgba(255,255,255,0.6)',
     fontSize: 18,
-    fontWeight: '600',
   },
   doneText: {
-    color: '#F5F0E8',
+    color: '#FFFFFF',
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: '600',
   },
 
   // ── Instructions ──
-  skipCorner: {
-    position: 'absolute',
-    top: 60,
-    right: 24,
-    zIndex: 10,
-    padding: 8,
-  },
-  skipCornerText: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  instructionsBody: {
+  instrBody: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 32,
+    justifyContent: 'center',
+    paddingHorizontal: 40,
   },
-  instructionsTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#F5F0E8',
-    marginBottom: 40,
+  instrTitle: {
+    color: '#FFFFFF',
+    fontSize: 28,
+    fontWeight: '400',
+    marginTop: 24,
     textAlign: 'center',
   },
-  instructionsRows: {
-    gap: 24,
-    marginBottom: 48,
-    width: '100%',
+  instrSub: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 15,
+    textAlign: 'center',
+    marginTop: 8,
   },
-  instructionRow: {
+  instrRows: {
+    marginTop: 32,
+    width: '100%',
+    maxWidth: 300,
+    gap: 20,
+  },
+  instrRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
   },
-  instructionIcon: {
-    fontSize: 28,
+  instrCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  instructionText: {
-    fontSize: 17,
-    color: '#F5F0E8',
-    fontWeight: '500',
+  instrRowText: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 15,
     flex: 1,
   },
-  letsGoBtn: {
-    backgroundColor: '#C47B3C',
-    paddingVertical: 16,
+  startBtn: {
+    marginTop: 40,
+    backgroundColor: GOLD,
     paddingHorizontal: 48,
+    paddingVertical: 16,
     borderRadius: 28,
   },
-  letsGoBtnText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
+  startBtnText: {
+    color: BG,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  instrCount: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 13,
+    marginTop: 16,
+  },
+  skipBtn: {
+    position: 'absolute',
+    top: 16,
+    right: 24,
+    padding: 8,
+  },
+  skipBtnText: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 15,
   },
 
   // ── Modal ──
@@ -485,8 +680,8 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 22,
-    fontWeight: '800',
-    color: '#1B3A2D',
+    fontWeight: '700',
+    color: BG,
     marginBottom: 12,
     textAlign: 'center',
   },
@@ -498,7 +693,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   modalPrimaryBtn: {
-    backgroundColor: '#C47B3C',
+    backgroundColor: GOLD,
     height: 52,
     borderRadius: 28,
     justifyContent: 'center',
@@ -518,147 +713,114 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
     borderWidth: 2,
-    borderColor: '#1B3A2D',
+    borderColor: BG,
   },
   modalOutlineBtnText: {
-    color: '#1B3A2D',
+    color: BG,
     fontSize: 16,
     fontWeight: '700',
   },
 
-  // ── Quiz header ──
-  header: {
-    paddingHorizontal: 24,
+  // ── Top bar ──
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 12,
-    alignItems: 'center',
   },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: 'white',
-    marginBottom: 12,
+  progressTrack: {
+    flex: 1,
+    height: 3,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 2,
+    marginLeft: 12,
+    overflow: 'hidden',
   },
-  progressRow: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  progressDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-  },
-  progressDotActive: {
-    backgroundColor: '#C47B3C',
+  progressFill: {
+    height: 3,
+    backgroundColor: GOLD,
+    borderRadius: 2,
   },
 
-  // ── Card stack ──
-  cardStack: {
+  // ── Card area ──
+  cardArea: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  stackWrap: {
+    width: CARD_W,
+    height: CARD_H,
   },
   card: {
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
+    width: CARD_W,
+    height: CARD_H,
     borderRadius: 20,
     overflow: 'hidden',
     position: 'absolute',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 8,
   },
-  cardBehind: {
-    top: -8,
-  },
-  cardImage: {
+  cardImg: {
     width: '100%',
     height: '100%',
   },
+  cardGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '40%',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
   badge: {
     position: 'absolute',
-    top: 40,
+    top: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 3,
+    borderRadius: 24,
   },
-  likeBadge: {
-    right: 20,
-    borderColor: '#2E7D32',
-    backgroundColor: 'rgba(46,125,50,0.15)',
+  loveBadge: {
+    left: 24,
+    backgroundColor: 'rgba(34,197,94,0.9)',
   },
-  likeBadgeText: {
-    color: '#2E7D32',
-    fontSize: 28,
-    fontWeight: '900',
-    letterSpacing: 2,
+  loveBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
   },
-  nopeBadge: {
-    left: 20,
-    borderColor: '#CC3333',
-    backgroundColor: 'rgba(204,51,51,0.15)',
+  passBadge: {
+    right: 24,
+    backgroundColor: 'rgba(107,114,128,0.9)',
   },
-  nopeBadgeText: {
-    color: '#CC3333',
-    fontSize: 28,
-    fontWeight: '900',
-    letterSpacing: 2,
+  passBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
   },
 
-  // ── Bottom row ──
-  progressBarContainer: {
-    height: 4,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 2,
-    marginHorizontal: 24,
-    marginBottom: 12,
-  },
-  progressBarFill: {
-    height: 4,
-    backgroundColor: '#C47B3C',
-    borderRadius: 2,
-  },
-  bottomRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+  // ── Bottom ──
+  bottomArea: {
     alignItems: 'center',
     paddingBottom: 32,
-    gap: 24,
   },
-  actionBtn: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  nopeBtnText: {
-    fontSize: 28,
-    color: '#CC3333',
-    fontWeight: '800',
-  },
-  likeBtnText: {
-    fontSize: 28,
-    color: '#2E7D32',
-    fontWeight: '800',
-  },
-  neutralBtn: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 24,
-    borderWidth: 1,
+  notSureBtn: {
+    paddingHorizontal: 48,
+    paddingVertical: 14,
+    borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.3)',
+    borderRadius: 28,
+    marginBottom: 16,
   },
-  neutralBtnText: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 15,
-    fontWeight: '600',
+  notSureBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+  },
+  progressLabel: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 13,
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,387 +10,538 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Animated,
-  Easing,
+  StatusBar,
+  Linking,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import * as Crypto from 'expo-crypto';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import type { AuthStackParamList } from '../../navigation/AuthNavigator';
 
 WebBrowser.maybeCompleteAuthSession();
 
-type AuthMode = 'signin' | 'signup';
-type Phase = 'splash' | 'auth';
+const BG = '#0A1628';
+const GOLD = '#C4A45A';
 
-export default function AuthScreen() {
-  const [phase, setPhase] = useState<Phase>('splash');
-  const [mode, setMode] = useState<AuthMode>('signin');
+const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? '';
+const isGoogleConfigured =
+  GOOGLE_CLIENT_ID !== '' && GOOGLE_CLIENT_ID !== 'YOUR_GOOGLE_CLIENT_ID_HERE';
+
+type Props = NativeStackScreenProps<AuthStackParamList, 'Auth'>;
+type AuthMode = 'signin' | 'signup';
+type LoadingTarget = 'apple' | 'google' | 'email' | null;
+
+export default function AuthScreen({ route }: Props) {
+  const initialMode = route.params?.mode === 'signup' ? 'signup' : 'signin';
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const [authLoading, setAuthLoading] = useState(false);
+  const [loading, setLoading] = useState<LoadingTarget>(null);
+  const [error, setError] = useState<string | null>(null);
+  const errorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const logoOpacity = useRef(new Animated.Value(0)).current;
-  const buttonsOpacity = useRef(new Animated.Value(0)).current;
-
-  const [_googleRequest, googleResponse, googlePromptAsync] = Google.useIdTokenAuthRequest({
-    clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? '',
-  });
+  const [_googleRequest, googleResponse, googlePromptAsync] =
+    Google.useIdTokenAuthRequest({ clientId: GOOGLE_CLIENT_ID });
 
   useEffect(() => {
     if (googleResponse?.type === 'success') {
       const idToken = googleResponse.params.id_token;
-      if (idToken) {
-        handleGoogleToken(idToken);
-      }
+      if (idToken) handleGoogleToken(idToken);
     }
   }, [googleResponse]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    Animated.sequence([
-      Animated.timing(logoOpacity, {
-        toValue: 1,
-        duration: 2000,
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
-      }),
-      Animated.delay(300),
-      Animated.timing(buttonsOpacity, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setPhase('auth');
-    });
-  }, [logoOpacity, buttonsOpacity]);
-
-  const handleAppleSignIn = async () => {
-    try {
-      setAuthLoading(true);
-      const rawBytes = new Uint8Array(32);
-      crypto.getRandomValues(rawBytes);
-      const rawNonce = Array.from(rawBytes, (b) => b.toString(16).padStart(2, '0')).join('');
-      const hashedNonce = await Crypto.digestStringAsync(
-        Crypto.CryptoDigestAlgorithm.SHA256,
-        rawNonce,
-      );
-      const credential = await AppleAuthentication.signInAsync({
-        requestedScopes: [
-          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-          AppleAuthentication.AppleAuthenticationScope.EMAIL,
-        ],
-        nonce: hashedNonce,
-      });
-      const { data, error } = await supabase.auth.signInWithIdToken({
-        provider: 'apple',
-        token: credential.identityToken!,
-        nonce: rawNonce,
-      });
-      if (error) throw error;
-      if (data.user) {
-        useAppStore.getState().setUser(data.user as any);
-        useAppStore.getState().setSession(data.session);
-      }
-    } catch (e: any) {
-      if (e.code !== 'ERR_REQUEST_CANCELED') {
-        Alert.alert('Sign In Failed', e.message);
-      }
-    } finally {
-      setAuthLoading(false);
-    }
+  const showError = (msg: string) => {
+    setError(msg);
+    if (errorTimer.current) clearTimeout(errorTimer.current);
+    errorTimer.current = setTimeout(() => setError(null), 4000);
   };
 
+  const anyLoading = loading !== null;
+
+  // ── Apple ──
+  // Re-enable when paid Apple Developer account is active
+  const handleAppleSignIn = async () => {
+    Alert.alert(
+      'Apple Sign In',
+      'Apple Sign In will be available after upgrading to a paid Apple Developer account.',
+    );
+  };
+
+  // ── Google ──
   const handleGoogleToken = async (idToken: string) => {
     try {
-      setAuthLoading(true);
-      const { data, error } = await supabase.auth.signInWithIdToken({
+      setLoading('google');
+      const { data, error: err } = await supabase.auth.signInWithIdToken({
         provider: 'google',
         token: idToken,
       });
-      if (error) throw error;
+      if (err) throw err;
       if (data.user) {
         useAppStore.getState().setUser(data.user as any);
         useAppStore.getState().setSession(data.session);
       }
     } catch (e: any) {
-      Alert.alert('Sign In Failed', e.message);
+      showError(e.message ?? 'Google sign in failed');
     } finally {
-      setAuthLoading(false);
+      setLoading(null);
     }
   };
 
   const handleGoogleSignIn = async () => {
+    if (!isGoogleConfigured) {
+      Alert.alert(
+        'Google Sign In',
+        'Google Sign In requires configuration. Please use email sign in for now.',
+      );
+      return;
+    }
     try {
+      setLoading('google');
       await googlePromptAsync();
     } catch (e: any) {
-      Alert.alert('Sign In Failed', e.message);
+      if (e.code !== 'ERR_REQUEST_CANCELED') {
+        showError(e.message ?? 'Google sign in failed');
+      }
+      setLoading(null);
     }
   };
 
-  const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+  // ── Email ──
+  const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
-  const handleEmailSignIn = async () => {
-    if (!email || !password) return Alert.alert('Missing fields', 'Please enter email and password.');
-    if (!isValidEmail(email)) return Alert.alert('Invalid email', 'Please enter a valid email address.');
-    if (password.length < 8) return Alert.alert('Password too short', 'Password must be at least 8 characters.');
-    setAuthLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    setAuthLoading(false);
-    if (error) return Alert.alert('Sign In Failed', error.message);
-    useAppStore.getState().setUser(data.user as any);
-    useAppStore.getState().setSession(data.session);
+  const handleEmailSubmit = async () => {
+    if (mode === 'signup' && !fullName.trim()) {
+      return showError('Please enter your full name');
+    }
+    if (!email.trim()) return showError('Please enter your email address');
+    if (!isValidEmail(email)) return showError('Please enter a valid email address');
+    if (password.length < 8) return showError('Password must be at least 8 characters');
+
+    setLoading('email');
+    try {
+      if (mode === 'signin') {
+        const { data, error: err } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (err) throw err;
+        useAppStore.getState().setUser(data.user as any);
+        useAppStore.getState().setSession(data.session);
+      } else {
+        const { error: err } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { full_name: fullName.trim() } },
+        });
+        if (err) throw err;
+        useAppStore.getState().setUser({ email, full_name: fullName.trim() } as any);
+      }
+    } catch (e: any) {
+      showError(e.message ?? 'Authentication failed');
+    } finally {
+      setLoading(null);
+    }
   };
-
-  const handleEmailSignUp = async () => {
-    if (!email || !password || !fullName) return Alert.alert('Missing fields', 'Please fill all fields.');
-    if (!isValidEmail(email)) return Alert.alert('Invalid email', 'Please enter a valid email address.');
-    if (password.length < 8) return Alert.alert('Password too short', 'Password must be at least 8 characters.');
-    setAuthLoading(true);
-    const { data: _data, error } = await supabase.auth.signUp({
-      email, password, options: { data: { full_name: fullName } },
-    });
-    setAuthLoading(false);
-    if (error) return Alert.alert('Sign Up Failed', error.message);
-    Alert.alert('Check your email', 'We sent you a confirmation link.');
-  };
-
-  const handleEmailSubmit = () => {
-    if (mode === 'signin') handleEmailSignIn();
-    else handleEmailSignUp();
-  };
-
-  if (phase === 'splash') {
-    return (
-      <View style={styles.container}>
-        <Animated.View style={[styles.splashCenter, { opacity: logoOpacity }]}>
-          <View style={styles.logoMark} />
-          <Text style={styles.logoWordmark}>cova</Text>
-          <Text style={styles.logoTagline}>tinder for your home</Text>
-        </Animated.View>
-      </View>
-    );
-  }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          {/* Logo */}
-          <View style={styles.logoSection}>
-            <View style={styles.logoMark} />
-            <Text style={styles.logoWordmark}>cova</Text>
-            <Text style={styles.logoTagline}>tinder for your home</Text>
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" backgroundColor={BG} />
+
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.flex}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          bounces={false}
+        >
+          {/* ── Logo ── */}
+          <View style={styles.logoRow}>
+            <View style={styles.archWrap}>
+              <Svg width={60} height={80} viewBox="0 0 60 80" fill="none" style={styles.archOuter}>
+                <Path
+                  d="M2 80 V30 Q2 2 30 2 Q58 2 58 30 V80"
+                  stroke={GOLD}
+                  strokeWidth={2.5}
+                  fill="none"
+                  strokeLinecap="round"
+                />
+              </Svg>
+              <Svg width={44} height={60} viewBox="0 0 44 60" fill="none" style={styles.archInner}>
+                <Path
+                  d="M2 60 V22 Q2 2 22 2 Q42 2 42 22 V60"
+                  stroke={GOLD}
+                  strokeWidth={2}
+                  fill="none"
+                  strokeLinecap="round"
+                />
+              </Svg>
+            </View>
+
+            <View style={styles.textCol}>
+              <Text style={styles.wordmark}>cova</Text>
+              <View style={styles.goldRule} />
+              <Text style={styles.tagline}>tinder for your home</Text>
+            </View>
           </View>
 
-          {/* Auth buttons */}
-          <Animated.View style={[styles.authSection, { opacity: buttonsOpacity }]}>
-            <TouchableOpacity style={styles.socialButton} onPress={handleAppleSignIn} disabled={authLoading}>
-              {authLoading ? (
-                <ActivityIndicator color="#1A1A1A" />
+          {/* ── Mode toggle ── */}
+          <View style={styles.modeRow}>
+            <TouchableOpacity onPress={() => setMode('signin')} disabled={anyLoading}>
+              <Text style={[styles.modeText, mode === 'signin' && styles.modeActive]}>
+                Sign In
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setMode('signup')} disabled={anyLoading}>
+              <Text style={[styles.modeText, mode === 'signup' && styles.modeActive]}>
+                Create Account
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* ── Social buttons ── */}
+          <View style={styles.socialSection}>
+            {/* Apple */}
+            <TouchableOpacity
+              style={[styles.appleBtn, { opacity: 0.4 }]}
+              activeOpacity={0.7}
+              onPress={handleAppleSignIn}
+              disabled={anyLoading}
+            >
+              {loading === 'apple' ? (
+                <ActivityIndicator color="#000" />
               ) : (
                 <>
-                  <Text style={styles.appleIcon}>🍎</Text>
-                  <Text style={styles.socialButtonText}>Continue with Apple</Text>
+                  <Svg width={20} height={24} viewBox="0 0 17 20" fill="black">
+                    <Path
+                      d="M8.5 1.8C9.3.7 10.6 0 12 0c.1 1.3-.4 2.6-1.2 3.5-.8 1-2 1.6-3.2 1.5-.2-1.3.4-2.5 1-3.2zM15.2 10.5c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.3-.9C4.3 4.7 2.2 6.7 2.2 10.7c0 2.4.9 4.9 2.1 6.5.9 1.4 2 2.9 3.4 2.8 1.4-.1 1.9-.9 3.5-.9 1.6 0 2.1.9 3.5.8 1.5-.1 2.4-1.4 3.3-2.7.7-1 1.2-2 1.5-2.6-1.5-.6-2.8-2.3-2.8-4.4z"
+                      fill="black"
+                    />
+                  </Svg>
+                  <Text style={styles.appleBtnText}>Continue with Apple</Text>
                 </>
               )}
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.socialButton} onPress={handleGoogleSignIn} disabled={authLoading}>
-              <Text style={styles.googleIcon}>G</Text>
-              <Text style={styles.socialButtonText}>Continue with Google</Text>
+            {/* Google */}
+            <TouchableOpacity
+              style={[styles.googleBtn, !isGoogleConfigured && { opacity: 0.4 }]}
+              activeOpacity={0.7}
+              onPress={handleGoogleSignIn}
+              disabled={anyLoading}
+            >
+              {loading === 'google' ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <>
+                  <Svg width={20} height={20} viewBox="0 0 24 24">
+                    <Path
+                      fill="#4285F4"
+                      d="M23.745 12.27c0-.79-.07-1.54-.19-2.27h-11.3v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"
+                    />
+                    <Path
+                      fill="#34A853"
+                      d="M12.255 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96h-3.98v3.09C3.515 21.3 7.565 24 12.255 24z"
+                    />
+                    <Path
+                      fill="#FBBC05"
+                      d="M5.525 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62h-3.98a11.86 11.86 0 000 10.76l3.98-3.09z"
+                    />
+                    <Path
+                      fill="#EA4335"
+                      d="M12.255 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C18.205 1.19 15.495 0 12.255 0c-4.69 0-8.74 2.7-10.71 6.62l3.98 3.09c.95-2.85 3.6-4.96 6.73-4.96z"
+                    />
+                  </Svg>
+                  <Text style={styles.googleBtnText}>Continue with Google</Text>
+                </>
+              )}
             </TouchableOpacity>
+          </View>
 
-            {/* Divider */}
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or continue with email</Text>
-              <View style={styles.dividerLine} />
-            </View>
+          {/* ── Divider ── */}
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>— or —</Text>
+            <View style={styles.dividerLine} />
+          </View>
 
-            {/* Email form */}
+          {/* ── Form ── */}
+          <View style={styles.formSection}>
             {mode === 'signup' && (
               <TextInput
                 style={styles.input}
-                placeholder="Full Name"
-                placeholderTextColor="rgba(255,255,255,0.5)"
+                placeholder="Full name"
+                placeholderTextColor="rgba(255,255,255,0.4)"
                 value={fullName}
                 onChangeText={setFullName}
                 autoCapitalize="words"
+                editable={!anyLoading}
               />
             )}
+
             <TextInput
               style={styles.input}
-              placeholder="Email"
-              placeholderTextColor="rgba(255,255,255,0.5)"
+              placeholder="Email address"
+              placeholderTextColor="rgba(255,255,255,0.4)"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
+              autoCorrect={false}
+              editable={!anyLoading}
             />
+
             <TextInput
               style={styles.input}
               placeholder="Password"
-              placeholderTextColor="rgba(255,255,255,0.5)"
+              placeholderTextColor="rgba(255,255,255,0.4)"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
+              editable={!anyLoading}
             />
 
-            <TouchableOpacity style={styles.emailButton} onPress={handleEmailSubmit} disabled={authLoading}>
-              {authLoading ? (
-                <ActivityIndicator color="#FFFFFF" />
+            <TouchableOpacity
+              style={styles.submitBtn}
+              activeOpacity={0.85}
+              onPress={handleEmailSubmit}
+              disabled={anyLoading}
+            >
+              {loading === 'email' ? (
+                <ActivityIndicator color={BG} />
               ) : (
-                <Text style={styles.emailButtonText}>
+                <Text style={styles.submitBtnText}>
                   {mode === 'signin' ? 'Sign In' : 'Create Account'}
                 </Text>
               )}
             </TouchableOpacity>
+          </View>
 
-            <TouchableOpacity onPress={() => setMode(mode === 'signin' ? 'signup' : 'signin')}>
-              <Text style={styles.toggleText}>
-                {mode === 'signin' ? 'New here? Create account' : 'Already have an account? Sign in'}
-              </Text>
+          {/* ── Error ── */}
+          {error && (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          )}
+
+          {/* ── Spacer ── */}
+          <View style={styles.spacer} />
+
+          {/* ── Legal ── */}
+          <View style={styles.legalRow}>
+            <TouchableOpacity onPress={() => Linking.openURL('https://cova.ai/privacy')}>
+              <Text style={styles.legalLink}>Privacy Policy</Text>
             </TouchableOpacity>
-          </Animated.View>
-
-          {/* Terms */}
-          <View style={styles.termsSection}>
-            <Text style={styles.termsText}>
-              By continuing you agree to our Terms & Privacy Policy
-            </Text>
+            <Text style={styles.legalDot}>•</Text>
+            <TouchableOpacity onPress={() => Linking.openURL('https://cova.ai/terms')}>
+              <Text style={styles.legalLink}>Terms of Service</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
-    backgroundColor: '#1B3A2D',
+    backgroundColor: BG,
   },
   flex: {
     flex: 1,
   },
-  splashCenter: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  logoMark: {
-    width: 64,
-    height: 32,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    backgroundColor: '#C47B3C',
-    marginBottom: 12,
-  },
-  logoWordmark: {
-    fontSize: 32,
-    fontWeight: '300',
-    color: '#C47B3C',
-    letterSpacing: 8,
-  },
-  logoTagline: {
-    fontSize: 12,
-    color: '#C47B3C',
-    fontStyle: 'italic',
-    letterSpacing: 2,
-    marginTop: 4,
-  },
-  scrollContent: {
+  scroll: {
     flexGrow: 1,
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-  },
-  logoSection: {
-    flex: 0.35,
-    justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 24,
+    paddingHorizontal: 32,
+    paddingTop: 60,
+    paddingBottom: 32,
+  },
+
+  // ── Logo ──
+  logoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  archWrap: {
+    width: 60,
+    height: 80,
+    marginRight: 16,
+  },
+  archOuter: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+  },
+  archInner: {
+    position: 'absolute',
+    left: 8,
+    top: 20,
+  },
+  textCol: {
+    flexDirection: 'column',
+  },
+  wordmark: {
+    fontSize: 32,
+    fontWeight: '400',
+    color: '#FFFFFF',
+    letterSpacing: 4,
+    lineHeight: 32,
+  },
+  goldRule: {
+    width: '100%',
+    height: 1,
+    backgroundColor: GOLD,
+    marginTop: 6,
+  },
+  tagline: {
+    fontStyle: 'italic',
+    color: GOLD,
+    fontSize: 12,
+    letterSpacing: 2,
+    marginTop: 6,
+  },
+
+  // ── Mode toggle ──
+  modeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 24,
     marginBottom: 40,
   },
-  authSection: {
-    gap: 12,
+  modeText: {
+    fontSize: 16,
+    letterSpacing: 1,
+    color: 'rgba(255,255,255,0.4)',
   },
-  socialButton: {
+  modeActive: {
+    color: GOLD,
+  },
+
+  // ── Social ──
+  socialSection: {
+    width: '100%',
+  },
+  appleBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
-    height: 56,
     borderRadius: 28,
-    gap: 10,
+    height: 56,
+    gap: 12,
+    marginBottom: 12,
   },
-  appleIcon: {
-    fontSize: 20,
+  appleBtnText: {
+    color: '#000000',
+    fontSize: 17,
   },
-  googleIcon: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#4285F4',
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.25)',
+    borderRadius: 28,
+    height: 56,
+    gap: 12,
+    marginBottom: 0,
   },
-  socialButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1A1A1A',
+  googleBtnText: {
+    color: '#FFFFFF',
+    fontSize: 17,
   },
+
+  // ── Divider ──
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 8,
+    justifyContent: 'center',
+    width: '100%',
+    marginVertical: 20,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
   },
   dividerText: {
-    color: '#888888',
-    fontSize: 13,
+    color: 'rgba(255,255,255,0.3)',
+    fontSize: 14,
     marginHorizontal: 12,
   },
+
+  // ── Form ──
+  formSection: {
+    width: '100%',
+  },
   input: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
     borderRadius: 12,
     height: 52,
     paddingHorizontal: 16,
     color: '#FFFFFF',
     fontSize: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    marginBottom: 12,
   },
-  emailButton: {
-    backgroundColor: '#C47B3C',
-    height: 56,
+  submitBtn: {
+    backgroundColor: GOLD,
     borderRadius: 28,
+    height: 56,
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 4,
+    marginTop: 8,
   },
-  emailButtonText: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  toggleText: {
-    color: '#C47B3C',
-    fontSize: 14,
+  submitBtnText: {
+    color: BG,
     fontWeight: '600',
-    textAlign: 'center',
-    marginTop: 4,
+    fontSize: 17,
   },
-  termsSection: {
-    paddingVertical: 24,
+
+  // ── Error ──
+  errorBox: {
+    width: '100%',
+    marginTop: 16,
+    backgroundColor: 'rgba(255,0,0,0.15)',
+    borderRadius: 8,
+    padding: 12,
     alignItems: 'center',
   },
-  termsText: {
+  errorText: {
+    color: '#ff6b6b',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+
+  // ── Spacer + legal ──
+  spacer: {
+    flex: 1,
+    minHeight: 32,
+  },
+  legalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 32,
+  },
+  legalLink: {
     color: 'rgba(255,255,255,0.4)',
     fontSize: 12,
-    textAlign: 'center',
+  },
+  legalDot: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 12,
+    marginHorizontal: 16,
   },
 });

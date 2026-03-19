@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { useAppStore } from '../store';
 import { callEdgeFunction } from '../lib/supabase';
 import type { ChatMessage } from '@cova/shared';
@@ -36,7 +37,6 @@ export default function ChatPanel({ roomId, renderImageBase64, tapX, tapY, onClo
     messages,
     chatLoading,
     addMessage,
-    setMessages,
     setChatLoading,
   } = useAppStore();
 
@@ -49,7 +49,6 @@ export default function ChatPanel({ roomId, renderImageBase64, tapX, tapY, onClo
       damping: 20,
       stiffness: 150,
     }).start();
-
   }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSend = async () => {
@@ -62,8 +61,8 @@ export default function ChatPanel({ roomId, renderImageBase64, tapX, tapY, onClo
       role: 'user',
       content: text,
       image_url: null,
-      tap_x: null,
-      tap_y: null,
+      tap_x: tapX ?? null,
+      tap_y: tapY ?? null,
       created_at: new Date().toISOString(),
     };
 
@@ -148,10 +147,7 @@ export default function ChatPanel({ roomId, renderImageBase64, tapX, tapY, onClo
     return (
       <View style={styles.dotsRow}>
         {[dot1, dot2, dot3].map((dot, i) => (
-          <Animated.View
-            key={i}
-            style={[styles.dot, { opacity: dot }]}
-          />
+          <Animated.View key={i} style={[styles.dot, { opacity: dot }]} />
         ))}
       </View>
     );
@@ -161,14 +157,20 @@ export default function ChatPanel({ roomId, renderImageBase64, tapX, tapY, onClo
     <View style={styles.overlay}>
       <TouchableOpacity style={styles.backdrop} onPress={onClose} activeOpacity={1} />
       <Animated.View style={[styles.panel, { transform: [{ translateY }] }]}>
-        <View style={styles.header}>
+        {/* Drag handle */}
+        <View style={styles.dragHandleRow}>
           <View style={styles.dragHandle} />
+        </View>
+
+        {/* Header */}
+        <View style={styles.header}>
           <Text style={styles.headerTitle}>AI Design Assistant</Text>
           <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
             <Text style={styles.closeBtnText}>✕</Text>
           </TouchableOpacity>
         </View>
 
+        {/* Messages */}
         <FlatList
           ref={flatListRef}
           data={roomMessages}
@@ -181,14 +183,20 @@ export default function ChatPanel({ roomId, renderImageBase64, tapX, tapY, onClo
 
         {chatLoading && <LoadingDots />}
 
+        {/* Input */}
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.inputRow}>
+            {tapX != null && tapY != null && (
+              <View style={styles.pinIndicator}>
+                <Text style={styles.pinText}>📍</Text>
+              </View>
+            )}
             <TextInput
               style={styles.input}
               value={inputText}
               onChangeText={setInputText}
               placeholder="Ask about your room..."
-              placeholderTextColor="#888"
+              placeholderTextColor="rgba(0,0,0,0.35)"
               multiline
             />
             <TouchableOpacity
@@ -196,7 +204,10 @@ export default function ChatPanel({ roomId, renderImageBase64, tapX, tapY, onClo
               onPress={handleSend}
               disabled={!inputText.trim() || chatLoading}
             >
-              <Text style={styles.sendBtnText}>→</Text>
+              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                <Path d="M22 2L11 13" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                <Path d="M22 2L15 22l-4-9-9-4L22 2z" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+              </Svg>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -220,33 +231,34 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },
+  dragHandleRow: {
+    alignItems: 'center',
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  dragHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(0,0,0,0.15)',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.08)',
   },
-  dragHandle: {
-    position: 'absolute',
-    top: 6,
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#ccc',
-  },
   headerTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#1B3A2D',
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#0A1628',
   },
   closeBtn: {
     position: 'absolute',
-    right: 16,
-    top: 12,
+    right: 20,
     width: 30,
     height: 30,
     borderRadius: 15,
@@ -255,7 +267,7 @@ const styles = StyleSheet.create({
   },
   closeBtnText: {
     fontSize: 18,
-    color: '#1B3A2D',
+    color: '#0A1628',
     fontWeight: '600',
   },
   messageList: {
@@ -277,18 +289,18 @@ const styles = StyleSheet.create({
   covaLabel: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#888',
+    color: 'rgba(0,0,0,0.4)',
     marginBottom: 4,
     marginLeft: 4,
   },
   bubble: {
-    maxWidth: '80%',
+    maxWidth: '75%',
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 16,
   },
   userBubble: {
-    backgroundColor: '#C47B3C',
+    backgroundColor: '#C4A45A',
     borderBottomRightRadius: 4,
   },
   assistantBubble: {
@@ -300,10 +312,10 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   userText: {
-    color: 'white',
+    color: '#0A1628',
   },
   assistantText: {
-    color: '#1B3A2D',
+    color: '#0A1628',
   },
   dotsRow: {
     flexDirection: 'row',
@@ -315,16 +327,23 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#C47B3C',
+    backgroundColor: '#C4A45A',
   },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.08)',
     gap: 8,
+  },
+  pinIndicator: {
+    paddingHorizontal: 4,
+    paddingBottom: 8,
+  },
+  pinText: {
+    fontSize: 16,
   },
   input: {
     flex: 1,
@@ -334,22 +353,17 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 15,
     maxHeight: 100,
-    color: '#1A1A1A',
+    color: '#0A1628',
   },
   sendBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#C47B3C',
+    backgroundColor: '#C4A45A',
     justifyContent: 'center',
     alignItems: 'center',
   },
   sendBtnDisabled: {
     opacity: 0.5,
-  },
-  sendBtnText: {
-    color: 'white',
-    fontSize: 20,
-    fontWeight: '700',
   },
 });
