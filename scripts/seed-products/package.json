@@ -1,0 +1,20 @@
+{
+  "name": "seed-products",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "seed": "tsx index.ts",
+    "preflight": "tsx index.ts --preflight-only"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "apify-client": "^2.9.4",
+    "dotenv": "^16.4.5",
+    "p-limit": "^6.1.0",
+    "tsx": "^4.19.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.4"
+  }
+}

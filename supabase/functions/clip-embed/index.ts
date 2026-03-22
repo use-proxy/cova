@@ -1,10 +1,12 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const HF_ENDPOINT =
+  'https://router.huggingface.co/hf-inference/models/openai/clip-vit-large-patch14/pipeline/feature-extraction';
 
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -12,9 +14,13 @@ serve(async (req: Request) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const replicateToken = Deno.env.get('REPLICATE_API_TOKEN')!;
+    const hfToken = Deno.env.get('HUGGINGFACE_API_TOKEN');
+    if (!hfToken) {
+      return new Response(
+        JSON.stringify({ error: 'HUGGINGFACE_API_TOKEN is not set' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -24,70 +30,34 @@ serve(async (req: Request) => {
       );
     }
 
-    const token = authHeader.replace('Bearer ', '');
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const { image_url } = await req.json();
 
-    if (authError || !user) {
+    if (!image_url) {
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
-    }
-
-    const { image_url, image_base64 } = await req.json();
-
-    if (!image_url && !image_base64) {
-      return new Response(
-        JSON.stringify({ error: 'Provide image_url or image_base64' }),
+        JSON.stringify({ error: 'Provide image_url' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
-    const predictionRes = await fetch('https://api.replicate.com/v1/predictions', {
+    const hfRes = await fetch(HF_ENDPOINT, {
       method: 'POST',
       headers: {
-        'Authorization': `Token ${replicateToken}`,
+        Authorization: `Bearer ${hfToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        version: 'andreasjansson/clip-features:75b33f253f7714a281ad3e9b28f63e3232d583716ef6718f2e46641077ea040a',
-        input: { inputs: image_url ?? image_base64 },
-      }),
+      body: JSON.stringify({ inputs: [image_url] }),
     });
 
-    if (!predictionRes.ok) {
-      const err = await predictionRes.text();
+    if (!hfRes.ok) {
+      const err = await hfRes.text();
       return new Response(
-        JSON.stringify({ error: `Replicate API error: ${err}` }),
+        JSON.stringify({ error: `Hugging Face API error: ${err}` }),
         { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
-    const prediction = await predictionRes.json();
-    const predictionId = prediction.id;
-
-    let status = prediction.status;
-    let result = prediction;
-
-    while (status !== 'succeeded' && status !== 'failed') {
-      await new Promise((r) => setTimeout(r, 1000));
-
-      const pollRes = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
-        headers: { 'Authorization': `Token ${replicateToken}` },
-      });
-      result = await pollRes.json();
-      status = result.status;
-    }
-
-    if (status === 'failed') {
-      return new Response(
-        JSON.stringify({ error: result.error ?? 'CLIP embedding failed' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
-    }
-
-    const embedding: number[] = result.output[0].embedding;
+    const result: number[][] = await hfRes.json();
+    const embedding = result[0];
 
     return new Response(
       JSON.stringify({ embedding }),

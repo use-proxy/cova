@@ -1,0 +1,1161 @@
+[
+  {
+    "#error": true,
+    "#debug": {
+      "requestId": "nhzjS1OSjgvEeTK",
+      "url": "https://www.ikea.com/us/en/cat/coffee-tables-fu003/",
+      "method": "GET",
+      "retryCount": 3,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Navigation timed out after 60 seconds.\n    at handleRequestTimeout (/home/myuser/node_modules/@crawlee/core/crawlers/crawler_utils.js:13:11)\n    at PuppeteerCrawler._handleNavigationTimeout (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:360:46)\n    at PuppeteerCrawler._handleNavigation (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:337:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:260:13)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ]
+    }
+  },
+  {
+    "name": "VALEVÅG Pocket spring mattress, Queen",
+    "price": "VALEVÅG Pocket spring mattress, Queen$349.00Price $ 349.00",
+    "image_url": "https://www.ikea.com/us/en/images/products/valevag-pocket-spring-mattress-medium-firm-white__1142852_pe881371_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/valevag-pocket-spring-mattress-medium-firm-white-50511857/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "8BeD4hdgkHxVmvJ",
+      "url": "https://www.ikea.com/us/en/cat/beds-bm003/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/beds-bm003/",
+      "method": "GET",
+      "retryCount": 2,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "VÅGSTRANDA Pocket spring mattress, Queen",
+    "price": "VÅGSTRANDA Pocket spring mattress, Queen$499.00Price $ 499.00",
+    "image_url": "https://www.ikea.com/us/en/images/products/vagstranda-pocket-spring-mattress-medium-firm-white__1142855_pe881376_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/vagstranda-pocket-spring-mattress-medium-firm-white-30511877/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "8BeD4hdgkHxVmvJ",
+      "url": "https://www.ikea.com/us/en/cat/beds-bm003/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/beds-bm003/",
+      "method": "GET",
+      "retryCount": 2,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "ÅSBYGDA Foam mattress, Queen",
+    "price": "ÅSBYGDA Foam mattress, Queen$249.00Price $ 249.00",
+    "image_url": "https://www.ikea.com/us/en/images/products/asbygda-foam-mattress-firm-white__1142848_pe881370_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/asbygda-foam-mattress-firm-white-10481503/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "8BeD4hdgkHxVmvJ",
+      "url": "https://www.ikea.com/us/en/cat/beds-bm003/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/beds-bm003/",
+      "method": "GET",
+      "retryCount": 2,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "ÅBROTTEN Foam mattress, Queen",
+    "price": "ÅBROTTEN Foam mattress, Queen$449.00Price $ 449.00",
+    "image_url": "https://www.ikea.com/us/en/images/products/abrotten-foam-mattress-medium-firm-white__1142853_pe881374_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/abrotten-foam-mattress-medium-firm-white-40481686/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "8BeD4hdgkHxVmvJ",
+      "url": "https://www.ikea.com/us/en/cat/beds-bm003/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/beds-bm003/",
+      "method": "GET",
+      "retryCount": 2,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "VESTERÖY Pocket spring mattress, Full",
+    "price": "VESTERÖY Pocket spring mattress, Full$279.00Price $ 279.00",
+    "image_url": "https://www.ikea.com/us/en/images/products/vesteroey-pocket-spring-mattress-medium-firm-white__1142846_pe881368_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/vesteroey-pocket-spring-mattress-medium-firm-white-80511907/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "8BeD4hdgkHxVmvJ",
+      "url": "https://www.ikea.com/us/en/cat/beds-bm003/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/beds-bm003/",
+      "method": "GET",
+      "retryCount": 2,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "ÅNNELAND Hybrid mattress, Queen",
+    "price": "ÅNNELAND Hybrid mattress, Queen$599.00Price $ 599.00",
+    "image_url": "https://www.ikea.com/us/en/images/products/anneland-hybrid-mattress-firm-white__1015263_pe829963_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/anneland-hybrid-mattress-firm-white-60511913/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "8BeD4hdgkHxVmvJ",
+      "url": "https://www.ikea.com/us/en/cat/beds-bm003/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/beds-bm003/",
+      "method": "GET",
+      "retryCount": 2,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "ÅSVANG Foam mattress, Queen",
+    "price": "ÅSVANG Foam mattress, Queen$199.00Price $ 199.00",
+    "image_url": "https://www.ikea.com/us/en/images/products/asvang-foam-mattress-medium-firm-white__0986619_pe818095_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/asvang-foam-mattress-medium-firm-white-20481404/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "8BeD4hdgkHxVmvJ",
+      "url": "https://www.ikea.com/us/en/cat/beds-bm003/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/beds-bm003/",
+      "method": "GET",
+      "retryCount": 2,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "MITTPLAN Desk with add-on unit, 47 1/4x24 3/4 \"",
+    "price": "NewMITTPLAN Desk with add-on unit, 47 1/4x24 3/4 \"$249.99Price $ 249.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/mittplan-desk-with-add-on-unit-white__1501389_pe1007355_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/mittplan-desk-with-add-on-unit-white-30630776/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "8jjs9HVz8r47CXA",
+      "url": "https://www.ikea.com/us/en/cat/chests-of-drawers-fu004/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/workspace-desks-chairs-fu004/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "CENTERHALV Office chair",
+    "price": "CENTERHALV Office chair$199.99Price $ 199.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/centerhalv-office-chair-black__1408739_pe971989_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/centerhalv-office-chair-black-10601124/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "8jjs9HVz8r47CXA",
+      "url": "https://www.ikea.com/us/en/cat/chests-of-drawers-fu004/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/workspace-desks-chairs-fu004/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "BOLLSIDAN Desk sit/stand, 47 1/4x27 1/2 \"",
+    "price": "BOLLSIDAN Desk sit/stand, 47 1/4x27 1/2 \"$379.99Price $ 379.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/bollsidan-desk-sit-stand-electric-white__1262388_pe927071_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/bollsidan-desk-sit-stand-electric-white-90609814/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "8jjs9HVz8r47CXA",
+      "url": "https://www.ikea.com/us/en/cat/chests-of-drawers-fu004/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/workspace-desks-chairs-fu004/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "MARKUS Office chair, Large",
+    "price": "MARKUS Office chair, Large$329.99Price $ 329.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/markus-office-chair-vissle-dark-gray__1415299_pe975233_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/markus-office-chair-vissle-dark-gray-50588804/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "8jjs9HVz8r47CXA",
+      "url": "https://www.ikea.com/us/en/cat/chests-of-drawers-fu004/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/workspace-desks-chairs-fu004/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "TROTTEN Desk sit/stand, 47 1/4x27 1/2 \"",
+    "price": "TROTTEN Desk sit/stand, 47 1/4x27 1/2 \"$339.99Price $ 339.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/trotten-desk-sit-stand-beige-white__1020755_pe831983_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/trotten-desk-sit-stand-beige-white-s89434127/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "8jjs9HVz8r47CXA",
+      "url": "https://www.ikea.com/us/en/cat/chests-of-drawers-fu004/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/workspace-desks-chairs-fu004/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "LÅNGFJÄLL Conference chair with armrests",
+    "price": "LÅNGFJÄLL Conference chair with armrests$279.99Price $ 279.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/langfjaell-conference-chair-with-armrests-gunnared-beige-white__0725412_pe734844_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/langfjaell-conference-chair-with-armrests-gunnared-beige-white-s89252768/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "8jjs9HVz8r47CXA",
+      "url": "https://www.ikea.com/us/en/cat/chests-of-drawers-fu004/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/workspace-desks-chairs-fu004/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "MICKE Desk, 55 7/8x19 5/8 \"",
+    "price": "MICKE Desk, 55 7/8x19 5/8 \"$99.99Price $ 99.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/micke-desk-black-brown__0736019_pe740346_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/micke-desk-black-brown-60244745/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "8jjs9HVz8r47CXA",
+      "url": "https://www.ikea.com/us/en/cat/chests-of-drawers-fu004/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/workspace-desks-chairs-fu004/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "TOSSBERG / MALSKÄR Swivel chair",
+    "price": "TOSSBERG / MALSKÄR Swivel chair$284.99Price $ 284.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/tossberg-malskaer-swivel-chair-gunnared-beige-white__1200010_pe904812_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/tossberg-malskaer-swivel-chair-gunnared-beige-white-s19508230/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "8jjs9HVz8r47CXA",
+      "url": "https://www.ikea.com/us/en/cat/chests-of-drawers-fu004/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/workspace-desks-chairs-fu004/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "TROTTEN Desk sit/stand, 47 1/4x27 1/2 \"",
+    "price": "TROTTEN Desk sit/stand, 47 1/4x27 1/2 \"$339.99Price $ 339.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/trotten-desk-sit-stand-white__1020756_pe831984_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/trotten-desk-sit-stand-white-s99429578/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "8jjs9HVz8r47CXA",
+      "url": "https://www.ikea.com/us/en/cat/chests-of-drawers-fu004/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/workspace-desks-chairs-fu004/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "MILLBERGET Swivel chair",
+    "price": "MILLBERGET Swivel chair$119.99Price $ 119.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/millberget-swivel-chair-murum-black__1020142_pe831799_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/millberget-swivel-chair-murum-black-00489397/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "8jjs9HVz8r47CXA",
+      "url": "https://www.ikea.com/us/en/cat/chests-of-drawers-fu004/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/workspace-desks-chairs-fu004/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "LAGKAPTEN / ALEX Desk, 55 1/8x23 5/8 \"",
+    "price": "LAGKAPTEN / ALEX Desk, 55 1/8x23 5/8 \"$229.99Price $ 229.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/lagkapten-alex-desk-white__1022432_pe832720_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/lagkapten-alex-desk-white-s99431982/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "8jjs9HVz8r47CXA",
+      "url": "https://www.ikea.com/us/en/cat/chests-of-drawers-fu004/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/workspace-desks-chairs-fu004/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "TONSTAD Desk, 55 1/8x29 1/2 \"",
+    "price": "TONSTAD Desk, 55 1/8x29 1/2 \"$299.99Price $ 299.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/tonstad-desk-oak-veneer__1243902_pe921029_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/tonstad-desk-oak-veneer-30538198/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "8jjs9HVz8r47CXA",
+      "url": "https://www.ikea.com/us/en/cat/chests-of-drawers-fu004/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/workspace-desks-chairs-fu004/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "TROFAST Storage combination with boxes, 36 5/8x17 3/8x20 1/2 \"",
+    "price": "TROFAST Storage combination with boxes, 36 5/8x17 3/8x20 1/2 \"$146.99Price $ 146.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/trofast-storage-combination-with-boxes-light-white-stained-pine-white__1354528_pe952681_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/trofast-storage-combination-with-boxes-light-white-stained-pine-white-s39574865/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "lQZo8wglERb83AN",
+      "url": "https://www.ikea.com/us/en/cat/bookcases-shelving-units-st001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/storage-organization-st001/",
+      "method": "GET",
+      "retryCount": 3,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "FLISAT Wall storage, 27 ½x3 ½x6 ¼ \"",
+    "price": "NewFLISAT Wall storage, 27 ½x3 ½x6 ¼ \"$19.99Price $ 19.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/flisat-wall-storage-gray-turquoise__1408582_pe971983_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/flisat-wall-storage-gray-turquoise-90614603/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "lQZo8wglERb83AN",
+      "url": "https://www.ikea.com/us/en/cat/bookcases-shelving-units-st001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/storage-organization-st001/",
+      "method": "GET",
+      "retryCount": 3,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "TIGERFINK Storage with compartments",
+    "price": "TIGERFINK Storage with compartments$19.99Price $ 19.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/tigerfink-storage-with-compartments-beige-orange__1446452_pe988614_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/tigerfink-storage-with-compartments-beige-orange-30614644/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "lQZo8wglERb83AN",
+      "url": "https://www.ikea.com/us/en/cat/bookcases-shelving-units-st001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/storage-organization-st001/",
+      "method": "GET",
+      "retryCount": 3,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "FLISAT Knob rack with 4 knobs",
+    "price": "NewFLISAT Knob rack with 4 knobs$7.99Price $ 7.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/flisat-knob-rack-with-4-knobs__1408583_pe971986_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/flisat-knob-rack-with-4-knobs-40614568/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "lQZo8wglERb83AN",
+      "url": "https://www.ikea.com/us/en/cat/bookcases-shelving-units-st001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/storage-organization-st001/",
+      "method": "GET",
+      "retryCount": 3,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "FLISAT Book display",
+    "price": "NewFLISAT Book display$29.99Price $ 29.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/flisat-book-display__1408578_pe971981_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/flisat-book-display-80614566/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "lQZo8wglERb83AN",
+      "url": "https://www.ikea.com/us/en/cat/bookcases-shelving-units-st001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/storage-organization-st001/",
+      "method": "GET",
+      "retryCount": 3,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "TIGERFINK Organizer with 5 compartments",
+    "price": "TIGERFINK Organizer with 5 compartments$9.99Price $ 9.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/tigerfink-organizer-with-5-compartments-beige-orange__1473110_pe997690_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/tigerfink-organizer-with-5-compartments-beige-orange-00621716/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "lQZo8wglERb83AN",
+      "url": "https://www.ikea.com/us/en/cat/bookcases-shelving-units-st001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/storage-organization-st001/",
+      "method": "GET",
+      "retryCount": 3,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "GLIS Box with lid, 6 ¾x4 \"",
+    "price": "NewGLIS Box with lid, 6 ¾x4 \"$3.99/3 packPrice $ 3.99/3 pack",
+    "image_url": "https://www.ikea.com/us/en/images/products/glis-box-with-lid-green-lilac-blue__1431599_pe982512_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/glis-box-with-lid-green-lilac-blue-00604118/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "lQZo8wglERb83AN",
+      "url": "https://www.ikea.com/us/en/cat/bookcases-shelving-units-st001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/storage-organization-st001/",
+      "method": "GET",
+      "retryCount": 3,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "SANDLÖPARE Storage bag",
+    "price": "NewSANDLÖPARE Storage bag$9.99Price $ 9.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/sandloepare-storage-bag-multicolor-savannah__1417986_pe976328_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/sandloepare-storage-bag-multicolor-savannah-00619431/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "lQZo8wglERb83AN",
+      "url": "https://www.ikea.com/us/en/cat/bookcases-shelving-units-st001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/storage-organization-st001/",
+      "method": "GET",
+      "retryCount": 3,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "VITBJÖRN Storage unit with drawer, 31 1/2x21 5/8x30 3/4 \"",
+    "price": "VITBJÖRN Storage unit with drawer, 31 1/2x21 5/8x30 3/4 \"$179.99Price $ 179.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/vitbjoern-storage-unit-with-drawer-white-red__1305322_pe939448_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/vitbjoern-storage-unit-with-drawer-white-red-40537179/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "lQZo8wglERb83AN",
+      "url": "https://www.ikea.com/us/en/cat/bookcases-shelving-units-st001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/storage-organization-st001/",
+      "method": "GET",
+      "retryCount": 3,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "SANDLÖPARE Box, 13x15x13 \"",
+    "price": "NewSANDLÖPARE Box, 13x15x13 \"$4.99Price $ 4.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/sandloepare-box-cheetah__1435079_pe983694_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/sandloepare-box-cheetah-90613302/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "lQZo8wglERb83AN",
+      "url": "https://www.ikea.com/us/en/cat/bookcases-shelving-units-st001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/storage-organization-st001/",
+      "method": "GET",
+      "retryCount": 3,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "TROFAST Storage combination with boxes, 39x17 3/8x37 \"",
+    "price": "NewTROFAST Storage combination with boxes, 39x17 3/8x37 \"$134.99Price $ 134.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/trofast-storage-combination-with-boxes-room-divider-white-white__1458230_pe992975_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/trofast-storage-combination-with-boxes-room-divider-white-white-s29613141/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "lQZo8wglERb83AN",
+      "url": "https://www.ikea.com/us/en/cat/bookcases-shelving-units-st001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/storage-organization-st001/",
+      "method": "GET",
+      "retryCount": 3,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "VESSLA Storage crate with casters, 15 ¼x15 ¼ \"",
+    "price": "VESSLA Storage crate with casters, 15 ¼x15 ¼ \"$9.99Price $ 9.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/vessla-storage-crate-with-casters-white__0711041_pe727917_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/vessla-storage-crate-with-casters-white-30064849/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "lQZo8wglERb83AN",
+      "url": "https://www.ikea.com/us/en/cat/bookcases-shelving-units-st001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/storage-organization-st001/",
+      "method": "GET",
+      "retryCount": 3,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "FADO Table lamp, 10 \"",
+    "price": "NewFADO Table lamp, 10 \"$29.99Price $ 29.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/fado-table-lamp-pink-glass__1459818_pe993745_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/fado-table-lamp-pink-glass-00592634/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "w4tdIev03JC5XUl",
+      "url": "https://www.ikea.com/us/en/cat/floor-lamps-li001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/lighting-li001/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "SMÅSNÖRE LED decorative light",
+    "price": "SMÅSNÖRE LED decorative light$24.99Price $ 24.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/smasnoere-led-decorative-light-dimmable-adjustable-color__1433764_pe986463_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/smasnoere-led-decorative-light-dimmable-adjustable-color-50597243/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "w4tdIev03JC5XUl",
+      "url": "https://www.ikea.com/us/en/cat/floor-lamps-li001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/lighting-li001/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "VINDKRAFT Table lamp, 18 \"",
+    "price": "NewVINDKRAFT Table lamp, 18 \"$39.99Price $ 39.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/vindkraft-table-lamp-white-moulded-paper-pulp__1441326_pe986319_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/vindkraft-table-lamp-white-moulded-paper-pulp-90601304/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "w4tdIev03JC5XUl",
+      "url": "https://www.ikea.com/us/en/cat/floor-lamps-li001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/lighting-li001/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "SJÖMAKT Desk lamp",
+    "price": "SJÖMAKT Desk lamp$49.99Price $ 49.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/sjoemakt-desk-lamp-beige-ash__1441718_pe986475_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/sjoemakt-desk-lamp-beige-ash-00595656/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "w4tdIev03JC5XUl",
+      "url": "https://www.ikea.com/us/en/cat/floor-lamps-li001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/lighting-li001/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "TRUBBRUFSE Ceiling lamp, 18 \"",
+    "price": "NewTRUBBRUFSE Ceiling lamp, 18 \"$39.99Price $ 39.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/trubbrufse-ceiling-lamp-sedge__1456476_pe992342_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/trubbrufse-ceiling-lamp-sedge-10601586/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "w4tdIev03JC5XUl",
+      "url": "https://www.ikea.com/us/en/cat/floor-lamps-li001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/lighting-li001/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "KULGLASS Bluetooth speaker lamp",
+    "price": "NewKULGLASS Bluetooth speaker lamp$129.99Price $ 129.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/kulglass-bluetooth-speaker-lamp-red-brown-pink__1479137_pe999934_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/kulglass-bluetooth-speaker-lamp-red-brown-pink-80605294/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "w4tdIev03JC5XUl",
+      "url": "https://www.ikea.com/us/en/cat/floor-lamps-li001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/lighting-li001/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "SANDKORN Pendant lamp shade, 17 3/4 \"",
+    "price": "NewSANDKORN Pendant lamp shade, 17 3/4 \"$49.99Price $ 49.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/sandkorn-pendant-lamp-shade-handmade-rattan__1450306_pe990284_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/sandkorn-pendant-lamp-shade-handmade-rattan-80598123/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "w4tdIev03JC5XUl",
+      "url": "https://www.ikea.com/us/en/cat/floor-lamps-li001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/lighting-li001/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "KABBLEKA LED lighting strip with USB, 118 1/8 \"",
+    "price": "NewKABBLEKA LED lighting strip with USB, 118 1/8 \"$19.99Price $ 19.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/kabbleka-led-lighting-strip-with-usb-adjustable-color__1453782_pe991398_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/kabbleka-led-lighting-strip-with-usb-adjustable-color-20609718/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "w4tdIev03JC5XUl",
+      "url": "https://www.ikea.com/us/en/cat/floor-lamps-li001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/lighting-li001/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "DYKARKLOCKA / HAVSDJUP Pendant lamp, 15 3/4 \"",
+    "price": "DYKARKLOCKA / HAVSDJUP Pendant lamp, 15 3/4 \"$91.99Price $ 91.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/dykarklocka-havsdjup-pendant-lamp-white-stained-oak-veneer-black__1359778_pe954266_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/dykarklocka-havsdjup-pendant-lamp-white-stained-oak-veneer-black-s29618186/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "w4tdIev03JC5XUl",
+      "url": "https://www.ikea.com/us/en/cat/floor-lamps-li001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/lighting-li001/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "REGNSKUR / HAVSDJUP Pendant lamp, 20 1/2 \"",
+    "price": "REGNSKUR / HAVSDJUP Pendant lamp, 20 1/2 \"$41.99Price $ 41.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/regnskur-havsdjup-pendant-lamp-turquoise-white__1204098_pe906573_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/regnskur-havsdjup-pendant-lamp-turquoise-white-s79613191/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "w4tdIev03JC5XUl",
+      "url": "https://www.ikea.com/us/en/cat/floor-lamps-li001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/lighting-li001/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "NYMÅNE LED pendant lamp, 15 \"",
+    "price": "NYMÅNE LED pendant lamp, 15 \"$99.99Price $ 99.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/nymane-led-pendant-lamp-wireless-dimmable-white-spectrum-anthracite__1008036_pe826684_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/nymane-led-pendant-lamp-wireless-dimmable-white-spectrum-anthracite-00504048/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "w4tdIev03JC5XUl",
+      "url": "https://www.ikea.com/us/en/cat/floor-lamps-li001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/lighting-li001/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "DYKARKLOCKA / HAVSDJUP Pendant lamp, 15 3/4 \"",
+    "price": "DYKARKLOCKA / HAVSDJUP Pendant lamp, 15 3/4 \"$91.99Price $ 91.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/dykarklocka-havsdjup-pendant-lamp-white-stained-oak-veneer-black__1359778_pe954266_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/dykarklocka-havsdjup-pendant-lamp-white-stained-oak-veneer-black-s29618186/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "w4tdIev03JC5XUl",
+      "url": "https://www.ikea.com/us/en/cat/floor-lamps-li001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/lighting-li001/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "ÖVERSIDAN LED wardrobe lighting strp w sensor, 38 \"",
+    "price": "ÖVERSIDAN LED wardrobe lighting strp w sensor, 38 \"$32.00Price $ 32.00",
+    "image_url": "https://www.ikea.com/us/en/images/products/oeversidan-led-wardrobe-lighting-strp-w-sensor-dimmable-white__0967062_pe810027_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/oeversidan-led-wardrobe-lighting-strp-w-sensor-dimmable-white-50589554/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "w4tdIev03JC5XUl",
+      "url": "https://www.ikea.com/us/en/cat/floor-lamps-li001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/lighting-li001/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "FADO Table lamp, 10 \"",
+    "price": "FADO Table lamp, 10 \"$29.99Price $ 29.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/fado-table-lamp-white__0606976_pe682645_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/fado-table-lamp-white-70096377/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "w4tdIev03JC5XUl",
+      "url": "https://www.ikea.com/us/en/cat/floor-lamps-li001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/lighting-li001/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "LAUTERS Floor lamp",
+    "price": "LAUTERS Floor lamp$79.99Price $ 79.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/lauters-floor-lamp-ash-white__0663863_pe712536_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/lauters-floor-lamp-ash-white-00405048/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "w4tdIev03JC5XUl",
+      "url": "https://www.ikea.com/us/en/cat/floor-lamps-li001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/lighting-li001/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "VARMBLIXT LED table/wall lamp, 12 \"",
+    "price": "VARMBLIXT LED table/wall lamp, 12 \"$99.99Price $ 99.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/varmblixt-led-table-wall-lamp-orange-glass-round__1116616_pe872535_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/varmblixt-led-table-wall-lamp-orange-glass-round-90525150/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "w4tdIev03JC5XUl",
+      "url": "https://www.ikea.com/us/en/cat/floor-lamps-li001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/lighting-li001/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "SINNERLIG Pendant lamp, 20 \"",
+    "price": "SINNERLIG Pendant lamp, 20 \"$99.99Price $ 99.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/sinnerlig-pendant-lamp-bamboo-handmade__0919001_pe786542_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/sinnerlig-pendant-lamp-bamboo-handmade-70315030/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "w4tdIev03JC5XUl",
+      "url": "https://www.ikea.com/us/en/cat/floor-lamps-li001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/lighting-li001/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "MISTERHULT Pendant lamp, 18 \"",
+    "price": "MISTERHULT Pendant lamp, 18 \"$149.99Price $ 149.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/misterhult-pendant-lamp-bamboo-handmade__0794605_pe765667_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/misterhult-pendant-lamp-bamboo-handmade-40441025/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "w4tdIev03JC5XUl",
+      "url": "https://www.ikea.com/us/en/cat/floor-lamps-li001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/lighting-li001/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "HEKTAR Pendant lamp, 19 \"",
+    "price": "HEKTAR Pendant lamp, 19 \"$99.99Price $ 99.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/hektar-pendant-lamp-dark-gray__0607416_pe682966_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/hektar-pendant-lamp-dark-gray-80216534/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "w4tdIev03JC5XUl",
+      "url": "https://www.ikea.com/us/en/cat/floor-lamps-li001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/lighting-li001/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "STOCKHOLM 2025 Floor lamp, 63 \"",
+    "price": "STOCKHOLM 2025 Floor lamp, 63 \"$149.99Price $ 149.99",
+    "image_url": "https://www.ikea.com/us/en/images/products/stockholm-2025-floor-lamp-white-textile-brass-plated__1285165_pe933236_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/stockholm-2025-floor-lamp-white-textile-brass-plated-00585921/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "w4tdIev03JC5XUl",
+      "url": "https://www.ikea.com/us/en/cat/floor-lamps-li001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/lighting-li001/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "MITTLED LED kitchen cntrtp lighting strip, 15 \"",
+    "price": "MITTLED LED kitchen cntrtp lighting strip, 15 \"$22.00Price $ 22.0010% off Kitchens $3000+, discount at checkoutOffer valid from Mar 19, 2026 until Apr 21, 2026Exclusive IKEA Family offer",
+    "image_url": "https://www.ikea.com/us/en/images/products/mittled-led-kitchen-cntrtp-lighting-strip-dimmable-white__0869934_pe781529_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/mittled-led-kitchen-cntrtp-lighting-strip-dimmable-white-10455434/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "w4tdIev03JC5XUl",
+      "url": "https://www.ikea.com/us/en/cat/floor-lamps-li001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/lighting-li001/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  },
+  {
+    "name": "YTBERG Cabinet lighting",
+    "price": "YTBERG Cabinet lighting$20.00Price $ 20.0010% off Kitchens $3000+, discount at checkoutOffer valid from Mar 19, 2026 until Apr 21, 2026Exclusive IKEA Family offer",
+    "image_url": "https://www.ikea.com/us/en/images/products/ytberg-cabinet-lighting-white-dimmable__1051207_pe845082_s5.jpg?f=xxs",
+    "product_url": "https://www.ikea.com/us/en/p/ytberg-cabinet-lighting-white-dimmable-50516831/",
+    "description": null,
+    "retailer": "IKEA",
+    "source": "ikea",
+    "#error": false,
+    "#debug": {
+      "requestId": "w4tdIev03JC5XUl",
+      "url": "https://www.ikea.com/us/en/cat/floor-lamps-li001/",
+      "loadedUrl": "https://www.ikea.com/us/en/cat/lighting-li001/",
+      "method": "GET",
+      "retryCount": 1,
+      "errorMessages": [
+        "Error: Request blocked - received 403 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ],
+      "statusCode": 200
+    }
+  }
+]

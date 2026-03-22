@@ -12,3 +12,6 @@ assets/3d/furniture/*.glb
 assets/3d/furniture/Quaternius*
 assets/3d/furniture/kenney*
 assets/3d/furniture/*.gltf
+scripts/raw-data/
+scripts/backfill-progress.json
+scripts/backfill.log

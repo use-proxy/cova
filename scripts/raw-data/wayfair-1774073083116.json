@@ -1,0 +1,182 @@
+[
+  {
+    "#error": true,
+    "#debug": {
+      "requestId": "WavbQ7j5XYdzSFt",
+      "url": "https://www.wayfair.com/furniture/cat/sofas-c413892.html",
+      "method": "GET",
+      "retryCount": 3,
+      "errorMessages": [
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ]
+    }
+  },
+  {
+    "#error": true,
+    "#debug": {
+      "requestId": "LhTf511kMiLtfza",
+      "url": "https://www.wayfair.com/furniture/cat/accent-chairs-c413880.html",
+      "method": "GET",
+      "retryCount": 3,
+      "errorMessages": [
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ]
+    }
+  },
+  {
+    "#error": true,
+    "#debug": {
+      "requestId": "ZnfTf4mdAZIHPcC",
+      "url": "https://www.wayfair.com/furniture/cat/coffee-tables-c415978.html",
+      "method": "GET",
+      "retryCount": 3,
+      "errorMessages": [
+        "Error: Navigation timed out after 60 seconds.\n    at handleRequestTimeout (/home/myuser/node_modules/@crawlee/core/crawlers/crawler_utils.js:13:11)\n    at PuppeteerCrawler._handleNavigationTimeout (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:360:46)\n    at PuppeteerCrawler._handleNavigation (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:337:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:260:13)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ]
+    }
+  },
+  {
+    "#error": true,
+    "#debug": {
+      "requestId": "WmVFgaZfvgL5D92",
+      "url": "https://www.wayfair.com/furniture/cat/dining-tables-c415393.html",
+      "method": "GET",
+      "retryCount": 3,
+      "errorMessages": [
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ]
+    }
+  },
+  {
+    "#error": true,
+    "#debug": {
+      "requestId": "aKAk2PekDyiJn8T",
+      "url": "https://www.wayfair.com/furniture/cat/dining-chairs-c415381.html",
+      "method": "GET",
+      "retryCount": 3,
+      "errorMessages": [
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ]
+    }
+  },
+  {
+    "#error": true,
+    "#debug": {
+      "requestId": "Ez7ElfRJ7Yffurf",
+      "url": "https://www.wayfair.com/furniture/cat/beds-c446892.html",
+      "method": "GET",
+      "retryCount": 3,
+      "errorMessages": [
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ]
+    }
+  },
+  {
+    "#error": true,
+    "#debug": {
+      "requestId": "fR61owxqNwkKMVT",
+      "url": "https://www.wayfair.com/furniture/cat/dressers-c215313.html",
+      "method": "GET",
+      "retryCount": 3,
+      "errorMessages": [
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ]
+    }
+  },
+  {
+    "#error": true,
+    "#debug": {
+      "requestId": "XQtUth47do2oaDb",
+      "url": "https://www.wayfair.com/lighting/cat/floor-lamps-c215312.html",
+      "method": "GET",
+      "retryCount": 3,
+      "errorMessages": [
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ]
+    }
+  },
+  {
+    "#error": true,
+    "#debug": {
+      "requestId": "CSRfLHLJoFX1fgI",
+      "url": "https://www.wayfair.com/lighting/cat/pendant-lights-c215251.html",
+      "method": "GET",
+      "retryCount": 3,
+      "errorMessages": [
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ]
+    }
+  },
+  {
+    "#error": true,
+    "#debug": {
+      "requestId": "0IrPGYHWy8UJsO6",
+      "url": "https://www.wayfair.com/furniture/cat/bookcases-c413927.html",
+      "method": "GET",
+      "retryCount": 3,
+      "errorMessages": [
+        "Error: Navigation timed out after 60 seconds.\n    at handleRequestTimeout (/home/myuser/node_modules/@crawlee/core/crawlers/crawler_utils.js:13:11)\n    at PuppeteerCrawler._handleNavigationTimeout (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:360:46)\n    at PuppeteerCrawler._handleNavigation (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:337:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:260:13)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ]
+    }
+  },
+  {
+    "#error": true,
+    "#debug": {
+      "requestId": "mqL4Mn5Km9gPO3K",
+      "url": "https://www.wayfair.com/furniture/cat/tv-stands-c415176.html",
+      "method": "GET",
+      "retryCount": 3,
+      "errorMessages": [
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ]
+    }
+  },
+  {
+    "#error": true,
+    "#debug": {
+      "requestId": "K6qseLLtmqOREXr",
+      "url": "https://www.wayfair.com/decor/cat/area-rugs-c215531.html",
+      "method": "GET",
+      "retryCount": 3,
+      "errorMessages": [
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)",
+        "Error: Request blocked - received 429 status code.\n    at PuppeteerCrawler._throwOnBlockedRequest (/home/myuser/node_modules/@crawlee/basic/internals/basic-crawler.js:855:19)\n    at PuppeteerCrawler._responseHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:383:22)\n    at PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/browser/internals/browser-crawler.js:262:24)\n    at async PuppeteerCrawler._runRequestHandler (/home/myuser/node_modules/@crawlee/puppeteer/internals/puppeteer-crawler.js:114:9)\n    at async wrap (/home/myuser/node_modules/@apify/timeout/cjs/index.cjs:54:21)"
+      ]
+    }
+  }
+]
