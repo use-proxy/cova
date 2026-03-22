@@ -198,7 +198,6 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
     () => buildDefaultFurniture('japandi'),
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [, setForceUpdate] = useState(0);
   const [actionHistory, setActionHistory] = useState<FurniturePieceType[][]>([]);
   const [productInfoItem, setProductInfoItem] = useState<FurnitureCatalogItem | null>(null);
   const [show2D, setShow2D] = useState(false);
@@ -322,7 +321,7 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
             const delta = lastPinchRef.current - dist;
             controlRef.current.radius = Math.max(
               1.5,
-              Math.min(5.5, controlRef.current.radius + delta * 0.012),
+              Math.min(6.0, controlRef.current.radius + delta * 0.012),
             );
           }
           lastPinchRef.current = dist;
@@ -482,10 +481,19 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
     return all.filter((item) => item.category === catalogCategory);
   }, [currentRoom, catalogCategory]);
 
+  // ── Room dimensions — always from store, fall back to DEFAULT_DIMENSIONS ──
+  // ⚠️ ASSERTION: never hardcode room dimensions — §5.12 of CLAUDE.md.
+  // Converts to metres so Three.js geometry and drag clamping are consistent.
+
+  const roomDimensions = currentRoom?.dimensions ?? DEFAULT_DIMENSIONS;
+  const ftToM = (ft: number) => ft * 0.3048;
+  const roomWidthM = roomDimensions.unit === 'm' ? roomDimensions.width  : ftToM(roomDimensions.width);
+  const roomDepthM = roomDimensions.unit === 'm' ? roomDimensions.depth  : ftToM(roomDimensions.depth);
+
   // ── 2D floor plan dimensions ──
 
-  const roomW = DEFAULT_DIMENSIONS.width;
-  const roomD = DEFAULT_DIMENSIONS.depth;
+  const roomW = roomWidthM;
+  const roomD = roomDepthM;
   const floorAspect = roomW / roomD;
   const floorContainerW = SCREEN_WIDTH - 48;
   const floorContainerH = floorContainerW / floorAspect;
@@ -555,7 +563,7 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
                 <CameraController controlRef={controlRef} />
                 <Suspense fallback={null}>
                   <SceneLighting style={activeStyle} />
-                  <BoxRoom style={activeStyle} dimensions={DEFAULT_DIMENSIONS} />
+                  <BoxRoom style={activeStyle} dimensions={roomDimensions} />
                   {placedFurniture.map((item) => {
                     const catalog = findCatalogItem(item.catalog_id);
                     if (!catalog) return null;
@@ -565,6 +573,8 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
                         piece={item}
                         catalog={catalog}
                         isSelected={selectedId === item.id}
+                        roomWidth={roomWidthM}
+                        roomDepth={roomDepthM}
                         onSelect={handleSelectId}
                         onDragEnd={updateFurniturePosition}
                         onDragStart={handleDragStart}
@@ -703,7 +713,6 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
                               : item,
                           ),
                         );
-                        setForceUpdate((p) => p + 1);
                       }}
                     />
                   );
@@ -726,7 +735,6 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
                       : item,
                   ),
                 );
-                setForceUpdate((p) => p + 1);
               }}
             >
               <RotateLeftIcon />
@@ -745,7 +753,6 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
                       : item,
                   ),
                 );
-                setForceUpdate((p) => p + 1);
               }}
             >
               <RotateRightIcon />

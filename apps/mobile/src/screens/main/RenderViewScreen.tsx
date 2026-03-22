@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import Svg, { Path, Circle as SvgCircle, Line, Polyline } from 'react-native-svg';
 import * as MediaLibrary from 'expo-media-library';
+import * as FileSystem from 'expo-file-system';
 import Slider from '@react-native-community/slider';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -46,10 +47,14 @@ export default function RenderViewScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RoomStackParamList>>();
   const route = useRoute<RouteProp<RoomStackParamList, 'RenderView'>>();
   const insets = useSafeAreaInsets();
-  const room_id = route.params?.room_id ?? 'default';
 
   const { startRender, renderStatus, renderProgressStage, renderProgress, renderError, currentRender } = useRender();
   const { matchedProducts, addToCart, cartItems, setRenderStatus, currentRoom, capturedImageUri } = useAppStore();
+
+  // route.params.room_id is only populated when navigating directly within RoomNavigator.
+  // When arriving via HomeStack's nested Room screen, room_id is in the parent route and
+  // not forwarded — fall back to currentRoom.id (always set before navigation).
+  const room_id = route.params?.room_id ?? currentRoom?.id ?? 'default';
 
   const [showControls, setShowControls] = useState(true);
   const [showBeforeAfter, setShowBeforeAfter] = useState(false);
@@ -91,10 +96,10 @@ export default function RenderViewScreen() {
     return () => clearInterval(iv);
   }, [renderStatus]);
 
-  // Navigate away if idle
+  // Navigate away only when idle with no render loaded (e.g. arrived without starting a render)
   useEffect(() => {
-    if (renderStatus === 'idle') navigation.goBack();
-  }, [renderStatus, navigation]);
+    if (renderStatus === 'idle' && !currentRender) navigation.goBack();
+  }, [renderStatus, currentRender, navigation]);
 
   // Pulse animation for loading circles
   useEffect(() => {
@@ -181,13 +186,25 @@ export default function RenderViewScreen() {
     } catch { /* cancelled */ }
   };
 
-  const handleRegenerate = () => {
+  const handleRegenerate = async () => {
     const blend = currentRoom?.style_blend ?? { coastal: 0.2, japandi: 0.2, bohemian: 0.2, mid_century: 0.2, minimalist: 0.2 };
+    let imageBase64 = '';
+    // Re-read the original captured image as base64 for the render pipeline
+    if (capturedImageUri) {
+      try {
+        const raw = await FileSystem.readAsStringAsync(capturedImageUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        imageBase64 = `data:image/jpeg;base64,${raw}`;
+      } catch {
+        // capturedImageUri no longer accessible (e.g. returning user); send empty
+      }
+    }
     startRender({
       roomId: room_id,
       roomType: currentRoom?.room_type ?? 'living_room',
       styleBlend: blend,
-      imageBase64: currentRender?.image_url ?? '',
+      imageBase64,
       renderType: 'draft',
     });
   };

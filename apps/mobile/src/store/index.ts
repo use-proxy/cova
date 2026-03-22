@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type {
   User,
   Room,
@@ -84,6 +86,7 @@ interface AppActions {
 // ── Store ────────────────────────────────────────
 
 export const useAppStore = create<AppState & AppActions>()(
+  persist(
   immer((set) => ({
     // ── auth defaults ──
     user: null,
@@ -227,4 +230,21 @@ export const useAppStore = create<AppState & AppActions>()(
         state.savedProducts = state.savedProducts.filter((p) => p.id !== productId);
       }),
   })),
+  {
+    name: 'cova-store',
+    storage: createJSONStorage(() => AsyncStorage),
+    // ⚠️ ASSERTION: renderStatus, currentRender, renderProgress must NOT be persisted.
+    // If renderStatus='processing' is persisted and app is killed mid-render,
+    // the loading screen becomes permanently stuck on relaunch.
+    partialize: (state) => ({
+      user: state.user,
+      session: state.session,
+      currentRoom: state.currentRoom,
+      capturedImageUri: state.capturedImageUri,
+      cartItems: state.cartItems,
+      savedProducts: state.savedProducts,
+      colorScheme: state.colorScheme,
+    }),
+  },
+  ),
 );

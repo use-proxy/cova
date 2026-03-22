@@ -201,8 +201,8 @@ export default function ProfileScreen() {
             try {
               await callEdgeFunction('delete-account', {});
               useAppStore.getState().signOut();
-            } catch (e: any) {
-              Alert.alert('Error', e.message ?? 'Could not delete account.');
+            } catch (e: unknown) {
+              Alert.alert('Error', e instanceof Error ? e.message : 'Could not delete account.');
             } finally { setDeleting(false); }
           }},
         ]);

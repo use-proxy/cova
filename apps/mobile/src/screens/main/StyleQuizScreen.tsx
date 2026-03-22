@@ -246,7 +246,8 @@ export default function StyleQuizScreen() {
 
     const userId = useAppStore.getState().user?.id;
     if (userId) {
-      supabase.from('users').update({ style_blend: finalBlend }).eq('id', userId).then(() => {});
+      // Best-effort style persistence — fire-and-forget, not critical to quiz completion
+      void supabase.from('users').update({ style_blend: finalBlend }).eq('id', userId);
     }
     navigation.navigate('RoomCapture');
   }, [styleBlend, currentRoom, updateRoom, navigation]);

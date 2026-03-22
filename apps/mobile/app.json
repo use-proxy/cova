@@ -1,5 +1,6 @@
 {
   "expo": {
+    "owner": "cova.interior",
     "jsEngine": "hermes",
     "newArchEnabled": false,
     "name": "Cova",
@@ -17,10 +18,12 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "ai.cova.app",
+      "buildNumber": "1",
       "infoPlist": {
-        "NSCameraUsageDescription": "Cova needs camera access to scan your room for 3D modeling.",
-        "NSPhotoLibraryUsageDescription": "Cova needs photo library access to import your room photo.",
-        "NSUserTrackingUsageDescription": "Cova uses this to improve your design recommendations."
+        "NSCameraUsageDescription": "Cova needs camera access to capture your room.",
+        "NSPhotoLibraryUsageDescription": "Cova needs photo library access to upload your room photo.",
+        "NSPhotoLibraryAddUsageDescription": "Cova saves your AI renders to your photo library.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -35,18 +38,23 @@
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.RECEIVE_BOOT_COMPLETED"
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.RECORD_AUDIO"
       ],
       "predictiveBackGestureEnabled": false
     },
     "plugins": [
       "expo-apple-authentication",
       "expo-camera",
-      "expo-image-picker",
-      "expo-tracking-transparency"
+      "expo-image-picker"
     ],
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "3255a6b5-e211-461c-b168-a60d034ac580"
+      }
     }
   }
 }

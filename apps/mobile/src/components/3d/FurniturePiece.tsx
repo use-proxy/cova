@@ -1,12 +1,15 @@
 import React, { useRef, Suspense, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { useGLTF } from '@react-three/drei/native';
+import type { ThreeEvent } from '@react-three/fiber';
 import type { FurniturePiece as FurniturePieceType, FurnitureCatalogItem } from '@cova/shared';
 
 interface FurniturePieceProps {
   piece: FurniturePieceType;
   catalog: FurnitureCatalogItem;
   isSelected: boolean;
+  roomWidth: number;  // metres — used to clamp drag within room bounds
+  roomDepth: number;  // metres — used to clamp drag within room bounds
   onSelect: (id: string) => void;
   onDragEnd: (id: string, pos: [number, number, number]) => void;
   onDragStart?: () => void;
@@ -14,8 +17,6 @@ interface FurniturePieceProps {
   onLongPress?: (id: string) => void;
 }
 
-const ROOM_HALF_W = 2.2;
-const ROOM_HALF_D = 2.0;
 const LONG_PRESS_MS = 500;
 
 function FurnitureModel({
@@ -89,6 +90,8 @@ export function FurniturePiece({
   piece,
   catalog,
   isSelected,
+  roomWidth,
+  roomDepth,
   onSelect,
   onDragEnd,
   onDragStart,
@@ -134,7 +137,7 @@ export function FurniturePiece({
 
       <mesh
         position={[0, catalog.height / 2, 0]}
-        onPointerDown={(e: any) => {
+        onPointerDown={(e: ThreeEvent<PointerEvent>) => {
           e.stopPropagation();
 
           longPressTimerRef.current = setTimeout(() => {
@@ -149,7 +152,7 @@ export function FurniturePiece({
             onDragStart?.();
           }
         }}
-        onPointerUp={(e: any) => {
+        onPointerUp={(e: ThreeEvent<PointerEvent>) => {
           e.stopPropagation();
           cancelLongPress();
           if (isDraggingRef.current && groupRef.current) {
@@ -172,16 +175,18 @@ export function FurniturePiece({
         <mesh
           rotation={[-Math.PI / 2, -piece.rotation_y, 0]}
           position={[0, 0.002, 0]}
-          onPointerMove={(e: any) => {
+          onPointerMove={(e: ThreeEvent<PointerEvent>) => {
             if (!isDraggingRef.current || !groupRef.current) return;
             e.stopPropagation();
             cancelLongPress();
-            const nx = Math.max(-ROOM_HALF_W, Math.min(ROOM_HALF_W, e.point.x));
-            const nz = Math.max(-ROOM_HALF_D, Math.min(ROOM_HALF_D, e.point.z));
+            const halfW = roomWidth / 2;
+            const halfD = roomDepth / 2;
+            const nx = Math.max(-halfW, Math.min(halfW, e.point.x));
+            const nz = Math.max(-halfD, Math.min(halfD, e.point.z));
             groupRef.current.position.set(nx, 0, nz);
             onDragEnd(piece.id, [nx, 0, nz]);
           }}
-          onPointerUp={(e: any) => {
+          onPointerUp={(e: ThreeEvent<PointerEvent>) => {
             e.stopPropagation();
             cancelLongPress();
             if (isDraggingRef.current && groupRef.current) {

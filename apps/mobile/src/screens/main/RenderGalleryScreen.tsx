@@ -57,13 +57,13 @@ export default function RenderGalleryScreen() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('renders')
         .select('id, image_url, created_at, status')
         .eq('user_id', user.id)
         .eq('status', 'completed')
         .order('created_at', { ascending: false });
-      setRenders((data as RenderItem[]) ?? []);
+      if (!error) setRenders((data as RenderItem[]) ?? []);
       setLoading(false);
     })();
   }, [user]);

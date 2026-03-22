@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { HomeStackParamList } from '../../navigation/HomeStack';
 import { useAppStore } from '../../store';
 import { supabase } from '../../lib/supabase';
-import type { Room, RoomType } from '@cova/shared';
+import type { Room, RoomType, Render } from '@cova/shared';
 import TokenBadge from '../../components/TokenBadge';
 
 const BG = '#0A1628';
@@ -146,6 +146,11 @@ export default function HomeScreen() {
 
   const handleRoomTap = (room: Room) => {
     useAppStore.getState().setCurrentRoom(room);
+    // Pre-load the render so RenderViewScreen doesn't bounce back on idle check
+    if (room.latest_render_url) {
+      useAppStore.getState().setCurrentRender({ id: room.id, image_url: room.latest_render_url } as Render);
+      useAppStore.getState().setRenderStatus('completed');
+    }
     navigation.navigate('Room', { initialRoute: 'RenderView', room_id: room.id });
   };
 

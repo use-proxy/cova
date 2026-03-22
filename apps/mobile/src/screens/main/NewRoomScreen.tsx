@@ -129,8 +129,8 @@ export default function NewRoomScreen() {
     useAppStore.getState().addRoom(data as Room);
     useAppStore.getState().setCurrentRoom(data as Room);
 
-    const blend = (user as any)?.style_blend;
-    const hasStyle = blend && Object.values(blend).some((v: any) => v > 0.21);
+    const blend = user?.style_blend;
+    const hasStyle = blend && Object.values(blend).some((v) => v > 0.21);
 
     if (hasStyle) {
       Alert.alert('Style Preference', 'Would you like to use your previous style or discover a new one?', [

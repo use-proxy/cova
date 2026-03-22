@@ -65,12 +65,12 @@ export default function TokenHistoryScreen() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('token_transactions')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
-      setTransactions(data ?? []);
+      if (!error) setTransactions(data ?? []);
       setLoading(false);
     })();
   }, [user]);

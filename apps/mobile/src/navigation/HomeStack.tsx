@@ -1,5 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import HomeScreen from '../screens/main/HomeScreen';
 import NewRoomScreen from '../screens/main/NewRoomScreen';
 import TokenShopScreen from '../screens/main/TokenShopScreen';
@@ -19,7 +20,9 @@ export type HomeStackParamList = {
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
 
-function RoomNavigatorWrapper({ route }: { route: { params?: { initialRoute?: keyof RoomStackParamList } } }) {
+type RoomScreenProps = NativeStackScreenProps<HomeStackParamList, 'Room'>;
+
+function RoomNavigatorWrapper({ route }: RoomScreenProps) {
   const initialRoute = route.params?.initialRoute ?? 'RoomCapture';
   return <RoomNavigator initialRouteName={initialRoute} />;
 }
@@ -29,7 +32,7 @@ export default function HomeStack({ initialRouteName = 'Home' }: { initialRouteN
     <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={initialRouteName}>
       <Stack.Screen name="Home" component={HomeScreen} />
       <Stack.Screen name="NewRoom" component={NewRoomScreen} />
-      <Stack.Screen name="Room" component={RoomNavigatorWrapper as any} />
+      <Stack.Screen name="Room" component={RoomNavigatorWrapper} />
       <Stack.Screen name="TokenShop" component={TokenShopScreen} />
       <Stack.Screen name="TokenHistory" component={TokenHistoryScreen} />
       <Stack.Screen name="RenderGallery" component={RenderGalleryScreen} />

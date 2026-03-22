@@ -1,97 +1,131 @@
-// RoomPlan native module added in Phase 6 — fallback active.
-import { useRef, useEffect, useCallback } from 'react';
-import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
+/**
+ * useRoomPlan — hook for interacting with the RoomPlanModule native bridge.
+ *
+ * isAvailable is async: it calls the native isLiDARAvailable() promise which
+ * checks ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh).
+ * This correctly returns false on all non-LiDAR iPhones and on the Simulator.
+ *
+ * The scan lifecycle uses native events (not the startScan promise return):
+ *   RoomPlanComplete  → resolves the scan promise
+ *   RoomPlanError     → rejects the scan promise
+ *   RoomPlanProgress  → fires onProgress callback during scan
+ */
 
-export interface RoomPlanWall {
-  width_ft: number;
-  height_ft: number;
-  position: { x: number; y: number; z: number };
-}
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { NativeEventEmitter } from 'react-native';
+import RoomPlanNative, { type RoomPlanResult } from '../modules/RoomPlanModule';
 
-export interface RoomPlanDoor {
-  width_ft: number;
-  height_ft: number;
-  position: { x: number; y: number; z: number };
-}
+// Re-export so consumers can import from here
+export type { RoomPlanResult, RoomPlanDoor, RoomPlanWindow } from '../modules/RoomPlanModule';
 
-export interface RoomPlanWindow {
-  width_ft: number;
-  height_ft: number;
-  position: { x: number; y: number; z: number };
-}
-
-export interface RoomPlanResult {
-  width_ft: number;
-  depth_ft: number;
-  height_ft: number;
-  walls: RoomPlanWall[];
-  doors: RoomPlanDoor[];
-  windows: RoomPlanWindow[];
-}
-
-let RoomPlanModule: any = null;
-try {
-  RoomPlanModule = NativeModules.RoomPlanModule ?? null;
-} catch {
-  RoomPlanModule = null;
-}
-
-const moduleAvailable = Platform.OS === 'ios' && RoomPlanModule != null;
+const SCAN_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes max
 
 export function useRoomPlan() {
+  const [isAvailable, setIsAvailable] = useState(false);
+  const [progressInstruction, setProgressInstruction] = useState('');
+
   const resolveRef = useRef<((data: RoomPlanResult) => void) | null>(null);
-  const rejectRef = useRef<((error: Error) => void) | null>(null);
+  const rejectRef  = useRef<((error: Error) => void) | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const isAvailable = moduleAvailable;
-
+  // ── Async LiDAR availability check ──────────────────────────────────────
   useEffect(() => {
-    if (!isAvailable || !RoomPlanModule) return;
+    if (!RoomPlanNative) return;
+    RoomPlanNative.isLiDARAvailable()
+      .then(setIsAvailable)
+      .catch(() => setIsAvailable(false));
+  }, []);
+
+  // ── Event subscriptions ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (!RoomPlanNative) return;
 
     let emitter: NativeEventEmitter;
     try {
-      emitter = new NativeEventEmitter(RoomPlanModule);
+      emitter = new NativeEventEmitter(RoomPlanNative);
     } catch {
       return;
     }
 
-    const completeSub = emitter.addListener('RoomPlanComplete', (data: RoomPlanResult) => {
-      if (resolveRef.current) {
-        resolveRef.current(data);
-        resolveRef.current = null;
-        rejectRef.current = null;
-      }
-    });
+    const completeSub = emitter.addListener(
+      'RoomPlanComplete',
+      (data: RoomPlanResult) => {
+        if (timeoutRef.current) { clearTimeout(timeoutRef.current); timeoutRef.current = null; }
+        if (resolveRef.current) {
+          resolveRef.current(data);
+          resolveRef.current = null;
+          rejectRef.current  = null;
+        }
+      },
+    );
 
-    const errorSub = emitter.addListener('RoomPlanError', (data: { error: string }) => {
-      if (rejectRef.current) {
-        rejectRef.current(new Error(data.error));
-        resolveRef.current = null;
-        rejectRef.current = null;
-      }
-    });
+    const errorSub = emitter.addListener(
+      'RoomPlanError',
+      (data: { error: string }) => {
+        if (timeoutRef.current) { clearTimeout(timeoutRef.current); timeoutRef.current = null; }
+        if (rejectRef.current) {
+          rejectRef.current(new Error(data.error));
+          resolveRef.current = null;
+          rejectRef.current  = null;
+        }
+      },
+    );
+
+    const progressSub = emitter.addListener(
+      'RoomPlanProgress',
+      (data: { instruction: string }) => {
+        setProgressInstruction(data.instruction);
+      },
+    );
 
     return () => {
       completeSub.remove();
       errorSub.remove();
+      progressSub.remove();
     };
-  }, [isAvailable]);
+  }, []);
 
+  // ── startScan ────────────────────────────────────────────────────────────
   const startScan = useCallback((): Promise<RoomPlanResult> => {
-    if (!isAvailable || !RoomPlanModule) {
-      return Promise.reject(new Error('RoomPlan is not available on this device'));
+    if (!RoomPlanNative || !isAvailable) {
+      return Promise.reject(new Error('LiDAR scanning is not available on this device.'));
     }
+
     return new Promise((resolve, reject) => {
       resolveRef.current = resolve;
-      rejectRef.current = reject;
-      RoomPlanModule.startScan();
+      rejectRef.current  = reject;
+
+      // 5-minute hard timeout — prevents a stuck scan from blocking the UI forever
+      timeoutRef.current = setTimeout(() => {
+        timeoutRef.current = null;
+        if (rejectRef.current) {
+          rejectRef.current(new Error('Scan timed out. Please try again.'));
+          resolveRef.current = null;
+          rejectRef.current  = null;
+        }
+        RoomPlanNative?.stopScan().catch(() => {/* already stopped or no session */});
+      }, SCAN_TIMEOUT_MS);
+
+      // Kick off the native scan; startScan resolves immediately (scan runs async).
+      // Reject the outer promise if the native call itself fails (e.g. already scanning).
+      RoomPlanNative!.startScan().catch((err: unknown) => {
+        if (timeoutRef.current) { clearTimeout(timeoutRef.current); timeoutRef.current = null; }
+        if (rejectRef.current) {
+          rejectRef.current(err instanceof Error ? err : new Error('Failed to start scan.'));
+          resolveRef.current = null;
+          rejectRef.current  = null;
+        }
+      });
     });
   }, [isAvailable]);
 
+  // ── stopScan ─────────────────────────────────────────────────────────────
   const stopScan = useCallback(() => {
-    if (isAvailable && RoomPlanModule) {
-      RoomPlanModule.stopScan();
+    if (timeoutRef.current) { clearTimeout(timeoutRef.current); timeoutRef.current = null; }
+    if (RoomPlanNative) {
+      RoomPlanNative.stopScan().catch(() => {/* not scanning or already stopped */});
     }
-  }, [isAvailable]);
+  }, []);
 
-  return { startScan, stopScan, isAvailable };
+  return { startScan, stopScan, isAvailable, progressInstruction };
 }

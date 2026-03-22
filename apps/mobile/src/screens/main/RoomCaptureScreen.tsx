@@ -30,7 +30,7 @@ import { useAppStore } from '../../store';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Rect, Line } from 'react-native-svg';
 
-type CaptureStep = 'method' | 'camera' | 'calibration' | 'details' | 'processing';
+type CaptureStep = 'method' | 'camera' | 'calibration' | 'details' | 'processing' | 'choice';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -108,6 +108,7 @@ export default function RoomCaptureScreen() {
   const insets = useSafeAreaInsets();
   const { startRender, renderProgressStage, renderProgress } = useRender();
   const { startScan, stopScan, isAvailable: isRoomPlanAvailable } = useRoomPlan();
+  const currentRoom = useAppStore((s) => s.currentRoom);
 
   const [step, setStep] = useState<CaptureStep>('method');
   const [capturedImageUri, setCapturedImageUri] = useState<string | null>(null);
@@ -211,16 +212,17 @@ export default function RoomCaptureScreen() {
       const data = await startScan();
       setScanning(false);
       setDimensions({
-        width: Math.round(data.width_ft),
-        depth: Math.round(data.depth_ft),
-        height: Math.round(data.height_ft),
+        width: data.width,
+        depth: data.depth,
+        height: data.height,
       });
       setCapturedImageUri(null);
       setStep('processing');
-    } catch (e: any) {
+    } catch (e: unknown) {
       setScanning(false);
-      if (e.message !== 'Scan cancelled') {
-        Alert.alert('Scan Failed', e.message ?? 'Could not complete the room scan.');
+      const message = e instanceof Error ? e.message : 'Could not complete the room scan.';
+      if (message !== 'Scan cancelled') {
+        Alert.alert('Scan Failed', message);
       }
     }
   };
@@ -236,7 +238,7 @@ export default function RoomCaptureScreen() {
   const handleProcessCapture = async () => {
     try {
       if (!capturedImageUri) {
-        navigation.navigate('RenderView', {});
+        setStep('choice');
         return;
       }
 
@@ -246,10 +248,9 @@ export default function RoomCaptureScreen() {
         encoding: FileSystem.EncodingType.Base64,
       });
       const imageBase64 = `data:image/jpeg;base64,${base64}`;
-      const room = useAppStore.getState().currentRoom;
-      const blend = room?.style_blend ?? { coastal: 0.2, japandi: 0.2, bohemian: 0.2, mid_century: 0.2, minimalist: 0.2 };
-      const roomType = room?.room_type ?? 'living_room';
-      const roomId = room?.id ?? 'default-room';
+      const blend = currentRoom?.style_blend ?? { coastal: 0.2, japandi: 0.2, bohemian: 0.2, mid_century: 0.2, minimalist: 0.2 };
+      const roomType = currentRoom?.room_type ?? 'living_room';
+      const roomId = currentRoom?.id ?? 'default-room';
       await startRender({
         roomId,
         roomType,
@@ -257,7 +258,7 @@ export default function RoomCaptureScreen() {
         imageBase64,
         renderType: 'draft',
       });
-      navigation.navigate('RenderView', {});
+      setStep('choice');
     } catch {
       Alert.alert('Error', 'Something went wrong. Please try again.');
     }
@@ -532,6 +533,41 @@ export default function RoomCaptureScreen() {
         <View style={styles.progressBarTrack}>
           <View style={[styles.progressBarFill, { width: `${progressWidth}%` }]} />
         </View>
+      </View>
+    );
+  }
+
+  // ── Choice step ───────────────────────────────────
+  if (step === 'choice') {
+    const roomId = currentRoom?.id;
+    return (
+      <View style={[styles.fullScreen, { backgroundColor: '#0A1628', justifyContent: 'center', paddingHorizontal: 24 }]}>
+        <Text style={{ color: 'white', fontSize: 26, fontWeight: '600', textAlign: 'center', marginBottom: 8 }}>
+          ✨ Your room is ready
+        </Text>
+        <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 15, textAlign: 'center', marginBottom: 48 }}>
+          How would you like to continue?
+        </Text>
+
+        {/* Primary — View AI Render */}
+        <TouchableOpacity
+          style={styles.choicePrimary}
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate('RenderView', { room_id: roomId, autoGenerate: true })}
+        >
+          <Text style={styles.choicePrimaryTitle}>View AI Render</Text>
+          <Text style={styles.choicePrimarySubtext}>See your room reimagined</Text>
+        </TouchableOpacity>
+
+        {/* Secondary — Arrange Furniture */}
+        <TouchableOpacity
+          style={styles.choiceSecondary}
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate('Viewer3D', { room_id: roomId })}
+        >
+          <Text style={styles.choiceSecondaryTitle}>Arrange Furniture</Text>
+          <Text style={styles.choiceSecondarySubtext}>Move pieces before rendering</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -935,5 +971,39 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+
+  // ── Choice step ────────────────────────────────
+  choicePrimary: {
+    backgroundColor: '#C47B3C',
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 16,
+  },
+  choicePrimaryTitle: {
+    color: '#0A1628',
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  choicePrimarySubtext: {
+    color: 'rgba(10,22,40,0.7)',
+    fontSize: 14,
+  },
+  choiceSecondary: {
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.3)',
+    borderRadius: 16,
+    padding: 24,
+  },
+  choiceSecondaryTitle: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  choiceSecondarySubtext: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 14,
   },
 });

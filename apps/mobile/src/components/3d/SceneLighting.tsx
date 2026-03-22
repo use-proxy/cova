@@ -86,7 +86,7 @@ const STYLE_LIGHTING: Record<StyleName, StyleLight> = {
   },
 };
 
-const HDRI_FILES: Record<StyleName, any> = {
+const HDRI_FILES: Record<StyleName, number> = {
   coastal: require('../../../../../assets/textures/hdri/sunset_fairway_1k.hdr'),
   japandi: require('../../../../../assets/textures/hdri/small_empty_room_1k.hdr'),
   bohemian: require('../../../../../assets/textures/hdri/colorful_studio_1k.hdr'),

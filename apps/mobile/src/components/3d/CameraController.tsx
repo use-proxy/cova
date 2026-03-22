@@ -15,7 +15,7 @@ const TARGET = new THREE.Vector3(0, 1.0, 0);
 const PHI_MIN = 0.3;
 const PHI_MAX = Math.PI / 2 - 0.05;
 const RADIUS_MIN = 1.5;
-const RADIUS_MAX = 5.5;
+const RADIUS_MAX = 6.0;
 
 export function CameraController({ controlRef }: Props) {
   const { camera } = useThree();
