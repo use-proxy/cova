@@ -23,3 +23,12 @@ file_size_limit = "50MiB"
 [auth]
 enabled = true
 site_url = "http://localhost:3000"
+
+[functions.generate-depth-map]
+verify_jwt = false
+
+[functions.render-room]
+verify_jwt = false
+
+[functions.get-render-status]
+verify_jwt = false

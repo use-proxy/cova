@@ -1,6 +1,6 @@
 import { useAppStore } from '../store';
-import { supabase, callEdgeFunction } from '../lib/supabase';
-import type { StyleBlend, RoomType, Render, Product } from '@cova/shared';
+import { callEdgeFunction } from '../lib/supabase';
+import type { StyleBlend, RoomType, Render, Product, RoomDimensions } from '@cova/shared';
 
 interface RenderParams {
   roomId: string;
@@ -8,6 +8,7 @@ interface RenderParams {
   styleBlend: StyleBlend;
   imageBase64: string;
   renderType: 'draft' | 'hd';
+  dimensions?: RoomDimensions;
 }
 
 export function useRender() {
@@ -29,7 +30,8 @@ export function useRender() {
       });
       setMatchedProducts(matchRes.products ?? []);
     } catch (e) {
-      console.warn('Product matching failed:', e);
+      // TODO: replace with logging service
+      console.error('Product matching failed:', e);
     }
   };
 
@@ -46,18 +48,12 @@ export function useRender() {
         else if (elapsed < 50) setRenderProgressStage('Adding finishing touches...');
         else setRenderProgressStage('Almost there...');
 
-        const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
-        const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
-        const { data: { session } } = await supabase.auth.getSession();
-        const res = await fetch(`${supabaseUrl}/functions/v1/get-render-status?render_id=${renderId}`, {
-          headers: {
-            'Authorization': `Bearer ${session?.access_token}`,
-            'apikey': supabaseAnonKey,
-          },
-        });
-        const data = await res.json();
+        const data = await callEdgeFunction<{ status: string; image_url?: string; error?: string }>(
+          'get-render-status',
+          { render_id: renderId },
+        );
 
-        if (data.status === 'completed') {
+        if (data.status === 'completed' && data.image_url) {
           clearInterval(interval);
           setRenderStatus('completed');
           setRenderProgress(100);
@@ -87,14 +83,22 @@ export function useRender() {
       setRenderError(null);
       setRenderProgress(0);
       setRenderProgressStage('Analyzing your room...');
+
+      // render-room generates its own depth map server-side (Depth Pro → Depth Anything V2 fallback).
+      // Sending a client-side depth_map_base64 is redundant and adds ~30s of latency.
       const res = await callEdgeFunction<{ render_id: string; prediction_id: string }>('render-room', {
         room_id: params.roomId,
         image_base64: params.imageBase64,
         style_blend: params.styleBlend,
         room_type: params.roomType,
         render_type: params.renderType,
+        room_dimensions: params.dimensions,
       });
       setRenderProgressStage('Applying your style...');
+      // Step 3: Persist calibrated dimensions to the room record (only after server confirms)
+      if (params.dimensions) {
+        useAppStore.getState().updateRoom(params.roomId, { dimensions: params.dimensions });
+      }
       const roomBudget = useAppStore.getState().currentRoom?.budget ?? 250000;
       await pollRenderStatus(res.render_id, params.roomType, params.styleBlend, roomBudget);
     } catch (e: unknown) {

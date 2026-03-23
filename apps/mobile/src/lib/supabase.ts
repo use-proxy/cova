@@ -25,6 +25,9 @@ export async function callEdgeFunction<T>(
   body: object,
 ): Promise<T> {
   const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) {
+    throw new Error('Not authenticated');
+  }
 
   const response = await fetch(
     `${supabaseUrl}/functions/v1/${functionName}`,
@@ -32,7 +35,7 @@ export async function callEdgeFunction<T>(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session?.access_token}`,
+        'Authorization': `Bearer ${session.access_token}`,
         'apikey': supabaseAnonKey,
       },
       body: JSON.stringify(body),

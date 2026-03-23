@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { useGLTF } from '@react-three/drei/native';
 import type { ThreeEvent } from '@react-three/fiber';
 import type { FurniturePiece as FurniturePieceType, FurnitureCatalogItem } from '@cova/shared';
+import { GLB_ASSETS } from '../../data/glbAssets';
 
 interface FurniturePieceProps {
   piece: FurniturePieceType;
@@ -20,15 +21,21 @@ interface FurniturePieceProps {
 const LONG_PRESS_MS = 500;
 
 function FurnitureModel({
+  asset,
   catalog,
   isSelected,
   colorOverride,
 }: {
+  // ⚠️ ASSERTION: asset must be a Metro require() result from GLB_ASSETS.
+  // Never pass catalog.glb_path directly — Metro cannot resolve bare strings at runtime.
+  // Caller (FurniturePiece) must guard: only render FurnitureModel when asset is defined.
+  asset: number;
   catalog: FurnitureCatalogItem;
   isSelected: boolean;
   colorOverride: string | null;
 }) {
-  const gltf = useGLTF(catalog.glb_path as unknown as string) as unknown as {
+  // useGLTF MUST be called unconditionally — hooks cannot follow conditional returns.
+  const gltf = useGLTF(asset as unknown as string) as unknown as {
     scene?: THREE.Group;
   };
   if (!gltf || !gltf.scene) return null;
@@ -102,6 +109,10 @@ export function FurniturePiece({
   const isDraggingRef = useRef(false);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Resolve asset here so FurnitureModel always receives a defined value.
+  // Guard below prevents rendering FurnitureModel (and its useGLTF hook) for unknown IDs.
+  const glbAsset = GLB_ASSETS[catalog.id];
+
   useEffect(() => {
     if (!isSelected) {
       isDraggingRef.current = false;
@@ -128,11 +139,14 @@ export function FurniturePiece({
       rotation={[0, piece.rotation_y, 0]}
     >
       <Suspense fallback={null}>
-        <FurnitureModel
-          catalog={catalog}
-          isSelected={isSelected}
-          colorOverride={piece.color_override}
-        />
+        {glbAsset != null && (
+          <FurnitureModel
+            asset={glbAsset}
+            catalog={catalog}
+            isSelected={isSelected}
+            colorOverride={piece.color_override}
+          />
+        )}
       </Suspense>
 
       <mesh

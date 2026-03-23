@@ -30,7 +30,13 @@ Deno.serve(async (req: Request) => {
     }
 
     const url = new URL(req.url);
-    const render_id = url.searchParams.get('render_id');
+    let render_id: string | null = url.searchParams.get('render_id');
+    if (!render_id && req.method === 'POST') {
+      try {
+        const body = await req.json();
+        render_id = body.render_id ?? null;
+      } catch { /* ignore parse errors */ }
+    }
     if (!render_id) {
       return new Response(JSON.stringify({ error: 'render_id is required' }), {
         status: 400,
@@ -84,7 +90,14 @@ Deno.serve(async (req: Request) => {
     const prediction = await replicateResp.json();
 
     if (prediction.status === 'succeeded') {
-      const imageUrl = prediction.output?.[0];
+      // FLUX models return either a string URL or an array of URLs depending on the model version.
+      const rawOutput = prediction.output;
+      const imageUrl: string | undefined =
+        Array.isArray(rawOutput) && typeof rawOutput[0] === 'string'
+          ? rawOutput[0]
+          : typeof rawOutput === 'string'
+            ? rawOutput
+            : undefined;
       if (!imageUrl) {
         await supabase.from('renders').update({ status: 'failed' }).eq('id', render_id);
         return new Response(
@@ -103,6 +116,7 @@ Deno.serve(async (req: Request) => {
 
       if (uploadError) {
         console.error('Storage upload error:', uploadError);
+        await supabase.from('renders').update({ status: 'failed' }).eq('id', render_id);
         return new Response(
           JSON.stringify({ status: 'failed', error: 'Failed to save rendered image.' }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
@@ -128,19 +142,10 @@ Deno.serve(async (req: Request) => {
         })
         .eq('id', render.room_id);
 
-      await supabase.rpc('increment_rooms_render_count', { room_id: render.room_id }).catch(async () => {
-        // RPC fallback — direct increment
-        const { data: room } = await supabase
-          .from('rooms')
-          .select('render_count')
-          .eq('id', render.room_id)
-          .single();
-        if (room) {
-          await supabase
-            .from('rooms')
-            .update({ render_count: (room.render_count ?? 0) + 1 })
-            .eq('id', render.room_id);
-        }
+      // Increment render_count atomically via RPC.
+      // If the RPC doesn't exist yet the error is suppressed — render completion is not affected.
+      await supabase.rpc('increment_rooms_render_count', { room_id: render.room_id }).catch((err) => {
+        console.warn('increment_rooms_render_count RPC unavailable:', err);
       });
 
       return new Response(

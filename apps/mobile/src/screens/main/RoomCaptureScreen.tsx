@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,16 +10,13 @@ import {
   Easing,
   Alert,
   ActivityIndicator,
-  PanResponder,
   Switch,
   TextInput,
   ScrollView,
-  type GestureResponderEvent,
-  type PanResponderGestureState,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import * as ImageManipulator from 'expo-image-manipulator';
 import Slider from '@react-native-community/slider';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -27,10 +24,12 @@ import type { RoomStackParamList } from '../../navigation/RoomNavigator';
 import { useRender } from '../../hooks/useRender';
 import { useRoomPlan } from '../../hooks/useRoomPlan';
 import { useAppStore } from '../../store';
+import { supabase } from '../../lib/supabase';
+import type { Room } from '@cova/shared';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path, Circle, Rect, Line } from 'react-native-svg';
+import Svg, { Path, Circle, Rect } from 'react-native-svg';
 
-type CaptureStep = 'method' | 'camera' | 'calibration' | 'details' | 'processing' | 'choice';
+type CaptureStep = 'method' | 'camera' | 'review' | 'details' | 'processing' | 'choice';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -119,41 +118,8 @@ export default function RoomCaptureScreen() {
   const [selectedRoomType, setSelectedRoomType] = useState<RoomTypeOption | null>(null);
   const [keepFurniture, setKeepFurniture] = useState(true);
 
-  const [corners, setCorners] = useState({
-    tl: { x: 0.1, y: 0.1 },
-    tr: { x: 0.9, y: 0.1 },
-    bl: { x: 0.1, y: 0.9 },
-    br: { x: 0.9, y: 0.9 },
-  });
-  const imageLayoutRef = useRef({ width: SCREEN_WIDTH - 40, height: 224 });
-
   const cameraRef = useRef<CameraView>(null);
   const pulseAnim = useRef(new Animated.Value(0.3)).current;
-
-  const makeCornerResponder = (key: 'tl' | 'tr' | 'bl' | 'br') =>
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderMove: (_: GestureResponderEvent, gs: PanResponderGestureState) => {
-        const { width: imgW, height: imgH } = imageLayoutRef.current;
-        setCorners((prev) => {
-          const nx = Math.max(0, Math.min(1, prev[key].x + gs.dx / imgW));
-          const ny = Math.max(0, Math.min(1, prev[key].y + gs.dy / imgH));
-          return { ...prev, [key]: { x: nx, y: ny } };
-        });
-      },
-      onPanResponderRelease: () => {},
-    });
-
-  const cornerResponders = useMemo(
-    () => ({
-      tl: makeCornerResponder('tl'),
-      tr: makeCornerResponder('tr'),
-      bl: makeCornerResponder('bl'),
-      br: makeCornerResponder('br'),
-    }),
-    [], // eslint-disable-line react-hooks/exhaustive-deps
-  );
 
   useEffect(() => {
     if (step === 'processing') {
@@ -186,7 +152,7 @@ export default function RoomCaptureScreen() {
     });
     if (!result.canceled && result.assets[0]) {
       setCapturedImageUri(result.assets[0].uri);
-      setStep('calibration');
+      setStep('review');
     }
   };
 
@@ -195,7 +161,7 @@ export default function RoomCaptureScreen() {
     const photo = await cameraRef.current.takePictureAsync({ quality: 0.9 });
     if (photo) {
       setCapturedImageUri(photo.uri);
-      setStep('calibration');
+      setStep('review');
     }
   };
 
@@ -227,7 +193,7 @@ export default function RoomCaptureScreen() {
     }
   };
 
-  const handleCalibrationContinue = () => {
+  const handleReviewContinue = () => {
     setStep('details');
   };
 
@@ -244,22 +210,51 @@ export default function RoomCaptureScreen() {
 
       useAppStore.getState().setCapturedImageUri(capturedImageUri);
 
-      const base64 = await FileSystem.readAsStringAsync(capturedImageUri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      const imageBase64 = `data:image/jpeg;base64,${base64}`;
+      const compressed = await ImageManipulator.manipulateAsync(
+        capturedImageUri,
+        [{ resize: { width: 1024 } }],
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG, base64: true },
+      );
+      if (!compressed.base64) {
+        throw new Error('Image compression failed — no base64 output.');
+      }
+      const imageBase64 = `data:image/jpeg;base64,${compressed.base64}`;
+
       const blend = currentRoom?.style_blend ?? { coastal: 0.2, japandi: 0.2, bohemian: 0.2, mid_century: 0.2, minimalist: 0.2 };
-      const roomType = currentRoom?.room_type ?? 'living_room';
-      const roomId = currentRoom?.id ?? 'default-room';
+      const roomType = (selectedRoomType ?? currentRoom?.room_type ?? 'living_room') as string;
+
+      // Ensure a valid room row exists in the DB before calling render-room.
+      // The renders table has a FK on room_id — using a placeholder string causes a FK violation.
+      let roomId = currentRoom?.id;
+      if (!roomId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+        const { data: newRoom, error: roomErr } = await supabase
+          .from('rooms')
+          .insert({
+            user_id: user.id,
+            name: roomName || 'My Room',
+            room_type: roomType,
+            style_blend: blend,
+          })
+          .select('*')
+          .single();
+        if (roomErr || !newRoom) throw new Error('Failed to create room record');
+        roomId = newRoom.id as string;
+        useAppStore.getState().setCurrentRoom(newRoom as Room);
+      }
+
       await startRender({
         roomId,
         roomType,
         styleBlend: blend,
         imageBase64,
         renderType: 'draft',
+        dimensions: { width: dimensions.width, depth: dimensions.depth, height: dimensions.height, unit: 'ft' },
       });
       setStep('choice');
-    } catch {
+    } catch (e) {
+      console.error('handleProcessCapture failed:', e);
       Alert.alert('Error', 'Something went wrong. Please try again.');
     }
   };
@@ -283,15 +278,8 @@ export default function RoomCaptureScreen() {
     );
   }
 
-  // ── Calibration step ─────────────────────────────
-  if (step === 'calibration') {
-    const imgW = imageLayoutRef.current.width;
-    const imgH = imageLayoutRef.current.height;
-    const cornerKeys = ['tl', 'tr', 'bl', 'br'] as const;
-    const edges: [typeof cornerKeys[number], typeof cornerKeys[number]][] = [
-      ['tl', 'tr'], ['tr', 'br'], ['br', 'bl'], ['bl', 'tl'],
-    ];
-
+  // ── Review step ──────────────────────────────────
+  if (step === 'review') {
     return (
       <View style={[styles.fullScreen, { backgroundColor: '#0A1628' }]}>
         {/* Header */}
@@ -300,63 +288,22 @@ export default function RoomCaptureScreen() {
             <TouchableOpacity style={styles.headerBackBtn} onPress={() => setStep('method')}>
               <BackChevron />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Calibration</Text>
+            <Text style={styles.headerTitle}>Your Photo</Text>
             <View style={{ width: 40 }} />
           </View>
         </View>
 
-        {/* Photo preview with corner handles */}
-        <View
-          style={styles.calibrationImageWrap}
-          onLayout={(e) => {
-            imageLayoutRef.current = { width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height };
-          }}
-        >
+        {/* Photo preview — read-only, no corner handles */}
+        <View style={styles.calibrationImageWrap}>
           <Image source={{ uri: capturedImageUri! }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.15)' }]} pointerEvents="none" />
-
-          {/* Connecting lines between corners */}
-          {edges.map(([from, to]) => {
-            const x1 = corners[from].x * imgW;
-            const y1 = corners[from].y * imgH;
-            const x2 = corners[to].x * imgW;
-            const y2 = corners[to].y * imgH;
-            const dx = x2 - x1;
-            const dy = y2 - y1;
-            const len = Math.sqrt(dx * dx + dy * dy);
-            const angle = Math.atan2(dy, dx);
-            return (
-              <View
-                key={`${from}-${to}`}
-                pointerEvents="none"
-                style={{
-                  position: 'absolute',
-                  left: x1,
-                  top: y1 - 0.75,
-                  width: len,
-                  height: 1.5,
-                  backgroundColor: 'rgba(255,255,255,0.6)',
-                  transform: [{ rotate: `${angle}rad` }],
-                }}
-              />
-            );
-          })}
-
-          {/* Corner handles */}
-          {cornerKeys.map((key) => (
-            <View
-              key={key}
-              style={[
-                styles.cornerHandle,
-                { left: corners[key].x * imgW - 14, top: corners[key].y * imgH - 14 },
-              ]}
-              {...cornerResponders[key].panHandlers}
-            />
-          ))}
         </View>
 
         {/* Dimension sliders */}
         <View style={styles.sliderCard}>
+          <Text style={{ color: 'rgba(0,0,0,0.5)', fontSize: 13, marginBottom: 12, textAlign: 'center' }}>
+            Adjust sliders to match your room's dimensions
+          </Text>
+
           {/* Width */}
           <View style={styles.sliderSection}>
             <View style={styles.sliderLabelRow}>
@@ -417,7 +364,7 @@ export default function RoomCaptureScreen() {
 
         {/* Continue button */}
         <View style={styles.bottomActionArea}>
-          <TouchableOpacity style={styles.goldPillButton} onPress={handleCalibrationContinue}>
+          <TouchableOpacity style={styles.goldPillButton} onPress={handleReviewContinue}>
             <Text style={styles.goldPillButtonText}>Continue</Text>
           </TouchableOpacity>
         </View>
@@ -432,7 +379,7 @@ export default function RoomCaptureScreen() {
         {/* Header */}
         <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
           <View style={styles.headerRow}>
-            <TouchableOpacity style={styles.headerBackBtn} onPress={() => setStep('calibration')}>
+            <TouchableOpacity style={styles.headerBackBtn} onPress={() => setStep('review')}>
               <BackChevron />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Room Details</Text>

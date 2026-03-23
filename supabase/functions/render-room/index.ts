@@ -324,6 +324,9 @@ Deno.serve(async (req: Request) => {
     const replicateToken = Deno.env.get('REPLICATE_API_TOKEN')!;
     const numSteps = render_type === 'hd' ? 40 : 28;
     const prompt = buildPrompt(style_blend ?? {}, room_type ?? 'living_room');
+    // Derive primary style for the style_applied NOT NULL column
+    const style_applied = Object.entries(style_blend ?? {})
+      .sort(([, a], [, b]) => (b as number) - (a as number))[0]?.[0] ?? 'minimalist';
 
     // Normalise image to data URI (Replicate accepts both data URIs and URLs)
     const imageDataUri = image_base64.startsWith('data:')
@@ -375,6 +378,7 @@ Deno.serve(async (req: Request) => {
         room_id,
         user_id:                  user.id,
         status:                   'processing',
+        style_applied,
         quality_tier:             render_type ?? 'draft',
         replicate_prediction_id:  fluxPredictionId,
         prompt_used:              prompt,
