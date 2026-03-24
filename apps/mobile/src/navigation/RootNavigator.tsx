@@ -2,9 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { NavigationContainer, NavigationContainerRef, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { useAppStore } from '../store';
-import { supabase } from '../lib/supabase';
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
+
+type RootParamList = Record<string, object | undefined>;
 
 export default function RootNavigator() {
   const user = useAppStore((s) => s.user);
@@ -12,7 +13,7 @@ export default function RootNavigator() {
   const colorScheme = useAppStore((s) => s.colorScheme);
   const [initialRoute, setInitialRoute] = useState<'Home' | 'NewRoom' | null>(null);
   const [checkedRooms, setCheckedRooms] = useState(false);
-  const navigationRef = React.useRef<NavigationContainerRef<any>>(null);
+  const navigationRef = React.useRef<NavigationContainerRef<RootParamList>>(null);
 
   useEffect(() => {
     if (!user) {
@@ -22,25 +23,20 @@ export default function RootNavigator() {
     }
 
     let cancelled = false;
-    (async () => {
-      const { data: rooms } = await supabase
-        .from('rooms')
-        .select('id')
-        .eq('user_id', user.id)
-        .limit(1);
-
+    useAppStore.getState().fetchRooms().then(() => {
       if (cancelled) return;
-
-      if (!rooms || rooms.length === 0) {
-        setInitialRoute('NewRoom');
-      } else {
-        setInitialRoute('Home');
-      }
+      const currentRooms = useAppStore.getState().rooms;
+      setInitialRoute(currentRooms.length === 0 ? 'NewRoom' : 'Home');
       setCheckedRooms(true);
-    })();
+    }).catch(() => {
+      if (cancelled) return;
+      // If fetch fails, default to Home and let HomeScreen handle the empty state
+      setInitialRoute('Home');
+      setCheckedRooms(true);
+    });
 
     return () => { cancelled = true; };
-  }, [user]);
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isLoading) {
     return (

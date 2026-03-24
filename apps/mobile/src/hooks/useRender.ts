@@ -55,46 +55,63 @@ export function useRender() {
     }
   };
 
-  const pollRenderStatus = async (renderId: string, roomType: RoomType, styleBlend: StyleBlend, budget: number) => {
+  const pollRenderStatus = (renderId: string, roomType: RoomType, styleBlend: StyleBlend, budget: number) => {
     setRenderStatus('processing');
     const startTime = Date.now();
-    const interval = setInterval(async () => {
-      try {
-        const elapsed = (Date.now() - startTime) / 1000;
-        setRenderProgress(Math.min(95, (elapsed / 40) * 100));
-        if (elapsed < 5) setRenderProgressStage('Analyzing your room...');
-        else if (elapsed < 15) setRenderProgressStage('Applying your style...');
-        else if (elapsed < 30) setRenderProgressStage('Generating render...');
-        else if (elapsed < 50) setRenderProgressStage('Adding finishing touches...');
-        else setRenderProgressStage('Almost there...');
+    // Exponential backoff: 3s → 6s → 12s → 24s → cap at 24s
+    const BACKOFF = [3000, 6000, 12000, 24000];
+    let attemptIndex = 0;
 
+    const poll = async () => {
+      const elapsed = (Date.now() - startTime) / 1000;
+
+      // Update progress stage based on elapsed time (§8.3 timing)
+      if (elapsed < 5)  setRenderProgressStage(LOADING_STAGES[0]);
+      else if (elapsed < 15) setRenderProgressStage(LOADING_STAGES[1]);
+      else if (elapsed < 25) setRenderProgressStage(LOADING_STAGES[2]);
+      else if (elapsed < 40) setRenderProgressStage(LOADING_STAGES[3]);
+      else if (elapsed < 55) setRenderProgressStage(LOADING_STAGES[4]);
+      setRenderProgress(Math.min(95, (elapsed / 55) * 100));
+
+      if (elapsed > 120) {
+        setRenderStatus('failed');
+        setRenderError('Render timed out. Please try again.');
+        return;
+      }
+
+      try {
         const data = await callEdgeFunction<{ status: string; image_url?: string; error?: string }>(
           'get-render-status',
           { render_id: renderId },
         );
 
         if (data.status === 'completed' && data.image_url) {
-          clearInterval(interval);
           setRenderStatus('completed');
           setRenderProgress(100);
-          setRenderProgressStage('');
+          setRenderProgressStage(LOADING_STAGES[5]);
           setCurrentRender({ id: renderId, image_url: data.image_url } as Render);
           await fetchMatchedProducts(data.image_url, roomType, styleBlend, budget);
-        } else if (data.status === 'failed') {
-          clearInterval(interval);
-          setRenderStatus('failed');
-          setRenderError('Render failed. Please try again.');
-        } else if (elapsed > 120) {
-          clearInterval(interval);
-          setRenderStatus('failed');
-          setRenderError('Render timed out. Please try again.');
+          return;
         }
+
+        if (data.status === 'failed') {
+          setRenderStatus('failed');
+          setRenderError(data.error ?? 'Render failed. Please try again.');
+          return;
+        }
+
+        // Still processing — schedule next poll with backoff
+        const delay = BACKOFF[Math.min(attemptIndex, BACKOFF.length - 1)];
+        attemptIndex++;
+        pollTimeoutRef.current = setTimeout(poll, delay);
       } catch {
-        clearInterval(interval);
         setRenderStatus('failed');
         setRenderError('Something went wrong. Please try again.');
       }
-    }, 3000);
+    };
+
+    // Start first poll after 3 seconds
+    pollTimeoutRef.current = setTimeout(poll, BACKOFF[0]);
   };
 
   const startRender = async (params: RenderParams) => {

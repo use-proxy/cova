@@ -3,6 +3,7 @@ import { immer } from 'zustand/middleware/immer';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Session } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 import type {
   User,
   Room,
@@ -71,6 +72,8 @@ interface AppActions {
   signOut: () => void;
 
   // rooms
+  fetchRooms: () => Promise<void>;
+  createRoom: (params: { name: string; room_type: string; style_blend: StyleBlend }) => Promise<Room>;
   setRooms: (rooms: Room[]) => void;
   setCurrentRoom: (room: Room | null) => void;
   addRoom: (room: Room) => void;
@@ -153,6 +156,34 @@ export const useAppStore = create<AppState & AppActions>()(
     activeStyle: 'japandi' as StyleName,
     placedFurniture: [],
 
+    fetchRooms: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from('rooms')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false });
+      if (data) {
+        set((state) => { state.rooms = data as Room[]; });
+      }
+    },
+    createRoom: async ({ name, room_type, style_blend }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+      const { data, error } = await supabase
+        .from('rooms')
+        .insert({ user_id: user.id, name, room_type, style_blend })
+        .select('*')
+        .single();
+      if (error || !data) throw new Error(error?.message ?? 'Failed to create room');
+      const room = data as Room;
+      set((state) => {
+        state.rooms.unshift(room);
+        state.currentRoom = room;
+      });
+      return room;
+    },
     setRooms: (rooms) =>
       set((state) => {
         state.rooms = rooms;

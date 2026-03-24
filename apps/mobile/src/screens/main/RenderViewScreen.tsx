@@ -35,12 +35,14 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const BG = '#0A1628';
 const GOLD = '#C4A45A';
 
+// §8.3 — 6 stages, must match useRender.ts exactly
 const LOADING_STAGES = [
   'Analyzing your room...',
-  'Understanding layout...',
-  'Applying style preferences...',
-  'Generating design...',
+  'Measuring depth...',
+  'Applying your style...',
+  'Generating render...',
   'Adding finishing touches...',
+  'Done!',
 ];
 
 export default function RenderViewScreen() {
@@ -174,7 +176,10 @@ export default function RenderViewScreen() {
     const { status } = await MediaLibrary.requestPermissionsAsync();
     if (status !== 'granted') { Alert.alert('Permission required', 'Camera roll access is needed to save.'); return; }
     try {
-      await MediaLibrary.saveToLibraryAsync(currentRender.image_url);
+      // saveToLibraryAsync requires a local file URI — download signed URL first
+      const localUri = `${FileSystem.cacheDirectory}render_${Date.now()}.jpg`;
+      const { uri } = await FileSystem.downloadAsync(currentRender.image_url, localUri);
+      await MediaLibrary.saveToLibraryAsync(uri);
       Alert.alert('Saved', 'Saved to camera roll');
     } catch { Alert.alert('Error', 'Could not save image'); }
   };
@@ -309,12 +314,14 @@ export default function RenderViewScreen() {
       {/* Full-screen render image */}
       <View style={StyleSheet.absoluteFill} onLayout={handleImageLayout}>
         <TouchableWithoutFeedback onPress={handleImageTap}>
-          <Animated.Image
-            source={{ uri: currentRender?.image_url ?? '' }}
-            style={[StyleSheet.absoluteFill, { transform: [...panOffset.getTranslateTransform(), { scale: scaleVal }] }]}
-            resizeMode="cover"
-            {...imagePanResponder.panHandlers}
-          />
+          {currentRender?.image_url ? (
+            <Animated.Image
+              source={{ uri: currentRender.image_url }}
+              style={[StyleSheet.absoluteFill, { transform: [...panOffset.getTranslateTransform(), { scale: scaleVal }] }]}
+              resizeMode="cover"
+              {...imagePanResponder.panHandlers}
+            />
+          ) : null}
         </TouchableWithoutFeedback>
       </View>
 

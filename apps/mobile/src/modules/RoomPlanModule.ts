@@ -35,9 +35,9 @@ export interface RoomPlanResult {
   width: number;
   depth: number;
   height: number;
-  unit: 'm';
   doors: RoomPlanDoor[];
   windows: RoomPlanWindow[];
+  thumbnailBase64: string; // JPEG screenshot — matches Swift captureView UIGraphicsImageRenderer output
 }
 
 // ── Native module interface (must match RCT_EXTERN_METHOD declarations) ──

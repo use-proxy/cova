@@ -25,7 +25,7 @@ import { useRender } from '../../hooks/useRender';
 import { useRoomPlan } from '../../hooks/useRoomPlan';
 import { useAppStore } from '../../store';
 import { supabase } from '../../lib/supabase';
-import type { Room } from '@cova/shared';
+import type { Room, RoomType } from '@cova/shared';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
 
@@ -91,6 +91,16 @@ function DoubleArchMark() {
 }
 
 type RoomTypeOption = 'living' | 'bedroom' | 'kitchen' | 'dining' | 'bathroom' | 'office' | 'other';
+
+const ROOM_TYPE_MAP: Record<RoomTypeOption, RoomType> = {
+  living:   'living_room',
+  bedroom:  'bedroom',
+  kitchen:  'kitchen',
+  dining:   'dining_room',
+  bathroom: 'bathroom',
+  office:   'home_office',
+  other:    'living_room',
+};
 
 const ROOM_TYPES: { id: RoomTypeOption; label: string }[] = [
   { id: 'living', label: 'Living Room' },
@@ -223,7 +233,9 @@ export default function RoomCaptureScreen() {
       const imageBase64 = `data:image/jpeg;base64,${compressed.base64}`;
 
       const blend = currentRoom?.style_blend ?? { coastal: 0.2, japandi: 0.2, bohemian: 0.2, mid_century: 0.2, minimalist: 0.2 };
-      const roomType = (selectedRoomType ?? currentRoom?.room_type ?? 'living_room') as string;
+      const roomType: RoomType = selectedRoomType
+        ? ROOM_TYPE_MAP[selectedRoomType]
+        : (currentRoom?.room_type ?? 'living_room');
 
       // Ensure a valid room row exists in the DB before calling render-room.
       // The renders table has a FK on room_id — using a placeholder string causes a FK violation.
