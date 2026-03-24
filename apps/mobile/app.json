@@ -19,6 +19,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "ai.cova.app",
       "buildNumber": "1",
+      "minimumOsVersion": "16.0",
       "infoPlist": {
         "NSCameraUsageDescription": "Cova needs camera access to capture your room.",
         "NSPhotoLibraryUsageDescription": "Cova needs photo library access to upload your room photo.",
@@ -26,27 +27,11 @@
         "ITSAppUsesNonExemptEncryption": false
       }
     },
-    "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#1B3A2D",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
-      },
-      "package": "ai.cova.app",
-      "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.RECEIVE_BOOT_COMPLETED",
-        "android.permission.RECORD_AUDIO"
-      ],
-      "predictiveBackGestureEnabled": false
-    },
     "plugins": [
       "expo-apple-authentication",
       "expo-camera",
-      "expo-image-picker"
+      "expo-image-picker",
+      "expo-media-library"
     ],
     "web": {
       "favicon": "./assets/favicon.png"

@@ -2,7 +2,7 @@ import React, { useEffect, Suspense } from 'react';
 import { useLoader } from '@react-three/fiber/native';
 import * as THREE from 'three';
 import type { StyleName, RoomDimensions } from '@cova/shared';
-import { STYLE_COLORS } from '../../data/furnitureCatalog';
+import { STYLE_PALETTE } from '../../data/furnitureCatalog';
 
 const ftToM = (ft: number) => ft * 0.3048;
 
@@ -76,13 +76,12 @@ export function BoxRoom({ style, dimensions }: BoxRoomProps) {
   const w = toMeters(dimensions.width);
   const d = toMeters(dimensions.depth);
   const h = toMeters(dimensions.height);
-  const palette = STYLE_COLORS[style];
-  const wallColor = palette?.wall ?? '#E8E0D5';
+  const palette = STYLE_PALETTE[style];
+  const wallColor = palette?.walls ?? '#E8E0D5';
   const floorColor = palette?.floor ?? '#C9BEA8';
   const ceilingColor = palette?.ceiling ?? '#F5F0E8';
-  const accentColor = palette?.accent ?? '#8B7355';
-  const trimColor = palette?.accent ?? '#8B7355';
-  const windowEmissive = new THREE.Color(palette?.accent ?? '#B8D4E8');
+  const trimColor = palette?.trim ?? '#8B7355';
+  const windowEmissive = new THREE.Color(palette?.emissive ?? '#FFF8F0');
   const baseboardH = 0.08;
   const baseboardD = 0.03;
   const crownH = 0.1;

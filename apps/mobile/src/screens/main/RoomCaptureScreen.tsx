@@ -108,11 +108,12 @@ export default function RoomCaptureScreen() {
   const { startRender, renderProgressStage, renderProgress } = useRender();
   const { startScan, stopScan, isAvailable: isRoomPlanAvailable } = useRoomPlan();
   const currentRoom = useAppStore((s) => s.currentRoom);
+  const setCurrentRoomDimensions = useAppStore((s) => s.setCurrentRoomDimensions);
 
   const [step, setStep] = useState<CaptureStep>('method');
   const [capturedImageUri, setCapturedImageUri] = useState<string | null>(null);
   const [cameraPermission, requestPermission] = useCameraPermissions();
-  const [dimensions, setDimensions] = useState({ width: 16, depth: 12, height: 9 });
+  const [dimensions, setDimensions] = useState({ width: 4.9, depth: 3.7, height: 2.7 });
   const [scanning, setScanning] = useState(false);
   const [roomName, setRoomName] = useState('');
   const [selectedRoomType, setSelectedRoomType] = useState<RoomTypeOption | null>(null);
@@ -182,6 +183,7 @@ export default function RoomCaptureScreen() {
         depth: data.depth,
         height: data.height,
       });
+      setCurrentRoomDimensions({ width: data.width, depth: data.depth, height: data.height, unit: 'm' });
       setCapturedImageUri(null);
       setStep('processing');
     } catch (e: unknown) {
@@ -250,7 +252,7 @@ export default function RoomCaptureScreen() {
         styleBlend: blend,
         imageBase64,
         renderType: 'draft',
-        dimensions: { width: dimensions.width, depth: dimensions.depth, height: dimensions.height, unit: 'ft' },
+        dimensions: { width: dimensions.width, depth: dimensions.depth, height: dimensions.height, unit: 'm' },
       });
       setStep('choice');
     } catch (e) {
@@ -308,15 +310,15 @@ export default function RoomCaptureScreen() {
           <View style={styles.sliderSection}>
             <View style={styles.sliderLabelRow}>
               <Text style={styles.sliderLabel}>Width</Text>
-              <Text style={styles.sliderValue}>{dimensions.width} ft</Text>
+              <Text style={styles.sliderValue}>{dimensions.width.toFixed(1)} m</Text>
             </View>
             <Slider
               style={styles.slider}
-              minimumValue={5}
-              maximumValue={30}
-              step={1}
+              minimumValue={2}
+              maximumValue={12}
+              step={0.1}
               value={dimensions.width}
-              onValueChange={(v) => setDimensions((d) => ({ ...d, width: v }))}
+              onValueChange={(v) => setDimensions((d) => ({ ...d, width: Math.round(v * 10) / 10 }))}
               minimumTrackTintColor="#C4A45A"
               maximumTrackTintColor="rgba(0,0,0,0.1)"
               thumbTintColor="#C4A45A"
@@ -327,15 +329,15 @@ export default function RoomCaptureScreen() {
           <View style={styles.sliderSection}>
             <View style={styles.sliderLabelRow}>
               <Text style={styles.sliderLabel}>Depth</Text>
-              <Text style={styles.sliderValue}>{dimensions.depth} ft</Text>
+              <Text style={styles.sliderValue}>{dimensions.depth.toFixed(1)} m</Text>
             </View>
             <Slider
               style={styles.slider}
-              minimumValue={5}
-              maximumValue={30}
-              step={1}
+              minimumValue={2}
+              maximumValue={12}
+              step={0.1}
               value={dimensions.depth}
-              onValueChange={(v) => setDimensions((d) => ({ ...d, depth: v }))}
+              onValueChange={(v) => setDimensions((d) => ({ ...d, depth: Math.round(v * 10) / 10 }))}
               minimumTrackTintColor="#C4A45A"
               maximumTrackTintColor="rgba(0,0,0,0.1)"
               thumbTintColor="#C4A45A"
@@ -345,16 +347,16 @@ export default function RoomCaptureScreen() {
           {/* Height */}
           <View style={styles.sliderSection}>
             <View style={styles.sliderLabelRow}>
-              <Text style={styles.sliderLabel}>Height</Text>
-              <Text style={styles.sliderValue}>{dimensions.height} ft</Text>
+              <Text style={styles.sliderLabel}>Ceiling Height</Text>
+              <Text style={styles.sliderValue}>{dimensions.height.toFixed(1)} m</Text>
             </View>
             <Slider
               style={styles.slider}
-              minimumValue={7}
-              maximumValue={14}
-              step={1}
+              minimumValue={2.1}
+              maximumValue={4.5}
+              step={0.1}
               value={dimensions.height}
-              onValueChange={(v) => setDimensions((d) => ({ ...d, height: v }))}
+              onValueChange={(v) => setDimensions((d) => ({ ...d, height: Math.round(v * 10) / 10 }))}
               minimumTrackTintColor="#C4A45A"
               maximumTrackTintColor="rgba(0,0,0,0.1)"
               thumbTintColor="#C4A45A"

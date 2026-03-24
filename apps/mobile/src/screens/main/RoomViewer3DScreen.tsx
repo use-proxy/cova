@@ -28,7 +28,7 @@ import { FurniturePiece } from '../../components/3d/FurniturePiece';
 import { CameraController } from '../../components/3d/CameraController';
 import type { CameraControlState } from '../../components/3d/CameraController';
 import type { StyleName, RoomDimensions, FurniturePiece as FurniturePieceType, FurnitureCatalogItem, FurnitureCategory } from '@cova/shared';
-import { FURNITURE_CATALOG, STYLE_COLORS, getFurnitureForRoom } from '../../data/furnitureCatalog';
+import { FURNITURE_CATALOG, STYLE_PALETTE, getFurnitureForRoom } from '../../data/furnitureCatalog';
 import { useAppStore } from '../../store';
 
 type Props = NativeStackScreenProps<RoomStackParamList, 'Viewer3D'>;
@@ -53,10 +53,10 @@ const PRICE_RANGE_LABELS: Record<string, string> = {
 };
 
 const DEFAULT_DIMENSIONS: RoomDimensions = {
-  width: 16,
-  depth: 14,
-  height: 9,
-  unit: 'ft',
+  width: 4.9,
+  depth: 4.3,
+  height: 2.7,
+  unit: 'm',
 };
 
 const MAX_UNDO_HISTORY = 10;
@@ -469,7 +469,7 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
   const findCatalogItem = (catalogId: string) =>
     FURNITURE_CATALOG.find((c) => c.id === catalogId);
 
-  const ceilingColor = STYLE_COLORS[activeStyle]?.ceiling ?? '#F5F0E8';
+  const ceilingColor = STYLE_PALETTE[activeStyle]?.ceiling ?? '#F5F0E8';
 
   // ── Catalog data ──
 
@@ -497,7 +497,7 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
   const floorAspect = roomW / roomD;
   const floorContainerW = SCREEN_WIDTH - 48;
   const floorContainerH = floorContainerW / floorAspect;
-  const floorColor = STYLE_COLORS[activeStyle]?.floor ?? '#C8B89A';
+  const floorColor = STYLE_PALETTE[activeStyle]?.floor ?? '#C8B89A';
 
   // ── Selected piece data ──
 

@@ -123,11 +123,20 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      const { data: signedUrlData } = await supabase.storage
+      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
         .from('renders')
         .createSignedUrl(storagePath, 3600);
 
-      const signedUrl = signedUrlData?.signedUrl ?? '';
+      if (signedUrlError || !signedUrlData?.signedUrl) {
+        console.error('Failed to create signed URL:', signedUrlError);
+        await supabase.from('renders').update({ status: 'failed' }).eq('id', render_id);
+        return new Response(
+          JSON.stringify({ status: 'failed', error: 'Failed to generate render URL.' }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+
+      const signedUrl = signedUrlData.signedUrl;
 
       await supabase
         .from('renders')

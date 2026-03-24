@@ -39,7 +39,10 @@ function FurnitureModel({
     scene?: THREE.Group;
   };
   if (!gltf || !gltf.scene) return null;
-  const clonedScene = useMemo(() => gltf.scene!.clone(), [gltf.scene]);
+  // ⚠️ ASSERTION: clone(true) required — deep clone prevents shared material mutations
+  // between multiple instances of the same GLB. Without true, isSelected emissive on
+  // one piece corrupts the material of every other piece using the same model.
+  const clonedScene = useMemo(() => gltf.scene!.clone(true), [gltf.scene]);
   const box = useRef<THREE.Box3>(new THREE.Box3());
   const size = useRef(new THREE.Vector3());
 
@@ -195,8 +198,9 @@ export function FurniturePiece({
             cancelLongPress();
             const halfW = roomWidth / 2;
             const halfD = roomDepth / 2;
-            const nx = Math.max(-halfW, Math.min(halfW, e.point.x));
-            const nz = Math.max(-halfD, Math.min(halfD, e.point.z));
+            // Clamp accounts for piece half-dimensions so furniture never clips through walls
+            const nx = Math.max(-(halfW - catalog.width / 2), Math.min(halfW - catalog.width / 2, e.point.x));
+            const nz = Math.max(-(halfD - catalog.depth / 2), Math.min(halfD - catalog.depth / 2, e.point.z));
             groupRef.current.position.set(nx, 0, nz);
             onDragEnd(piece.id, [nx, 0, nz]);
           }}
@@ -223,14 +227,11 @@ export function FurniturePiece({
         </mesh>
       )}
 
+      {/* ⚠️ Selection ring: gold torus at y=0.01 — NOT y=0 (clips into floor) per §10.5 */}
       {isSelected && (
-        <mesh position={[0, catalog.height / 2, 0]}>
-          <boxGeometry args={[
-            catalog.width + 0.08,
-            catalog.height + 0.08,
-            catalog.depth + 0.08,
-          ]} />
-          <meshBasicMaterial color="#C47B3C" wireframe transparent opacity={0.5} />
+        <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[Math.max(catalog.width, catalog.depth) / 2 * 0.85, 0.025, 8, 32]} />
+          <meshStandardMaterial color="#C47B3C" emissive="#C47B3C" emissiveIntensity={0.5} />
         </mesh>
       )}
     </group>

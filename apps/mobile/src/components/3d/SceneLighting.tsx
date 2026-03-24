@@ -2,7 +2,7 @@ import React, { Suspense } from 'react';
 import type { StyleName } from '@cova/shared';
 
 // Attempt to import Environment from drei/native — may not be available
-let EnvironmentComponent: React.ComponentType<any> | null = null;
+let EnvironmentComponent: React.ComponentType<{ files: unknown; background: boolean }> | null = null;
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   EnvironmentComponent = require('@react-three/drei/native').Environment ?? null;

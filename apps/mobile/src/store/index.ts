@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { Session } from '@supabase/supabase-js';
 import type {
   User,
   Room,
@@ -9,6 +10,11 @@ import type {
   CartItem,
   Product,
   ChatMessage,
+  RoomDimensions,
+  StyleName,
+  StyleBlend,
+  FurniturePiece,
+  SwipeCard,
 } from '@cova/shared';
 
 // ── State shape ──────────────────────────────────
@@ -16,12 +22,15 @@ import type {
 interface AppState {
   // auth
   user: User | null;
-  session: unknown;
+  session: Session | null;
   isLoading: boolean;
 
   // rooms
   rooms: Room[];
   currentRoom: Room | null;
+  currentRoomDimensions: RoomDimensions | null;
+  activeStyle: StyleName;
+  placedFurniture: FurniturePiece[];
 
   // render
   currentRender: Render | null;
@@ -31,6 +40,11 @@ interface AppState {
   renderProgress: number;
   capturedImageUri: string | null;
 
+  // quiz
+  cards: SwipeCard[];
+  styleBlend: StyleBlend;
+  quizComplete: boolean;
+
   // cart & products
   cartItems: CartItem[];
   matchedProducts: Product[];
@@ -38,6 +52,10 @@ interface AppState {
   // chat
   messages: ChatMessage[];
   chatLoading: boolean;
+
+  // ui
+  isHUDVisible: boolean;
+  tokenBalance: number;
 
   // preferences
   colorScheme: 'dark' | 'light';
@@ -49,7 +67,7 @@ interface AppState {
 interface AppActions {
   // auth
   setUser: (user: User | null) => void;
-  setSession: (session: unknown) => void;
+  setSession: (session: Session | null) => void;
   signOut: () => void;
 
   // rooms
@@ -57,6 +75,13 @@ interface AppActions {
   setCurrentRoom: (room: Room | null) => void;
   addRoom: (room: Room) => void;
   updateRoom: (id: string, updates: Partial<Room>) => void;
+  setCurrentRoomDimensions: (dims: RoomDimensions | null) => void;
+  setActiveStyle: (style: StyleName) => void;
+  setPlacedFurniture: (furniture: FurniturePiece[]) => void;
+  addFurniture: (piece: FurniturePiece) => void;
+  removeFurniture: (id: string) => void;
+  updateFurniturePosition: (id: string, x: number, z: number) => void;
+  updateFurnitureRotation: (id: string, rotationY: number) => void;
 
   // render
   setCurrentRender: (render: Render | null) => void;
@@ -65,6 +90,14 @@ interface AppActions {
   setRenderProgressStage: (stage: string) => void;
   setRenderProgress: (progress: number) => void;
   setCapturedImageUri: (uri: string | null) => void;
+
+  // quiz
+  setCards: (cards: SwipeCard[]) => void;
+  swipeRight: (cardId: string) => void;
+  swipeLeft: (cardId: string) => void;
+  swipeNeutral: (cardId: string) => void;
+  completeQuiz: () => void;
+  resetQuiz: () => void;
 
   // cart & products
   addToCart: (item: CartItem) => void;
@@ -76,6 +109,11 @@ interface AppActions {
   addMessage: (message: ChatMessage) => void;
   setMessages: (messages: ChatMessage[]) => void;
   setChatLoading: (loading: boolean) => void;
+
+  // ui
+  showHUD: () => void;
+  hideHUD: () => void;
+  setTokenBalance: (balance: number) => void;
 
   // preferences
   setColorScheme: (scheme: 'dark' | 'light') => void;
@@ -111,6 +149,9 @@ export const useAppStore = create<AppState & AppActions>()(
     // ── rooms defaults ──
     rooms: [],
     currentRoom: null,
+    currentRoomDimensions: null,
+    activeStyle: 'japandi' as StyleName,
+    placedFurniture: [],
 
     setRooms: (rooms) =>
       set((state) => {
@@ -132,6 +173,41 @@ export const useAppStore = create<AppState & AppActions>()(
         }
         if (state.currentRoom?.id === id) {
           Object.assign(state.currentRoom, updates);
+        }
+      }),
+    setCurrentRoomDimensions: (dims) =>
+      set((state) => {
+        state.currentRoomDimensions = dims;
+      }),
+    setActiveStyle: (style) =>
+      set((state) => {
+        state.activeStyle = style;
+      }),
+    setPlacedFurniture: (furniture) =>
+      set((state) => {
+        state.placedFurniture = furniture;
+      }),
+    addFurniture: (piece) =>
+      set((state) => {
+        state.placedFurniture.push(piece);
+      }),
+    removeFurniture: (id) =>
+      set((state) => {
+        state.placedFurniture = state.placedFurniture.filter((p) => p.id !== id);
+      }),
+    updateFurniturePosition: (id, x, z) =>
+      set((state) => {
+        const piece = state.placedFurniture.find((p) => p.id === id);
+        if (piece) {
+          piece.position.x = x;
+          piece.position.y = z;
+        }
+      }),
+    updateFurnitureRotation: (id, rotationY) =>
+      set((state) => {
+        const piece = state.placedFurniture.find((p) => p.id === id);
+        if (piece) {
+          piece.rotation_y = rotationY;
         }
       }),
 
@@ -166,6 +242,64 @@ export const useAppStore = create<AppState & AppActions>()(
     setCapturedImageUri: (uri) =>
       set((state) => {
         state.capturedImageUri = uri;
+      }),
+
+    // ── quiz defaults ──
+    cards: [],
+    styleBlend: { coastal: 0.2, japandi: 0.2, bohemian: 0.2, mid_century: 0.2, minimalist: 0.2 } as StyleBlend,
+    quizComplete: false,
+
+    setCards: (cards) =>
+      set((state) => {
+        state.cards = cards;
+      }),
+    swipeRight: (cardId) =>
+      set((state) => {
+        const card = state.cards.find((c) => c.id === cardId);
+        if (!card) return;
+        const weights = card.style_weights as Partial<StyleBlend>;
+        (Object.keys(weights) as StyleName[]).forEach((style) => {
+          state.styleBlend[style] = (state.styleBlend[style] ?? 0) + (weights[style] ?? 0) * 1.5;
+        });
+        // Normalize
+        const total = (Object.values(state.styleBlend) as number[]).reduce((a, b) => a + b, 0);
+        if (total > 0) {
+          (Object.keys(state.styleBlend) as StyleName[]).forEach((k) => {
+            state.styleBlend[k] = (state.styleBlend[k] ?? 0) / total;
+          });
+        }
+      }),
+    swipeLeft: (cardId) =>
+      set((state) => {
+        const card = state.cards.find((c) => c.id === cardId);
+        if (!card) return;
+        const weights = card.style_weights as Partial<StyleBlend>;
+        (Object.keys(weights) as StyleName[]).forEach((style) => {
+          state.styleBlend[style] = Math.max(0, (state.styleBlend[style] ?? 0) - (weights[style] ?? 0) * 0.5);
+        });
+        const total = (Object.values(state.styleBlend) as number[]).reduce((a, b) => a + b, 0);
+        if (total > 0) {
+          (Object.keys(state.styleBlend) as StyleName[]).forEach((k) => {
+            state.styleBlend[k] = (state.styleBlend[k] ?? 0) / total;
+          });
+        }
+      }),
+    swipeNeutral: (_cardId) => {
+      // neutral — no blend change
+    },
+    completeQuiz: () =>
+      set((state) => {
+        state.quizComplete = true;
+        // Set activeStyle to dominant style
+        const dominant = (Object.entries(state.styleBlend) as [StyleName, number][])
+          .sort(([, a], [, b]) => b - a)[0]?.[0];
+        if (dominant) state.activeStyle = dominant;
+      }),
+    resetQuiz: () =>
+      set((state) => {
+        state.cards = [];
+        state.styleBlend = { coastal: 0.2, japandi: 0.2, bohemian: 0.2, mid_century: 0.2, minimalist: 0.2 };
+        state.quizComplete = false;
       }),
 
     // ── cart & products defaults ──
@@ -211,6 +345,23 @@ export const useAppStore = create<AppState & AppActions>()(
         state.chatLoading = loading;
       }),
 
+    // ── ui defaults ──
+    isHUDVisible: true,
+    tokenBalance: 999,
+
+    showHUD: () =>
+      set((state) => {
+        state.isHUDVisible = true;
+      }),
+    hideHUD: () =>
+      set((state) => {
+        state.isHUDVisible = false;
+      }),
+    setTokenBalance: (balance) =>
+      set((state) => {
+        state.tokenBalance = balance;
+      }),
+
     // ── preferences defaults ──
     colorScheme: 'dark',
     savedProducts: [],
@@ -240,6 +391,10 @@ export const useAppStore = create<AppState & AppActions>()(
       user: state.user,
       session: state.session,
       currentRoom: state.currentRoom,
+      currentRoomDimensions: state.currentRoomDimensions,
+      activeStyle: state.activeStyle,
+      styleBlend: state.styleBlend,
+      quizComplete: state.quizComplete,
       capturedImageUri: state.capturedImageUri,
       cartItems: state.cartItems,
       savedProducts: state.savedProducts,

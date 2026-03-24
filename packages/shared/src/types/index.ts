@@ -58,6 +58,7 @@ export interface Room {
   status: 'active' | 'archived';
   render_count: number;
   latest_render_url: string | null;
+  original_image_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -117,6 +118,32 @@ export interface CartItem {
   added_at: string;
 }
 
+// ── RoomPlan LiDAR Types ─────────────────────────
+
+export interface RoomPlanDoor {
+  x: number;
+  z: number;
+  width: number;
+  wallSide: 'front' | 'back' | 'left' | 'right';
+}
+
+export interface RoomPlanWindow {
+  x: number;
+  z: number;
+  width: number;
+  height: number;
+  wallSide: 'front' | 'back' | 'left' | 'right';
+}
+
+export interface RoomPlanResult {
+  width: number;           // metres
+  depth: number;           // metres
+  height: number;          // metres
+  doors: RoomPlanDoor[];
+  windows: RoomPlanWindow[];
+  thumbnailBase64: string; // JPEG screenshot
+}
+
 // ── Render & Chat ────────────────────────────────
 
 export interface Render {
@@ -126,7 +153,8 @@ export interface Render {
   image_url: string | null;
   prompt_used: string | null;
   status: 'pending' | 'processing' | 'completed' | 'failed';
-  tokens_used: number;
+  tokens_charged: number;
+  style_applied: string | null;
   created_at: string;
 }
 

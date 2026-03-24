@@ -1,3 +1,4 @@
+import { useRef, useEffect } from 'react';
 import { useAppStore } from '../store';
 import { callEdgeFunction } from '../lib/supabase';
 import type { StyleBlend, RoomType, Render, Product, RoomDimensions } from '@cova/shared';
@@ -11,12 +12,31 @@ interface RenderParams {
   dimensions?: RoomDimensions;
 }
 
+// §8.3 — exactly 6 stages in this order
+const LOADING_STAGES = [
+  'Analyzing your room...',
+  'Measuring depth...',
+  'Applying your style...',
+  'Generating render...',
+  'Adding finishing touches...',
+  'Done!',
+] as const;
+
 export function useRender() {
   const {
     setCurrentRender, setRenderStatus, setRenderError,
     setRenderProgressStage, setRenderProgress, setMatchedProducts,
     currentRender, renderStatus, renderProgressStage, renderProgress, renderError,
   } = useAppStore();
+
+  // Holds the next scheduled poll timeout — cleared on unmount to prevent state updates
+  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
+    };
+  }, []);
 
   const fetchMatchedProducts = async (imageUrl: string, roomType: RoomType, styleBlend: StyleBlend, budget: number) => {
     try {
