@@ -213,7 +213,7 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
   const productSheetAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 
   const controlRef = useRef<CameraControlState>({
-    theta: Math.PI,
+    theta: 0,
     phi: 1.25,
     radius: 5.0,
   });
@@ -394,7 +394,11 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
   const handleStyleChange = useCallback(
     (newStyle: StyleName) => {
       setActiveStyle(newStyle);
-      setPlacedFurniture(buildDefaultFurniture(newStyle));
+      // Preserve all furniture positions — only clear user color overrides so each
+      // piece renders with the new style's default material (§7.5: colors only, never reset positions).
+      setPlacedFurniture((prev) =>
+        prev.map((item) => ({ ...item, color_override: null })),
+      );
       updateSelectedId(null);
       setActionHistory([]);
       setSceneKey((prev) => prev + 1);
@@ -536,7 +540,7 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
           </View>
         </View>
       ) : (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: ceilingColor }]} {...panResponder.panHandlers}>
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: ceilingColor }]}>
           <ViewShot ref={viewShotRef} style={styles.canvasContainer}>
             <ThreeDErrorBoundary onError={handleError}>
               <Canvas
@@ -599,6 +603,15 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
             </ThreeDErrorBoundary>
           </ViewShot>
         </View>
+      )}
+
+      {/* ── PanResponder sibling — NEVER inside Canvas (§6.8) ── */}
+      {!show2D && (
+        <View
+          style={StyleSheet.absoluteFill}
+          pointerEvents="box-none"
+          {...panResponder.panHandlers}
+        />
       )}
 
       {/* ── HUD Overlay ── */}

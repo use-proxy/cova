@@ -1,7 +1,6 @@
 import Foundation
 import RoomPlan
 import ARKit
-import React
 import UIKit
 
 @objc(RoomPlanModule)

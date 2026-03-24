@@ -37,7 +37,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const { room_id, message, render_image_base64, tap_x, tap_y, chat_history } = await req.json();
+    const { room_id, message, render_image_url, tap_x, tap_y, chat_history } = await req.json();
 
     const { data: room, error: roomError } = await supabase
       .from('rooms')
@@ -84,11 +84,11 @@ Deno.serve(async (req: Request) => {
     }
 
     // Add new user message — vision message if render image provided
-    if (render_image_base64) {
+    if (render_image_url) {
       messages.push({
         role: 'user',
         content: [
-          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: render_image_base64 } },
+          { type: 'image', source: { type: 'url', url: render_image_url } },
           { type: 'text', text: message },
         ],
       });

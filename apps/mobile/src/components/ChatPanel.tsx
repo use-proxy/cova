@@ -18,7 +18,7 @@ import type { ChatMessage } from '@cova/shared';
 
 interface ChatPanelProps {
   roomId: string;
-  renderImageBase64?: string;
+  renderImageUrl?: string;
   tapX?: number;
   tapY?: number;
   onClose: () => void;
@@ -28,7 +28,7 @@ interface ChatPanelProps {
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PANEL_HEIGHT = SCREEN_HEIGHT * 0.6;
 
-export default function ChatPanel({ roomId, renderImageBase64, tapX, tapY, onClose, onMessageSent }: ChatPanelProps) {
+export default function ChatPanel({ roomId, renderImageUrl, tapX, tapY, onClose, onMessageSent }: ChatPanelProps) {
   const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const [inputText, setInputText] = useState('');
   const flatListRef = useRef<FlatList<ChatMessage>>(null);
@@ -75,7 +75,7 @@ export default function ChatPanel({ roomId, renderImageBase64, tapX, tapY, onClo
       const res = await callEdgeFunction<{ message: string }>('chat-room', {
         room_id: roomId,
         message: text,
-        render_image_base64: renderImageBase64,
+        render_image_url: renderImageUrl,
         tap_x: tapX ?? null,
         tap_y: tapY ?? null,
         chat_history: history,

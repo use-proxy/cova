@@ -17,6 +17,7 @@ import {
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
+import * as FileSystem from 'expo-file-system';
 import Slider from '@react-native-community/slider';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -29,7 +30,7 @@ import type { Room, RoomType } from '@cova/shared';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
 
-type CaptureStep = 'method' | 'camera' | 'review' | 'details' | 'processing' | 'choice';
+type CaptureStep = 'method' | 'camera' | 'review' | 'details' | 'budget' | 'processing';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -119,6 +120,7 @@ export default function RoomCaptureScreen() {
   const { startScan, stopScan, isAvailable: isRoomPlanAvailable } = useRoomPlan();
   const currentRoom = useAppStore((s) => s.currentRoom);
   const setCurrentRoomDimensions = useAppStore((s) => s.setCurrentRoomDimensions);
+  const setBudgetMax = useAppStore((s) => s.setBudgetMax);
 
   const [step, setStep] = useState<CaptureStep>('method');
   const [capturedImageUri, setCapturedImageUri] = useState<string | null>(null);
@@ -128,9 +130,14 @@ export default function RoomCaptureScreen() {
   const [roomName, setRoomName] = useState('');
   const [selectedRoomType, setSelectedRoomType] = useState<RoomTypeOption | null>(null);
   const [keepFurniture, setKeepFurniture] = useState(true);
+  const [budgetMax, setBudgetMaxLocal] = useState(2500);
 
   const cameraRef = useRef<CameraView>(null);
   const pulseAnim = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    requestPermission();
+  }, []);
 
   useEffect(() => {
     if (step === 'processing') {
@@ -140,9 +147,8 @@ export default function RoomCaptureScreen() {
           Animated.timing(pulseAnim, { toValue: 0.3, duration: 1200, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
         ]),
       ).start();
-      handleProcessCapture();
     }
-  }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [step, pulseAnim]);
 
   const handleTakePhoto = async () => {
     if (!cameraPermission?.granted) {
@@ -177,13 +183,6 @@ export default function RoomCaptureScreen() {
   };
 
   const handleRoomPlanScan = async () => {
-    if (!isRoomPlanAvailable) {
-      Alert.alert(
-        '3D Scanning Unavailable',
-        '3D scanning requires iPhone 12 Pro or later with LiDAR. Please use a photo instead.',
-      );
-      return;
-    }
     try {
       setScanning(true);
       const data = await startScan();
@@ -194,8 +193,19 @@ export default function RoomCaptureScreen() {
         height: data.height,
       });
       setCurrentRoomDimensions({ width: data.width, depth: data.depth, height: data.height, unit: 'm' });
-      setCapturedImageUri(null);
-      setStep('processing');
+      if (!capturedImageUri && data.thumbnailBase64) {
+        const destUri = FileSystem.cacheDirectory + 'roomplan_thumb.jpg';
+        await FileSystem.writeAsStringAsync(destUri, data.thumbnailBase64, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        const compressed = await ImageManipulator.manipulateAsync(
+          destUri,
+          [{ resize: { width: 1024 } }],
+          { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+        );
+        setCapturedImageUri(compressed.uri);
+      }
+      setStep('budget');
     } catch (e: unknown) {
       setScanning(false);
       const message = e instanceof Error ? e.message : 'Could not complete the room scan.';
@@ -210,20 +220,22 @@ export default function RoomCaptureScreen() {
   };
 
   const handleStartDesigning = () => {
-    setStep('processing');
+    setStep('budget');
   };
 
-  const handleProcessCapture = async () => {
+  const handleProcessCapture = async (imageUri?: string) => {
     try {
-      if (!capturedImageUri) {
-        setStep('choice');
+      const effectiveUri = imageUri ?? capturedImageUri;
+      if (!effectiveUri) {
+        Alert.alert('Error', 'No image captured. Please try again.');
+        setStep('method');
         return;
       }
 
-      useAppStore.getState().setCapturedImageUri(capturedImageUri);
+      useAppStore.getState().setCapturedImageUri(effectiveUri);
 
       const compressed = await ImageManipulator.manipulateAsync(
-        capturedImageUri,
+        effectiveUri,
         [{ resize: { width: 1024 } }],
         { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG, base64: true },
       );
@@ -258,6 +270,25 @@ export default function RoomCaptureScreen() {
         useAppStore.getState().setCurrentRoom(newRoom as Room);
       }
 
+      // Upload original image and write original_image_url to the room row
+      try {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (authUser) {
+          const filePath = `${authUser.id}/${roomId}/original.jpg`;
+          const imgResponse = await fetch(compressed.uri);
+          const blob = await imgResponse.blob();
+          await supabase.storage.from('room-photos').upload(filePath, blob, { contentType: 'image/jpeg', upsert: true });
+          const { data: signedData } = await supabase.storage.from('room-photos').createSignedUrl(filePath, 60 * 60 * 24 * 365);
+          if (signedData?.signedUrl) {
+            await supabase.from('rooms').update({ original_image_url: signedData.signedUrl }).eq('id', roomId);
+            const updated = { ...useAppStore.getState().currentRoom, original_image_url: signedData.signedUrl };
+            useAppStore.getState().setCurrentRoom(updated as Room);
+          }
+        }
+      } catch (uploadErr) {
+        console.warn('original_image_url upload failed (non-fatal):', uploadErr);
+      }
+
       await startRender({
         roomId,
         roomType,
@@ -266,7 +297,7 @@ export default function RoomCaptureScreen() {
         renderType: 'draft',
         dimensions: { width: dimensions.width, depth: dimensions.depth, height: dimensions.height, unit: 'm' },
       });
-      setStep('choice');
+      navigation.navigate('RenderView', { room_id: roomId, autoGenerate: true });
     } catch (e) {
       console.error('handleProcessCapture failed:', e);
       Alert.alert('Error', 'Something went wrong. Please try again.');
@@ -476,6 +507,65 @@ export default function RoomCaptureScreen() {
     );
   }
 
+  // ── Budget step ───────────────────────────────────
+  if (step === 'budget') {
+    const budgetLabel =
+      budgetMax < 500 ? 'Under $500' :
+      budgetMax < 1500 ? '$500–$1,500' :
+      budgetMax < 5000 ? '$1,500–$5,000' : '$5,000+';
+
+    return (
+      <View style={[styles.fullScreen, { backgroundColor: '#0A1628' }]}>
+        <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+          <View style={styles.headerRow}>
+            <TouchableOpacity style={styles.headerBackBtn} onPress={() => setStep('details')}>
+              <BackChevron />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Set Your Budget</Text>
+            <View style={{ width: 40 }} />
+          </View>
+        </View>
+
+        <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 28 }}>
+          <Text style={styles.budgetLabel}>Budget</Text>
+          <Text style={styles.budgetValue}>${budgetMax.toLocaleString()}</Text>
+          <Text style={styles.budgetRange}>{budgetLabel}</Text>
+
+          <Slider
+            style={[styles.slider, { marginTop: 20, marginBottom: 8 }]}
+            minimumValue={0}
+            maximumValue={10000}
+            step={100}
+            value={budgetMax}
+            onValueChange={(v) => setBudgetMaxLocal(Math.round(v))}
+            minimumTrackTintColor="#C4A45A"
+            maximumTrackTintColor="rgba(255,255,255,0.15)"
+            thumbTintColor="#C4A45A"
+          />
+
+          <View style={styles.budgetTickRow}>
+            {['Under $500', '$500–$1,500', '$1,500–$5,000', '$5,000+'].map((label) => (
+              <Text key={label} style={styles.budgetTickLabel}>{label}</Text>
+            ))}
+          </View>
+        </View>
+
+        <View style={[styles.bottomActionArea, { paddingBottom: Math.max(insets.bottom, 24) + 24 }]}>
+          <TouchableOpacity
+            style={styles.goldPillButton}
+            onPress={() => {
+              setBudgetMax(budgetMax);
+              setStep('processing');
+              void handleProcessCapture();
+            }}
+          >
+            <Text style={styles.goldPillButtonText}>Start Render</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   // ── Processing step ──────────────────────────────
   if (step === 'processing') {
     const progressWidth = Math.max(0, Math.min(100, renderProgress));
@@ -494,41 +584,6 @@ export default function RoomCaptureScreen() {
         <View style={styles.progressBarTrack}>
           <View style={[styles.progressBarFill, { width: `${progressWidth}%` }]} />
         </View>
-      </View>
-    );
-  }
-
-  // ── Choice step ───────────────────────────────────
-  if (step === 'choice') {
-    const roomId = currentRoom?.id;
-    return (
-      <View style={[styles.fullScreen, { backgroundColor: '#0A1628', justifyContent: 'center', paddingHorizontal: 24 }]}>
-        <Text style={{ color: 'white', fontSize: 26, fontWeight: '600', textAlign: 'center', marginBottom: 8 }}>
-          ✨ Your room is ready
-        </Text>
-        <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 15, textAlign: 'center', marginBottom: 48 }}>
-          How would you like to continue?
-        </Text>
-
-        {/* Primary — View AI Render */}
-        <TouchableOpacity
-          style={styles.choicePrimary}
-          activeOpacity={0.85}
-          onPress={() => navigation.navigate('RenderView', { room_id: roomId, autoGenerate: true })}
-        >
-          <Text style={styles.choicePrimaryTitle}>View AI Render</Text>
-          <Text style={styles.choicePrimarySubtext}>See your room reimagined</Text>
-        </TouchableOpacity>
-
-        {/* Secondary — Arrange Furniture */}
-        <TouchableOpacity
-          style={styles.choiceSecondary}
-          activeOpacity={0.85}
-          onPress={() => navigation.navigate('Viewer3D', { room_id: roomId })}
-        >
-          <Text style={styles.choiceSecondaryTitle}>Arrange Furniture</Text>
-          <Text style={styles.choiceSecondarySubtext}>Move pieces before rendering</Text>
-        </TouchableOpacity>
       </View>
     );
   }
@@ -934,37 +989,35 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // ── Choice step ────────────────────────────────
-  choicePrimary: {
-    backgroundColor: '#C47B3C',
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 16,
+  // ── Budget step ────────────────────────────────
+  budgetLabel: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 8,
   },
-  choicePrimaryTitle: {
-    color: '#0A1628',
-    fontSize: 20,
+  budgetValue: {
+    color: '#C4A45A',
+    fontSize: 48,
     fontWeight: '700',
     marginBottom: 4,
   },
-  choicePrimarySubtext: {
-    color: 'rgba(10,22,40,0.7)',
-    fontSize: 14,
+  budgetRange: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 16,
   },
-  choiceSecondary: {
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 16,
-    padding: 24,
+  budgetTickRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 4,
   },
-  choiceSecondaryTitle: {
-    color: 'white',
-    fontSize: 20,
-    fontWeight: '600',
-    marginBottom: 4,
+  budgetTickLabel: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 10,
+    flexShrink: 1,
+    textAlign: 'center',
   },
-  choiceSecondarySubtext: {
-    color: 'rgba(255,255,255,0.55)',
-    fontSize: 14,
-  },
+
 });

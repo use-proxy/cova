@@ -164,7 +164,7 @@ type QuizPhase = 'instructions' | 'quiz';
 
 export default function StyleQuizScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RoomStackParamList>>();
-  const { updateRoom, currentRoom } = useAppStore();
+  const { updateRoom, currentRoom, rooms } = useAppStore();
 
   const [phase, setPhase] = useState<QuizPhase>('instructions');
   const [cards, setCards] = useState<SwipeCard[]>([]);
@@ -173,10 +173,23 @@ export default function StyleQuizScreen() {
   const [loading, setLoading] = useState(true);
   const [showBlendModal, setShowBlendModal] = useState(false);
   const [swipeCount, setSwipeCount] = useState(0);
+  const [showPrevStyleModal, setShowPrevStyleModal] = useState(false);
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completedRef = useRef(false);
   const quizStartTime = useRef(0);
+  const prevBlendRef = useRef<StyleBlend | null>(null);
+
+  // On mount: check if any existing room (other than current) has a non-default style_blend
+  useEffect(() => {
+    const existing = rooms.find(
+      (r) => r.id !== currentRoom?.id && r.style_blend && isNonDefaultBlend(r.style_blend as StyleBlend),
+    );
+    if (existing?.style_blend) {
+      prevBlendRef.current = existing.style_blend as StyleBlend;
+      setShowPrevStyleModal(true);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const roomType = currentRoom?.room_type ?? 'living_room';
   const totalCards = 20;
@@ -242,7 +255,10 @@ export default function StyleQuizScreen() {
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
 
     const finalBlend = normalizeBlend(styleBlend);
-    if (currentRoom) updateRoom(currentRoom.id, { style_blend: finalBlend });
+    if (currentRoom) {
+      updateRoom(currentRoom.id, { style_blend: finalBlend });
+      void supabase.from('rooms').update({ style_blend: finalBlend }).eq('id', currentRoom.id);
+    }
 
     const userId = useAppStore.getState().user?.id;
     if (userId) {
@@ -254,9 +270,9 @@ export default function StyleQuizScreen() {
 
   // ── Termination check ──
   const checkTermination = useCallback(
-    (nextSwipeCount: number, nextIndex: number) => {
+    (nextSwipeCount: number, nextIndex: number, currentBlend: StyleBlend) => {
       const elapsed = Date.now() - quizStartTime.current;
-      const confidence = calcConfidence(normalizeBlend(styleBlend));
+      const confidence = calcConfidence(currentBlend);
       if (
         (nextSwipeCount >= MIN_SWIPES_BEFORE_COMPLETE && confidence >= CONFIDENCE_THRESHOLD) ||
         elapsed > QUIZ_TIMEOUT_MS ||
@@ -265,7 +281,7 @@ export default function StyleQuizScreen() {
         handleComplete();
       }
     },
-    [styleBlend, cards.length, handleComplete],
+    [cards.length, handleComplete],
   );
 
   // ── Swipe handlers ──
@@ -288,6 +304,7 @@ export default function StyleQuizScreen() {
       newBlend[k] = newBlend[k] * (1 + (card.style_weights[k] ?? 0) * 0.3);
     }
     const normalized = normalizeBlend(newBlend);
+    checkTermination(swipeCount + 1, currentIndex + 1, normalized);
     setStyleBlend(normalized);
 
     animateOff(SCREEN_WIDTH + 100, () => {
@@ -295,7 +312,6 @@ export default function StyleQuizScreen() {
       const nextCount = swipeCount + 1;
       setCurrentIndex(nextIdx);
       setSwipeCount(nextCount);
-      checkTermination(nextCount, nextIdx);
     });
   };
 
@@ -307,6 +323,7 @@ export default function StyleQuizScreen() {
       newBlend[k] = newBlend[k] * (1 - (card.style_weights[k] ?? 0) * 0.3);
     }
     const normalized = normalizeBlend(newBlend);
+    checkTermination(swipeCount + 1, currentIndex + 1, normalized);
     setStyleBlend(normalized);
 
     animateOff(-SCREEN_WIDTH - 100, () => {
@@ -314,15 +331,17 @@ export default function StyleQuizScreen() {
       const nextCount = swipeCount + 1;
       setCurrentIndex(nextIdx);
       setSwipeCount(nextCount);
-      checkTermination(nextCount, nextIdx);
     });
   };
 
   const handleNotSure = () => {
+    const nextCount = swipeCount + 1;
+    const nextIdx = currentIndex + 1;
+    const currentBlend = normalizeBlend(styleBlend);
+    checkTermination(nextCount, nextIdx, currentBlend);
     animateOff(SCREEN_WIDTH + 100, () => {
-      const nextIdx = currentIndex + 1;
       setCurrentIndex(nextIdx);
-      if (nextIdx >= cards.length) handleComplete();
+      setSwipeCount(nextCount);
     });
   };
 
@@ -389,6 +408,20 @@ export default function StyleQuizScreen() {
     navigation.navigate('RoomCapture');
   };
 
+  const handleUsePreviousStyle = () => {
+    const blend = prevBlendRef.current;
+    if (currentRoom && blend) {
+      updateRoom(currentRoom.id, { style_blend: blend });
+      void supabase.from('rooms').update({ style_blend: blend }).eq('id', currentRoom.id);
+    }
+    setShowPrevStyleModal(false);
+    navigation.navigate('RoomCapture');
+  };
+
+  const handleDiscoverNewStyle = () => {
+    setShowPrevStyleModal(false);
+  };
+
   // ══════════════════════════════════════════════════
   // Instruction overlay
   // ══════════════════════════════════════════════════
@@ -410,11 +443,11 @@ export default function StyleQuizScreen() {
             </View>
             <View style={styles.instrRow}>
               <XIcon />
-              <Text style={styles.instrRowText}>Swipe left to pass</Text>
+              <Text style={styles.instrRowText}>Swipe left if you don't</Text>
             </View>
             <View style={styles.instrRow}>
               <QuestionIcon />
-              <Text style={styles.instrRowText}>Tap "Not sure" to skip</Text>
+              <Text style={styles.instrRowText}>Tap neutral if you're unsure</Text>
             </View>
           </View>
 
@@ -429,6 +462,24 @@ export default function StyleQuizScreen() {
             <Text style={styles.skipBtnText}>Skip</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Previous style modal — shown on mount if another room has a style_blend */}
+        <Modal visible={showPrevStyleModal} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Your Style Profile</Text>
+              <Text style={styles.modalBody}>
+                Use your previous style or discover something new for this room?
+              </Text>
+              <TouchableOpacity style={styles.modalPrimaryBtn} onPress={handleUsePreviousStyle}>
+                <Text style={styles.modalPrimaryBtnText}>Use My Previous Style</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalOutlineBtn} onPress={handleDiscoverNewStyle}>
+                <Text style={styles.modalOutlineBtnText}>Discover New Style</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
 
         {/* Returning user modal */}
         <Modal visible={showBlendModal} transparent animationType="fade">
@@ -493,28 +544,11 @@ export default function StyleQuizScreen() {
       {/* ── Card stack ── */}
       <View style={styles.cardArea}>
         <View style={styles.stackWrap}>
-          {/* Back card (third) */}
-          {thirdCard && (
-            <View
-              style={[
-                styles.card,
-                { transform: [{ scale: 0.92 }, { translateY: 16 }], opacity: 0.5 },
-              ]}
-            >
-              <Image source={{ uri: thirdCard.image_url }} style={styles.cardImg} resizeMode="cover" />
-            </View>
-          )}
-
-          {/* Middle card (next) */}
+          {/* Pre-load next card off-screen */}
           {nextCard && (
-            <Animated.View
-              style={[
-                styles.card,
-                { transform: [{ scale: nextCardScale }, { translateY: 8 }], opacity: 0.75 },
-              ]}
-            >
+            <View style={[styles.card, { opacity: 0, position: 'absolute' }]}>
               <Image source={{ uri: nextCard.image_url }} style={styles.cardImg} resizeMode="cover" />
-            </Animated.View>
+            </View>
           )}
 
           {/* Top card (draggable) */}

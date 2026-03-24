@@ -13,20 +13,25 @@ import Svg, { Path } from 'react-native-svg';
 
 interface BeforeAfterSliderProps {
   beforeImageUri: string;
-  afterImageUri: string;
+  afterImageUri?: string; // kept for API compat but right side shows through to underlying viewer
   onClose: () => void;
 }
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const MIN_X = 20;
 const MAX_X = SCREEN_WIDTH - 20;
+// Divider starts at 30% so user immediately sees mostly the AI render
+const INITIAL_X = SCREEN_WIDTH * 0.3;
+// Touch zone: 40px on each side of the divider line = 80px wide hit area
+const HIT_ZONE_WIDTH = 80;
 
-export default function BeforeAfterSlider({ beforeImageUri, afterImageUri, onClose }: BeforeAfterSliderProps) {
-  const sliderX = useRef(new Animated.Value(SCREEN_WIDTH / 2)).current;
+export default function BeforeAfterSlider({ beforeImageUri, onClose }: BeforeAfterSliderProps) {
+  const sliderX = useRef(new Animated.Value(INITIAL_X)).current;
+  // zoneLeft = sliderX - 40 (40px to the left of the divider line)
+  const zoneLeft = useRef(Animated.subtract(sliderX, new Animated.Value(HIT_ZONE_WIDTH / 2))).current;
   const dividerLeft = useRef(Animated.subtract(sliderX, new Animated.Value(1))).current;
-  const handleLeft = useRef(Animated.subtract(sliderX, new Animated.Value(22))).current;
   const opacity = useRef(new Animated.Value(0)).current;
-  const currentX = useRef(SCREEN_WIDTH / 2);
+  const currentX = useRef(INITIAL_X);
 
   useEffect(() => {
     Animated.timing(opacity, {
@@ -36,14 +41,19 @@ export default function BeforeAfterSlider({ beforeImageUri, afterImageUri, onClo
     }).start();
   }, [opacity]);
 
+  // PanResponder lives on the full-height hit zone (80px wide) — not the handle circle.
+  // Only touches within 40px of the divider line are captured; everything else passes
+  // through to the sphere viewer or flat image behind this overlay.
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
+
       onPanResponderMove: (_, gestureState) => {
         const newX = Math.max(MIN_X, Math.min(MAX_X, currentX.current + gestureState.dx));
         sliderX.setValue(newX);
       },
+
       onPanResponderRelease: (_, gestureState) => {
         currentX.current = Math.max(MIN_X, Math.min(MAX_X, currentX.current + gestureState.dx));
       },
@@ -51,36 +61,45 @@ export default function BeforeAfterSlider({ beforeImageUri, afterImageUri, onClo
   ).current;
 
   return (
-    <Animated.View style={[styles.container, { opacity }]}>
-      {/* After image (full background) */}
-      <Image source={{ uri: afterImageUri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+    // box-none: container passes touches through; only the hit zone and close button capture
+    <Animated.View style={[styles.container, { opacity }]} pointerEvents="box-none">
 
-      {/* Before image (clipped to left of slider) */}
-      <Animated.View style={[StyleSheet.absoluteFill, { width: sliderX, overflow: 'hidden' }]}>
-        <Image source={{ uri: beforeImageUri }} style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }} resizeMode="cover" />
+      {/* Before image — clipped to left of divider */}
+      <Animated.View
+        style={[StyleSheet.absoluteFill, { width: sliderX, overflow: 'hidden' }]}
+        pointerEvents="none"
+      >
+        <Image
+          source={{ uri: beforeImageUri }}
+          style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
+          resizeMode="cover"
+        />
       </Animated.View>
 
-      {/* Divider line */}
-      <Animated.View style={[styles.divider, { left: dividerLeft }]} />
+      {/* Static divider line (visual only) */}
+      <Animated.View style={[styles.divider, { left: dividerLeft }]} pointerEvents="none" />
 
-      {/* Draggable handle */}
+      {/* Full-height hit zone — 80px wide, centered on divider line */}
       <Animated.View
-        style={[styles.handle, { left: handleLeft }]}
+        style={[styles.hitZone, { left: zoneLeft }]}
         {...panResponder.panHandlers}
       >
-        <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-          <Path d="M15 18l-6-6 6-6" stroke="#0A1628" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-        </Svg>
-        <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-          <Path d="M9 18l6-6-6-6" stroke="#0A1628" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-        </Svg>
+        {/* Handle circle centered within the hit zone */}
+        <View style={styles.handle}>
+          <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+            <Path d="M15 18l-6-6 6-6" stroke="#0A1628" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+          </Svg>
+          <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+            <Path d="M9 18l6-6-6-6" stroke="#0A1628" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+          </Svg>
+        </View>
       </Animated.View>
 
       {/* Labels */}
-      <View style={styles.labelLeft}>
+      <View style={styles.labelLeft} pointerEvents="none">
         <Text style={styles.labelText}>BEFORE</Text>
       </View>
-      <View style={styles.labelRight}>
+      <View style={styles.labelRight} pointerEvents="none">
         <Text style={styles.labelText}>AFTER</Text>
       </View>
 
@@ -95,18 +114,24 @@ export default function BeforeAfterSlider({ beforeImageUri, afterImageUri, onClo
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.9)',
+    // No background color — right side is transparent, showing the sphere or flat image behind
   },
   divider: {
     position: 'absolute',
     top: 0,
     bottom: 0,
     width: 2,
-    backgroundColor: 'rgba(255,255,255,0.8)',
+    backgroundColor: 'rgba(255,255,255,0.85)',
+  },
+  hitZone: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: HIT_ZONE_WIDTH,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   handle: {
-    position: 'absolute',
-    top: SCREEN_HEIGHT / 2 - 22,
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -122,12 +147,12 @@ const styles = StyleSheet.create({
   },
   labelLeft: {
     position: 'absolute',
-    top: 20,
+    top: 60,
     left: 20,
   },
   labelRight: {
     position: 'absolute',
-    top: 20,
+    top: 60,
     right: 20,
   },
   labelText: {
@@ -143,13 +168,13 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   closeText: {
     color: 'white',
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
   },
 });

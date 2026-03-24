@@ -1,7 +1,7 @@
 import Foundation
 import RoomPlan
 import ARKit
-import React
+import UIKit
 
 @objc(RoomPlanModule)
 class RoomPlanModule: RCTEventEmitter {
@@ -38,6 +38,8 @@ class RoomPlanModule: RCTEventEmitter {
     }
     DispatchQueue.main.async { [weak self] in
       guard let self = self else { return }
+      // Release any previous session before starting a new one.
+      // Failure to do so causes exceedSceneSizeLimit on the next scan.
       self.captureSession = nil
       self.captureView = nil
       let session = RoomCaptureSession()
@@ -124,21 +126,79 @@ extension RoomPlanModule: RoomCaptureSessionDelegate {
 
 private extension RoomPlanModule {
 
+  /// Determine which wall face a surface belongs to based on its world-space transform.
+  /// The front wall is at +z, back at -z, left at -x, right at +x.
+  func wallSide(for transform: simd_float4x4, roomWidth: Float, roomDepth: Float) -> String {
+    let pos = transform.columns.3
+    let halfW = roomWidth / 2
+    let halfD = roomDepth / 2
+    let ax = abs(pos.x)
+    let az = abs(pos.z)
+    if az >= ax {
+      return pos.z > 0 ? "front" : "back"
+    } else {
+      return pos.x > 0 ? "right" : "left"
+    }
+  }
+
   func processResults(_ data: CapturedRoomData) {
     let builder = RoomBuilder(options: [.beautifyObjects])
     Task {
       do {
         let room = try await builder.capturedRoom(from: data)
+
+        // ── Dimensions ─────────────────────────────
         let walls = room.walls
         let xs = walls.map { abs($0.dimensions.x) }
         let zs = walls.map { abs($0.dimensions.z) }
-        let width = xs.max() ?? 5.0
-        let depth = zs.max() ?? 4.5
-        let height = Double(room.walls.first?.dimensions.y ?? 2.7)
+        let width  = Float(xs.max() ?? 5.0)
+        let depth  = Float(zs.max() ?? 4.5)
+        let height = Float(room.walls.first?.dimensions.y ?? 2.7)
+
+        // ── Doors ──────────────────────────────────
+        let doorDicts: [[String: Any]] = room.doors.map { door in
+          let pos = door.transform.columns.3
+          let side = wallSide(for: door.transform, roomWidth: width, roomDepth: depth)
+          return [
+            "x":        Double(pos.x),
+            "z":        Double(pos.z),
+            "width":    Double(door.dimensions.x),
+            "wallSide": side,
+          ]
+        }
+
+        // ── Windows ────────────────────────────────
+        let windowDicts: [[String: Any]] = room.windows.map { window in
+          let pos = window.transform.columns.3
+          let side = wallSide(for: window.transform, roomWidth: width, roomDepth: depth)
+          return [
+            "x":        Double(pos.x),
+            "z":        Double(pos.z),
+            "width":    Double(window.dimensions.x),
+            "height":   Double(window.dimensions.y),
+            "wallSide": side,
+          ]
+        }
+
+        // ── Thumbnail ──────────────────────────────
+        var thumbnailBase64 = ""
+        await MainActor.run {
+          if let view = self.captureView {
+            let renderer = UIGraphicsImageRenderer(bounds: view.bounds)
+            let image = renderer.image { ctx in
+              view.layer.render(in: ctx.cgContext)
+            }
+            thumbnailBase64 = image.jpegData(compressionQuality: 0.7)?.base64EncodedString() ?? ""
+          }
+        }
+
         sendEvent(withName: "RoomPlanComplete", body: [
-          "width": width,
-          "depth": depth,
-          "height": height
+          "width":           Double(width),
+          "depth":           Double(depth),
+          "height":          Double(height),
+          "doors":           doorDicts,
+          "windows":         windowDicts,
+          "thumbnailBase64": thumbnailBase64,
         ])
       } catch {
         handleSessionError(error)
@@ -147,9 +207,24 @@ private extension RoomPlanModule {
   }
 
   func handleSessionError(_ error: Error) {
-    sendEvent(withName: "RoomPlanError", body: [
-      "message": error.localizedDescription
-    ])
     isScanning = false
+
+    // Specific guidance for known RoomPlan / ARKit failure modes
+    let message: String
+    if let arError = error as? ARError {
+      switch arError.code {
+      case .worldTrackingFailed:
+        message = "Tracking lost. Move slowly and make sure the room is well lit with visible surface texture."
+      case .cameraUnauthorized:
+        message = "Camera access is required for LiDAR scanning. Enable it in Settings."
+      default:
+        message = error.localizedDescription
+      }
+    } else {
+      message = error.localizedDescription
+    }
+
+    // ⚠️ Key is "error" — useRoomPlan.ts reads data.error
+    sendEvent(withName: "RoomPlanError", body: ["error": message])
   }
 }

@@ -20,6 +20,7 @@ import {
 import Svg, { Path, Circle as SvgCircle, Line, Polyline } from 'react-native-svg';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system';
+import * as ImageManipulator from 'expo-image-manipulator';
 import Slider from '@react-native-community/slider';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -28,12 +29,28 @@ import type { RoomStackParamList } from '../../navigation/RoomNavigator';
 import { useRender } from '../../hooks/useRender';
 import { useAppStore } from '../../store';
 import BeforeAfterSlider from '../../components/BeforeAfterSlider';
+import PanoramaViewer from '../../components/PanoramaViewer';
 import ChatPanel from '../../components/ChatPanel';
 import type { Product } from '@cova/shared';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const BG = '#0A1628';
 const GOLD = '#C4A45A';
+
+function getTouchDistance(touches: { pageX: number; pageY: number }[]): number {
+  const dx = touches[0].pageX - touches[1].pageX;
+  const dy = touches[0].pageY - touches[1].pageY;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function clampTranslate(tx: number, ty: number, scale: number): { x: number; y: number } {
+  const maxX = (SCREEN_WIDTH * (scale - 1)) / 2;
+  const maxY = (SCREEN_HEIGHT * (scale - 1)) / 2;
+  return {
+    x: Math.max(-maxX, Math.min(maxX, tx)),
+    y: Math.max(-maxY, Math.min(maxY, ty)),
+  };
+}
 
 // §8.3 — 6 stages, must match useRender.ts exactly
 const LOADING_STAGES = [
@@ -51,7 +68,7 @@ export default function RenderViewScreen() {
   const insets = useSafeAreaInsets();
 
   const { startRender, renderStatus, renderProgressStage, renderProgress, renderError, currentRender } = useRender();
-  const { matchedProducts, addToCart, cartItems, setRenderStatus, currentRoom, capturedImageUri } = useAppStore();
+  const { matchedProducts, addToCart, cartItems, setRenderStatus, currentRoom, capturedImageUri, budget_max } = useAppStore();
 
   // route.params.room_id is only populated when navigating directly within RoomNavigator.
   // When arriving via HomeStack's nested Room screen, room_id is in the parent route and
@@ -59,7 +76,11 @@ export default function RenderViewScreen() {
   const room_id = route.params?.room_id ?? currentRoom?.id ?? 'default';
 
   const [showControls, setShowControls] = useState(true);
-  const [showBeforeAfter, setShowBeforeAfter] = useState(false);
+  const [showBeforeAfter, setShowBeforeAfter] = useState(true);
+  // ⚠️ viewModeRef: useRef not useState — mode changes must not trigger 60fps re-renders.
+  // forceUpdate is only called on deliberate user toggle, not on every frame.
+  const viewModeRef = useRef<'immersive' | 'flat'>('immersive');
+  const [, forceUpdate] = useState(0);
   const [showProductPanel, setShowProductPanel] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [similarCategory, setSimilarCategory] = useState<string | null>(null);
@@ -73,12 +94,19 @@ export default function RenderViewScreen() {
   const panOffset = useRef(new Animated.ValueXY()).current;
   const scaleVal = useRef(new Animated.Value(1)).current;
   const controlsOpacity = useRef(new Animated.Value(1)).current;
+
+  const scaleRef = useRef(1);
+  const translateXRef = useRef(0);
+  const translateYRef = useRef(0);
+  const pinchStartDistRef = useRef(0);
+  const isPinchingRef = useRef(false);
+  const panStartXRef = useRef(0);
+  const panStartYRef = useRef(0);
   const productPanelX = useRef(new Animated.Value(-SCREEN_WIDTH * 0.75)).current;
   const pulseOpacity = useRef(new Animated.Value(0.4)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
 
-  const roomBudgetCents = currentRoom?.budget ?? 250000;
-  const roomBudgetDollars = Math.round(roomBudgetCents / 100);
+  const roomBudgetDollars = budget_max;
   const activeBudgetDollars = budgetOverride ?? roomBudgetDollars;
 
   const filteredProducts = useMemo(() => {
@@ -143,15 +171,72 @@ export default function RenderViewScreen() {
   const imagePanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 5 || Math.abs(gs.dy) > 5,
-      onPanResponderGrant: () => { panOffset.extractOffset(); },
-      onPanResponderMove: Animated.event(
-        [null, { dx: panOffset.x, dy: panOffset.y }],
-        { useNativeDriver: false },
-      ),
-      onPanResponderRelease: (_, gs) => {
-        panOffset.flattenOffset();
-        if (Math.abs(gs.dx) < 5 && Math.abs(gs.dy) < 5) {
+      onMoveShouldSetPanResponder: (e, gs) =>
+        e.nativeEvent.touches.length >= 2 ||
+        Math.abs(gs.dx) > 5 ||
+        Math.abs(gs.dy) > 5,
+
+      onPanResponderGrant: (e) => {
+        const touches = e.nativeEvent.touches;
+        panStartXRef.current = translateXRef.current;
+        panStartYRef.current = translateYRef.current;
+        isPinchingRef.current = false;
+        if (touches.length >= 2) {
+          isPinchingRef.current = true;
+          pinchStartDistRef.current = getTouchDistance(touches as { pageX: number; pageY: number }[]);
+        }
+      },
+
+      onPanResponderMove: (e, gs) => {
+        const touches = e.nativeEvent.touches;
+
+        if (touches.length >= 2) {
+          // Pinch
+          isPinchingRef.current = true;
+          if (pinchStartDistRef.current === 0) {
+            pinchStartDistRef.current = getTouchDistance(touches as { pageX: number; pageY: number }[]);
+            return;
+          }
+          const currentDist = getTouchDistance(touches as { pageX: number; pageY: number }[]);
+          const newScale = Math.max(
+            1.0,
+            Math.min(2.5, scaleRef.current * (currentDist / pinchStartDistRef.current)),
+          );
+          scaleVal.setValue(newScale);
+          const clamped = clampTranslate(translateXRef.current, translateYRef.current, newScale);
+          panOffset.setValue(clamped);
+          translateXRef.current = clamped.x;
+          translateYRef.current = clamped.y;
+          // ⚠️ Update pinchStartDistRef each move to keep delta incremental (prevents jumpy zoom — §15.1)
+          pinchStartDistRef.current = currentDist;
+          scaleRef.current = newScale;
+        } else if (touches.length === 1) {
+          // Single-finger pan
+          if (isPinchingRef.current) return; // skip pan frame immediately after lifting second finger
+          const newTX = panStartXRef.current + gs.dx;
+          const newTY = panStartYRef.current + gs.dy;
+          const clamped = clampTranslate(newTX, newTY, scaleRef.current);
+          panOffset.setValue(clamped);
+          translateXRef.current = clamped.x;
+          translateYRef.current = clamped.y;
+        }
+      },
+
+      onPanResponderRelease: (e, gs) => {
+        isPinchingRef.current = false;
+        pinchStartDistRef.current = 0;
+
+        // Snap to center if scale is back at 1
+        if (scaleRef.current <= 1.001) {
+          scaleRef.current = 1.0;
+          scaleVal.setValue(1.0);
+          panOffset.setValue({ x: 0, y: 0 });
+          translateXRef.current = 0;
+          translateYRef.current = 0;
+        }
+
+        // Tap detection — preserved for HUD toggle (single touch, minimal movement)
+        if (e.nativeEvent.touches.length === 0 && Math.abs(gs.dx) < 5 && Math.abs(gs.dy) < 5) {
           if (showControls) {
             Animated.timing(controlsOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => setShowControls(false));
           } else {
@@ -197,7 +282,12 @@ export default function RenderViewScreen() {
     // Re-read the original captured image as base64 for the render pipeline
     if (capturedImageUri) {
       try {
-        const raw = await FileSystem.readAsStringAsync(capturedImageUri, {
+        const compressed = await ImageManipulator.manipulateAsync(
+          capturedImageUri,
+          [{ resize: { width: 1024 } }],
+          { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+        );
+        const raw = await FileSystem.readAsStringAsync(compressed.uri, {
           encoding: FileSystem.EncodingType.Base64,
         });
         imageBase64 = `data:image/jpeg;base64,${raw}`;
@@ -229,6 +319,21 @@ export default function RenderViewScreen() {
     const { locationX, locationY } = e.nativeEvent;
     const { width, height } = imageDimsRef.current;
     if (width > 0 && height > 0) setTapCoords({ x: (locationX / width) * 100, y: (locationY / height) * 100 });
+  }, []);
+
+  // Tap from sphere PanResponder — mirrors flat-image tap handling for HUD toggle
+  const handlePanoramaTap = useCallback(() => {
+    if (showControls) {
+      Animated.timing(controlsOpacity, { toValue: 0, duration: 200, useNativeDriver: true })
+        .start(() => setShowControls(false));
+    } else {
+      resetControlsTimer();
+    }
+  }, [showControls, controlsOpacity, resetControlsTimer]);
+
+  const handleToggleViewMode = useCallback(() => {
+    viewModeRef.current = viewModeRef.current === 'immersive' ? 'flat' : 'immersive';
+    forceUpdate((n) => n + 1);
   }, []);
 
   const stageText = renderProgressStage || LOADING_STAGES[localStageIndex];
@@ -311,17 +416,51 @@ export default function RenderViewScreen() {
   // ═══════════════════════════════
   return (
     <View style={styles.root}>
-      {/* Full-screen render image */}
-      <View style={StyleSheet.absoluteFill} onLayout={handleImageLayout}>
+      {/* ── Immersive sphere viewer (Mode 1 — default) ─────────────────────── */}
+      {/* Both layers are always mounted. Visibility controlled via opacity +   */}
+      {/* pointerEvents so neither reloads its texture when toggling modes.      */}
+      <View
+        style={[StyleSheet.absoluteFill, { opacity: viewModeRef.current === 'immersive' ? 1 : 0 }]}
+        pointerEvents="box-none"
+      >
+        {currentRender?.image_url ? (
+          <PanoramaViewer
+            imageUrl={currentRender.image_url}
+            pointerEnabled={viewModeRef.current === 'immersive'}
+            onTap={handlePanoramaTap}
+            onFallback={() => {
+              // Canvas failed to initialize — silently fall back to flat view
+              viewModeRef.current = 'flat';
+              forceUpdate((n) => n + 1);
+            }}
+          />
+        ) : (
+          <View style={[StyleSheet.absoluteFill, styles.renderUnavailable]}>
+            <Text style={styles.renderUnavailableText}>Render not available</Text>
+            <TouchableOpacity style={styles.retryBtn} onPress={handleRegenerate}>
+              <Text style={styles.retryBtnText}>Regenerate</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+
+      {/* ── Flat image viewer (Mode 2) ──────────────────────────────────────── */}
+      <View
+        style={[StyleSheet.absoluteFill, { opacity: viewModeRef.current === 'flat' ? 1 : 0 }]}
+        pointerEvents={viewModeRef.current === 'flat' ? 'box-none' : 'none'}
+        onLayout={handleImageLayout}
+      >
         <TouchableWithoutFeedback onPress={handleImageTap}>
-          {currentRender?.image_url ? (
-            <Animated.Image
-              source={{ uri: currentRender.image_url }}
-              style={[StyleSheet.absoluteFill, { transform: [...panOffset.getTranslateTransform(), { scale: scaleVal }] }]}
-              resizeMode="cover"
-              {...imagePanResponder.panHandlers}
-            />
-          ) : null}
+          <View style={StyleSheet.absoluteFill}>
+            {currentRender?.image_url ? (
+              <Animated.Image
+                source={{ uri: currentRender.image_url }}
+                style={[StyleSheet.absoluteFill, { transform: [...panOffset.getTranslateTransform(), { scale: scaleVal }] }]}
+                resizeMode="cover"
+                {...imagePanResponder.panHandlers}
+              />
+            ) : null}
+          </View>
         </TouchableWithoutFeedback>
       </View>
 
@@ -410,16 +549,38 @@ export default function RenderViewScreen() {
               </Svg>
               <Text style={styles.barLabel}>Shop</Text>
             </TouchableOpacity>
-          </View>
-        </Animated.View>
-      )}
 
-      {/* Before/After toggle */}
-      {showControls && (
-        <Animated.View style={[styles.baToggle, { opacity: controlsOpacity }]}>
-          <TouchableOpacity style={styles.baToggleBtn} onPress={() => setShowBeforeAfter(true)}>
-            <Text style={styles.baToggleBtnText}>B/A</Text>
-          </TouchableOpacity>
+            {/* Compare (before/after) — only shown when original image exists */}
+            {!!currentRoom?.original_image_url && (
+              <TouchableOpacity style={styles.barAction} onPress={() => setShowBeforeAfter((v) => !v)}>
+                <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                  <Line x1={12} y1={3} x2={12} y2={21} stroke={showBeforeAfter ? '#C4A45A' : 'white'} strokeWidth={2} />
+                  <Path d="M8 7l-4 5 4 5" stroke={showBeforeAfter ? '#C4A45A' : 'white'} strokeWidth={1.5} fill="none" />
+                  <Path d="M16 7l4 5-4 5" stroke={showBeforeAfter ? '#C4A45A' : 'white'} strokeWidth={1.5} fill="none" />
+                </Svg>
+                <Text style={[styles.barLabel, showBeforeAfter && { color: '#C4A45A' }]}>Compare</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* View mode toggle */}
+            <TouchableOpacity style={styles.barAction} onPress={handleToggleViewMode}>
+              <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                {viewModeRef.current === 'immersive' ? (
+                  // Icon for "switch to 2D" — a flat image frame
+                  <Path d="M3 3h18v18H3z M3 9h18 M3 15h18" stroke="white" strokeWidth={1.5} fill="none" />
+                ) : (
+                  // Icon for "switch to Immersive" — a sphere/globe
+                  <>
+                    <SvgCircle cx={12} cy={12} r={9} stroke="white" strokeWidth={1.5} />
+                    <Path d="M12 3c-2 4-2 14 0 18M12 3c2 4 2 14 0 18M3 12h18" stroke="white" strokeWidth={1.5} />
+                  </>
+                )}
+              </Svg>
+              <Text style={styles.barLabel}>
+                {viewModeRef.current === 'immersive' ? '2D View' : 'Immersive'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </Animated.View>
       )}
 
@@ -458,18 +619,25 @@ export default function RenderViewScreen() {
       </Animated.View>
 
       {/* ── Overlays ── */}
-      {showBeforeAfter && (
-        <BeforeAfterSlider
-          beforeImageUri={capturedImageUri ?? currentRender?.image_url ?? ''}
-          afterImageUri={currentRender?.image_url ?? ''}
-          onClose={() => setShowBeforeAfter(false)}
-        />
+      {/* Before/after slider — always mounted when original_image_url exists,   */}
+      {/* hidden via opacity+pointerEvents so it never reloads on toggle.         */}
+      {/* Right side shows through to whichever viewer is active behind it.       */}
+      {!!currentRoom?.original_image_url && (
+        <View
+          style={[StyleSheet.absoluteFill, { opacity: showBeforeAfter ? 1 : 0 }]}
+          pointerEvents={showBeforeAfter ? 'box-none' : 'none'}
+        >
+          <BeforeAfterSlider
+            beforeImageUri={currentRoom.original_image_url}
+            onClose={() => setShowBeforeAfter(false)}
+          />
+        </View>
       )}
 
       {showChat && (
         <ChatPanel
           roomId={room_id}
-          renderImageBase64={currentRender?.image_url ?? undefined}
+          renderImageUrl={currentRender?.image_url ?? undefined}
           tapX={tapCoords?.x}
           tapY={tapCoords?.y}
           onClose={() => setShowChat(false)}
@@ -503,6 +671,8 @@ export default function RenderViewScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: BG },
   centerContent: { justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
+  renderUnavailable: { justifyContent: 'center', alignItems: 'center', backgroundColor: BG },
+  renderUnavailableText: { color: 'rgba(255,255,255,0.6)', fontSize: 16, marginBottom: 20 },
 
   // ── Top bar ──
   topBar: {

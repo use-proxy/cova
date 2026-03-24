@@ -58,6 +58,9 @@ interface AppState {
   isHUDVisible: boolean;
   tokenBalance: number;
 
+  // budget
+  budget_max: number;
+
   // preferences
   colorScheme: 'dark' | 'light';
   savedProducts: Product[];
@@ -117,6 +120,9 @@ interface AppActions {
   showHUD: () => void;
   hideHUD: () => void;
   setTokenBalance: (balance: number) => void;
+
+  // budget
+  setBudgetMax: (value: number) => void;
 
   // preferences
   setColorScheme: (scheme: 'dark' | 'light') => void;
@@ -391,6 +397,13 @@ export const useAppStore = create<AppState & AppActions>()(
     setTokenBalance: (balance) =>
       set((state) => {
         state.tokenBalance = balance;
+      }),
+
+    // ── budget defaults ──
+    budget_max: 2500,
+    setBudgetMax: (value) =>
+      set((state) => {
+        state.budget_max = value;
       }),
 
     // ── preferences defaults ──

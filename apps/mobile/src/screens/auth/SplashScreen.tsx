@@ -33,8 +33,7 @@ export default function SplashScreen() {
 
   useEffect(() => {
     if (user) {
-      const t = setTimeout(() => navigation.replace('Auth', { mode: 'signin' }), 500);
-      return () => clearTimeout(t);
+      return; // RootNavigator renders MainNavigator when user is set — no action needed here
     }
 
     Animated.timing(logoOpacity, {

@@ -65,12 +65,27 @@ export default function AuthScreen({ route }: Props) {
   const anyLoading = loading !== null;
 
   // ── Apple ──
-  // Re-enable when paid Apple Developer account is active
   const handleAppleSignIn = async () => {
-    Alert.alert(
-      'Apple Sign In',
-      'Apple Sign In will be available after upgrading to a paid Apple Developer account.',
-    );
+    try {
+      setLoading('apple');
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      const { error: err } = await supabase.auth.signInWithIdToken({
+        provider: 'apple',
+        token: credential.identityToken!,
+      });
+      if (err) throw err;
+    } catch (e: unknown) {
+      if ((e as { code?: string }).code !== 'ERR_REQUEST_CANCELED') {
+        Alert.alert('Sign In Failed', (e as Error).message ?? 'Apple Sign In failed.');
+      }
+    } finally {
+      setLoading(null);
+    }
   };
 
   // ── Google ──
@@ -210,7 +225,7 @@ export default function AuthScreen({ route }: Props) {
           <View style={styles.socialSection}>
             {/* Apple */}
             <TouchableOpacity
-              style={[styles.appleBtn, { opacity: 0.4 }]}
+              style={styles.appleBtn}
               activeOpacity={0.7}
               onPress={handleAppleSignIn}
               disabled={anyLoading}

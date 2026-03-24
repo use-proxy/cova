@@ -45,7 +45,7 @@ export function useRender() {
         render_embedding: embedRes.embedding,
         room_type: roomType,
         style_blend: styleBlend,
-        budget,
+        max_price: budget,
         limit: 15,
       });
       setMatchedProducts(matchRes.products ?? []);
@@ -136,7 +136,7 @@ export function useRender() {
       if (params.dimensions) {
         useAppStore.getState().updateRoom(params.roomId, { dimensions: params.dimensions });
       }
-      const roomBudget = useAppStore.getState().currentRoom?.budget ?? 250000;
+      const roomBudget = useAppStore.getState().budget_max;
       await pollRenderStatus(res.render_id, params.roomType, params.styleBlend, roomBudget);
     } catch (e: unknown) {
       setRenderStatus('failed');
