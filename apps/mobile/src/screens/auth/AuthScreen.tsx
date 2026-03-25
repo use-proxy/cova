@@ -21,6 +21,7 @@ import * as Crypto from 'expo-crypto';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store';
+import type { User } from '@cova/shared';
 import type { AuthStackParamList } from '../../navigation/AuthNavigator';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -98,11 +99,11 @@ export default function AuthScreen({ route }: Props) {
       });
       if (err) throw err;
       if (data.user) {
-        useAppStore.getState().setUser(data.user as any);
+        useAppStore.getState().setUser(data.user as unknown as User);
         useAppStore.getState().setSession(data.session);
       }
-    } catch (e: any) {
-      showError(e.message ?? 'Google sign in failed');
+    } catch (e: unknown) {
+      showError(e instanceof Error ? e.message : 'Google sign in failed');
     } finally {
       setLoading(null);
     }
@@ -119,9 +120,9 @@ export default function AuthScreen({ route }: Props) {
     try {
       setLoading('google');
       await googlePromptAsync();
-    } catch (e: any) {
-      if (e.code !== 'ERR_REQUEST_CANCELED') {
-        showError(e.message ?? 'Google sign in failed');
+    } catch (e: unknown) {
+      if ((e as { code?: string }).code !== 'ERR_REQUEST_CANCELED') {
+        showError(e instanceof Error ? e.message : 'Google sign in failed');
       }
       setLoading(null);
     }
@@ -146,7 +147,7 @@ export default function AuthScreen({ route }: Props) {
           password,
         });
         if (err) throw err;
-        useAppStore.getState().setUser(data.user as any);
+        useAppStore.getState().setUser(data.user as unknown as User);
         useAppStore.getState().setSession(data.session);
       } else {
         const { error: err } = await supabase.auth.signUp({
@@ -155,10 +156,10 @@ export default function AuthScreen({ route }: Props) {
           options: { data: { full_name: fullName.trim() } },
         });
         if (err) throw err;
-        useAppStore.getState().setUser({ email, full_name: fullName.trim() } as any);
+        useAppStore.getState().setUser({ email, full_name: fullName.trim() } as unknown as User);
       }
-    } catch (e: any) {
-      showError(e.message ?? 'Authentication failed');
+    } catch (e: unknown) {
+      showError(e instanceof Error ? e.message : 'Authentication failed');
     } finally {
       setLoading(null);
     }

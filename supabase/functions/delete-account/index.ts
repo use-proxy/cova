@@ -33,10 +33,36 @@ Deno.serve(async (req: Request) => {
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
     const userId = user.id;
 
+    // Get room IDs for FK-dependent deletions
+    const { data: userRooms } = await adminClient
+      .from('rooms')
+      .select('id')
+      .eq('user_id', userId);
+    const roomIds = (userRooms ?? []).map((r: { id: string }) => r.id);
+
+    // Delete in FK-safe order
     await adminClient.from('chat_messages').delete().eq('user_id', userId);
+
+    if (roomIds.length > 0) {
+      await adminClient.from('furniture_placements').delete().in('room_id', roomIds);
+    }
+
     await adminClient.from('renders').delete().eq('user_id', userId);
     await adminClient.from('rooms').delete().eq('user_id', userId);
     await adminClient.from('token_transactions').delete().eq('user_id', userId);
+
+    // Clean up storage buckets
+    for (const bucket of ['room-photos', 'renders']) {
+      try {
+        const { data: files } = await adminClient.storage.from(bucket).list(userId);
+        if (files && files.length > 0) {
+          await adminClient.storage.from(bucket).remove(files.map((f: { name: string }) => `${userId}/${f.name}`));
+        }
+      } catch {
+        // Storage cleanup is best-effort — continue even if bucket is empty or missing
+      }
+    }
+
     await adminClient.from('users').delete().eq('id', userId);
 
     const { error: deleteUserError } = await adminClient.auth.admin.deleteUser(userId);

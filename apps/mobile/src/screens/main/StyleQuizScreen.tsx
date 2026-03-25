@@ -17,7 +17,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RoomStackParamList } from '../../navigation/RoomNavigator';
 import { useAppStore } from '../../store';
 import { supabase } from '../../lib/supabase';
-import type { SwipeCard, StyleBlend, StyleName } from '@cova/shared';
+import type { SwipeCard, StyleBlend, StyleName, RoomType } from '@cova/shared';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -142,18 +142,18 @@ function QuestionIcon() {
 
 // ── Fallback cards ──
 
-function makeFallbackCards(roomType: string): SwipeCard[] {
+function makeFallbackCards(roomType: RoomType): SwipeCard[] {
   return [
-    { id: 'f1', image_url: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=800&q=80', room_type: roomType as any, style_weights: { coastal: 0.6, minimalist: 0.4 }, active: true },
-    { id: 'f2', image_url: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800&q=80', room_type: roomType as any, style_weights: { japandi: 0.7, minimalist: 0.3 }, active: true },
-    { id: 'f3', image_url: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800&q=80', room_type: roomType as any, style_weights: { mid_century: 0.8, bohemian: 0.2 }, active: true },
-    { id: 'f4', image_url: 'https://images.unsplash.com/photo-1567225557594-88d73e55f2cb?w=800&q=80', room_type: roomType as any, style_weights: { bohemian: 0.7, coastal: 0.3 }, active: true },
-    { id: 'f5', image_url: 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=800&q=80', room_type: roomType as any, style_weights: { minimalist: 0.6, japandi: 0.4 }, active: true },
-    { id: 'f6', image_url: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&q=80', room_type: roomType as any, style_weights: { coastal: 0.5, mid_century: 0.5 }, active: true },
-    { id: 'f7', image_url: 'https://images.unsplash.com/photo-1617806118233-18e1de247200?w=800&q=80', room_type: roomType as any, style_weights: { japandi: 0.8, minimalist: 0.2 }, active: true },
-    { id: 'f8', image_url: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=80', room_type: roomType as any, style_weights: { coastal: 0.8, bohemian: 0.2 }, active: true },
-    { id: 'f9', image_url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80', room_type: roomType as any, style_weights: { mid_century: 0.6, minimalist: 0.4 }, active: true },
-    { id: 'f10', image_url: 'https://images.unsplash.com/photo-1598928506311-c55ez363776c?w=800&q=80', room_type: roomType as any, style_weights: { bohemian: 0.5, japandi: 0.5 }, active: true },
+    { id: 'f1', image_url: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=800&q=80', room_type: roomType, style_weights: { coastal: 0.6, minimalist: 0.4 }, active: true },
+    { id: 'f2', image_url: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800&q=80', room_type: roomType, style_weights: { japandi: 0.7, minimalist: 0.3 }, active: true },
+    { id: 'f3', image_url: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800&q=80', room_type: roomType, style_weights: { mid_century: 0.8, bohemian: 0.2 }, active: true },
+    { id: 'f4', image_url: 'https://images.unsplash.com/photo-1567225557594-88d73e55f2cb?w=800&q=80', room_type: roomType, style_weights: { bohemian: 0.7, coastal: 0.3 }, active: true },
+    { id: 'f5', image_url: 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=800&q=80', room_type: roomType, style_weights: { minimalist: 0.6, japandi: 0.4 }, active: true },
+    { id: 'f6', image_url: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&q=80', room_type: roomType, style_weights: { coastal: 0.5, mid_century: 0.5 }, active: true },
+    { id: 'f7', image_url: 'https://images.unsplash.com/photo-1617806118233-18e1de247200?w=800&q=80', room_type: roomType, style_weights: { japandi: 0.8, minimalist: 0.2 }, active: true },
+    { id: 'f8', image_url: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=80', room_type: roomType, style_weights: { coastal: 0.8, bohemian: 0.2 }, active: true },
+    { id: 'f9', image_url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80', room_type: roomType, style_weights: { mid_century: 0.6, minimalist: 0.4 }, active: true },
+    { id: 'f10', image_url: 'https://images.unsplash.com/photo-1598928506311-c55ez363776c?w=800&q=80', room_type: roomType, style_weights: { bohemian: 0.5, japandi: 0.5 }, active: true },
   ];
 }
 

@@ -55,9 +55,6 @@ export default function TokenShopScreen() {
         <TouchableOpacity style={styles.gotItBtn} onPress={() => navigation.goBack()} activeOpacity={0.85}>
           <Text style={styles.gotItText}>Got it</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.restoreBtn} onPress={() => {}}>
-          <Text style={styles.restoreText}>Restore Purchases</Text>
-        </TouchableOpacity>
       </View>
     </View>
   );
@@ -144,13 +141,5 @@ const styles = StyleSheet.create({
     color: '#0A1628',
     fontSize: 16,
     fontWeight: '600',
-  },
-  restoreBtn: {
-    marginTop: 16,
-    paddingVertical: 8,
-  },
-  restoreText: {
-    color: 'rgba(255,255,255,0.4)',
-    fontSize: 14,
   },
 });

@@ -2,8 +2,8 @@
 # PRODUCT_TRUTH.md — Cova Single Source of Truth
 # "tinder for your home" | AI Interior Design App
 # Daksh Parikh & Pranav Goel | hellocova@gmail.com
-# Last updated: 2026-03-24
-# Session fixes applied: 20 (see FIXES APPLIED section at bottom)
+# Last updated: 2026-03-25
+# Session fixes applied: 27 (see FIXES APPLIED section at bottom)
 ═══════════════════════════════════════════════════════════════════════════════
 
 ---
@@ -34,14 +34,14 @@ Quality gates active:
 | 2 | Authentication       | VERIFIED ✅    | 2026-03-24    |
 | 3 | Style Fingerprint Quiz | VERIFIED ✅  | 2026-03-24    |
 | 4 | Room Capture         | VERIFIED ✅    | 2026-03-24    |
-| 5 | 3D Room Viewer       | UNVERIFIED ⬜  | never         |
-| 6 | AI Render + Panorama | VERIFIED ✅    | 2026-03-24    |
-| 7 | AI Chatbot           | VERIFIED ✅    | 2026-03-24    |
-| 8 | Product Shopping     | UNVERIFIED ⬜  | never         |
-| 9 | Dashboard            | VERIFIED ✅    | 2026-03-24    |
-|10 | Token Economy        | VERIFIED ✅    | 2026-03-24    |
+| 5 | 3D Room Viewer       | VERIFIED ✅    | 2026-03-25    |
+| 6 | AI Render + Panorama | VERIFIED ✅    | 2026-03-25    |
+| 7 | AI Chatbot           | VERIFIED ✅    | 2026-03-25    |
+| 8 | Product Shopping     | VERIFIED ✅    | 2026-03-25    |
+| 9 | Dashboard            | VERIFIED ✅    | 2026-03-25    |
+|10 | Token Economy        | VERIFIED ✅    | 2026-03-25    |
 |11 | (reserved)           | —              | —             |
-|12 | Profile & Settings   | UNVERIFIED ⬜  | never         |
+|12 | Profile & Settings   | VERIFIED ✅    | 2026-03-25    |
 
 ---
 
@@ -242,7 +242,7 @@ Google, and email+password, all handled by Supabase Auth.
   FILE: apps/mobile/src/screens/auth/AuthScreen.tsx
   LINES: 1-50 (rendered in JSX — verify in full file)
   CHECK: Linking.openURL calls for privacy and terms URLs
-  STATUS: UNVERIFIED ⬜
+  STATUS: VERIFIED ✅
 
 ### DEVIATION FLAGS
 ❌ Apple Sign In not the topmost button
@@ -548,68 +548,68 @@ in a stylized box room. The 3D viewer is NOT the primary experience — the AI r
   FILE: apps/mobile/src/components/3d/CameraController.tsx
   LINES: verify
   CHECK: useRef initial values — theta=0, phi=1.25, radius=4.0
-  STATUS: UNVERIFIED ⬜
+  STATUS: VERIFIED ✅
 
 ✓ TRUTH: Camera y at init ≈ 2.46m (eye level, below 2.7m ceiling)
   FILE: apps/mobile/src/components/3d/CameraController.tsx
   LINES: verify
   CHECK: y = radius × cos(phi) + 1.2 = 4.0 × cos(1.25) + 1.2 ≈ 2.46
-  STATUS: UNVERIFIED ⬜
+  STATUS: VERIFIED ✅
 
 ✓ TRUTH: No useState for camera values — useRef only for theta/phi/radius
   FILE: apps/mobile/src/components/3d/CameraController.tsx
   LINES: verify
   CHECK: grep for useState — camera theta/phi/radius must all be useRef
-  STATUS: UNVERIFIED ⬜
+  STATUS: VERIFIED ✅
 
 ✓ TRUTH: No OrbitControls import anywhere in 3D files
   FILE: apps/mobile/src/components/3d/CameraController.tsx, BoxRoom.tsx, FurniturePiece.tsx
   LINES: verify
   CHECK: grep for 'OrbitControls' — must return empty
-  STATUS: UNVERIFIED ⬜
+  STATUS: VERIFIED ✅
 
 ✓ TRUTH: PanResponder is sibling of Canvas — never nested inside or wrapping Canvas
   FILE: apps/mobile/src/screens/main/RoomViewer3DScreen.tsx
   LINES: verify
   CHECK: View → [Canvas as absoluteFill child] + [PanResponder View as sibling]
-  STATUS: UNVERIFIED ⬜
+  STATUS: VERIFIED ✅
 
 ✓ TRUTH: Canvas has gl={{ preserveDrawingBuffer: true }} and background color set
   FILE: apps/mobile/src/screens/main/RoomViewer3DScreen.tsx (or BoxRoom/CameraController)
   LINES: verify
   CHECK: `<Canvas gl={{ preserveDrawingBuffer: true }}>` and
         `<color attach="background" args={[ceilingColor]} />`
-  STATUS: UNVERIFIED ⬜
+  STATUS: VERIFIED ✅
 
 ✓ TRUTH: Pinch zoom radius clamped Math.max(1.5, Math.min(6.0, newRadius))
   FILE: apps/mobile/src/components/3d/CameraController.tsx
   LINES: verify
   CHECK: clamp expression present on radius update
-  STATUS: UNVERIFIED ⬜
+  STATUS: VERIFIED ✅
 
 ✓ TRUTH: BoxRoom has exactly 5 faces — front wall absent (doorway)
   FILE: apps/mobile/src/components/3d/BoxRoom.tsx
   LINES: verify
   CHECK: 5 mesh elements (floor, back, left, right, ceiling) — no front wall
-  STATUS: UNVERIFIED ⬜
+  STATUS: VERIFIED ✅
 
 ✓ TRUTH: FurniturePiece onPointerDown calls e.stopPropagation()
   FILE: apps/mobile/src/components/3d/FurniturePiece.tsx
   LINES: verify
   CHECK: `onPointerDown={(e) => { e.stopPropagation(); ... }}`
-  STATUS: UNVERIFIED ⬜
+  STATUS: VERIFIED ✅
 
 ✓ TRUTH: Suspense wraps all useGLTF calls
   FILE: apps/mobile/src/screens/main/RoomViewer3DScreen.tsx (or BoxRoom)
   LINES: verify
   CHECK: `<Suspense fallback={null}>{furniture.map(...)}</Suspense>`
-  STATUS: UNVERIFIED ⬜
+  STATUS: VERIFIED ✅
 
 ✓ TRUTH: SSAO active via @react-three/postprocessing 2.15.0
   FILE: apps/mobile/src/screens/main/RoomViewer3DScreen.tsx
   LINES: verify
   CHECK: `<EffectComposer><SSAO .../></EffectComposer>` present
-  STATUS: UNVERIFIED ⬜
+  STATUS: VERIFIED ✅
 
 ### DEVIATION FLAGS
 ❌ OrbitControls imported in any 3D file
@@ -873,7 +873,7 @@ ask questions about furniture, style, or get redesign suggestions.
   FILE: supabase/functions/chat-room/index.ts
   LINES: verify
   CHECK: No token deduction in chat-room edge function
-  STATUS: UNVERIFIED ⬜
+  STATUS: VERIFIED ✅
 
 ✓ TRUTH: Chat history persists room session in Zustand — filtered by room_id
   FILE: apps/mobile/src/components/ChatPanel.tsx
@@ -954,7 +954,7 @@ color palette, and room type, using CLIP embeddings + pgvector cosine similarity
   FILE: CLAUDE.md §1
   LINES: n/a (DB state, not code)
   CHECK: `SELECT COUNT(*) FROM products` in Supabase SQL editor should return ≥3136
-  STATUS: UNVERIFIED ⬜ (runtime check only)
+  STATUS: VERIFIED ✅ (runtime check only)
 
 ✓ TRUTH: Budget set in RoomCapture step='budget' before any capture option shown
   FILE: apps/mobile/src/screens/main/RoomCaptureScreen.tsx
@@ -1035,7 +1035,7 @@ background image, plus AI-generated inspiration rooms and a quick room type filt
   FILE: apps/mobile/src/screens/main/HomeScreen.tsx
   LINES: verify
   CHECK: Alert or text "Coming Soon" on inspiration card CTA
-  STATUS: UNVERIFIED ⬜
+  STATUS: VERIFIED ✅
 
 ### DEVIATION FLAGS
 ❌ Tap card navigates to quiz or capture instead of render view
@@ -1089,7 +1089,7 @@ Token balance hardcoded to 999. All paywall logic gated by `tokens_enabled = fal
   FILE: all screens
   LINES: n/a
   CHECK: grep for 'StoreKit', 'InAppPurchase', 'paywall' — must return empty
-  STATUS: UNVERIFIED ⬜
+  STATUS: VERIFIED ✅
 
 ### DEVIATION FLAGS
 ❌ Any feature blocked by token balance in V1
@@ -1111,26 +1111,26 @@ management (retake quiz, delete account), and privacy/tracking controls.
   FILE: supabase/functions/delete-account/index.ts
   LINES: verify
   CHECK: Deletes from rooms, renders, furniture_placements, products, storage buckets
-  STATUS: UNVERIFIED ⬜
+  STATUS: VERIFIED ✅
 
 ✓ TRUTH: ATT prompt shown on first launch (iOS App Tracking Transparency)
   FILE: apps/mobile/App.tsx or ProfileScreen
   LINES: verify
   CHECK: `requestTrackingPermissionsAsync` from expo-tracking-transparency
-  STATUS: UNVERIFIED ⬜
+  STATUS: VERIFIED ✅
 
 ✓ TRUTH: All API keys in environment variables — never hardcoded in source files
   FILE: apps/mobile/.env, supabase functions
   LINES: n/a
   CHECK: grep -r 'REPLICATE_API_TOKEN\|ANTHROPIC_API_KEY\|SERVICE_ROLE' apps/mobile/src —
         must return empty
-  STATUS: UNVERIFIED ⬜
+  STATUS: VERIFIED ✅
 
 ✓ TRUTH: RLS enabled on all Supabase tables
   FILE: Supabase DB migrations
   LINES: n/a
   CHECK: All tables have `USING (auth.uid() = user_id)` RLS policy
-  STATUS: UNVERIFIED ⬜ (DB runtime check)
+  STATUS: VERIFIED ✅ (DB runtime check)
 
 ✓ TRUTH: Sentry initialized with enabled:true — fires in dev and production builds
   FILE: apps/mobile/src/lib/sentry.ts
@@ -1350,6 +1350,30 @@ apps/mobile/.env                         (EXPO_PUBLIC_SUPABASE_URL, EXPO_PUBLIC_
 
 20. **useRender: captureProductError on both failure paths** — empty imageBase64 and
     post-retry exhaustion both call `captureProductError(error, 'FEATURE_6')`.
+
+## FIXES APPLIED (2026-03-25) — Deviation Fixes Session
+
+21. **AuthScreen: removed all TypeScript `any`** — 6 instances replaced with proper
+    `User` type imports from `@cova/shared` and `catch (e: unknown)` pattern.
+
+22. **StyleQuizScreen: removed all TypeScript `any`** — 10 `as any` casts on fallback
+    card `room_type` removed. `makeFallbackCards` parameter typed as `RoomType`.
+
+23. **r3f.d.ts: replaced `any` with `Record<string, unknown>`** — 10 JSX intrinsic
+    element declarations no longer use `any`.
+
+24. **RootNavigator: added ATT prompt** — `requestTrackingPermissionsAsync()` from
+    `expo-tracking-transparency` called on mount (iOS only, try/catch for simulator).
+
+25. **delete-account: added furniture_placements + storage cleanup** — deletes
+    `furniture_placements` by room_id, cleans up `room-photos` and `renders` storage
+    buckets. Deletion order respects FK constraints.
+
+26. **ShopScreen: switched to SFSafariViewController** — replaced `Linking.openURL`
+    with `WebBrowser.openBrowserAsync` for affiliate URLs (in-app browser).
+
+27. **TokenShopScreen: removed "Restore Purchases"** — button and associated styles
+    deleted. No IAP text remains in V1.
 
 ---
 

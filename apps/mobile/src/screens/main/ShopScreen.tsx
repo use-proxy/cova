@@ -6,9 +6,9 @@ import {
   StyleSheet,
   ScrollView,
   Image,
-  Linking,
   Alert,
 } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import Svg, { Path } from 'react-native-svg';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppStore } from '../../store';
@@ -97,7 +97,7 @@ export default function ShopScreen() {
   const cartTotalCents = cartItems.reduce((sum, ci) => sum + ci.product.price * ci.quantity, 0);
 
   const handleShopAtRetailer = (url: string) => {
-    if (url) Linking.openURL(url);
+    if (url) WebBrowser.openBrowserAsync(url);
   };
 
   const handleShopAll = () => {
@@ -107,7 +107,7 @@ export default function ShopScreen() {
       'You may need to check out separately on each retailer\'s website.',
       [{ text: 'OK', onPress: () => {
         const first = cartItems[0]?.product.affiliate_url;
-        if (first) Linking.openURL(first);
+        if (first) WebBrowser.openBrowserAsync(first);
       }}],
     );
   };
