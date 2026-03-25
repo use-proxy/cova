@@ -240,20 +240,28 @@ function StyleQuizScreen() {
 
   const progress = ((currentIndex + 1) / totalCards) * 100;
 
-  // ── Load cards ──
+  // ── Load cards (randomized each session) ──
   useEffect(() => {
     (async () => {
       try {
+        // Fetch up to 50 cards, then Fisher-Yates shuffle and take 20
+        // This ensures a different card order every quiz session
         const { data, error } = await supabase
           .from('swipe_cards')
           .select('*')
           .eq('active', true)
           .eq('room_type', roomType)
-          .limit(20);
+          .limit(50);
         if (error || !data || data.length === 0) {
           setCards(makeFallbackCards(roomType));
         } else {
-          setCards(data as SwipeCard[]);
+          // Fisher-Yates shuffle for true randomization each session
+          const shuffled = [...data];
+          for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+          }
+          setCards(shuffled.slice(0, 20) as SwipeCard[]);
         }
       } catch {
         setCards(makeFallbackCards(roomType));

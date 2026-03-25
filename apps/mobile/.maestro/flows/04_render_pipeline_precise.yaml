@@ -3,56 +3,48 @@ device:
   platform: ios
   type: simulator
 ---
-# Flow 04: Render Pipeline — strict validation of full render experience
-# Validates: render image visible (flat or panorama), HUD buttons, token 999
+# Flow 04: Render Pipeline — strict per PRODUCT_TRUTH.md
 
-- runFlow: ../utils/login_new.yaml
+- runFlow: ../utils/login_returning.yaml
+- runFlow: ../utils/open_existing_render.yaml
 
-# After login with clearState, app lands on New Room screen.
-# Navigate back to dashboard by tapping the back arrow.
-- waitForAnimationToEnd:
-    timeout: 5000
-
-# Tap back arrow at top-left of New Room screen
-- tapOn:
-    text: "←"
-    optional: true
-- tapOn:
-    point: "7%,9%"
-- waitForAnimationToEnd:
-    timeout: 5000
-
-# Now on dashboard — wait for rooms to load
-- extendedWaitUntil:
-    visible:
-      id: "room-card-0"
-    timeout: 20000
-
-# Tap the first room card to open its render
-- tapOn:
-    id: "room-card-0"
-- waitForAnimationToEnd
-- waitForAnimationToEnd:
-    timeout: 15000
-
-# --- Render view screen must be present ---
+# --- Render view loaded with actual image ---
 - assertVisible:
     id: "render-view-screen"
-
-# --- Render image must be visible (flat fallback or panorama) ---
+- assertVisible:
+    id: "render-flat-image"
 - assertNotVisible: "Render not available"
-- assertNotVisible: "Could not load render"
 
-# --- Token balance must show 999 (HUD visible on initial load) ---
+# --- Token + first HUD buttons (assert quickly before 3s auto-hide) ---
 - assertVisible: "999"
-
-# --- All HUD buttons must be visible (assert before 3s auto-hide) ---
 - assertVisible: "Regenerate"
 - assertVisible: "Save"
+
+# --- Tap to re-show HUD for remaining buttons ---
+- tapOn:
+    point: "50%,50%"
+- waitForAnimationToEnd
 - assertVisible: "Share"
+- assertVisible: "Arrange"
 - assertVisible: "Chat"
 - assertVisible: "Shop"
+- assertVisible: "Compare"
+- assertVisible: "2D View"
 
-# --- No error states ---
-- assertNotVisible:
-    id: "panorama-error"
+# --- Wait for HUD to fully auto-hide ---
+- extendedWaitUntil:
+    notVisible:
+      text: "Regenerate"
+    timeout: 6000
+
+# --- Tap to re-show HUD, then activate Before/After slider ---
+- tapOn:
+    point: "50%,50%"
+- waitForAnimationToEnd
+- assertVisible: "Compare"
+- tapOn: "Compare"
+- waitForAnimationToEnd
+- assertVisible: "BEFORE"
+- assertVisible: "AFTER"
+- assertVisible:
+    id: "before-after-slider"
