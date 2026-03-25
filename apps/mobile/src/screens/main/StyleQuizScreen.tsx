@@ -433,7 +433,7 @@ function StyleQuizScreen() {
       onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 10,
       onPanResponderMove: Animated.event(
         [null, { dx: position.x, dy: position.y }],
-        { useNativeDriver: true },
+        { useNativeDriver: false },
       ),
       onPanResponderRelease: (_, gs) => {
         if (gs.dx > SWIPE_THRESHOLD) {
