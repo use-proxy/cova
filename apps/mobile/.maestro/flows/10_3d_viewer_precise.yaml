@@ -11,9 +11,10 @@ appId: ai.cova.app
 - waitForAnimationToEnd
 
 # 3D viewer should load without crash (no OrbitControls error)
-- extendedWaitUntil:
-    id: "room-viewer-3d"
+- waitForAnimationToEnd:
     timeout: 15000
+- assertVisible:
+    id: "room-viewer-3d"
 
 # Style chips should be visible
 - assertVisible: "Ocean Breeze"

@@ -8,9 +8,10 @@ appId: ai.cova.app
 
 # Navigate to 3D viewer
 - tapOn: "Arrange Furniture"
-- extendedWaitUntil:
-    id: "room-viewer-3d"
+- waitForAnimationToEnd:
     timeout: 15000
+- assertVisible:
+    id: "room-viewer-3d"
 
 # Toggle to 2D floor plan
 - tapOn:

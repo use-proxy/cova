@@ -18,7 +18,7 @@ echo ""
 for flow in "$FLOWS_DIR"/*.yaml; do
   flow_name=$(basename "$flow")
   echo "--- Running: $flow_name ---"
-  if maestro test "$flow"; then
+  if "$HOME/.maestro/bin/maestro" test "$flow"; then
     echo "PASS: $flow_name"
     PASS=$((PASS + 1))
   else

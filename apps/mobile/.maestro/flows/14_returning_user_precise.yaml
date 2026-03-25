@@ -23,14 +23,15 @@ appId: ai.cova.app
 - waitForAnimationToEnd
 
 # Should navigate to render view
-- extendedWaitUntil:
-    id: "render-view-screen"
+- waitForAnimationToEnd:
     timeout: 15000
+- assertVisible:
+    id: "render-view-screen"
 
 # Navigate back to dashboard
 - tapOn:
     id: "back-button"
 - waitForAnimationToEnd
-- extendedWaitUntil:
-    visible: "My Rooms"
+- waitForAnimationToEnd:
     timeout: 10000
+- assertVisible: "My Rooms"

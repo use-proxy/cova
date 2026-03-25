@@ -84,6 +84,6 @@ appId: ai.cova.app
 
 # After 10+ swipes with >65% confidence, quiz should auto-complete
 # and navigate to RoomCapture
-- extendedWaitUntil:
-    visible: "Budget"
+- waitForAnimationToEnd:
     timeout: 10000
+- assertVisible: "Budget"

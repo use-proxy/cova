@@ -25,9 +25,9 @@ appId: ai.cova.app
 - inputText: "Hello"
 - tapOn:
     id: "chat-send"
-- extendedWaitUntil:
-    visible: "Cova"
+- waitForAnimationToEnd:
     timeout: 30000
+- assertVisible: "Cova"
 - tapOn:
     id: "chat-close"
 - waitForAnimationToEnd

@@ -27,9 +27,9 @@ appId: ai.cova.app
     id: "password-input"
 - inputText: "CovaTest123!"
 - tapOn: "Sign In"
-- extendedWaitUntil:
-    visible: "My Rooms"
+- waitForAnimationToEnd:
     timeout: 15000
+- assertVisible: "My Rooms"
 
 # --- STEP 3: Dashboard ---
 - assertVisible:
@@ -101,9 +101,9 @@ appId: ai.cova.app
 - waitForAnimationToEnd
 
 # --- STEP 6: Room Capture (budget step) ---
-- extendedWaitUntil:
-    visible: "Budget"
+- waitForAnimationToEnd:
     timeout: 10000
+- assertVisible: "Budget"
 - assertVisible:
     id: "budget-slider"
 - tapOn: "Continue"
@@ -118,24 +118,25 @@ appId: ai.cova.app
 - waitForAnimationToEnd
 
 # --- STEP 8: Render Pipeline Loading Stages ---
-- extendedWaitUntil:
-    visible: "Analyzing your room"
+- waitForAnimationToEnd:
     timeout: 15000
-- extendedWaitUntil:
-    visible: "Applying your style"
+- assertVisible: "Analyzing your room"
+- waitForAnimationToEnd:
     timeout: 25000
-- extendedWaitUntil:
-    visible: "Generating"
+- assertVisible: "Applying your style"
+- waitForAnimationToEnd:
     timeout: 40000
-- extendedWaitUntil:
-    visible: "Done"
+- assertVisible: "Generating"
+- waitForAnimationToEnd:
     timeout: 60000
+- assertVisible: "Done"
 - waitForAnimationToEnd
 
 # --- STEP 9: Render View ---
-- extendedWaitUntil:
-    id: "render-view-screen"
+- waitForAnimationToEnd:
     timeout: 15000
+- assertVisible:
+    id: "render-view-screen"
 - assertVisible:
     id: "panorama-viewer"
 - assertVisible: "999"
@@ -158,9 +159,9 @@ appId: ai.cova.app
 - tapOn:
     id: "back-button"
 - waitForAnimationToEnd
-- extendedWaitUntil:
-    visible: "My Rooms"
+- waitForAnimationToEnd:
     timeout: 10000
+- assertVisible: "My Rooms"
 
 # Token still 999 after full flow
 - assertVisible: "999"

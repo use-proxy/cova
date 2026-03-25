@@ -1,16 +1,16 @@
 appId: ai.cova.app
 ---
 # Wait for the render pipeline to complete (all 4 loading stages)
-- extendedWaitUntil:
-    visible: "Analyzing your room"
+- waitForAnimationToEnd:
     timeout: 10000
-- extendedWaitUntil:
-    visible: "Applying your style"
+- assertVisible: "Analyzing your room"
+- waitForAnimationToEnd:
     timeout: 20000
-- extendedWaitUntil:
-    visible: "Generating"
+- assertVisible: "Applying your style"
+- waitForAnimationToEnd:
     timeout: 30000
-- extendedWaitUntil:
-    visible: "Done"
+- assertVisible: "Generating"
+- waitForAnimationToEnd:
     timeout: 60000
+- assertVisible: "Done"
 - waitForAnimationToEnd

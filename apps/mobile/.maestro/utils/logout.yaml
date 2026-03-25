@@ -8,6 +8,6 @@ appId: ai.cova.app
     direction: DOWN
 - tapOn: "Sign Out"
 - waitForAnimationToEnd
-- extendedWaitUntil:
-    visible: "Create Account"
+- waitForAnimationToEnd:
     timeout: 10000
+- assertVisible: "Create Account"

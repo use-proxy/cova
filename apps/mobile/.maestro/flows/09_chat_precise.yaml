@@ -27,9 +27,9 @@ appId: ai.cova.app
 - waitForAnimationToEnd
 
 # Wait for Claude response (up to 30s)
-- extendedWaitUntil:
-    visible: "Cova"
+- waitForAnimationToEnd:
     timeout: 30000
+- assertVisible: "Cova"
 
 # Token should still be 999 (chat is free)
 - tapOn:

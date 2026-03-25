@@ -54,17 +54,17 @@ appId: ai.cova.app
 - assertVisible: "Password must be at least 8 characters"
 
 # --- Successful sign in ---
-- clearText:
-    id: "email-input"
 - tapOn:
     id: "email-input"
+- eraseText:
+    charactersToErase: 30
 - inputText: "test.newuser@hellocova.com"
-- clearText:
-    id: "password-input"
 - tapOn:
     id: "password-input"
+- eraseText:
+    charactersToErase: 30
 - inputText: "CovaTest123!"
 - tapOn: "Sign In"
-- extendedWaitUntil:
-    visible: "My Rooms"
+- waitForAnimationToEnd:
     timeout: 15000
+- assertVisible: "My Rooms"

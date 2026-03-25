@@ -15,6 +15,6 @@ appId: ai.cova.app
 - inputText: "CovaTest123!"
 - tapOn: "Sign In"
 - waitForAnimationToEnd
-- extendedWaitUntil:
-    visible: "My Rooms"
+- waitForAnimationToEnd:
     timeout: 15000
+- assertVisible: "My Rooms"
