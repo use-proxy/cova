@@ -125,28 +125,29 @@ Deno.serve(async (req: Request) => {
 
       const { data: signedUrlData, error: signedUrlError } = await supabase.storage
         .from('renders')
-        .createSignedUrl(storagePath, 3600);
+        .createSignedUrl(storagePath, 31536000);
+
+      // Image is already safely in storage — never mark failed just because signed URL
+      // generation failed. Fall back to the public storage path so image_url is always set.
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const fallbackUrl = `${supabaseUrl}/storage/v1/object/public/renders/${user.id}/${render_id}.jpg`;
+      const finalUrl: string = (!signedUrlError && signedUrlData?.signedUrl)
+        ? signedUrlData.signedUrl
+        : fallbackUrl;
 
       if (signedUrlError || !signedUrlData?.signedUrl) {
-        console.error('Failed to create signed URL:', signedUrlError);
-        await supabase.from('renders').update({ status: 'failed' }).eq('id', render_id);
-        return new Response(
-          JSON.stringify({ status: 'failed', error: 'Failed to generate render URL.' }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-        );
+        console.warn('Signed URL generation failed, using public fallback URL:', signedUrlError);
       }
-
-      const signedUrl = signedUrlData.signedUrl;
 
       await supabase
         .from('renders')
-        .update({ status: 'completed', image_url: signedUrl })
+        .update({ status: 'completed', image_url: finalUrl })
         .eq('id', render_id);
 
       await supabase
         .from('rooms')
-        .update({ 
-          latest_render_url: signedUrl,
+        .update({
+          latest_render_url: finalUrl,
           updated_at: new Date().toISOString(),
         })
         .eq('id', render.room_id);
@@ -158,7 +159,7 @@ Deno.serve(async (req: Request) => {
       });
 
       return new Response(
-        JSON.stringify({ status: 'completed', image_url: signedUrl }),
+        JSON.stringify({ status: 'completed', image_url: finalUrl }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }

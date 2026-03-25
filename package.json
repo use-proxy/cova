@@ -5,10 +5,17 @@
     "dev": "turbo run dev",
     "build": "turbo run build",
     "lint": "turbo run lint",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "generate:furniture": "cd scripts && npm run generate:furniture",
+    "update:furniture-prices": "cd scripts && npm run update:furniture-prices",
+    "generate:furniture:full": "npm run generate:furniture && npm run update:furniture-prices"
   },
   "devDependencies": {
+    "@gltf-transform/cli": "^4.3.0",
+    "@gltf-transform/core": "^4.3.0",
+    "@gltf-transform/functions": "^4.3.0",
     "@types/node": "^25.5.0",
+    "node-fetch": "^2.7.0",
     "ts-node": "^10.9.2",
     "turbo": "latest",
     "typescript": "^5.3.0"

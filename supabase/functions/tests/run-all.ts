@@ -22,18 +22,19 @@ interface SuiteResult {
 }
 
 const SUITES = [
-  { name: 'Style Quiz',      file: 'style-quiz.test.ts' },
-  { name: 'Room Capture',    file: 'room-capture.test.ts' },
-  { name: 'Render View',     file: 'render-view.test.ts' },
-  { name: 'CLIP Matching',   file: 'clip-matching.test.ts' },
-  { name: 'Chat',            file: 'chat.test.ts' },
-  { name: 'Render Pipeline', file: 'render-pipeline.test.ts' },
+  { name: 'Style Quiz',       file: 'style-quiz.test.ts' },
+  { name: 'Room Capture',     file: 'room-capture.test.ts' },
+  { name: 'Render View',      file: 'render-view.test.ts' },
+  { name: 'CLIP Matching',    file: 'clip-matching.test.ts' },
+  { name: 'Chat',             file: 'chat.test.ts' },
+  { name: 'Render Pipeline',  file: 'render-pipeline.test.ts' },
+  { name: 'Panorama Render',  file: 'panorama-render.test.ts' },
 ]
 
 console.log('\n' + '═'.repeat(60))
 console.log('  Cova Automated Test Suite — Master Runner')
 console.log('═'.repeat(60))
-console.log(`\n  Running ${SUITES.length} test suites...\n`)
+console.log(`\n  Running ${SUITES.length} test suite(s)...\n`)
 
 const results: SuiteResult[] = []
 

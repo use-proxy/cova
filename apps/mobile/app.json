@@ -8,7 +8,7 @@
     "scheme": "cova",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icon-cova.png",
     "userInterfaceStyle": "dark",
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -16,6 +16,7 @@
       "backgroundColor": "#1B3A2D"
     },
     "ios": {
+      "icon": "./assets/icon-cova.png",
       "supportsTablet": false,
       "bundleIdentifier": "ai.cova.app",
       "buildNumber": "1",

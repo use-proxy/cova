@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { Sentry, logProductDeviation, setCurrentScreen, setFlowStep, setRenderState } from '../../lib/sentry';
 import {
   View,
   Text,
@@ -27,6 +28,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { RoomStackParamList } from '../../navigation/RoomNavigator';
 import { useRender } from '../../hooks/useRender';
+import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store';
 import BeforeAfterSlider from '../../components/BeforeAfterSlider';
 import PanoramaViewer from '../../components/PanoramaViewer';
@@ -52,28 +54,27 @@ function clampTranslate(tx: number, ty: number, scale: number): { x: number; y: 
   };
 }
 
-// §8.3 — 6 stages, must match useRender.ts exactly
+// §8.3 — 4 stages per PRODUCT_TRUTH
 const LOADING_STAGES = [
-  'Analyzing your room...',
-  'Measuring depth...',
-  'Applying your style...',
-  'Generating render...',
-  'Adding finishing touches...',
-  'Done!',
+  'Analyzing your room',
+  'Applying your style',
+  'Generating',
+  'Done',
 ];
 
-export default function RenderViewScreen() {
+function RenderViewScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RoomStackParamList>>();
   const route = useRoute<RouteProp<RoomStackParamList, 'RenderView'>>();
   const insets = useSafeAreaInsets();
 
-  const { startRender, renderStatus, renderProgressStage, renderProgress, renderError, currentRender } = useRender();
+  const { startRender, pollRenderStatus, renderStatus, renderProgressStage, renderProgress, renderError, currentRender } = useRender();
   const { matchedProducts, addToCart, cartItems, setRenderStatus, currentRoom, capturedImageUri, budget_max } = useAppStore();
 
   // route.params.room_id is only populated when navigating directly within RoomNavigator.
   // When arriving via HomeStack's nested Room screen, room_id is in the parent route and
   // not forwarded — fall back to currentRoom.id (always set before navigation).
   const room_id = route.params?.room_id ?? currentRoom?.id ?? 'default';
+  const autoGenerate = route.params?.autoGenerate ?? false;
 
   const [showControls, setShowControls] = useState(true);
   const [showBeforeAfter, setShowBeforeAfter] = useState(true);
@@ -105,6 +106,8 @@ export default function RenderViewScreen() {
   const productPanelX = useRef(new Animated.Value(-SCREEN_WIDTH * 0.75)).current;
   const pulseOpacity = useRef(new Animated.Value(0.4)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
+  const hasAutoStartedRef = useRef(false);
+  const hasAttemptedRecoveryRef = useRef(false);
 
   const roomBudgetDollars = budget_max;
   const activeBudgetDollars = budgetOverride ?? roomBudgetDollars;
@@ -119,6 +122,44 @@ export default function RenderViewScreen() {
     return matchedProducts.filter((p) => p.category === similarCategory);
   }, [matchedProducts, similarCategory]);
 
+  // Register screen context for Sentry
+  useEffect(() => {
+    setCurrentScreen('RenderViewScreen');
+    setFlowStep('render');
+  }, []);
+
+  // Mirror render pipeline status into Sentry tags
+  useEffect(() => {
+    if (renderStatus === 'processing') {
+      setRenderState('rendering');
+    } else if (renderStatus === 'failed') {
+      setRenderState('failed');
+      // FEATURE_6 CRITICAL: render must appear after room capture
+      logProductDeviation(
+        'FEATURE_6',
+        'After room capture → automatic first render generated immediately, no button needed',
+        `Render pipeline entered failed state — render never appeared for the user`,
+        'CRITICAL_DEVIATION',
+      );
+    } else {
+      setRenderState('idle');
+    }
+  }, [renderStatus]);
+
+  // FEATURE_6 check: before/after slider must never show the same image on both sides
+  useEffect(() => {
+    const beforeUrl = currentRoom?.original_image_url;
+    const afterUrl = currentRender?.image_url;
+    if (beforeUrl && afterUrl && beforeUrl === afterUrl) {
+      logProductDeviation(
+        'FEATURE_6',
+        'Before/after slider: LEFT = original room photo, RIGHT = AI render — never the same image on both sides',
+        'original_image_url and render image_url are identical — both slider sides show the same image',
+        'HIGH_DEVIATION',
+      );
+    }
+  }, [currentRoom?.original_image_url, currentRender?.image_url]);
+
   // Cycle loading stage text when store stage is empty
   useEffect(() => {
     if (renderStatus !== 'processing') return;
@@ -126,10 +167,74 @@ export default function RenderViewScreen() {
     return () => clearInterval(iv);
   }, [renderStatus]);
 
-  // Navigate away only when idle with no render loaded (e.g. arrived without starting a render)
+  // On mount: attempt to recover an in-progress render for this room (e.g. after force-quit).
+  // If a processing render row exists, resume polling. Sets hasAttemptedRecoveryRef when done
+  // so the goBack effect knows it is safe to navigate away if nothing was found.
   useEffect(() => {
+    if (hasAttemptedRecoveryRef.current) return;
+    if (currentRender) { hasAttemptedRecoveryRef.current = true; return; }
+    const roomId = route.params?.room_id ?? currentRoom?.id;
+    if (!roomId) { hasAttemptedRecoveryRef.current = true; return; }
+    void (async () => {
+      try {
+        const { data } = await supabase
+          .from('renders')
+          .select('id, replicate_prediction_id, room_id')
+          .eq('room_id', roomId)
+          .eq('status', 'processing')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        if (data?.id) {
+          const roomType = currentRoom?.room_type ?? 'living_room';
+          const styleBlend = currentRoom?.style_blend ?? { coastal: 0.2, japandi: 0.2, bohemian: 0.2, mid_century: 0.2, minimalist: 0.2 };
+          const budget = budget_max ?? 2500;
+          pollRenderStatus(data.id, roomType, styleBlend, budget);
+        }
+      } catch { /* no processing render found — proceed normally */ }
+      hasAttemptedRecoveryRef.current = true;
+    })();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps — runs once on mount only
+
+  // Navigate away only when idle with no render loaded, not auto-generating, and recovery has been attempted
+  useEffect(() => {
+    if (autoGenerate) return;
+    if (!hasAttemptedRecoveryRef.current) return;
     if (renderStatus === 'idle' && !currentRender) navigation.goBack();
-  }, [renderStatus, currentRender, navigation]);
+  }, [renderStatus, currentRender, navigation, autoGenerate]);
+
+  // Auto-generate first render when arriving from room capture (autoGenerate=true).
+  // hasAutoStartedRef prevents double-firing if the effect re-runs.
+  useEffect(() => {
+    if (!autoGenerate) return;
+    if (hasAutoStartedRef.current) return;
+    if (currentRender) return;
+    hasAutoStartedRef.current = true;
+    const blend = currentRoom?.style_blend ?? { coastal: 0.2, japandi: 0.2, bohemian: 0.2, mid_century: 0.2, minimalist: 0.2 };
+    void (async () => {
+      let imageBase64 = '';
+      if (capturedImageUri) {
+        try {
+          const compressed = await ImageManipulator.manipulateAsync(
+            capturedImageUri,
+            [{ resize: { width: 1024 } }],
+            { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+          );
+          const raw = await FileSystem.readAsStringAsync(compressed.uri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          imageBase64 = `data:image/jpeg;base64,${raw}`;
+        } catch { /* capturedImageUri inaccessible — proceed without image */ }
+      }
+      startRender({
+        roomId: room_id,
+        roomType: currentRoom?.room_type ?? 'living_room',
+        styleBlend: blend,
+        imageBase64,
+        renderType: 'draft',
+      });
+    })();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps — fires once on mount only
 
   // Pulse animation for loading circles
   useEffect(() => {
@@ -198,10 +303,17 @@ export default function RenderViewScreen() {
             return;
           }
           const currentDist = getTouchDistance(touches as { pageX: number; pageY: number }[]);
-          const newScale = Math.max(
-            1.0,
-            Math.min(2.5, scaleRef.current * (currentDist / pinchStartDistRef.current)),
-          );
+          const rawScale = scaleRef.current * (currentDist / pinchStartDistRef.current);
+          const newScale = Math.max(1.0, Math.min(2.5, rawScale));
+          // FEATURE_6 check: zoom must stay within [1×, 2.5×]; NaN/Infinity means pinch gesture broke
+          if (!Number.isFinite(rawScale) || rawScale !== rawScale) {
+            logProductDeviation(
+              'FEATURE_6',
+              'Pinch = zoom in/out, min 1x, max 2.5x',
+              `Pinch zoom produced invalid scale (${rawScale}) — gesture likely broken; pinchStartDistRef may be zero`,
+              'HIGH_DEVIATION',
+            );
+          }
           scaleVal.setValue(newScale);
           const clamped = clampTranslate(translateXRef.current, translateYRef.current, newScale);
           panOffset.setValue(clamped);
@@ -795,4 +907,8 @@ const styles = StyleSheet.create({
   similarHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.08)' },
   similarTitle: { fontSize: 18, fontWeight: '700', color: BG, textTransform: 'capitalize' },
   similarClose: { fontSize: 20, color: BG, fontWeight: '600' },
+});
+
+export default Sentry.withErrorBoundary(RenderViewScreen, {
+  fallback: <></>,
 });

@@ -99,6 +99,7 @@ interface CleanProduct {
   image_url: string
   affiliate_url_base: string
   style_tags: string[]
+  room_types: string[]
   price_tier: PriceTier | null
   in_stock: boolean
 }
@@ -125,7 +126,33 @@ function detectStyleTags(name: string, description: string): string[] {
   for (const [style, keywords] of Object.entries(STYLE_KEYWORDS)) {
     if (keywords.some((kw) => combined.includes(kw))) tags.push(style)
   }
-  return tags
+  return tags.length > 0 ? tags : ['coastal', 'japandi', 'bohemian', 'mid_century', 'minimalist']
+}
+
+const ROOM_KEYWORDS: Record<string, string[]> = {
+  living_room: ['sofa', 'couch', 'sectional', 'coffee table', 'tv stand',
+    'accent chair', 'ottoman', 'living room', 'lounge'],
+  bedroom: ['bed', 'mattress', 'dresser', 'nightstand', 'wardrobe',
+    'bedroom', 'headboard', 'bedframe', 'blanket', 'pillow'],
+  dining_room: ['dining table', 'dining chair', 'bar stool', 'buffet',
+    'sideboard', 'dining room', 'bench seat'],
+  home_office: ['desk', 'office chair', 'bookshelf', 'bookcase',
+    'filing cabinet', 'monitor stand', 'home office'],
+  kitchen: ['bar cart', 'kitchen island', 'kitchen stool',
+    'kitchen storage', 'kitchen'],
+  bathroom: ['vanity', 'bathroom', 'mirror', 'towel rack',
+    'shower', 'bath mat', 'toilet'],
+  entryway: ['entryway', 'console table', 'coat rack', 'bench',
+    'hallway', 'foyer', 'shoe rack'],
+}
+
+function inferRoomTypes(name: string, description: string): string[] {
+  const combined = (name + ' ' + description).toLowerCase()
+  const rooms: string[] = []
+  for (const [room, keywords] of Object.entries(ROOM_KEYWORDS)) {
+    if (keywords.some((kw) => combined.includes(kw))) rooms.push(room)
+  }
+  return rooms.length > 0 ? rooms : ['living_room']
 }
 
 /**
@@ -206,6 +233,9 @@ function processProduct(raw: RawProduct, filename: string): CleanProduct | null 
   // 7. style_tags — all matches against name + description
   const styleTags = detectStyleTags(rawName, description)
 
+  // 8b. room_types — all matching rooms, default ['living_room'] if none
+  const roomTypes = inferRoomTypes(rawName, description)
+
   // external_id — product URL or provided id, max 500 chars
   const externalId = String(raw.external_id ?? productUrl).slice(0, 500)
 
@@ -219,6 +249,7 @@ function processProduct(raw: RawProduct, filename: string): CleanProduct | null 
     image_url: imageUrl.slice(0, 2000),
     affiliate_url_base: productUrl.slice(0, 2000),
     style_tags: styleTags,
+    room_types: roomTypes,
     price_tier: priceTier(cents),
     in_stock: true,
   }

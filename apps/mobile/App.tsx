@@ -5,11 +5,14 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as TrackingTransparency from 'expo-tracking-transparency';
+import { initSentry, Sentry } from './src/lib/sentry';
 import RootNavigator from './src/navigation/RootNavigator';
 import { useAppStore } from './src/store';
 import { supabase } from './src/lib/supabase';
 
-export default function App() {
+initSentry();
+
+function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       useAppStore.getState().setSession(session);
@@ -35,7 +38,17 @@ export default function App() {
       })();
     }
 
-    return () => subscription.unsubscribe();
+    const rejectionHandler = (event: PromiseRejectionEvent) => {
+      Sentry.captureException(event.reason);
+    };
+    // @ts-ignore — globalThis.addEventListener available in Hermes/JSC
+    globalThis.addEventListener?.('unhandledrejection', rejectionHandler);
+
+    return () => {
+      subscription.unsubscribe();
+      // @ts-ignore
+      globalThis.removeEventListener?.('unhandledrejection', rejectionHandler);
+    };
   }, []);
 
   return (
@@ -47,3 +60,5 @@ export default function App() {
     </GestureHandlerRootView>
   );
 }
+
+export default Sentry.wrap(App);

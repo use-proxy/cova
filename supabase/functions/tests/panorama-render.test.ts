@@ -134,6 +134,10 @@ function applyLookDelta(
 }
 
 // Mirrors the pinch-zoom logic from onPanResponderMove (two touch)
+// scale = newDist / prevDist:
+//   < 1 → fingers came together (pinch in) → FOV decreases (zoom in)
+//   > 1 → fingers moved apart  (pinch out) → FOV increases (zoom out)
+// Multiply fov by scale so pinch-in lowers FOV and pinch-out raises it.
 function applyPinch(
   state: CameraState,
   prevDist: number,
@@ -141,17 +145,19 @@ function applyPinch(
 ): void {
   if (prevDist > 0) {
     const scale = newDist / prevDist
-    state.fov = Math.max(FOV_MIN, Math.min(FOV_MAX, state.fov / scale))
+    state.fov = Math.max(FOV_MIN, Math.min(FOV_MAX, state.fov * scale))
   }
   state.lastPinchDist = newDist
 }
 
-// Mirrors one useFrame tick of momentum decay
+// Mirrors one useFrame tick of momentum decay.
+// Velocities already below the stop threshold are snapped to 0 immediately.
 function applyMomentumTick(state: CameraState): void {
-  if (
-    Math.abs(state.velocityYaw) > MOMENTUM_STOP_THRESHOLD ||
-    Math.abs(state.velocityPitch) > MOMENTUM_STOP_THRESHOLD
-  ) {
+  // Snap to zero if already below threshold before processing.
+  if (Math.abs(state.velocityYaw)   < MOMENTUM_STOP_THRESHOLD) state.velocityYaw   = 0
+  if (Math.abs(state.velocityPitch) < MOMENTUM_STOP_THRESHOLD) state.velocityPitch = 0
+
+  if (state.velocityYaw !== 0 || state.velocityPitch !== 0) {
     state.yaw   += state.velocityYaw
     state.pitch  = Math.max(PITCH_MIN, Math.min(PITCH_MAX, state.pitch + state.velocityPitch))
     state.velocityYaw   *= MOMENTUM_DECAY

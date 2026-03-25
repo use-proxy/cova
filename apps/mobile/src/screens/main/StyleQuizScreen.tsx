@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Sentry, logProductDeviation, setCurrentScreen, setFlowStep } from '../../lib/sentry';
 import {
   View,
   Text,
@@ -162,7 +163,7 @@ function makeFallbackCards(roomType: string): SwipeCard[] {
 
 type QuizPhase = 'instructions' | 'quiz';
 
-export default function StyleQuizScreen() {
+function StyleQuizScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RoomStackParamList>>();
   const { updateRoom, currentRoom, rooms } = useAppStore();
 
@@ -179,6 +180,26 @@ export default function StyleQuizScreen() {
   const completedRef = useRef(false);
   const quizStartTime = useRef(0);
   const prevBlendRef = useRef<StyleBlend | null>(null);
+  // Tracks whether a swipe animation is in flight — used to detect concurrent card renders
+  const isAnimatingRef = useRef(false);
+  // Single ref for all swipe state — PanResponder reads/writes this directly (no stale closures)
+  const swipeStateRef = useRef<{
+    currentIndex: number;
+    styleBlend: StyleBlend;
+    swipeCount: number;
+    isAnimating: boolean;
+  }>({ currentIndex: 0, styleBlend: { ...EQUAL_BLEND }, swipeCount: 0, isAnimating: false });
+  // Stable ref to checkTermination so PanResponder callback never captures a stale copy
+  const checkTerminationRef = useRef<(nextSwipeCount: number, nextIndex: number, currentBlend: StyleBlend) => void>(() => {});
+  // Stable handler refs so PanResponder (created once) always calls the latest versions
+  const swipeRightRef = useRef<() => void>(() => {});
+  const swipeLeftRef = useRef<() => void>(() => {});
+
+  // Register screen context for Sentry
+  useEffect(() => {
+    setCurrentScreen('StyleQuizScreen');
+    setFlowStep('quiz');
+  }, []);
 
   // On mount: check if any existing room (other than current) has a non-default style_blend
   useEffect(() => {
@@ -254,7 +275,7 @@ export default function StyleQuizScreen() {
     completedRef.current = true;
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
 
-    const finalBlend = normalizeBlend(styleBlend);
+    const finalBlend = normalizeBlend(swipeStateRef.current.styleBlend);
     if (currentRoom) {
       updateRoom(currentRoom.id, { style_blend: finalBlend });
       void supabase.from('rooms').update({ style_blend: finalBlend }).eq('id', currentRoom.id);
@@ -266,7 +287,7 @@ export default function StyleQuizScreen() {
       void supabase.from('users').update({ style_blend: finalBlend }).eq('id', userId);
     }
     navigation.navigate('RoomCapture');
-  }, [styleBlend, currentRoom, updateRoom, navigation]);
+  }, [currentRoom, updateRoom, navigation]);
 
   // ── Termination check ──
   const checkTermination = useCallback(
@@ -283,65 +304,113 @@ export default function StyleQuizScreen() {
     },
     [cards.length, handleComplete],
   );
+  checkTerminationRef.current = checkTermination;
 
   // ── Swipe handlers ──
   const animateOff = (toX: number, cb: () => void) => {
+    // FEATURE_3 check: if animation already running a new swipe would show two cards simultaneously
+    if (swipeStateRef.current.isAnimating) {
+      logProductDeviation(
+        'FEATURE_3',
+        'One card is visible and swipeable at a time — never two cards side by side',
+        'Swipe triggered while card exit animation was already in progress — two cards may be visible simultaneously',
+        'CRITICAL_DEVIATION',
+      );
+    }
+    swipeStateRef.current.isAnimating = true;
+    isAnimatingRef.current = true;
     Animated.timing(position, {
       toValue: { x: toX, y: 0 },
       duration: 250,
       useNativeDriver: true,
     }).start(() => {
+      swipeStateRef.current.isAnimating = false;
+      isAnimatingRef.current = false;
       position.setValue({ x: 0, y: 0 });
       cb();
     });
   };
 
   const handleSwipeRight = () => {
-    const card = cards[currentIndex];
+    const state = swipeStateRef.current;
+    if (state.isAnimating) return;
+    const card = cards[state.currentIndex];
     if (!card) return;
-    const newBlend = { ...styleBlend };
+    const prevBlend = { ...state.styleBlend };
+    const newBlend = { ...state.styleBlend };
     for (const k of STYLE_KEYS) {
       newBlend[k] = newBlend[k] * (1 + (card.style_weights[k] ?? 0) * 0.3);
     }
     const normalized = normalizeBlend(newBlend);
-    checkTermination(swipeCount + 1, currentIndex + 1, normalized);
-    setStyleBlend(normalized);
+    // FEATURE_3 check: blend must adapt in real time based on swipes
+    if (!STYLE_KEYS.some((k) => Math.abs(normalized[k] - prevBlend[k]) > 0.001)) {
+      logProductDeviation(
+        'FEATURE_3',
+        'Algorithm adapts in real time — subsequent cards shift toward liked aesthetics',
+        'Style blend did not change after swipe right — card style_weights may be all zero',
+        'HIGH_DEVIATION',
+      );
+    }
 
     animateOff(SCREEN_WIDTH + 100, () => {
-      const nextIdx = currentIndex + 1;
-      const nextCount = swipeCount + 1;
+      const nextIdx = state.currentIndex + 1;
+      const nextCount = state.swipeCount + 1;
+      state.currentIndex = nextIdx;
+      state.styleBlend = normalized;
+      state.swipeCount = nextCount;
       setCurrentIndex(nextIdx);
+      setStyleBlend(normalized);
       setSwipeCount(nextCount);
+      checkTerminationRef.current(nextCount, nextIdx, normalized);
     });
   };
 
   const handleSwipeLeft = () => {
-    const card = cards[currentIndex];
+    const state = swipeStateRef.current;
+    if (state.isAnimating) return;
+    const card = cards[state.currentIndex];
     if (!card) return;
-    const newBlend = { ...styleBlend };
+    const prevBlend = { ...state.styleBlend };
+    const newBlend = { ...state.styleBlend };
     for (const k of STYLE_KEYS) {
       newBlend[k] = newBlend[k] * (1 - (card.style_weights[k] ?? 0) * 0.3);
     }
     const normalized = normalizeBlend(newBlend);
-    checkTermination(swipeCount + 1, currentIndex + 1, normalized);
-    setStyleBlend(normalized);
+    // FEATURE_3 check: blend must adapt in real time based on swipes
+    if (!STYLE_KEYS.some((k) => Math.abs(normalized[k] - prevBlend[k]) > 0.001)) {
+      logProductDeviation(
+        'FEATURE_3',
+        'Algorithm adapts in real time — subsequent cards shift toward liked aesthetics',
+        'Style blend did not change after swipe left — card style_weights may be all zero',
+        'HIGH_DEVIATION',
+      );
+    }
 
     animateOff(-SCREEN_WIDTH - 100, () => {
-      const nextIdx = currentIndex + 1;
-      const nextCount = swipeCount + 1;
+      const nextIdx = state.currentIndex + 1;
+      const nextCount = state.swipeCount + 1;
+      state.currentIndex = nextIdx;
+      state.styleBlend = normalized;
+      state.swipeCount = nextCount;
       setCurrentIndex(nextIdx);
+      setStyleBlend(normalized);
       setSwipeCount(nextCount);
+      checkTerminationRef.current(nextCount, nextIdx, normalized);
     });
   };
 
   const handleNotSure = () => {
-    const nextCount = swipeCount + 1;
-    const nextIdx = currentIndex + 1;
-    const currentBlend = normalizeBlend(styleBlend);
-    checkTermination(nextCount, nextIdx, currentBlend);
+    const state = swipeStateRef.current;
+    if (state.isAnimating) return;
+    const currentBlend = normalizeBlend(state.styleBlend);
     animateOff(SCREEN_WIDTH + 100, () => {
+      const nextIdx = state.currentIndex + 1;
+      const nextCount = state.swipeCount + 1;
+      state.currentIndex = nextIdx;
+      state.swipeCount = nextCount;
       setCurrentIndex(nextIdx);
       setSwipeCount(nextCount);
+      checkTerminationRef.current(nextCount, nextIdx, currentBlend);
     });
   };
 
@@ -353,6 +422,10 @@ export default function StyleQuizScreen() {
     }).start();
   };
 
+  // Keep handler refs fresh so the stable PanResponder always calls the latest versions
+  swipeRightRef.current = handleSwipeRight;
+  swipeLeftRef.current = handleSwipeLeft;
+
   // ── PanResponder ──
   const panResponder = useRef(
     PanResponder.create({
@@ -360,14 +433,24 @@ export default function StyleQuizScreen() {
       onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 10,
       onPanResponderMove: Animated.event(
         [null, { dx: position.x, dy: position.y }],
-        { useNativeDriver: false },
+        { useNativeDriver: true },
       ),
       onPanResponderRelease: (_, gs) => {
         if (gs.dx > SWIPE_THRESHOLD) {
-          handleSwipeRight();
+          swipeRightRef.current();
         } else if (gs.dx < -SWIPE_THRESHOLD) {
-          handleSwipeLeft();
+          swipeLeftRef.current();
         } else {
+          // FEATURE_3 check: if the user dragged a significant distance but the gesture
+          // didn't register as a swipe, the threshold may be too high or gesture capture broken
+          if (Math.abs(gs.dx) > SWIPE_THRESHOLD * 0.6) {
+            logProductDeviation(
+              'FEATURE_3',
+              'Cards must be physically swipeable with a finger gesture',
+              `Swipe gesture of ${Math.round(Math.abs(gs.dx))}px did not cross threshold (${SWIPE_THRESHOLD}px) — card snapped back; gesture may not feel responsive`,
+              'HIGH_DEVIATION',
+            );
+          }
           resetCard();
         }
       },
@@ -436,20 +519,7 @@ export default function StyleQuizScreen() {
             Swipe through rooms and we'll learn what you love
           </Text>
 
-          <View style={styles.instrRows}>
-            <View style={styles.instrRow}>
-              <HeartIcon />
-              <Text style={styles.instrRowText}>Swipe right if you love it</Text>
-            </View>
-            <View style={styles.instrRow}>
-              <XIcon />
-              <Text style={styles.instrRowText}>Swipe left if you don't</Text>
-            </View>
-            <View style={styles.instrRow}>
-              <QuestionIcon />
-              <Text style={styles.instrRowText}>Tap neutral if you're unsure</Text>
-            </View>
-          </View>
+          <Text style={styles.instrRowText}>Swipe right if you love it, swipe left if you don't, tap neutral if you're unsure</Text>
 
           <TouchableOpacity style={styles.startBtn} activeOpacity={0.85} onPress={handleStartQuiz}>
             <Text style={styles.startBtnText}>Start Swiping</Text>
@@ -536,9 +606,7 @@ export default function StyleQuizScreen() {
       {/* ── Top bar ── */}
       <View style={styles.topBar}>
         <DoubleArch size="small" />
-        <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { width: `${Math.min(progress, 100)}%` }]} />
-        </View>
+        <ProgressBar progress={progress} />
       </View>
 
       {/* ── Card stack ── */}
@@ -858,4 +926,14 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.4)',
     fontSize: 13,
   },
+});
+
+const ProgressBar = React.memo(({ progress }: { progress: number }) => (
+  <View style={styles.progressTrack}>
+    <View style={[styles.progressFill, { width: `${Math.min(progress, 100)}%` }]} />
+  </View>
+));
+
+export default Sentry.withErrorBoundary(StyleQuizScreen, {
+  fallback: <></>,
 });

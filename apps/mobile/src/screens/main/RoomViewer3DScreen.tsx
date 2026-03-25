@@ -215,7 +215,7 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
   const controlRef = useRef<CameraControlState>({
     theta: 0,
     phi: 1.25,
-    radius: 5.0,
+    radius: 4.0,
   });
 
   const lastTouchRef = useRef<{ x: number; y: number } | null>(null);

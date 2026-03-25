@@ -219,7 +219,7 @@ export default function ChatPanel({ roomId, renderImageUrl, tapX, tapY, onClose,
 const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'transparent',
     justifyContent: 'flex-end',
   },
   backdrop: {

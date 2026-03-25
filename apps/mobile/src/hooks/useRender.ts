@@ -12,14 +12,11 @@ interface RenderParams {
   dimensions?: RoomDimensions;
 }
 
-// §8.3 — exactly 6 stages in this order
 const LOADING_STAGES = [
-  'Analyzing your room...',
-  'Measuring depth...',
-  'Applying your style...',
-  'Generating render...',
-  'Adding finishing touches...',
-  'Done!',
+  'Analyzing your room',
+  'Applying your style',
+  'Generating',
+  'Done',
 ] as const;
 
 export function useRender() {
@@ -144,5 +141,5 @@ export function useRender() {
     }
   };
 
-  return { startRender, currentRender, renderStatus, renderProgressStage, renderProgress, renderError };
+  return { startRender, pollRenderStatus, currentRender, renderStatus, renderProgressStage, renderProgress, renderError };
 }

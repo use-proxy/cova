@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useReducer } from 'react';
+import { Sentry, logProductDeviation, captureProductError, setCurrentScreen, setFlowStep } from '../../lib/sentry';
 import {
   View,
   Text,
@@ -13,6 +14,7 @@ import {
   Switch,
   TextInput,
   ScrollView,
+  PanResponder,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
@@ -28,7 +30,7 @@ import { useAppStore } from '../../store';
 import { supabase } from '../../lib/supabase';
 import type { Room, RoomType } from '@cova/shared';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path, Circle, Rect } from 'react-native-svg';
+import Svg, { Path, Circle, Rect, Polygon, Line as SvgLine } from 'react-native-svg';
 
 type CaptureStep = 'method' | 'camera' | 'review' | 'details' | 'budget' | 'processing';
 
@@ -91,6 +93,64 @@ function DoubleArchMark() {
   );
 }
 
+type CaptureMethod = 'camera' | 'upload' | 'lidar' | null;
+type CornerKey = 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight';
+type CornerPoint = { x: number; y: number };
+type AllCorners = Record<CornerKey, CornerPoint>;
+type PanResponderInstance = ReturnType<typeof PanResponder.create>;
+
+function CalibrationOverlay({
+  corners,
+  panResponders,
+  photoW,
+  photoH,
+}: {
+  corners: AllCorners;
+  panResponders: Record<CornerKey, PanResponderInstance>;
+  photoW: number;
+  photoH: number;
+}) {
+  const { topLeft, topRight, bottomLeft, bottomRight } = corners;
+  const polygonPoints = `${topLeft.x},${topLeft.y} ${topRight.x},${topRight.y} ${bottomRight.x},${bottomRight.y} ${bottomLeft.x},${bottomLeft.y}`;
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+      <Svg
+        width={photoW}
+        height={photoH}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      >
+        <Polygon points={polygonPoints} fill="rgba(10,22,40,0.3)" />
+        <SvgLine x1={topLeft.x} y1={topLeft.y} x2={topRight.x} y2={topRight.y} stroke="#FFFFFF" strokeWidth={2} opacity={0.8} />
+        <SvgLine x1={topRight.x} y1={topRight.y} x2={bottomRight.x} y2={bottomRight.y} stroke="#FFFFFF" strokeWidth={2} opacity={0.8} />
+        <SvgLine x1={bottomRight.x} y1={bottomRight.y} x2={bottomLeft.x} y2={bottomLeft.y} stroke="#FFFFFF" strokeWidth={2} opacity={0.8} />
+        <SvgLine x1={bottomLeft.x} y1={bottomLeft.y} x2={topLeft.x} y2={topLeft.y} stroke="#FFFFFF" strokeWidth={2} opacity={0.8} />
+      </Svg>
+      {(['topLeft', 'topRight', 'bottomLeft', 'bottomRight'] as const).map((key) => {
+        const pos = corners[key];
+        return (
+          <View
+            key={key}
+            style={{
+              position: 'absolute',
+              left: pos.x - 14,
+              top: pos.y - 14,
+              width: 28,
+              height: 28,
+              borderRadius: 14,
+              backgroundColor: '#FFFFFF',
+              borderWidth: 2,
+              borderColor: '#0A1628',
+              zIndex: 15,
+            }}
+            {...panResponders[key].panHandlers}
+          />
+        );
+      })}
+    </View>
+  );
+}
+
 type RoomTypeOption = 'living' | 'bedroom' | 'kitchen' | 'dining' | 'bathroom' | 'office' | 'other';
 
 const ROOM_TYPE_MAP: Record<RoomTypeOption, RoomType> = {
@@ -113,16 +173,16 @@ const ROOM_TYPES: { id: RoomTypeOption; label: string }[] = [
   { id: 'other', label: 'Other' },
 ];
 
-export default function RoomCaptureScreen() {
+function RoomCaptureScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RoomStackParamList>>();
   const insets = useSafeAreaInsets();
-  const { startRender, renderProgressStage, renderProgress } = useRender();
+  const { renderProgressStage, renderProgress } = useRender();
   const { startScan, stopScan, isAvailable: isRoomPlanAvailable } = useRoomPlan();
   const currentRoom = useAppStore((s) => s.currentRoom);
   const setCurrentRoomDimensions = useAppStore((s) => s.setCurrentRoomDimensions);
   const setBudgetMax = useAppStore((s) => s.setBudgetMax);
 
-  const [step, setStep] = useState<CaptureStep>('method');
+  const [step, setStep] = useState<CaptureStep>('budget');
   const [capturedImageUri, setCapturedImageUri] = useState<string | null>(null);
   const [cameraPermission, requestPermission] = useCameraPermissions();
   const [dimensions, setDimensions] = useState({ width: 4.9, depth: 3.7, height: 2.7 });
@@ -134,6 +194,65 @@ export default function RoomCaptureScreen() {
 
   const cameraRef = useRef<CameraView>(null);
   const pulseAnim = useRef(new Animated.Value(0.3)).current;
+
+  // ── Calibration refs (all useRef, never useState per §6.1) ──────────────
+  const [captureMethod, setCaptureMethod] = useState<CaptureMethod>(null);
+  const [, forceUpdate] = useReducer((x: number) => x + 1, 0);
+  const photoLayout = useRef({ width: 0, height: 0 });
+  const cornerPositions = useRef<AllCorners>({
+    topLeft:     { x: 0, y: 0 },
+    topRight:    { x: 0, y: 0 },
+    bottomLeft:  { x: 0, y: 0 },
+    bottomRight: { x: 0, y: 0 },
+  });
+  const cornerBase = useRef<AllCorners>({
+    topLeft:     { x: 0, y: 0 },
+    topRight:    { x: 0, y: 0 },
+    bottomLeft:  { x: 0, y: 0 },
+    bottomRight: { x: 0, y: 0 },
+  });
+  const panResponderRefs = useRef<Record<CornerKey, PanResponderInstance> | null>(null);
+  if (!panResponderRefs.current) {
+    const make = (key: CornerKey): PanResponderInstance =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onPanResponderGrant: () => {
+          cornerBase.current[key] = { ...cornerPositions.current[key] };
+        },
+        onPanResponderMove: (_, gs) => {
+          const { width: pw, height: ph } = photoLayout.current;
+          cornerPositions.current[key] = {
+            x: Math.max(0, Math.min(pw, cornerBase.current[key].x + gs.dx)),
+            y: Math.max(0, Math.min(ph, cornerBase.current[key].y + gs.dy)),
+          };
+          forceUpdate();
+        },
+        onPanResponderRelease: () => {},
+      });
+    panResponderRefs.current = {
+      topLeft:     make('topLeft'),
+      topRight:    make('topRight'),
+      bottomLeft:  make('bottomLeft'),
+      bottomRight: make('bottomRight'),
+    };
+  }
+
+  const handlePhotoLayout = (w: number, h: number) => {
+    photoLayout.current = { width: w, height: h };
+    cornerPositions.current = {
+      topLeft:     { x: 0,  y: 0 },
+      topRight:    { x: w,  y: 0 },
+      bottomLeft:  { x: 0,  y: h },
+      bottomRight: { x: w,  y: h },
+    };
+    cornerBase.current = { ...cornerPositions.current };
+    forceUpdate();
+  };
+
+  useEffect(() => {
+    setCurrentScreen('RoomCaptureScreen');
+    setFlowStep('capture');
+  }, []);
 
   useEffect(() => {
     requestPermission();
@@ -158,6 +277,7 @@ export default function RoomCaptureScreen() {
         return;
       }
     }
+    setCaptureMethod('camera');
     setStep('camera');
   };
 
@@ -168,6 +288,7 @@ export default function RoomCaptureScreen() {
       base64: false,
     });
     if (!result.canceled && result.assets[0]) {
+      setCaptureMethod('upload');
       setCapturedImageUri(result.assets[0].uri);
       setStep('review');
     }
@@ -184,6 +305,7 @@ export default function RoomCaptureScreen() {
 
   const handleRoomPlanScan = async () => {
     try {
+      setCaptureMethod('lidar');
       setScanning(true);
       const data = await startScan();
       setScanning(false);
@@ -205,7 +327,7 @@ export default function RoomCaptureScreen() {
         );
         setCapturedImageUri(compressed.uri);
       }
-      setStep('budget');
+      setStep('details');
     } catch (e: unknown) {
       setScanning(false);
       const message = e instanceof Error ? e.message : 'Could not complete the room scan.';
@@ -220,13 +342,21 @@ export default function RoomCaptureScreen() {
   };
 
   const handleStartDesigning = () => {
-    setStep('budget');
+    setStep('processing');
+    void handleProcessCapture();
   };
 
   const handleProcessCapture = async (imageUri?: string) => {
     try {
       const effectiveUri = imageUri ?? capturedImageUri;
       if (!effectiveUri) {
+        // FEATURE_4 CRITICAL: capturedImageUri must never be null when pipeline runs
+        logProductDeviation(
+          'FEATURE_4',
+          'Any path that results in capturedImageUri being null when render pipeline runs = CRITICAL DEVIATION',
+          'handleProcessCapture called with no image URI — render pipeline cannot proceed',
+          'CRITICAL_DEVIATION',
+        );
         Alert.alert('Error', 'No image captured. Please try again.');
         setStep('method');
         return;
@@ -237,13 +367,8 @@ export default function RoomCaptureScreen() {
       const compressed = await ImageManipulator.manipulateAsync(
         effectiveUri,
         [{ resize: { width: 1024 } }],
-        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG, base64: true },
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
       );
-      if (!compressed.base64) {
-        throw new Error('Image compression failed — no base64 output.');
-      }
-      const imageBase64 = `data:image/jpeg;base64,${compressed.base64}`;
-
       const blend = currentRoom?.style_blend ?? { coastal: 0.2, japandi: 0.2, bohemian: 0.2, mid_century: 0.2, minimalist: 0.2 };
       const roomType: RoomType = selectedRoomType
         ? ROOM_TYPE_MAP[selectedRoomType]
@@ -289,18 +414,13 @@ export default function RoomCaptureScreen() {
         console.warn('original_image_url upload failed (non-fatal):', uploadErr);
       }
 
-      await startRender({
-        roomId,
-        roomType,
-        styleBlend: blend,
-        imageBase64,
-        renderType: 'draft',
-        dimensions: { width: dimensions.width, depth: dimensions.depth, height: dimensions.height, unit: 'm' },
-      });
       navigation.navigate('RenderView', { room_id: roomId, autoGenerate: true });
     } catch (e) {
       console.error('handleProcessCapture failed:', e);
+      const msg = e instanceof Error ? e.message : String(e);
+      captureProductError(e instanceof Error ? e : new Error(msg), 'FEATURE_4');
       Alert.alert('Error', 'Something went wrong. Please try again.');
+      setStep('details');
     }
   };
 
@@ -338,9 +458,26 @@ export default function RoomCaptureScreen() {
           </View>
         </View>
 
-        {/* Photo preview — read-only, no corner handles */}
-        <View style={styles.calibrationImageWrap}>
-          <Image source={{ uri: capturedImageUri! }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        {/* Photo preview with 4-corner calibration overlay (non-LiDAR only) */}
+        <View
+          style={{ marginHorizontal: 20, height: 224, position: 'relative' }}
+          onLayout={(e) => handlePhotoLayout(e.nativeEvent.layout.width, e.nativeEvent.layout.height)}
+        >
+          {/* Rounded image clip container */}
+          <View style={{ ...StyleSheet.absoluteFillObject, borderRadius: 16, overflow: 'hidden' }}>
+            {capturedImageUri
+              ? <Image source={{ uri: capturedImageUri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+              : <View style={[StyleSheet.absoluteFill, { backgroundColor: '#0A1628' }]} />}
+          </View>
+          {/* Calibration overlay — only for camera/upload paths, not LiDAR */}
+          {captureMethod !== 'lidar' && photoLayout.current.width > 0 && panResponderRefs.current && (
+            <CalibrationOverlay
+              corners={cornerPositions.current}
+              panResponders={panResponderRefs.current}
+              photoW={photoLayout.current.width}
+              photoH={photoLayout.current.height}
+            />
+          )}
         </View>
 
         {/* Dimension sliders */}
@@ -424,7 +561,7 @@ export default function RoomCaptureScreen() {
         {/* Header */}
         <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
           <View style={styles.headerRow}>
-            <TouchableOpacity style={styles.headerBackBtn} onPress={() => setStep('review')}>
+            <TouchableOpacity style={styles.headerBackBtn} onPress={() => setStep(captureMethod === 'lidar' ? 'method' : 'review')}>
               <BackChevron />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Room Details</Text>
@@ -518,7 +655,7 @@ export default function RoomCaptureScreen() {
       <View style={[styles.fullScreen, { backgroundColor: '#0A1628' }]}>
         <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
           <View style={styles.headerRow}>
-            <TouchableOpacity style={styles.headerBackBtn} onPress={() => setStep('details')}>
+            <TouchableOpacity style={styles.headerBackBtn} onPress={() => navigation.goBack()}>
               <BackChevron />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Set Your Budget</Text>
@@ -555,11 +692,10 @@ export default function RoomCaptureScreen() {
             style={styles.goldPillButton}
             onPress={() => {
               setBudgetMax(budgetMax);
-              setStep('processing');
-              void handleProcessCapture();
+              setStep('method');
             }}
           >
-            <Text style={styles.goldPillButtonText}>Start Render</Text>
+            <Text style={styles.goldPillButtonText}>Continue</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -593,7 +729,7 @@ export default function RoomCaptureScreen() {
     <View style={[styles.fullScreen, { backgroundColor: '#0A1628' }]}>
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <View style={styles.headerRow}>
-          <TouchableOpacity style={styles.headerBackBtn} onPress={() => navigation.goBack()}>
+          <TouchableOpacity style={styles.headerBackBtn} onPress={() => setStep('budget')}>
             <BackChevron />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Capture Your Room</Text>
@@ -603,56 +739,101 @@ export default function RoomCaptureScreen() {
       </View>
 
       <View style={styles.methodCards}>
-        {/* 3D Scan card */}
-        {isRoomPlanAvailable && (
-          <TouchableOpacity
-            style={[styles.methodCard, styles.methodCardFeatured]}
-            onPress={handleRoomPlanScan}
-            disabled={scanning}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.methodIconCircle, { backgroundColor: 'rgba(196,164,90,0.15)' }]}>
-              <ScanIcon />
-            </View>
-            <View style={styles.methodCardContent}>
-              <Text style={styles.methodCardTitle}>3D Room Scan</Text>
-              <Text style={styles.methodCardSubtext}>Best quality — iPhone 12 Pro and later</Text>
-            </View>
-            <ChevronRight />
-          </TouchableOpacity>
+        {/* Permission denied — camera-dependent options hidden */}
+        {cameraPermission?.status === 'denied' ? (
+          <>
+            <Text style={styles.permissionText}>
+              Camera access was denied. You can still upload a photo from your library.
+            </Text>
+            <TouchableOpacity
+              style={styles.methodCard}
+              onPress={handleUploadPhoto}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.methodIconCircle, { backgroundColor: 'rgba(10,22,40,0.08)' }]}>
+                <UploadIcon />
+              </View>
+              <View style={styles.methodCardContent}>
+                <Text style={styles.methodCardTitle}>Upload from Library</Text>
+                <Text style={styles.methodCardSubtext}>Choose an existing photo</Text>
+              </View>
+              <ChevronRight />
+            </TouchableOpacity>
+          </>
+        ) : !cameraPermission?.granted ? (
+          /* Permission not yet granted — prompt + upload fallback */
+          <>
+            <Text style={styles.permissionText}>
+              Camera access is required to capture your room
+            </Text>
+            <TouchableOpacity style={styles.goldPillButton} onPress={requestPermission}>
+              <Text style={styles.goldPillButtonText}>Grant Permission</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.methodCard, { marginTop: 12 }]}
+              onPress={handleUploadPhoto}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.methodIconCircle, { backgroundColor: 'rgba(10,22,40,0.08)' }]}>
+                <UploadIcon />
+              </View>
+              <View style={styles.methodCardContent}>
+                <Text style={styles.methodCardTitle}>Upload from Library</Text>
+                <Text style={styles.methodCardSubtext}>Choose an existing photo</Text>
+              </View>
+              <ChevronRight />
+            </TouchableOpacity>
+          </>
+        ) : (
+          /* Permission granted — all options available */
+          <>
+            {isRoomPlanAvailable && (
+              <TouchableOpacity
+                style={[styles.methodCard, styles.methodCardFeatured]}
+                onPress={handleRoomPlanScan}
+                disabled={scanning}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.methodIconCircle, { backgroundColor: 'rgba(196,164,90,0.15)' }]}>
+                  <ScanIcon />
+                </View>
+                <View style={styles.methodCardContent}>
+                  <Text style={styles.methodCardTitle}>Scan Room</Text>
+                  <Text style={styles.methodCardSubtext}>Best quality — iPhone 12 Pro and later</Text>
+                </View>
+                <ChevronRight />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={styles.methodCard}
+              onPress={handleTakePhoto}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.methodIconCircle, { backgroundColor: 'rgba(10,22,40,0.08)' }]}>
+                <CameraIcon />
+              </View>
+              <View style={styles.methodCardContent}>
+                <Text style={styles.methodCardTitle}>Take Photo</Text>
+                <Text style={styles.methodCardSubtext}>Capture your room with the camera</Text>
+              </View>
+              <ChevronRight />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.methodCard}
+              onPress={handleUploadPhoto}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.methodIconCircle, { backgroundColor: 'rgba(10,22,40,0.08)' }]}>
+                <UploadIcon />
+              </View>
+              <View style={styles.methodCardContent}>
+                <Text style={styles.methodCardTitle}>Upload from Library</Text>
+                <Text style={styles.methodCardSubtext}>Choose an existing photo</Text>
+              </View>
+              <ChevronRight />
+            </TouchableOpacity>
+          </>
         )}
-
-        {/* Take photo card */}
-        <TouchableOpacity
-          style={styles.methodCard}
-          onPress={handleTakePhoto}
-          activeOpacity={0.8}
-        >
-          <View style={[styles.methodIconCircle, { backgroundColor: 'rgba(10,22,40,0.08)' }]}>
-            <CameraIcon />
-          </View>
-          <View style={styles.methodCardContent}>
-            <Text style={styles.methodCardTitle}>Take a Photo</Text>
-            <Text style={styles.methodCardSubtext}>Capture your room with the camera</Text>
-          </View>
-          <ChevronRight />
-        </TouchableOpacity>
-
-        {/* Upload card */}
-        <TouchableOpacity
-          style={styles.methodCard}
-          onPress={handleUploadPhoto}
-          activeOpacity={0.8}
-        >
-          <View style={[styles.methodIconCircle, { backgroundColor: 'rgba(10,22,40,0.08)' }]}>
-            <UploadIcon />
-          </View>
-          <View style={styles.methodCardContent}>
-            <Text style={styles.methodCardTitle}>Upload from Library</Text>
-            <Text style={styles.methodCardSubtext}>Choose an existing photo</Text>
-          </View>
-          <ChevronRight />
-        </TouchableOpacity>
       </View>
 
       {/* Scanning overlay */}
@@ -976,6 +1157,13 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '500',
   },
+  permissionText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 15,
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 22,
+  },
   scanCancelBtn: {
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 28,
@@ -1020,4 +1208,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
+});
+
+export default Sentry.withErrorBoundary(RoomCaptureScreen, {
+  fallback: <></>,
 });

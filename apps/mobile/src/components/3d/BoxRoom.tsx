@@ -35,12 +35,14 @@ class TextureErrorBoundary extends React.Component<
 const FLOOR_DIFF = require('../../../../../assets/textures/floor/wood_floor_diff_1k.jpg');
 const FLOOR_NOR = require('../../../../../assets/textures/floor/wood_floor_nor_1k.jpg');
 const FLOOR_ROUGH = require('../../../../../assets/textures/floor/wood_floor_rough_1k.jpg');
+const FLOOR_AO = require('../../../../../assets/textures/floor/wood_floor_ao.jpg');
 
 function TexturedFloor({ w, d }: { w: number; d: number }) {
   const textures = useLoader(THREE.TextureLoader, [
     FLOOR_DIFF,
     FLOOR_NOR,
     FLOOR_ROUGH,
+    FLOOR_AO,
   ]) as THREE.Texture[];
 
   useEffect(() => {
@@ -64,8 +66,11 @@ function TexturedFloor({ w, d }: { w: number; d: number }) {
         map={textures[0]}
         normalMap={textures[1]}
         roughnessMap={textures[2]}
+        aoMap={textures[3]}
+        aoMapIntensity={1.0}
         roughness={0.8}
         metalness={0.05}
+        side={THREE.DoubleSide}
       />
     </mesh>
   );
@@ -101,7 +106,7 @@ export function BoxRoom({ style, dimensions }: BoxRoomProps) {
         castShadow={false}
       >
         <planeGeometry args={[w, d]} />
-        <meshStandardMaterial color={floorColor} roughness={0.8} metalness={0.05} />
+        <meshStandardMaterial color={floorColor} roughness={0.8} metalness={0.05} side={THREE.DoubleSide} />
       </mesh>
 
       {/* PBR textured floor overlay */}
@@ -118,22 +123,22 @@ export function BoxRoom({ style, dimensions }: BoxRoomProps) {
         castShadow={false}
       >
         <planeGeometry args={[w, d]} />
-        <meshStandardMaterial color={ceilingColor} roughness={0.95} metalness={0.0} />
+        <meshStandardMaterial color={ceilingColor} roughness={0.95} metalness={0.0} side={THREE.DoubleSide} />
       </mesh>
 
       <mesh position={[0, h / 2, -d / 2]} rotation={[0, 0, 0]} receiveShadow castShadow={false}>
         <planeGeometry args={[w, h]} />
-        <meshStandardMaterial color={wallColor} roughness={0.9} metalness={0.0} />
+        <meshStandardMaterial color={wallColor} roughness={0.85} metalness={0.0} side={THREE.DoubleSide} />
       </mesh>
 
       <mesh position={[-w / 2, h / 2, 0]} rotation={[0, Math.PI / 2, 0]} receiveShadow castShadow={false}>
         <planeGeometry args={[d, h]} />
-        <meshStandardMaterial color={wallColor} roughness={0.9} metalness={0.0} />
+        <meshStandardMaterial color={wallColor} roughness={0.85} metalness={0.0} side={THREE.DoubleSide} />
       </mesh>
 
       <mesh position={[w / 2, h / 2, 0]} rotation={[0, -Math.PI / 2, 0]} receiveShadow castShadow={false}>
         <planeGeometry args={[d, h]} />
-        <meshStandardMaterial color={wallColor} roughness={0.9} metalness={0.0} />
+        <meshStandardMaterial color={wallColor} roughness={0.85} metalness={0.0} side={THREE.DoubleSide} />
       </mesh>
 
       {/* ── Baseboards ── */}
