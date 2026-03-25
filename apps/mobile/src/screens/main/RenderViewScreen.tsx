@@ -644,6 +644,16 @@ function RenderViewScreen() {
               <Text style={styles.regenBtnText}>Regenerate</Text>
             </TouchableOpacity>
 
+            {/* Arrange Furniture — navigate to 3D viewer */}
+            <TouchableOpacity style={styles.barAction} onPress={() => navigation.navigate('Viewer3D', { room_id })}>
+              <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                <Path d="M12 2L2 7l10 5 10-5-10-5z" stroke="white" strokeWidth={1.5} fill="none" />
+                <Path d="M2 17l10 5 10-5" stroke="white" strokeWidth={1.5} fill="none" />
+                <Path d="M2 12l10 5 10-5" stroke="white" strokeWidth={1.5} fill="none" />
+              </Svg>
+              <Text style={styles.barLabel}>Arrange</Text>
+            </TouchableOpacity>
+
             {/* Chat */}
             <TouchableOpacity style={styles.barAction} onPress={() => setShowChat(true)}>
               <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
