@@ -1,4 +1,7 @@
 appId: ai.cova.app
+device:
+  platform: ios
+  type: simulator
 ---
 # Flow 10: 3D Viewer — camera at doorway, pan/pinch, no crash, style chips
 # Prereq: on render view, navigate to 3D viewer

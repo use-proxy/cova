@@ -1,4 +1,7 @@
 appId: ai.cova.app
+device:
+  platform: ios
+  type: simulator
 ---
 # Flow 12: Furniture Selection — add, select, drag, undo
 # Prereq: in 3D viewer

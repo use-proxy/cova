@@ -1,4 +1,7 @@
 appId: ai.cova.app
+device:
+  platform: ios
+  type: simulator
 ---
 # Flow 14: Returning User — bypasses splash, sees rooms on dashboard
 # Tests that returning users skip the splash animation

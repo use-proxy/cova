@@ -1,4 +1,7 @@
 appId: ai.cova.app
+device:
+  platform: ios
+  type: simulator
 ---
 # Flow 09: Chat Panel — open, send message, get response, close
 # Prereq: on render view with completed render

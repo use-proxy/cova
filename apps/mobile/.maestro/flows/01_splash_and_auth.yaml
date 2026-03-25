@@ -1,17 +1,40 @@
 appId: ai.cova.app
+device:
+  platform: ios
+  type: simulator
 ---
 - launchApp:
-    clearState: false
+    clearState: true
+
+# Expo dev build launcher — tap the dev server to connect
+- extendedWaitUntil:
+    visible:
+      text: "http://localhost:8081"
+    timeout: 10000
 - tapOn:
     text: "http://localhost:8081"
-    optional: true
+    retryTapIfNoChange: false
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# Dismiss Expo dev menu welcome dialog if it appears
 - tapOn:
     text: "Continue"
     optional: true
 - waitForAnimationToEnd
-- waitForAnimationToEnd
+
+# Close dev menu by tapping the dark area above the menu sheet
+- tapOn:
+    point: "50%,20%"
+    retryTapIfNoChange: false
+- waitForAnimationToEnd:
+    timeout: 3000
 
 # --- Splash screen ---
+- extendedWaitUntil:
+    visible:
+      text: "Create Account"
+    timeout: 30000
 - assertVisible: "Sign In"
 - assertVisible: "Create Account"
 
@@ -44,9 +67,15 @@ appId: ai.cova.app
     id: "password-toggle"
 - inputText: "CovaTest123!"
 - tapOn:
+    text: "tinder for your home"
+    optional: true
+- tapOn:
     text: "Sign In"
     index: 1
+- tapOn:
+    text: "Not Now"
+    optional: true
 - extendedWaitUntil:
     visible:
-      text: "My Rooms"
+      text: "cova"
     timeout: 30000

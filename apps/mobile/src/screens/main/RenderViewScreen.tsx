@@ -77,7 +77,7 @@ function RenderViewScreen() {
   const autoGenerate = route.params?.autoGenerate ?? false;
 
   const [showControls, setShowControls] = useState(true);
-  const [showBeforeAfter, setShowBeforeAfter] = useState(true);
+  const [showBeforeAfter, setShowBeforeAfter] = useState(false);
   // ⚠️ viewModeRef: useRef not useState — mode changes must not trigger 60fps re-renders.
   // forceUpdate is only called on deliberate user toggle, not on every frame.
   const viewModeRef = useRef<'immersive' | 'flat'>('immersive');
@@ -528,38 +528,12 @@ function RenderViewScreen() {
   // ═══════════════════════════════
   return (
     <View testID="render-view-screen" style={styles.root}>
-      {/* ── Immersive sphere viewer (Mode 1 — default) ─────────────────────── */}
-      {/* Both layers are always mounted. Visibility controlled via opacity +   */}
-      {/* pointerEvents so neither reloads its texture when toggling modes.      */}
+      {/* ── Flat image base layer ─────────────────────────────────────────────── */}
+      {/* Always rendered as a base layer. In immersive mode it sits behind the   */}
+      {/* panorama sphere — if the sphere texture fails (e.g. Simulator), this    */}
+      {/* flat image shows through as a fallback. In flat mode it's the primary.  */}
       <View
-        style={[StyleSheet.absoluteFill, { opacity: viewModeRef.current === 'immersive' ? 1 : 0 }]}
-        pointerEvents="box-none"
-      >
-        {currentRender?.image_url ? (
-          <PanoramaViewer
-            testID="panorama-viewer"
-            imageUrl={currentRender.image_url}
-            pointerEnabled={viewModeRef.current === 'immersive'}
-            onTap={handlePanoramaTap}
-            onFallback={() => {
-              // Canvas failed to initialize — silently fall back to flat view
-              viewModeRef.current = 'flat';
-              forceUpdate((n) => n + 1);
-            }}
-          />
-        ) : (
-          <View style={[StyleSheet.absoluteFill, styles.renderUnavailable]}>
-            <Text style={styles.renderUnavailableText}>Render not available</Text>
-            <TouchableOpacity style={styles.retryBtn} onPress={handleRegenerate}>
-              <Text style={styles.retryBtnText}>Regenerate</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-
-      {/* ── Flat image viewer (Mode 2) ──────────────────────────────────────── */}
-      <View
-        style={[StyleSheet.absoluteFill, { opacity: viewModeRef.current === 'flat' ? 1 : 0 }]}
+        style={StyleSheet.absoluteFill}
         pointerEvents={viewModeRef.current === 'flat' ? 'box-none' : 'none'}
         onLayout={handleImageLayout}
       >
@@ -567,15 +541,49 @@ function RenderViewScreen() {
           <View style={StyleSheet.absoluteFill}>
             {currentRender?.image_url ? (
               <Animated.Image
+                testID="render-flat-image"
                 source={{ uri: currentRender.image_url }}
-                style={[StyleSheet.absoluteFill, { transform: [...panOffset.getTranslateTransform(), { scale: scaleVal }] }]}
+                style={[StyleSheet.absoluteFill, viewModeRef.current === 'flat'
+                  ? { transform: [...panOffset.getTranslateTransform(), { scale: scaleVal }] }
+                  : undefined]}
                 resizeMode="cover"
-                {...imagePanResponder.panHandlers}
+                {...(viewModeRef.current === 'flat' ? imagePanResponder.panHandlers : {})}
               />
-            ) : null}
+            ) : (
+              <View style={[StyleSheet.absoluteFill, styles.renderUnavailable]}>
+                <Text style={styles.renderUnavailableText}>Render not available</Text>
+                <TouchableOpacity style={styles.retryBtn} onPress={handleRegenerate}>
+                  <Text style={styles.retryBtnText}>Regenerate</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </TouchableWithoutFeedback>
       </View>
+
+      {/* ── Immersive sphere viewer (Mode 1 — default) ─────────────────────── */}
+      {/* Overlays the flat image. When sphere texture renders, it covers the    */}
+      {/* flat image. If it fails, the flat image shows through as fallback.     */}
+      {viewModeRef.current === 'immersive' && currentRender?.image_url ? (
+        <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+          <PanoramaViewer
+            testID="panorama-viewer"
+            imageUrl={currentRender.image_url}
+            pointerEnabled={viewModeRef.current === 'immersive'}
+            onTap={handlePanoramaTap}
+            onFallback={() => {
+              // Canvas failed to initialize — switch to flat view
+              viewModeRef.current = 'flat';
+              forceUpdate((n) => n + 1);
+            }}
+            onTextureError={() => {
+              // Texture loading failed — switch to flat view (works on Simulator)
+              viewModeRef.current = 'flat';
+              forceUpdate((n) => n + 1);
+            }}
+          />
+        </View>
+      ) : null}
 
       {/* Tap pin */}
       {tapCoords && (

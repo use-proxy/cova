@@ -1,4 +1,7 @@
 appId: ai.cova.app
+device:
+  platform: ios
+  type: simulator
 ---
 # Flow 15: Token Economy — always 999, never decrements, no IAP
 # Prereq: logged in user

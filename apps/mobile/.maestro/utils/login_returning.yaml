@@ -2,19 +2,58 @@ appId: ai.cova.app
 ---
 # Login as a returning test user (has rooms and completed renders)
 - launchApp:
-    appId: ai.cova.app
     clearState: true
+
+# Expo dev build launcher — tap the dev server to connect
+- extendedWaitUntil:
+    visible:
+      text: "http://localhost:8081"
+    timeout: 10000
+- tapOn:
+    text: "http://localhost:8081"
+    retryTapIfNoChange: false
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# Dismiss Expo dev menu welcome dialog if it appears
+- tapOn:
+    text: "Continue"
+    optional: true
 - waitForAnimationToEnd
-- assertVisible: "Create Account"
+
+# Close dev menu by tapping the dark area above the menu sheet
+- tapOn:
+    point: "50%,20%"
+    retryTapIfNoChange: false
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# Wait for the app to fully load past splash
+- extendedWaitUntil:
+    visible:
+      text: "Create Account"
+    timeout: 30000
 - tapOn: "Sign In"
+- waitForAnimationToEnd
 - tapOn:
     id: "email-input"
 - inputText: "test.returning@hellocova.com"
+- pressKey: Enter
 - tapOn:
-    id: "password-input"
+    id: "password-toggle"
 - inputText: "CovaTest123!"
-- tapOn: "Sign In"
-- waitForAnimationToEnd
+- tapOn:
+    text: "tinder for your home"
+    optional: true
+- tapOn:
+    text: "Sign In"
+    index: 1
+- tapOn:
+    text: "Not Now"
+    optional: true
 - waitForAnimationToEnd:
-    timeout: 15000
-- assertVisible: "My Rooms"
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      text: "cova"
+    timeout: 30000

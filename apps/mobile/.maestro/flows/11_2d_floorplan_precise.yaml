@@ -1,4 +1,7 @@
 appId: ai.cova.app
+device:
+  platform: ios
+  type: simulator
 ---
 # Flow 11: 2D Floor Plan Toggle — switch between 3D and 2D views
 # Prereq: in 3D viewer

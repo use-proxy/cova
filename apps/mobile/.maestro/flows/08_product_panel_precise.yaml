@@ -1,4 +1,7 @@
 appId: ai.cova.app
+device:
+  platform: ios
+  type: simulator
 ---
 # Flow 08: Product Panel — swipe from left, budget slider, products, cart
 # Prereq: on render view with completed render

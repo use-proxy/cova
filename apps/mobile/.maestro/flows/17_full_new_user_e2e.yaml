@@ -1,4 +1,7 @@
 appId: ai.cova.app
+device:
+  platform: ios
+  type: simulator
 ---
 # Flow 17: Full New User E2E — splash to render, complete journey
 # This is the critical path test for the entire app

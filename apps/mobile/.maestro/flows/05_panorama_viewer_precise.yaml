@@ -1,4 +1,7 @@
 appId: ai.cova.app
+device:
+  platform: ios
+  type: simulator
 ---
 # Flow 05: Panorama Viewer — pan and pinch on rendered image
 # Prereq: on render view with completed render

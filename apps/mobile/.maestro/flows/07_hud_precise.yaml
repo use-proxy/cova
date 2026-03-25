@@ -1,4 +1,7 @@
 appId: ai.cova.app
+device:
+  platform: ios
+  type: simulator
 ---
 # Flow 07: HUD — auto-hide after 3s, show on tap, Regenerate/Save/Share visible
 # Prereq: on render view with completed render

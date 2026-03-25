@@ -134,7 +134,7 @@ interface AppActions {
 
 export const useAppStore = create<AppState & AppActions>()(
   persist(
-  immer((set) => ({
+  immer((set, get) => ({
     // ── auth defaults ──
     user: null,
     session: null,
@@ -163,12 +163,19 @@ export const useAppStore = create<AppState & AppActions>()(
     placedFurniture: [],
 
     fetchRooms: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      // Use user from Zustand store first — supabase.auth.getUser() can return
+      // null after clearState wipes AsyncStorage even though the user just logged in.
+      const storeUser = get().user;
+      let userId = storeUser?.id;
+      if (!userId) {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        userId = authUser?.id;
+      }
+      if (!userId) return;
       const { data } = await supabase
         .from('rooms')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .order('updated_at', { ascending: false });
       if (data) {
         set((state) => { state.rooms = data as Room[]; });

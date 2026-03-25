@@ -1,4 +1,7 @@
 appId: ai.cova.app
+device:
+  platform: ios
+  type: simulator
 ---
 # Flow 13: Style Chips Preserve Furniture — switching styles keeps placements
 # Prereq: in 3D viewer with furniture placed

@@ -1,23 +1,39 @@
 appId: ai.cova.app
+device:
+  platform: ios
+  type: simulator
 ---
 # Flow 02: Style Quiz — instructions, swiping, no style names visible
 # Prereq: logged in as new user on dashboard
 
 - runFlow: ../utils/login_new.yaml
 
-# Start new room flow
+# Tap + to create new room — opens room type selector modal
+- waitForAnimationToEnd
 - tapOn:
     id: "new-room-button"
+    optional: true
+- tapOn:
+    text: "+"
+    optional: true
 - waitForAnimationToEnd
+
+# Select room type from modal
+- extendedWaitUntil:
+    visible:
+      text: "Select Room Type"
+    timeout: 10000
 - tapOn: "Living Room"
 - waitForAnimationToEnd
 
-# --- Instructions phase ---
-- assertVisible: "Swipe right if you love it"
-- assertVisible: "Let's Go"
-# Skip should be visible initially
+# --- Instructions phase (auto-navigated after room type selection) ---
+- extendedWaitUntil:
+    visible:
+      text: "Discover your style"
+    timeout: 10000
+- assertVisible: "Start Swiping"
 - assertVisible: "Skip"
-- tapOn: "Let's Go"
+- tapOn: "Start Swiping"
 - waitForAnimationToEnd
 
 # --- Quiz card phase ---

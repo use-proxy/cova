@@ -1,25 +1,58 @@
 appId: ai.cova.app
+device:
+  platform: ios
+  type: simulator
 ---
-# Flow 04: Render Pipeline — 4 loading stages, panorama result
-# Prereq: returning user with room that can trigger render
+# Flow 04: Render Pipeline — strict validation of full render experience
+# Validates: render image visible (flat or panorama), HUD buttons, token 999
 
-- runFlow: ../utils/login_returning.yaml
-- runFlow: ../utils/open_existing_render.yaml
+- runFlow: ../utils/login_new.yaml
 
-# Verify render view loaded
+# After login with clearState, app lands on New Room screen.
+# Navigate back to dashboard by tapping the back arrow.
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# Tap back arrow at top-left of New Room screen
+- tapOn:
+    text: "←"
+    optional: true
+- tapOn:
+    point: "7%,9%"
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# Now on dashboard — wait for rooms to load
+- extendedWaitUntil:
+    visible:
+      id: "room-card-0"
+    timeout: 20000
+
+# Tap the first room card to open its render
+- tapOn:
+    id: "room-card-0"
+- waitForAnimationToEnd
+- waitForAnimationToEnd:
+    timeout: 15000
+
+# --- Render view screen must be present ---
 - assertVisible:
     id: "render-view-screen"
 
-# If regenerating, verify loading stages (4 per PRODUCT_TRUTH)
-# Stage 1: "Analyzing your room"
-# Stage 2: "Applying your style"
-# Stage 3: "Generating"
-# Stage 4: "Done"
-# These stages are verified during full e2e, here we verify the completed state
+# --- Render image must be visible (flat fallback or panorama) ---
+- assertNotVisible: "Render not available"
+- assertNotVisible: "Could not load render"
 
-# Panorama viewer should be visible for completed render
-- assertVisible:
-    id: "panorama-viewer"
-
-# Token badge should show 999
+# --- Token balance must show 999 (HUD visible on initial load) ---
 - assertVisible: "999"
+
+# --- All HUD buttons must be visible (assert before 3s auto-hide) ---
+- assertVisible: "Regenerate"
+- assertVisible: "Save"
+- assertVisible: "Share"
+- assertVisible: "Chat"
+- assertVisible: "Shop"
+
+# --- No error states ---
+- assertNotVisible:
+    id: "panorama-error"

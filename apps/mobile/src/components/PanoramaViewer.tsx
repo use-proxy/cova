@@ -1,3 +1,23 @@
+// ── PanoramaViewer ──────────────────────────────────────────────────────────
+// Immersive 360° sphere viewer for AI-rendered room images.
+//
+// Architecture: camera at origin [0,0,0] inside a sphere (radius 500,
+// scale={[-1,1,1]} for inward normals). Pan rotates the camera via useFrame;
+// pinch adjusts FOV (40–90°). PanResponder is a SIBLING of Canvas (§6.8).
+//
+// Texture pipeline: remote URL → FileSystem.downloadAsync → expo-asset
+// Asset.fromURI → RNImage.prefetch + getSize → THREE.Texture with
+// { uri, width, height } image object (the format R3F native expects).
+//
+// ⚠️ SIMULATOR LIMITATION: iOS Simulator's expo-gl WebGL implementation
+// cannot render textures onto Three.js sphere geometry. The texture downloads
+// and loads without error, but the sphere renders as transparent/black.
+// RenderViewScreen places a flat <Image> behind this component as a fallback
+// — if the sphere is transparent, the flat image shows through. On a physical
+// device, expo-gl renders the sphere texture correctly and covers the flat
+// image. The onTextureError callback also fires on load failure, allowing
+// the parent to switch to flat mode explicitly.
+//
 import React, { useRef, useEffect, useState, memo } from 'react';
 import {
   View,
@@ -7,10 +27,13 @@ import {
   ActivityIndicator,
   Text,
   TouchableOpacity,
+  Image as RNImage,
   type ViewStyle,
 } from 'react-native';
 import { Canvas, useFrame, useThree } from '@react-three/fiber/native';
 import * as THREE from 'three';
+import * as FileSystem from 'expo-file-system';
+import { Asset } from 'expo-asset';
 
 // ── Tunable constant ──────────────────────────────────────────────────────────
 // PAN_SENSITIVITY: 0.005 — increase for faster look-around, decrease for slower
@@ -90,6 +113,7 @@ export interface PanoramaViewerProps {
   pointerEnabled: boolean; // when false, PanResponder ignores all touches
   onTap: () => void;       // fired on single-tap with minimal movement (HUD toggle)
   onFallback?: () => void; // fired if Canvas fails to initialize
+  onTextureError?: () => void; // fired if texture loading fails — parent can switch to flat mode
 }
 
 export default function PanoramaViewer({
@@ -98,6 +122,7 @@ export default function PanoramaViewer({
   pointerEnabled,
   onTap,
   onFallback,
+  onTextureError,
 }: PanoramaViewerProps) {
   const [loadState, setLoadState] = useState<'loading' | 'loaded' | 'error'>('loading');
   const [retryCount, setRetryCount] = useState(0);
@@ -126,37 +151,91 @@ export default function PanoramaViewer({
   const onTapRef = useRef(onTap);
   onTapRef.current = onTap;
 
+  // Stable ref for onTextureError
+  const onTextureErrorRef = useRef(onTextureError);
+  onTextureErrorRef.current = onTextureError;
+
   // ── Texture loading ─────────────────────────────────────────────────────────
-  // Runs once per imageUrl; retryCount increments force a fresh attempt
+  // expo-gl cannot read textures via THREE.TextureLoader (neither remote URLs
+  // nor file:// URIs work). The only reliable approach:
+  //   1. Download image to local cache via expo-file-system
+  //   2. Register it through expo-asset's Asset pipeline (Asset.fromURI + loadAsync)
+  //   3. Prefetch into RN's Image cache so the GL context can access it
+  //   4. Create THREE.Texture manually with the asset localUri as image source
+  // Runs once per imageUrl; retryCount increments force a fresh attempt.
   useEffect(() => {
     if (!imageUrl) return;
     setLoadState('loading');
     canvasOpacity.setValue(0);
     let cancelled = false;
 
-    const loader = new THREE.TextureLoader();
-    loader.load(
-      imageUrl,
-      (t) => {
-        if (cancelled) { t.dispose(); return; }
+    const loadTexture = async () => {
+      try {
+        // Step 1: Download remote image to local cache
+        const filename = `panorama_${Date.now()}.jpg`;
+        const localUri = `${FileSystem.cacheDirectory}${filename}`;
+        const { uri: downloadedUri } = await FileSystem.downloadAsync(imageUrl, localUri);
+
+        if (cancelled) return;
+
+        // Step 2: Register through expo-asset pipeline so expo-gl can read it
+        const asset = Asset.fromURI(downloadedUri);
+        await asset.downloadAsync();
+
+        if (cancelled) return;
+
+        const assetUri = asset.localUri ?? downloadedUri;
+
+        // Step 3: Prefetch into RN Image cache — ensures the bitmap is in memory
+        await RNImage.prefetch(assetUri);
+
+        if (cancelled) return;
+
+        // Step 4: Create THREE.Texture with the asset URI as image source.
+        // In React Native + expo-gl, THREE.Texture.image must be an object
+        // with { uri, width, height } — the R3F native renderer reads this
+        // format and uploads it to the GL context.
+        const dims = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+          RNImage.getSize(
+            assetUri,
+            (w, h) => resolve({ width: w, height: h }),
+            (err) => reject(err ?? new Error('getSize failed')),
+          );
+        });
+
+        if (cancelled) return;
+
+        const t = new THREE.Texture();
+        // expo-gl / R3F native expects image as { uri, width, height }
+        (t.image as unknown) = { uri: assetUri, width: dims.width, height: dims.height };
         t.minFilter = THREE.LinearFilter;
         t.magFilter = THREE.LinearFilter;
         t.generateMipmaps = false;       // prevents iOS texture artifacts
         t.colorSpace = THREE.SRGBColorSpace; // preserves FLUX color accuracy (Three.js 0.152+ API)
+        t.flipY = false;                 // expo-gl textures are already oriented correctly
+        t.needsUpdate = true;
+
         if (textureRef.current) textureRef.current.dispose();
         textureRef.current = t;
         setTexture(t);
         setLoadState('loaded');
+
         // Fade sphere in over 300ms — never show a blank sphere
         Animated.timing(canvasOpacity, {
           toValue: 1,
           duration: 300,
           useNativeDriver: true,
         }).start();
-      },
-      undefined,
-      () => { if (!cancelled) setLoadState('error'); },
-    );
+      } catch (err) {
+        if (!cancelled) {
+          console.error('[PanoramaViewer] Texture load failed:', imageUrl, err);
+          setLoadState('error');
+          onTextureErrorRef.current?.();
+        }
+      }
+    };
+
+    void loadTexture();
 
     return () => { cancelled = true; };
   }, [imageUrl, retryCount]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -271,17 +350,18 @@ export default function PanoramaViewer({
           gl={{
             powerPreference: 'high-performance',
             antialias: false,             // too expensive on mobile
-            preserveDrawingBuffer: false, // not needed for panorama viewer
+            preserveDrawingBuffer: true,  // §6.3 — required on iOS to prevent black screen
+            alpha: true,                  // enable transparent background so flat image shows through
           }}
           onCreated={({ gl }) => {
             try {
-              gl.setClearColor(0x0a1628);
+              gl.setClearColor(0x000000, 0); // transparent clear — flat image fallback shows through
             } catch {
               onFallback?.();
             }
           }}
         >
-          <color attach="background" args={['#0A1628']} />
+          {/* No <color attach="background"> — keep transparent for flat image fallback */}
           <SphereScene cameraState={cameraState} texture={texture} />
         </Canvas>
       </Animated.View>
@@ -303,7 +383,7 @@ export default function PanoramaViewer({
 
       {/* ── Error state — retry up to 2 times ─────────────────────────────── */}
       {loadState === 'error' && (
-        <View style={styles.overlay}>
+        <View testID="panorama-error" style={styles.overlay}>
           <Text style={styles.msgText}>Could not load render</Text>
           <TouchableOpacity
             style={[styles.retryBtn, retryCount >= 2 && { opacity: 0.5 }]}
@@ -319,12 +399,12 @@ export default function PanoramaViewer({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#0A1628' },
+  root: { flex: 1, backgroundColor: 'transparent' },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0A1628',
+    backgroundColor: 'transparent',
   },
   msgText: {
     color: 'rgba(255,255,255,0.7)',

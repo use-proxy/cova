@@ -1,4 +1,7 @@
 appId: ai.cova.app
+device:
+  platform: ios
+  type: simulator
 ---
 # Flow 03: Room Capture — budget step first, then capture options
 # Prereq: landed on RoomCapture after quiz

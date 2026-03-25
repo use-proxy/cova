@@ -1,9 +1,29 @@
 appId: ai.cova.app
 ---
-# Open an existing room's render from the dashboard (returning user)
+# Open an existing room's render from the dashboard
+# Handles both: landing on dashboard directly, or on New Room screen (tap back first)
 - waitForAnimationToEnd:
     timeout: 10000
-- assertVisible: "My Rooms"
+
+# If we're on the New Room screen, tap the back arrow to get to dashboard
+- tapOn:
+    id: "back-button"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# Navigate to Rooms tab to ensure we're on the dashboard
+- tapOn:
+    text: "Rooms"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# Wait for rooms to load from Supabase
+- extendedWaitUntil:
+    visible:
+      text: "My Rooms"
+    timeout: 15000
 - tapOn:
     id: "room-card-0"
 - waitForAnimationToEnd

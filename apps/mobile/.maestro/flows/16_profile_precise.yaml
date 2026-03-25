@@ -1,4 +1,7 @@
 appId: ai.cova.app
+device:
+  platform: ios
+  type: simulator
 ---
 # Flow 16: Profile — style fingerprint, display names, retake quiz, delete account
 # Prereq: logged in user
