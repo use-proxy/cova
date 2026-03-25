@@ -16,10 +16,8 @@ interface RenderParams {
 const LOADING_STAGES = [
   'Analyzing your room',
   'Applying your style',
-  'Generating render...',
-  'Adding finishing touches...',
-  'Almost there...',
-  'Done!',
+  'Generating',
+  'Done',
 ] as const;
 
 export function useRender() {
@@ -65,12 +63,10 @@ export function useRender() {
     const poll = async () => {
       const elapsed = (Date.now() - startTime) / 1000;
 
-      // Update progress stage based on elapsed time (§8.3 timing)
-      if (elapsed < 5)  setRenderProgressStage(LOADING_STAGES[0]);
-      else if (elapsed < 15) setRenderProgressStage(LOADING_STAGES[1]);
-      else if (elapsed < 25) setRenderProgressStage(LOADING_STAGES[2]);
-      else if (elapsed < 40) setRenderProgressStage(LOADING_STAGES[3]);
-      else if (elapsed < 55) setRenderProgressStage(LOADING_STAGES[4]);
+      // Update progress stage based on elapsed time (CLAUDE.md §7.3 / PRODUCT_TRUTH §6)
+      if (elapsed < 10)  setRenderProgressStage(LOADING_STAGES[0]);
+      else if (elapsed < 30) setRenderProgressStage(LOADING_STAGES[1]);
+      else if (elapsed < 55) setRenderProgressStage(LOADING_STAGES[2]);
       setRenderProgress(Math.min(95, (elapsed / 55) * 100));
 
       if (elapsed > 120) {
@@ -88,7 +84,7 @@ export function useRender() {
         if (data.status === 'completed' && data.image_url) {
           setRenderStatus('completed');
           setRenderProgress(100);
-          setRenderProgressStage(LOADING_STAGES[5]);
+          setRenderProgressStage(LOADING_STAGES[3]);
           setCurrentRender({ id: renderId, image_url: data.image_url } as Render);
           await fetchMatchedProducts(data.image_url, roomType, styleBlend, budget);
           return;
