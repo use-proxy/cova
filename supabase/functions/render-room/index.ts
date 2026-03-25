@@ -334,19 +334,20 @@ Deno.serve(async (req: Request) => {
       : `data:image/jpeg;base64,${image_base64}`;
 
     // ── Step 1: Depth estimation ───────────────────────────────────────────
-    // Separate try/catch so we can return a clear 503 if both models fail.
+    // Try Depth Pro → Depth Anything V2 fallback (inside generateDepthMap).
+    // If both models fail, degrade gracefully: pass the original photo as the
+    // ControlNet depth input. FLUX with a non-depth image is less 3D-precise
+    // but still produces a valid styled render — a degraded render beats a 503.
     let depthMapUrl: string;
     try {
       depthMapUrl = await generateDepthMap(imageDataUri, replicateToken);
     } catch (depthErr) {
-      console.error('Depth estimation failed (both models):', depthErr);
-      return new Response(
-        JSON.stringify({
-          error: 'depth_estimation_failed',
-          message: 'Could not analyze room depth. Please try again.',
-        }),
-        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
+      const depthErrMsg = depthErr instanceof Error ? depthErr.message : 'unknown';
+      console.error('SENTRY_CAPTURE: depth_estimation_failed', { error: depthErrMsg, room_id, user_id: user.id });
+      console.warn('⚠️ Depth estimation failed — proceeding with original image as flat depth fallback');
+      // Use the original photo data URI as the ControlNet conditioning image.
+      // This is the "flat depth" fallback: no metric depth, but render still runs.
+      depthMapUrl = imageDataUri;
     }
 
     // ── Step 2: Start FLUX render (async — returns prediction ID) ──────────
@@ -361,7 +362,8 @@ Deno.serve(async (req: Request) => {
         replicateToken,
       );
     } catch (fluxErr) {
-      console.error('FLUX render start failed (both models):', fluxErr);
+      const fluxErrMsg = fluxErr instanceof Error ? fluxErr.message : 'unknown';
+      console.error('SENTRY_CAPTURE: flux_render_start_failed', { error: fluxErrMsg, room_id, user_id: user.id });
       return new Response(
         JSON.stringify({
           error: 'render_start_failed',
@@ -388,7 +390,7 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (renderError || !render) {
-      console.error('Render row insert failed:', renderError);
+      console.error('SENTRY_CAPTURE: render_row_insert_failed', { error: renderError?.message ?? 'unknown', room_id, user_id: user.id });
       return new Response(
         JSON.stringify({ error: 'internal_error', message: 'Failed to create render record.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
@@ -423,7 +425,7 @@ Deno.serve(async (req: Request) => {
     );
 
   } catch (err) {
-    console.error('render-room unhandled error:', err);
+    console.error('SENTRY_CAPTURE: render_room_unhandled_error', { error: err instanceof Error ? err.message : 'unknown' });
     return new Response(
       JSON.stringify({ error: 'internal_error', message: 'An unexpected error occurred.' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },

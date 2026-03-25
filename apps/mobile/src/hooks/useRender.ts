@@ -114,33 +114,64 @@ export function useRender() {
   };
 
   const startRender = async (params: RenderParams) => {
-    try {
-      setRenderStatus('processing');
-      setRenderError(null);
-      setRenderProgress(0);
-      setRenderProgressStage('Analyzing your room...');
-
-      // render-room generates its own depth map server-side (Depth Pro → Depth Anything V2 fallback).
-      // Sending a client-side depth_map_base64 is redundant and adds ~30s of latency.
-      const res = await callEdgeFunction<{ render_id: string; prediction_id: string }>('render-room', {
-        room_id: params.roomId,
-        image_base64: params.imageBase64,
-        style_blend: params.styleBlend,
-        room_type: params.roomType,
-        render_type: params.renderType,
-        room_dimensions: params.dimensions,
-      });
-      setRenderProgressStage('Applying your style...');
-      // Step 3: Persist calibrated dimensions to the room record (only after server confirms)
-      if (params.dimensions) {
-        useAppStore.getState().updateRoom(params.roomId, { dimensions: params.dimensions });
-      }
-      const roomBudget = useAppStore.getState().budget_max;
-      await pollRenderStatus(res.render_id, params.roomType, params.styleBlend, roomBudget);
-    } catch (e: unknown) {
+    // Guard: empty imageBase64 means capturedImageUri was unavailable — depth will always fail.
+    // Length check (< 100 chars) catches empty string and bare "data:image/jpeg;base64," with no payload.
+    if (!params.imageBase64 || params.imageBase64.length < 100) {
       setRenderStatus('failed');
-      setRenderError(e instanceof Error ? e.message : 'Failed to start render.');
+      setRenderError('Could not analyze room depth. Please try a clearer photo.');
+      return;
     }
+
+    setRenderStatus('processing');
+    setRenderError(null);
+    setRenderProgress(0);
+    setRenderProgressStage('Analyzing your room...');
+
+    // render-room generates its own depth map server-side (Depth Pro → Depth Anything V2 fallback).
+    // Retry once on failure — transient Replicate errors and cold starts can cause the first attempt to fail.
+    let res: { render_id: string; prediction_id: string } | null = null;
+    let lastError: unknown;
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        res = await callEdgeFunction<{ render_id: string; prediction_id: string }>('render-room', {
+          room_id:          params.roomId,
+          image_base64:     params.imageBase64,
+          style_blend:      params.styleBlend,
+          room_type:        params.roomType,
+          render_type:      params.renderType,
+          room_dimensions:  params.dimensions,
+        });
+        break; // success — exit retry loop
+      } catch (e: unknown) {
+        lastError = e;
+        if (attempt === 0) {
+          // Brief pause before retry so transient errors can clear
+          await new Promise<void>((r) => setTimeout(r, 2000));
+        }
+      }
+    }
+
+    if (!res) {
+      // Both attempts failed — map error code to user-friendly message
+      const errMsg = lastError instanceof Error ? lastError.message : '';
+      const isDepthError = errMsg.toLowerCase().includes('depth');
+      setRenderStatus('failed');
+      setRenderError(
+        isDepthError
+          ? 'Could not analyze room depth. Please try a clearer photo.'
+          : (errMsg || 'Failed to start render.'),
+      );
+      return;
+    }
+
+    setRenderProgressStage('Applying your style...');
+    // Persist calibrated dimensions to the room record (only after server confirms)
+    if (params.dimensions) {
+      useAppStore.getState().updateRoom(params.roomId, { dimensions: params.dimensions });
+    }
+    const roomBudget = useAppStore.getState().budget_max;
+    pollRenderStatus(res.render_id, params.roomType, params.styleBlend, roomBudget);
   };
 
   return { startRender, pollRenderStatus, currentRender, renderStatus, renderProgressStage, renderProgress, renderError };
