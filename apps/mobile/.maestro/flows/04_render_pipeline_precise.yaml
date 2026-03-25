@@ -1,0 +1,25 @@
+appId: ai.cova.app
+---
+# Flow 04: Render Pipeline — 4 loading stages, panorama result
+# Prereq: returning user with room that can trigger render
+
+- runFlow: ../utils/login_returning.yaml
+- runFlow: ../utils/open_existing_render.yaml
+
+# Verify render view loaded
+- assertVisible:
+    id: "render-view-screen"
+
+# If regenerating, verify loading stages (4 per PRODUCT_TRUTH)
+# Stage 1: "Analyzing your room"
+# Stage 2: "Applying your style"
+# Stage 3: "Generating"
+# Stage 4: "Done"
+# These stages are verified during full e2e, here we verify the completed state
+
+# Panorama viewer should be visible for completed render
+- assertVisible:
+    id: "panorama-viewer"
+
+# Token badge should show 999
+- assertVisible: "999"

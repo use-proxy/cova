@@ -1,0 +1,12 @@
+appId: ai.cova.app
+---
+# Open an existing room's render from the dashboard (returning user)
+- extendedWaitUntil:
+    visible: "My Rooms"
+    timeout: 10000
+- tapOn:
+    id: "room-card-0"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    id: "render-view-screen"
+    timeout: 15000

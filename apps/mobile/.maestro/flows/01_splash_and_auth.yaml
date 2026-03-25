@@ -1,0 +1,70 @@
+appId: ai.cova.app
+---
+# Flow 01: Splash Screen and Authentication
+# Validates splash branding, button animations, auth modes, and login
+
+# --- Splash Screen ---
+- launchApp:
+    appId: ai.cova.app
+    clearState: true
+- assertVisible:
+    id: "splash-screen"
+- assertVisible: "cova"
+- assertVisible: "tinder for your home"
+# Wait for logo fade (2000ms) and button spring animation
+- waitForAnimationToEnd
+- assertVisible: "Create Account"
+- assertVisible: "Sign In"
+
+# --- Navigate to Auth (Sign In mode) ---
+- tapOn: "Sign In"
+- waitForAnimationToEnd
+- assertVisible: "Continue with Apple"
+- assertVisible: "Continue with Google"
+- assertVisible:
+    id: "email-input"
+- assertVisible:
+    id: "password-input"
+- assertVisible: "Privacy Policy"
+- assertVisible: "Terms of Service"
+
+# --- Toggle to Create Account mode ---
+- tapOn: "Create Account"
+- waitForAnimationToEnd
+- assertVisible: "Full name"
+
+# --- Toggle back to Sign In ---
+- tapOn: "Sign In"
+- waitForAnimationToEnd
+
+# --- Validation: empty email ---
+- tapOn: "Sign In"
+- waitForAnimationToEnd
+- assertVisible: "Please enter your email address"
+
+# --- Validation: bad password ---
+- tapOn:
+    id: "email-input"
+- inputText: "test@test.com"
+- tapOn:
+    id: "password-input"
+- inputText: "short"
+- tapOn: "Sign In"
+- waitForAnimationToEnd
+- assertVisible: "Password must be at least 8 characters"
+
+# --- Successful sign in ---
+- clearText:
+    id: "email-input"
+- tapOn:
+    id: "email-input"
+- inputText: "test.newuser@hellocova.com"
+- clearText:
+    id: "password-input"
+- tapOn:
+    id: "password-input"
+- inputText: "CovaTest123!"
+- tapOn: "Sign In"
+- extendedWaitUntil:
+    visible: "My Rooms"
+    timeout: 15000

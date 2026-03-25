@@ -1,0 +1,43 @@
+appId: ai.cova.app
+---
+# Flow 12: Furniture Selection — add, select, drag, undo
+# Prereq: in 3D viewer
+
+- runFlow: ../utils/login_returning.yaml
+- runFlow: ../utils/open_existing_render.yaml
+
+# Navigate to 3D viewer
+- tapOn: "Arrange Furniture"
+- extendedWaitUntil:
+    id: "room-viewer-3d"
+    timeout: 15000
+
+# Tap "Add Furniture" FAB (the + button)
+- tapOn: "+"
+- waitForAnimationToEnd
+
+# Furniture catalog modal should appear
+# Tap on a furniture category or item
+- tapOn: "All"
+- waitForAnimationToEnd
+
+# Select a furniture piece from catalog
+# (Tap on the first available item)
+- tapOn:
+    index: 0
+    point: 50%, 50%
+- waitForAnimationToEnd
+
+# Close catalog if still open
+- tapOn:
+    id: "room-viewer-3d"
+- waitForAnimationToEnd
+
+# Undo should be available after adding furniture
+- assertVisible:
+    id: "undo-button"
+
+# Tap undo to remove the placed furniture
+- tapOn:
+    id: "undo-button"
+- waitForAnimationToEnd

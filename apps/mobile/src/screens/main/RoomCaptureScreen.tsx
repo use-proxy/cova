@@ -682,6 +682,7 @@ function RoomCaptureScreen() {
           <Text style={styles.budgetRange}>{budgetLabel}</Text>
 
           <Slider
+            testID="budget-slider"
             style={[styles.slider, { marginTop: 20, marginBottom: 8 }]}
             minimumValue={0}
             maximumValue={10000}

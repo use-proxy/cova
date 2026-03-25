@@ -249,9 +249,10 @@ export default function HomeScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.roomScroll}
           >
-            {rooms.map((room) => (
+            {rooms.map((room, index) => (
               <TouchableOpacity
                 key={room.id}
+                testID={`room-card-${index}`}
                 style={styles.roomCard}
                 activeOpacity={0.9}
                 onPress={() => handleRoomTap(room)}
@@ -327,7 +328,7 @@ export default function HomeScreen() {
       </ScrollView>
 
       {/* ── FAB ── */}
-      <TouchableOpacity style={styles.fab} activeOpacity={0.85} onPress={handleNewRoom}>
+      <TouchableOpacity testID="new-room-button" style={styles.fab} activeOpacity={0.85} onPress={handleNewRoom}>
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
     </SafeAreaView>

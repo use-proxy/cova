@@ -288,7 +288,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* ── My Style card ── */}
-        <View style={[styles.card, { paddingBottom: 16 }]}>
+        <View testID="style-fingerprint" style={[styles.card, { paddingBottom: 16 }]}>
           <Text style={styles.cardLabel}>MY STYLE</Text>
 
           {/* Segmented bar */}

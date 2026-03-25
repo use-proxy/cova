@@ -60,7 +60,7 @@ export default function SplashScreen() {
   }, [user, navigation, logoOpacity, btnTranslateY, btnOpacity]);
 
   return (
-    <View style={styles.root}>
+    <View testID="splash-screen" style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor={BG} />
 
       {/* ── Logo group ── */}

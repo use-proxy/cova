@@ -527,7 +527,7 @@ function RenderViewScreen() {
   // Completed render
   // ═══════════════════════════════
   return (
-    <View style={styles.root}>
+    <View testID="render-view-screen" style={styles.root}>
       {/* ── Immersive sphere viewer (Mode 1 — default) ─────────────────────── */}
       {/* Both layers are always mounted. Visibility controlled via opacity +   */}
       {/* pointerEvents so neither reloads its texture when toggling modes.      */}
@@ -587,7 +587,7 @@ function RenderViewScreen() {
       {/* ── Top safe-area bar ── */}
       {showControls && (
         <Animated.View testID="hud-container" style={[styles.topBar, { paddingTop: insets.top + 12, opacity: controlsOpacity, backgroundColor: 'rgba(10,22,40,0.85)' }]} pointerEvents="box-none">
-          <TouchableOpacity style={styles.topBarBtn} onPress={() => navigation.goBack()}>
+          <TouchableOpacity testID="back-button" style={styles.topBarBtn} onPress={() => navigation.goBack()}>
             <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
               <Path d="M15 18l-6-6 6-6" stroke="white" strokeWidth={2} />
             </Svg>
@@ -751,6 +751,7 @@ function RenderViewScreen() {
           pointerEvents={showBeforeAfter ? 'box-none' : 'none'}
         >
           <BeforeAfterSlider
+            testID="before-after-slider"
             beforeImageUri={currentRoom.original_image_url}
             onClose={() => setShowBeforeAfter(false)}
           />

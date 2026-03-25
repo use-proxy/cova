@@ -1,0 +1,27 @@
+appId: ai.cova.app
+---
+# Flow 08: Product Panel — swipe from left, budget slider, products, cart
+# Prereq: on render view with completed render
+
+- runFlow: ../utils/login_returning.yaml
+- runFlow: ../utils/open_existing_render.yaml
+
+# Swipe from left edge to open product panel
+- swipe:
+    start: 0%, 50%
+    end: 60%, 50%
+    duration: 500
+- waitForAnimationToEnd
+
+# Product panel should be visible
+- assertVisible: "Add All to Cart"
+
+# Products should show dollar signs and retailer badges
+- assertVisible: "$"
+
+# Close product panel by swiping back
+- swipe:
+    start: 60%, 50%
+    end: 0%, 50%
+    duration: 500
+- waitForAnimationToEnd

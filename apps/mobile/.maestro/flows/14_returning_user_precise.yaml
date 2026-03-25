@@ -1,0 +1,36 @@
+appId: ai.cova.app
+---
+# Flow 14: Returning User — bypasses splash, sees rooms on dashboard
+# Tests that returning users skip the splash animation
+
+- runFlow: ../utils/login_returning.yaml
+
+# Should land directly on dashboard with rooms
+- assertVisible: "My Rooms"
+- assertVisible:
+    id: "token-badge"
+
+# Existing rooms should be visible
+- assertVisible:
+    id: "room-card-0"
+
+# Token badge shows 999
+- assertVisible: "999"
+
+# Tap on existing room card
+- tapOn:
+    id: "room-card-0"
+- waitForAnimationToEnd
+
+# Should navigate to render view
+- extendedWaitUntil:
+    id: "render-view-screen"
+    timeout: 15000
+
+# Navigate back to dashboard
+- tapOn:
+    id: "back-button"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: "My Rooms"
+    timeout: 10000

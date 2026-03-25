@@ -1,0 +1,34 @@
+appId: ai.cova.app
+---
+# Flow 11: 2D Floor Plan Toggle — switch between 3D and 2D views
+# Prereq: in 3D viewer
+
+- runFlow: ../utils/login_returning.yaml
+- runFlow: ../utils/open_existing_render.yaml
+
+# Navigate to 3D viewer
+- tapOn: "Arrange Furniture"
+- extendedWaitUntil:
+    id: "room-viewer-3d"
+    timeout: 15000
+
+# Toggle to 2D floor plan
+- tapOn:
+    id: "floorplan-toggle"
+- waitForAnimationToEnd
+
+# 2D view should show the floor plan
+# The toggle button should now read "3D" (to switch back)
+- assertVisible: "3D"
+
+# Toggle back to 3D
+- tapOn:
+    id: "floorplan-toggle"
+- waitForAnimationToEnd
+
+# Should show "2D" again on toggle
+- assertVisible: "2D"
+
+# 3D viewer should still be stable
+- assertVisible:
+    id: "room-viewer-3d"

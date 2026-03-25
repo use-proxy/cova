@@ -17,7 +17,7 @@ export default function TokenBadge() {
   };
 
   return (
-    <TouchableOpacity style={styles.badge} onPress={handlePress} activeOpacity={0.7}>
+    <TouchableOpacity testID="token-badge" style={styles.badge} onPress={handlePress} activeOpacity={0.7}>
       <View style={styles.dot} />
       <Text style={styles.count}>{balance}</Text>
     </TouchableOpacity>

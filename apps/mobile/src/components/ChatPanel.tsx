@@ -166,7 +166,7 @@ export default function ChatPanel({ testID, roomId, renderImageUrl, tapX, tapY, 
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>AI Design Assistant</Text>
-          <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+          <TouchableOpacity testID="chat-close" onPress={onClose} style={styles.closeBtn}>
             <Text style={styles.closeBtnText}>✕</Text>
           </TouchableOpacity>
         </View>
@@ -193,6 +193,7 @@ export default function ChatPanel({ testID, roomId, renderImageUrl, tapX, tapY, 
               </View>
             )}
             <TextInput
+              testID="chat-input"
               style={styles.input}
               value={inputText}
               onChangeText={setInputText}
@@ -201,6 +202,7 @@ export default function ChatPanel({ testID, roomId, renderImageUrl, tapX, tapY, 
               multiline
             />
             <TouchableOpacity
+              testID="chat-send"
               style={[styles.sendBtn, !inputText.trim() && styles.sendBtnDisabled]}
               onPress={handleSend}
               disabled={!inputText.trim() || chatLoading}

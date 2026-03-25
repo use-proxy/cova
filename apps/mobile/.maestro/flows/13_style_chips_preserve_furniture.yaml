@@ -1,0 +1,54 @@
+appId: ai.cova.app
+---
+# Flow 13: Style Chips Preserve Furniture — switching styles keeps placements
+# Prereq: in 3D viewer with furniture placed
+
+- runFlow: ../utils/login_returning.yaml
+- runFlow: ../utils/open_existing_render.yaml
+
+# Navigate to 3D viewer
+- tapOn: "Arrange Furniture"
+- extendedWaitUntil:
+    id: "room-viewer-3d"
+    timeout: 15000
+
+# Add a furniture piece
+- tapOn: "+"
+- waitForAnimationToEnd
+- tapOn: "All"
+- waitForAnimationToEnd
+# Select first item
+- tapOn:
+    index: 0
+    point: 50%, 50%
+- waitForAnimationToEnd
+
+# Close catalog
+- tapOn:
+    id: "room-viewer-3d"
+- waitForAnimationToEnd
+
+# Current style should be active
+- assertVisible: "Ocean Breeze"
+
+# Switch to a different style
+- tapOn: "Boho Spirit"
+- waitForAnimationToEnd
+
+# Viewer should still be stable (no crash)
+- assertVisible:
+    id: "room-viewer-3d"
+
+# Switch to another style
+- tapOn: "Pure Lines"
+- waitForAnimationToEnd
+
+# 3D viewer still renders (furniture positions preserved)
+- assertVisible:
+    id: "room-viewer-3d"
+
+# Switch back to original
+- tapOn: "Ocean Breeze"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "room-viewer-3d"

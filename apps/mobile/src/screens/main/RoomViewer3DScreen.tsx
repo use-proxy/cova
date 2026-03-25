@@ -627,6 +627,7 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
 
       {/* 2D/3D toggle */}
       <TouchableOpacity
+        testID="floorplan-toggle"
         style={[
           styles.toggle2DBtn,
           { top: insets.top + 60 },
@@ -642,6 +643,7 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
       {/* Undo button */}
       {actionHistory.length > 0 && (
         <TouchableOpacity
+          testID="undo-button"
           style={[styles.undoBtn, { top: insets.top + 100 }]}
           onPress={handleUndo}
         >
@@ -652,12 +654,13 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
 
       {/* Style chips row */}
       <View style={[styles.chipRow, { top: insets.top + 16 }]} pointerEvents="box-none">
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 56 }}>
-          {STYLES.map((s) => {
+        <ScrollView testID="style-chips" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 56 }}>
+          {STYLES.map((s, index) => {
             const isActive = activeStyle === s.key;
             return (
               <TouchableOpacity
                 key={s.key}
+                testID={`style-chip-${index}`}
                 style={[styles.chip, isActive && styles.chipActive]}
                 onPress={() => handleStyleChange(s.key)}
               >

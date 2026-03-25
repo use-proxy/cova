@@ -1,0 +1,44 @@
+appId: ai.cova.app
+---
+# Flow 15: Token Economy — always 999, never decrements, no IAP
+# Prereq: logged in user
+
+- runFlow: ../utils/login_returning.yaml
+
+# Dashboard token badge shows 999
+- assertVisible: "999"
+- assertVisible:
+    id: "token-badge"
+
+# Open an existing render
+- runFlow: ../utils/open_existing_render.yaml
+
+# HUD token still 999
+- assertVisible: "999"
+
+# Open chat (chat is free, should not decrement)
+- tapOn:
+    id: "chat-fab"
+- waitForAnimationToEnd
+- tapOn:
+    id: "chat-input"
+- inputText: "Hello"
+- tapOn:
+    id: "chat-send"
+- extendedWaitUntil:
+    visible: "Cova"
+    timeout: 30000
+- tapOn:
+    id: "chat-close"
+- waitForAnimationToEnd
+
+# Token should still be 999 after chat
+- assertVisible: "999"
+
+# Navigate back to dashboard
+- tapOn:
+    id: "back-button"
+- waitForAnimationToEnd
+
+# Dashboard token still 999
+- assertVisible: "999"

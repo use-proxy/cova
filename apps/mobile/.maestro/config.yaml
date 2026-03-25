@@ -1,5 +1,5 @@
 flows:
-  - 08_full_flow.yaml
+  - flows/17_full_new_user_e2e.yaml
 env:
   APP_ID: ai.cova.app
   TIMEOUT: 120000

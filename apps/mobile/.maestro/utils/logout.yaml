@@ -1,0 +1,13 @@
+appId: ai.cova.app
+---
+# Log out of the current session
+- tapOn: "Profile"
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element: "Sign Out"
+    direction: DOWN
+- tapOn: "Sign Out"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: "Create Account"
+    timeout: 10000

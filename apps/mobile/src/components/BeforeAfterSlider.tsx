@@ -12,6 +12,7 @@ import {
 import Svg, { Path } from 'react-native-svg';
 
 interface BeforeAfterSliderProps {
+  testID?: string;
   beforeImageUri: string;
   afterImageUri?: string; // kept for API compat but right side shows through to underlying viewer
   onClose: () => void;
@@ -25,7 +26,7 @@ const INITIAL_X = SCREEN_WIDTH * 0.3;
 // Touch zone: 40px on each side of the divider line = 80px wide hit area
 const HIT_ZONE_WIDTH = 80;
 
-export default function BeforeAfterSlider({ beforeImageUri, onClose }: BeforeAfterSliderProps) {
+export default function BeforeAfterSlider({ testID, beforeImageUri, onClose }: BeforeAfterSliderProps) {
   const sliderX = useRef(new Animated.Value(INITIAL_X)).current;
   // zoneLeft = sliderX - 40 (40px to the left of the divider line)
   const zoneLeft = useRef(Animated.subtract(sliderX, new Animated.Value(HIT_ZONE_WIDTH / 2))).current;
@@ -62,7 +63,7 @@ export default function BeforeAfterSlider({ beforeImageUri, onClose }: BeforeAft
 
   return (
     // box-none: container passes touches through; only the hit zone and close button capture
-    <Animated.View style={[styles.container, { opacity }]} pointerEvents="box-none">
+    <Animated.View testID={testID} style={[styles.container, { opacity }]} pointerEvents="box-none">
 
       {/* Before image — clipped to left of divider */}
       <Animated.View

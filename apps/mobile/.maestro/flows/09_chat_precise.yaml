@@ -1,0 +1,44 @@
+appId: ai.cova.app
+---
+# Flow 09: Chat Panel — open, send message, get response, close
+# Prereq: on render view with completed render
+
+- runFlow: ../utils/login_returning.yaml
+- runFlow: ../utils/open_existing_render.yaml
+
+# Tap chat FAB
+- tapOn:
+    id: "chat-fab"
+- waitForAnimationToEnd
+
+# Chat panel should appear at 60% height
+- assertVisible:
+    id: "chat-panel"
+- assertVisible: "AI Design Assistant"
+
+# Type a message
+- tapOn:
+    id: "chat-input"
+- inputText: "What style is this room?"
+
+# Send the message
+- tapOn:
+    id: "chat-send"
+- waitForAnimationToEnd
+
+# Wait for Claude response (up to 30s)
+- extendedWaitUntil:
+    visible: "Cova"
+    timeout: 30000
+
+# Token should still be 999 (chat is free)
+- tapOn:
+    id: "chat-close"
+- waitForAnimationToEnd
+
+# Chat panel should be dismissed
+- assertNotVisible:
+    id: "chat-panel"
+
+# Verify token unchanged
+- assertVisible: "999"

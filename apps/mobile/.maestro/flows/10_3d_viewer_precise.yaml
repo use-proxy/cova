@@ -1,0 +1,52 @@
+appId: ai.cova.app
+---
+# Flow 10: 3D Viewer — camera at doorway, pan/pinch, no crash, style chips
+# Prereq: on render view, navigate to 3D viewer
+
+- runFlow: ../utils/login_returning.yaml
+- runFlow: ../utils/open_existing_render.yaml
+
+# Navigate to 3D viewer via "Arrange Furniture" button
+- tapOn: "Arrange Furniture"
+- waitForAnimationToEnd
+
+# 3D viewer should load without crash (no OrbitControls error)
+- extendedWaitUntil:
+    id: "room-viewer-3d"
+    timeout: 15000
+
+# Style chips should be visible
+- assertVisible: "Ocean Breeze"
+- assertVisible: "Zen Garden"
+- assertVisible: "Boho Spirit"
+- assertVisible: "Mid-Century"
+- assertVisible: "Pure Lines"
+
+# 2D toggle should exist
+- assertVisible:
+    id: "floorplan-toggle"
+
+# Test pan gesture (camera movement)
+- swipe:
+    id: "room-viewer-3d"
+    direction: LEFT
+    duration: 600
+- waitForAnimationToEnd
+
+- swipe:
+    id: "room-viewer-3d"
+    direction: RIGHT
+    duration: 600
+- waitForAnimationToEnd
+
+# 3D viewer should still be visible (no crash)
+- assertVisible:
+    id: "room-viewer-3d"
+
+# Switch style chip
+- tapOn: "Zen Garden"
+- waitForAnimationToEnd
+
+# Viewer should still render (no crash on style change)
+- assertVisible:
+    id: "room-viewer-3d"

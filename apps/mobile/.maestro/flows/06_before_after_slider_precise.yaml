@@ -1,0 +1,35 @@
+appId: ai.cova.app
+---
+# Flow 06: Before/After Slider — left=original, right=AI render
+# Prereq: on render view with completed render
+
+- runFlow: ../utils/login_returning.yaml
+- runFlow: ../utils/open_existing_render.yaml
+
+# Verify render view
+- assertVisible:
+    id: "render-view-screen"
+
+# Before/After slider should be visible (shows by default)
+- assertVisible:
+    id: "before-after-slider"
+- assertVisible: "Before"
+- assertVisible: "After"
+
+# Drag the slider to reveal more of the before image
+- swipe:
+    id: "before-after-slider"
+    direction: RIGHT
+    duration: 600
+- waitForAnimationToEnd
+
+# Drag slider back to show more of the AI render
+- swipe:
+    id: "before-after-slider"
+    direction: LEFT
+    duration: 600
+- waitForAnimationToEnd
+
+# Slider should still be functional
+- assertVisible:
+    id: "before-after-slider"

@@ -1,0 +1,32 @@
+appId: ai.cova.app
+---
+# Flow 07: HUD — auto-hide after 3s, show on tap, Regenerate/Save/Share visible
+# Prereq: on render view with completed render
+
+- runFlow: ../utils/login_returning.yaml
+- runFlow: ../utils/open_existing_render.yaml
+
+# HUD should be visible initially
+- assertVisible:
+    id: "hud-container"
+- assertVisible: "999"
+
+# Wait for auto-hide (3 seconds)
+- wait: 4000
+
+# Tap to show HUD again
+- tapOn:
+    id: "panorama-viewer"
+- waitForAnimationToEnd
+
+# HUD should reappear with controls
+- assertVisible:
+    id: "hud-container"
+
+# Bottom action bar should have Save, Share, Regenerate
+- assertVisible: "Save"
+- assertVisible: "Share"
+- assertVisible: "Regenerate"
+
+# Token should still show 999
+- assertVisible: "999"

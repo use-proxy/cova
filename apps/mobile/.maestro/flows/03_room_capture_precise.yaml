@@ -1,0 +1,36 @@
+appId: ai.cova.app
+---
+# Flow 03: Room Capture — budget step first, then capture options
+# Prereq: landed on RoomCapture after quiz
+
+- runFlow: ../utils/login_returning.yaml
+
+# Start new room
+- tapOn:
+    id: "new-room-button"
+- waitForAnimationToEnd
+- tapOn: "Living Room"
+- waitForAnimationToEnd
+# Returning user may get "Use your previous style?" dialog
+- tapOn: "Yes"
+- waitForAnimationToEnd
+
+# --- Budget step (FIRST per PRODUCT_TRUTH) ---
+- assertVisible: "Budget"
+- assertVisible:
+    id: "budget-slider"
+# Default budget is $2,500
+- assertVisible: "$2,500"
+
+# Tap Continue to reveal capture options
+- tapOn: "Continue"
+- waitForAnimationToEnd
+
+# --- Capture method selection ---
+- assertVisible: "Take Photo"
+- assertVisible: "Upload Photo"
+# "Scan Room" only shows on LiDAR devices — not asserted here
+
+# Upload a photo for testing
+- tapOn: "Upload Photo"
+- waitForAnimationToEnd

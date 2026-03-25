@@ -1,0 +1,166 @@
+appId: ai.cova.app
+---
+# Flow 17: Full New User E2E — splash to render, complete journey
+# This is the critical path test for the entire app
+
+# --- STEP 1: Splash ---
+- launchApp:
+    appId: ai.cova.app
+    clearState: true
+- assertVisible:
+    id: "splash-screen"
+- assertVisible: "cova"
+- assertVisible: "tinder for your home"
+- waitForAnimationToEnd
+- assertVisible: "Create Account"
+- assertVisible: "Sign In"
+
+# --- STEP 2: Auth (email sign in) ---
+- tapOn: "Sign In"
+- waitForAnimationToEnd
+- assertVisible: "Continue with Apple"
+- assertVisible: "Continue with Google"
+- tapOn:
+    id: "email-input"
+- inputText: "test.newuser@hellocova.com"
+- tapOn:
+    id: "password-input"
+- inputText: "CovaTest123!"
+- tapOn: "Sign In"
+- extendedWaitUntil:
+    visible: "My Rooms"
+    timeout: 15000
+
+# --- STEP 3: Dashboard ---
+- assertVisible:
+    id: "token-badge"
+- assertVisible: "999"
+
+# --- STEP 4: New Room ---
+- tapOn:
+    id: "new-room-button"
+- waitForAnimationToEnd
+- tapOn: "Living Room"
+- waitForAnimationToEnd
+
+# --- STEP 5: Style Quiz ---
+- assertVisible: "Swipe right if you love it"
+- tapOn: "Let's Go"
+- waitForAnimationToEnd
+
+# Perform 10 swipes (mostly right for consistent style)
+- swipe:
+    id: "quiz-card"
+    direction: RIGHT
+    duration: 500
+- waitForAnimationToEnd
+- swipe:
+    id: "quiz-card"
+    direction: RIGHT
+    duration: 500
+- waitForAnimationToEnd
+- swipe:
+    id: "quiz-card"
+    direction: LEFT
+    duration: 500
+- waitForAnimationToEnd
+- swipe:
+    id: "quiz-card"
+    direction: RIGHT
+    duration: 500
+- waitForAnimationToEnd
+- swipe:
+    id: "quiz-card"
+    direction: RIGHT
+    duration: 500
+- waitForAnimationToEnd
+- swipe:
+    id: "quiz-card"
+    direction: RIGHT
+    duration: 500
+- waitForAnimationToEnd
+- swipe:
+    id: "quiz-card"
+    direction: LEFT
+    duration: 500
+- waitForAnimationToEnd
+- swipe:
+    id: "quiz-card"
+    direction: RIGHT
+    duration: 500
+- waitForAnimationToEnd
+- swipe:
+    id: "quiz-card"
+    direction: RIGHT
+    duration: 500
+- waitForAnimationToEnd
+- swipe:
+    id: "quiz-card"
+    direction: RIGHT
+    duration: 500
+- waitForAnimationToEnd
+
+# --- STEP 6: Room Capture (budget step) ---
+- extendedWaitUntil:
+    visible: "Budget"
+    timeout: 10000
+- assertVisible:
+    id: "budget-slider"
+- tapOn: "Continue"
+- waitForAnimationToEnd
+
+# --- STEP 7: Capture method ---
+- assertVisible: "Take Photo"
+- assertVisible: "Upload Photo"
+
+# Upload a photo
+- tapOn: "Upload Photo"
+- waitForAnimationToEnd
+
+# --- STEP 8: Render Pipeline Loading Stages ---
+- extendedWaitUntil:
+    visible: "Analyzing your room"
+    timeout: 15000
+- extendedWaitUntil:
+    visible: "Applying your style"
+    timeout: 25000
+- extendedWaitUntil:
+    visible: "Generating"
+    timeout: 40000
+- extendedWaitUntil:
+    visible: "Done"
+    timeout: 60000
+- waitForAnimationToEnd
+
+# --- STEP 9: Render View ---
+- extendedWaitUntil:
+    id: "render-view-screen"
+    timeout: 15000
+- assertVisible:
+    id: "panorama-viewer"
+- assertVisible: "999"
+
+# --- STEP 10: HUD ---
+- assertVisible:
+    id: "hud-container"
+
+# --- STEP 11: Chat ---
+- tapOn:
+    id: "chat-fab"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "chat-panel"
+- tapOn:
+    id: "chat-close"
+- waitForAnimationToEnd
+
+# --- STEP 12: Back to dashboard ---
+- tapOn:
+    id: "back-button"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: "My Rooms"
+    timeout: 10000
+
+# Token still 999 after full flow
+- assertVisible: "999"

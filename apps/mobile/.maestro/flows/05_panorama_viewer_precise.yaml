@@ -1,0 +1,40 @@
+appId: ai.cova.app
+---
+# Flow 05: Panorama Viewer — pan and pinch on rendered image
+# Prereq: on render view with completed render
+
+- runFlow: ../utils/login_returning.yaml
+- runFlow: ../utils/open_existing_render.yaml
+
+# Panorama viewer loaded
+- assertVisible:
+    id: "panorama-viewer"
+
+# Test pan gesture (look around the sphere)
+- swipe:
+    id: "panorama-viewer"
+    direction: LEFT
+    duration: 800
+- waitForAnimationToEnd
+
+- swipe:
+    id: "panorama-viewer"
+    direction: RIGHT
+    duration: 800
+- waitForAnimationToEnd
+
+- swipe:
+    id: "panorama-viewer"
+    direction: UP
+    duration: 500
+- waitForAnimationToEnd
+
+- swipe:
+    id: "panorama-viewer"
+    direction: DOWN
+    duration: 500
+- waitForAnimationToEnd
+
+# Panorama should still be visible after gestures (no crash)
+- assertVisible:
+    id: "panorama-viewer"

@@ -1,9 +1,0 @@
-appId: ai.cova.app
----
-- runFlow: 01_auth.yaml
-- runFlow: 02_style_quiz.yaml
-- runFlow: 03_room_capture.yaml
-- runFlow: 04_render_view.yaml
-- runFlow: 05_product_panel.yaml
-- runFlow: 06_chat.yaml
-- runFlow: 07_3d_viewer.yaml

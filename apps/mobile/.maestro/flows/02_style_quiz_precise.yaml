@@ -1,0 +1,89 @@
+appId: ai.cova.app
+---
+# Flow 02: Style Quiz — instructions, swiping, no style names visible
+# Prereq: logged in as new user on dashboard
+
+- runFlow: ../utils/login_new.yaml
+
+# Start new room flow
+- tapOn:
+    id: "new-room-button"
+- waitForAnimationToEnd
+- tapOn: "Living Room"
+- waitForAnimationToEnd
+
+# --- Instructions phase ---
+- assertVisible: "Swipe right if you love it"
+- assertVisible: "Let's Go"
+# Skip should be visible initially
+- assertVisible: "Skip"
+- tapOn: "Let's Go"
+- waitForAnimationToEnd
+
+# --- Quiz card phase ---
+- assertVisible:
+    id: "quiz-card"
+# No style names should be visible to user
+- assertNotVisible: "Japandi"
+- assertNotVisible: "Coastal"
+- assertNotVisible: "Bohemian"
+- assertNotVisible: "Mid-Century Modern"
+- assertNotVisible: "Minimalist"
+
+# --- Perform swipes (right = love, left = pass) ---
+- swipe:
+    id: "quiz-card"
+    direction: RIGHT
+    duration: 500
+- waitForAnimationToEnd
+- swipe:
+    id: "quiz-card"
+    direction: LEFT
+    duration: 500
+- waitForAnimationToEnd
+- swipe:
+    id: "quiz-card"
+    direction: RIGHT
+    duration: 500
+- waitForAnimationToEnd
+- swipe:
+    id: "quiz-card"
+    direction: RIGHT
+    duration: 500
+- waitForAnimationToEnd
+- swipe:
+    id: "quiz-card"
+    direction: LEFT
+    duration: 500
+- waitForAnimationToEnd
+- swipe:
+    id: "quiz-card"
+    direction: RIGHT
+    duration: 500
+- waitForAnimationToEnd
+- swipe:
+    id: "quiz-card"
+    direction: RIGHT
+    duration: 500
+- waitForAnimationToEnd
+- swipe:
+    id: "quiz-card"
+    direction: LEFT
+    duration: 500
+- waitForAnimationToEnd
+- swipe:
+    id: "quiz-card"
+    direction: RIGHT
+    duration: 500
+- waitForAnimationToEnd
+- swipe:
+    id: "quiz-card"
+    direction: RIGHT
+    duration: 500
+- waitForAnimationToEnd
+
+# After 10+ swipes with >65% confidence, quiz should auto-complete
+# and navigate to RoomCapture
+- extendedWaitUntil:
+    visible: "Budget"
+    timeout: 10000

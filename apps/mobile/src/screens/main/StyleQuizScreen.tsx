@@ -621,6 +621,7 @@ function StyleQuizScreen() {
 
           {/* Top card (draggable) */}
           <Animated.View
+            testID="quiz-card"
             style={[
               styles.card,
               {

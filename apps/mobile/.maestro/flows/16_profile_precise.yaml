@@ -1,0 +1,43 @@
+appId: ai.cova.app
+---
+# Flow 16: Profile — style fingerprint, display names, retake quiz, delete account
+# Prereq: logged in user
+
+- runFlow: ../utils/login_returning.yaml
+
+# Navigate to Profile
+- tapOn: "Profile"
+- waitForAnimationToEnd
+
+# Style fingerprint visualization
+- assertVisible:
+    id: "style-fingerprint"
+- assertVisible: "MY STYLE"
+
+# Display names (not internal style keys)
+- assertVisible: "Ocean Breeze"
+- assertVisible: "Zen Garden"
+- assertVisible: "Boho Spirit"
+- assertVisible: "Mid-Century"
+- assertVisible: "Pure Lines"
+
+# Percentage values should be visible
+- assertVisible: "%"
+
+# Retake Quiz option
+- scrollUntilVisible:
+    element: "Retake Quiz"
+    direction: DOWN
+- assertVisible: "Retake Quiz"
+
+# Delete Account option
+- scrollUntilVisible:
+    element: "Delete Account"
+    direction: DOWN
+- assertVisible: "Delete Account"
+
+# Sign Out option
+- scrollUntilVisible:
+    element: "Sign Out"
+    direction: DOWN
+- assertVisible: "Sign Out"

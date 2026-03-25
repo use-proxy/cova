@@ -1,0 +1,20 @@
+appId: ai.cova.app
+---
+# Login as a returning test user (has rooms and completed renders)
+- launchApp:
+    appId: ai.cova.app
+    clearState: true
+- waitForAnimationToEnd
+- assertVisible: "Create Account"
+- tapOn: "Sign In"
+- tapOn:
+    id: "email-input"
+- inputText: "test.returning@hellocova.com"
+- tapOn:
+    id: "password-input"
+- inputText: "CovaTest123!"
+- tapOn: "Sign In"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: "My Rooms"
+    timeout: 15000

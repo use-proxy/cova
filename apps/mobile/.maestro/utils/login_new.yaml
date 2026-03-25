@@ -1,0 +1,20 @@
+appId: ai.cova.app
+---
+# Login as a new test user (no prior rooms or style quiz)
+- launchApp:
+    appId: ai.cova.app
+    clearState: true
+- waitForAnimationToEnd
+- assertVisible: "Create Account"
+- tapOn: "Sign In"
+- tapOn:
+    id: "email-input"
+- inputText: "test.newuser@hellocova.com"
+- tapOn:
+    id: "password-input"
+- inputText: "CovaTest123!"
+- tapOn: "Sign In"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: "My Rooms"
+    timeout: 15000
