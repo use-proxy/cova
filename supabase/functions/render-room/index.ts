@@ -195,14 +195,21 @@ async function generateDepthMap(imageDataUri: string, token: string): Promise<st
 
   const pred = await resolvePrediction(predId, token, 45_000);
 
-  // Depth Pro output shape: { depth_colored: url, focallength_pixels: number }
-  const out = pred.output as Record<string, unknown> | null;
-  const depthUrl = (out?.depth_colored ?? out?.depth ?? out?.output) as string | undefined;
-  if (depthUrl && typeof depthUrl === 'string') {
+  // Depth Pro output varies: plain string URL, object { depth_colored }, or array
+  const output = pred.output;
+  let depthUrl: string | undefined;
+  if (typeof output === 'string') {
+    depthUrl = output;
+  } else if (output && typeof output === 'object' && !Array.isArray(output) && (output as Record<string, unknown>).depth_colored) {
+    depthUrl = (output as Record<string, unknown>).depth_colored as string;
+  } else if (Array.isArray(output) && typeof output[0] === 'string') {
+    depthUrl = output[0];
+  }
+  if (depthUrl) {
     console.log('Depth Pro succeeded:', depthUrl.slice(0, 80));
     return depthUrl;
   }
-  throw new Error(`Depth Pro output missing depth_colored. Got: ${JSON.stringify(out)}`);
+  throw new Error(`Depth Pro output unrecognized format: ${JSON.stringify(output)}`);
 }
 
 // ── FLUX render ───────────────────────────────────────────────────────────────
