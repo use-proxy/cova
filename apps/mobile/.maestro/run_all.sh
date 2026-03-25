@@ -4,6 +4,9 @@
 
 set -e
 
+DEVICE_UDID="00008120-000C44D91AE3601E"
+APPLE_TEAM_ID="C9VU4B58CG"
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 FLOWS_DIR="$SCRIPT_DIR/flows"
 PASS=0
@@ -18,7 +21,7 @@ echo ""
 for flow in "$FLOWS_DIR"/*.yaml; do
   flow_name=$(basename "$flow")
   echo "--- Running: $flow_name ---"
-  if "$HOME/.maestro/bin/maestro" test "$flow"; then
+  if "$HOME/.maestro/bin/maestro" --udid "$DEVICE_UDID" --apple-team-id "$APPLE_TEAM_ID" test "$flow"; then
     echo "PASS: $flow_name"
     PASS=$((PASS + 1))
   else
