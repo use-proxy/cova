@@ -427,6 +427,11 @@ function RoomCaptureScreen() {
         console.warn('original_image_url upload failed (non-fatal):', uploadErr);
       }
 
+      // Clear any stale render from a previous room interaction so autoGenerate
+      // in RenderViewScreen always triggers a fresh FLUX render with the new photo.
+      useAppStore.getState().setCurrentRender(null);
+      useAppStore.getState().setRenderStatus('idle');
+
       navigation.navigate('RenderView', { room_id: roomId, autoGenerate: true });
     } catch (e) {
       console.error('handleProcessCapture failed:', e);
