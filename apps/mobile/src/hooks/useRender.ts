@@ -100,9 +100,11 @@ export function useRender() {
         const delay = BACKOFF[Math.min(attemptIndex, BACKOFF.length - 1)];
         attemptIndex++;
         pollTimeoutRef.current = setTimeout(poll, delay);
-      } catch {
+      } catch (pollErr) {
+        const msg = pollErr instanceof Error ? pollErr.message : String(pollErr);
+        console.error('Render poll error:', msg);
         setRenderStatus('failed');
-        setRenderError('Something went wrong. Please try again.');
+        setRenderError(msg || 'Something went wrong. Please try again.');
       }
     };
 

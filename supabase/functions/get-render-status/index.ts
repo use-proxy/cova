@@ -165,6 +165,12 @@ Deno.serve(async (req: Request) => {
     }
 
     if (prediction.status === 'failed' || prediction.status === 'canceled') {
+      console.error('Replicate prediction failed:', JSON.stringify({
+        prediction_id: render.replicate_prediction_id,
+        status: prediction.status,
+        error: prediction.error,
+        render_id,
+      }));
       await supabase
         .from('renders')
         .update({ status: 'failed' })

@@ -350,6 +350,49 @@ Deno.serve(async (req: Request) => {
       ? image_base64
       : `data:image/jpeg;base64,${image_base64}`;
 
+    console.log('render-room called, image_base64 length:', image_base64?.length ?? 0);
+
+    // ── Step 0: Upload photo to room-photos bucket (§8.1 step 3) ─────────
+    // FLUX ControlNet fails with large inline data URIs for control images.
+    // Upload to storage and pass the signed URL instead.
+    let originalImageUrl: string = imageDataUri; // fallback if upload fails
+    try {
+      const rawBase64 = image_base64.startsWith('data:')
+        ? image_base64.split(',')[1]
+        : image_base64;
+      const binaryStr = atob(rawBase64);
+      const bytes = new Uint8Array(binaryStr.length);
+      for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+
+      const storagePath = `${user.id}/${room_id}/${Date.now()}.jpg`;
+      const { error: uploadErr } = await supabase.storage
+        .from('room-photos')
+        .upload(storagePath, bytes, { contentType: 'image/jpeg', upsert: true });
+
+      if (uploadErr) {
+        console.warn('room-photos upload failed, using data URI fallback:', uploadErr.message);
+      } else {
+        const { data: signedData } = await supabase.storage
+          .from('room-photos')
+          .createSignedUrl(storagePath, 3600); // 1 hour — plenty for FLUX
+        if (signedData?.signedUrl) {
+          originalImageUrl = signedData.signedUrl;
+          console.log('Room photo uploaded, using signed URL for FLUX');
+        }
+      }
+
+      // Also store the URL on the room record
+      if (originalImageUrl !== imageDataUri) {
+        await supabase
+          .from('rooms')
+          .update({ original_image_url: originalImageUrl })
+          .eq('id', room_id);
+      }
+    } catch (uploadCatchErr) {
+      logError('room_photo_upload_failed', uploadCatchErr, { room_id });
+      console.warn('room-photos upload exception, using data URI fallback');
+    }
+
     // ── Step 1: Depth estimation ───────────────────────────────────────────
     // Try Depth Pro → Depth Anything V2 fallback (inside generateDepthMap).
     // If both models fail, degrade gracefully: pass the original photo as the
@@ -361,9 +404,9 @@ Deno.serve(async (req: Request) => {
     } catch (depthErr) {
       logError('depth_estimation_failed', depthErr, { room_id, user_id: user.id });
       console.warn('⚠️ Depth estimation failed — proceeding with original image as flat depth fallback');
-      // Use the original photo data URI as the ControlNet conditioning image.
+      // Use the uploaded photo URL (or data URI fallback) as the ControlNet conditioning image.
       // This is the "flat depth" fallback: no metric depth, but render still runs.
-      depthMapUrl = imageDataUri;
+      depthMapUrl = originalImageUrl;
     }
 
     // ── Step 2: Start FLUX render (async — returns prediction ID) ──────────
@@ -372,7 +415,7 @@ Deno.serve(async (req: Request) => {
     try {
       fluxPredictionId = await startFluxPrediction(
         depthMapUrl,
-        imageDataUri,
+        originalImageUrl,
         prompt,
         numSteps,
         replicateToken,
