@@ -72,24 +72,25 @@ function buildPrompt(styleBlend: Record<string, number>, roomType: string): stri
 
 // ── Replicate helpers ─────────────────────────────────────────────────────────
 
-// Start a prediction via /models/{owner}/{name}/predictions (official models with latest deployment)
+// Start a prediction via /models/{owner}/{name}/predictions (official models).
+// wait=true uses 'Prefer: wait' to hold connection until done (use for models whose
+// output is needed before returning). wait=false returns the prediction ID immediately.
 async function startPrediction(
   owner: string,
   name: string,
   input: Record<string, unknown>,
   token: string,
+  wait = false,
 ): Promise<string> {
+  const headers: Record<string, string> = {
+    'Authorization': `Token ${token}`,
+    'Content-Type': 'application/json',
+  };
+  if (wait) headers['Prefer'] = 'wait';
+
   const res = await fetch(
     `https://api.replicate.com/v1/models/${owner}/${name}/predictions`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Token ${token}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'wait',
-      },
-      body: JSON.stringify({ input }),
-    },
+    { method: 'POST', headers, body: JSON.stringify({ input }) },
   );
   if (!res.ok) {
     const body = await res.text();
@@ -101,7 +102,8 @@ async function startPrediction(
   return pred.id;
 }
 
-// Start a prediction via /v1/predictions + explicit version hash (community models)
+// Start a prediction via /v1/predictions + explicit version hash (community models).
+// Never uses 'Prefer: wait' — returns the prediction ID immediately, caller polls.
 async function startPredictionWithVersion(
   versionHash: string,
   input: Record<string, unknown>,
@@ -115,7 +117,6 @@ async function startPredictionWithVersion(
       headers: {
         'Authorization': `Token ${token}`,
         'Content-Type': 'application/json',
-        'Prefer': 'wait',
       },
       body: JSON.stringify({ version: versionHash, input }),
     },
@@ -193,7 +194,8 @@ async function generateDepthMap(imageDataUri: string, token: string): Promise<st
     'garg-aayush/ml-depth-pro',
   );
 
-  const pred = await resolvePrediction(predId, token, 45_000);
+  // Poll for depth result. Budget: 90s max, leaving headroom for FLUX start + DB writes.
+  const pred = await resolvePrediction(predId, token, 90_000);
 
   // Depth Pro output varies: plain string URL, object { depth_colored }, or array
   const output = pred.output;
@@ -226,6 +228,8 @@ async function startFluxPrediction(
 ): Promise<string> { // returns Replicate prediction ID
 
   // PRIMARY: FLUX Depth Pro (depth ControlNet conditioning)
+  // ⚠️ wait=false — just create the prediction and return the ID immediately.
+  // get-render-status handles polling. NEVER block the edge function on FLUX.
   try {
     const predId = await startPrediction(
       'black-forest-labs', 'flux-depth-pro',
@@ -238,8 +242,9 @@ async function startFluxPrediction(
         height:              1024,
       },
       token,
+      false, // do NOT wait — return prediction ID immediately
     );
-    console.log('Using flux-depth-pro as primary render model');
+    console.log('FLUX prediction started (flux-depth-pro):', predId);
     return predId.replace('__done__:', '');
   } catch (err) {
     console.warn('⚠️ flux-depth-pro unavailable, activating fallback (flux-2-pro):', (err as Error).message);
@@ -256,9 +261,10 @@ async function startFluxPrediction(
       height:              1024,
     },
     token,
+    false, // do NOT wait
   );
 
-  console.log('Using flux-2-pro fallback render model (no depth conditioning)');
+  console.log('FLUX prediction started (flux-2-pro fallback):', fallbackPredId);
   return fallbackPredId.replace('__done__:', '');
 }
 
