@@ -537,6 +537,7 @@ function RenderViewScreen() {
       >
         {currentRender?.image_url ? (
           <PanoramaViewer
+            testID="panorama-viewer"
             imageUrl={currentRender.image_url}
             pointerEnabled={viewModeRef.current === 'immersive'}
             onTap={handlePanoramaTap}
@@ -585,7 +586,7 @@ function RenderViewScreen() {
 
       {/* ── Top safe-area bar ── */}
       {showControls && (
-        <Animated.View style={[styles.topBar, { paddingTop: insets.top + 12, opacity: controlsOpacity, backgroundColor: 'rgba(10,22,40,0.85)' }]} pointerEvents="box-none">
+        <Animated.View testID="hud-container" style={[styles.topBar, { paddingTop: insets.top + 12, opacity: controlsOpacity, backgroundColor: 'rgba(10,22,40,0.85)' }]} pointerEvents="box-none">
           <TouchableOpacity style={styles.topBarBtn} onPress={() => navigation.goBack()}>
             <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
               <Path d="M15 18l-6-6 6-6" stroke="white" strokeWidth={2} />
@@ -606,7 +607,7 @@ function RenderViewScreen() {
 
       {/* ── Floating chat bubble ── */}
       {!showChat && !showProductPanel && (
-        <TouchableOpacity style={styles.chatFab} activeOpacity={0.85} onPress={() => setShowChat(true)}>
+        <TouchableOpacity testID="chat-fab" style={styles.chatFab} activeOpacity={0.85} onPress={() => setShowChat(true)}>
           <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
             <Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke={BG} strokeWidth={2} />
           </Svg>
@@ -758,6 +759,7 @@ function RenderViewScreen() {
 
       {showChat && (
         <ChatPanel
+          testID="chat-panel"
           roomId={room_id}
           renderImageUrl={currentRender?.image_url ?? undefined}
           tapX={tapCoords?.x}

@@ -85,6 +85,7 @@ const SphereScene = memo(function SphereScene({ cameraState, texture }: SphereSc
 
 // ── PanoramaViewer ────────────────────────────────────────────────────────────
 export interface PanoramaViewerProps {
+  testID?: string;
   imageUrl: string;
   pointerEnabled: boolean; // when false, PanResponder ignores all touches
   onTap: () => void;       // fired on single-tap with minimal movement (HUD toggle)
@@ -92,6 +93,7 @@ export interface PanoramaViewerProps {
 }
 
 export default function PanoramaViewer({
+  testID,
   imageUrl,
   pointerEnabled,
   onTap,
@@ -253,14 +255,14 @@ export default function PanoramaViewer({
 
   if (!imageUrl) {
     return (
-      <View style={styles.root}>
+      <View testID={testID} style={styles.root}>
         <Text style={styles.msgText}>Render not available</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.root}>
+    <View testID={testID} style={styles.root}>
       {/* ── Canvas (absoluteFill) — opacity 0 until texture loads ──────────── */}
       <Animated.View style={[StyleSheet.absoluteFill, { opacity: canvasOpacity }]}>
         <Canvas

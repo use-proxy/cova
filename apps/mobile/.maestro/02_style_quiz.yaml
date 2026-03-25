@@ -1,0 +1,22 @@
+appId: ai.cova.app
+---
+- launchApp
+- assertVisible: "Your Rooms"
+- tapOn: "+"
+- assertVisible: "Swipe right if you love it"
+- tapOn: "Let's Go"
+- assertNotVisible: "Japandi"
+- assertNotVisible: "Coastal"
+- assertNotVisible: "Bohemian"
+- repeat:
+    times: 12
+    commands:
+      - swipeLeft:
+          startX: 80%
+          startY: 50%
+          endX: 20%
+          endY: 50%
+      - waitForAnimationToEnd
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: "Room Capture"

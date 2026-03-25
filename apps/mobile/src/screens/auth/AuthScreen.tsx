@@ -303,6 +303,7 @@ export default function AuthScreen({ route }: Props) {
             )}
 
             <TextInput
+              testID="email-input"
               style={styles.input}
               placeholder="Email address"
               placeholderTextColor="rgba(255,255,255,0.4)"
@@ -315,6 +316,7 @@ export default function AuthScreen({ route }: Props) {
             />
 
             <TextInput
+              testID="password-input"
               style={styles.input}
               placeholder="Password"
               placeholderTextColor="rgba(255,255,255,0.4)"

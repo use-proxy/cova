@@ -1,0 +1,5 @@
+flows:
+  - 08_full_flow.yaml
+env:
+  APP_ID: ai.cova.app
+  TIMEOUT: 120000

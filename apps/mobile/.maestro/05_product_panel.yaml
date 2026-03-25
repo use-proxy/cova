@@ -1,0 +1,12 @@
+appId: ai.cova.app
+---
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 120000
+- swipeRight:
+    startX: 5%
+    startY: 50%
+    endX: 40%
+    endY: 50%
+- assertVisible: "Add All to Cart"
+- assertVisible: "$"

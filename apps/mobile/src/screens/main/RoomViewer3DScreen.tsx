@@ -510,7 +510,7 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
   const colorOptions = selectedCatalog?.colors ?? [];
 
   return (
-    <View style={[styles.container, { backgroundColor: ceilingColor }]}>
+    <View testID="room-viewer-3d" style={[styles.container, { backgroundColor: ceilingColor }]}>
       {/* ── 3D Canvas / 2D Floor Plan ── */}
       {show2D ? (
         <View style={styles.floorPlanWrapper}>

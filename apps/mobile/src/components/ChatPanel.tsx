@@ -17,6 +17,7 @@ import { callEdgeFunction } from '../lib/supabase';
 import type { ChatMessage } from '@cova/shared';
 
 interface ChatPanelProps {
+  testID?: string;
   roomId: string;
   renderImageUrl?: string;
   tapX?: number;
@@ -28,7 +29,7 @@ interface ChatPanelProps {
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PANEL_HEIGHT = SCREEN_HEIGHT * 0.6;
 
-export default function ChatPanel({ roomId, renderImageUrl, tapX, tapY, onClose, onMessageSent }: ChatPanelProps) {
+export default function ChatPanel({ testID, roomId, renderImageUrl, tapX, tapY, onClose, onMessageSent }: ChatPanelProps) {
   const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const [inputText, setInputText] = useState('');
   const flatListRef = useRef<FlatList<ChatMessage>>(null);
@@ -154,7 +155,7 @@ export default function ChatPanel({ roomId, renderImageUrl, tapX, tapY, onClose,
   };
 
   return (
-    <View style={styles.overlay}>
+    <View testID={testID} style={styles.overlay}>
       <TouchableOpacity style={styles.backdrop} onPress={onClose} activeOpacity={1} />
       <Animated.View style={[styles.panel, { transform: [{ translateY }] }]}>
         {/* Drag handle */}

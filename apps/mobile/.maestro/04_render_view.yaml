@@ -1,0 +1,20 @@
+appId: ai.cova.app
+---
+- launchApp
+- assertVisible: "Analyzing your room"
+- waitForAnimationToEnd:
+    timeout: 120000
+- assertNotVisible: "Analyzing your room"
+- assertNotVisible: "AI rendering unavailable"
+- assertNotVisible: "Render timed out"
+- assertNotVisible: "Could not analyze room depth"
+- assertVisible:
+    id: "panorama-viewer"
+- tapOn:
+    id: "hud-container"
+- assertVisible: "Regenerate"
+- assertVisible: "Save"
+- assertVisible: "Share"
+- wait:
+    timeout: 4000
+- assertNotVisible: "Regenerate"

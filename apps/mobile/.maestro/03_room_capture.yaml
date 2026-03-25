@@ -1,0 +1,9 @@
+appId: ai.cova.app
+---
+- launchApp
+- assertVisible: "Budget"
+- assertVisible: "Take Photo"
+- assertNotVisible: "Analyzing your room"
+- tapOn: "Continue"
+- assertVisible: "Take Photo"
+- assertVisible: "Upload Photo"

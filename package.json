@@ -14,6 +14,10 @@
     "typecheck:mobile": "cd apps/mobile && npx tsc --noEmit",
     "precheck": "npm run typecheck:mobile && npm run verify",
     "test:render": "npx tsx scripts/test-render-e2e.ts",
+    "test:ui": "maestro test apps/mobile/.maestro/08_full_flow.yaml",
+    "test:ui:render": "maestro test apps/mobile/.maestro/04_render_view.yaml",
+    "test:ui:auth": "maestro test apps/mobile/.maestro/01_auth.yaml",
+    "test:ui:3d": "maestro test apps/mobile/.maestro/07_3d_viewer.yaml",
     "prepare": "husky"
   },
   "devDependencies": {

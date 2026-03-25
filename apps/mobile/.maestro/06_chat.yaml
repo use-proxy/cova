@@ -1,0 +1,14 @@
+appId: ai.cova.app
+---
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 120000
+- tapOn:
+    id: "chat-fab"
+- assertVisible:
+    id: "chat-panel"
+- inputText: "What style is this room?"
+- tapOn: "Send"
+- waitForAnimationToEnd:
+    timeout: 30000
+- assertNotVisible: "typing..."
