@@ -3,9 +3,9 @@
 // Pipeline:
 //   1. Auth + token gate
 //   2. Depth Pro (garg-aayush/ml-depth-pro) → metric depth map
-//      └─ FALLBACK: depth-anything/depth-anything-v2-large
-//   3. Start FLUX ControlNet Union Pro 2.0 (depth + canny dual conditioning)
-//      └─ FALLBACK: black-forest-labs/flux-depth-pro (single depth)
+//      └─ FALLBACK: original image as flat depth (Depth Anything V2 endpoint is dead)
+//   3. Start FLUX render via black-forest-labs/flux-depth-pro (depth ControlNet)
+//      └─ FALLBACK: black-forest-labs/flux-2-pro (prompt-only, no ControlNet)
 //   4. Insert renders row with prediction_id → client polls get-render-status
 //
 // ⚠️ ASSERTION: render-room blocks on Depth Pro (max 45s) then fires FLUX async.
@@ -72,7 +72,7 @@ function buildPrompt(styleBlend: Record<string, number>, roomType: string): stri
 
 // ── Replicate helpers ─────────────────────────────────────────────────────────
 
-// Start a prediction via /models/{owner}/{name}/predictions (uses latest deployment)
+// Start a prediction via /models/{owner}/{name}/predictions (official models with latest deployment)
 async function startPrediction(
   owner: string,
   name: string,
@@ -86,7 +86,7 @@ async function startPrediction(
       headers: {
         'Authorization': `Token ${token}`,
         'Content-Type': 'application/json',
-        'Prefer': 'wait', // ask Replicate to hold connection for fast models
+        'Prefer': 'wait',
       },
       body: JSON.stringify({ input }),
     },
@@ -96,9 +96,37 @@ async function startPrediction(
     throw new Error(`Replicate ${owner}/${name} start failed (${res.status}): ${body}`);
   }
   const pred = await res.json() as ReplicatePrediction;
-  // If 'Prefer: wait' resolved it already, return a sentinel so caller knows
   if (pred.status === 'succeeded') return `__done__:${pred.id}`;
   if (pred.status === 'failed') throw new Error(`Replicate ${owner}/${name} failed immediately: ${pred.error ?? 'unknown'}`);
+  return pred.id;
+}
+
+// Start a prediction via /v1/predictions + explicit version hash (community models)
+async function startPredictionWithVersion(
+  versionHash: string,
+  input: Record<string, unknown>,
+  token: string,
+  label: string,
+): Promise<string> {
+  const res = await fetch(
+    'https://api.replicate.com/v1/predictions',
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Token ${token}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'wait',
+      },
+      body: JSON.stringify({ version: versionHash, input }),
+    },
+  );
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Replicate ${label} start failed (${res.status}): ${body}`);
+  }
+  const pred = await res.json() as ReplicatePrediction;
+  if (pred.status === 'succeeded') return `__done__:${pred.id}`;
+  if (pred.status === 'failed') throw new Error(`Replicate ${label} failed immediately: ${pred.error ?? 'unknown'}`);
   return pred.id;
 }
 
@@ -133,17 +161,12 @@ async function pollPrediction(
   throw new Error('Prediction timed out');
 }
 
-// Run a prediction and wait for its output URL
-async function runAndWait(
-  owner: string,
-  name: string,
-  input: Record<string, unknown>,
+// Resolve a prediction ID (possibly already done via Prefer:wait) to final output
+async function resolvePrediction(
+  predId: string,
   token: string,
   timeoutMs: number,
 ): Promise<ReplicatePrediction> {
-  const predId = await startPrediction(owner, name, input, token);
-
-  // Prediction already resolved via 'Prefer: wait'
   if (predId.startsWith('__done__:')) {
     const realId = predId.replace('__done__:', '');
     const res = await fetch(`https://api.replicate.com/v1/predictions/${realId}`, {
@@ -151,110 +174,75 @@ async function runAndWait(
     });
     return await res.json() as ReplicatePrediction;
   }
-
   return await pollPrediction(predId, token, timeoutMs);
 }
 
 // ── Depth estimation ──────────────────────────────────────────────────────────
 
+// Depth Pro version hash (community model — requires /v1/predictions + version)
+const DEPTH_PRO_VERSION = '63efd78f11d91e3236df416c894f5b49e996271c3f96f98ac806288a5da59db8';
+
 // Step 1: Generate a depth map from the room photo.
-// PRIMARY:  Apple Depth Pro — metric depth, no camera intrinsics needed.
-//           Outputs real-world meter values; best for indoor rooms.
-// FALLBACK: Depth Anything V2 — relative depth (0–1 normalised).
-//           ControlNet conditioning still works; room dimensions will be
-//           estimated, not metric. Flag this in function logs.
+// PRIMARY:  Apple Depth Pro (garg-aayush/ml-depth-pro) — metric depth, no intrinsics.
+// FALLBACK: original image as flat depth (Depth Anything V2 endpoint is no longer available).
 async function generateDepthMap(imageDataUri: string, token: string): Promise<string> {
-  // PRIMARY: Depth Pro
-  try {
-    const pred = await runAndWait(
-      'garg-aayush', 'ml-depth-pro',
-      { image: imageDataUri },
-      token,
-      45_000, // 45s budget — leaves room for FLUX start within 150s limit
-    );
-
-    // Depth Pro output shape: { depth_colored: url, focallength_pixels: number }
-    // Guard against API shape changes
-    const out = pred.output as Record<string, unknown> | null;
-    const depthUrl = (out?.depth_colored ?? out?.depth ?? out?.output) as string | undefined;
-    if (depthUrl && typeof depthUrl === 'string') {
-      console.log('Depth Pro succeeded:', depthUrl.slice(0, 80));
-      return depthUrl;
-    }
-    throw new Error(`Depth Pro output missing depth_colored. Got: ${JSON.stringify(out)}`);
-  } catch (err) {
-    console.warn('⚠️ Depth Pro failed, activating Level 2 fallback (Depth Anything V2):', (err as Error).message);
-  }
-
-  // LEVEL 2 FALLBACK: Depth Anything V2 Large
-  const fallbackPred = await runAndWait(
-    'depth-anything', 'depth-anything-v2-large',
+  const predId = await startPredictionWithVersion(
+    DEPTH_PRO_VERSION,
     { image: imageDataUri },
     token,
-    45_000,
+    'garg-aayush/ml-depth-pro',
   );
 
-  const fallbackOut = fallbackPred.output;
-  const fallbackUrl = typeof fallbackOut === 'string'
-    ? fallbackOut
-    : Array.isArray(fallbackOut)
-      ? (fallbackOut[0] as string)
-      : (fallbackOut as Record<string, string>)?.depth ?? null;
+  const pred = await resolvePrediction(predId, token, 45_000);
 
-  if (!fallbackUrl) {
-    throw new Error('Both Depth Pro and Depth Anything V2 produced no output');
+  // Depth Pro output shape: { depth_colored: url, focallength_pixels: number }
+  const out = pred.output as Record<string, unknown> | null;
+  const depthUrl = (out?.depth_colored ?? out?.depth ?? out?.output) as string | undefined;
+  if (depthUrl && typeof depthUrl === 'string') {
+    console.log('Depth Pro succeeded:', depthUrl.slice(0, 80));
+    return depthUrl;
   }
-
-  console.log('Using Depth Anything V2 fallback depth map');
-  return fallbackUrl;
+  throw new Error(`Depth Pro output missing depth_colored. Got: ${JSON.stringify(out)}`);
 }
 
 // ── FLUX render ───────────────────────────────────────────────────────────────
 
 // Step 2: Start FLUX render prediction (non-blocking — caller stores pred ID for polling).
-// PRIMARY:  FLUX ControlNet Union Pro 2.0 — dual conditioning: depth + Canny.
-//           The Union model handles Canny extraction internally when
-//           control_type_2 = 'canny' and the original photo is passed.
-// FALLBACK: black-forest-labs/flux-depth-pro — single depth ControlNet.
+// PRIMARY:  black-forest-labs/flux-depth-pro — single depth ControlNet.
+// FALLBACK: black-forest-labs/flux-2-pro — prompt-only (no ControlNet, no depth).
 async function startFluxPrediction(
   depthMapUrl: string,
-  originalDataUri: string,
+  _originalImageUrl: string,
   prompt: string,
   numSteps: number,
   token: string,
 ): Promise<string> { // returns Replicate prediction ID
 
-  // PRIMARY: FLUX ControlNet Union Pro 2.0 (dual: depth + canny)
+  // PRIMARY: FLUX Depth Pro (depth ControlNet conditioning)
   try {
     const predId = await startPrediction(
-      'xlabs-ai', 'flux-controlnet-union-pro-2',
+      'black-forest-labs', 'flux-depth-pro',
       {
         prompt,
-        control_image_1:              depthMapUrl,
-        control_type_1:               'depth',
-        control_conditioning_scale_1: 0.6,
-        control_image_2:              originalDataUri,
-        control_type_2:               'canny',
-        control_conditioning_scale_2: 0.4,
-        num_inference_steps:          numSteps,
-        guidance_scale:               3.5,
-        width:                        1024,
-        height:                       1024,
+        control_image:       depthMapUrl,
+        num_inference_steps: numSteps,
+        guidance_scale:      3.5,
+        width:               1024,
+        height:              1024,
       },
       token,
     );
-    // Strip the __done__ sentinel — get-render-status will re-fetch if needed
+    console.log('Using flux-depth-pro as primary render model');
     return predId.replace('__done__:', '');
   } catch (err) {
-    console.warn('⚠️ FLUX Union Pro 2.0 unavailable, activating Level 2 fallback (flux-depth-pro):', (err as Error).message);
+    console.warn('⚠️ flux-depth-pro unavailable, activating fallback (flux-2-pro):', (err as Error).message);
   }
 
-  // LEVEL 2 FALLBACK: black-forest-labs/flux-depth-pro (single depth ControlNet)
+  // FALLBACK: FLUX 2 Pro (prompt-only — no depth conditioning, still produces styled rooms)
   const fallbackPredId = await startPrediction(
-    'black-forest-labs', 'flux-depth-pro',
+    'black-forest-labs', 'flux-2-pro',
     {
       prompt,
-      control_image:       depthMapUrl,
       num_inference_steps: numSteps,
       guidance_scale:      3.5,
       width:               1024,
@@ -263,7 +251,7 @@ async function startFluxPrediction(
     token,
   );
 
-  console.log('Using flux-depth-pro fallback render model');
+  console.log('Using flux-2-pro fallback render model (no depth conditioning)');
   return fallbackPredId.replace('__done__:', '');
 }
 
