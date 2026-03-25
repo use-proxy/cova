@@ -258,6 +258,17 @@ function RoomCaptureScreen() {
     requestPermission();
   }, []);
 
+  // Stop any active RoomPlan session when user navigates away (back swipe, hardware back)
+  // Prevents exceedSceneSizeLimit on next scan and avoids orphaned ARKit sessions.
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', () => {
+      if (scanning) {
+        stopScan();
+      }
+    });
+    return unsubscribe;
+  }, [navigation, scanning, stopScan]);
+
   useEffect(() => {
     if (step === 'processing') {
       Animated.loop(
@@ -338,6 +349,8 @@ function RoomCaptureScreen() {
   };
 
   const handleReviewContinue = () => {
+    // Store manual dimensions to Zustand so 3D viewer and render pipeline can use them
+    setCurrentRoomDimensions({ width: dimensions.width, depth: dimensions.depth, height: dimensions.height, unit: 'm' });
     setStep('details');
   };
 
