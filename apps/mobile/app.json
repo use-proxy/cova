@@ -25,7 +25,9 @@
         "NSCameraUsageDescription": "Cova needs camera access to capture your room.",
         "NSPhotoLibraryUsageDescription": "Cova needs photo library access to upload your room photo.",
         "NSPhotoLibraryAddUsageDescription": "Cova saves your AI renders to your photo library.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSUserTrackingUsageDescription": "Cova uses tracking to personalize your room design experience and show you relevant furniture recommendations.",
+        "NSMicrophoneUsageDescription": "Cova needs microphone access for voice features."
       }
     },
     "plugins": [

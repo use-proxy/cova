@@ -23,7 +23,11 @@ export default ({ config }) => ({
     infoPlist: {
       NSCameraUsageDescription: "Cova needs camera access to capture your room.",
       NSPhotoLibraryUsageDescription: "Cova needs photo library access to upload your room photo.",
-      NSPhotoLibraryAddUsageDescription: "Cova saves your AI renders to your photo library.",
+      NSPhotoLibraryAddUsageDescription: "Cova needs access to save your AI renders to your photo library.",
+      NSMicrophoneUsageDescription: "Cova needs microphone access for voice features.",
+      NSUserTrackingUsageDescription: "Cova uses tracking to personalize your room design experience and show you relevant furniture recommendations.",
+      NSLocationWhenInUseUsageDescription: "Cova uses your location to find furniture available near you.",
+      NSFaceIDUsageDescription: "Cova uses Face ID for secure authentication.",
       ITSAppUsesNonExemptEncryption: false,
     },
   },

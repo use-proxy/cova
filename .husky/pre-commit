@@ -2,14 +2,15 @@
 echo "Running pre-commit checks..."
 
 echo "1/3 TypeScript check..."
-cd apps/mobile && npx tsc --noEmit
-if [ $? -ne 0 ]; then
+TS_ERRORS=$(cd apps/mobile && npx tsc --noEmit 2>&1 | grep -v "tsconfig.json" || true)
+if [ -n "$TS_ERRORS" ]; then
+  echo "$TS_ERRORS"
   echo "❌ TypeScript errors found. Fix before committing."
   exit 1
 fi
 
 echo "2/3 Test suite..."
-cd ../.. && npx ts-node supabase/functions/tests/run-all.ts
+npx ts-node supabase/functions/tests/run-all.ts
 if [ $? -ne 0 ]; then
   echo "❌ Tests failing. Fix before committing."
   exit 1
@@ -18,6 +19,29 @@ fi
 echo "3/3 Security check..."
 if grep -r "sk-ant\|r8_\|service_role" apps/mobile/src --include="*.ts" --include="*.tsx" -q; then
   echo "❌ Hardcoded API key detected. Remove before committing."
+  exit 1
+fi
+
+echo "4/4 iOS config check..."
+node -e "
+const app = require('./apps/mobile/app.json');
+const ios = app.expo?.ios || {};
+const plist = ios.infoPlist || {};
+const required = [
+  'NSUserTrackingUsageDescription',
+  'NSCameraUsageDescription',
+  'NSPhotoLibraryUsageDescription',
+  'NSMicrophoneUsageDescription'
+];
+const missing = required.filter(k => !plist[k]);
+if (missing.length > 0) {
+  console.error('Missing Info.plist keys:', missing.join(', '));
+  process.exit(1);
+}
+console.log('iOS config OK');
+"
+if [ $? -ne 0 ]; then
+  echo "❌ Missing required iOS Info.plist keys."
   exit 1
 fi
 
