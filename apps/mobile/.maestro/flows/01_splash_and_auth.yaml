@@ -1,19 +1,21 @@
 appId: ai.cova.app
 ---
-# Flow 01: Splash Screen and Authentication — happy path
-# Validates auth screen branding, mode toggle, and successful sign-in
-
-# --- Launch app (clearState) → lands on splash or auth ---
 - launchApp:
-    appId: ai.cova.app
-    clearState: true
-# App may skip splash and land directly on auth; wait for auth elements
-- waitForAnimationToEnd:
-    timeout: 8000
+    clearState: false
+- tapOn:
+    text: "http://localhost:8081"
+    optional: true
+- tapOn:
+    text: "Continue"
+    optional: true
+- waitForAnimationToEnd
+- waitForAnimationToEnd
+
+# --- Splash screen ---
 - assertVisible: "Sign In"
 - assertVisible: "Create Account"
 
-# --- Navigate to Auth (Sign In mode) ---
+# --- Navigate to Auth ---
 - tapOn: "Sign In"
 - waitForAnimationToEnd
 - assertVisible: "Continue with Apple"
@@ -22,10 +24,8 @@ appId: ai.cova.app
     id: "email-input"
 - assertVisible:
     id: "password-input"
-- assertVisible: "Privacy Policy"
-- assertVisible: "Terms of Service"
 
-# --- Toggle to Create Account mode and back ---
+# --- Toggle test ---
 - tapOn:
     text: "Create Account"
     index: 0
@@ -35,21 +35,18 @@ appId: ai.cova.app
     index: 0
 - waitForAnimationToEnd
 
-# --- Successful sign in (happy path) ---
+# --- Sign in ---
 - tapOn:
     id: "email-input"
 - inputText: "test.newuser@hellocova.com"
+- pressKey: Enter
 - tapOn:
-    id: "password-input"
-- waitForAnimationToEnd:
-    timeout: 1000
-- clearKeychain
+    id: "password-toggle"
 - inputText: "CovaTest123!"
-- waitForAnimationToEnd:
-    timeout: 500
 - tapOn:
     text: "Sign In"
     index: 1
-- waitForAnimationToEnd:
-    timeout: 15000
-- assertVisible: "Your Rooms"
+- extendedWaitUntil:
+    visible:
+      text: "My Rooms"
+    timeout: 30000

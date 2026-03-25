@@ -45,7 +45,9 @@ export default function AuthScreen({ route }: Props) {
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState<LoadingTarget>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const errorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const passwordInputRef = useRef<TextInput>(null);
 
   const [_googleRequest, googleResponse, googlePromptAsync] =
     Google.useIdTokenAuthRequest({ clientId: GOOGLE_CLIENT_ID });
@@ -312,19 +314,35 @@ export default function AuthScreen({ route }: Props) {
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
+              returnKeyType="next"
+              onSubmitEditing={() => passwordInputRef.current?.focus()}
               editable={!anyLoading}
             />
 
-            <TextInput
-              testID="password-input"
-              style={styles.input}
-              placeholder="Password"
-              placeholderTextColor="rgba(255,255,255,0.4)"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              editable={!anyLoading}
-            />
+            <View style={styles.passwordRow}>
+              <TextInput
+                ref={passwordInputRef}
+                testID="password-input"
+                style={[styles.input, styles.passwordInput]}
+                placeholder="Password"
+                placeholderTextColor="rgba(255,255,255,0.4)"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                textContentType="oneTimeCode"
+                autoComplete="off"
+                autoCorrect={false}
+                editable={!anyLoading}
+              />
+              <TouchableOpacity
+                testID="password-toggle"
+                onPress={() => setShowPassword(v => !v)}
+                style={styles.passwordToggle}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={styles.passwordToggleText}>{showPassword ? 'Hide' : 'Show'}</Text>
+              </TouchableOpacity>
+            </View>
 
             <TouchableOpacity
               style={styles.submitBtn}
@@ -513,6 +531,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
     marginBottom: 12,
+  },
+  passwordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  passwordInput: {
+    flex: 1,
+    marginBottom: 0,
+    paddingRight: 52,
+  },
+  passwordToggle: {
+    position: 'absolute',
+    right: 16,
+    height: 52,
+    justifyContent: 'center',
+  },
+  passwordToggleText: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 13,
   },
   submitBtn: {
     backgroundColor: GOLD,
