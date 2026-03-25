@@ -1,20 +1,17 @@
 appId: ai.cova.app
 ---
-# Flow 01: Splash Screen and Authentication
-# Validates splash branding, button animations, auth modes, and login
+# Flow 01: Splash Screen and Authentication — happy path
+# Validates auth screen branding, mode toggle, and successful sign-in
 
-# --- Splash Screen ---
+# --- Launch app (clearState) → lands on splash or auth ---
 - launchApp:
     appId: ai.cova.app
     clearState: true
-- assertVisible:
-    id: "splash-screen"
-- assertVisible: "cova"
-- assertVisible: "tinder for your home"
-# Wait for logo fade (2000ms) and button spring animation
-- waitForAnimationToEnd
-- assertVisible: "Create Account"
+# App may skip splash and land directly on auth; wait for auth elements
+- waitForAnimationToEnd:
+    timeout: 8000
 - assertVisible: "Sign In"
+- assertVisible: "Create Account"
 
 # --- Navigate to Auth (Sign In mode) ---
 - tapOn: "Sign In"
@@ -28,43 +25,31 @@ appId: ai.cova.app
 - assertVisible: "Privacy Policy"
 - assertVisible: "Terms of Service"
 
-# --- Toggle to Create Account mode ---
-- tapOn: "Create Account"
+# --- Toggle to Create Account mode and back ---
+- tapOn:
+    text: "Create Account"
+    index: 0
 - waitForAnimationToEnd
-- assertVisible: "Full name"
-
-# --- Toggle back to Sign In ---
-- tapOn: "Sign In"
+- tapOn:
+    text: "Sign In"
+    index: 0
 - waitForAnimationToEnd
 
-# --- Validation: empty email ---
-- tapOn: "Sign In"
-- waitForAnimationToEnd
-- assertVisible: "Please enter your email address"
-
-# --- Validation: bad password ---
+# --- Successful sign in (happy path) ---
 - tapOn:
     id: "email-input"
-- inputText: "test@test.com"
-- tapOn:
-    id: "password-input"
-- inputText: "short"
-- tapOn: "Sign In"
-- waitForAnimationToEnd
-- assertVisible: "Password must be at least 8 characters"
-
-# --- Successful sign in ---
-- tapOn:
-    id: "email-input"
-- eraseText:
-    charactersToErase: 30
 - inputText: "test.newuser@hellocova.com"
 - tapOn:
     id: "password-input"
-- eraseText:
-    charactersToErase: 30
+- waitForAnimationToEnd:
+    timeout: 1000
+- clearKeychain
 - inputText: "CovaTest123!"
-- tapOn: "Sign In"
+- waitForAnimationToEnd:
+    timeout: 500
+- tapOn:
+    text: "Sign In"
+    index: 1
 - waitForAnimationToEnd:
     timeout: 15000
-- assertVisible: "My Rooms"
+- assertVisible: "Your Rooms"

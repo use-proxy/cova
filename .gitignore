@@ -15,3 +15,4 @@ assets/3d/furniture/*.gltf
 scripts/raw-data/
 scripts/backfill-progress.json
 scripts/backfill.log
+.github/workflows/verify.yml
