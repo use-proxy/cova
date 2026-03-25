@@ -8,13 +8,19 @@
     "typecheck": "turbo run typecheck",
     "generate:furniture": "cd scripts && npm run generate:furniture",
     "update:furniture-prices": "cd scripts && npm run update:furniture-prices",
-    "generate:furniture:full": "npm run generate:furniture && npm run update:furniture-prices"
+    "generate:furniture:full": "npm run generate:furniture && npm run update:furniture-prices",
+    "deploy": "bash scripts/deploy-all.sh",
+    "verify": "npx ts-node supabase/functions/tests/run-all.ts",
+    "typecheck:mobile": "cd apps/mobile && npx tsc --noEmit",
+    "precheck": "npm run typecheck:mobile && npm run verify",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@gltf-transform/cli": "^4.3.0",
     "@gltf-transform/core": "^4.3.0",
     "@gltf-transform/functions": "^4.3.0",
     "@types/node": "^25.5.0",
+    "husky": "^9.1.7",
     "node-fetch": "^2.7.0",
     "ts-node": "^10.9.2",
     "turbo": "latest",

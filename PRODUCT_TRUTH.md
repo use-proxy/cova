@@ -8,6 +8,24 @@
 
 ---
 
+## AUTOMATED VERIFICATION STATUS
+Last verified: 2026-03-25
+Test suite: 7/7 PASSING
+TypeScript: 0 errors
+Edge functions: 7/7 deployed
+Security: 0 hardcoded keys
+Depth pipeline: 3-layer fallback active
+Assets: 9/9 present
+Overall: ✅ READY FOR DEVICE TESTING
+
+Quality gates active:
+- Pre-commit hook: TypeScript + tests + security
+- GitHub Action: runs on every push to main
+- Deploy script: npm run deploy
+- Device checklist: TESTING.md
+
+---
+
 ## MASTER STATUS CHECKLIST
 
 | # | Feature              | Status         | Last Verified |
@@ -1255,10 +1273,10 @@ apps/mobile/assets/
 │       └── *.glb                        (GLB furniture models — check furnitureCatalog.ts)
 ├── textures/
 │   ├── floor/
-│   │   ├── wood_floor_diffuse.jpg
-│   │   ├── wood_floor_normal.jpg
-│   │   ├── wood_floor_roughness.jpg
-│   │   └── wood_floor_ao.jpg            (AO texture — cited in CLAUDE.md §9.2)
+│   │   ├── wood_floor_diff_1k.jpg       (diffuse — BoxRoom.tsx:35)
+│   │   ├── wood_floor_nor_1k.jpg        (normal — BoxRoom.tsx:36)
+│   │   ├── wood_floor_rough_1k.jpg      (roughness — BoxRoom.tsx:37)
+│   │   └── wood_floor_ao.jpg            (AO — BoxRoom.tsx:38)
 │   └── hdri/
 │       ├── sunset_fairway_1k.hdr        (coastal style)
 │       ├── small_empty_room_1k.hdr      (japandi style)
