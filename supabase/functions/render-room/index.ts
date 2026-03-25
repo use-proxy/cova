@@ -15,6 +15,23 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 
+// ── Structured error logger ───────────────────────────────────────────────────
+// Edge Functions run server-side on Deno — the React Native Sentry SDK cannot
+// reach them. logError() writes structured JSON to stdout so errors appear in
+// the Supabase dashboard under Edge Functions → Logs with full context.
+// View at: https://supabase.com/dashboard/project/xdeacbmkdwqrwxonqaqh/functions
+function logError(context: string, error: unknown, extra?: Record<string, unknown>): void {
+  const msg = error instanceof Error ? error.message : String(error);
+  console.error(JSON.stringify({
+    level:     'error',
+    service:   'render-room',
+    context,
+    message:   msg,
+    extra:     extra ?? {},
+    timestamp: new Date().toISOString(),
+  }));
+}
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type StyleName = 'coastal' | 'japandi' | 'bohemian' | 'mid_century' | 'minimalist';
@@ -342,8 +359,7 @@ Deno.serve(async (req: Request) => {
     try {
       depthMapUrl = await generateDepthMap(imageDataUri, replicateToken);
     } catch (depthErr) {
-      const depthErrMsg = depthErr instanceof Error ? depthErr.message : 'unknown';
-      console.error('SENTRY_CAPTURE: depth_estimation_failed', { error: depthErrMsg, room_id, user_id: user.id });
+      logError('depth_estimation_failed', depthErr, { room_id, user_id: user.id });
       console.warn('⚠️ Depth estimation failed — proceeding with original image as flat depth fallback');
       // Use the original photo data URI as the ControlNet conditioning image.
       // This is the "flat depth" fallback: no metric depth, but render still runs.
@@ -362,8 +378,7 @@ Deno.serve(async (req: Request) => {
         replicateToken,
       );
     } catch (fluxErr) {
-      const fluxErrMsg = fluxErr instanceof Error ? fluxErr.message : 'unknown';
-      console.error('SENTRY_CAPTURE: flux_render_start_failed', { error: fluxErrMsg, room_id, user_id: user.id });
+      logError('flux_render_start_failed', fluxErr, { room_id, user_id: user.id });
       return new Response(
         JSON.stringify({
           error: 'render_start_failed',
@@ -390,7 +405,7 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (renderError || !render) {
-      console.error('SENTRY_CAPTURE: render_row_insert_failed', { error: renderError?.message ?? 'unknown', room_id, user_id: user.id });
+      logError('render_row_insert_failed', renderError ?? new Error('unknown'), { room_id, user_id: user.id });
       return new Response(
         JSON.stringify({ error: 'internal_error', message: 'Failed to create render record.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
@@ -425,7 +440,7 @@ Deno.serve(async (req: Request) => {
     );
 
   } catch (err) {
-    console.error('SENTRY_CAPTURE: render_room_unhandled_error', { error: err instanceof Error ? err.message : 'unknown' });
+    logError('render_room_unhandled_error', err);
     return new Response(
       JSON.stringify({ error: 'internal_error', message: 'An unexpected error occurred.' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },

@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react';
 import { useAppStore } from '../store';
 import { callEdgeFunction } from '../lib/supabase';
+import { Sentry, captureProductError } from '../lib/sentry';
 import type { StyleBlend, RoomType, Render, Product, RoomDimensions } from '@cova/shared';
 
 interface RenderParams {
@@ -117,10 +118,14 @@ export function useRender() {
     // Guard: empty imageBase64 means capturedImageUri was unavailable — depth will always fail.
     // Length check (< 100 chars) catches empty string and bare "data:image/jpeg;base64," with no payload.
     if (!params.imageBase64 || params.imageBase64.length < 100) {
+      Sentry.addBreadcrumb({ message: 'startRender: imageBase64 empty — aborting before server call', level: 'warning' });
+      captureProductError(new Error('startRender called with empty imageBase64'), 'FEATURE_6');
       setRenderStatus('failed');
       setRenderError('Could not analyze room depth. Please try a clearer photo.');
       return;
     }
+
+    Sentry.addBreadcrumb({ message: `startRender: begin — roomId=${params.roomId} roomType=${params.roomType}`, level: 'info' });
 
     setRenderStatus('processing');
     setRenderError(null);
@@ -133,7 +138,11 @@ export function useRender() {
     let lastError: unknown;
 
     for (let attempt = 0; attempt < 2; attempt++) {
+      if (attempt > 0) {
+        Sentry.addBreadcrumb({ message: `startRender: attempt ${attempt + 1} — retrying after error`, level: 'warning' });
+      }
       try {
+        Sentry.addBreadcrumb({ message: `startRender: calling render-room edge function (attempt ${attempt + 1})`, level: 'info' });
         res = await callEdgeFunction<{ render_id: string; prediction_id: string }>('render-room', {
           room_id:          params.roomId,
           image_base64:     params.imageBase64,
@@ -142,9 +151,11 @@ export function useRender() {
           render_type:      params.renderType,
           room_dimensions:  params.dimensions,
         });
+        Sentry.addBreadcrumb({ message: `startRender: render-room returned render_id=${res.render_id}`, level: 'info' });
         break; // success — exit retry loop
       } catch (e: unknown) {
         lastError = e;
+        Sentry.addBreadcrumb({ message: `startRender: attempt ${attempt + 1} failed — ${e instanceof Error ? e.message : String(e)}`, level: 'error' });
         if (attempt === 0) {
           // Brief pause before retry so transient errors can clear
           await new Promise<void>((r) => setTimeout(r, 2000));
@@ -153,9 +164,13 @@ export function useRender() {
     }
 
     if (!res) {
-      // Both attempts failed — map error code to user-friendly message
+      // Both attempts failed — map error code to user-friendly message and capture in Sentry
       const errMsg = lastError instanceof Error ? lastError.message : '';
       const isDepthError = errMsg.toLowerCase().includes('depth');
+      captureProductError(
+        lastError instanceof Error ? lastError : new Error(errMsg || 'render-room failed after 2 attempts'),
+        'FEATURE_6',
+      );
       setRenderStatus('failed');
       setRenderError(
         isDepthError
@@ -165,6 +180,7 @@ export function useRender() {
       return;
     }
 
+    Sentry.addBreadcrumb({ message: 'startRender: render started, beginning poll', level: 'info' });
     setRenderProgressStage('Applying your style...');
     // Persist calibrated dimensions to the room record (only after server confirms)
     if (params.dimensions) {

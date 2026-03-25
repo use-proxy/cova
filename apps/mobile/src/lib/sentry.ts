@@ -85,6 +85,10 @@ export function initSentry(): void {
   Sentry.init({
     dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
     tracesSampleRate: 1.0,
+    // enabled: true — explicitly set so dev builds always send to Sentry.
+    // Without this, a future `enabled: !__DEV__` edit would silently kill
+    // all error reporting in development and TestFlight builds.
+    enabled: true,
   });
 
   // Baseline contexts visible on every event in the Sentry dashboard

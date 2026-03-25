@@ -1,5 +1,21 @@
 import { corsHeaders } from '../_shared/cors.ts';
 
+// ── Structured error logger ───────────────────────────────────────────────────
+// Edge Functions run on Deno — the React Native Sentry SDK cannot reach them.
+// logError() writes structured JSON so errors appear in the Supabase dashboard:
+// https://supabase.com/dashboard/project/xdeacbmkdwqrwxonqaqh/functions
+function logError(context: string, error: unknown, extra?: Record<string, unknown>): void {
+  const msg = error instanceof Error ? error.message : String(error);
+  console.error(JSON.stringify({
+    level:     'error',
+    service:   'generate-depth-map',
+    context,
+    message:   msg,
+    extra:     extra ?? {},
+    timestamp: new Date().toISOString(),
+  }));
+}
+
 type QualityHint = 'single_shot' | 'multi_angle';
 
 // ── Depth model submission — /v1/models/ endpoint (no version pinning) ────────
@@ -103,10 +119,7 @@ async function generateSingleDepthMap(imageBase64: string, token: string): Promi
     console.log('generate-depth-map: Depth Pro succeeded');
     return result;
   } catch (err) {
-    console.error(
-      'SENTRY_CAPTURE: depth_pro_failed',
-      { error: err instanceof Error ? err.message : String(err) },
-    );
+    logError('depth_pro_failed', err);
     console.warn('⚠️ Depth Pro failed, falling back to Depth Anything V2:', err instanceof Error ? err.message : err);
   }
 
@@ -117,10 +130,7 @@ async function generateSingleDepthMap(imageBase64: string, token: string): Promi
     console.log('generate-depth-map: Depth Anything V2 succeeded (fallback)');
     return result;
   } catch (err) {
-    console.error(
-      'SENTRY_CAPTURE: depth_anything_v2_failed',
-      { error: err instanceof Error ? err.message : String(err) },
-    );
+    logError('depth_anything_v2_failed', err);
     throw new Error(
       `Both depth models failed. Last error: ${err instanceof Error ? err.message : String(err)}`,
     );
@@ -188,7 +198,7 @@ Deno.serve(async (req: Request) => {
 
   const token = Deno.env.get('REPLICATE_API_TOKEN');
   if (!token) {
-    console.error('SENTRY_CAPTURE: missing_replicate_token', {});
+    logError('missing_replicate_token', new Error('REPLICATE_API_TOKEN env var not set'));
     return new Response(
       JSON.stringify({ error: 'configuration_error', message: 'REPLICATE_API_TOKEN not configured' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
@@ -234,10 +244,7 @@ Deno.serve(async (req: Request) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (err) {
-    console.error(
-      'SENTRY_CAPTURE: generate_depth_map_unhandled_error',
-      { error: err instanceof Error ? err.message : 'Unknown error' },
-    );
+    logError('generate_depth_map_unhandled_error', err);
     return new Response(
       JSON.stringify({
         error: 'depth_generation_failed',
