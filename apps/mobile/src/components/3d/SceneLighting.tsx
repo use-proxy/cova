@@ -87,11 +87,11 @@ const STYLE_LIGHTING: Record<StyleName, StyleLight> = {
 };
 
 const HDRI_FILES: Record<StyleName, number> = {
-  coastal: require('../../../../../assets/textures/hdri/sunset_fairway_1k.hdr'),
-  japandi: require('../../../../../assets/textures/hdri/small_empty_room_1k.hdr'),
-  bohemian: require('../../../../../assets/textures/hdri/colorful_studio_1k.hdr'),
-  mid_century: require('../../../../../assets/textures/hdri/loft_hall_1k.hdr'),
-  minimalist: require('../../../../../assets/textures/hdri/grey_room_1k.hdr'),
+  coastal: require('../../../assets/textures/hdri/sunset_fairway_1k.hdr'),
+  japandi: require('../../../assets/textures/hdri/small_empty_room_1k.hdr'),
+  bohemian: require('../../../assets/textures/hdri/colorful_studio_1k.hdr'),
+  mid_century: require('../../../assets/textures/hdri/loft_hall_1k.hdr'),
+  minimalist: require('../../../assets/textures/hdri/grey_room_1k.hdr'),
 };
 
 // ── Error boundary for HDRI loading ──

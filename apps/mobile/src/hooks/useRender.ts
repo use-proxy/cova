@@ -15,8 +15,10 @@ interface RenderParams {
 const LOADING_STAGES = [
   'Analyzing your room',
   'Applying your style',
-  'Generating',
-  'Done',
+  'Generating render...',
+  'Adding finishing touches...',
+  'Almost there...',
+  'Done!',
 ] as const;
 
 export function useRender() {

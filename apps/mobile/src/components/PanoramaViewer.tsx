@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Text,
   TouchableOpacity,
+  type ViewStyle,
 } from 'react-native';
 import { Canvas, useFrame, useThree } from '@react-three/fiber/native';
 import * as THREE from 'three';
@@ -139,7 +140,7 @@ export default function PanoramaViewer({
         t.minFilter = THREE.LinearFilter;
         t.magFilter = THREE.LinearFilter;
         t.generateMipmaps = false;       // prevents iOS texture artifacts
-        t.encoding = THREE.sRGBEncoding; // preserves FLUX color accuracy
+        t.colorSpace = THREE.SRGBColorSpace; // preserves FLUX color accuracy (Three.js 0.152+ API)
         if (textureRef.current) textureRef.current.dispose();
         textureRef.current = t;
         setTexture(t);
@@ -263,7 +264,7 @@ export default function PanoramaViewer({
       {/* ── Canvas (absoluteFill) — opacity 0 until texture loads ──────────── */}
       <Animated.View style={[StyleSheet.absoluteFill, { opacity: canvasOpacity }]}>
         <Canvas
-          style={StyleSheet.absoluteFill}
+          style={StyleSheet.absoluteFill as ViewStyle}
           camera={{ fov: 75, near: 0.1, far: 1000, position: [0, 0, 0] }}
           gl={{
             powerPreference: 'high-performance',

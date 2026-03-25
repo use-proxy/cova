@@ -32,10 +32,10 @@ class TextureErrorBoundary extends React.Component<
 
 // ── PBR textured floor (loaded on top of solid color fallback) ──
 
-const FLOOR_DIFF = require('../../../../../assets/textures/floor/wood_floor_diff_1k.jpg');
-const FLOOR_NOR = require('../../../../../assets/textures/floor/wood_floor_nor_1k.jpg');
-const FLOOR_ROUGH = require('../../../../../assets/textures/floor/wood_floor_rough_1k.jpg');
-const FLOOR_AO = require('../../../../../assets/textures/floor/wood_floor_ao.jpg');
+const FLOOR_DIFF = require('../../../assets/textures/floor/wood_floor_diff_1k.jpg');
+const FLOOR_NOR = require('../../../assets/textures/floor/wood_floor_nor_1k.jpg');
+const FLOOR_ROUGH = require('../../../assets/textures/floor/wood_floor_rough_1k.jpg');
+const FLOOR_AO = require('../../../assets/textures/floor/wood_floor_ao.jpg');
 
 function TexturedFloor({ w, d }: { w: number; d: number }) {
   const textures = useLoader(THREE.TextureLoader, [

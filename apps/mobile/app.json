@@ -20,7 +20,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "ai.cova.app",
       "buildNumber": "1",
-      "minimumOsVersion": "16.0",
+      "minimumOSVersion": "16.0",
       "infoPlist": {
         "NSCameraUsageDescription": "Cova needs camera access to capture your room.",
         "NSPhotoLibraryUsageDescription": "Cova needs photo library access to upload your room photo.",
