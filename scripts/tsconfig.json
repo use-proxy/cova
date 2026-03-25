@@ -10,11 +10,14 @@
     "skipLibCheck": true,
     "outDir": "dist"
   },
-  "include": ["*.ts"],
+  "include": [
+    "*.ts"
+  ],
   "ts-node": {
     "transpileOnly": true,
     "compilerOptions": {
       "module": "CommonJS"
     }
-  }
+  },
+  "extends": "expo/tsconfig.base"
 }

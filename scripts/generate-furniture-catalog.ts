@@ -1,37 +1,26 @@
 /**
  * generate-furniture-catalog.ts
  *
- * Automated furniture GLB pipeline:
- *   1. Fetches free GLB assets from Sketchfab for 35 room×style combos
- *   2. Optimizes each GLB via @gltf-transform/cli (target <500 KB)
- *   3. Reads actual bounding-box dimensions from each GLB
- *   4. Generates FurnitureCatalogItem entries
- *   5. Merges with existing manually-curated entries (price > 0 && retailer !== 'TBD')
- *   6. Overwrites apps/mobile/src/data/furnitureCatalog.ts
+ * Generates 525 placeholder GLBs programmatically (no downloads, no API calls).
+ * Each GLB is a box mesh sized to the correct approximate dimensions for its
+ * furniture type. Real models can replace them one-by-one later.
  *
- * Run:  npx ts-node scripts/generate-furniture-catalog.ts
- * Deps: npm install @gltf-transform/core @gltf-transform/functions node-fetch
+ * Output:
+ *   assets/models/furniture/[room_type]/[style]/[name].glb  (525 files)
+ *   apps/mobile/src/data/furnitureCatalog.ts                (updated)
+ *
+ * Run: cd scripts && npx tsx generate-furniture-catalog.ts
  */
 
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { execSync } from 'child_process'
-import fetch from 'node-fetch'
-import { NodeIO, Document } from '@gltf-transform/core'
+import { Document, NodeIO } from '@gltf-transform/core'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname  = path.dirname(__filename)
-import { getBounds } from '@gltf-transform/functions'
 
-// ---------------------------------------------------------------------------
-// Config
-// ---------------------------------------------------------------------------
-
-const SKETCHFAB_API = 'https://api.sketchfab.com/v3/models'
-const SKETCHFAB_API_KEY = process.env.SKETCHFAB_API_KEY ?? ''
-const MIN_PER_COMBO = 15
-const MAX_TARGET_KB = 500
+// ── Constants ────────────────────────────────────────────────────────────────
 
 const ROOM_TYPES = [
   'living_room',
@@ -51,457 +40,295 @@ const STYLES = [
   'minimalist',
 ] as const
 
-type RoomType = typeof ROOM_TYPES[number]
-type StyleName = typeof STYLES[number]
-type FurnitureCategory = 'seating' | 'tables' | 'lighting' | 'storage' | 'decor' | 'plants' | 'beds'
-type PriceRange = 'budget' | 'mid' | 'premium' | 'luxury'
+type RoomType       = typeof ROOM_TYPES[number]
+type StyleName      = typeof STYLES[number]
+type FurnitureType  = keyof typeof DIMENSIONS
+type FurnitureCat   = 'seating' | 'tables' | 'lighting' | 'storage' | 'decor' | 'plants' | 'beds'
 
-// Human-readable search term per style (used to build API query strings)
-const STYLE_SEARCH_TERMS: Record<StyleName, string> = {
-  coastal:     'coastal beach natural',
-  japandi:     'japandi minimal zen wood',
-  bohemian:    'bohemian boho eclectic',
-  mid_century: 'mid century retro modern',
-  minimalist:  'minimalist clean simple white',
+const ITEMS_PER_COMBO = 15   // 7 rooms × 5 styles × 15 = 525
+
+// ── Dimension map (width × height × depth in metres) ─────────────────────────
+
+const DIMENSIONS = {
+  sofa:         { width: 2.1, height: 0.85, depth: 0.9  },
+  armchair:     { width: 0.85, height: 0.85, depth: 0.9  },
+  coffee_table: { width: 1.2, height: 0.45, depth: 0.4  },
+  bed_queen:    { width: 1.6, height: 0.5,  depth: 2.1  },
+  dining_table: { width: 1.8, height: 0.75, depth: 0.9  },
+  desk:         { width: 1.4, height: 0.75, depth: 0.6  },
+  wardrobe:     { width: 1.2, height: 2.0,  depth: 0.6  },
+  nightstand:   { width: 0.5, height: 0.6,  depth: 0.4  },
+  dresser:      { width: 1.0, height: 1.0,  depth: 0.5  },
+  bookshelf:    { width: 0.8, height: 1.8,  depth: 0.3  },
+  default:      { width: 0.8, height: 0.8,  depth: 0.8  },
+} as const satisfies Record<string, { width: number; height: number; depth: number }>
+
+// ── Category per furniture type ───────────────────────────────────────────────
+
+const FURNITURE_CATEGORY: Record<FurnitureType, FurnitureCat> = {
+  sofa:         'seating',
+  armchair:     'seating',
+  coffee_table: 'tables',
+  bed_queen:    'beds',
+  dining_table: 'tables',
+  desk:         'tables',
+  wardrobe:     'storage',
+  nightstand:   'storage',
+  dresser:      'storage',
+  bookshelf:    'storage',
+  default:      'decor',
 }
 
-// Lead furniture item per room type (used as the primary search noun)
-const ROOM_SEARCH_NOUNS: Record<RoomType, string[]> = {
-  living_room: ['sofa', 'couch', 'armchair', 'coffee table', 'tv stand', 'bookshelf', 'ottoman', 'side table'],
-  bedroom:     ['bed', 'nightstand', 'dresser', 'wardrobe', 'headboard', 'bench', 'lamp', 'mirror'],
-  dining_room: ['dining table', 'dining chair', 'buffet', 'sideboard', 'bar stool', 'bench', 'chandelier'],
-  home_office: ['desk', 'office chair', 'bookcase', 'filing cabinet', 'monitor stand', 'shelf', 'lamp'],
-  kitchen:     ['bar cart', 'kitchen island', 'kitchen stool', 'shelf', 'pendant light', 'plant'],
-  bathroom:    ['vanity', 'mirror', 'towel rack', 'shelf', 'bath mat', 'plant', 'stool'],
-  entryway:    ['console table', 'bench', 'coat rack', 'mirror', 'plant', 'shoe rack', 'lamp'],
+// ── 15 furniture slots per room type (cycles through furniture types) ─────────
+// Exactly ITEMS_PER_COMBO entries each.
+
+const ROOM_SLOTS: Record<RoomType, FurnitureType[]> = {
+  living_room:  ['sofa','sofa','sofa','armchair','armchair','armchair','coffee_table','coffee_table','coffee_table','bookshelf','bookshelf','bookshelf','default','default','default'],
+  bedroom:      ['bed_queen','bed_queen','bed_queen','nightstand','nightstand','nightstand','dresser','dresser','dresser','wardrobe','wardrobe','wardrobe','default','default','default'],
+  dining_room:  ['dining_table','dining_table','dining_table','armchair','armchair','armchair','armchair','armchair','armchair','bookshelf','bookshelf','bookshelf','default','default','default'],
+  home_office:  ['desk','desk','desk','desk','desk','armchair','armchair','armchair','armchair','armchair','bookshelf','bookshelf','bookshelf','bookshelf','bookshelf'],
+  kitchen:      ['coffee_table','coffee_table','coffee_table','default','default','default','default','default','default','default','default','default','default','default','default'],
+  bathroom:     ['nightstand','nightstand','nightstand','dresser','dresser','dresser','default','default','default','default','default','default','default','default','default'],
+  entryway:     ['armchair','armchair','armchair','nightstand','nightstand','nightstand','bookshelf','bookshelf','bookshelf','default','default','default','default','default','default'],
 }
 
-// ---------------------------------------------------------------------------
-// Paths
-// ---------------------------------------------------------------------------
+// ── Paths ─────────────────────────────────────────────────────────────────────
 
 const REPO_ROOT    = path.resolve(__dirname, '..')
-const MODELS_ROOT  = path.join(REPO_ROOT, 'apps/mobile/assets/models/furniture')
-const CATALOG_PATH = path.join(REPO_ROOT, 'apps/mobile/src/data/furnitureCatalog.ts')
-const LOG_SKIPPED  = path.join(REPO_ROOT, 'scripts/generate-furniture-catalog.skipped.log')
+const MODELS_ROOT  = path.join(REPO_ROOT, 'assets', 'models', 'furniture')
+const CATALOG_PATH = path.join(REPO_ROOT, 'apps', 'mobile', 'src', 'data', 'furnitureCatalog.ts')
 
-// ---------------------------------------------------------------------------
-// Category inference
-// ---------------------------------------------------------------------------
+// ── Box GLB generator ─────────────────────────────────────────────────────────
+//
+// Creates a minimal valid GLB containing a single box mesh centred at the origin.
+// The box has 6 faces × 4 vertices = 24 vertices and 6 faces × 2 tris = 36 indices.
 
-const CATEGORY_KEYWORDS: Record<FurnitureCategory, string[]> = {
-  seating:  ['sofa', 'couch', 'chair', 'stool', 'bench', 'ottoman', 'settee', 'loveseat', 'sectional'],
-  tables:   ['table', 'desk', 'counter', 'island', 'stand', 'console'],
-  lighting: ['lamp', 'light', 'sconce', 'pendant', 'chandelier', 'lantern'],
-  storage:  ['shelf', 'shelves', 'rack', 'cabinet', 'dresser', 'wardrobe', 'bookcase', 'bookshelf', 'buffet', 'sideboard'],
-  decor:    ['mirror', 'rug', 'art', 'vase', 'frame', 'sculpture', 'curtain', 'throw', 'pillow'],
-  plants:   ['plant', 'tree', 'succulent', 'cactus', 'fern', 'leaf', 'pot'],
-  beds:     ['bed', 'mattress', 'headboard', 'bedframe'],
-}
+async function createBoxGlb(
+  width: number,
+  height: number,
+  depth: number,
+): Promise<Uint8Array> {
+  const hw = width  / 2
+  const hh = height / 2
+  const hd = depth  / 2
 
-function inferCategory(name: string): FurnitureCategory {
-  const lower = name.toLowerCase()
-  for (const [cat, keywords] of Object.entries(CATEGORY_KEYWORDS) as [FurnitureCategory, string[]][]) {
-    if (keywords.some((kw) => lower.includes(kw))) return cat
-  }
-  return 'decor'
-}
+  // 24 positions — 4 vertices per face, 6 faces: -X +X -Y +Y -Z +Z
+  const positions = new Float32Array([
+    // -X
+    -hw, -hh, -hd,  -hw,  hh, -hd,  -hw,  hh,  hd,  -hw, -hh,  hd,
+    // +X
+     hw, -hh,  hd,   hw,  hh,  hd,   hw,  hh, -hd,   hw, -hh, -hd,
+    // -Y (floor)
+    -hw, -hh, -hd,  -hw, -hh,  hd,   hw, -hh,  hd,   hw, -hh, -hd,
+    // +Y (top)
+    -hw,  hh,  hd,  -hw,  hh, -hd,   hw,  hh, -hd,   hw,  hh,  hd,
+    // -Z (front)
+     hw, -hh, -hd,   hw,  hh, -hd,  -hw,  hh, -hd,  -hw, -hh, -hd,
+    // +Z (back)
+    -hw, -hh,  hd,  -hw,  hh,  hd,   hw,  hh,  hd,   hw, -hh,  hd,
+  ])
 
-// ---------------------------------------------------------------------------
-// Style score helper
-// ---------------------------------------------------------------------------
+  const normals = new Float32Array([
+    -1, 0, 0,  -1, 0, 0,  -1, 0, 0,  -1, 0, 0,
+     1, 0, 0,   1, 0, 0,   1, 0, 0,   1, 0, 0,
+     0,-1, 0,   0,-1, 0,   0,-1, 0,   0,-1, 0,
+     0, 1, 0,   0, 1, 0,   0, 1, 0,   0, 1, 0,
+     0, 0,-1,   0, 0,-1,   0, 0,-1,   0, 0,-1,
+     0, 0, 1,   0, 0, 1,   0, 0, 1,   0, 0, 1,
+  ])
 
-function buildStyleTags(primaryStyle: StyleName): StyleName[] {
-  return [primaryStyle]
-}
-
-// ---------------------------------------------------------------------------
-// Name formatting
-// ---------------------------------------------------------------------------
-
-function toTitleCase(str: string): string {
-  return str
-    .replace(/[-_]/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase())
-    .trim()
-}
-
-// ---------------------------------------------------------------------------
-// Sketchfab API
-// ---------------------------------------------------------------------------
-
-interface SketchfabModel {
-  uid: string
-  name: string
-  thumbnails?: { images?: Array<{ url: string }> }
-}
-
-interface SketchfabSearchResponse {
-  results?: SketchfabModel[]
-}
-
-interface SketchfabDownloadResponse {
-  glb?: { url: string }
-  gltf?: { url: string }
-}
-
-// Normalised result shape (same as before so downstream code is unchanged)
-interface SketchfabResult {
-  ID: string
-  Title: string
-  Download: string
-  Thumbnail?: string
-}
-
-async function fetchModelsForQuery(
-  query: string,
-  limit: number,
-): Promise<SketchfabResult[]> {
-  if (!SKETCHFAB_API_KEY) {
-    console.warn('  ⚠ SKETCHFAB_API_KEY not set — skipping query')
-    return []
+  // 36 indices — 2 triangles per face: (0,1,2) (0,2,3) with per-face offset
+  const indices = new Uint16Array(36)
+  for (let f = 0; f < 6; f++) {
+    const b = f * 4
+    const i = f * 6
+    indices[i]     = b;     indices[i + 1] = b + 1; indices[i + 2] = b + 2
+    indices[i + 3] = b;     indices[i + 4] = b + 2; indices[i + 5] = b + 3
   }
 
-  const params = new URLSearchParams({
-    q:                 query,
-    tags:              'furniture',
-    archives_flavours: 'glb',
-    count:             String(limit),
-    sort_by:           '-likeCount',
-  })
-  const authHeaders: Record<string, string> = {
-    'Accept':        'application/json',
-    'Authorization': `Token ${SKETCHFAB_API_KEY}`,
-  }
+  const doc    = new Document()
+  const buffer = doc.createBuffer()
 
-  // 1. Search
-  const searchRes = await fetch(`${SKETCHFAB_API}?${params}`, { headers: authHeaders })
-  if (!searchRes.ok) {
-    console.warn(`  Sketchfab API error ${searchRes.status} for query "${query}"`)
-    return []
-  }
-  const searchJson = await searchRes.json() as SketchfabSearchResponse
-  const models = searchJson.results ?? []
+  const posAcc = doc.createAccessor()
+    .setType('VEC3').setArray(positions).setBuffer(buffer)
+  const normAcc = doc.createAccessor()
+    .setType('VEC3').setArray(normals).setBuffer(buffer)
+  const idxAcc = doc.createAccessor()
+    .setType('SCALAR').setArray(indices).setBuffer(buffer)
 
-  // 2. Fetch download URL for each model
-  const out: SketchfabResult[] = []
-  for (const model of models) {
-    const dlRes = await fetch(`${SKETCHFAB_API}/${model.uid}/download`, { headers: authHeaders })
-    if (!dlRes.ok) continue
-    const dlJson = await dlRes.json() as SketchfabDownloadResponse
-    const glbUrl = dlJson.glb?.url ?? dlJson.gltf?.url
-    if (!glbUrl) continue
-    out.push({
-      ID:        model.uid,
-      Title:     model.name,
-      Download:  glbUrl,
-      Thumbnail: model.thumbnails?.images?.[0]?.url,
-    })
-  }
-  return out
+  const mat = doc.createMaterial('PlaceholderMat')
+    .setBaseColorFactor([0.76, 0.70, 0.63, 1.0])  // warm neutral
+
+  const prim = doc.createPrimitive()
+    .setAttribute('POSITION', posAcc)
+    .setAttribute('NORMAL', normAcc)
+    .setIndices(idxAcc)
+    .setMaterial(mat)
+
+  const mesh  = doc.createMesh('Box').addPrimitive(prim)
+  const node  = doc.createNode('Box').setMesh(mesh)
+  const scene = doc.createScene('Scene').addChild(node)
+  doc.getRoot().setDefaultScene(scene)
+
+  const io = new NodeIO()
+  return io.writeBinary(doc)
 }
 
-// ---------------------------------------------------------------------------
-// Download a GLB file
-// ---------------------------------------------------------------------------
-
-async function downloadGlb(url: string, destPath: string): Promise<boolean> {
-  try {
-    const res = await fetch(url)
-    if (!res.ok) return false
-    const buffer = await res.buffer()
-    fs.mkdirSync(path.dirname(destPath), { recursive: true })
-    fs.writeFileSync(destPath, buffer)
-    return true
-  } catch {
-    return false
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Optimize GLB via gltf-transform CLI
-// ---------------------------------------------------------------------------
-
-function optimizeGlb(inputPath: string, outputPath: string): boolean {
-  try {
-    execSync(
-      `npx gltf-transform optimize "${inputPath}" "${outputPath}" --texture-compress webp --simplify --target-error 0.01`,
-      { stdio: 'pipe', timeout: 60_000 },
-    )
-    const sizeKb = fs.statSync(outputPath).size / 1024
-    if (sizeKb > MAX_TARGET_KB) {
-      console.warn(`  ⚠ ${path.basename(outputPath)} is ${sizeKb.toFixed(0)} KB (>${MAX_TARGET_KB} KB) — keeping anyway`)
-    }
-    return true
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    fs.appendFileSync(LOG_SKIPPED, `OPTIMIZE_FAIL\t${inputPath}\t${msg.slice(0, 120)}\n`)
-    return false
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Read bounding box from GLB
-// ---------------------------------------------------------------------------
-
-async function readGlbDimensions(
-  glbPath: string,
-): Promise<{ width: number; depth: number; height: number }> {
-  try {
-    const io = new NodeIO()
-    const doc: Document = await io.read(glbPath)
-    const bbox = getBounds(doc.getRoot().listScenes()[0])
-    const w = Math.abs(bbox.max[0] - bbox.min[0])
-    const h = Math.abs(bbox.max[1] - bbox.min[1])
-    const d = Math.abs(bbox.max[2] - bbox.min[2])
-    // Sanity clamp: models occasionally have wildly wrong scale
-    return {
-      width:  Math.min(Math.max(w, 0.1), 5.0),
-      depth:  Math.min(Math.max(d, 0.1), 5.0),
-      height: Math.min(Math.max(h, 0.1), 3.0),
-    }
-  } catch {
-    // Return sensible defaults if bounding box read fails
-    return { width: 0.8, depth: 0.8, height: 0.8 }
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Main
-// ---------------------------------------------------------------------------
+// ── Catalog entry type ────────────────────────────────────────────────────────
 
 interface CatalogEntry {
-  id: string
-  name: string
-  category: FurnitureCategory
-  room_types: RoomType[]
-  style_tags: StyleName[]
-  glb_path: string
+  id:            string
+  name:          string
+  category:      FurnitureCat
+  room_types:    RoomType[]
+  style_tags:    StyleName[]
+  glb_path:      string
   thumbnail_url: string
-  width: number
-  depth: number
-  height: number
-  price_range: PriceRange
-  colors: string[]
+  width:         number
+  depth:         number
+  height:        number
+  price_range:   'budget'
+  colors:        string[]
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function toTitleCase(str: string): string {
+  return str.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+
 async function run() {
-  console.log('=== Cova Furniture GLB Pipeline ===\n')
+  console.log('=== Cova Furniture GLB Generator (Placeholder Mode) ===\n')
+  console.log(`Target: ${ROOM_TYPES.length} rooms × ${STYLES.length} styles × ${ITEMS_PER_COMBO} items = ${ROOM_TYPES.length * STYLES.length * ITEMS_PER_COMBO} GLBs\n`)
 
-  // Install deps if missing (no-op if already installed)
-  console.log('Checking dependencies...')
-  try {
-    execSync('node -e "require(\'@gltf-transform/core\')"', { stdio: 'pipe' })
-  } catch {
-    console.log('Installing @gltf-transform/core @gltf-transform/functions node-fetch...')
-    execSync('npm install --save-dev @gltf-transform/core @gltf-transform/functions node-fetch', {
-      stdio: 'inherit',
-      cwd: REPO_ROOT,
-    })
-  }
-
+  const io = new NodeIO()
   const generatedEntries: CatalogEntry[] = []
-  const coverage: Record<string, number> = {}
-  const undercoveredCombos: string[] = []
-  const skippedFiles: string[] = []
+  const coverageMap: Record<string, number> = {}
 
-  let globalIndex = 0
+  let totalGlbs = 0
 
   for (const roomType of ROOM_TYPES) {
     for (const style of STYLES) {
-      const comboKey = `${roomType}__${style}`
-      console.log(`\n── ${roomType} × ${style} ──`)
-
-      const nouns = ROOM_SEARCH_NOUNS[roomType]
-      const styleTerm = STYLE_SEARCH_TERMS[style]
-
-      // Collect model results across multiple nouns until we hit MIN_PER_COMBO
-      const collected: PolyPizzaResult[] = []
-      const seenIds = new Set<string>()
-
-      for (const noun of nouns) {
-        if (collected.length >= MIN_PER_COMBO) break
-        const query = `${styleTerm} ${noun}`
-        const results = await fetchModelsForQuery(query, MIN_PER_COMBO)
-        for (const r of results) {
-          if (!seenIds.has(r.ID) && r.Download) {
-            seenIds.add(r.ID)
-            collected.push(r)
-          }
-          if (collected.length >= MIN_PER_COMBO) break
-        }
-        // Brief pause to respect rate limits
-        await new Promise((resolve) => setTimeout(resolve, 300))
-      }
-
-      console.log(`  Found ${collected.length} models`)
-      if (collected.length < MIN_PER_COMBO) {
-        undercoveredCombos.push(`${comboKey} (${collected.length}/${MIN_PER_COMBO})`)
-      }
+      const comboKey = `${roomType} × ${style}`
+      const slots    = ROOM_SLOTS[roomType]
+      const outDir   = path.join(MODELS_ROOT, roomType, style)
+      fs.mkdirSync(outDir, { recursive: true })
 
       let comboCount = 0
 
-      for (const model of collected) {
-        globalIndex++
-        const safeName = model.Title
-          .replace(/[^a-z0-9 ]/gi, '')
-          .replace(/\s+/g, '-')
-          .toLowerCase()
-          .slice(0, 60)
-        const filename = `${safeName}-${model.ID.slice(-6)}.glb`
-        const rawDir  = path.join(MODELS_ROOT, roomType, style, 'raw')
-        const optDir  = path.join(MODELS_ROOT, roomType, style)
-        const rawPath = path.join(rawDir, filename)
-        const optPath = path.join(optDir, filename)
+      for (let idx = 0; idx < ITEMS_PER_COMBO; idx++) {
+        const furnitureType = slots[idx]
+        const dims          = DIMENSIONS[furnitureType]
+        const category      = FURNITURE_CATEGORY[furnitureType]
+        const entryId       = `${roomType}-${style}-${furnitureType}-${idx}`
+        const filename      = `${roomType}-${style}-${furnitureType}-${idx}.glb`
+        const filePath      = path.join(outDir, filename)
+        const catalogPath   = `assets/models/furniture/${roomType}/${style}/${filename}`
 
-        // Download
-        if (!fs.existsSync(rawPath)) {
-          const ok = await downloadGlb(model.Download, rawPath)
-          if (!ok) {
-            console.warn(`  ✗ Download failed: ${model.Title}`)
-            skippedFiles.push(`DOWNLOAD_FAIL\t${model.Download}`)
-            continue
-          }
+        if (!fs.existsSync(filePath)) {
+          const glbBytes = await createBoxGlb(dims.width, dims.height, dims.depth)
+          fs.writeFileSync(filePath, glbBytes)
         }
-
-        // Optimize
-        if (!fs.existsSync(optPath)) {
-          fs.mkdirSync(optDir, { recursive: true })
-          const ok = optimizeGlb(rawPath, optPath)
-          if (!ok) {
-            console.warn(`  ✗ Optimize failed: ${filename}`)
-            skippedFiles.push(`OPTIMIZE_FAIL\t${rawPath}`)
-            continue
-          }
-        }
-
-        // Dimensions
-        const dims = await readGlbDimensions(optPath)
-
-        // Catalog entry
-        const entryId   = `${roomType}-${style}-${globalIndex}`
-        const entryName = toTitleCase(model.Title)
-        const category  = inferCategory(model.Title)
-        // GLB path relative to the mobile app's assets root (Metro bundle)
-        const relGlbPath = `assets/models/furniture/${roomType}/${style}/${filename}`
 
         generatedEntries.push({
           id:            entryId,
-          name:          entryName,
+          name:          `${toTitleCase(style)} ${toTitleCase(furnitureType)}`,
           category,
           room_types:    [roomType],
-          style_tags:    buildStyleTags(style),
-          glb_path:      relGlbPath,
-          thumbnail_url: model.Thumbnail ?? '',
-          width:         Math.round(dims.width  * 100) / 100,
-          depth:         Math.round(dims.depth  * 100) / 100,
-          height:        Math.round(dims.height * 100) / 100,
-          price_range:   'mid',   // to be updated by update-furniture-prices.ts
+          style_tags:    [style],
+          glb_path:      catalogPath,
+          thumbnail_url: '',
+          width:         round2(dims.width),
+          depth:         round2(dims.depth),
+          height:        round2(dims.height),
+          price_range:   'budget',
           colors:        [],
         })
 
         comboCount++
-        console.log(`  ✓ [${comboCount}] ${entryName} (${dims.width.toFixed(2)}×${dims.depth.toFixed(2)}×${dims.height.toFixed(2)} m)`)
+        totalGlbs++
       }
 
-      coverage[comboKey] = comboCount
+      coverageMap[comboKey] = comboCount
+      console.log(`  ✓ ${comboKey.padEnd(30)} ${comboCount} GLBs`)
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Merge with existing manually-curated entries
-  // ---------------------------------------------------------------------------
+  // ── Preserve existing manually-curated catalog entries ─────────────────────
+  // Keep any entry whose glb_path starts with 'assets/3d/' (hand-placed models).
 
-  console.log('\n── Merging with existing catalog ──')
-
-  // Dynamically eval the existing catalog to extract manually-curated items.
-  // We look for entries that have a non-empty glb_path that starts with 'assets/3d'
-  // (manually placed) rather than the generated 'assets/models' path.
-  let existingManualEntries: CatalogEntry[] = []
+  let existingManual: CatalogEntry[] = []
   if (fs.existsSync(CATALOG_PATH)) {
     const raw = fs.readFileSync(CATALOG_PATH, 'utf8')
-    // Extract entries via regex — each entry is a {...} block between array brackets
     const blockRe = /\{[\s\S]*?glb_path:\s*['"`]([^'"`]*)['"`][\s\S]*?\}/g
-    let match: RegExpExecArray | null
-    while ((match = blockRe.exec(raw)) !== null) {
-      const glbPath = match[1]
-      // Keep only manually-placed assets (not ones we generated previously)
-      if (glbPath.startsWith('assets/3d/')) {
-        // Parse the full block as best we can — extract key fields
-        const block = match[0]
-        const get = (key: string): string => {
-          const m = new RegExp(`${key}:\\s*['"\`]([^'"\`]*)['"\`]`).exec(block)
-          return m?.[1] ?? ''
-        }
-        const getArr = (key: string): string[] => {
-          const m = new RegExp(`${key}:\\s*\\[([^\\]]*)\\]`).exec(block)
-          if (!m) return []
-          return m[1].split(',').map((s) => s.replace(/['"\s]/g, '')).filter(Boolean)
-        }
-        const getNum = (key: string): number => parseFloat(
-          new RegExp(`${key}:\\s*([0-9.]+)`).exec(block)?.[1] ?? '0',
-        )
-        existingManualEntries.push({
-          id:            get('id'),
-          name:          get('name'),
-          category:      get('category') as FurnitureCategory,
-          room_types:    getArr('room_types') as RoomType[],
-          style_tags:    getArr('style_tags') as StyleName[],
-          glb_path:      glbPath,
-          thumbnail_url: get('thumbnail_url'),
-          width:         getNum('width'),
-          depth:         getNum('depth'),
-          height:        getNum('height'),
-          price_range:   (get('price_range') || 'mid') as PriceRange,
-          colors:        getArr('colors'),
-        })
+    let m: RegExpExecArray | null
+    while ((m = blockRe.exec(raw)) !== null) {
+      if (!m[1].startsWith('assets/3d/')) continue
+      const b   = m[0]
+      const get = (key: string) => new RegExp(`${key}:\\s*['"\`]([^'"\`]*)['"\`]`).exec(b)?.[1] ?? ''
+      const getArr = (key: string): string[] => {
+        const am = new RegExp(`${key}:\\s*\\[([^\\]]*)\\]`).exec(b)
+        if (!am) return []
+        return am[1].split(',').map((s) => s.replace(/['"\s]/g, '')).filter(Boolean)
       }
+      const getNum = (key: string) => parseFloat(new RegExp(`${key}:\\s*([0-9.]+)`).exec(b)?.[1] ?? '0')
+      existingManual.push({
+        id:            get('id'),
+        name:          get('name'),
+        category:      get('category') as FurnitureCat,
+        room_types:    getArr('room_types') as RoomType[],
+        style_tags:    getArr('style_tags') as StyleName[],
+        glb_path:      m[1],
+        thumbnail_url: get('thumbnail_url'),
+        width:         getNum('width'),
+        depth:         getNum('depth'),
+        height:        getNum('height'),
+        price_range:   'budget',
+        colors:        getArr('colors'),
+      })
     }
-    console.log(`  Preserved ${existingManualEntries.length} manually-curated entries`)
   }
+  console.log(`\nPreserved ${existingManual.length} manually-curated entries (assets/3d/)`)
 
-  const mergedEntries = [...existingManualEntries, ...generatedEntries]
+  const merged = [...existingManual, ...generatedEntries]
 
-  // ---------------------------------------------------------------------------
-  // Write furnitureCatalog.ts
-  // ---------------------------------------------------------------------------
+  // ── Serialize catalog entry ─────────────────────────────────────────────────
 
-  console.log('\n── Writing furnitureCatalog.ts ──')
-
-  const stringify = (entry: CatalogEntry): string => {
-    const roomTypesStr = entry.room_types.map((r) => `'${r}'`).join(', ')
-    const styleTagsStr = entry.style_tags.map((s) => `'${s}'`).join(', ')
-    const colorsStr    = entry.colors.map((c) => `'${c}'`).join(', ')
+  const serializeEntry = (e: CatalogEntry): string => {
+    const roomTypes  = e.room_types.map((r) => `'${r}'`).join(', ')
+    const styleTags  = e.style_tags.map((s) => `'${s}'`).join(', ')
+    const colors     = e.colors.map((c) => `'${c}'`).join(', ')
     return `  {
-    id:            '${entry.id}',
-    name:          '${entry.name.replace(/'/g, "\\'")}',
-    category:      '${entry.category}',
-    room_types:    [${roomTypesStr}],
-    style_tags:    [${styleTagsStr}],
-    glb_path:      '${entry.glb_path}',
-    thumbnail_url: '${entry.thumbnail_url}',
-    width:         ${entry.width},
-    depth:         ${entry.depth},
-    height:        ${entry.height},
-    price_range:   '${entry.price_range}',
-    colors:        [${colorsStr}],
+    id:            '${e.id}',
+    name:          '${e.name.replace(/'/g, "\\'")}',
+    category:      '${e.category}',
+    room_types:    [${roomTypes}],
+    style_tags:    [${styleTags}],
+    glb_path:      '${e.glb_path}',
+    thumbnail_url: '${e.thumbnail_url}',
+    width:         ${e.width},
+    depth:         ${e.depth},
+    height:        ${e.height},
+    price_range:   '${e.price_range}',
+    colors:        [${colors}],
   }`
   }
 
-  const catalogTs = `import type {
-  FurnitureCatalogItem,
-  FurniturePiece,
-  StyleName,
-  RoomType,
-  StyleBlend,
-} from '@cova/shared';
+  // ── Write furnitureCatalog.ts ───────────────────────────────────────────────
 
-// AUTO-GENERATED by scripts/generate-furniture-catalog.ts
-// Manually-curated entries (assets/3d/) are preserved automatically.
-// DO NOT hand-edit generated entries — re-run the pipeline instead.
+  const catalogTs = `import type { FurnitureCatalogItem, StyleName, RoomType, StyleBlend } from '@cova/shared';
+
+// AUTO-GENERATED by scripts/generate-furniture-catalog.ts — do not hand-edit generated entries.
+// Manually-curated entries (glb_path starts with 'assets/3d/') are preserved on re-run.
 
 export const FURNITURE_CATALOG: FurnitureCatalogItem[] = [
-${mergedEntries.map(stringify).join(',\n')}
+${merged.map(serializeEntry).join(',\n')}
 ];
 
 export const STYLE_PALETTE: Record<StyleName, {
@@ -532,41 +359,18 @@ export function getFurnitureForRoom(
 
   fs.writeFileSync(CATALOG_PATH, catalogTs, 'utf8')
 
-  // ---------------------------------------------------------------------------
-  // Stats
-  // ---------------------------------------------------------------------------
+  // ── Final report ───────────────────────────────────────────────────────────
 
-  console.log('\n=== Pipeline Complete ===\n')
+  const combosHit    = Object.values(coverageMap).filter((n) => n === ITEMS_PER_COMBO).length
+  const totalCombos  = ROOM_TYPES.length * STYLES.length
 
-  const perRoom: Record<string, number> = {}
-  const perStyle: Record<string, number> = {}
-  for (const e of generatedEntries) {
-    for (const r of e.room_types) perRoom[r] = (perRoom[r] ?? 0) + 1
-    for (const s of e.style_tags) perStyle[s] = (perStyle[s] ?? 0) + 1
-  }
-
-  console.log('Generated entries per room type:')
-  for (const [r, n] of Object.entries(perRoom)) console.log(`  ${r.padEnd(14)} ${n}`)
-  console.log('\nGenerated entries per style:')
-  for (const [s, n] of Object.entries(perStyle)) console.log(`  ${s.padEnd(14)} ${n}`)
-  console.log(`\nManually-curated preserved: ${existingManualEntries.length}`)
-  console.log(`Generated new:              ${generatedEntries.length}`)
-  console.log(`Grand total:                ${mergedEntries.length}`)
-
-  if (undercoveredCombos.length > 0) {
-    console.log('\n⚠ Combos with fewer than 15 items:')
-    for (const c of undercoveredCombos) console.log(`  ${c}`)
-  } else {
-    console.log('\n✓ All 35 combos met the 15-item minimum')
-  }
-
-  if (skippedFiles.length > 0) {
-    fs.writeFileSync(LOG_SKIPPED, skippedFiles.join('\n') + '\n', 'utf8')
-    console.log(`\n${skippedFiles.length} files skipped — see ${LOG_SKIPPED}`)
-  }
+  console.log('\n=== Complete ===\n')
+  console.log(`1. Total GLBs generated:       ${totalGlbs}`)
+  console.log(`2. Coverage:                   ${combosHit}/${totalCombos} combos at ${ITEMS_PER_COMBO} items each`)
+  console.log(`3. Total catalog entries:      ${merged.length} (${existingManual.length} manual + ${generatedEntries.length} generated)`)
 }
 
 run().catch((err) => {
-  console.error('Pipeline failed:', err)
+  console.error('Generator failed:', err)
   process.exit(1)
 })
