@@ -21,7 +21,7 @@ echo ""
 for flow in "$FLOWS_DIR"/*.yaml; do
   flow_name=$(basename "$flow")
   echo "--- Running: $flow_name ---"
-  if "$HOME/.maestro/bin/maestro" --udid "$DEVICE_UDID" --apple-team-id "$APPLE_TEAM_ID" test "$flow"; then
+  if "$HOME/.maestro/bin/maestro" test --udid "$DEVICE_UDID" --apple-team-id "$APPLE_TEAM_ID" "$flow"; then
     echo "PASS: $flow_name"
     PASS=$((PASS + 1))
   else
