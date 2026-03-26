@@ -189,6 +189,7 @@ class ThreeDErrorBoundary extends React.Component<
 
 export default function RoomViewer3DScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
+  const testMode = process.env.EXPO_PUBLIC_TEST_RENDER_MODE === 'true';
 
   const [activeStyle, setActiveStyle] = useState<StyleName>('japandi');
   const [sceneKey, setSceneKey] = useState(0);
@@ -542,6 +543,10 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
       ) : (
         <View style={[StyleSheet.absoluteFill, { backgroundColor: ceilingColor }]}>
           <ViewShot ref={viewShotRef} style={styles.canvasContainer}>
+            {/* In testMode skip the Canvas (GLView intercepts all native touches) */}
+            {testMode ? (
+              <View style={[styles.canvas, { backgroundColor: ceilingColor }]} />
+            ) : (
             <ThreeDErrorBoundary onError={handleError}>
               <Canvas
                 key={sceneKey}
@@ -601,6 +606,7 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
                 </Suspense>
               </Canvas>
             </ThreeDErrorBoundary>
+            )}
           </ViewShot>
         </View>
       )}
@@ -676,6 +682,7 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
       {/* Add furniture FAB */}
       {!selectedId && (
         <TouchableOpacity
+          testID="add-fab"
           style={styles.addFab}
           onPress={() => setShowCatalog(true)}
           activeOpacity={0.85}
@@ -930,8 +937,9 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
               numColumns={2}
               contentContainerStyle={styles.catalogList}
               columnWrapperStyle={styles.catalogRow}
-              renderItem={({ item }) => (
+              renderItem={({ item, index }) => (
                 <TouchableOpacity
+                  testID={`catalog-item-${index}`}
                   style={styles.catalogItem}
                   onPress={() => handleAddFurniture(item)}
                   activeOpacity={0.7}

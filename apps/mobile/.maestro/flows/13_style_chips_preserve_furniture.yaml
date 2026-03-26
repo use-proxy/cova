@@ -10,26 +10,19 @@ device:
 - runFlow: ../utils/open_existing_render.yaml
 
 # Navigate to 3D viewer
-- tapOn: "Arrange Furniture"
+- tapOn: "Arrange"
 - waitForAnimationToEnd:
     timeout: 15000
 - assertVisible:
     id: "room-viewer-3d"
 
 # Add a furniture piece
-- tapOn: "+"
-- waitForAnimationToEnd
-- tapOn: "All"
-- waitForAnimationToEnd
-# Select first item
 - tapOn:
-    index: 0
-    point: 50%, 50%
+    id: "add-fab"
 - waitForAnimationToEnd
-
-# Close catalog
+- assertVisible: "Add Furniture"
 - tapOn:
-    id: "room-viewer-3d"
+    id: "catalog-item-0"
 - waitForAnimationToEnd
 
 # Current style should be active
@@ -43,15 +36,15 @@ device:
 - assertVisible:
     id: "room-viewer-3d"
 
-# Switch to another style
-- tapOn: "Pure Lines"
+# Switch to Zen Garden
+- tapOn: "Zen Garden"
 - waitForAnimationToEnd
 
 # 3D viewer still renders (furniture positions preserved)
 - assertVisible:
     id: "room-viewer-3d"
 
-# Switch back to original
+# Switch back to Ocean Breeze
 - tapOn: "Ocean Breeze"
 - waitForAnimationToEnd
 - assertVisible:

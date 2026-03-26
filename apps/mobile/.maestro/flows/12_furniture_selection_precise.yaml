@@ -10,31 +10,23 @@ device:
 - runFlow: ../utils/open_existing_render.yaml
 
 # Navigate to 3D viewer
-- tapOn: "Arrange Furniture"
+- tapOn: "Arrange"
 - waitForAnimationToEnd:
     timeout: 15000
 - assertVisible:
     id: "room-viewer-3d"
 
-# Tap "Add Furniture" FAB (the + button)
-- tapOn: "+"
+# Tap "Add Furniture" FAB
+- tapOn:
+    id: "add-fab"
 - waitForAnimationToEnd
 
 # Furniture catalog modal should appear
-# Tap on a furniture category or item
-- tapOn: "All"
-- waitForAnimationToEnd
+- assertVisible: "Add Furniture"
 
-# Select a furniture piece from catalog
-# (Tap on the first available item)
+# Tap first catalog item
 - tapOn:
-    index: 0
-    point: 50%, 50%
-- waitForAnimationToEnd
-
-# Close catalog if still open
-- tapOn:
-    id: "room-viewer-3d"
+    id: "catalog-item-0"
 - waitForAnimationToEnd
 
 # Undo should be available after adding furniture

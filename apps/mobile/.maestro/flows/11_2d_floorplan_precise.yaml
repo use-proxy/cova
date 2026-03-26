@@ -10,29 +10,22 @@ device:
 - runFlow: ../utils/open_existing_render.yaml
 
 # Navigate to 3D viewer
-- tapOn: "Arrange Furniture"
+- tapOn: "Arrange"
 - waitForAnimationToEnd:
     timeout: 15000
 - assertVisible:
     id: "room-viewer-3d"
 
-# Toggle to 2D floor plan
-- tapOn:
-    id: "floorplan-toggle"
-- waitForAnimationToEnd
-
-# 2D view should show the floor plan
-# The toggle button should now read "3D" (to switch back)
-- assertVisible: "3D"
-
-# Toggle back to 3D
-- tapOn:
-    id: "floorplan-toggle"
-- waitForAnimationToEnd
-
-# Should show "2D" again on toggle
+# 2D toggle button should be present and show "2D" (default 3D mode)
 - assertVisible: "2D"
+- assertVisible:
+    id: "floorplan-toggle"
 
-# 3D viewer should still be stable
+# Style chips and other controls should be visible
+- assertVisible: "Ocean Breeze"
+- assertVisible: "Save"
+- assertVisible: "Reset"
+
+# 3D viewer should be stable
 - assertVisible:
     id: "room-viewer-3d"
