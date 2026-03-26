@@ -1,0 +1,18 @@
+appId: ai.cova.app
+---
+# Performs sign-in from the splash screen as the returning test user.
+# Only called when "Create Account" is visible (i.e., user is not logged in).
+- tapOn: "Sign In"
+- waitForAnimationToEnd
+- tapOn:
+    id: "email-input"
+- inputText: "test.returning@hellocova.com"
+- pressKey: Enter
+- tapOn:
+    id: "password-toggle"
+- tapOn:
+    id: "password-input"
+- inputText: "CovaTest123!"
+- tapOn:
+    text: "Sign In"
+    index: 1

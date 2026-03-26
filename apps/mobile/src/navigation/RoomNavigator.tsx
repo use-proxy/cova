@@ -9,7 +9,7 @@ export type RoomStackParamList = {
   RoomCapture: undefined;
   StyleQuiz: undefined;
   Viewer3D: { room_id?: string };
-  RenderView: { room_id?: string; autoGenerate?: boolean };
+  RenderView: { room_id?: string; autoGenerate?: boolean; testMode?: boolean };
 };
 
 const Stack = createNativeStackNavigator<RoomStackParamList>();

@@ -432,7 +432,8 @@ function RoomCaptureScreen() {
       useAppStore.getState().setCurrentRender(null);
       useAppStore.getState().setRenderStatus('idle');
 
-      navigation.navigate('RenderView', { room_id: roomId, autoGenerate: true });
+      const testMode = process.env.EXPO_PUBLIC_TEST_RENDER_MODE === 'true';
+      navigation.navigate('RenderView', { room_id: roomId, autoGenerate: true, testMode });
     } catch (e) {
       console.error('handleProcessCapture failed:', e);
       const msg = e instanceof Error ? e.message : String(e);
@@ -824,6 +825,7 @@ function RoomCaptureScreen() {
               </TouchableOpacity>
             )}
             <TouchableOpacity
+              testID="take-photo-btn"
               style={styles.methodCard}
               onPress={handleTakePhoto}
               activeOpacity={0.8}
@@ -838,6 +840,7 @@ function RoomCaptureScreen() {
               <ChevronRight />
             </TouchableOpacity>
             <TouchableOpacity
+              testID="upload-from-library-btn"
               style={styles.methodCard}
               onPress={handleUploadPhoto}
               activeOpacity={0.8}

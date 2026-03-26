@@ -75,6 +75,7 @@ function RenderViewScreen() {
   // not forwarded — fall back to currentRoom.id (always set before navigation).
   const room_id = route.params?.room_id ?? currentRoom?.id ?? 'default';
   const autoGenerate = route.params?.autoGenerate ?? false;
+  const testMode = route.params?.testMode ?? false;
 
   const [showControls, setShowControls] = useState(true);
   const [showBeforeAfter, setShowBeforeAfter] = useState(false);
@@ -89,6 +90,7 @@ function RenderViewScreen() {
   const [showBudgetSlider, setShowBudgetSlider] = useState(false);
   const [tapCoords, setTapCoords] = useState<{ x: number; y: number } | null>(null);
   const [localStageIndex, setLocalStageIndex] = useState(0);
+  const [showChoiceScreen, setShowChoiceScreen] = useState(testMode);
 
   const controlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const imageDimsRef = useRef({ width: SCREEN_WIDTH, height: SCREEN_HEIGHT });
@@ -205,8 +207,10 @@ function RenderViewScreen() {
 
   // Auto-generate first render when arriving from room capture (autoGenerate=true).
   // hasAutoStartedRef prevents double-firing if the effect re-runs.
+  // testMode skips the real render and shows the choice screen immediately.
   useEffect(() => {
     if (!autoGenerate) return;
+    if (testMode) return;
     if (hasAutoStartedRef.current) return;
     if (currentRender) return;
     hasAutoStartedRef.current = true;
@@ -271,6 +275,13 @@ function RenderViewScreen() {
     if (renderStatus === 'completed') resetControlsTimer();
     return () => { if (controlsTimer.current) clearTimeout(controlsTimer.current); };
   }, [renderStatus, resetControlsTimer]);
+
+  // Show choice screen after first auto-generated render completes
+  useEffect(() => {
+    if (autoGenerate && renderStatus === 'completed') {
+      setShowChoiceScreen(true);
+    }
+  }, [autoGenerate, renderStatus]);
 
   // Pan + pinch responder for completed image
   const imagePanResponder = useRef(
@@ -518,6 +529,31 @@ function RenderViewScreen() {
         </TouchableOpacity>
         <TouchableOpacity style={styles.backLink} onPress={() => navigation.goBack()}>
           <Text style={styles.backLinkText}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // ═══════════════════════════════
+  // Post-render choice screen
+  // ═══════════════════════════════
+  if (showChoiceScreen) {
+    return (
+      <View testID="choice-screen" style={[styles.root, styles.centerContent]}>
+        <Text style={styles.choiceTitle}>Your room is ready!</Text>
+        <TouchableOpacity
+          testID="view-ai-render-btn"
+          style={styles.choiceBtn}
+          onPress={() => setShowChoiceScreen(false)}
+        >
+          <Text style={styles.choiceBtnText}>View AI Render</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          testID="arrange-furniture-btn"
+          style={[styles.choiceBtn, styles.choiceBtnSecondary]}
+          onPress={() => navigation.navigate('Viewer3D', { room_id })}
+        >
+          <Text style={styles.choiceBtnText}>Arrange Furniture</Text>
         </TouchableOpacity>
       </View>
     );
@@ -847,6 +883,12 @@ const styles = StyleSheet.create({
   retryBtnText: { color: BG, fontSize: 17, fontWeight: '600' },
   backLink: { padding: 12 },
   backLinkText: { color: 'rgba(255,255,255,0.6)', fontSize: 15 },
+
+  // ── Choice screen ──
+  choiceTitle: { fontSize: 26, fontWeight: '700', color: 'white', textAlign: 'center', marginBottom: 40 },
+  choiceBtn: { width: '100%', backgroundColor: GOLD, borderRadius: 28, paddingVertical: 18, alignItems: 'center', marginBottom: 16 },
+  choiceBtnSecondary: { backgroundColor: 'rgba(255,255,255,0.15)' },
+  choiceBtnText: { color: 'white', fontSize: 18, fontWeight: '600' },
 
   // ── Pull tab ──
   pullTab: {
