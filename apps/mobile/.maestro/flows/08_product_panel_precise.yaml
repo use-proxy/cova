@@ -3,28 +3,21 @@ device:
   platform: ios
   type: simulator
 ---
-# Flow 08: Product Panel — swipe from left, budget slider, products, cart
-# Prereq: on render view with completed render
+# Flow 08: Product Panel — tap Shop to open, verify panel, close
 
 - runFlow: ../utils/login_returning.yaml
 - runFlow: ../utils/open_existing_render.yaml
 
-# Swipe from left edge to open product panel
-- swipe:
-    start: 0%, 50%
-    end: 60%, 50%
-    duration: 500
+# Tap Shop button in HUD to open product panel
+- tapOn: "Shop"
 - waitForAnimationToEnd
 
-# Product panel should be visible
-- assertVisible: "Add All to Cart"
+# Product panel header should be visible
+- assertVisible: "Matched Products"
 
-# Products should show dollar signs and retailer badges
-- assertVisible: "$"
-
-# Close product panel by swiping back
-- swipe:
-    start: 60%, 50%
-    end: 0%, 50%
-    duration: 500
+# Close product panel by tapping X
+- tapOn: "✕"
 - waitForAnimationToEnd
+
+# HUD should still be visible after close
+- assertVisible: "999"

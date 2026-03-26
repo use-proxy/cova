@@ -3,21 +3,24 @@ device:
   platform: ios
   type: simulator
 ---
-# Flow 06: Before/After Slider — left=original, right=AI render
-# Prereq: on render view with completed render
+# Flow 06: Before/After Slider — tap Compare to reveal, swipe, dismiss
 
 - runFlow: ../utils/login_returning.yaml
 - runFlow: ../utils/open_existing_render.yaml
 
-# Verify render view
+# Verify render view is loaded
 - assertVisible:
     id: "render-view-screen"
 
-# Before/After slider should be visible (shows by default)
+# Tap Compare to reveal the before/after slider
+- tapOn: "Compare"
+- waitForAnimationToEnd
+
+# Slider and labels should now be visible
 - assertVisible:
     id: "before-after-slider"
-- assertVisible: "Before"
-- assertVisible: "After"
+- assertVisible: "BEFORE"
+- assertVisible: "AFTER"
 
 # Drag the slider to reveal more of the before image
 - swipe:
@@ -36,3 +39,7 @@ device:
 # Slider should still be functional
 - assertVisible:
     id: "before-after-slider"
+
+# Dismiss by tapping Compare again
+- tapOn: "Compare"
+- waitForAnimationToEnd
