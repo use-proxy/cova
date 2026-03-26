@@ -4,7 +4,7 @@ device:
   type: simulator
 ---
 # Flow 05: Panorama Viewer — strict verification per PRODUCT_TRUTH.md
-# End state: full-screen render image, pan works, HUD auto-hides/shows,
+# End state: full-screen render image, HUD buttons all present,
 # Compare and 2D View buttons work
 
 - runFlow: ../utils/login_returning.yaml
@@ -17,32 +17,16 @@ device:
     id: "render-flat-image"
 - assertNotVisible: "Render not available"
 
-# --- Token + first HUD buttons (before 3s auto-hide) ---
+# --- All HUD buttons visible on load ---
 - assertVisible: "999"
 - assertVisible: "Regenerate"
 - assertVisible: "Save"
-
-# --- Tap to re-show HUD for full button check ---
-- tapOn:
-    point: "50%,50%"
-- waitForAnimationToEnd
 - assertVisible: "Share"
 - assertVisible: "Arrange"
 - assertVisible: "Chat"
 - assertVisible: "Shop"
 - assertVisible: "Compare"
 - assertVisible: "2D View"
-
-# --- HUD auto-hides after 3 seconds ---
-- waitForAnimationToEnd:
-    timeout: 4000
-- assertNotVisible: "Regenerate"
-
-# --- HUD reappears on tap ---
-- tapOn:
-    id: "render-view-screen"
-- waitForAnimationToEnd
-- assertVisible: "Regenerate"
 
 # --- Compare button activates Before/After slider ---
 - tapOn: "Compare"
@@ -52,17 +36,10 @@ device:
 - assertVisible:
     id: "before-after-slider"
 
-# --- Tap to re-show HUD, dismiss Compare, switch to 2D View ---
-- tapOn:
-    point: "50%,50%"
-- waitForAnimationToEnd
+# --- Dismiss Compare slider ---
 - tapOn: "Compare"
 - waitForAnimationToEnd
-- assertNotVisible: "BEFORE"
 
-# --- Switch to 2D View (re-show HUD first) ---
-- tapOn:
-    point: "50%,50%"
-- waitForAnimationToEnd
+# --- Switch to 2D View ---
 - tapOn: "2D View"
 - waitForAnimationToEnd

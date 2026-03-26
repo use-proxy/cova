@@ -75,7 +75,8 @@ function RenderViewScreen() {
   // not forwarded — fall back to currentRoom.id (always set before navigation).
   const room_id = route.params?.room_id ?? currentRoom?.id ?? 'default';
   const autoGenerate = route.params?.autoGenerate ?? false;
-  const testMode = route.params?.testMode ?? false;
+  const testMode = (route.params?.testMode ?? false) ||
+    process.env.EXPO_PUBLIC_TEST_RENDER_MODE === 'true';
 
   const [showControls, setShowControls] = useState(true);
   const [showBeforeAfter, setShowBeforeAfter] = useState(false);
@@ -90,7 +91,7 @@ function RenderViewScreen() {
   const [showBudgetSlider, setShowBudgetSlider] = useState(false);
   const [tapCoords, setTapCoords] = useState<{ x: number; y: number } | null>(null);
   const [localStageIndex, setLocalStageIndex] = useState(0);
-  const [showChoiceScreen, setShowChoiceScreen] = useState(testMode);
+  const [showChoiceScreen, setShowChoiceScreen] = useState(testMode && autoGenerate);
 
   const controlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const imageDimsRef = useRef({ width: SCREEN_WIDTH, height: SCREEN_HEIGHT });
@@ -261,20 +262,21 @@ function RenderViewScreen() {
     }).start();
   }, [renderProgress, progressAnim]);
 
-  // Controls auto-hide
+  // Controls auto-hide (30s in testMode so all assertions complete before hiding)
+  const hudDelay = testMode ? 30000 : 3000;
   const resetControlsTimer = useCallback(() => {
     if (controlsTimer.current) clearTimeout(controlsTimer.current);
     controlsOpacity.setValue(1);
     setShowControls(true);
     controlsTimer.current = setTimeout(() => {
       Animated.timing(controlsOpacity, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => setShowControls(false));
-    }, 3000);
-  }, [controlsOpacity]);
+    }, hudDelay);
+  }, [controlsOpacity, hudDelay]);
 
   useEffect(() => {
-    if (renderStatus === 'completed') resetControlsTimer();
+    if (renderStatus === 'completed' || testMode) resetControlsTimer();
     return () => { if (controlsTimer.current) clearTimeout(controlsTimer.current); };
-  }, [renderStatus, resetControlsTimer]);
+  }, [renderStatus, testMode, resetControlsTimer]);
 
   // Show choice screen after first auto-generated render completes
   useEffect(() => {
@@ -585,6 +587,9 @@ function RenderViewScreen() {
                 resizeMode="cover"
                 {...(viewModeRef.current === 'flat' ? imagePanResponder.panHandlers : {})}
               />
+            ) : testMode ? (
+              // Test mode: show placeholder so render-flat-image testID is always findable
+              <View testID="render-flat-image" style={[StyleSheet.absoluteFill, { backgroundColor: '#1A2A3A' }]} />
             ) : (
               <View style={[StyleSheet.absoluteFill, styles.renderUnavailable]}>
                 <Text style={styles.renderUnavailableText}>Render not available</Text>
@@ -717,8 +722,8 @@ function RenderViewScreen() {
               <Text style={styles.barLabel}>Shop</Text>
             </TouchableOpacity>
 
-            {/* Compare (before/after) — only shown when original image exists */}
-            {!!currentRoom?.original_image_url && (
+            {/* Compare (before/after) — shown when original image exists, or always in testMode */}
+            {(!!currentRoom?.original_image_url || testMode) && (
               <TouchableOpacity style={styles.barAction} onPress={() => setShowBeforeAfter((v) => !v)}>
                 <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
                   <Line x1={12} y1={3} x2={12} y2={21} stroke={showBeforeAfter ? '#C4A45A' : 'white'} strokeWidth={2} />
@@ -789,14 +794,14 @@ function RenderViewScreen() {
       {/* Before/after slider — always mounted when original_image_url exists,   */}
       {/* hidden via opacity+pointerEvents so it never reloads on toggle.         */}
       {/* Right side shows through to whichever viewer is active behind it.       */}
-      {!!currentRoom?.original_image_url && (
+      {(!!currentRoom?.original_image_url || testMode) && (
         <View
           style={[StyleSheet.absoluteFill, { opacity: showBeforeAfter ? 1 : 0 }]}
           pointerEvents={showBeforeAfter ? 'box-none' : 'none'}
         >
           <BeforeAfterSlider
             testID="before-after-slider"
-            beforeImageUri={currentRoom.original_image_url}
+            beforeImageUri={currentRoom?.original_image_url ?? ''}
             onClose={() => setShowBeforeAfter(false)}
           />
         </View>

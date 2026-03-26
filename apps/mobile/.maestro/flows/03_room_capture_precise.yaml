@@ -28,6 +28,12 @@ device:
     optional: true
 - waitForAnimationToEnd
 
+# Style quiz may appear if no strong style profile exists — skip it
+- tapOn:
+    text: "Skip"
+    optional: true
+- waitForAnimationToEnd
+
 # --- Budget step ---
 - assertVisible: "Budget"
 - assertVisible:

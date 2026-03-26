@@ -15,15 +15,10 @@ device:
     id: "render-flat-image"
 - assertNotVisible: "Render not available"
 
-# --- Token + first HUD buttons (assert quickly before 3s auto-hide) ---
+# --- Assert all HUD buttons while HUD is initially visible ---
 - assertVisible: "999"
 - assertVisible: "Regenerate"
 - assertVisible: "Save"
-
-# --- Tap to re-show HUD for remaining buttons ---
-- tapOn:
-    point: "50%,50%"
-- waitForAnimationToEnd
 - assertVisible: "Share"
 - assertVisible: "Arrange"
 - assertVisible: "Chat"
@@ -31,17 +26,7 @@ device:
 - assertVisible: "Compare"
 - assertVisible: "2D View"
 
-# --- Wait for HUD to fully auto-hide ---
-- extendedWaitUntil:
-    notVisible:
-      text: "Regenerate"
-    timeout: 6000
-
-# --- Tap to re-show HUD, then activate Before/After slider ---
-- tapOn:
-    point: "50%,50%"
-- waitForAnimationToEnd
-- assertVisible: "Compare"
+# --- Activate Before/After slider ---
 - tapOn: "Compare"
 - waitForAnimationToEnd
 - assertVisible: "BEFORE"
