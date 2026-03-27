@@ -5,12 +5,16 @@
 #
 # ⚠️ READ ORDER AT SESSION START — MANDATORY:
 # 1. SESSION_MEMORY.md (~/Desktop/cova/.claude/SESSION_MEMORY.md)
-# 2. MVP_SPEC.md (this is the single source of truth for all product decisions)
+# 2. COVA_MVP_SPEC_v1.1.docx (repo root — THE master spec, overrides everything)
+#    → Convert with: pandoc COVA_MVP_SPEC_v1.1.docx -t markdown -o /tmp/spec.md
+#    → Or read the pre-converted COVA_MVP_SPEC_v1.1.md if present
 # 3. SPRINT_LOG.md (repo root — current progress)
 # 4. This file (CLAUDE.md — architecture, rules, known errors)
 #
-# MVP_SPEC.md wins over everything. This file wins over individual prompts.
-# PRODUCT_TRUTH.md is superseded by MVP_SPEC.md — do not use it.
+# COVA_MVP_SPEC_v1.1.docx is the PRIMARY SPEC AUTHORITY.
+# It wins over this file wherever they conflict.
+# This file (CLAUDE.md) wins over individual prompts for architecture rules.
+# PRODUCT_TRUTH.md is superseded — do not use it.
 
 ---
 

@@ -18,7 +18,7 @@ import RoomPlanNative, { type RoomPlanResult } from '../modules/RoomPlanModule';
 // Re-export so consumers can import from here
 export type { RoomPlanResult, RoomPlanDoor, RoomPlanWindow } from '../modules/RoomPlanModule';
 
-const SCAN_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes max
+const SCAN_TIMEOUT_MS = 60 * 1000; // 60s — spec requires auto-fallback to 3-photo on timeout
 
 export function useRoomPlan() {
   const [isAvailable, setIsAvailable] = useState(false);
