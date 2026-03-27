@@ -100,9 +100,6 @@ interface AppActions {
   // quiz
   setCards: (cards: SwipeCard[]) => void;
   setStyleBlend: (blend: StyleBlend) => void;
-  swipeRight: (cardId: string) => void;
-  swipeLeft: (cardId: string) => void;
-  swipeNeutral: (cardId: string) => void;
   completeQuiz: () => void;
   resetQuiz: () => void;
 
@@ -302,40 +299,6 @@ export const useAppStore = create<AppState & AppActions>()(
       set((state) => {
         state.styleBlend = blend;
       }),
-    swipeRight: (cardId) =>
-      set((state) => {
-        const card = state.cards.find((c) => c.id === cardId);
-        if (!card) return;
-        const weights = card.style_weights as Partial<StyleBlend>;
-        (Object.keys(weights) as StyleName[]).forEach((style) => {
-          state.styleBlend[style] = (state.styleBlend[style] ?? 0) + (weights[style] ?? 0) * 1.5;
-        });
-        // Normalize
-        const total = (Object.values(state.styleBlend) as number[]).reduce((a, b) => a + b, 0);
-        if (total > 0) {
-          (Object.keys(state.styleBlend) as StyleName[]).forEach((k) => {
-            state.styleBlend[k] = (state.styleBlend[k] ?? 0) / total;
-          });
-        }
-      }),
-    swipeLeft: (cardId) =>
-      set((state) => {
-        const card = state.cards.find((c) => c.id === cardId);
-        if (!card) return;
-        const weights = card.style_weights as Partial<StyleBlend>;
-        (Object.keys(weights) as StyleName[]).forEach((style) => {
-          state.styleBlend[style] = Math.max(0, (state.styleBlend[style] ?? 0) - (weights[style] ?? 0) * 0.5);
-        });
-        const total = (Object.values(state.styleBlend) as number[]).reduce((a, b) => a + b, 0);
-        if (total > 0) {
-          (Object.keys(state.styleBlend) as StyleName[]).forEach((k) => {
-            state.styleBlend[k] = (state.styleBlend[k] ?? 0) / total;
-          });
-        }
-      }),
-    swipeNeutral: (_cardId) => {
-      // neutral — no blend change
-    },
     completeQuiz: () =>
       set((state) => {
         state.quizComplete = true;

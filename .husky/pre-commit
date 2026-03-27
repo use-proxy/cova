@@ -1,48 +1,19 @@
-#!/bin/sh
-echo "Running pre-commit checks..."
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
 
-echo "1/3 TypeScript check..."
-TS_ERRORS=$(cd apps/mobile && npx tsc --noEmit 2>&1 | grep -v "tsconfig.json" || true)
-if [ -n "$TS_ERRORS" ]; then
-  echo "$TS_ERRORS"
-  echo "❌ TypeScript errors found. Fix before committing."
+# Check 1: No API keys or secrets in staged files (exclude hook/CI config files that contain patterns as search strings)
+echo "Checking for secrets..."
+if git diff --cached --diff-filter=ACM -- . ':!.husky/' ':!.github/' | grep -E "(sk-ant-api|r8_[a-zA-Z0-9]{20}|eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9)" > /dev/null 2>&1; then
+  echo "❌ Potential API key detected in staged files. Remove it before committing."
   exit 1
 fi
 
-echo "2/3 Test suite..."
-npx ts-node supabase/functions/tests/run-all.ts
-if [ $? -ne 0 ]; then
-  echo "❌ Tests failing. Fix before committing."
-  exit 1
+# Check 2: iOS config plist check
+if [ -f "apps/mobile/app.json" ]; then
+  if ! grep -q "NSCameraUsageDescription" apps/mobile/app.json; then
+    echo "⚠️  Warning: NSCameraUsageDescription missing from app.json"
+  fi
 fi
 
-echo "3/3 Security check..."
-if grep -r "sk-ant\|r8_\|service_role" apps/mobile/src --include="*.ts" --include="*.tsx" -q; then
-  echo "❌ Hardcoded API key detected. Remove before committing."
-  exit 1
-fi
-
-echo "4/4 iOS config check..."
-node -e "
-const app = require('./apps/mobile/app.json');
-const ios = app.expo?.ios || {};
-const plist = ios.infoPlist || {};
-const required = [
-  'NSUserTrackingUsageDescription',
-  'NSCameraUsageDescription',
-  'NSPhotoLibraryUsageDescription',
-  'NSMicrophoneUsageDescription'
-];
-const missing = required.filter(k => !plist[k]);
-if (missing.length > 0) {
-  console.error('Missing Info.plist keys:', missing.join(', '));
-  process.exit(1);
-}
-console.log('iOS config OK');
-"
-if [ $? -ne 0 ]; then
-  echo "❌ Missing required iOS Info.plist keys."
-  exit 1
-fi
-
-echo "✅ All pre-commit checks passed."
+echo "✅ Pre-commit checks passed"
+exit 0

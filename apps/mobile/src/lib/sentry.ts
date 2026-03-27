@@ -1,9 +1,12 @@
 /**
  * sentry.ts — Cova-specific Sentry wrapper
  *
- * Maps every captured event to PRODUCT_TRUTH.md features (FEATURE_1–FEATURE_12)
- * and records deviation severity, screen, render state, and user flow step
- * so every error in the Sentry dashboard has full product context.
+ * Feature tracking aligned with MVP_SPEC.md v1.1
+ * Update feature IDs when spec changes
+ *
+ * Maps every captured event to feature IDs and records deviation severity,
+ * screen, render state, and user flow step so every error in the Sentry
+ * dashboard has full product context.
  *
  * Usage:
  *   import { logProductDeviation, setCurrentScreen, setFlowStep, setRenderState } from '../lib/sentry';
@@ -11,7 +14,7 @@
 
 import * as Sentry from '@sentry/react-native';
 
-// ── Feature identifiers matching PRODUCT_TRUTH.md ──────────────────────────
+// ── Feature identifiers aligned with MVP_SPEC.md v1.1 ─────────────────────
 
 export type FeatureId =
   | 'FEATURE_1'   // Splash Screen
@@ -27,8 +30,8 @@ export type FeatureId =
   | 'FEATURE_12'; // Profile & Settings
 
 /**
- * CRITICAL_DEVIATION — PRODUCT_TRUTH.md marks these as fix-immediately bugs.
- * HIGH_DEVIATION     — PRODUCT_TRUTH.md flags these as fix-this-session bugs.
+ * CRITICAL_DEVIATION — MVP_SPEC.md marks these as fix-immediately bugs.
+ * HIGH_DEVIATION     — MVP_SPEC.md flags these as fix-this-session bugs.
  * CODE_CRASH         — unhandled exception or promise rejection.
  */
 export type DeviationSeverity = 'CRITICAL_DEVIATION' | 'HIGH_DEVIATION' | 'CODE_CRASH';
@@ -93,8 +96,8 @@ export function initSentry(): void {
 
   // Baseline contexts visible on every event in the Sentry dashboard
   Sentry.setContext('product_truth', {
-    version: '1.0',
-    source: 'PRODUCT_TRUTH.md',
+    version: '1.1',
+    source: 'MVP_SPEC.md',
     current_feature: 'initializing',
   });
 
@@ -112,10 +115,10 @@ export function initSentry(): void {
 /**
  * Log a PRODUCT TRUTH deviation that did NOT crash the app.
  *
- * @param feature  - Which PRODUCT_TRUTH.md feature is violated.
- * @param truth    - The exact ✓ TRUTH statement that is being violated.
+ * @param feature  - Which MVP_SPEC.md feature is violated.
+ * @param truth    - The exact acceptance criterion that is being violated.
  * @param actual   - What is actually happening instead.
- * @param severity - Defaults to HIGH_DEVIATION; use CRITICAL for PRODUCT_TRUTH.md CRITICAL flags.
+ * @param severity - Defaults to HIGH_DEVIATION; use CRITICAL for MVP_SPEC.md CRITICAL flags.
  */
 export function logProductDeviation(
   feature: FeatureId,
