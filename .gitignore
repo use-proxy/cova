@@ -16,3 +16,14 @@ scripts/raw-data/
 scripts/backfill-progress.json
 scripts/backfill.log
 .github/workflows/verify.yml
+# macOS
+.DS_Store
+
+# Expo
+.expo/
+!.expo/devices.json
+
+# iOS build artifacts
+ios/Podfile.lock
+ios/cova.xcworkspace/
+ios/cova/PrivacyInfo.xcprivacy
