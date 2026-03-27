@@ -45,29 +45,91 @@ interface ReplicatePrediction {
 
 // ── Prompt construction ───────────────────────────────────────────────────────
 
-const STYLE_PROMPTS: Record<StyleName, string> = {
-  coastal:     'coastal style, light natural textures, white and blue palette, natural driftwood, linen fabrics, nautical accents, airy and bright',
-  japandi:     'japandi style, clean minimal lines, natural wood and stone, muted earth tones, zen calm atmosphere, functional simplicity',
-  bohemian:    'bohemian style, rich warm colors, layered textiles, mixed patterns, plants and natural elements, eclectic collected feel',
-  mid_century: 'mid-century modern style, clean organic shapes, warm wood tones, bold accent colors, retro-futurist furniture',
-  minimalist:  'minimalist style, pure clean lines, neutral white and grey palette, maximum negative space, hidden storage, serene',
+// Style descriptors — each style has multiple descriptors that can be selected
+// proportionally based on the blend ratio.
+const STYLE_DESCRIPTORS: Record<StyleName, string[]> = {
+  coastal: [
+    'coastal style', 'light natural textures', 'white and blue palette',
+    'natural driftwood accents', 'linen fabrics', 'nautical design elements',
+    'airy and bright atmosphere', 'sea-inspired decor', 'weathered wood finishes',
+    'sandy neutral tones',
+  ],
+  japandi: [
+    'japandi style', 'clean minimal lines', 'natural wood and stone surfaces',
+    'muted earth tones', 'zen calm atmosphere', 'functional simplicity',
+    'wabi-sabi imperfection', 'low-profile furniture', 'organic ceramic accents',
+    'paper lantern lighting',
+  ],
+  bohemian: [
+    'bohemian style', 'rich warm colors', 'layered textiles and throws',
+    'mixed global patterns', 'plants and natural elements', 'eclectic collected feel',
+    'macrame wall hangings', 'vintage kilim rugs', 'rattan and wicker furniture',
+    'jewel tone accents',
+  ],
+  mid_century: [
+    'mid-century modern style', 'clean organic shapes', 'warm wood tones',
+    'bold accent colors', 'retro-futurist furniture', 'hairpin and tapered legs',
+    'geometric patterns', 'sunburst wall decor', 'molded plywood chairs',
+    'brass and walnut finishes',
+  ],
+  minimalist: [
+    'minimalist style', 'pure clean lines', 'neutral white and grey palette',
+    'maximum negative space', 'hidden storage solutions', 'serene uncluttered atmosphere',
+    'monochromatic color scheme', 'simple geometric forms', 'matte surface finishes',
+    'streamlined furniture silhouettes',
+  ],
 };
 
-function buildPrompt(styleBlend: Record<string, number>, roomType: string): string {
+// Total descriptor slots available in the prompt
+const TOTAL_DESCRIPTOR_SLOTS = 10;
+
+function buildPrompt(
+  styleBlend: Record<string, number>,
+  roomType: string,
+  pinnedProducts?: Array<{ name: string; description?: string }>,
+): string {
   const sorted = Object.entries(styleBlend)
-    .filter(([key]) => key in STYLE_PROMPTS)
+    .filter(([key]) => key in STYLE_DESCRIPTORS)
     .sort(([, a], [, b]) => (b as number) - (a as number));
 
-  const base = `Photorealistic interior photograph, ${roomType.replace(/_/g, ' ')}, professional architectural photography, 8k resolution, perfect soft lighting, warm natural light through windows`;
+  // Allocate descriptor slots proportionally to blend ratio
+  // e.g. 60% coastal = 6 coastal descriptors, 40% japandi = 4 japandi descriptors
+  const selectedDescriptors: string[] = [];
+  if (sorted.length > 0) {
+    const total = sorted.reduce((sum, [, v]) => sum + (v as number), 0);
+    let slotsRemaining = TOTAL_DESCRIPTOR_SLOTS;
 
-  if (sorted.length === 0) return base;
+    for (let i = 0; i < sorted.length; i++) {
+      const [styleName, weight] = sorted[i];
+      const ratio = total > 0 ? (weight as number) / total : 0;
+      // Last style gets remaining slots to avoid rounding gaps
+      const slots = i === sorted.length - 1
+        ? slotsRemaining
+        : Math.max(1, Math.round(ratio * TOTAL_DESCRIPTOR_SLOTS));
+      const descriptors = STYLE_DESCRIPTORS[styleName as StyleName];
+      for (let j = 0; j < Math.min(slots, descriptors.length); j++) {
+        selectedDescriptors.push(descriptors[j]);
+      }
+      slotsRemaining -= slots;
+      if (slotsRemaining <= 0) break;
+    }
+  }
 
-  const primary = STYLE_PROMPTS[sorted[0][0] as StyleName];
-  const secondary = sorted.length > 1 && (sorted[1][1] as number) > 0.1
-    ? `, with subtle ${sorted[1][0].replace(/_/g, ' ')} influences`
-    : '';
+  const styleLanguage = selectedDescriptors.length > 0
+    ? selectedDescriptors.join(', ')
+    : 'contemporary interior design';
 
-  return `${base}, ${primary}${secondary}`;
+  const structuralPreservation = 'preserve original wall colors, preserve ceiling height, preserve window positions, preserve door positions, preserve room architecture';
+
+  let pinnedLanguage = '';
+  if (pinnedProducts && pinnedProducts.length > 0) {
+    const items = pinnedProducts
+      .map((p) => `must include ${p.description ?? p.name}`)
+      .join(', ');
+    pinnedLanguage = `, ${items}`;
+  }
+
+  return `${styleLanguage}, ${roomType.replace(/_/g, ' ')} interior, ${structuralPreservation}${pinnedLanguage}, photorealistic, 8k, interior photography`;
 }
 
 // ── Replicate helpers ─────────────────────────────────────────────────────────
@@ -321,12 +383,14 @@ Deno.serve(async (req: Request) => {
       style_blend,
       room_type,
       render_type,
+      pinned_products,
     } = await req.json() as {
       room_id: string;
       image_base64: string;
       style_blend: Record<string, number>;
       room_type: string;
       render_type: 'draft' | 'hd';
+      pinned_products?: Array<{ name: string; description?: string }>;
     };
 
     // ── Token gate (V1: tokens_enabled always false — this is a no-op) ─────
@@ -354,7 +418,7 @@ Deno.serve(async (req: Request) => {
     // ── Prepare inputs ─────────────────────────────────────────────────────
     const replicateToken = Deno.env.get('REPLICATE_API_TOKEN')!;
     const numSteps = render_type === 'hd' ? 40 : 28;
-    const prompt = buildPrompt(style_blend ?? {}, room_type ?? 'living_room');
+    const prompt = buildPrompt(style_blend ?? {}, room_type ?? 'living_room', pinned_products);
     // Derive primary style for the style_applied NOT NULL column
     const style_applied = Object.entries(style_blend ?? {})
       .sort(([, a], [, b]) => (b as number) - (a as number))[0]?.[0] ?? 'minimalist';

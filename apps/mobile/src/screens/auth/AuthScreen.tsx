@@ -77,11 +77,15 @@ export default function AuthScreen({ route }: Props) {
           AppleAuthentication.AppleAuthenticationScope.EMAIL,
         ],
       });
-      const { error: err } = await supabase.auth.signInWithIdToken({
+      const { data, error: err } = await supabase.auth.signInWithIdToken({
         provider: 'apple',
         token: credential.identityToken!,
       });
       if (err) throw err;
+      if (data.user) {
+        useAppStore.getState().setUser(data.user as unknown as User);
+        useAppStore.getState().setSession(data.session);
+      }
     } catch (e: unknown) {
       if ((e as { code?: string }).code !== 'ERR_REQUEST_CANCELED') {
         Alert.alert('Sign In Failed', (e as Error).message ?? 'Apple Sign In failed.');

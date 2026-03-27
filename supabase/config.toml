@@ -24,6 +24,11 @@ file_size_limit = "50MiB"
 enabled = true
 site_url = "http://localhost:3000"
 
+[auth.email]
+enable_signup = true
+double_confirm_changes = false
+enable_confirmations = false
+
 [functions.generate-depth-map]
 verify_jwt = false
 
