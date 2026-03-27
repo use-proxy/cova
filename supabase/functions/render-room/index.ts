@@ -563,6 +563,7 @@ Deno.serve(async (req: Request) => {
         replicate_prediction_id:  fluxPredictionId,
         prompt_used:              prompt,
         tokens_charged:           0,
+        is_panoramic:             true,
       })
       .select()
       .single();

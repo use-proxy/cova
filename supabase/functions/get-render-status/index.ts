@@ -1,6 +1,60 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 
+// ── Types ────────────────────────────────────────────────────────────────────
+
+interface ReplicatePrediction {
+  id: string;
+  status: 'starting' | 'processing' | 'succeeded' | 'failed' | 'canceled';
+  output: unknown;
+  error: string | null;
+}
+
+// Extract the image URL from a Replicate prediction output.
+// FLUX models may return a string URL, an array of URLs, or an object.
+function extractImageUrl(output: unknown): string | undefined {
+  if (typeof output === 'string') return output;
+  if (Array.isArray(output) && typeof output[0] === 'string') return output[0];
+  return undefined;
+}
+
+// Upload an image from a URL to Supabase storage and return a long-lived signed URL.
+// Falls back to a public URL if signed URL generation fails.
+async function uploadAndSign(
+  supabase: ReturnType<typeof createClient>,
+  imageUrl: string,
+  storagePath: string,
+  userId: string,
+  renderId: string,
+): Promise<string> {
+  const imageResp = await fetch(imageUrl);
+  const imageBytes = new Uint8Array(await imageResp.arrayBuffer());
+
+  const { error: uploadError } = await supabase.storage
+    .from('renders')
+    .upload(storagePath, imageBytes, { contentType: 'image/jpeg', upsert: true });
+
+  if (uploadError) {
+    throw new Error(`Storage upload error: ${uploadError.message}`);
+  }
+
+  const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+    .from('renders')
+    .createSignedUrl(storagePath, 31536000);
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const fallbackUrl = `${supabaseUrl}/storage/v1/object/public/renders/${storagePath}`;
+
+  if (signedUrlError || !signedUrlData?.signedUrl) {
+    console.warn('Signed URL generation failed, using public fallback URL:', signedUrlError);
+    return fallbackUrl;
+  }
+
+  return signedUrlData.signedUrl;
+}
+
+// ── Main handler ─────────────────────────────────────────────────────────────
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -58,9 +112,14 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // ── Already completed — return both URLs ──────────────────────────────
     if (render.status === 'completed') {
       return new Response(
-        JSON.stringify({ status: 'completed', image_url: render.image_url }),
+        JSON.stringify({
+          status: 'completed',
+          image_url: render.image_url,
+          panoramic_url: render.panoramic_url ?? null,
+        }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
@@ -72,32 +131,137 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const replicateToken = Deno.env.get('REPLICATE_API_TOKEN')!;
+
+    // ── Stage 2 polling: panoramic LoRA conversion ──────────────────────
+    // If Stage 2 has been kicked off (panoramic_prediction_id exists), poll that.
+    if (render.panoramic_prediction_id) {
+      const panoResp = await fetch(
+        `https://api.replicate.com/v1/predictions/${render.panoramic_prediction_id}`,
+        { headers: { 'Authorization': `Token ${replicateToken}` } },
+      );
+
+      if (!panoResp.ok) {
+        console.error('Replicate panoramic poll failed:', await panoResp.text());
+        return new Response(
+          JSON.stringify({
+            status: 'processing',
+            image_url: render.image_url,
+            panoramic_url: null,
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+
+      const panoPrediction = await panoResp.json() as ReplicatePrediction;
+
+      if (panoPrediction.status === 'succeeded') {
+        const panoImageUrl = extractImageUrl(panoPrediction.output);
+        let panoramicUrl: string | null = null;
+
+        if (panoImageUrl) {
+          try {
+            const panoStoragePath = `${user.id}/${render_id}_panoramic.jpg`;
+            panoramicUrl = await uploadAndSign(supabase, panoImageUrl, panoStoragePath, user.id, render_id);
+          } catch (uploadErr) {
+            console.error('Panoramic upload failed:', uploadErr);
+            // Silent fallback — Stage 1 image is still available
+          }
+        }
+
+        // Mark completed with both URLs
+        await supabase
+          .from('renders')
+          .update({
+            status: 'completed',
+            panoramic_url: panoramicUrl,
+          })
+          .eq('id', render_id);
+
+        await supabase
+          .from('rooms')
+          .update({
+            latest_render_url: render.image_url,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', render.room_id);
+
+        await supabase.rpc('increment_rooms_render_count', { room_id: render.room_id }).catch((err: unknown) => {
+          console.warn('increment_rooms_render_count RPC unavailable:', err);
+        });
+
+        return new Response(
+          JSON.stringify({
+            status: 'completed',
+            image_url: render.image_url,
+            panoramic_url: panoramicUrl,
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+
+      if (panoPrediction.status === 'failed' || panoPrediction.status === 'canceled') {
+        console.warn('Stage 2 panoramic prediction failed — falling back to flat render:', panoPrediction.error);
+        // Silent fallback: complete with Stage 1 URL only, no panoramic
+        await supabase
+          .from('renders')
+          .update({ status: 'completed', panoramic_url: null })
+          .eq('id', render_id);
+
+        await supabase
+          .from('rooms')
+          .update({
+            latest_render_url: render.image_url,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', render.room_id);
+
+        await supabase.rpc('increment_rooms_render_count', { room_id: render.room_id }).catch((err: unknown) => {
+          console.warn('increment_rooms_render_count RPC unavailable:', err);
+        });
+
+        return new Response(
+          JSON.stringify({
+            status: 'completed',
+            image_url: render.image_url,
+            panoramic_url: null,
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+
+      // Still processing Stage 2
+      return new Response(
+        JSON.stringify({
+          status: 'processing',
+          image_url: render.image_url,
+          panoramic_url: null,
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // ── Stage 1 polling: FLUX flat render ────────────────────────────────
     const replicateResp = await fetch(
       `https://api.replicate.com/v1/predictions/${render.replicate_prediction_id}`,
       {
-        headers: { 'Authorization': `Token ${Deno.env.get('REPLICATE_API_TOKEN')}` },
+        headers: { 'Authorization': `Token ${replicateToken}` },
       },
     );
 
     if (!replicateResp.ok) {
       console.error('Replicate poll failed:', await replicateResp.text());
       return new Response(
-        JSON.stringify({ status: 'processing', image_url: null }),
+        JSON.stringify({ status: 'processing', image_url: null, panoramic_url: null }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
-    const prediction = await replicateResp.json();
+    const prediction = await replicateResp.json() as ReplicatePrediction;
 
     if (prediction.status === 'succeeded') {
-      // FLUX models return either a string URL or an array of URLs depending on the model version.
       const rawOutput = prediction.output;
-      const imageUrl: string | undefined =
-        Array.isArray(rawOutput) && typeof rawOutput[0] === 'string'
-          ? rawOutput[0]
-          : typeof rawOutput === 'string'
-            ? rawOutput
-            : undefined;
+      const imageUrl = extractImageUrl(rawOutput);
       if (!imageUrl) {
         await supabase.from('renders').update({ status: 'failed' }).eq('id', render_id);
         return new Response(
@@ -106,16 +270,13 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      const imageResp = await fetch(imageUrl);
-      const imageBytes = new Uint8Array(await imageResp.arrayBuffer());
-
-      const storagePath = `${user.id}/${render_id}.jpg`;
-      const { error: uploadError } = await supabase.storage
-        .from('renders')
-        .upload(storagePath, imageBytes, { contentType: 'image/jpeg', upsert: true });
-
-      if (uploadError) {
-        console.error('Storage upload error:', uploadError);
+      // Upload Stage 1 flat render to storage
+      let finalUrl: string;
+      try {
+        const storagePath = `${user.id}/${render_id}.jpg`;
+        finalUrl = await uploadAndSign(supabase, imageUrl, storagePath, user.id, render_id);
+      } catch (uploadErr) {
+        console.error('Storage upload error:', uploadErr);
         await supabase.from('renders').update({ status: 'failed' }).eq('id', render_id);
         return new Response(
           JSON.stringify({ status: 'failed', error: 'Failed to save rendered image.' }),
@@ -123,22 +284,74 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+      // Save Stage 1 URL on the render row
+      await supabase
         .from('renders')
-        .createSignedUrl(storagePath, 31536000);
+        .update({ image_url: finalUrl })
+        .eq('id', render_id);
 
-      // Image is already safely in storage — never mark failed just because signed URL
-      // generation failed. Fall back to the public storage path so image_url is always set.
-      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-      const fallbackUrl = `${supabaseUrl}/storage/v1/object/public/renders/${user.id}/${render_id}.jpg`;
-      const finalUrl: string = (!signedUrlError && signedUrlData?.signedUrl)
-        ? signedUrlData.signedUrl
-        : fallbackUrl;
+      // ── Stage 2: Start panoramic LoRA conversion if configured ────────
+      const loraModelId = Deno.env.get('REPLICATE_LORA_MODEL_ID');
 
-      if (signedUrlError || !signedUrlData?.signedUrl) {
-        console.warn('Signed URL generation failed, using public fallback URL:', signedUrlError);
+      if (render.is_panoramic && loraModelId) {
+        try {
+          // Build the panoramic prompt from the original prompt
+          const originalPrompt = (render.prompt_used as string) ?? '';
+          const panoramicPrompt = `COVAINTERIOR360 equirectangular 360 degree panorama interior room, ${originalPrompt}`;
+
+          const panoRes = await fetch(
+            `https://api.replicate.com/v1/models/${loraModelId}/predictions`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Token ${replicateToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                input: {
+                  image: finalUrl,
+                  prompt: panoramicPrompt,
+                  aspect_ratio: '2:1',
+                  guidance: 2.5,
+                  lora_scale: 1.0,
+                },
+              }),
+            },
+          );
+
+          if (panoRes.ok) {
+            const panoPred = await panoRes.json() as ReplicatePrediction;
+            const panoPredId = panoPred.id;
+
+            // Store Stage 2 prediction ID — next poll will check this instead
+            await supabase
+              .from('renders')
+              .update({ panoramic_prediction_id: panoPredId })
+              .eq('id', render_id);
+
+            console.log('Stage 2 panoramic prediction started:', panoPredId);
+
+            // Return processing — client will poll again and hit the Stage 2 branch
+            return new Response(
+              JSON.stringify({
+                status: 'processing',
+                image_url: finalUrl,
+                panoramic_url: null,
+              }),
+              { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+            );
+          } else {
+            const errBody = await panoRes.text();
+            console.warn('Stage 2 panoramic start failed — falling back to flat render:', errBody);
+            // Fall through to complete with Stage 1 only
+          }
+        } catch (panoErr) {
+          console.warn('Stage 2 panoramic start exception — falling back to flat render:', panoErr);
+          // Fall through to complete with Stage 1 only
+        }
       }
 
+      // No Stage 2 or Stage 2 failed to start — complete with flat render only
       await supabase
         .from('renders')
         .update({ status: 'completed', image_url: finalUrl })
@@ -152,14 +365,16 @@ Deno.serve(async (req: Request) => {
         })
         .eq('id', render.room_id);
 
-      // Increment render_count atomically via RPC.
-      // If the RPC doesn't exist yet the error is suppressed — render completion is not affected.
-      await supabase.rpc('increment_rooms_render_count', { room_id: render.room_id }).catch((err) => {
+      await supabase.rpc('increment_rooms_render_count', { room_id: render.room_id }).catch((err: unknown) => {
         console.warn('increment_rooms_render_count RPC unavailable:', err);
       });
 
       return new Response(
-        JSON.stringify({ status: 'completed', image_url: finalUrl }),
+        JSON.stringify({
+          status: 'completed',
+          image_url: finalUrl,
+          panoramic_url: null,
+        }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
@@ -183,7 +398,7 @@ Deno.serve(async (req: Request) => {
     }
 
     return new Response(
-      JSON.stringify({ status: 'processing', image_url: null }),
+      JSON.stringify({ status: 'processing', image_url: null, panoramic_url: null }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (err) {

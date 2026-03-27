@@ -1,20 +1,20 @@
 # Cova Sprint Log
 # Updated after every sprint — read at session start
 
-## Spec Completion: 12% (Sprint 2 — room capture all 3 paths)
+## Spec Completion: 20% (Sprint 3 — panoramic render view)
 
 ---
 
 ## Sprint 1 — COMPLETE
 Target: Auth on real device + style blend pipeline
 
-- [x] Supabase email verification confirmed DISABLED (config.toml + dashboard comment)
+- [x] Supabase email verification confirmed DISABLED
 - [x] Apple Sign In — code fixed, needs physical device verification
 - [x] Google Sign In — code correct, needs GOOGLE_CLIENT_ID + physical device verification
-- [x] Email/password — code confirmed working, no email verification required
-- [x] Style blend weighted correctly in FLUX prompt (proportional descriptor allocation)
-- [x] Anchor render using true cosine similarity of style_weights vectors
-- [x] Pinned products included in FLUX prompt with "must include [description]" language
+- [x] Email/password — confirmed working
+- [x] Style blend weighted correctly in FLUX prompt
+- [x] Anchor render using true cosine similarity
+- [x] Pinned products in FLUX prompt
 - [x] npx tsc --noEmit passes
 
 ---
@@ -22,54 +22,63 @@ Target: Auth on real device + style blend pipeline
 ## Sprint 2 — COMPLETE (code-only, needs device tests for LiDAR)
 Target: Room capture all 3 paths
 
-### Item 1 — LiDAR Sub-sprint A (code fix)
-- [x] Swift files registered in Xcode project.pbxproj (RoomPlanModule.swift + .m added to Sources + Group)
-- [x] iOS deployment target set to 16.0 (project.pbxproj all 4 configs, Podfile.properties.json, app.json already correct)
-- [x] newArchEnabled confirmed false in app.json
-- [x] Session released between scans (captureSession = nil; captureView = nil before new session)
-- [x] Bulletproof error handling with specific messages per error type
-- [x] 60s scan timeout (was 5min) — auto-fallback to 3-photo on timeout
-- [x] Auto-fallback to 3-photo on ANY LiDAR error (no alert, friendly message)
-- [ ] LiDAR Sub-sprint B: physical device test required (6 scenarios) — BLOCKED on device
-- [ ] LiDAR Sub-sprint C: polish + fallback verification — BLOCKED on Sub-sprint B
+- [x] LiDAR Sub-sprint A: Xcode registration, iOS 16.0, 60s timeout, auto-fallback
+- [x] 3-Photo guided capture: intro → 3 photos with sensor checks → summary
+- [x] Single photo + upload paths with compression
+- [x] Loading screen: pulsing arch + 8 design tips every 8s
+- [ ] LiDAR Sub-sprint B/C: BLOCKED on physical device
 
-### Item 2 — 3-Photo guided capture
-- [x] Introduction screen with numbered circles (1: Doorway, 2: Left Side, 3: Right Side) + gold "Start" button
-- [x] Photo 1 — Doorway: guidance text, light level check, horizontal check (±15° via Accelerometer)
-- [x] Photo 2 — Left Corner: same checks, "Use single photo instead" escape hatch, back button
-- [x] Photo 3 — Right Corner: same checks, escape hatch
-- [x] Summary screen: 3 thumbnails + "Start Redesign" button
-- [x] Escape hatch uses Photo 1 only, skips remaining photos
-- [x] Photo 1 = BEFORE image and render reference
-- [x] All 3 photos uploaded to storage, Photo 1 passed as primary to render pipeline
-- [x] CalibrationOverlay and corner-drag code removed (per spec — approach failed)
+---
 
-### Item 3 — Single photo + upload paths
-- [x] Single photo: camera with light + horizontal checks → confirm → loading
-- [x] Upload: photo picker → confirm with "Use This Photo" / "Choose a Different Photo" → loading
-- [x] Both paths: 1024px / 0.8 JPEG compression before upload
+## Sprint 3 — COMPLETE (code-only, needs REPLICATE_API_TOKEN for LoRA training)
+Target: Panoramic render view + custom 360° LoRA
 
-### Item 4 — Loading screen
-- [x] Pulsing arch animation (breathes in/out continuously)
-- [x] 8 design tips rotating every 8 seconds
-- [x] Render progress stage text + progress bar
-- [x] Renders route to RenderView with autoGenerate=true
+### Item 1 — Custom indoor 360° LoRA training pipeline
+- [x] Training script created: scripts/lora-training/train-cova-360.ts
+- [x] Poly Haven API integration for equirectangular interior HDRIs
+- [x] Auto-filtering: 2:1 aspect ratio, indoor rooms, min 2048px
+- [x] Replicate ostris/flux-dev-lora-trainer config: 2000 steps, lr 0.0004, lora_rank 16, trigger "COVAINTERIOR360"
+- [x] 5-test inference validation pipeline
+- [ ] BLOCKED: Actual training run requires REPLICATE_API_TOKEN (run: npx ts-node scripts/lora-training/train-cova-360.ts)
+- [ ] BLOCKED: LoRA model ID needs to be saved as REPLICATE_LORA_MODEL_ID in Supabase secrets
+- Training cost estimate: ~$5-15 depending on dataset size and GPU time
+
+### Item 2 — Two-stage render pipeline
+- [x] render-room/index.ts: Added is_panoramic flag on render insert
+- [x] get-render-status/index.ts: Complete rewrite for two-stage pipeline
+  - Stage 1: FLUX ControlNet (existing) → flat render → image_url
+  - Stage 2: Custom LoRA (COVAINTERIOR360) → equirectangular 360° → panoramic_url
+  - Fallback: if REPLICATE_LORA_MODEL_ID not set or Stage 2 fails → flat render only, silent
+- [x] Shared types: Render interface updated with panoramic_url field
+- [x] useRender hook: passes panoramic_url through to store
+
+### Item 3 — Panoramic viewer on sphere
+- [x] PanoramaViewer.tsx already correct: camera [0,0,0], sphere radius 500, scale [-1,1,1]
+- [x] Eye-level camera, PanResponder touch drag, pinch FOV 40°–90°
+- [x] NO OrbitControls — uses custom PanResponder + useFrame
+- [x] Momentum decay, vertical clamp, texture loading pipeline
+- [x] RenderViewScreen uses panoramic_url when available, falls back to image_url
+
+### Item 4 — Render View HUD and interactions
+- [x] Back arrow → Dashboard with navigation stack cleared (reset to RoomsTab)
+- [x] Token balance: static 999, no decrement
+- [x] HUD: auto-hides after 3s, reappears on tap
+- [x] Regenerate confirmation modal: "This will use 1 token" + Regenerate/Cancel
+- [x] Save: saves to Cova profile (Supabase), no camera roll
+- [x] First render celebration: "Your first design is ready" overlay, one-time per user, auto-dismisses 2s
+- [x] "..." More menu: Share + 2D Floorplan (Coming Soon placeholder)
+- [x] Panoramic/Flat toggle when panoramic_url available
+- [x] Floating chat button: always visible (existing)
+
+### Item 5 — Previous renders row
+- [x] Horizontal FlatList at bottom showing previous renders for room
+- [x] Active render has gold border indicator
+- [x] Tap to swap displayed render (no API call, no token cost)
+- [x] Most recent render = primary
 
 ### Verification
 - [x] npx tsc --noEmit passes (zero app errors)
 - [ ] Maestro smoke tests (requires app running on simulator)
-
----
-
-## Sprint 3 — NOT STARTED
-Target: Render view panoramic
-
-- [ ] Panoramic FLUX model: try equirectangular model (2-3 iterations)
-- [ ] Fallback: improved sphere projection if no good model found
-- [ ] Structural preservation: denoising 0.60 + prompt instructions
-- [ ] Previous renders: horizontal scroll row in render view
-- [ ] First render celebration: confetti + overlay (one-time)
-- [ ] Back arrow: always goes to Dashboard, stack cleared
 
 ---
 
@@ -87,26 +96,22 @@ Target: Product catalog expansion
 ---
 
 ## Completed
-- [x] Style quiz Bayesian algorithm (right 0.6, left 0.4, min 10 swipes, 2min timeout)
-- [x] Quiz Phase 2 race condition (isFetchingRefinementRef guard)
-- [x] handleComplete(force=true) for timeout bypass
-- [x] All 15 Maestro flows passing (5 smoke flows going forward)
-- [x] COVA_MVP_SPEC_v1.1.docx created (full product spec)
-- [x] CLAUDE.md rewritten from MVP spec
-- [x] Repo cleanup (hooks, Actions, unused packages, dead code)
-- [x] SESSION_MEMORY.md created
-- [x] SPRINT_LOG.md created
-- [x] MVP_SPEC.md placeholder created
 - [x] Sprint 1: auth + style blend pipeline
 - [x] Sprint 2: room capture all 3 paths + loading screen
+- [x] Sprint 3: panoramic render view + custom 360° LoRA pipeline
 
 ---
 
 ## Pending Device Tests
 - Apple Sign In: code fixed, needs physical device verification
 - Google Sign In: code fixed, needs GOOGLE_CLIENT_ID in .env + physical device verification
-- LiDAR Sub-sprint B: 6 scenarios on physical LiDAR device (normal room, low light, mirrors, cancelled, two scans, non-LiDAR device)
+- LiDAR Sub-sprint B: 6 scenarios on physical LiDAR device
 - LiDAR Sub-sprint C: polish + fallback verification — blocked on Sub-sprint B
+
+## Pending Manual Steps
+- Run LoRA training: REPLICATE_API_TOKEN=xxx npx ts-node scripts/lora-training/train-cova-360.ts
+- Save trained model ID: supabase secrets set REPLICATE_LORA_MODEL_ID=xxx
+- Verify LoRA quality: check scripts/lora-training/test-outputs/ for 4/5 pass rate
 
 ---
 

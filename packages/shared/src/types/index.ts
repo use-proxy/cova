@@ -151,6 +151,7 @@ export interface Render {
   room_id: string;
   user_id: string;
   image_url: string | null;
+  panoramic_url: string | null;
   prompt_used: string | null;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   tokens_charged: number;

@@ -2,31 +2,35 @@
 # Read this FIRST at the start of every Claude Code session
 
 ## Last Updated
-2026-03-27 — Sprint 2 complete (code-only, needs device tests for LiDAR)
+2026-03-27 — Sprint 3 complete (code-only, LoRA training needs REPLICATE_API_TOKEN)
 
 ## Current Sprint
-Sprint 2 — COMPLETE (code-only). Next: Sprint 3 (Render view panoramic).
+Sprint 3 — COMPLETE (code-only). Next: Sprint 4 (Product catalog expansion).
 
 ## What Was Done This Session
-- Read COVA_MVP_SPEC_v1.1.docx fully (converted to .md via pandoc)
-- Updated CLAUDE.md to reference COVA_MVP_SPEC_v1.1.docx as primary spec authority
-- Sprint 2 Item 1 — LiDAR Sub-sprint A:
-  - Registered RoomPlanModule.swift + .m in project.pbxproj (Sources + Group)
-  - Copied files to ios/cova/ directory
-  - Set iOS deployment target to 16.0 (Podfile.properties.json + project.pbxproj 4 configs)
-  - Reduced scan timeout from 5min to 60s per spec
-  - LiDAR error auto-fallback to 3-photo (not Alert)
-- Sprint 2 Item 2 — 3-Photo Guided Capture:
-  - Built complete 3-photo flow: intro → Photo 1 (doorway) → Photo 2 (left) → Photo 3 (right) → summary
-  - Light level check + horizontal check (Accelerometer ±15°) on camera screens
-  - Escape hatch on Photos 2/3: "Use single photo instead" uses Photo 1 only
-  - Removed CalibrationOverlay and corner-drag code (approach failed per spec)
-- Sprint 2 Item 3 — Single photo + upload:
-  - Confirmed working with light/horizontal checks + 1024px/0.8 compression
-  - Upload review: "Use This Photo" / "Choose a Different Photo" per spec
-- Sprint 2 Item 4 — Loading screen:
-  - 8 design tips rotating every 8 seconds
-  - Pulsing arch animation (existing, confirmed working)
+- Sprint 3 Item 1 — LoRA Training Pipeline:
+  - Created scripts/lora-training/train-cova-360.ts (Poly Haven + Replicate trainer)
+  - Config: 2000 steps, lr 0.0004, lora_rank 16, trigger "COVAINTERIOR360"
+  - 5-test inference validation included
+  - BLOCKED: needs REPLICATE_API_TOKEN to run actual training
+- Sprint 3 Item 2 — Two-Stage Render Pipeline:
+  - render-room: added is_panoramic flag on render insert
+  - get-render-status: complete rewrite for Stage 1 (FLUX flat) → Stage 2 (LoRA 360°)
+  - Silent fallback if REPLICATE_LORA_MODEL_ID not set
+  - Shared types: Render.panoramic_url added
+  - useRender hook: passes panoramic_url through
+- Sprint 3 Item 3 — Panoramic Viewer:
+  - Already correct: sphere, camera, PanResponder, FOV clamping
+  - RenderViewScreen uses panoramic_url when available
+- Sprint 3 Item 4 — HUD Improvements:
+  - Back → Dashboard with stack cleared
+  - Save → Cova profile (Supabase), not camera roll
+  - Regenerate confirmation modal with token display
+  - First render celebration (one-time, auto-dismiss 2s)
+  - "..." More menu: Share + 2D Floorplan (Coming Soon)
+  - Panoramic/Flat toggle button
+- Sprint 3 Item 5 — Previous Renders Row:
+  - Horizontal FlatList, gold border on active, tap to swap
 - npx tsc --noEmit passes (zero app errors)
 
 ## What's Working
@@ -35,39 +39,40 @@ Sprint 2 — COMPLETE (code-only). Next: Sprint 3 (Render view panoramic).
 - FLUX prompt: weighted by style blend with proportional descriptors
 - Anchor render: true cosine similarity selection
 - Room capture: all 3 paths (LiDAR → 3-photo → single/upload)
-- 3-photo guided capture with sensor checks
-- LiDAR auto-fallback to 3-photo on any error
 - Loading screen with design tips
-- Image compression (1024px/0.8) on all capture paths
+- Two-stage render pipeline (flat + 360° LoRA)
+- Panoramic sphere viewer with touch/pinch controls
+- HUD: auto-hide 3s, regenerate confirmation, save to Cova, first celebration
+- Previous renders row with tap-to-swap
+- Before/After compare slider
 
-## What's NOT Working / Pending Device Tests
+## What's NOT Working / Pending
+- LoRA training: needs REPLICATE_API_TOKEN to run (scripts/lora-training/train-cova-360.ts)
+- LoRA model ID: needs to be set as REPLICATE_LORA_MODEL_ID in Supabase secrets
 - Apple Sign In: code fixed, needs physical device verification
 - Google Sign In: needs EXPO_PUBLIC_GOOGLE_CLIENT_ID in .env + physical device test
-- LiDAR Sub-sprint B: 6 physical device test scenarios (normal, low light, mirrors, cancelled, two scans, non-LiDAR)
-- LiDAR Sub-sprint C: polish + fallback verification — blocked on Sub-sprint B
-- AI render: flat FLUX, not panoramic — needs model switch (Sprint 3)
+- LiDAR Sub-sprint B/C: blocked on physical device
 - 3D viewer: furniture hardcoded positions (Sprint 5)
 - Product matching: not sorted by style blend (Sprint 6)
 - Chatbot: system prompt missing full room context (Sprint 7)
-- Maestro tests: require app running on simulator to pass
+- Maestro tests: require app running on simulator
 
 ## Approaches That Failed — Do Not Retry
-- Corner drag calibration for room capture — removed, replaced with 3-photo guided capture
+- Corner drag calibration for room capture — removed
 - Fixed phase quiz algorithm — replaced with Bayesian
 - Calling handleComplete from render function — fixed with isFetchingRefinementRef
 - npm install in GitHub Actions — fixed to pnpm
 
 ## Key Architecture Decisions — Locked
-- Panoramic FLUX: try equirectangular model first, fallback to improved sphere projection
+- Two-stage render: FLUX ControlNet → LoRA 360° conversion (fallback: flat render)
+- LoRA trigger word: COVAINTERIOR360
+- LoRA training: ostris/flux-dev-lora-trainer, 2000 steps, lora_rank 16
+- Panoramic viewer: sphere radius 500, scale [-1,1,1], camera [0,0,0], PanResponder
 - Furniture in render: baked into image (not 3D GLB overlay)
-- Arrange screen: 3D viewer IS the preview (Option A), ViewShot snapshot fallback (Option C)
 - Token economy: static 999, no payments for MVP
-- Maestro: 5 smoke flows only (01, 02, 04, 05, 14) — rest archived
-- V0: use for all new screens and UI components
-- COVA_MVP_SPEC_v1.1.docx: primary spec authority, wins over CLAUDE.md
-- FLUX prompt: 10 descriptor slots allocated proportionally to style blend ratios
-- LiDAR timeout: 60s, auto-fallback to 3-photo
-- Photo 1 = BEFORE image and primary render reference throughout app
+- Save: Cova profile only, not camera roll
+- Back arrow: always resets to Dashboard (stack cleared)
+- First celebration: one-time per user, tracked in AsyncStorage
 
 ## Test Credentials
 - New user: test.newuser@hellocova.com / CovaTest123!

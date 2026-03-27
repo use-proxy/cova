@@ -19,7 +19,7 @@ import {
   type LayoutChangeEvent,
 } from 'react-native';
 import Svg, { Path, Circle as SvgCircle, Line, Polyline } from 'react-native-svg';
-import * as MediaLibrary from 'expo-media-library';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
 import * as ImageManipulator from 'expo-image-manipulator';
 import Slider from '@react-native-community/slider';
@@ -33,7 +33,7 @@ import { useAppStore } from '../../store';
 import BeforeAfterSlider from '../../components/BeforeAfterSlider';
 import PanoramaViewer from '../../components/PanoramaViewer';
 import ChatPanel from '../../components/ChatPanel';
-import type { Product } from '@cova/shared';
+import type { Product, Render } from '@cova/shared';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const BG = '#0A1628';
@@ -112,8 +112,25 @@ function RenderViewScreen() {
   const hasAutoStartedRef = useRef(false);
   const hasAttemptedRecoveryRef = useRef(false);
 
+  const [showRegenConfirm, setShowRegenConfirm] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [previousRenders, setPreviousRenders] = useState<Array<{ id: string; image_url: string; panoramic_url: string | null; created_at: string }>>([]);
+  const celebrationOpacity = useRef(new Animated.Value(0)).current;
+
   const roomBudgetDollars = budget_max;
   const activeBudgetDollars = budgetOverride ?? roomBudgetDollars;
+
+  // Navigate back to Dashboard with stack cleared
+  const navigateToDashboard = useCallback(() => {
+    setRenderStatus('idle');
+    const parent = navigation.getParent();
+    if (parent) {
+      parent.reset({ index: 0, routes: [{ name: 'RoomsTab' as never }] });
+    } else {
+      navigation.goBack();
+    }
+  }, [navigation, setRenderStatus]);
 
   const filteredProducts = useMemo(() => {
     const maxCents = activeBudgetDollars * 100;
@@ -203,8 +220,8 @@ function RenderViewScreen() {
   useEffect(() => {
     if (autoGenerate) return;
     if (!hasAttemptedRecoveryRef.current) return;
-    if (renderStatus === 'idle' && !currentRender) navigation.goBack();
-  }, [renderStatus, currentRender, navigation, autoGenerate]);
+    if (renderStatus === 'idle' && !currentRender) navigateToDashboard();
+  }, [renderStatus, currentRender, navigateToDashboard, autoGenerate]);
 
   // Auto-generate first render when arriving from room capture (autoGenerate=true).
   // hasAutoStartedRef prevents double-firing if the effect re-runs.
@@ -284,6 +301,52 @@ function RenderViewScreen() {
       setShowChoiceScreen(true);
     }
   }, [autoGenerate, renderStatus]);
+
+  // First render celebration — one-time gold confetti overlay
+  useEffect(() => {
+    if (renderStatus !== 'completed') return;
+    void (async () => {
+      try {
+        const celebrated = await AsyncStorage.getItem('cova_first_render_celebrated');
+        if (celebrated) return;
+        setShowCelebration(true);
+        Animated.sequence([
+          Animated.timing(celebrationOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+          Animated.delay(1200),
+          Animated.timing(celebrationOpacity, { toValue: 0, duration: 400, useNativeDriver: true }),
+        ]).start(() => setShowCelebration(false));
+        await AsyncStorage.setItem('cova_first_render_celebrated', 'true');
+      } catch { /* storage error — skip celebration */ }
+    })();
+  }, [renderStatus, celebrationOpacity]);
+
+  // Fetch previous renders for this room
+  useEffect(() => {
+    if (!room_id || room_id === 'default') return;
+    void (async () => {
+      try {
+        const { data } = await supabase
+          .from('renders')
+          .select('id, image_url, panoramic_url, created_at')
+          .eq('room_id', room_id)
+          .eq('status', 'completed')
+          .order('created_at', { ascending: false })
+          .limit(20);
+        if (data) {
+          setPreviousRenders(
+            data.filter(
+              (r: { id: string; image_url: string | null; panoramic_url: string | null; created_at: string }) => r.image_url !== null,
+            ).map((r: { id: string; image_url: string | null; panoramic_url: string | null; created_at: string }) => ({
+              id: r.id,
+              image_url: r.image_url!,
+              panoramic_url: r.panoramic_url ?? null,
+              created_at: r.created_at,
+            })),
+          );
+        }
+      } catch { /* non-fatal */ }
+    })();
+  }, [room_id, renderStatus]); // re-fetch when renderStatus changes (new render completed)
 
   // Pan + pinch responder for completed image
   const imagePanResponder = useRef(
@@ -383,15 +446,22 @@ function RenderViewScreen() {
 
   const handleSave = async () => {
     if (!currentRender?.image_url) return;
-    const { status } = await MediaLibrary.requestPermissionsAsync();
-    if (status !== 'granted') { Alert.alert('Permission required', 'Camera roll access is needed to save.'); return; }
     try {
-      // saveToLibraryAsync requires a local file URI — download signed URL first
-      const localUri = `${FileSystem.cacheDirectory}render_${Date.now()}.jpg`;
-      const { uri } = await FileSystem.downloadAsync(currentRender.image_url, localUri);
-      await MediaLibrary.saveToLibraryAsync(uri);
-      Alert.alert('Saved', 'Saved to camera roll');
-    } catch { Alert.alert('Error', 'Could not save image'); }
+      // Save the render URL to the user's profile in Supabase
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { Alert.alert('Error', 'Please sign in to save'); return; }
+      const { error } = await supabase
+        .from('favorites')
+        .upsert({
+          user_id: user.id,
+          render_id: currentRender.id,
+          render_url: currentRender.image_url,
+          room_id: room_id,
+          created_at: new Date().toISOString(),
+        }, { onConflict: 'user_id,render_id' });
+      if (error) throw error;
+      Alert.alert('Saved', 'Saved to Cova');
+    } catch { Alert.alert('Error', 'Could not save render'); }
   };
 
   const handleShare = async () => {
@@ -401,7 +471,8 @@ function RenderViewScreen() {
     } catch { /* cancelled */ }
   };
 
-  const handleRegenerate = async () => {
+  const doRegenerate = async () => {
+    setShowRegenConfirm(false);
     const blend = currentRoom?.style_blend ?? { coastal: 0.2, japandi: 0.2, bohemian: 0.2, mid_century: 0.2, minimalist: 0.2 };
     let imageBase64 = '';
     // Re-read the original captured image as base64 for the render pipeline
@@ -427,6 +498,10 @@ function RenderViewScreen() {
       imageBase64,
       renderType: 'draft',
     });
+  };
+
+  const handleRegenerate = () => {
+    setShowRegenConfirm(true);
   };
 
   const handleAddAllToCart = useCallback(() => {
@@ -492,7 +567,7 @@ function RenderViewScreen() {
       <View style={styles.root}>
         {/* Top bar */}
         <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
-          <TouchableOpacity style={styles.topBarBtn} onPress={() => { setRenderStatus('idle'); navigation.goBack(); }}>
+          <TouchableOpacity style={styles.topBarBtn} onPress={navigateToDashboard}>
             <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
               <Path d="M15 18l-6-6 6-6" stroke="white" strokeWidth={2} />
             </Svg>
@@ -526,10 +601,10 @@ function RenderViewScreen() {
     return (
       <View style={[styles.root, styles.centerContent]}>
         <Text style={styles.errorText}>{renderError ?? 'Something went wrong.'}</Text>
-        <TouchableOpacity style={styles.retryBtn} onPress={handleRegenerate}>
+        <TouchableOpacity style={styles.retryBtn} onPress={doRegenerate}>
           <Text style={styles.retryBtnText}>Try Again</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.backLink} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backLink} onPress={navigateToDashboard}>
           <Text style={styles.backLinkText}>Go Back</Text>
         </TouchableOpacity>
       </View>
@@ -609,7 +684,7 @@ function RenderViewScreen() {
         <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
           <PanoramaViewer
             testID="panorama-viewer"
-            imageUrl={currentRender.image_url}
+            imageUrl={currentRender.panoramic_url ?? currentRender.image_url}
             pointerEnabled={viewModeRef.current === 'immersive'}
             onTap={handlePanoramaTap}
             onFallback={() => {
@@ -636,15 +711,28 @@ function RenderViewScreen() {
       {/* ── Top safe-area bar ── */}
       {showControls && (
         <Animated.View testID="hud-container" style={[styles.topBar, { paddingTop: insets.top + 12, opacity: controlsOpacity, backgroundColor: 'rgba(10,22,40,0.85)' }]} pointerEvents="box-none">
-          <TouchableOpacity testID="back-button" style={styles.topBarBtn} onPress={() => navigation.goBack()}>
+          <TouchableOpacity testID="back-button" style={styles.topBarBtn} onPress={navigateToDashboard}>
             <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
               <Path d="M15 18l-6-6 6-6" stroke="white" strokeWidth={2} />
             </Svg>
           </TouchableOpacity>
           <Text style={styles.topBarTitle}>{currentRoom?.name ?? 'Room'}</Text>
-          <View style={styles.tokenPill}>
-            <View style={styles.tokenDot} />
-            <Text style={styles.tokenText}>999</Text>
+          <View style={styles.topBarRight}>
+            {/* Panoramic / Flat toggle — only show when panoramic_url exists */}
+            {currentRender?.panoramic_url ? (
+              <TouchableOpacity style={styles.panoToggleBtn} onPress={handleToggleViewMode}>
+                <Text style={styles.panoToggleText}>
+                  {viewModeRef.current === 'immersive' ? 'Flat' : 'Panoramic'}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+            <View style={styles.tokenPill}>
+              <View style={styles.tokenDot} />
+              <Text style={styles.tokenText}>999</Text>
+            </View>
+            <TouchableOpacity style={styles.moreBtn} onPress={() => setShowMoreMenu(true)}>
+              <Text style={styles.moreBtnText}>...</Text>
+            </TouchableOpacity>
           </View>
         </Animated.View>
       )}
@@ -838,6 +926,84 @@ function RenderViewScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* ── Regenerate confirmation modal ── */}
+      <Modal visible={showRegenConfirm} transparent animationType="fade">
+        <View style={styles.regenModalOverlay}>
+          <View style={styles.regenModalCard}>
+            <Text style={styles.regenModalTitle}>Generate a new design?</Text>
+            <Text style={styles.regenModalSubtext}>This will use 1 token.</Text>
+            <View style={styles.regenModalBtnRow}>
+              <TouchableOpacity style={styles.regenModalCancel} onPress={() => setShowRegenConfirm(false)}>
+                <Text style={styles.regenModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.regenModalConfirm} onPress={doRegenerate}>
+                <Text style={styles.regenModalConfirmText}>Regenerate</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── More menu modal ── */}
+      <Modal visible={showMoreMenu} transparent animationType="fade">
+        <TouchableOpacity style={styles.moreMenuOverlay} activeOpacity={1} onPress={() => setShowMoreMenu(false)}>
+          <View style={styles.moreMenuCard}>
+            <TouchableOpacity
+              style={styles.moreMenuItem}
+              onPress={() => { setShowMoreMenu(false); handleShare(); }}
+            >
+              <Text style={styles.moreMenuText}>Share</Text>
+            </TouchableOpacity>
+            <View style={styles.moreMenuDivider} />
+            <TouchableOpacity
+              style={styles.moreMenuItem}
+              onPress={() => { setShowMoreMenu(false); Alert.alert('Coming Soon', '2D Floorplan is coming in a future update.'); }}
+            >
+              <Text style={styles.moreMenuText}>2D Floorplan</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ── First render celebration overlay ── */}
+      {showCelebration && (
+        <Animated.View style={[styles.celebrationOverlay, { opacity: celebrationOpacity }]} pointerEvents="none">
+          <Text style={styles.celebrationText}>Your first design is ready</Text>
+        </Animated.View>
+      )}
+
+      {/* ── Previous renders row ── */}
+      {showControls && previousRenders.length > 1 && (
+        <Animated.View style={[styles.prevRendersRow, { opacity: controlsOpacity }]}>
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            data={previousRenders}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={{ paddingHorizontal: 12 }}
+            renderItem={({ item }) => {
+              const isActive = item.id === currentRender?.id;
+              return (
+                <TouchableOpacity
+                  style={[styles.prevRenderThumb, isActive && styles.prevRenderThumbActive]}
+                  onPress={() => {
+                    // Swap displayed render — no API call
+                    const { setCurrentRender: setCR } = useAppStore.getState();
+                    setCR({
+                      id: item.id,
+                      image_url: item.image_url,
+                      panoramic_url: item.panoramic_url,
+                    } as Render);
+                  }}
+                >
+                  <Image source={{ uri: item.image_url }} style={styles.prevRenderImage} resizeMode="cover" />
+                </TouchableOpacity>
+              );
+            }}
+          />
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -975,6 +1141,75 @@ const styles = StyleSheet.create({
   similarHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.08)' },
   similarTitle: { fontSize: 18, fontWeight: '700', color: BG, textTransform: 'capitalize' },
   similarClose: { fontSize: 20, color: BG, fontWeight: '600' },
+
+  // ── Top bar right section ──
+  topBarRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  panoToggleBtn: {
+    backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 14,
+    paddingHorizontal: 10, paddingVertical: 4,
+  },
+  panoToggleText: { color: 'white', fontSize: 12, fontWeight: '600' },
+  moreBtn: { padding: 4 },
+  moreBtnText: { color: 'white', fontSize: 22, fontWeight: '700', letterSpacing: 2, lineHeight: 22 },
+
+  // ── Regenerate confirmation modal ──
+  regenModalOverlay: {
+    flex: 1, justifyContent: 'center', alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  regenModalCard: {
+    width: 280, backgroundColor: '#1A2A3A', borderRadius: 20,
+    padding: 24, alignItems: 'center',
+  },
+  regenModalTitle: { color: 'white', fontSize: 18, fontWeight: '700', textAlign: 'center', marginBottom: 8 },
+  regenModalSubtext: { color: 'rgba(255,255,255,0.6)', fontSize: 14, textAlign: 'center', marginBottom: 24 },
+  regenModalBtnRow: { flexDirection: 'row', gap: 12, width: '100%' },
+  regenModalCancel: {
+    flex: 1, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.3)',
+    borderRadius: 24, paddingVertical: 12, alignItems: 'center',
+  },
+  regenModalCancelText: { color: 'white', fontSize: 15, fontWeight: '600' },
+  regenModalConfirm: {
+    flex: 1, backgroundColor: GOLD, borderRadius: 24,
+    paddingVertical: 12, alignItems: 'center',
+  },
+  regenModalConfirmText: { color: BG, fontSize: 15, fontWeight: '700' },
+
+  // ── More menu modal ──
+  moreMenuOverlay: {
+    flex: 1, justifyContent: 'center', alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  moreMenuCard: {
+    width: 220, backgroundColor: '#1A2A3A', borderRadius: 16,
+    overflow: 'hidden',
+  },
+  moreMenuItem: { paddingVertical: 16, paddingHorizontal: 20 },
+  moreMenuText: { color: 'white', fontSize: 16, fontWeight: '500' },
+  moreMenuDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.1)' },
+
+  // ── Celebration overlay ──
+  celebrationOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center', alignItems: 'center',
+    backgroundColor: 'rgba(10,22,40,0.85)', zIndex: 100,
+  },
+  celebrationText: {
+    color: GOLD, fontSize: 28, fontWeight: '800',
+    textAlign: 'center', paddingHorizontal: 40,
+  },
+
+  // ── Previous renders row ──
+  prevRendersRow: {
+    position: 'absolute', bottom: 85, left: 0, right: 0, zIndex: 15,
+    height: 60,
+  },
+  prevRenderThumb: {
+    width: 52, height: 52, borderRadius: 8, marginHorizontal: 4,
+    overflow: 'hidden', borderWidth: 2, borderColor: 'transparent',
+  },
+  prevRenderThumbActive: { borderColor: GOLD },
+  prevRenderImage: { width: '100%', height: '100%' },
 });
 
 export default Sentry.withErrorBoundary(RenderViewScreen, {

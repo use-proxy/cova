@@ -76,7 +76,7 @@ export function useRender() {
       }
 
       try {
-        const data = await callEdgeFunction<{ status: string; image_url?: string; error?: string }>(
+        const data = await callEdgeFunction<{ status: string; image_url?: string; panoramic_url?: string; error?: string }>(
           'get-render-status',
           { render_id: renderId },
         );
@@ -85,7 +85,11 @@ export function useRender() {
           setRenderStatus('completed');
           setRenderProgress(100);
           setRenderProgressStage(LOADING_STAGES[3]);
-          setCurrentRender({ id: renderId, image_url: data.image_url } as Render);
+          setCurrentRender({
+            id: renderId,
+            image_url: data.image_url,
+            panoramic_url: data.panoramic_url ?? null,
+          } as Render);
           await fetchMatchedProducts(data.image_url, roomType, styleBlend, budget);
           return;
         }
