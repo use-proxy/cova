@@ -175,6 +175,8 @@ export interface SwipeCard {
   id: string;
   image_url: string;
   room_type: RoomType;
+  style: string;
   style_weights: Partial<StyleBlend>;
   active: boolean;
+  phase: 'baseline' | 'refinement';
 }

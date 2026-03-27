@@ -99,6 +99,7 @@ interface AppActions {
 
   // quiz
   setCards: (cards: SwipeCard[]) => void;
+  setStyleBlend: (blend: StyleBlend) => void;
   swipeRight: (cardId: string) => void;
   swipeLeft: (cardId: string) => void;
   swipeNeutral: (cardId: string) => void;
@@ -296,6 +297,10 @@ export const useAppStore = create<AppState & AppActions>()(
     setCards: (cards) =>
       set((state) => {
         state.cards = cards;
+      }),
+    setStyleBlend: (blend) =>
+      set((state) => {
+        state.styleBlend = blend;
       }),
     swipeRight: (cardId) =>
       set((state) => {

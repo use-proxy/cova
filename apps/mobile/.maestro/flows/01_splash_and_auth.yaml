@@ -6,6 +6,13 @@ device:
 - launchApp:
     clearState: true
 
+# Dismiss tracking permission dialog if it appears
+- tapOn:
+    text: "Allow"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 2000
+
 # Expo dev build launcher — tap the dev server to connect
 - extendedWaitUntil:
     visible:

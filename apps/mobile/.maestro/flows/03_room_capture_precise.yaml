@@ -55,15 +55,24 @@ device:
 - waitForAnimationToEnd
 
 # --- iOS system photo picker ---
-# Select the first photo in the library
+# Wait for the picker to fully load
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# Tap "All Photos" if the album chooser appears
 - tapOn:
-    text: "All Photos"
+    text: "All"
     optional: true
-- waitForAnimationToEnd
+- waitForAnimationToEnd:
+    timeout: 2000
+
+# Select the most recent photo (first item in the grid)
+# The seeded test-room-photo.jpg (blue bedroom) should be the most recent
 - tapOn:
-    index: 0
-    optional: true
-- waitForAnimationToEnd
+    point: "10%,25%"
+    retryTapIfNoChange: false
+- waitForAnimationToEnd:
+    timeout: 3000
 
 # --- Review step ---
 - assertVisible:

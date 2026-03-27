@@ -10,6 +10,7 @@ import {
   PanResponder,
   Image,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
 import Svg, { Path, Line, Circle as SvgCircle } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
@@ -22,9 +23,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SWIPE_THRESHOLD = 120;
-const QUIZ_TIMEOUT_MS = 180_000;
+const QUIZ_TIMEOUT_MS = 120_000; // 2 minutes
 const MIN_SWIPES_BEFORE_COMPLETE = 10;
-const CONFIDENCE_THRESHOLD = 0.65;
+const CONFIDENCE_THRESHOLD_PHASE1 = 0.60;
+const CONFIDENCE_THRESHOLD_PHASE2 = 0.65;
+const BASELINE_CARDS_PER_STYLE = 2;
 const CARD_W = SCREEN_WIDTH - 32;
 const CARD_H = CARD_W / 0.74;
 
@@ -35,6 +38,8 @@ const STYLE_KEYS: StyleName[] = ['coastal', 'japandi', 'bohemian', 'mid_century'
 const EQUAL_BLEND: StyleBlend = {
   coastal: 0.2, japandi: 0.2, bohemian: 0.2, mid_century: 0.2, minimalist: 0.2,
 };
+
+// ── Pure functions ──
 
 function normalizeBlend(blend: StyleBlend): StyleBlend {
   const sum = STYLE_KEYS.reduce((acc, k) => acc + blend[k], 0);
@@ -51,6 +56,34 @@ function calcConfidence(blend: StyleBlend): number {
 function isNonDefaultBlend(blend: StyleBlend | undefined | null): boolean {
   if (!blend) return false;
   return STYLE_KEYS.some((k) => Math.abs(blend[k] - 0.2) > 0.01);
+}
+
+function getTop2Styles(blend: StyleBlend): [StyleName, StyleName] {
+  const sorted = STYLE_KEYS.slice().sort((a, b) => blend[b] - blend[a]);
+  return [sorted[0], sorted[1]];
+}
+
+/** Derive style_weights from the style string when the DB column is null */
+function deriveWeights(card: SwipeCard): Partial<StyleBlend> {
+  if (card.style_weights && Object.keys(card.style_weights).length > 0) {
+    return card.style_weights;
+  }
+  const style = card.style as string | undefined;
+  if (style && STYLE_KEYS.includes(style as StyleName)) {
+    const w: Partial<StyleBlend> = {};
+    for (const k of STYLE_KEYS) w[k] = k === style ? 1.0 : 0.0;
+    return w;
+  }
+  return { coastal: 0.2, japandi: 0.2, bohemian: 0.2, mid_century: 0.2, minimalist: 0.2 };
+}
+
+function fisherYatesShuffle<T>(arr: T[]): T[] {
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
 }
 
 // ── Double arch SVG ──
@@ -100,60 +133,20 @@ function DoubleArch({ size = 'small' }: { size?: 'small' | 'large' }) {
   );
 }
 
-// ── Instruction icon helpers ──
-
-function HeartIcon() {
-  return (
-    <View style={[styles.instrCircle, { backgroundColor: 'rgba(34,197,94,0.2)' }]}>
-      <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-        <Path
-          d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
-          stroke="#22c55e"
-          strokeWidth={2.5}
-          fill="none"
-        />
-      </Svg>
-    </View>
-  );
-}
-
-function XIcon() {
-  return (
-    <View style={[styles.instrCircle, { backgroundColor: 'rgba(156,163,175,0.2)' }]}>
-      <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-        <Line x1={18} y1={6} x2={6} y2={18} stroke="#9ca3af" strokeWidth={2.5} />
-        <Line x1={6} y1={6} x2={18} y2={18} stroke="#9ca3af" strokeWidth={2.5} />
-      </Svg>
-    </View>
-  );
-}
-
-function QuestionIcon() {
-  return (
-    <View style={[styles.instrCircle, { backgroundColor: 'rgba(196,164,90,0.2)' }]}>
-      <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-        <SvgCircle cx={12} cy={12} r={10} stroke={GOLD} strokeWidth={2.5} fill="none" />
-        <Path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke={GOLD} strokeWidth={2.5} fill="none" />
-        <Line x1={12} y1={17} x2={12.01} y2={17} stroke={GOLD} strokeWidth={2.5} />
-      </Svg>
-    </View>
-  );
-}
-
-// ── Fallback cards ──
+// ── Fallback cards (used when Supabase fetch fails) ──
 
 function makeFallbackCards(roomType: RoomType): SwipeCard[] {
   return [
-    { id: 'f1', image_url: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=800&q=80', room_type: roomType, style_weights: { coastal: 0.6, minimalist: 0.4 }, active: true },
-    { id: 'f2', image_url: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800&q=80', room_type: roomType, style_weights: { japandi: 0.7, minimalist: 0.3 }, active: true },
-    { id: 'f3', image_url: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800&q=80', room_type: roomType, style_weights: { mid_century: 0.8, bohemian: 0.2 }, active: true },
-    { id: 'f4', image_url: 'https://images.unsplash.com/photo-1567225557594-88d73e55f2cb?w=800&q=80', room_type: roomType, style_weights: { bohemian: 0.7, coastal: 0.3 }, active: true },
-    { id: 'f5', image_url: 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=800&q=80', room_type: roomType, style_weights: { minimalist: 0.6, japandi: 0.4 }, active: true },
-    { id: 'f6', image_url: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&q=80', room_type: roomType, style_weights: { coastal: 0.5, mid_century: 0.5 }, active: true },
-    { id: 'f7', image_url: 'https://images.unsplash.com/photo-1617806118233-18e1de247200?w=800&q=80', room_type: roomType, style_weights: { japandi: 0.8, minimalist: 0.2 }, active: true },
-    { id: 'f8', image_url: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=80', room_type: roomType, style_weights: { coastal: 0.8, bohemian: 0.2 }, active: true },
-    { id: 'f9', image_url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80', room_type: roomType, style_weights: { mid_century: 0.6, minimalist: 0.4 }, active: true },
-    { id: 'f10', image_url: 'https://images.unsplash.com/photo-1598928506311-c55ez363776c?w=800&q=80', room_type: roomType, style_weights: { bohemian: 0.5, japandi: 0.5 }, active: true },
+    { id: 'f1', image_url: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=800&q=80', room_type: roomType, style: 'coastal', style_weights: { coastal: 1.0, japandi: 0.0, bohemian: 0.0, mid_century: 0.0, minimalist: 0.0 }, active: true, phase: 'baseline' },
+    { id: 'f2', image_url: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800&q=80', room_type: roomType, style: 'coastal', style_weights: { coastal: 1.0, japandi: 0.0, bohemian: 0.0, mid_century: 0.0, minimalist: 0.0 }, active: true, phase: 'baseline' },
+    { id: 'f3', image_url: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800&q=80', room_type: roomType, style: 'japandi', style_weights: { coastal: 0.0, japandi: 1.0, bohemian: 0.0, mid_century: 0.0, minimalist: 0.0 }, active: true, phase: 'baseline' },
+    { id: 'f4', image_url: 'https://images.unsplash.com/photo-1617806118233-18e1de247200?w=800&q=80', room_type: roomType, style: 'japandi', style_weights: { coastal: 0.0, japandi: 1.0, bohemian: 0.0, mid_century: 0.0, minimalist: 0.0 }, active: true, phase: 'baseline' },
+    { id: 'f5', image_url: 'https://images.unsplash.com/photo-1567225557594-88d73e55f2cb?w=800&q=80', room_type: roomType, style: 'bohemian', style_weights: { coastal: 0.0, japandi: 0.0, bohemian: 1.0, mid_century: 0.0, minimalist: 0.0 }, active: true, phase: 'baseline' },
+    { id: 'f6', image_url: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80', room_type: roomType, style: 'bohemian', style_weights: { coastal: 0.0, japandi: 0.0, bohemian: 1.0, mid_century: 0.0, minimalist: 0.0 }, active: true, phase: 'baseline' },
+    { id: 'f7', image_url: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800&q=80', room_type: roomType, style: 'mid_century', style_weights: { coastal: 0.0, japandi: 0.0, bohemian: 0.0, mid_century: 1.0, minimalist: 0.0 }, active: true, phase: 'baseline' },
+    { id: 'f8', image_url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80', room_type: roomType, style: 'mid_century', style_weights: { coastal: 0.0, japandi: 0.0, bohemian: 0.0, mid_century: 1.0, minimalist: 0.0 }, active: true, phase: 'baseline' },
+    { id: 'f9', image_url: 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=800&q=80', room_type: roomType, style: 'minimalist', style_weights: { coastal: 0.0, japandi: 0.0, bohemian: 0.0, mid_century: 0.0, minimalist: 1.0 }, active: true, phase: 'baseline' },
+    { id: 'f10', image_url: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=800&q=80', room_type: roomType, style: 'minimalist', style_weights: { coastal: 0.0, japandi: 0.0, bohemian: 0.0, mid_century: 0.0, minimalist: 1.0 }, active: true, phase: 'baseline' },
   ];
 }
 
@@ -175,13 +168,17 @@ function StyleQuizScreen() {
   const [showBlendModal, setShowBlendModal] = useState(false);
   const [swipeCount, setSwipeCount] = useState(0);
   const [showPrevStyleModal, setShowPrevStyleModal] = useState(false);
+  const [isRefining, setIsRefining] = useState(false);
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completedRef = useRef(false);
   const quizStartTime = useRef(0);
   const prevBlendRef = useRef<StyleBlend | null>(null);
-  // Tracks whether a swipe animation is in flight — used to detect concurrent card renders
   const isAnimatingRef = useRef(false);
+  const seenIdsRef = useRef<Set<string>>(new Set());
+  const isFetchingRefinementRef = useRef(false);
+  const inPhase2Ref = useRef(false);
+
   // Single ref for all swipe state — PanResponder reads/writes this directly (no stale closures)
   const swipeStateRef = useRef<{
     currentIndex: number;
@@ -189,11 +186,12 @@ function StyleQuizScreen() {
     swipeCount: number;
     isAnimating: boolean;
   }>({ currentIndex: 0, styleBlend: { ...EQUAL_BLEND }, swipeCount: 0, isAnimating: false });
-  // Stable ref to checkTermination so PanResponder callback never captures a stale copy
   const checkTerminationRef = useRef<(nextSwipeCount: number, nextIndex: number, currentBlend: StyleBlend) => void>(() => {});
-  // Stable handler refs so PanResponder (created once) always calls the latest versions
   const swipeRightRef = useRef<() => void>(() => {});
   const swipeLeftRef = useRef<() => void>(() => {});
+  // Ref to latest cards array for async fetch callback
+  const cardsRef = useRef<SwipeCard[]>([]);
+  cardsRef.current = cards;
 
   // Register screen context for Sentry
   useEffect(() => {
@@ -201,7 +199,7 @@ function StyleQuizScreen() {
     setFlowStep('quiz');
   }, []);
 
-  // On mount: check if any existing room (other than current) has a non-default style_blend
+  // On mount: check if any existing room has a non-default style_blend
   useEffect(() => {
     const existing = rooms.find(
       (r) => r.id !== currentRoom?.id && r.style_blend && isNonDefaultBlend(r.style_blend as StyleBlend),
@@ -213,7 +211,7 @@ function StyleQuizScreen() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const roomType = currentRoom?.room_type ?? 'living_room';
-  const totalCards = 20;
+  const totalCards = 20; // visual cap for progress bar
 
   // ── Animated values ──
   const position = useRef(new Animated.ValueXY()).current;
@@ -238,30 +236,43 @@ function StyleQuizScreen() {
     extrapolate: 'clamp',
   });
 
-  const progress = ((currentIndex + 1) / totalCards) * 100;
+  const progress = ((swipeCount) / totalCards) * 100;
+  const confidence = calcConfidence(styleBlend);
 
-  // ── Load cards (randomized each session) ──
+  // Confidence-based progress label (no style names shown)
+  const progressHint =
+    confidence < 0.40 ? 'Getting to know your style...' :
+    confidence < 0.60 ? 'Almost there...' :
+    'Your style is emerging';
+
+  // ── Phase 1: Load baseline cards (2 per style, shuffled) ──
   useEffect(() => {
     (async () => {
       try {
-        // Fetch up to 50 cards, then Fisher-Yates shuffle and take 20
-        // This ensures a different card order every quiz session
-        const { data, error } = await supabase
-          .from('swipe_cards')
-          .select('*')
-          .eq('active', true)
-          .eq('room_type', roomType)
-          .limit(50);
-        if (error || !data || data.length === 0) {
+        const baselineCards: SwipeCard[] = [];
+        for (const style of STYLE_KEYS) {
+          const { data, error } = await supabase
+            .from('swipe_cards')
+            .select('*')
+            .eq('room_type', roomType)
+            .eq('style', style)
+            .eq('phase', 'baseline')
+            .limit(10);
+          if (!error && data && data.length > 0) {
+            const shuffled = fisherYatesShuffle(data);
+            baselineCards.push(...shuffled.slice(0, BASELINE_CARDS_PER_STYLE) as SwipeCard[]);
+          }
+        }
+        if (baselineCards.length === 0) {
           setCards(makeFallbackCards(roomType));
         } else {
-          // Fisher-Yates shuffle for true randomization each session
-          const shuffled = [...data];
-          for (let i = shuffled.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+          const shuffled = fisherYatesShuffle(baselineCards);
+          // Ensure style_weights are populated
+          for (const card of shuffled) {
+            card.style_weights = deriveWeights(card);
           }
-          setCards(shuffled.slice(0, 20) as SwipeCard[]);
+          setCards(shuffled);
+          for (const c of shuffled) seenIdsRef.current.add(c.id);
         }
       } catch {
         setCards(makeFallbackCards(roomType));
@@ -277,51 +288,160 @@ function StyleQuizScreen() {
     };
   }, []);
 
-  // ── Complete handler ──
-  const handleComplete = useCallback(() => {
+  // ── Phase 2: Fetch refinement card dynamically ──
+  const handleCompleteRef = useRef<(force?: boolean) => void>(() => {});
+
+  const fetchRefinementCard = useCallback(async (blend: StyleBlend) => {
+    if (isFetchingRefinementRef.current) return;
     if (completedRef.current) return;
+    isFetchingRefinementRef.current = true;
+    inPhase2Ref.current = true;
+    setIsRefining(true);
+
+    // Safety: if fetch takes >3s, release the lock so timeout can fire
+    const safetyTimer = setTimeout(() => {
+      if (isFetchingRefinementRef.current) {
+        isFetchingRefinementRef.current = false;
+        setIsRefining(false);
+      }
+    }, 3000);
+
+    try {
+      const [top1, top2] = getTop2Styles(blend);
+      const seenIds = Array.from(seenIdsRef.current);
+
+      // Try refinement cards first
+      let query = supabase
+        .from('swipe_cards')
+        .select('*')
+        .eq('room_type', roomType)
+        .eq('phase', 'refinement')
+        .limit(5);
+      if (seenIds.length > 0) {
+        query = query.not('id', 'in', `(${seenIds.join(',')})`);
+      }
+      const { data: refinementData } = await query;
+
+      let nextCard: SwipeCard | null = null;
+      if (refinementData && refinementData.length > 0) {
+        for (const card of fisherYatesShuffle(refinementData)) {
+          const w = card.style_weights as Partial<StyleBlend> | null;
+          if (w && ((w[top1] ?? 0) > 0.2 || (w[top2] ?? 0) > 0.2)) {
+            nextCard = card as SwipeCard;
+            break;
+          }
+        }
+        if (!nextCard) nextCard = refinementData[0] as SwipeCard;
+      }
+
+      // Fallback: any unseen baseline card for top style
+      if (!nextCard) {
+        let fallbackQuery = supabase
+          .from('swipe_cards')
+          .select('*')
+          .eq('room_type', roomType)
+          .eq('style', top1)
+          .limit(3);
+        if (seenIds.length > 0) {
+          fallbackQuery = fallbackQuery.not('id', 'in', `(${seenIds.join(',')})`);
+        }
+        const { data: fallbackData } = await fallbackQuery;
+        if (fallbackData && fallbackData.length > 0) {
+          nextCard = fallbackData[0] as SwipeCard;
+        }
+      }
+
+      if (nextCard && !completedRef.current) {
+        nextCard.style_weights = deriveWeights(nextCard);
+        seenIdsRef.current.add(nextCard.id);
+        setCards((prev) => [...prev, nextCard!]);
+      } else if (!completedRef.current) {
+        // No more cards — complete the quiz
+        handleCompleteRef.current(false);
+      }
+    } catch {
+      if (!completedRef.current) handleCompleteRef.current(false);
+    } finally {
+      clearTimeout(safetyTimer);
+      isFetchingRefinementRef.current = false;
+      setIsRefining(false);
+    }
+  }, [roomType]);
+
+  // ── Complete handler ──
+  // force=true bypasses the isFetchingRefinement guard (used by timeout)
+  const handleComplete = useCallback((force = false) => {
+    if (completedRef.current) return;
+    if (!force && isFetchingRefinementRef.current) return;
     completedRef.current = true;
+    isFetchingRefinementRef.current = false;
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
 
     const finalBlend = normalizeBlend(swipeStateRef.current.styleBlend);
+    console.log('QUIZ COMPLETE — FINAL BLEND:', JSON.stringify(finalBlend));
+
+    // Save to Zustand store
+    useAppStore.getState().setStyleBlend(finalBlend);
+    useAppStore.getState().completeQuiz();
+
+    // Save to room record
     if (currentRoom) {
       updateRoom(currentRoom.id, { style_blend: finalBlend });
       void supabase.from('rooms').update({ style_blend: finalBlend }).eq('id', currentRoom.id);
     }
 
+    // Save to user record (best-effort)
     const userId = useAppStore.getState().user?.id;
     if (userId) {
-      // Best-effort style persistence — fire-and-forget, not critical to quiz completion
       void supabase.from('users').update({ style_blend: finalBlend }).eq('id', userId);
     }
     navigation.navigate('RoomCapture');
   }, [currentRoom, updateRoom, navigation]);
+  handleCompleteRef.current = handleComplete;
 
   // ── Termination check ──
   const checkTermination = useCallback(
     (nextSwipeCount: number, nextIndex: number, currentBlend: StyleBlend) => {
+      if (completedRef.current) return;
+      // Don't block on isFetchingRefinement — let timeout and confidence checks run
       const elapsed = Date.now() - quizStartTime.current;
-      const confidence = calcConfidence(currentBlend);
-      if (
-        (nextSwipeCount >= MIN_SWIPES_BEFORE_COMPLETE && confidence >= CONFIDENCE_THRESHOLD) ||
-        elapsed > QUIZ_TIMEOUT_MS ||
-        nextIndex >= cards.length
-      ) {
-        handleComplete();
+      const conf = calcConfidence(currentBlend);
+      const threshold = inPhase2Ref.current ? CONFIDENCE_THRESHOLD_PHASE2 : CONFIDENCE_THRESHOLD_PHASE1;
+
+      // Hard timeout — force complete regardless of fetch state
+      if (elapsed > QUIZ_TIMEOUT_MS) {
+        handleComplete(true);
+        return;
+      }
+
+      // Confidence-based completion (only after enough swipes)
+      if (nextSwipeCount >= MIN_SWIPES_BEFORE_COMPLETE && conf >= threshold) {
+        handleComplete(false);
+        return;
+      }
+
+      // Cards exhausted — fetch more, never terminate on exhaustion alone
+      if (nextIndex >= cards.length && !isFetchingRefinementRef.current) {
+        void fetchRefinementCard(currentBlend);
+        return;
+      }
+
+      // Pre-fetch: if running low on cards and past baseline
+      if (nextSwipeCount >= 10 && nextIndex >= cards.length - 1 && !isFetchingRefinementRef.current) {
+        void fetchRefinementCard(currentBlend);
       }
     },
-    [cards.length, handleComplete],
+    [cards.length, handleComplete, fetchRefinementCard],
   );
   checkTerminationRef.current = checkTermination;
 
   // ── Swipe handlers ──
   const animateOff = (toX: number, cb: () => void) => {
-    // FEATURE_3 check: if animation already running a new swipe would show two cards simultaneously
     if (swipeStateRef.current.isAnimating) {
       logProductDeviation(
         'FEATURE_3',
         'One card is visible and swipeable at a time — never two cards side by side',
-        'Swipe triggered while card exit animation was already in progress — two cards may be visible simultaneously',
+        'Swipe triggered while card exit animation was already in progress',
         'CRITICAL_DEVIATION',
       );
     }
@@ -342,15 +462,15 @@ function StyleQuizScreen() {
   const handleSwipeRight = () => {
     const state = swipeStateRef.current;
     if (state.isAnimating) return;
-    const card = cards[state.currentIndex];
+    const card = cardsRef.current[state.currentIndex];
     if (!card) return;
+    const weights = deriveWeights(card);
     const prevBlend = { ...state.styleBlend };
     const newBlend = { ...state.styleBlend };
     for (const k of STYLE_KEYS) {
-      newBlend[k] = newBlend[k] * (1 + (card.style_weights[k] ?? 0) * 0.3);
+      newBlend[k] = newBlend[k] * (1 + (weights[k] ?? 0) * 0.6);
     }
     const normalized = normalizeBlend(newBlend);
-    // FEATURE_3 check: blend must adapt in real time based on swipes
     if (!STYLE_KEYS.some((k) => Math.abs(normalized[k] - prevBlend[k]) > 0.001)) {
       logProductDeviation(
         'FEATURE_3',
@@ -376,15 +496,15 @@ function StyleQuizScreen() {
   const handleSwipeLeft = () => {
     const state = swipeStateRef.current;
     if (state.isAnimating) return;
-    const card = cards[state.currentIndex];
+    const card = cardsRef.current[state.currentIndex];
     if (!card) return;
+    const weights = deriveWeights(card);
     const prevBlend = { ...state.styleBlend };
     const newBlend = { ...state.styleBlend };
     for (const k of STYLE_KEYS) {
-      newBlend[k] = newBlend[k] * (1 - (card.style_weights[k] ?? 0) * 0.3);
+      newBlend[k] = newBlend[k] * (1 - (weights[k] ?? 0) * 0.4);
     }
     const normalized = normalizeBlend(newBlend);
-    // FEATURE_3 check: blend must adapt in real time based on swipes
     if (!STYLE_KEYS.some((k) => Math.abs(normalized[k] - prevBlend[k]) > 0.001)) {
       logProductDeviation(
         'FEATURE_3',
@@ -430,7 +550,6 @@ function StyleQuizScreen() {
     }).start();
   };
 
-  // Keep handler refs fresh so the stable PanResponder always calls the latest versions
   swipeRightRef.current = handleSwipeRight;
   swipeLeftRef.current = handleSwipeLeft;
 
@@ -449,13 +568,11 @@ function StyleQuizScreen() {
         } else if (gs.dx < -SWIPE_THRESHOLD) {
           swipeLeftRef.current();
         } else {
-          // FEATURE_3 check: if the user dragged a significant distance but the gesture
-          // didn't register as a swipe, the threshold may be too high or gesture capture broken
           if (Math.abs(gs.dx) > SWIPE_THRESHOLD * 0.6) {
             logProductDeviation(
               'FEATURE_3',
               'Cards must be physically swipeable with a finger gesture',
-              `Swipe gesture of ${Math.round(Math.abs(gs.dx))}px did not cross threshold (${SWIPE_THRESHOLD}px) — card snapped back; gesture may not feel responsive`,
+              `Swipe gesture of ${Math.round(Math.abs(gs.dx))}px did not cross threshold (${SWIPE_THRESHOLD}px)`,
               'HIGH_DEVIATION',
             );
           }
@@ -469,7 +586,7 @@ function StyleQuizScreen() {
   const startQuizTimer = () => {
     quizStartTime.current = Date.now();
     timerRef.current = setTimeout(() => {
-      if (!completedRef.current) handleComplete();
+      if (!completedRef.current) handleComplete(true); // force=true bypasses fetch guard
     }, QUIZ_TIMEOUT_MS);
   };
 
@@ -495,7 +612,12 @@ function StyleQuizScreen() {
   };
 
   const handleSkip = () => {
-    if (currentRoom) updateRoom(currentRoom.id, { style_blend: { ...EQUAL_BLEND } });
+    const blend = swipeCount > 0 ? normalizeBlend(swipeStateRef.current.styleBlend) : { ...EQUAL_BLEND };
+    if (currentRoom) {
+      updateRoom(currentRoom.id, { style_blend: blend });
+      void supabase.from('rooms').update({ style_blend: blend }).eq('id', currentRoom.id);
+    }
+    useAppStore.getState().setStyleBlend(blend);
     navigation.navigate('RoomCapture');
   };
 
@@ -535,13 +657,12 @@ function StyleQuizScreen() {
 
           <Text style={styles.instrCount}>{totalCards} rooms to discover</Text>
 
-          {/* Skip button */}
           <TouchableOpacity style={styles.skipBtn} onPress={handleSkip}>
             <Text style={styles.skipBtnText}>Skip</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Previous style modal — shown on mount if another room has a style_blend */}
+        {/* Previous style modal */}
         <Modal visible={showPrevStyleModal} transparent animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={styles.modalCard}>
@@ -592,9 +713,19 @@ function StyleQuizScreen() {
   }
 
   // ══════════════════════════════════════════════════
-  // Exhausted
+  // Cards exhausted — show spinner while fetching refinement, or done
   // ══════════════════════════════════════════════════
   if (currentIndex >= cards.length || cards.length === 0) {
+    // While fetching a refinement card, show spinner — NEVER call handleComplete from render
+    if (isRefining || isFetchingRefinementRef.current) {
+      return (
+        <SafeAreaView style={[styles.root, styles.center]}>
+          <ActivityIndicator size="large" color={GOLD} />
+          <Text style={[styles.loadingText, { marginTop: 16 }]}>Refining your style...</Text>
+        </SafeAreaView>
+      );
+    }
+    // Quiz is done
     return (
       <View style={[styles.root, styles.center]}>
         <Text style={styles.doneText}>Style profile complete!</Text>
@@ -604,7 +735,6 @@ function StyleQuizScreen() {
 
   const currentCard = cards[currentIndex];
   const nextCard = currentIndex + 1 < cards.length ? cards[currentIndex + 1] : null;
-  const thirdCard = currentIndex + 2 < cards.length ? cards[currentIndex + 2] : null;
 
   // ══════════════════════════════════════════════════
   // Swipe screen
@@ -667,13 +797,13 @@ function StyleQuizScreen() {
         </View>
       </View>
 
-      {/* ── Not sure button ── */}
+      {/* ── Bottom area ── */}
       <View style={styles.bottomArea}>
         <TouchableOpacity style={styles.notSureBtn} activeOpacity={0.8} onPress={handleNotSure}>
           <Text style={styles.notSureBtnText}>Not sure</Text>
         </TouchableOpacity>
         <Text style={styles.progressLabel}>
-          {currentIndex + 1} of {totalCards}
+          {progressHint}
         </Text>
       </View>
     </SafeAreaView>

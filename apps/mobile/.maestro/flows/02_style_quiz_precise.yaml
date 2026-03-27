@@ -46,7 +46,8 @@ device:
 - assertNotVisible: "Mid-Century Modern"
 - assertNotVisible: "Minimalist"
 
-# --- Perform swipes (right = love, left = pass) ---
+# --- Phase 1: Baseline swipes (10 cards, 2 per style) ---
+# Swipe right on most, left on a few — simulates real user preference
 - swipe:
     id: "quiz-card"
     direction: RIGHT
@@ -98,8 +99,60 @@ device:
     duration: 500
 - waitForAnimationToEnd
 
-# After 10+ swipes with >65% confidence, quiz should auto-complete
-# and navigate to RoomCapture
+# --- Phase 2: Refinement cards load dynamically ---
+# Wait for refinement card to appear, then keep swiping
 - waitForAnimationToEnd:
-    timeout: 10000
-- assertVisible: "Budget"
+    timeout: 8000
+
+# Swipe through refinement cards if they appear
+- extendedWaitUntil:
+    visible:
+      id: "quiz-card"
+    timeout: 8000
+    optional: true
+- swipe:
+    id: "quiz-card"
+    direction: RIGHT
+    duration: 500
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: "quiz-card"
+    timeout: 8000
+    optional: true
+- swipe:
+    id: "quiz-card"
+    direction: RIGHT
+    duration: 500
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: "quiz-card"
+    timeout: 8000
+    optional: true
+- swipe:
+    id: "quiz-card"
+    direction: RIGHT
+    duration: 500
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: "quiz-card"
+    timeout: 8000
+    optional: true
+- swipe:
+    id: "quiz-card"
+    direction: RIGHT
+    duration: 500
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# Quiz completes via confidence (>=0.60 after 10+ swipes) or timeout (120s)
+# Wait up to 130s for quiz to auto-complete and navigate to Room Capture
+- extendedWaitUntil:
+    visible:
+      text: "Budget"
+    timeout: 130000

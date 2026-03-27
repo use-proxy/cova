@@ -48,8 +48,24 @@ Deno.serve(async (req: Request) => {
     });
 
     if (!rpcError && rpcResults && rpcResults.length > 0) {
+      // Re-rank by combining CLIP similarity with style match score
+      const blendKeys = ['coastal', 'japandi', 'bohemian', 'mid_century', 'minimalist'];
+      const reranked = rpcResults.map((p: Record<string, unknown>) => {
+        const clipScore = typeof p.similarity === 'number' ? p.similarity : 0.5;
+        let styleScore = 0;
+        const pw = p.style_weights as Record<string, number> | null;
+        if (pw && style_blend && typeof style_blend === 'object') {
+          for (const k of blendKeys) {
+            styleScore += (pw[k] ?? 0) * ((style_blend as Record<string, number>)[k] ?? 0);
+          }
+        }
+        return { ...p, final_score: 0.7 * clipScore + 0.3 * styleScore };
+      });
+      reranked.sort((a: Record<string, unknown>, b: Record<string, unknown>) =>
+        (b.final_score as number) - (a.final_score as number));
+      const top8 = reranked.slice(0, 8);
       return new Response(
-        JSON.stringify({ products: rpcResults }),
+        JSON.stringify({ products: top8 }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }

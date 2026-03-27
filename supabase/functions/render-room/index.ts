@@ -225,22 +225,30 @@ async function startFluxPrediction(
   prompt: string,
   numSteps: number,
   token: string,
+  anchorImageUrl?: string | null,
 ): Promise<string> { // returns Replicate prediction ID
 
   // PRIMARY: FLUX Depth Pro (depth ControlNet conditioning)
   // ⚠️ wait=false — just create the prediction and return the ID immediately.
   // get-render-status handles polling. NEVER block the edge function on FLUX.
   try {
+    const fluxInput: Record<string, unknown> = {
+      prompt,
+      control_image:       depthMapUrl,
+      num_inference_steps: numSteps,
+      guidance_scale:      3.5,
+      width:               1024,
+      height:              1024,
+    };
+    // If an anchor render exists, pass it as the image reference with moderate strength
+    if (anchorImageUrl) {
+      fluxInput.image = anchorImageUrl;
+      fluxInput.image_prompt_strength = 0.6;
+      console.log('Using anchor image as style reference:', anchorImageUrl);
+    }
     const predId = await startPrediction(
       'black-forest-labs', 'flux-depth-pro',
-      {
-        prompt,
-        control_image:       depthMapUrl,
-        num_inference_steps: numSteps,
-        guidance_scale:      3.5,
-        width:               1024,
-        height:              1024,
-      },
+      fluxInput,
       token,
       false, // do NOT wait — return prediction ID immediately
     );
@@ -251,15 +259,20 @@ async function startFluxPrediction(
   }
 
   // FALLBACK: FLUX 2 Pro (prompt-only — no depth conditioning, still produces styled rooms)
+  const fallbackInput: Record<string, unknown> = {
+    prompt,
+    num_inference_steps: numSteps,
+    guidance_scale:      3.5,
+    width:               1024,
+    height:              1024,
+  };
+  if (anchorImageUrl) {
+    fallbackInput.image = anchorImageUrl;
+    fallbackInput.image_prompt_strength = 0.6;
+  }
   const fallbackPredId = await startPrediction(
     'black-forest-labs', 'flux-2-pro',
-    {
-      prompt,
-      num_inference_steps: numSteps,
-      guidance_scale:      3.5,
-      width:               1024,
-      height:              1024,
-    },
+    fallbackInput,
     token,
     false, // do NOT wait
   );
@@ -353,6 +366,47 @@ Deno.serve(async (req: Request) => {
 
     console.log('render-room called, image_base64 length:', image_base64?.length ?? 0);
 
+    // ── Anchor render lookup ────────────────────────────────────────────
+    // Find the closest anchor render (by cosine similarity on style_weights)
+    // to use as a style reference image for the FLUX generation.
+    let anchorImageUrl: string | null = null;
+    try {
+      const { data: anchors } = await supabase
+        .from('anchor_renders')
+        .select('style_weights, image_url')
+        .eq('room_type', room_type ?? 'living_room');
+
+      if (anchors && anchors.length > 0 && style_blend) {
+        const blendKeys = ['coastal', 'japandi', 'bohemian', 'mid_century', 'minimalist'];
+        let bestScore = -1;
+        let bestUrl: string | null = null;
+        for (const anchor of anchors) {
+          const aw = anchor.style_weights as Record<string, number>;
+          // Cosine similarity
+          let dot = 0, magA = 0, magB = 0;
+          for (const k of blendKeys) {
+            const a = (style_blend as Record<string, number>)[k] ?? 0;
+            const b = aw[k] ?? 0;
+            dot += a * b;
+            magA += a * a;
+            magB += b * b;
+          }
+          const denom = Math.sqrt(magA) * Math.sqrt(magB);
+          const score = denom > 0 ? dot / denom : 0;
+          if (score > bestScore) {
+            bestScore = score;
+            bestUrl = anchor.image_url;
+          }
+        }
+        if (bestUrl && bestScore > 0.5) {
+          anchorImageUrl = bestUrl;
+          console.log(`Anchor render found (similarity: ${bestScore.toFixed(3)}): ${bestUrl}`);
+        }
+      }
+    } catch (anchorErr) {
+      console.warn('Anchor render lookup failed (non-fatal):', anchorErr);
+    }
+
     // ── Step 0: Upload photo to room-photos bucket (§8.1 step 3) ─────────
     // FLUX ControlNet fails with large inline data URIs for control images.
     // Upload to storage and pass the signed URL instead.
@@ -420,6 +474,7 @@ Deno.serve(async (req: Request) => {
         prompt,
         numSteps,
         replicateToken,
+        anchorImageUrl,
       );
     } catch (fluxErr) {
       logError('flux_render_start_failed', fluxErr, { room_id, user_id: user.id });
