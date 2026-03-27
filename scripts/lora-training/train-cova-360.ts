@@ -1,8 +1,12 @@
 /**
  * Cova 360° LoRA Training Pipeline
  *
- * Curates equirectangular interior images from Poly Haven and Flickr,
- * trains a FLUX LoRA via Replicate, and runs test inferences.
+ * Curates equirectangular interior images from three sources:
+ *   1. Poly Haven — HDR→tonemapped JPG conversion + backplates
+ *   2. Flickr — Creative Commons equirectangular interior photos
+ *   3. Hugging Face — public indoor-360 datasets
+ *
+ * Trains a FLUX LoRA via Replicate and runs test inferences.
  *
  * Usage: npx ts-node scripts/lora-training/train-cova-360.ts
  *
@@ -14,6 +18,7 @@ import * as path from 'path';
 import { pipeline } from 'stream/promises';
 import { createWriteStream } from 'fs';
 import { Readable } from 'stream';
+import sharp from 'sharp';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -29,25 +34,27 @@ interface PolyHavenAssetsResponse {
   [key: string]: PolyHavenAsset;
 }
 
+interface PolyHavenFileEntry {
+  size: number;
+  url: string;
+  md5: string;
+}
+
 interface PolyHavenFilesResponse {
   hdri: {
     [resolution: string]: {
-      hdr?: { url: string };
-      exr?: { url: string };
+      hdr?: PolyHavenFileEntry;
+      exr?: PolyHavenFileEntry;
     };
   };
-  tonemapped?: {
-    [resolution: string]: {
-      jpg?: { url: string };
-      png?: { url: string };
-    };
-  };
+  /** Flat object with direct url — NOT nested by resolution */
+  tonemapped?: PolyHavenFileEntry;
   backplates?: Record<string, unknown>;
 }
 
 interface DatasetImage {
   id: string;
-  source: 'polyhaven' | 'flickr';
+  source: 'polyhaven' | 'flickr' | 'huggingface';
   localPath: string;
   width: number;
   height: number;
@@ -102,6 +109,13 @@ interface ImageDimensions {
 const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN;
 const REPLICATE_BASE_URL = 'https://api.replicate.com/v1';
 const POLYHAVEN_API_URL = 'https://api.polyhaven.com';
+const FLICKR_API_URL = 'https://www.flickr.com/services/rest';
+const FLICKR_API_KEY = process.env.FLICKR_API_KEY ?? '';
+const HF_DATASET_ID = 'Nielsrb/indoor-360-images';
+const HF_API_URL = 'https://huggingface.co/api/datasets';
+
+const MIN_QUALIFYING_IMAGES = 50;
+const MAX_TRAINING_IMAGES = 150; // LoRA works well with 50-150; also keeps ZIP under 100MB upload limit
 
 const FLUX_LORA_TRAINER_MODEL = 'ostris/flux-dev-lora-trainer';
 const FLUX_LORA_TRAINER_VERSION =
@@ -136,6 +150,9 @@ const TEST_PROMPTS = [
 
 const POLL_INTERVAL_MS = 10_000;
 const POLL_TIMEOUT_MS = 3_600_000; // 1 hour for training
+
+// Set dynamically after Replicate account lookup
+let TRAINED_MODEL_DESTINATION = '';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -256,110 +273,413 @@ async function downloadPolyHavenImage(
       return null;
     }
 
-    const filesData: PolyHavenFilesResponse = await filesResponse.json() as PolyHavenFilesResponse;
+    const filesData: PolyHavenFilesResponse =
+      (await filesResponse.json()) as PolyHavenFilesResponse;
 
-    // Look for tonemapped JPG at 4k or higher resolution
-    const tonemapped = filesData.tonemapped;
-    if (!tonemapped) {
-      log(`  Skipping ${assetId}: no tonemapped images available`);
-      return null;
-    }
+    const destJpgPath = path.join(DATASET_DIR, `polyhaven_${assetId}.jpg`);
 
-    // Prefer 4k, then 2k
-    const preferredResolutions = ['4k', '2k', '8k'];
-    let downloadUrl: string | null = null;
-    let chosenRes = '';
-
-    for (const res of preferredResolutions) {
-      const resData = tonemapped[res];
-      if (resData) {
-        const jpgEntry = resData as Record<string, { url: string } | undefined>;
-        if (jpgEntry['jpg']?.url) {
-          downloadUrl = jpgEntry['jpg'].url;
-          chosenRes = res;
-          break;
-        }
-        if (jpgEntry['png']?.url) {
-          downloadUrl = jpgEntry['png'].url;
-          chosenRes = res;
-          break;
-        }
-      }
-    }
-
-    if (!downloadUrl) {
-      log(`  Skipping ${assetId}: no suitable tonemapped resolution found`);
-      return null;
-    }
-
-    const filename = `polyhaven_${assetId}_${chosenRes}.jpg`;
-    const destPath = path.join(DATASET_DIR, filename);
-
-    // Skip if already downloaded
-    if (fs.existsSync(destPath)) {
-      log(`  Already downloaded: ${filename}`);
-      const dims = readJpegDimensions(destPath);
-      if (dims.width >= MIN_SOURCE_WIDTH && isEquirectangular(dims.width, dims.height)) {
+    // Skip if already downloaded and valid
+    if (fs.existsSync(destJpgPath)) {
+      log(`  Already downloaded: polyhaven_${assetId}.jpg`);
+      const dims = readJpegDimensions(destJpgPath);
+      if (
+        dims.width >= MIN_SOURCE_WIDTH &&
+        isEquirectangular(dims.width, dims.height)
+      ) {
         return {
           id: assetId,
           source: 'polyhaven',
-          localPath: destPath,
+          localPath: destJpgPath,
           width: dims.width,
           height: dims.height,
           caption: `equirectangular 360 degree panoramic interior photograph, indoor room, ${assetId.replace(/_/g, ' ')}`,
         };
       }
-      log(`  Previously downloaded but does not meet criteria (${dims.width}x${dims.height})`);
+      log(
+        `  Previously downloaded but does not meet criteria (${dims.width}x${dims.height})`
+      );
       return null;
     }
 
-    log(`  Downloading ${chosenRes} JPG from Poly Haven...`);
-    await downloadFile(downloadUrl, destPath);
-
-    // Check dimensions
-    const dims = readJpegDimensions(destPath);
-    log(`  Downloaded: ${dims.width}x${dims.height}`);
-
-    if (dims.width < MIN_SOURCE_WIDTH) {
-      log(`  Skipping: width ${dims.width} < ${MIN_SOURCE_WIDTH}`);
-      fs.unlinkSync(destPath);
-      return null;
+    // ----- Strategy A: Download tonemapped JPG (flat URL, not nested by resolution) -----
+    if (filesData.tonemapped?.url) {
+      log(`  Downloading tonemapped JPG for ${assetId}...`);
+      await downloadFile(filesData.tonemapped.url, destJpgPath);
+      const dims = readJpegDimensions(destJpgPath);
+      if (
+        dims.width >= MIN_SOURCE_WIDTH &&
+        isEquirectangular(dims.width, dims.height)
+      ) {
+        log(`  Tonemapped accepted: ${dims.width}x${dims.height}`);
+        return {
+          id: assetId,
+          source: 'polyhaven',
+          localPath: destJpgPath,
+          width: dims.width,
+          height: dims.height,
+          caption: `equirectangular 360 degree panoramic interior photograph, indoor room, ${assetId.replace(/_/g, ' ')}`,
+        };
+      }
+      log(`  Tonemapped rejected: ${dims.width}x${dims.height} (ratio ${dims.width > 0 ? (dims.width / dims.height).toFixed(2) : 'N/A'})`);
+      fs.unlinkSync(destJpgPath);
     }
 
-    if (!isEquirectangular(dims.width, dims.height)) {
-      log(`  Skipping: aspect ratio ${(dims.width / dims.height).toFixed(2)} is not ~2:1`);
-      fs.unlinkSync(destPath);
-      return null;
+    // ----- Strategy B: Check backplates for direct JPG URLs -----
+    if (filesData.backplates) {
+      const bpResolutions = ['4k', '2k', '8k'];
+      for (const res of bpResolutions) {
+        const bpRes = (filesData.backplates as Record<string, Record<string, { url?: string }>>)[res];
+        if (bpRes) {
+          const jpgUrl = bpRes['jpg']?.url;
+          if (jpgUrl) {
+            log(`  Downloading ${res} backplate JPG for ${assetId}...`);
+            await downloadFile(jpgUrl, destJpgPath);
+            const dims = readJpegDimensions(destJpgPath);
+            if (
+              dims.width >= MIN_SOURCE_WIDTH &&
+              isEquirectangular(dims.width, dims.height)
+            ) {
+              log(`  Backplate accepted: ${dims.width}x${dims.height}`);
+              return {
+                id: assetId,
+                source: 'polyhaven',
+                localPath: destJpgPath,
+                width: dims.width,
+                height: dims.height,
+                caption: `equirectangular 360 degree panoramic interior photograph, indoor room, ${assetId.replace(/_/g, ' ')}`,
+              };
+            }
+            fs.unlinkSync(destJpgPath);
+            break;
+          }
+        }
+      }
     }
 
-    return {
-      id: assetId,
-      source: 'polyhaven',
-      localPath: destPath,
-      width: dims.width,
-      height: dims.height,
-      caption: `equirectangular 360 degree panoramic interior photograph, indoor room, ${assetId.replace(/_/g, ' ')}`,
-    };
+    log(`  Skipping ${assetId}: no qualifying JPG source`);
+    return null;
   } catch (error) {
     logError(`Failed to process Poly Haven asset: ${assetId}`, error);
     return null;
   }
 }
 
+// ---------------------------------------------------------------------------
+// Source 2: Flickr API — Creative Commons equirectangular interiors
+// ---------------------------------------------------------------------------
+
+interface FlickrPhoto {
+  id: string;
+  owner: string;
+  title: string;
+  url_o?: string;
+  width_o?: string;
+  height_o?: string;
+  url_l?: string;
+  width_l?: string;
+  height_l?: string;
+  url_k?: string;
+  width_k?: string;
+  height_k?: string;
+}
+
+interface FlickrSearchResponse {
+  photos: {
+    page: number;
+    pages: number;
+    perpage: number;
+    total: number;
+    photo: FlickrPhoto[];
+  };
+  stat: string;
+}
+
+async function fetchFlickrImages(): Promise<DatasetImage[]> {
+  log('--- Source 2: Flickr Creative Commons equirectangular interiors ---');
+
+  if (!FLICKR_API_KEY) {
+    log('  FLICKR_API_KEY not set — skipping Flickr source');
+    log('  (Set FLICKR_API_KEY in .env.local to enable)');
+    return [];
+  }
+
+  const images: DatasetImage[] = [];
+  const searchQueries = [
+    'equirectangular interior room 360',
+    'equirectangular indoor panorama',
+    '360 panoramic interior design room',
+  ];
+
+  for (const query of searchQueries) {
+    try {
+      const params = new URLSearchParams({
+        method: 'flickr.photos.search',
+        api_key: FLICKR_API_KEY,
+        text: query,
+        license: '4,5,9,10', // Creative Commons
+        media: 'photos',
+        content_type: '1', // photos only
+        extras: 'url_o,url_k,url_l,o_dims',
+        per_page: '100',
+        page: '1',
+        format: 'json',
+        nojsoncallback: '1',
+        sort: 'relevance',
+      });
+
+      log(`  Searching Flickr: "${query}"`);
+      const response = await fetch(`${FLICKR_API_URL}?${params}`);
+      if (!response.ok) {
+        log(`  Flickr API error: ${response.status}`);
+        continue;
+      }
+
+      const data = (await response.json()) as FlickrSearchResponse;
+      if (data.stat !== 'ok') {
+        log(`  Flickr returned non-ok status`);
+        continue;
+      }
+
+      log(`  Found ${data.photos.total} results, processing page 1...`);
+
+      for (const photo of data.photos.photo) {
+        // Pick the largest available URL
+        const url = photo.url_o ?? photo.url_k ?? photo.url_l;
+        const widthStr = photo.url_o
+          ? photo.width_o
+          : photo.url_k
+            ? photo.width_k
+            : photo.width_l;
+        const heightStr = photo.url_o
+          ? photo.height_o
+          : photo.url_k
+            ? photo.height_k
+            : photo.height_l;
+
+        if (!url || !widthStr || !heightStr) continue;
+
+        const w = parseInt(widthStr, 10);
+        const h = parseInt(heightStr, 10);
+
+        if (w < MIN_SOURCE_WIDTH) continue;
+        if (!isEquirectangular(w, h)) continue;
+
+        const filename = `flickr_${photo.id}.jpg`;
+        const destPath = path.join(DATASET_DIR, filename);
+
+        if (fs.existsSync(destPath)) {
+          const dims = readJpegDimensions(destPath);
+          if (
+            dims.width >= MIN_SOURCE_WIDTH &&
+            isEquirectangular(dims.width, dims.height)
+          ) {
+            images.push({
+              id: `flickr_${photo.id}`,
+              source: 'flickr',
+              localPath: destPath,
+              width: dims.width,
+              height: dims.height,
+              caption: `equirectangular 360 degree panoramic interior photograph, indoor room, ${photo.title || 'untitled'}`,
+            });
+            continue;
+          }
+        }
+
+        try {
+          log(`  Downloading Flickr photo ${photo.id} (${w}x${h})...`);
+          await downloadFile(url, destPath);
+
+          const dims = readJpegDimensions(destPath);
+          if (
+            dims.width >= MIN_SOURCE_WIDTH &&
+            isEquirectangular(dims.width, dims.height)
+          ) {
+            images.push({
+              id: `flickr_${photo.id}`,
+              source: 'flickr',
+              localPath: destPath,
+              width: dims.width,
+              height: dims.height,
+              caption: `equirectangular 360 degree panoramic interior photograph, indoor room, ${photo.title || 'untitled'}`,
+            });
+            log(`  Accepted: flickr_${photo.id} — ${dims.width}x${dims.height}`);
+          } else {
+            fs.unlinkSync(destPath);
+          }
+        } catch (dlErr) {
+          logError(`  Failed to download Flickr photo ${photo.id}`, dlErr);
+          if (fs.existsSync(destPath)) fs.unlinkSync(destPath);
+        }
+
+        await sleep(300);
+      }
+    } catch (err) {
+      logError(`Flickr search failed for query: "${query}"`, err);
+    }
+  }
+
+  log(`  Flickr source: ${images.length} qualifying images`);
+  return images;
+}
+
+// ---------------------------------------------------------------------------
+// Source 3: Hugging Face datasets — indoor 360 images
+// ---------------------------------------------------------------------------
+
+interface HFFileEntry {
+  rfilename: string;
+}
+
+async function fetchHuggingFaceImages(): Promise<DatasetImage[]> {
+  log('--- Source 3: Hugging Face indoor-360-images dataset ---');
+
+  const images: DatasetImage[] = [];
+
+  try {
+    // List files in the dataset repository
+    const listUrl = `${HF_API_URL}/${HF_DATASET_ID}/tree/main`;
+    log(`  Fetching file list from ${listUrl}`);
+
+    const response = await fetch(listUrl);
+    if (!response.ok) {
+      log(`  HF API error: ${response.status} ${response.statusText}`);
+      log('  Trying alternative dataset IDs...');
+
+      // Try alternative dataset names
+      const alternatives = [
+        'Nielsrb/indoor-360-images',
+        'jasonkrone/indoor-panorama',
+        'polyhaven/indoor-hdris',
+      ];
+
+      for (const altId of alternatives) {
+        try {
+          const altResponse = await fetch(
+            `${HF_API_URL}/${altId}/tree/main`
+          );
+          if (altResponse.ok) {
+            log(`  Found alternative dataset: ${altId}`);
+            const altFiles = (await altResponse.json()) as HFFileEntry[];
+            return await downloadHFFiles(altId, altFiles);
+          }
+        } catch {
+          continue;
+        }
+      }
+
+      log('  No Hugging Face datasets available — skipping');
+      return [];
+    }
+
+    const files = (await response.json()) as HFFileEntry[];
+    return await downloadHFFiles(HF_DATASET_ID, files);
+  } catch (err) {
+    logError('Hugging Face source failed', err);
+    return [];
+  }
+}
+
+async function downloadHFFiles(
+  datasetId: string,
+  files: HFFileEntry[]
+): Promise<DatasetImage[]> {
+  const images: DatasetImage[] = [];
+  const imageFiles = files.filter((f) =>
+    /\.(jpg|jpeg|png)$/i.test(f.rfilename)
+  );
+
+  log(`  Found ${imageFiles.length} image files in HF dataset`);
+
+  for (const file of imageFiles) {
+    const filename = `hf_${file.rfilename.replace(/\//g, '_')}`;
+    const destPath = path.join(DATASET_DIR, filename);
+    const destJpgPath = destPath.replace(/\.png$/i, '.jpg');
+    const finalPath = /\.png$/i.test(filename) ? destJpgPath : destPath;
+
+    if (fs.existsSync(finalPath)) {
+      const dims = readJpegDimensions(finalPath);
+      if (
+        dims.width >= MIN_SOURCE_WIDTH &&
+        isEquirectangular(dims.width, dims.height)
+      ) {
+        images.push({
+          id: `hf_${path.basename(file.rfilename, path.extname(file.rfilename))}`,
+          source: 'huggingface',
+          localPath: finalPath,
+          width: dims.width,
+          height: dims.height,
+          caption: `equirectangular 360 degree panoramic interior photograph, indoor room`,
+        });
+        continue;
+      }
+    }
+
+    try {
+      const dlUrl = `https://huggingface.co/datasets/${datasetId}/resolve/main/${file.rfilename}`;
+      log(`  Downloading HF: ${file.rfilename}`);
+      await downloadFile(dlUrl, destPath);
+
+      // Convert PNG to JPG if needed
+      if (/\.png$/i.test(file.rfilename)) {
+        await sharp(destPath).jpeg({ quality: 90 }).toFile(destJpgPath);
+        fs.unlinkSync(destPath);
+      }
+
+      const dims = readJpegDimensions(finalPath);
+      if (
+        dims.width >= MIN_SOURCE_WIDTH &&
+        isEquirectangular(dims.width, dims.height)
+      ) {
+        images.push({
+          id: `hf_${path.basename(file.rfilename, path.extname(file.rfilename))}`,
+          source: 'huggingface',
+          localPath: finalPath,
+          width: dims.width,
+          height: dims.height,
+          caption: `equirectangular 360 degree panoramic interior photograph, indoor room`,
+        });
+        log(`  Accepted: ${filename} — ${dims.width}x${dims.height}`);
+      } else {
+        if (fs.existsSync(finalPath)) fs.unlinkSync(finalPath);
+        log(
+          `  Skipping ${filename}: ${dims.width}x${dims.height} (ratio ${dims.width > 0 ? (dims.width / dims.height).toFixed(2) : 'N/A'})`
+        );
+      }
+    } catch (dlErr) {
+      logError(`  Failed to download HF file: ${file.rfilename}`, dlErr);
+      if (fs.existsSync(destPath)) fs.unlinkSync(destPath);
+      if (fs.existsSync(finalPath)) fs.unlinkSync(finalPath);
+    }
+
+    await sleep(300);
+  }
+
+  log(`  Hugging Face source: ${images.length} qualifying images`);
+  return images;
+}
+
+// ---------------------------------------------------------------------------
+// Curate dataset from all three sources
+// ---------------------------------------------------------------------------
+
 async function curateDataset(): Promise<DatasetImage[]> {
   log('=== STEP 1: Curating Training Dataset ===');
 
   fs.mkdirSync(DATASET_DIR, { recursive: true });
 
-  const assetIds = await fetchPolyHavenIndoorHDRIs();
-  const images: DatasetImage[] = [];
+  const allImages: DatasetImage[] = [];
 
-  // Process sequentially to respect rate limits
+  // --- Source 1: Poly Haven (HDR → tonemapped JPG + backplates) ---
+  log('--- Source 1: Poly Haven indoor HDRIs ---');
+  const assetIds = await fetchPolyHavenIndoorHDRIs();
+
   for (let i = 0; i < assetIds.length; i++) {
     const image = await downloadPolyHavenImage(assetIds[i], i);
     if (image) {
-      images.push(image);
-      log(`  Accepted (${images.length} total): ${image.id} — ${image.width}x${image.height}`);
+      allImages.push(image);
+      log(
+        `  Accepted (${allImages.length} total): ${image.id} — ${image.width}x${image.height}`
+      );
     }
 
     // Brief pause between requests to be polite
@@ -367,21 +687,63 @@ async function curateDataset(): Promise<DatasetImage[]> {
       await sleep(500);
     }
   }
+  log(`Poly Haven source: ${allImages.length} qualifying images`);
 
-  log(`Dataset curation complete: ${images.length} qualifying images`);
+  // --- Source 2: Flickr ---
+  const flickrImages = await fetchFlickrImages();
+  // Deduplicate by checking existing IDs
+  const existingIds = new Set(allImages.map((img) => img.id));
+  for (const img of flickrImages) {
+    if (!existingIds.has(img.id)) {
+      allImages.push(img);
+      existingIds.add(img.id);
+    }
+  }
+  log(`After Flickr: ${allImages.length} total qualifying images`);
 
-  if (images.length === 0) {
+  // --- Source 3: Hugging Face ---
+  const hfImages = await fetchHuggingFaceImages();
+  for (const img of hfImages) {
+    if (!existingIds.has(img.id)) {
+      allImages.push(img);
+      existingIds.add(img.id);
+    }
+  }
+  log(`After Hugging Face: ${allImages.length} total qualifying images`);
+
+  // --- Enforce minimum count ---
+  log(`\nDataset curation complete: ${allImages.length} qualifying images`);
+  log(`Minimum required: ${MIN_QUALIFYING_IMAGES}`);
+
+  if (allImages.length < MIN_QUALIFYING_IMAGES) {
     throw new Error(
-      'No qualifying images found. Check Poly Haven API response or relax filters.'
+      `Insufficient training images: found ${allImages.length}, need at least ${MIN_QUALIFYING_IMAGES}. ` +
+        `Sources yielded — Poly Haven: ${allImages.filter((i) => i.source === 'polyhaven').length}, ` +
+        `Flickr: ${allImages.filter((i) => i.source === 'flickr').length}, ` +
+        `Hugging Face: ${allImages.filter((i) => i.source === 'huggingface').length}. ` +
+        `Add FLICKR_API_KEY to .env.local or find additional public datasets.`
     );
+  }
+
+  // Cap to MAX_TRAINING_IMAGES — shuffle first for variety across sources
+  let finalImages = allImages;
+  if (allImages.length > MAX_TRAINING_IMAGES) {
+    // Fisher-Yates shuffle for even distribution
+    const shuffled = [...allImages];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    finalImages = shuffled.slice(0, MAX_TRAINING_IMAGES);
+    log(`Capped to ${MAX_TRAINING_IMAGES} images (from ${allImages.length}) for training`);
   }
 
   // Write manifest
   const manifestPath = path.join(DATASET_DIR, 'manifest.json');
-  fs.writeFileSync(manifestPath, JSON.stringify(images, null, 2));
+  fs.writeFileSync(manifestPath, JSON.stringify(finalImages, null, 2));
   log(`Manifest saved to ${manifestPath}`);
 
-  return images;
+  return finalImages;
 }
 
 // ---------------------------------------------------------------------------
@@ -404,16 +766,23 @@ async function packageDatasetAsZip(images: DatasetImage[]): Promise<string> {
   fs.mkdirSync(packageDir, { recursive: true });
 
   for (const image of images) {
-    const ext = path.extname(image.localPath);
-    const baseName = `${image.id}${ext}`;
+    const baseName = `${image.id}.jpg`;
     const destImage = path.join(packageDir, baseName);
     const destCaption = path.join(
       packageDir,
       `${image.id}.txt`
     );
 
-    // Copy image
-    fs.copyFileSync(image.localPath, destImage);
+    // Resize to training dimensions (2048x1024) to keep ZIP under Replicate's 2GB limit
+    if (image.width > TARGET_WIDTH) {
+      log(`  Resizing ${image.id}: ${image.width}x${image.height} → ${TARGET_WIDTH}x${TARGET_HEIGHT}`);
+      await sharp(image.localPath)
+        .resize(TARGET_WIDTH, TARGET_HEIGHT, { fit: 'fill' })
+        .jpeg({ quality: 80 })
+        .toFile(destImage);
+    } else {
+      fs.copyFileSync(image.localPath, destImage);
+    }
 
     // Write caption file
     fs.writeFileSync(destCaption, image.caption);
@@ -446,34 +815,33 @@ async function packageDatasetAsZip(images: DatasetImage[]): Promise<string> {
 async function uploadDatasetToReplicate(zipPath: string): Promise<string> {
   log('=== STEP 3: Uploading Dataset to Replicate ===');
 
-  // Replicate file uploads API
-  const fileBuffer = fs.readFileSync(zipPath);
-  const fileSize = fileBuffer.length;
-
+  const fileSize = fs.statSync(zipPath).size;
   log(`Uploading ${(fileSize / 1024 / 1024).toFixed(1)} MB to Replicate...`);
 
-  // Step 1: Create upload
-  const createResponse = await fetch(`${REPLICATE_BASE_URL}/files`, {
+  // Replicate expects multipart form data with a "content" field
+  const fileBuffer = fs.readFileSync(zipPath);
+  const blob = new Blob([fileBuffer], { type: 'application/zip' });
+  const formData = new FormData();
+  formData.append('content', blob, 'training-dataset.zip');
+
+  const response = await fetch(`${REPLICATE_BASE_URL}/files`, {
     method: 'POST',
     headers: {
-      ...replicateHeaders(),
-      'Content-Type': 'application/zip',
-      'Content-Length': String(fileSize),
-      'Content-Disposition': 'attachment; filename="training-dataset.zip"',
+      Authorization: `Bearer ${REPLICATE_API_TOKEN}`,
     },
-    body: fileBuffer,
+    body: formData,
   });
 
-  if (!createResponse.ok) {
-    const errorText = await createResponse.text();
+  if (!response.ok) {
+    const errorText = await response.text();
     throw new Error(
-      `Failed to upload to Replicate: ${createResponse.status} — ${errorText}`
+      `Failed to upload to Replicate: ${response.status} — ${errorText}`
     );
   }
 
-  const uploadResult = await createResponse.json() as { urls: { get: string } };
+  const uploadResult = await response.json() as { id: string; urls: { get: string } };
   const datasetUrl = uploadResult.urls.get;
-  log(`Dataset uploaded: ${datasetUrl}`);
+  log(`Dataset uploaded (file ID: ${uploadResult.id}): ${datasetUrl}`);
 
   return datasetUrl;
 }
@@ -496,29 +864,43 @@ async function startTraining(datasetUrl: string): Promise<ReplicateTraining> {
   log(`  optimizer: ${trainingInput.optimizer}`);
   log(`  autocaption: ${trainingInput.autocaption}`);
 
+  // Get the current user's username for model ownership
+  const accountResponse = await fetch(`${REPLICATE_BASE_URL}/account`, {
+    headers: replicateHeaders(),
+  });
+  if (!accountResponse.ok) {
+    throw new Error(`Failed to fetch Replicate account: ${accountResponse.status}`);
+  }
+  const account = await accountResponse.json() as { username: string };
+  const owner = account.username;
+  const modelName = 'cova-interior-360-lora';
+  const destination = `${owner}/${modelName}`;
+  TRAINED_MODEL_DESTINATION = destination;
+  log(`Replicate account: ${owner}`);
+
   // Create a destination model for the trained LoRA
   const createModelResponse = await fetch(`${REPLICATE_BASE_URL}/models`, {
     method: 'POST',
     headers: replicateHeaders(),
     body: JSON.stringify({
-      owner: 'cova',
-      name: 'cova-interior-360-lora',
+      owner,
+      name: modelName,
       description: 'FLUX LoRA fine-tuned for equirectangular 360° interior renders',
       visibility: 'private',
-      hardware: 'gpu-a40-large',
+      hardware: 'gpu-t4',
     }),
   });
 
   if (!createModelResponse.ok) {
     const errorText = await createModelResponse.text();
     // Model might already exist — that's fine
-    if (!errorText.includes('already exists')) {
-      log(`Warning: Could not create destination model: ${errorText}`);
+    if (errorText.includes('already exists')) {
+      log(`Destination model already exists — reusing ${destination}`);
     } else {
-      log('Destination model already exists — reusing');
+      throw new Error(`Failed to create destination model: ${errorText}`);
     }
   } else {
-    log('Created destination model: cova/cova-interior-360-lora');
+    log(`Created destination model: ${destination}`);
   }
 
   const response = await fetch(
@@ -527,7 +909,7 @@ async function startTraining(datasetUrl: string): Promise<ReplicateTraining> {
       method: 'POST',
       headers: replicateHeaders(),
       body: JSON.stringify({
-        destination: 'cova/cova-interior-360-lora',
+        destination,
         input: trainingInput,
       }),
     }
@@ -621,7 +1003,7 @@ async function downloadWeights(training: ReplicateTraining): Promise<string> {
   if (!weightsUrl) {
     log(`Training output keys: ${Object.keys(training.output).join(', ')}`);
     log('Note: LoRA weights are stored as a new model version on Replicate.');
-    log('The trained model is available at: cova/cova-interior-360-lora');
+    log(`The trained model is available at: ${TRAINED_MODEL_DESTINATION}`);
 
     const infoPath = path.join(TEST_OUTPUT_DIR, 'training-result.json');
     fs.writeFileSync(infoPath, JSON.stringify(training, null, 2));
@@ -656,7 +1038,7 @@ async function runTestInference(
     headers: replicateHeaders(),
     body: JSON.stringify({
       // Use the trained model
-      model: 'cova/cova-interior-360-lora',
+      model: TRAINED_MODEL_DESTINATION,
       input: {
         prompt,
         num_outputs: 1,
@@ -757,7 +1139,7 @@ async function runTestInferences(): Promise<void> {
     JSON.stringify(
       {
         timestamp: new Date().toISOString(),
-        model: 'cova/cova-interior-360-lora',
+        model: TRAINED_MODEL_DESTINATION,
         trigger_word: TRAINING_CONFIG.trigger_word,
         results: results.map((r) => ({
           prompt: r.prompt,
@@ -827,7 +1209,7 @@ async function main(): Promise<void> {
     log('  Pipeline Complete!');
     log('========================================');
     log(`  Training ID: ${completedTraining.id}`);
-    log(`  Model: cova/cova-interior-360-lora`);
+    log(`  Model: ${TRAINED_MODEL_DESTINATION}`);
     log(`  Trigger word: ${TRAINING_CONFIG.trigger_word}`);
     log(`  Test outputs: ${TEST_OUTPUT_DIR}`);
     log('========================================');

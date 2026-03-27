@@ -291,16 +291,21 @@ Deno.serve(async (req: Request) => {
         .eq('id', render_id);
 
       // ── Stage 2: Start panoramic LoRA conversion if configured ────────
+      // LoRA model: pgoel813/cova-interior-360-lora (trained on 150 Poly Haven equirectangular interiors)
+      // Trigger word: COVAINTERIOR360
+      // Secrets: REPLICATE_LORA_MODEL_ID, REPLICATE_LORA_VERSION
       const loraModelId = Deno.env.get('REPLICATE_LORA_MODEL_ID');
+      const loraVersion = Deno.env.get('REPLICATE_LORA_VERSION');
 
-      if (render.is_panoramic && loraModelId) {
+      if (render.is_panoramic && loraModelId && loraVersion) {
         try {
-          // Build the panoramic prompt from the original prompt
+          // Build the panoramic prompt from the original prompt — trigger word MUST be first
           const originalPrompt = (render.prompt_used as string) ?? '';
           const panoramicPrompt = `COVAINTERIOR360 equirectangular 360 degree panorama interior room, ${originalPrompt}`;
 
+          // Use version-based endpoint for deterministic LoRA inference
           const panoRes = await fetch(
-            `https://api.replicate.com/v1/models/${loraModelId}/predictions`,
+            'https://api.replicate.com/v1/predictions',
             {
               method: 'POST',
               headers: {
@@ -308,12 +313,17 @@ Deno.serve(async (req: Request) => {
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
+                version: loraVersion,
                 input: {
-                  image: finalUrl,
                   prompt: panoramicPrompt,
+                  image: finalUrl,
+                  num_outputs: 1,
                   aspect_ratio: '2:1',
-                  guidance: 2.5,
-                  lora_scale: 1.0,
+                  output_format: 'jpg',
+                  output_quality: 90,
+                  num_inference_steps: 28,
+                  guidance_scale: 3.5,
+                  prompt_strength: 0.6,
                 },
               }),
             },

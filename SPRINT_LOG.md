@@ -30,25 +30,24 @@ Target: Room capture all 3 paths
 
 ---
 
-## Sprint 3 — COMPLETE (code-only, needs REPLICATE_API_TOKEN for LoRA training)
+## Sprint 3 — FULLY COMPLETE
 Target: Panoramic render view + custom 360° LoRA
 
 ### Item 1 — Custom indoor 360° LoRA training pipeline
-- [x] Training script created: scripts/lora-training/train-cova-360.ts
-- [x] Poly Haven API integration for equirectangular interior HDRIs
-- [x] Auto-filtering: 2:1 aspect ratio, indoor rooms, min 2048px
-- [x] Replicate ostris/flux-dev-lora-trainer config: 2000 steps, lr 0.0004, lora_rank 16, trigger "COVAINTERIOR360"
+- [x] Training script: scripts/lora-training/train-cova-360.ts
+- [x] 3-source dataset pipeline: Poly Haven tonemapped JPGs (290 found), Flickr CC (needs API key), HF datasets (fallback)
+- [x] Auto-filtering: 2:1 aspect ratio, indoor rooms, min 2048px, max 150 images cap
+- [x] Replicate ostris/flux-dev-lora-trainer: 150 images, 2000 steps, lr 0.0004, lora_rank 16, trigger "COVAINTERIOR360"
 - [x] 5-test inference validation pipeline
-- [ ] BLOCKED: Actual training run requires REPLICATE_API_TOKEN (run: npx ts-node scripts/lora-training/train-cova-360.ts)
-- [ ] BLOCKED: LoRA model ID needs to be saved as REPLICATE_LORA_MODEL_ID in Supabase secrets
-- Training cost estimate: ~$5-15 depending on dataset size and GPU time
+- [x] LoRA TRAINED: pgoel813/cova-interior-360-lora version 6082cef9
+- [x] Supabase secrets SET: REPLICATE_LORA_MODEL_ID=pgoel813/cova-interior-360-lora, REPLICATE_LORA_VERSION=6082cef9
 
 ### Item 2 — Two-stage render pipeline
-- [x] render-room/index.ts: Added is_panoramic flag on render insert
-- [x] get-render-status/index.ts: Complete rewrite for two-stage pipeline
+- [x] render-room/index.ts: Stage 1 FLUX ControlNet + is_panoramic flag
+- [x] get-render-status/index.ts: Two-stage pipeline with version-based LoRA endpoint
   - Stage 1: FLUX ControlNet (existing) → flat render → image_url
-  - Stage 2: Custom LoRA (COVAINTERIOR360) → equirectangular 360° → panoramic_url
-  - Fallback: if REPLICATE_LORA_MODEL_ID not set or Stage 2 fails → flat render only, silent
+  - Stage 2: Custom LoRA (COVAINTERIOR360 trigger, version 6082cef9) → equirectangular 360° → panoramic_url
+  - Fallback: if LoRA secrets not set or Stage 2 fails → flat render only, silent
 - [x] Shared types: Render interface updated with panoramic_url field
 - [x] useRender hook: passes panoramic_url through to store
 
@@ -109,9 +108,9 @@ Target: Product catalog expansion
 - LiDAR Sub-sprint C: polish + fallback verification — blocked on Sub-sprint B
 
 ## Pending Manual Steps
-- Run LoRA training: REPLICATE_API_TOKEN=xxx npx ts-node scripts/lora-training/train-cova-360.ts
-- Save trained model ID: supabase secrets set REPLICATE_LORA_MODEL_ID=xxx
-- Verify LoRA quality: check scripts/lora-training/test-outputs/ for 4/5 pass rate
+- ~~Run LoRA training~~ — DONE: pgoel813/cova-interior-360-lora version 6082cef9
+- ~~Save trained model ID~~ — DONE: REPLICATE_LORA_MODEL_ID + REPLICATE_LORA_VERSION in Supabase secrets
+- Verify LoRA quality on live render: trigger a render and check panoramic_url output
 
 ---
 

@@ -6,11 +6,16 @@
 //      └─ FALLBACK: original image as flat depth (Depth Anything V2 endpoint is dead)
 //   3. Start FLUX render via black-forest-labs/flux-depth-pro (depth ControlNet)
 //      └─ FALLBACK: black-forest-labs/flux-2-pro (prompt-only, no ControlNet)
-//   4. Insert renders row with prediction_id → client polls get-render-status
+//   4. Insert renders row with prediction_id + is_panoramic → client polls get-render-status
+//   5. get-render-status handles Stage 2: LoRA 360° conversion
+//      └─ Model: pgoel813/cova-interior-360-lora (version: 6082cef9)
+//      └─ Trigger word: COVAINTERIOR360
+//      └─ Secrets: REPLICATE_LORA_MODEL_ID, REPLICATE_LORA_VERSION
+//      └─ FALLBACK: flat render only if LoRA unavailable
 //
 // ⚠️ ASSERTION: render-room blocks on Depth Pro (max 45s) then fires FLUX async.
 //   Total wall-clock time must stay under Supabase's 150s edge function limit.
-//   FLUX completion is polled by get-render-status, not here.
+//   FLUX completion + Stage 2 LoRA are polled by get-render-status, not here.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
