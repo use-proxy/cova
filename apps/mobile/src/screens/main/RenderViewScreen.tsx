@@ -33,6 +33,7 @@ import { useAppStore } from '../../store';
 import BeforeAfterSlider from '../../components/BeforeAfterSlider';
 import PanoramaViewer from '../../components/PanoramaViewer';
 import ChatPanel from '../../components/ChatPanel';
+import ProductPanel from '../../components/ui/ProductPanel';
 import type { Product, Render } from '@cova/shared';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -68,7 +69,7 @@ function RenderViewScreen() {
   const insets = useSafeAreaInsets();
 
   const { startRender, pollRenderStatus, renderStatus, renderProgressStage, renderProgress, renderError, currentRender } = useRender();
-  const { matchedProducts, addToCart, cartItems, setRenderStatus, currentRoom, capturedImageUri, budget_max } = useAppStore();
+  const { matchedProducts, addToCart, cartItems, setRenderStatus, currentRoom, capturedImageUri, budget_max, pinnedRoomProducts } = useAppStore();
 
   // route.params.room_id is only populated when navigating directly within RoomNavigator.
   // When arriving via HomeStack's nested Room screen, room_id is in the parent route and
@@ -497,6 +498,7 @@ function RenderViewScreen() {
       styleBlend: blend,
       imageBase64,
       renderType: 'draft',
+      pinnedProducts: pinnedRoomProducts.map((p) => ({ name: p.name, description: p.description })),
     });
   };
 
@@ -844,39 +846,14 @@ function RenderViewScreen() {
         </Animated.View>
       )}
 
-      {/* ── Product panel ── */}
-      <Animated.View style={[styles.productPanel, { transform: [{ translateX: productPanelX }] }]}>
-        <View style={[styles.ppHeader, { paddingTop: insets.top + 12 }]}>
-          <Text style={styles.ppTitle}>Matched Products</Text>
-          <TouchableOpacity onPress={() => toggleProductPanel(false)}>
-            <Text style={styles.ppClose}>✕</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.budgetRow}>
-          <Text style={styles.budgetLabel}>Budget: {formatBudget(activeBudgetDollars)}</Text>
-          <TouchableOpacity onPress={() => setShowBudgetSlider(!showBudgetSlider)}>
-            <Text style={{ fontSize: 16 }}>✏️</Text>
-          </TouchableOpacity>
-        </View>
-        {showBudgetSlider && (
-          <View style={styles.budgetSliderWrap}>
-            <Slider style={styles.budgetSlider} minimumValue={500} maximumValue={10000} step={500} value={activeBudgetDollars} onValueChange={(v: number) => setBudgetOverride(v)} minimumTrackTintColor={GOLD} maximumTrackTintColor="#E8E0D0" thumbTintColor={GOLD} />
-            <View style={styles.budgetSliderLabels}>
-              <Text style={styles.budgetTick}>$500</Text>
-              <Text style={styles.budgetTick}>$10,000</Text>
-            </View>
-          </View>
-        )}
-
-        {filteredProducts.length > 0 && (
-          <TouchableOpacity style={styles.addAllBtn} onPress={handleAddAllToCart}>
-            <Text style={styles.addAllBtnText}>Add All to Cart ({filteredProducts.length})</Text>
-          </TouchableOpacity>
-        )}
-
-        <FlatList data={filteredProducts} renderItem={renderProductCard} keyExtractor={(i) => i.id} contentContainerStyle={{ padding: 12 }} ListEmptyComponent={<Text style={styles.emptyText}>No matched products yet.</Text>} />
-      </Animated.View>
+      {/* ── Product panel (Sprint 6) ── */}
+      <ProductPanel
+        visible={showProductPanel}
+        onClose={() => toggleProductPanel(false)}
+        roomId={room_id}
+        styleBlend={currentRoom?.style_blend}
+        budget={activeBudgetDollars}
+      />
 
       {/* ── Overlays ── */}
       {/* Before/after slider — always mounted when original_image_url exists,   */}

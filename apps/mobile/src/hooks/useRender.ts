@@ -11,6 +11,7 @@ interface RenderParams {
   imageBase64: string;
   renderType: 'draft' | 'hd';
   dimensions?: RoomDimensions;
+  pinnedProducts?: Array<{ name: string; description?: string }>;
 }
 
 const LOADING_STAGES = [
@@ -152,6 +153,7 @@ export function useRender() {
           room_type:        params.roomType,
           render_type:      params.renderType,
           room_dimensions:  params.dimensions,
+          pinned_products:  params.pinnedProducts,
         });
         Sentry.addBreadcrumb({ message: `startRender: render-room returned render_id=${res.render_id}`, level: 'info' });
         break; // success — exit retry loop

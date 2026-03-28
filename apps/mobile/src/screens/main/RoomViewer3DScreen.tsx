@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, Suspense, useMemo } from 'react';
+import React, { useState, useRef, useCallback, Suspense, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -29,7 +29,7 @@ import type { CameraControlState } from '../../components/3d/CameraController';
 import type { StyleName, RoomDimensions, FurniturePiece as FurniturePieceType, FurnitureCatalogItem, FurnitureCategory } from '@cova/shared';
 import { FURNITURE_CATALOG, STYLE_PALETTE, getFurnitureForRoom } from '../../data/furnitureCatalog';
 import { useAppStore } from '../../store';
-import { supabase } from '../../lib/supabase';
+import { supabase, callEdgeFunction } from '../../lib/supabase';
 
 type Props = NativeStackScreenProps<RoomStackParamList, 'Viewer3D'>;
 
@@ -221,6 +221,73 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
   const touchCountRef = useRef<number>(0);
 
   const user = useAppStore((s) => s.user);
+  const currentRoomDimensions = useAppStore((s) => s.currentRoomDimensions);
+
+  // ── detect-furniture on entry ──
+  // When 3D viewer loads, call detect-furniture edge function to get furniture positions
+  // from the room's render image. Falls back to buildDefaultFurniture silently.
+  useEffect(() => {
+    const renderUrl = currentRoom?.latest_render_url;
+    if (!renderUrl || testMode) return;
+
+    let cancelled = false;
+    const timeoutId = setTimeout(() => { cancelled = true; }, 5000);
+
+    const run = async () => {
+      try {
+        interface FurnitureSuggestion {
+          category: string;
+          x: number;
+          z: number;
+          rotation_y?: number;
+        }
+        interface DetectResult {
+          suggestions: FurnitureSuggestion[];
+          source: string;
+        }
+        const result = await callEdgeFunction<DetectResult>('detect-furniture', {
+          render_url: renderUrl,
+          room_type: currentRoom?.room_type ?? 'living_room',
+          dimensions: currentRoomDimensions ?? DEFAULT_DIMENSIONS,
+        });
+        if (cancelled) return;
+        if (!result?.suggestions?.length) return;
+
+        const newFurniture: FurniturePieceType[] = result.suggestions.slice(0, 6).map((s, i) => {
+          const catalogItem =
+            FURNITURE_CATALOG.find((c) => c.category === s.category) ??
+            FURNITURE_CATALOG[i % FURNITURE_CATALOG.length];
+          return {
+            id: `detected-${i}-${Date.now()}`,
+            catalog_id: catalogItem.id,
+            name: catalogItem.name,
+            category: catalogItem.category,
+            glb_path: catalogItem.glb_path,
+            position: { x: s.x ?? 0, y: s.z ?? 0 },
+            rotation_y: s.rotation_y ?? 0,
+            scale: 1,
+            color_override: null,
+            width: catalogItem.width,
+            depth: catalogItem.depth,
+            height: catalogItem.height,
+          };
+        });
+        setPlacedFurniture(newFurniture);
+      } catch {
+        // fallback to buildDefaultFurniture (already set as initial state)
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
+  // Run once on mount only
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Undo helpers ──
 
