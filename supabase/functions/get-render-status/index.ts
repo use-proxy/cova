@@ -256,6 +256,7 @@ Deno.serve(async (req: Request) => {
           status: 'processing',
           image_url: render.image_url,
           panoramic_url: null,
+          stage: 'panoramic',
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
@@ -321,11 +322,31 @@ Deno.serve(async (req: Request) => {
 
       if (render.is_panoramic && loraModelId && loraVersion) {
         try {
-          // Build the panoramic prompt from the original prompt — trigger word MUST be first
           const originalPrompt = (render.prompt_used as string) ?? '';
           const panoramicPrompt = `COVAINTERIOR360 equirectangular 360 degree panorama interior room, ${originalPrompt}`;
 
-          // Use version-based endpoint for deterministic LoRA inference
+          const stage2Body = {
+            version: loraVersion,
+            input: {
+              prompt: panoramicPrompt,
+              image: finalUrl,
+              num_outputs: 1,
+              aspect_ratio: '2:1',
+              output_format: 'jpg',
+              output_quality: 90,
+              num_inference_steps: 28,
+              guidance_scale: 2.5,
+              lora_scale: 1.0,
+              prompt_strength: 0.7,
+            },
+          };
+
+          console.log('Stage 2 starting — sending to LoRA:', JSON.stringify({
+            model: loraModelId, version: loraVersion,
+            prompt_preview: panoramicPrompt.slice(0, 100),
+            image_preview: finalUrl.slice(0, 80),
+          }));
+
           const panoRes = await fetch(
             'https://api.replicate.com/v1/predictions',
             {
@@ -334,20 +355,7 @@ Deno.serve(async (req: Request) => {
                 'Authorization': `Token ${replicateToken}`,
                 'Content-Type': 'application/json',
               },
-              body: JSON.stringify({
-                version: loraVersion,
-                input: {
-                  prompt: panoramicPrompt,
-                  image: finalUrl,
-                  num_outputs: 1,
-                  aspect_ratio: '2:1',
-                  output_format: 'jpg',
-                  output_quality: 90,
-                  num_inference_steps: 28,
-                  guidance_scale: 3.5,
-                  prompt_strength: 0.6,
-                },
-              }),
+              body: JSON.stringify(stage2Body),
             },
           );
 
@@ -355,32 +363,27 @@ Deno.serve(async (req: Request) => {
             const panoPred = await panoRes.json() as ReplicatePrediction;
             const panoPredId = panoPred.id;
 
-            // Store Stage 2 prediction ID — next poll will check this instead
-            await supabase
+            const { error: panoUpdateErr } = await supabase
               .from('renders')
               .update({ panoramic_prediction_id: panoPredId })
               .eq('id', render_id);
+            if (panoUpdateErr) console.error('Stage 2 prediction ID save failed:', JSON.stringify(panoUpdateErr));
 
-            console.log('Stage 2 panoramic prediction started:', panoPredId);
+            console.log('Stage 2 prediction started:', panoPredId);
 
-            // Return processing — client will poll again and hit the Stage 2 branch
             return new Response(
-              JSON.stringify({
-                status: 'processing',
-                image_url: finalUrl,
-                panoramic_url: null,
-              }),
+              JSON.stringify({ status: 'processing', image_url: finalUrl, panoramic_url: null, stage: 'panoramic' }),
               { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
             );
           } else {
             const errBody = await panoRes.text();
-            console.warn('Stage 2 panoramic start failed — falling back to flat render:', errBody);
-            // Fall through to complete with Stage 1 only
+            console.error('Stage 2 failed — LoRA returned HTTP', panoRes.status, ':', errBody);
           }
         } catch (panoErr) {
-          console.warn('Stage 2 panoramic start exception — falling back to flat render:', panoErr);
-          // Fall through to complete with Stage 1 only
+          console.error('Stage 2 failed — exception:', panoErr instanceof Error ? panoErr.message : String(panoErr));
         }
+      } else {
+        console.log('Stage 2 skipped:', JSON.stringify({ is_panoramic: render.is_panoramic, has_model: !!loraModelId, has_version: !!loraVersion }));
       }
 
       // No Stage 2 or Stage 2 failed to start — complete with flat render only
@@ -427,7 +430,7 @@ Deno.serve(async (req: Request) => {
     }
 
     return new Response(
-      JSON.stringify({ status: 'processing', image_url: null, panoramic_url: null }),
+      JSON.stringify({ status: 'processing', image_url: null, panoramic_url: null, stage: 'rendering' }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (err) {

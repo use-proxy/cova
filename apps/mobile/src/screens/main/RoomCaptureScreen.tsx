@@ -503,7 +503,7 @@ function RoomCaptureScreen() {
         const compressed = await ImageManipulator.manipulateAsync(
           destUri,
           [{ resize: { width: 1024 } }],
-          { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+          { compress: 0.92, format: ImageManipulator.SaveFormat.JPEG },
         );
         setCapturedImageUri(compressed.uri);
       }
@@ -562,7 +562,7 @@ function RoomCaptureScreen() {
       const compressed = await ImageManipulator.manipulateAsync(
         effectiveUri,
         [{ resize: { width: 1024 } }],
-        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+        { compress: 0.92, format: ImageManipulator.SaveFormat.JPEG },
       );
       const blend = currentRoom?.style_blend ?? { coastal: 0.2, japandi: 0.2, bohemian: 0.2, mid_century: 0.2, minimalist: 0.2 };
       const roomType: RoomType = selectedRoomType
@@ -618,7 +618,7 @@ function RoomCaptureScreen() {
               const compressedExtra = await ImageManipulator.manipulateAsync(
                 photoUri,
                 [{ resize: { width: 1024 } }],
-                { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+                { compress: 0.92, format: ImageManipulator.SaveFormat.JPEG },
               );
               const extraPath = `${authUser.id}/${roomId}/photo_${i + 1}.jpg`;
               const extraResponse = await fetch(compressedExtra.uri);

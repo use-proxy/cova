@@ -17,10 +17,11 @@ interface RenderParams {
 }
 
 const LOADING_STAGES = [
-  'Analyzing your room',
-  'Applying your style',
-  'Generating',
-  'Done',
+  'Analyzing your room...',
+  'Building your style...',
+  'Creating your panorama...',
+  'Almost ready...',
+  'Your design is ready!',
 ] as const;
 
 export function useRender() {
@@ -80,29 +81,37 @@ export function useRender() {
     const poll = async () => {
       const elapsed = (Date.now() - startTime) / 1000;
 
-      // Update progress stage based on elapsed time (CLAUDE.md §7.3 / PRODUCT_TRUTH §6)
-      if (elapsed < 10)  setRenderProgressStage(LOADING_STAGES[0]);
-      else if (elapsed < 30) setRenderProgressStage(LOADING_STAGES[1]);
-      else if (elapsed < 55) setRenderProgressStage(LOADING_STAGES[2]);
-      setRenderProgress(Math.min(95, (elapsed / 55) * 100));
+      // Update progress stage based on elapsed time and server stage
+      if (elapsed < 15) { setRenderProgressStage(LOADING_STAGES[0]); setRenderProgress(Math.min(15, (elapsed / 15) * 15)); }
+      else if (elapsed < 45) { setRenderProgressStage(LOADING_STAGES[1]); setRenderProgress(15 + Math.min(25, ((elapsed - 15) / 30) * 25)); }
+      else if (elapsed < 90) { setRenderProgressStage(LOADING_STAGES[2]); setRenderProgress(40 + Math.min(40, ((elapsed - 45) / 45) * 40)); }
+      else { setRenderProgressStage(LOADING_STAGES[3]); setRenderProgress(Math.min(95, 80 + ((elapsed - 90) / 30) * 15)); }
 
-      if (elapsed > 120) {
+      if (elapsed > 180) {
         setRenderStatus('failed');
         setRenderError('Render timed out. Please try again.');
         return;
       }
 
       try {
-        const data = await callEdgeFunction<{ status: string; image_url?: string; panoramic_url?: string; error?: string }>(
+        const data = await callEdgeFunction<{ status: string; image_url?: string; panoramic_url?: string; error?: string; stage?: string }>(
           'get-render-status',
           { render_id: renderId },
         );
+
+        // Use server-reported stage to set more accurate progress labels
+        if (data.stage === 'panoramic') {
+          setRenderProgressStage(LOADING_STAGES[2]); // "Creating your panorama..."
+          setRenderProgress(50);
+        } else if (data.stage === 'rendering') {
+          setRenderProgressStage(LOADING_STAGES[1]); // "Building your style..."
+        }
 
         if (data.status === 'completed' && data.image_url) {
           activeRenderRef.current = null;
           setRenderStatus('completed');
           setRenderProgress(100);
-          setRenderProgressStage(LOADING_STAGES[3]);
+          setRenderProgressStage(LOADING_STAGES[4]); // "Your design is ready!"
           setCurrentRender({
             id: renderId,
             image_url: data.image_url,

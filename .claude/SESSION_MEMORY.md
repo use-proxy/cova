@@ -8,7 +8,20 @@
 MVP is code-complete. 12 sprints done. 95% spec completion. All 13 screens implemented. All 17 edge cases handled.
 Remaining 5% requires physical device testing (Apple/Google auth, LiDAR, camera) and manual setup (App Store, affiliate URLs).
 
-## What Was Done This Session
+## What Was Done This Session (Render Quality Improvements)
+- render-room: guidance_scale 7→9, controlnet_conditioning_scale 0.9, negative prompt added, num_steps 50, image_prompt_strength 0.3
+- render-room: structural preservation prompt rewritten — exact wall/floor/ceiling/window/door positions
+- render-room: style descriptors rewritten — richer, more specific per style (rattan, macrame, walnut legs, etc.)
+- get-render-status: Stage 2 LoRA — guidance_scale 2.5, lora_scale 1.0, prompt_strength 0.7, detailed logging
+- get-render-status: added `stage` field to all processing responses ('rendering' or 'panoramic')
+- get-render-status: logs at Stage 2 start, success, and failure with full request details
+- useRender: 5-stage loading messages — "Analyzing room" → "Building style" → "Creating panorama" → "Almost ready" → "Design ready"
+- useRender: progress mapped to stages (0-15%, 15-40%, 40-80%, 80-95%, 100%), uses server `stage` field
+- useRender: timeout increased from 120s to 180s to accommodate Stage 2 panoramic
+- RoomCaptureScreen: image compression quality 0.8 → 0.92 for better Depth Pro input
+- Issue 6 (3-photo merge): render-room only receives single image_base64 — multi-photo merge would require client-side stitching; deferred as Photo 1 is the primary depth reference
+
+## What Was Done Previously
 ### Physical device bug fixes
 - RoomCaptureScreen: horizontal check relaxed from 15° to 25° (small rooms), light check timer 1.5s → 0.5s, indicators changed from red to amber (warnings not blockers)
 - callEdgeFunction: default timeout increased from 30s to 60s, render-room call uses 120s (blocks on depth map up to 45s)

@@ -54,34 +54,34 @@ interface ReplicatePrediction {
 // proportionally based on the blend ratio.
 const STYLE_DESCRIPTORS: Record<StyleName, string[]> = {
   coastal: [
-    'coastal style', 'light natural textures', 'white and blue palette',
-    'natural driftwood accents', 'linen fabrics', 'nautical design elements',
-    'airy and bright atmosphere', 'sea-inspired decor', 'weathered wood finishes',
-    'sandy neutral tones',
+    'natural rattan furniture', 'linen upholstery', 'white and sand color palette',
+    'driftwood textures', 'woven textures', 'ocean-inspired blues and whites',
+    'bleached wood floors', 'breezy sheer curtains', 'sea glass accessories',
+    'nautical accents',
   ],
   japandi: [
-    'japandi style', 'clean minimal lines', 'natural wood and stone surfaces',
-    'muted earth tones', 'zen calm atmosphere', 'functional simplicity',
-    'wabi-sabi imperfection', 'low-profile furniture', 'organic ceramic accents',
-    'paper lantern lighting',
+    'warm oak furniture', 'minimalist clean lines', 'neutral beige and warm white palette',
+    'wabi-sabi imperfection', 'natural materials', 'paper lanterns',
+    'low platform furniture', 'zen simplicity', 'muted earth tones',
+    'handcrafted ceramics',
   ],
   bohemian: [
-    'bohemian style', 'rich warm colors', 'layered textiles and throws',
-    'mixed global patterns', 'plants and natural elements', 'eclectic collected feel',
-    'macrame wall hangings', 'vintage kilim rugs', 'rattan and wicker furniture',
-    'jewel tone accents',
+    'layered colorful textiles', 'macrame wall hangings', 'vintage Persian rugs',
+    'eclectic mix of patterns', 'warm amber and terracotta tones', 'trailing plants',
+    'rattan and wicker', 'floor cushions', 'global-inspired decor',
+    'rich jewel tones',
   ],
   mid_century: [
-    'mid-century modern style', 'clean organic shapes', 'warm wood tones',
-    'bold accent colors', 'retro-futurist furniture', 'hairpin and tapered legs',
-    'geometric patterns', 'sunburst wall decor', 'molded plywood chairs',
-    'brass and walnut finishes',
+    'tapered walnut legs', 'Eames-style chairs', 'geometric patterns',
+    'mustard yellow and olive green accents', 'teak sideboard',
+    'pendant lamps with exposed bulbs', 'starburst clock',
+    'clean horizontal lines', 'retro color palette', 'brass and walnut finishes',
   ],
   minimalist: [
-    'minimalist style', 'pure clean lines', 'neutral white and grey palette',
-    'maximum negative space', 'hidden storage solutions', 'serene uncluttered atmosphere',
-    'monochromatic color scheme', 'simple geometric forms', 'matte surface finishes',
-    'streamlined furniture silhouettes',
+    'clean white walls', 'hidden storage', 'monochromatic palette',
+    'single statement piece', 'uncluttered surfaces',
+    'grey concrete or white oak floors', 'simple geometric furniture',
+    'negative space', 'no decorative accessories', 'functional only',
   ],
 };
 
@@ -124,7 +124,7 @@ function buildPrompt(
     ? selectedDescriptors.join(', ')
     : 'contemporary interior design';
 
-  const structuralPreservation = 'preserve original wall colors, preserve ceiling height, preserve window positions, preserve door positions, preserve room architecture';
+  const structuralPreservation = 'preserve exact wall positions, preserve exact ceiling height, preserve exact floor plane, preserve exact room dimensions, preserve exact window positions, preserve exact door positions, preserve architectural layout exactly as captured, do not add or remove walls, do not change room shape';
 
   let pinnedLanguage = '';
   if (pinnedProducts && pinnedProducts.length > 0) {
@@ -134,8 +134,10 @@ function buildPrompt(
     pinnedLanguage = `, ${items}`;
   }
 
-  return `${styleLanguage}, ${roomType.replace(/_/g, ' ')} interior, ${structuralPreservation}${pinnedLanguage}, photorealistic, 8k, interior photography`;
+  return `${styleLanguage}, ${roomType.replace(/_/g, ' ')} interior, ${structuralPreservation}${pinnedLanguage}, photorealistic, 8k, interior photography, professional architectural photo`;
 }
+
+const NEGATIVE_PROMPT = 'different room layout, different architecture, extra rooms, missing walls, distorted perspective, fish eye, wrong proportions, cartoon, illustration, painting, watermark, text, blurry, low quality';
 
 // ── Replicate helpers ─────────────────────────────────────────────────────────
 
@@ -302,17 +304,19 @@ async function startFluxPrediction(
   try {
     const fluxInput: Record<string, unknown> = {
       prompt,
+      negative_prompt:     NEGATIVE_PROMPT,
       control_image:       depthMapUrl,
+      controlnet_conditioning_scale: 0.9,
       num_inference_steps: numSteps,
-      guidance_scale:      7.0,
+      guidance_scale:      9.0,
       width:               1024,
       height:              1024,
     };
-    // If an anchor render exists, pass it as the image reference — 0.35 keeps style
-    // influence without original photo bleeding through (was 0.6 = too transparent)
+    // If an anchor render exists, pass it as the image reference — 0.3 keeps style
+    // influence without original photo bleeding through
     if (anchorImageUrl) {
       fluxInput.image = anchorImageUrl;
-      fluxInput.image_prompt_strength = 0.35;
+      fluxInput.image_prompt_strength = 0.3;
       console.log('Using anchor image as style reference:', anchorImageUrl);
     }
     const predId = await startPrediction(
@@ -330,14 +334,15 @@ async function startFluxPrediction(
   // FALLBACK: FLUX 2 Pro (prompt-only — no depth conditioning, still produces styled rooms)
   const fallbackInput: Record<string, unknown> = {
     prompt,
+    negative_prompt:     NEGATIVE_PROMPT,
     num_inference_steps: numSteps,
-    guidance_scale:      7.0,
+    guidance_scale:      9.0,
     width:               1024,
     height:              1024,
   };
   if (anchorImageUrl) {
     fallbackInput.image = anchorImageUrl;
-    fallbackInput.image_prompt_strength = 0.35;
+    fallbackInput.image_prompt_strength = 0.3;
   }
   const fallbackPredId = await startPrediction(
     'black-forest-labs', 'flux-2-pro',
@@ -437,7 +442,7 @@ Deno.serve(async (req: Request) => {
 
     // ── Prepare inputs ─────────────────────────────────────────────────────
     const replicateToken = Deno.env.get('REPLICATE_API_TOKEN')!;
-    const numSteps = render_type === 'hd' ? 40 : 28;
+    const numSteps = render_type === 'hd' ? 50 : 50;
     const prompt = buildPrompt(style_blend ?? {}, room_type ?? 'living_room', pinned_products);
     // Derive primary style for the style_applied NOT NULL column
     const style_applied = Object.entries(style_blend ?? {})
