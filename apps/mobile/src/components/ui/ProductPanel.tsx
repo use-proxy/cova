@@ -254,8 +254,12 @@ export default function ProductPanel({ visible, onClose, styleBlend, budget = 25
   const handleProductTap = useCallback((product: Product) => {
     addToRecentlyViewed(product);
     setSelectedProduct(product);
-    track('product_tapped', { product_id: product.id, retailer: product.retailer });
-  }, [addToRecentlyViewed]);
+    track('product_tapped', {
+      product_id: product.id,
+      retailer: product.retailer,
+      style_match_score: computeStyleMatch(product, styleBlend),
+    });
+  }, [addToRecentlyViewed, styleBlend]);
 
   const pinnedIds = new Set(pinnedRoomProducts.map((p) => p.id));
   const matchedIds = new Set(matchedProducts.map((p) => p.id));

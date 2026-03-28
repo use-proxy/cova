@@ -14,7 +14,7 @@ import { useAppStore } from './src/store';
 import { supabase } from './src/lib/supabase';
 
 initSentry();
-void initPostHog();
+initPostHog();
 
 function App() {
   useEffect(() => {

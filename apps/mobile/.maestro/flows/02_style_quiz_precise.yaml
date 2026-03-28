@@ -156,8 +156,16 @@ device:
     timeout: 5000
 
 # Quiz completes via confidence (>=0.60 after 10+ swipes) or timeout (120s)
-# Wait up to 130s for quiz to auto-complete and navigate to Room Capture
+# Wait up to 130s for quiz to auto-complete and navigate to Budget Slider
 - extendedWaitUntil:
     visible:
-      text: "Budget"
+      text: "Set Your Budget"
     timeout: 130000
+
+# Verify budget slider is functional
+- assertVisible: "Continue"
+- assertVisible: "Total room budget"
+
+# Tap Continue to proceed to Room Capture
+- tapOn: "Continue"
+- waitForAnimationToEnd

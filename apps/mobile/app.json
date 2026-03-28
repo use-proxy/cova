@@ -14,7 +14,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1B3A2D"
+      "backgroundColor": "#0A1628"
     },
     "ios": {
       "icon": "./assets/icon-cova.png",

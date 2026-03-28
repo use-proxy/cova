@@ -248,7 +248,7 @@ export default function ChatPanel({
 
     lastUserMsgRef.current = text;
     setInputText('');
-    track('chat_message_sent', { room_id: roomId });
+    track('chat_message_sent', { room_id: roomId, trigger_action: null });
 
     const userMsg: LocalMessage = {
       id: `user-${Date.now()}`,

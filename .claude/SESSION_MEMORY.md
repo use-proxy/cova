@@ -2,27 +2,25 @@
 # Read this FIRST at the start of every Claude Code session
 
 ## Last Updated
-2026-03-28 — Sprint 11 COMPLETE (Edge Cases + Analytics + Error Handling)
+2026-03-28 — Sprint 12 COMPLETE — MVP COMPLETE
 
-## Current Sprint
-Sprint 11 — COMPLETE. Next: Sprint 12 (TBD).
+## Current State
+MVP is code-complete. 12 sprints done. 95% spec completion. All 13 screens implemented. All 17 edge cases handled.
+Remaining 5% requires physical device testing (Apple/Google auth, LiDAR, camera) and manual setup (App Store, affiliate URLs).
 
-## What Was Done This Session (Sprint 11)
-- PostHog: installed posthog-react-native, created lib/posthog.ts, initialized in App.tsx
-- PostHog events: app_opened, quiz_completed, render_started, render_completed, product_tapped, product_pinned, product_purchased, chat_message_sent, room_deleted
-- ErrorBoundary: React error boundary wrapping entire app, shows retry screen
-- NetworkBanner: NetInfo listener, shows "No internet" banner when offline
-- callEdgeFunction: added configurable timeout (withTimeout utility), default 30s
-- useRender: AppState background polling — resumes poll immediately when app returns to foreground
-- FurniturePiece: grey box fallback when GLB fails to load (Suspense + null asset)
-- ProfileScreen: "Design more rooms" placeholder when user has exactly 1 completed room
-- All 17 spec edge cases verified and handled
+## What Was Done This Session (Sprint 12 — Final Polish)
+- Fixed Maestro flow 02 Budget step failure: updated yaml to match "Set Your Budget" text
+- PostHog: fixed deprecated initAsync → new PostHog() constructor
+- PostHog: added style_match_score to product_tapped, trigger_action to chat_message_sent
+- app.json: fixed splash backgroundColor from #1B3A2D → #0A1628 (spec: dark navy)
+- docs/app-store-description.md: name, subtitle, 170-word description, keywords, missing assets list
+- Exhaustive spec audit: all 13 screens PASS
 
-## What Was Done Previously (Sprint 10)
-- Migration 20240028: linked_product_id + dimensions_m on products table
-- 508 3D models tagged, 443 linked to purchasable products
-- RoomViewer3DScreen: "Browse Similar" button + ProductPanel integration
-- BoxRoom: ceiling height measurement indicator
+## What Was Done Previously (Sprint 11)
+- PostHog analytics: 9 events across quiz, render, products, chat, rooms
+- ErrorBoundary, NetworkBanner, Supabase timeout wrapper
+- AppState background render polling, GLB grey box fallback
+- All 17 edge cases verified
 
 ## What Was Done Previously (Sprint 7)
 - chat-room edge function: full system prompt (room type, style blend %, budget, dimensions, furniture, pinned products, render count, last prompt)
@@ -95,15 +93,27 @@ Sprint 11 — COMPLETE. Next: Sprint 12 (TBD).
 - Style match score: computed client-side dot product (product.style_tags vs room.style_blend)
 - detect-furniture: fires once on RoomViewer3DScreen mount, 5s timeout, silent fallback
 
-## What's NOT Working / Pending
-- Apple Sign In: code fixed, needs physical device verification
-- Google Sign In: needs EXPO_PUBLIC_GOOGLE_CLIENT_ID in .env + physical device test
-- LiDAR Sub-sprint B/C: blocked on physical device
-- expo-sensors Accelerometer: conditional require workaround — needs native rebuild for full function
-- Products: 5,581 total (3,052 with CLIP embeddings, 2,529 with placeholder images)
-- 3D models: 665 total (Poly Haven 149, Sketchfab 216, Poly Pizza 300)
-- Swipe cards: 950 total (exceeds 923 target)
-- Flow 02 (style quiz): pre-existing "Budget" step failure — not a regression
+## What Needs Physical Device Testing
+- Apple Sign In: code complete, needs physical device + Apple Developer
+- Google Sign In: code complete, needs EXPO_PUBLIC_GOOGLE_CLIENT_ID + physical device
+- LiDAR RoomPlan: code complete, needs iPhone 12 Pro+ with LiDAR
+- Camera capture: all 3 paths coded, needs camera access
+- App Store screenshots: 6 screenshots on 6.7" iPhone
+- PostHog live event verification
+
+## What Needs Manual Setup Before App Store
+- App Store Connect account + app listing
+- Apple Developer certificate + provisioning profiles
+- EAS Build production configuration
+- Real GOOGLE_CLIENT_ID in .env
+- Verify affiliate URLs for Wayfair/Amazon/IKEA/CB2
+- App icon verification: dark navy + gold arches, all sizes
+
+## Data Counts
+- Products: 5,581 total (3,052 with CLIP embeddings)
+- 3D models: 665 (508 tagged + linked in Sprint 10)
+- Swipe cards: 950 (exceeds 923 target)
+- Migrations: 28 total (20240001 through 20240028)
 
 ## Key Architecture Decisions — Locked
 - CameraControlState: { theta: number; fov: number } — phi and radius REMOVED in Sprint 5

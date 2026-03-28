@@ -10,15 +10,14 @@ const POSTHOG_HOST = 'https://us.i.posthog.com';
 
 let posthog: PostHog | null = null;
 
-export async function initPostHog(): Promise<void> {
+export function initPostHog(): void {
   if (!POSTHOG_API_KEY) {
     console.warn('[PostHog] No API key — analytics disabled');
     return;
   }
   try {
-    posthog = await PostHog.initAsync(POSTHOG_API_KEY, {
+    posthog = new PostHog(POSTHOG_API_KEY, {
       host: POSTHOG_HOST,
-      enableSessionReplay: false,
     });
   } catch (e) {
     console.warn('[PostHog] Init failed:', e);
@@ -26,11 +25,11 @@ export async function initPostHog(): Promise<void> {
 }
 
 export function track(event: string, properties?: Record<string, unknown>): void {
-  posthog?.capture(event, properties);
+  posthog?.capture(event, properties as Record<string, string>);
 }
 
 export function identify(userId: string, traits?: Record<string, unknown>): void {
-  posthog?.identify(userId, traits);
+  posthog?.identify(userId, traits as Record<string, string>);
 }
 
 export function reset(): void {
