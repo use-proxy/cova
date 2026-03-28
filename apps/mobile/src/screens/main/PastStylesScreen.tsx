@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -71,6 +72,7 @@ export default function PastStylesScreen() {
   const user = useAppStore((s) => s.user);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [applying, setApplying] = useState<string | null>(null);
 
   const fetchRooms = useCallback(async () => {
@@ -86,6 +88,12 @@ export default function PastStylesScreen() {
   }, [user, newRoomId]);
 
   useEffect(() => { fetchRooms(); }, [fetchRooms]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchRooms();
+    setRefreshing(false);
+  };
 
   const handleUseStyle = async (room: Room) => {
     setApplying(room.id);
@@ -122,7 +130,11 @@ export default function PastStylesScreen() {
         <View style={styles.backBtn} />
       </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={GOLD} />}
+      >
         <Text style={styles.subtitle}>Use a style from a previous room or start fresh.</Text>
 
         {loading ? (

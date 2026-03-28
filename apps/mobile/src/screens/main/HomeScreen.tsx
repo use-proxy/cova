@@ -79,9 +79,9 @@ function getDominant(blend: Record<string, number>): StyleName {
 function getGreeting(name: string | null): string {
   const hour = new Date().getHours();
   const first = name?.split(' ')[0] ?? 'there';
-  if (hour >= 6 && hour < 12) return `Good morning, ${first}. Ready to design?`;
-  if (hour >= 12 && hour < 18) return `Welcome back, ${first}.`;
-  return `Good evening, ${first}.`;
+  if (hour >= 6 && hour < 12) return `Good morning, ${first}`;
+  if (hour >= 12 && hour < 18) return `Good afternoon, ${first}`;
+  return `Good evening, ${first}`;
 }
 
 // ── Double Arch SVG ──
@@ -213,6 +213,7 @@ const mcStyles = StyleSheet.create({
 
 function HeroCard({ room, onPress }: { room: Room; onPress: () => void }) {
   const dominant = getDominant(room.style_blend as Record<string, number>);
+  const isIncomplete = !room.latest_render_url;
 
   return (
     <TouchableOpacity style={[heroStyles.card, { height: HERO_HEIGHT }]} activeOpacity={0.92} onPress={onPress}>
@@ -221,8 +222,9 @@ function HeroCard({ room, onPress }: { room: Room; onPress: () => void }) {
       ) : (
         <View style={heroStyles.placeholder} />
       )}
-      {/* Bottom gradient overlay */}
-      <View style={heroStyles.gradient} />
+      {/* Bottom gradient — two layers to simulate dark bottom, transparent top */}
+      <View style={heroStyles.gradientMid} />
+      <View style={heroStyles.gradientBottom} />
       {/* Info */}
       <View style={heroStyles.footer}>
         <View style={heroStyles.footerLeft}>
@@ -230,9 +232,11 @@ function HeroCard({ room, onPress }: { room: Room; onPress: () => void }) {
           <Text style={heroStyles.styleLabel}>{STYLE_LABELS[dominant as StyleName] ?? dominant}</Text>
           <BlendBar blend={room.style_blend as Record<string, number>} />
         </View>
-        <TouchableOpacity style={heroStyles.continueBtn} onPress={onPress}>
-          <Text style={heroStyles.continueBtnText}>Continue →</Text>
-        </TouchableOpacity>
+        {isIncomplete && (
+          <TouchableOpacity style={heroStyles.continueBtn} onPress={onPress}>
+            <Text style={heroStyles.continueBtnText}>Continue Designing</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -246,14 +250,21 @@ const heroStyles = StyleSheet.create({
     backgroundColor: '#132035',
   },
   placeholder: { flex: 1, backgroundColor: '#132035' },
-  gradient: {
+  gradientMid: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: '60%',
-    backgroundColor: 'rgba(10,22,40,0)',
-    // RN doesn't support linear-gradient natively; we layer two overlays
+    height: '50%',
+    backgroundColor: 'rgba(10,22,40,0.3)',
+  },
+  gradientBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '30%',
+    backgroundColor: 'rgba(10,22,40,0.6)',
   },
   footer: {
     position: 'absolute',
@@ -310,11 +321,12 @@ export default function HomeScreen() {
 
   // ── Filtering ──
 
+  const roomsWithRenders = rooms.filter((r) => r.latest_render_url);
   const filteredRooms = activeFilter === 'all'
-    ? rooms
-    : rooms.filter((r) => getDominant(r.style_blend as Record<string, number>) === activeFilter);
+    ? roomsWithRenders
+    : roomsWithRenders.filter((r) => getDominant(r.style_blend as Record<string, number>) === activeFilter);
 
-  const heroRoom = rooms.find((r) => r.latest_render_url) ?? rooms[0] ?? null;
+  const heroRoom = roomsWithRenders[0] ?? rooms[0] ?? null;
 
   const displayedRooms = filteredRooms.slice(0, displayCount);
   const leftCol = displayedRooms.filter((_, i) => i % 2 === 0);
@@ -488,7 +500,7 @@ export default function HomeScreen() {
             <DoubleArch color="rgba(184,134,11,0.5)" />
             <Text style={styles.emptyGold}>Your first design is waiting.</Text>
             <TouchableOpacity style={styles.emptyBtn} testID="new-room-button" onPress={handleNewRoom}>
-              <Text style={styles.emptyBtnText}>Design Your First Room</Text>
+              <Text style={styles.emptyBtnText}>Start Designing</Text>
             </TouchableOpacity>
           </View>
         ) : (

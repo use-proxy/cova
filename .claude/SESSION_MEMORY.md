@@ -2,18 +2,19 @@
 # Read this FIRST at the start of every Claude Code session
 
 ## Last Updated
-2026-03-27 — Sprint 7 COMPLETE (Chatbot Full Implementation)
+2026-03-28 — Sprint 8 COMPLETE (Dashboard V0 UI)
 
 ## Current Sprint
-Sprint 7 — COMPLETE. Next: Sprint 8 (TBD).
+Sprint 8 — COMPLETE. Next: Sprint 9 (TBD).
 
-## What Was Done This Session (Sprint 7 + Gap Fixes)
-### Sprint 7 Gap Fixes (post-sprint):
-- ChatPanel: drag handle now has PanResponder — drag up to full screen, snap back to 60% on release
-- ChatPanel: panelHeightAnim (Animated.Value) replaces fixed PANEL_HEIGHT — useNativeDriver:false for height animation
-- ChatPanel: KeyboardAvoidingView moved to wrap ALL panel content (not just input row), behavior='padding' on iOS
-- ChatPanel: starter wording fixed to exact spec — "What furniture should I add?" / "Make it feel more cozy" / "What is my color palette?" / "Show me products under $500"
-- Gap 2 (typing dots) and Gap 4 (per-room persistence) were already correctly implemented
+## What Was Done This Session (Sprint 8 — Gap Fixes)
+Pranav built the core Sprint 8 dashboard UI (HomeScreen, PastStylesScreen, MainNavigator tabs, HomeStack nav). This session fixed spec gaps:
+- Greeting text: removed extra phrases — now exactly "Good morning/afternoon/evening, [name]"
+- Empty state button: "Design Your First Room" → "Start Designing" (spec match)
+- Hero card: "Continue →" → "Continue Designing", only shown for incomplete rooms (no render)
+- Hero gradient: improved from flat overlay to two-layer gradient simulation (dark bottom, transparent top)
+- Masonry grid: now filters to rooms with AI renders only (spec: "AI renders only, NOT original photos")
+- PastStylesScreen: added pull-to-refresh (RefreshControl)
 
 ## What Was Done Previously (Sprint 7)
 - chat-room edge function: full system prompt (room type, style blend %, budget, dimensions, furniture, pinned products, render count, last prompt)

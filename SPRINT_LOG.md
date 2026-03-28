@@ -1,7 +1,7 @@
 # Cova Sprint Log
 # Updated after every sprint — read at session start
 
-## Spec Completion: 56% (Sprint 7 — Chatbot Full Implementation)
+## Spec Completion: 63% (Sprint 8 — Dashboard V0 UI)
 
 ---
 
@@ -124,6 +124,51 @@ Target: Product catalog expansion
 - CLIP embeddings: 3,052 / 5,581 products (55% — all real-image products covered)
 
 ---
+
+## Sprint 8 — COMPLETE
+Target: Dashboard V0 UI
+
+### Item 1 — Hero render card
+- [x] Most recent AI render, full width (HeroCard component)
+- [x] Gradient overlay (dark bottom, transparent top) — two-layer simulation
+- [x] Style blend bar below hero: colored segments + dominant style label
+- [x] "Continue Designing" prompt for incomplete rooms only (no render_url)
+
+### Item 2 — Quick style filter chips
+- [x] Horizontal scroll: All, Coastal, Japandi, Bohemian, Mid-Century, Minimalist
+- [x] Filters masonry grid by dominant style
+- [x] Active chip in gold, "All" default
+
+### Item 3 — Masonry grid
+- [x] 2-column Pinterest masonry layout with staggered heights
+- [x] AI renders only (rooms without renders filtered out)
+- [x] Most recent first, 12/load infinite scroll
+- [x] Staggered fade-in animation (280ms + 50ms delay per card)
+- [x] Long press: Rename (inline Alert.prompt), Duplicate Style (copies blend, skips quiz), Delete (confirmation)
+
+### Item 4 — New Room flow + empty state
+- [x] "New Room": 2+ rooms → Past Styles Page, else → Style Quiz
+- [x] Past Styles Page: render thumbnail + blend bar + dominant style + "Start Fresh"
+- [x] Pull to refresh (added RefreshControl to PastStylesScreen)
+- [x] Empty state: arch logo + "Your first design is waiting" + "Start Designing"
+
+### Item 5 — Tab bar + top bar + greeting
+- [x] 3 tabs: Home, Inspiration (Coming Soon), Profile
+- [x] Top bar: Cova double-arch logo + wordmark left, Settings gear right → Profile
+- [x] No notification bell
+- [x] Time-of-day greeting: Good morning/afternoon/evening [first name]
+
+### Gap fixes (this session)
+- [x] Greeting text: removed extra phrases — now exactly "Good morning/afternoon/evening, [name]"
+- [x] Empty state button: "Design Your First Room" → "Start Designing" (spec match)
+- [x] Hero "Continue →" → "Continue Designing", shown only for incomplete rooms
+- [x] Hero gradient: improved from flat overlay to two-layer gradient simulation
+- [x] Masonry grid: now filters to rooms with AI renders only (spec: "AI renders only, NOT original photos")
+- [x] PastStylesScreen: added pull-to-refresh (RefreshControl)
+
+### Verification
+- [x] npx tsc --noEmit passes (zero app errors)
+- [ ] Maestro flows: require dev server running on simulator (pre-existing condition)
 
 ---
 
@@ -269,6 +314,7 @@ Target: 3D Viewer Visual Quality + Interactions
 - [x] Sprint 5: 3D viewer visual quality + interactions
 - [x] Sprint 6: product panel full implementation
 - [x] Sprint 7: chatbot full implementation
+- [x] Sprint 8: dashboard V0 UI
 
 ---
 
