@@ -128,7 +128,7 @@ function RenderViewScreen() {
     setRenderStatus('idle');
     const parent = navigation.getParent();
     if (parent) {
-      parent.reset({ index: 0, routes: [{ name: 'RoomsTab' as never }] });
+      parent.reset({ index: 0, routes: [{ name: 'HomeTab' as never }] });
     } else {
       navigation.goBack();
     }
