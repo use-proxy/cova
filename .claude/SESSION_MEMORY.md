@@ -7,7 +7,15 @@
 ## Current Sprint
 Sprint 7 — COMPLETE. Next: Sprint 8 (TBD).
 
-## What Was Done This Session (Sprint 7)
+## What Was Done This Session (Sprint 7 + Gap Fixes)
+### Sprint 7 Gap Fixes (post-sprint):
+- ChatPanel: drag handle now has PanResponder — drag up to full screen, snap back to 60% on release
+- ChatPanel: panelHeightAnim (Animated.Value) replaces fixed PANEL_HEIGHT — useNativeDriver:false for height animation
+- ChatPanel: KeyboardAvoidingView moved to wrap ALL panel content (not just input row), behavior='padding' on iOS
+- ChatPanel: starter wording fixed to exact spec — "What furniture should I add?" / "Make it feel more cozy" / "What is my color palette?" / "Show me products under $500"
+- Gap 2 (typing dots) and Gap 4 (per-room persistence) were already correctly implemented
+
+## What Was Done Previously (Sprint 7)
 - chat-room edge function: full system prompt (room type, style blend %, budget, dimensions, furniture, pinned products, render count, last prompt)
 - chat-room: action trigger parsing (REGENERATE/ADJUST_BLEND/OPEN_SHOP/PIN_PRODUCT), inline product search
 - chat-room: model → claude-haiku-4-5-20251001

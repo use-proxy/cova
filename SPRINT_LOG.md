@@ -162,6 +162,12 @@ Target: Chatbot Full Implementation
 - [x] npx tsc --noEmit passes (zero errors)
 - [x] Flows 01, 04, 05, 14 pass (flow 02 pre-existing Budget step failure — not a regression)
 
+### Sprint 7 Gaps Fixed (post-sprint)
+- [x] Gap 1 — Panel slides up from bottom at 60% height; draggable to full screen via PanResponder on drag handle; KAV wraps all panel content (not just input row)
+- [x] Gap 2 — Typing indicator already correctly implemented (3 animated gold dots, isLoading state) ✅
+- [x] Gap 3 — Starter wording fixed to exact spec: "What furniture should I add?" / "Make it feel more cozy" / "What is my color palette?" / "Show me products under $500"
+- [x] Gap 4 — Per-room persistence already correctly implemented via Supabase history query on mount ✅
+
 ---
 
 ## Sprint 6 — COMPLETE
