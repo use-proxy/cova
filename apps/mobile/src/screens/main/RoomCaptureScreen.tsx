@@ -174,7 +174,7 @@ const checkStyles = StyleSheet.create({
     backgroundColor: '#2E7D32',
   },
   dotFailing: {
-    backgroundColor: '#C62828',
+    backgroundColor: '#E6A817',
   },
   label: {
     fontSize: 14,
@@ -184,7 +184,7 @@ const checkStyles = StyleSheet.create({
     color: '#2E7D32',
   },
   labelFailing: {
-    color: '#C62828',
+    color: '#E6A817',
   },
 });
 
@@ -329,25 +329,24 @@ function RoomCaptureScreen() {
 
   // ── Start/stop accelerometer for horizontal check ────────────────────────
   const startSensorChecks = useCallback(() => {
-    // Start accelerometer for horizontal check (within 15 degrees)
+    // Start accelerometer for horizontal check (within 25 degrees — relaxed for small rooms)
     if (Accelerometer) {
       Accelerometer.setUpdateInterval(200);
       accelSubRef.current = Accelerometer.addListener(({ x, y, z }: { x: number; y: number; z: number }) => {
         // Calculate pitch angle in degrees
         const pitch = Math.abs(Math.atan2(y, Math.sqrt(x * x + z * z)) * (180 / Math.PI));
-        setIsHorizontal(pitch < 15);
+        setIsHorizontal(pitch < 25);
       });
     } else {
       // expo-sensors not compiled — pass horizontal check automatically
       setIsHorizontal(true);
     }
 
-    // Light check: pragmatic approach — pass after 1.5s delay
-    // Real brightness validation happens server-side
+    // Light check: pass quickly — real validation happens server-side
     setLightCheckPassed(false);
     lightTimerRef.current = setTimeout(() => {
       setLightCheckPassed(true);
-    }, 1500);
+    }, 500);
   }, []);
 
   const stopSensorChecks = useCallback(() => {

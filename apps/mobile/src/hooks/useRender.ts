@@ -188,7 +188,7 @@ export function useRender() {
           render_type:      params.renderType,
           room_dimensions:  params.dimensions,
           pinned_products:  params.pinnedProducts,
-        });
+        }, 120000); // 120s timeout — render-room blocks on depth map (up to 45s) + FLUX start
         Sentry.addBreadcrumb({ message: `startRender: render-room returned render_id=${res.render_id}`, level: 'info' });
         break; // success — exit retry loop
       } catch (e: unknown) {
@@ -204,6 +204,7 @@ export function useRender() {
     if (!res) {
       // Both attempts failed — map error code to user-friendly message and capture in Sentry
       const errMsg = lastError instanceof Error ? lastError.message : '';
+      console.error('[useRender] render-room failed after 2 attempts:', errMsg, lastError);
       const isDepthError = errMsg.toLowerCase().includes('depth');
       captureProductError(
         lastError instanceof Error ? lastError : new Error(errMsg || 'render-room failed after 2 attempts'),

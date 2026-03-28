@@ -8,14 +8,20 @@
 MVP is code-complete. 12 sprints done. 95% spec completion. All 13 screens implemented. All 17 edge cases handled.
 Remaining 5% requires physical device testing (Apple/Google auth, LiDAR, camera) and manual setup (App Store, affiliate URLs).
 
-## What Was Done This Session (Security Audit — post-MVP)
-- Migration 20240029: RLS security audit — products + swipe_cards write policies tightened to service_role only
-- rate_limits table + check_rate_limit() RPC: atomic per-user per-hour rate limiting
-- render-room: rate limited to 10 renders/user/hour (429 response)
-- chat-room: rate limited to 60 messages/user/hour (429 response)
-- chat-room: prompt injection sanitization — 6 patterns stripped, 500 char server-side truncation
-- get-render-status: 10-minute watchdog — auto-fails stuck renders
-- Total migrations: 29 (20240001 through 20240029)
+## What Was Done This Session
+### Physical device bug fixes
+- RoomCaptureScreen: horizontal check relaxed from 15° to 25° (small rooms), light check timer 1.5s → 0.5s, indicators changed from red to amber (warnings not blockers)
+- callEdgeFunction: default timeout increased from 30s to 60s, render-room call uses 120s (blocks on depth map up to 45s)
+- callEdgeFunction: improved error logging — console.error with function name, HTTP status, error body
+- withTimeout: error message now shows actual timeout duration instead of generic "Having trouble connecting"
+- useRender: added console.error on render failure with full error details
+
+### Security Audit (earlier this session)
+- Migration 20240029: RLS audit — products + swipe_cards write policies tightened
+- Migration 20240030: Fixed FOR ALL USING → explicit INSERT WITH CHECK on rooms, renders, chat_messages, token_transactions, cart_items, users
+- rate_limits table + check_rate_limit() RPC, render-room 10/hr, chat-room 60/hr
+- Prompt injection sanitization, 10-minute render watchdog
+- Total migrations: 30 (20240001 through 20240030)
 
 ## What Was Done Previously (Sprint 12 — Final Polish)
 - Fixed flow 02 Budget step, PostHog init, app.json splash bg, app store description
