@@ -107,7 +107,7 @@ export default function PastStylesScreen() {
       if (data) {
         useAppStore.getState().setCurrentRoom(data as Room);
       }
-      navigation.navigate('Room', { initialRoute: 'RoomCapture', room_id: newRoomId });
+      navigation.navigate('Room', { initialRoute: 'BudgetSlider', room_id: newRoomId });
     } catch {
       Alert.alert('Error', 'Could not apply style. Please try again.');
     } finally {

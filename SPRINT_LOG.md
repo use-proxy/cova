@@ -1,7 +1,7 @@
 # Cova Sprint Log
 # Updated after every sprint — read at session start
 
-## Spec Completion: 63% (Sprint 8 — Dashboard V0 UI)
+## Spec Completion: 70% (Sprint 9 — Profile Screen + Quiz Improvements)
 
 ---
 
@@ -122,6 +122,56 @@ Target: Product catalog expansion
 - 3D models: 665 (149 Poly Haven + 216 Sketchfab + 300 Poly Pizza)
 - Quiz/swipe cards: 950 (EXCEEDS 923 target)
 - CLIP embeddings: 3,052 / 5,581 products (55% — all real-image products covered)
+
+---
+
+## Sprint 9 — COMPLETE
+Target: Profile Screen + Quiz Improvements
+
+### Item 1 — Profile Screen (Screen 11)
+- [x] Avatar upload: image picker → compress 512px → upload to Supabase 'avatars' bucket → update user record
+- [x] Editable display name: tap to edit inline, save to Supabase
+- [x] Email (read-only), member since date
+- [x] My Favorites section: 3-column grid of saved products, tap for product info popup
+- [x] My Style section: only shown with 2+ completed rooms, combined style blend bar chart
+- [x] Design History stats: 2x2 grid (total rooms, total renders, favorite style, products saved)
+- [x] Default budget slider: $500-$10,000, applies to new rooms
+- [x] Notifications toggle (cosmetic MVP)
+- [x] Units toggle: Imperial/Metric (cosmetic MVP)
+- [x] Token balance: static 999, "Get More Tokens" → Coming Soon alert
+- [x] Change Password: only shown for email auth (checks app_metadata.provider)
+- [x] Sign Out: confirmation → clears session → splash
+- [x] Delete Account: confirmation → delete-account edge function → splash
+- [x] App info: version from app.json, Privacy Policy (Coming Soon), Terms (Coming Soon), hellocova@gmail.com mailto
+
+### Item 2 — Past Styles Page improvements
+- [x] Each card: render thumbnail + blend color bar + dominant style label (already done Sprint 8)
+- [x] "Start Fresh" button → Style Quiz from scratch (already done Sprint 8)
+- [x] Tapping a style card → Budget Slider → Room Capture (was RoomCapture directly, now routes through BudgetSlider)
+- [x] Pull to refresh (done Sprint 8)
+
+### Item 3 — Quiz improvements
+- [x] "I'm done" button: appears after 10+ swipes, allows early quiz completion
+- [x] Back button on quiz cards: reverts last swipe (blend + card index restored from swipeHistoryRef)
+- [x] Mid-quiz close resume: saves progress to AsyncStorage (blend, swipeCount, cardIndex) after every swipe
+- [x] Resume prompt: "Continue your style quiz?" → Resume / Start Over modal on reopen
+
+### Item 4 — Returning user Past Styles Page
+- [x] Returning user "New Room" → Past Styles (if 2+ rooms) — already done Sprint 8
+- [x] Past Styles shows render thumbnail + blend bar + dominant style — already done Sprint 8
+- [x] "Start Fresh" → full quiz from scratch — already done Sprint 8
+- [x] Tapping room card → uses style_blend → Budget Slider → Room Capture (updated to route through BudgetSlider)
+- [x] "Duplicate Style" from HomeScreen long press also routes through BudgetSlider
+
+### Supporting changes
+- [x] BudgetSliderScreen.tsx: new screen — slider $500-$10,000+, saves to rooms table, navy background
+- [x] RoomNavigator: added BudgetSlider route between StyleQuiz and RoomCapture
+- [x] Quiz completion → BudgetSlider (was RoomCapture)
+- [x] handleSkip, handleUseExistingStyle, handleUsePreviousStyle all → BudgetSlider
+
+### Verification
+- [x] npx tsc --noEmit passes (zero app errors)
+- [ ] Maestro flows: require dev server running on simulator (pre-existing condition)
 
 ---
 
@@ -315,6 +365,7 @@ Target: 3D Viewer Visual Quality + Interactions
 - [x] Sprint 6: product panel full implementation
 - [x] Sprint 7: chatbot full implementation
 - [x] Sprint 8: dashboard V0 UI
+- [x] Sprint 9: profile screen + quiz improvements
 
 ---
 

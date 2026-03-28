@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Sentry, logProductDeviation, setCurrentScreen, setFlowStep } from '../../lib/sentry';
 import {
   View,
@@ -168,7 +169,10 @@ function StyleQuizScreen() {
   const [showBlendModal, setShowBlendModal] = useState(false);
   const [swipeCount, setSwipeCount] = useState(0);
   const [showPrevStyleModal, setShowPrevStyleModal] = useState(false);
+  const [showResumeModal, setShowResumeModal] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
+  // Track swipe history for back button: each entry is { cardIndex, blendBefore }
+  const swipeHistoryRef = useRef<{ cardIndex: number; blendBefore: StyleBlend }[]>([]);
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completedRef = useRef(false);
@@ -209,6 +213,23 @@ function StyleQuizScreen() {
       setShowPrevStyleModal(true);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // On mount: check for saved quiz progress (mid-quiz app close)
+  useEffect(() => {
+    if (!currentRoom) return;
+    const key = `quiz_progress_${currentRoom.id}`;
+    AsyncStorage.getItem(key).then((raw) => {
+      if (!raw) return;
+      try {
+        const saved = JSON.parse(raw) as { blend: StyleBlend; swipeCount: number; cardIndex: number };
+        if (saved.swipeCount > 0) {
+          setShowResumeModal(true);
+          // Store so we can restore later
+          prevBlendRef.current = saved.blend;
+        }
+      } catch { /* ignore corrupt data */ }
+    });
+  }, [currentRoom?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const roomType = currentRoom?.room_type ?? 'living_room';
   const totalCards = 20; // visual cap for progress bar
@@ -395,7 +416,11 @@ function StyleQuizScreen() {
     if (userId) {
       void supabase.from('users').update({ style_blend: finalBlend }).eq('id', userId);
     }
-    navigation.navigate('RoomCapture');
+    // Clear saved quiz progress
+    if (currentRoom) {
+      void AsyncStorage.removeItem(`quiz_progress_${currentRoom.id}`);
+    }
+    navigation.navigate('BudgetSlider');
   }, [currentRoom, updateRoom, navigation]);
   handleCompleteRef.current = handleComplete;
 
@@ -434,6 +459,13 @@ function StyleQuizScreen() {
     [cards.length, handleComplete, fetchRefinementCard],
   );
   checkTerminationRef.current = checkTermination;
+
+  // ── Save quiz progress for mid-quiz resume ──
+  const saveQuizProgress = useCallback((blend: StyleBlend, count: number, idx: number) => {
+    if (!currentRoom) return;
+    const key = `quiz_progress_${currentRoom.id}`;
+    void AsyncStorage.setItem(key, JSON.stringify({ blend, swipeCount: count, cardIndex: idx }));
+  }, [currentRoom]);
 
   // ── Swipe handlers ──
   const animateOff = (toX: number, cb: () => void) => {
@@ -481,6 +513,7 @@ function StyleQuizScreen() {
     }
 
     animateOff(SCREEN_WIDTH + 100, () => {
+      swipeHistoryRef.current.push({ cardIndex: state.currentIndex, blendBefore: prevBlend });
       const nextIdx = state.currentIndex + 1;
       const nextCount = state.swipeCount + 1;
       state.currentIndex = nextIdx;
@@ -489,6 +522,7 @@ function StyleQuizScreen() {
       setCurrentIndex(nextIdx);
       setStyleBlend(normalized);
       setSwipeCount(nextCount);
+      saveQuizProgress(normalized, nextCount, nextIdx);
       checkTerminationRef.current(nextCount, nextIdx, normalized);
     });
   };
@@ -515,6 +549,7 @@ function StyleQuizScreen() {
     }
 
     animateOff(-SCREEN_WIDTH - 100, () => {
+      swipeHistoryRef.current.push({ cardIndex: state.currentIndex, blendBefore: prevBlend });
       const nextIdx = state.currentIndex + 1;
       const nextCount = state.swipeCount + 1;
       state.currentIndex = nextIdx;
@@ -523,6 +558,7 @@ function StyleQuizScreen() {
       setCurrentIndex(nextIdx);
       setStyleBlend(normalized);
       setSwipeCount(nextCount);
+      saveQuizProgress(normalized, nextCount, nextIdx);
       checkTerminationRef.current(nextCount, nextIdx, normalized);
     });
   };
@@ -532,14 +568,40 @@ function StyleQuizScreen() {
     if (state.isAnimating) return;
     const currentBlend = normalizeBlend(state.styleBlend);
     animateOff(SCREEN_WIDTH + 100, () => {
+      swipeHistoryRef.current.push({ cardIndex: state.currentIndex, blendBefore: { ...state.styleBlend } });
       const nextIdx = state.currentIndex + 1;
       const nextCount = state.swipeCount + 1;
       state.currentIndex = nextIdx;
       state.swipeCount = nextCount;
       setCurrentIndex(nextIdx);
       setSwipeCount(nextCount);
+      saveQuizProgress(state.styleBlend, nextCount, nextIdx);
       checkTerminationRef.current(nextCount, nextIdx, currentBlend);
     });
+  };
+
+  // ── Back button handler: revert last swipe ──
+  const handleGoBack = () => {
+    const state = swipeStateRef.current;
+    if (state.isAnimating) return;
+    const history = swipeHistoryRef.current;
+    if (history.length === 0) return;
+    const last = history.pop()!;
+    const prevIdx = last.cardIndex;
+    const prevCount = Math.max(0, state.swipeCount - 1);
+    state.currentIndex = prevIdx;
+    state.styleBlend = last.blendBefore;
+    state.swipeCount = prevCount;
+    setCurrentIndex(prevIdx);
+    setStyleBlend(last.blendBefore);
+    setSwipeCount(prevCount);
+    saveQuizProgress(last.blendBefore, prevCount, prevIdx);
+  };
+
+  // ── "I'm done" handler ──
+  const handleImDone = () => {
+    if (completedRef.current) return;
+    handleComplete(true);
   };
 
   const resetCard = () => {
@@ -601,7 +663,11 @@ function StyleQuizScreen() {
 
   const handleUseExistingStyle = () => {
     setShowBlendModal(false);
-    navigation.navigate('RoomCapture');
+    // Clear saved quiz progress
+    if (currentRoom) {
+      void AsyncStorage.removeItem(`quiz_progress_${currentRoom.id}`);
+    }
+    navigation.navigate('BudgetSlider');
   };
 
   const handleStartFresh = () => {
@@ -618,7 +684,11 @@ function StyleQuizScreen() {
       void supabase.from('rooms').update({ style_blend: blend }).eq('id', currentRoom.id);
     }
     useAppStore.getState().setStyleBlend(blend);
-    navigation.navigate('RoomCapture');
+    // Clear saved quiz progress
+    if (currentRoom) {
+      void AsyncStorage.removeItem(`quiz_progress_${currentRoom.id}`);
+    }
+    navigation.navigate('BudgetSlider');
   };
 
   const handleUsePreviousStyle = () => {
@@ -628,11 +698,52 @@ function StyleQuizScreen() {
       void supabase.from('rooms').update({ style_blend: blend }).eq('id', currentRoom.id);
     }
     setShowPrevStyleModal(false);
-    navigation.navigate('RoomCapture');
+    // Clear saved quiz progress
+    if (currentRoom) {
+      void AsyncStorage.removeItem(`quiz_progress_${currentRoom.id}`);
+    }
+    navigation.navigate('BudgetSlider');
   };
 
   const handleDiscoverNewStyle = () => {
     setShowPrevStyleModal(false);
+  };
+
+  // ── Resume quiz handlers ──
+  const handleResumeQuiz = async () => {
+    setShowResumeModal(false);
+    if (!currentRoom) return;
+    const key = `quiz_progress_${currentRoom.id}`;
+    const raw = await AsyncStorage.getItem(key);
+    if (!raw) { setPhase('quiz'); startQuizTimer(); return; }
+    try {
+      const saved = JSON.parse(raw) as { blend: StyleBlend; swipeCount: number; cardIndex: number };
+      setStyleBlend(saved.blend);
+      setSwipeCount(saved.swipeCount);
+      setCurrentIndex(saved.cardIndex);
+      swipeStateRef.current.styleBlend = saved.blend;
+      swipeStateRef.current.swipeCount = saved.swipeCount;
+      swipeStateRef.current.currentIndex = saved.cardIndex;
+      setPhase('quiz');
+      startQuizTimer();
+    } catch {
+      setPhase('quiz');
+      startQuizTimer();
+    }
+  };
+
+  const handleStartOver = () => {
+    setShowResumeModal(false);
+    if (currentRoom) {
+      void AsyncStorage.removeItem(`quiz_progress_${currentRoom.id}`);
+    }
+    setStyleBlend({ ...EQUAL_BLEND });
+    swipeStateRef.current.styleBlend = { ...EQUAL_BLEND };
+    swipeStateRef.current.swipeCount = 0;
+    swipeStateRef.current.currentIndex = 0;
+    setSwipeCount(0);
+    setCurrentIndex(0);
+    swipeHistoryRef.current = [];
   };
 
   // ══════════════════════════════════════════════════
@@ -697,6 +808,24 @@ function StyleQuizScreen() {
             </View>
           </View>
         </Modal>
+
+        {/* Resume quiz modal */}
+        <Modal visible={showResumeModal} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Continue your style quiz?</Text>
+              <Text style={styles.modalBody}>
+                You left off partway through. Pick up where you stopped or start over.
+              </Text>
+              <TouchableOpacity style={styles.modalPrimaryBtn} onPress={handleResumeQuiz}>
+                <Text style={styles.modalPrimaryBtnText}>Resume</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalOutlineBtn} onPress={handleStartOver}>
+                <Text style={styles.modalOutlineBtnText}>Start Over</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     );
   }
@@ -743,7 +872,13 @@ function StyleQuizScreen() {
     <SafeAreaView style={styles.root}>
       {/* ── Top bar ── */}
       <View style={styles.topBar}>
-        <DoubleArch size="small" />
+        {swipeHistoryRef.current.length > 0 ? (
+          <TouchableOpacity onPress={handleGoBack} style={styles.backCardBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Text style={styles.backCardBtnText}>←</Text>
+          </TouchableOpacity>
+        ) : (
+          <DoubleArch size="small" />
+        )}
         <ProgressBar progress={progress} />
       </View>
 
@@ -802,6 +937,11 @@ function StyleQuizScreen() {
         <TouchableOpacity style={styles.notSureBtn} activeOpacity={0.8} onPress={handleNotSure}>
           <Text style={styles.notSureBtnText}>Not sure</Text>
         </TouchableOpacity>
+        {swipeCount >= MIN_SWIPES_BEFORE_COMPLETE && (
+          <TouchableOpacity style={styles.imDoneBtn} activeOpacity={0.8} onPress={handleImDone}>
+            <Text style={styles.imDoneBtnText}>I'm done</Text>
+          </TouchableOpacity>
+        )}
         <Text style={styles.progressLabel}>
           {progressHint}
         </Text>
@@ -1049,17 +1189,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: 32,
   },
+  backCardBtn: {
+    width: 24,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backCardBtnText: {
+    color: GOLD,
+    fontSize: 22,
+  },
   notSureBtn: {
     paddingHorizontal: 48,
     paddingVertical: 14,
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.3)',
     borderRadius: 28,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   notSureBtnText: {
     color: '#FFFFFF',
     fontSize: 16,
+  },
+  imDoneBtn: {
+    paddingHorizontal: 32,
+    paddingVertical: 10,
+    marginBottom: 12,
+  },
+  imDoneBtnText: {
+    color: 'rgba(255,255,255,0.45)',
+    fontSize: 14,
   },
   progressLabel: {
     color: 'rgba(255,255,255,0.4)',

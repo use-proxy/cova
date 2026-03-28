@@ -2,12 +2,14 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import RoomCaptureScreen from '../screens/main/RoomCaptureScreen';
 import StyleQuizScreen from '../screens/main/StyleQuizScreen';
+import BudgetSliderScreen from '../screens/main/BudgetSliderScreen';
 import RoomViewer3DScreen from '../screens/main/RoomViewer3DScreen';
 import RenderViewScreen from '../screens/main/RenderViewScreen';
 
 export type RoomStackParamList = {
   RoomCapture: undefined;
   StyleQuiz: undefined;
+  BudgetSlider: undefined;
   Viewer3D: { room_id?: string };
   RenderView: { room_id?: string; autoGenerate?: boolean; testMode?: boolean };
 };
@@ -23,6 +25,7 @@ export default function RoomNavigator({
     <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={initialRouteName}>
       <Stack.Screen name="RoomCapture" component={RoomCaptureScreen} />
       <Stack.Screen name="StyleQuiz" component={StyleQuizScreen} />
+      <Stack.Screen name="BudgetSlider" component={BudgetSliderScreen} />
       <Stack.Screen name="Viewer3D" component={RoomViewer3DScreen} />
       <Stack.Screen name="RenderView" component={RenderViewScreen} />
     </Stack.Navigator>

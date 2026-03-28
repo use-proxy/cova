@@ -406,7 +406,7 @@ export default function HomeScreen() {
     const newRoom = data as Room;
     setRooms((prev) => [newRoom, ...prev]);
     useAppStore.getState().setCurrentRoom(newRoom);
-    navigation.navigate('Room', { initialRoute: 'RoomCapture', room_id: newRoom.id });
+    navigation.navigate('Room', { initialRoute: 'BudgetSlider', room_id: newRoom.id });
   };
 
   const handleDeleteRoom = async (room: Room) => {

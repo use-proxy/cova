@@ -2,19 +2,29 @@
 # Read this FIRST at the start of every Claude Code session
 
 ## Last Updated
-2026-03-28 — Sprint 8 COMPLETE (Dashboard V0 UI)
+2026-03-28 — Sprint 9 COMPLETE (Profile Screen + Quiz Improvements)
 
 ## Current Sprint
-Sprint 8 — COMPLETE. Next: Sprint 9 (TBD).
+Sprint 9 — COMPLETE. Next: Sprint 10 (TBD).
 
-## What Was Done This Session (Sprint 8 — Gap Fixes)
-Pranav built the core Sprint 8 dashboard UI (HomeScreen, PastStylesScreen, MainNavigator tabs, HomeStack nav). This session fixed spec gaps:
-- Greeting text: removed extra phrases — now exactly "Good morning/afternoon/evening, [name]"
-- Empty state button: "Design Your First Room" → "Start Designing" (spec match)
-- Hero card: "Continue →" → "Continue Designing", only shown for incomplete rooms (no render)
-- Hero gradient: improved from flat overlay to two-layer gradient simulation (dark bottom, transparent top)
-- Masonry grid: now filters to rooms with AI renders only (spec: "AI renders only, NOT original photos")
-- PastStylesScreen: added pull-to-refresh (RefreshControl)
+## What Was Done This Session (Sprint 9)
+- ProfileScreen.tsx REWRITTEN: dark theme, avatar upload (image picker → compress → Supabase 'avatars' bucket), editable display name, member since, email read-only
+- ProfileScreen: Design History 2x2 stats grid (rooms, renders, favorite style, saved products)
+- ProfileScreen: My Style bar chart — only shown with 2+ completed rooms (combined blend across rooms)
+- ProfileScreen: My Favorites 3-column grid (saved products)
+- ProfileScreen: Settings — default budget slider ($500-$10k), notifications toggle, Imperial/Metric units toggle
+- ProfileScreen: Token balance 999 + "Get More Tokens" → Coming Soon alert
+- ProfileScreen: Change Password only for email auth (checks app_metadata.provider)
+- ProfileScreen: Sign Out + Delete Account with confirmation dialogs
+- ProfileScreen: App info — version, Privacy/Terms (Coming Soon), hellocova@gmail.com mailto
+- BudgetSliderScreen.tsx CREATED: separate screen after quiz, slider $500-$10,000+, saves to rooms table
+- RoomNavigator: added BudgetSlider route
+- StyleQuizScreen: quiz completion → BudgetSlider (was RoomCapture directly)
+- StyleQuizScreen: "I'm done" button appears after 10+ swipes for early exit
+- StyleQuizScreen: back button (←) in top bar reverts last swipe (blend + card index from swipeHistoryRef)
+- StyleQuizScreen: mid-quiz resume — saves progress to AsyncStorage after each swipe, shows "Continue your style quiz?" modal on reopen
+- PastStylesScreen: tapping style card → BudgetSlider → RoomCapture (was RoomCapture directly)
+- HomeScreen: Duplicate Style → BudgetSlider → RoomCapture
 
 ## What Was Done Previously (Sprint 7)
 - chat-room edge function: full system prompt (room type, style blend %, budget, dimensions, furniture, pinned products, render count, last prompt)
