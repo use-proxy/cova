@@ -344,10 +344,27 @@ export default function HomeScreen() {
 
   // ── Room tap ──
 
-  const handleRoomTap = (room: Room) => {
+  const handleRoomTap = async (room: Room) => {
     useAppStore.getState().setCurrentRoom(room);
     if (room.latest_render_url) {
-      useAppStore.getState().setCurrentRender({ id: room.id, image_url: room.latest_render_url } as Render);
+      // Fetch the full render record to get panoramic_url
+      const { data: renderData } = await supabase
+        .from('renders')
+        .select('id, image_url, panoramic_url')
+        .eq('room_id', room.id)
+        .eq('status', 'completed')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      if (renderData) {
+        useAppStore.getState().setCurrentRender({
+          id: renderData.id,
+          image_url: renderData.image_url,
+          panoramic_url: renderData.panoramic_url ?? null,
+        } as Render);
+      } else {
+        useAppStore.getState().setCurrentRender({ id: room.id, image_url: room.latest_render_url, panoramic_url: null } as Render);
+      }
       useAppStore.getState().setRenderStatus('completed');
     }
     navigation.navigate('Room', { initialRoute: 'RenderView', room_id: room.id });
