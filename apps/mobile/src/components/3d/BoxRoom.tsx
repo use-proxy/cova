@@ -93,9 +93,6 @@ export function BoxRoom({ style, dimensions, wallColorOverride, showGrid }: BoxR
   const baseboardD = 0.03;
   const crownH = 0.1;
   const crownD = 0.1;
-  const doorH = 2.4;
-  const doorFrameW = 0.1;
-  const doorFrameD = 0.1;
   const windowH = 2.5;
 
   return (
@@ -177,19 +174,7 @@ export function BoxRoom({ style, dimensions, wallColorOverride, showGrid }: BoxR
         <meshStandardMaterial color={trimColor} roughness={0.3} metalness={0} />
       </mesh>
 
-      {/* ── Door frame (front entrance) ── */}
-      <mesh position={[-0.6, doorH / 2, d / 2 - doorFrameD / 2]}>
-        <boxGeometry args={[doorFrameW, doorH, doorFrameD]} />
-        <meshStandardMaterial color={trimColor} roughness={0.3} metalness={0} />
-      </mesh>
-      <mesh position={[0.6, doorH / 2, d / 2 - doorFrameD / 2]}>
-        <boxGeometry args={[doorFrameW, doorH, doorFrameD]} />
-        <meshStandardMaterial color={trimColor} roughness={0.3} metalness={0} />
-      </mesh>
-      <mesh position={[0, doorH + doorFrameW / 2, d / 2 - doorFrameD / 2]}>
-        <boxGeometry args={[1.3, doorFrameW, doorFrameD]} />
-        <meshStandardMaterial color={trimColor} roughness={0.3} metalness={0} />
-      </mesh>
+      {/* Door frame removed — user is inside room looking around, frame blocks the view */}
 
       {/* ── Window plane (back wall, emitting light) ── */}
       <mesh position={[0, h * 0.55, -d / 2 + 0.01]}>

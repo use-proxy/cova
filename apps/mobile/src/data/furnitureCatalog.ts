@@ -7961,11 +7961,11 @@ export const FURNITURE_CATALOG: FurnitureCatalogItem[] = [
 export const STYLE_PALETTE: Record<StyleName, {
   floor: string; walls: string; ceiling: string; trim: string; emissive: string;
 }> = {
-  coastal:     { floor: '#C8B89A', walls: '#E8DFD0', ceiling: '#F5F0E8', trim: '#FFFFFF', emissive: '#FFF8F0' },
-  japandi:     { floor: '#8B7355', walls: '#D4CAB8', ceiling: '#EDE8DF', trim: '#F0EDE6', emissive: '#FFFAF5' },
-  bohemian:    { floor: '#A0785A', walls: '#D4B896', ceiling: '#E8D5B7', trim: '#C8A882', emissive: '#FFF5E8' },
-  mid_century: { floor: '#8B6914', walls: '#C8A870', ceiling: '#E8D098', trim: '#5C3D1E', emissive: '#FFF0D0' },
-  minimalist:  { floor: '#D0D0D0', walls: '#E8E8E8', ceiling: '#F5F5F5', trim: '#FFFFFF', emissive: '#FFFFFF' },
+  coastal:     { floor: '#D4C8A8', walls: '#F8F8F5', ceiling: '#FAFAF8', trim: '#FFFFFF', emissive: '#FFF8F0' },
+  japandi:     { floor: '#A08060', walls: '#EDE8E0', ceiling: '#F5F0EA', trim: '#F0EDE6', emissive: '#FFFAF5' },
+  bohemian:    { floor: '#6B4E32', walls: '#F5EFE6', ceiling: '#F2EDE5', trim: '#C8A882', emissive: '#FFF5E8' },
+  mid_century: { floor: '#6B4E32', walls: '#F2EBD9', ceiling: '#F5F0E8', trim: '#5C3D1E', emissive: '#FFF0D0' },
+  minimalist:  { floor: '#B8B8B8', walls: '#FAFAFA', ceiling: '#FFFFFF', trim: '#F0F0F0', emissive: '#FFFFFF' },
 };
 
 export function getFurnitureForRoom(

@@ -8,7 +8,16 @@
 MVP is code-complete. 12 sprints done. 95% spec completion. All 13 screens implemented. All 17 edge cases handled.
 Remaining 5% requires physical device testing (Apple/Google auth, LiDAR, camera) and manual setup (App Store, affiliate URLs).
 
-## What Was Done This Session (Render Quality Improvements)
+## What Was Done This Session (3D Viewer Overhaul)
+- RoomViewer3DScreen: PanResponder overlay changed from pointerEvents="box-none" → overlay only rendered when no furniture selected (was blocking ALL camera touches on physical device)
+- RoomViewer3DScreen: when furniture selected, overlay removed so Canvas receives touch events for drag
+- RoomViewer3DScreen: buildDefaultFurniture now uses activeStyle instead of hardcoded 'japandi'
+- RoomViewer3DScreen: detect-furniture catalog lookup now prefers style-matched items
+- BoxRoom: doorway frame removed (user is inside room, frame blocked the view)
+- BoxRoom: STYLE_PALETTE wall colors updated — coastal #F8F8F5, japandi #EDE8E0, bohemian #F5EFE6, mid-century #F2EBD9, minimalist #FAFAFA
+- BoxRoom: floor colors updated — coastal bleached #D4C8A8, japandi warm oak #A08060, bohemian dark #6B4E32, mid-century walnut #6B4E32, minimalist grey #B8B8B8
+
+## What Was Done Previously (Render Quality Improvements)
 - render-room: guidance_scale 7→9, controlnet_conditioning_scale 0.9, negative prompt added, num_steps 50, image_prompt_strength 0.3
 - render-room: structural preservation prompt rewritten — exact wall/floor/ceiling/window/door positions
 - render-room: style descriptors rewritten — richer, more specific per style (rattan, macrame, walnut legs, etc.)

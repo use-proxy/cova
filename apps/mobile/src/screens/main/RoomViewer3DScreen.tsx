@@ -194,7 +194,7 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
   const [sceneKey, setSceneKey] = useState(0);
   const [errorCount, setErrorCount] = useState(0);
   const [placedFurniture, setPlacedFurniture] = useState<FurniturePieceType[]>(
-    () => buildDefaultFurniture('japandi'),
+    () => buildDefaultFurniture(activeStyle),
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [actionHistory, setActionHistory] = useState<FurniturePieceType[][]>([]);
@@ -258,7 +258,9 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
         if (!result?.suggestions?.length) return;
 
         const newFurniture: FurniturePieceType[] = result.suggestions.slice(0, 6).map((s, i) => {
+          // Prefer style-matched catalog items for the detected category
           const catalogItem =
+            FURNITURE_CATALOG.find((c) => c.category === s.category && c.style_tags.includes(activeStyle)) ??
             FURNITURE_CATALOG.find((c) => c.category === s.category) ??
             FURNITURE_CATALOG[i % FURNITURE_CATALOG.length];
           return {
@@ -681,11 +683,13 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
         </View>
       )}
 
-      {/* ── PanResponder sibling — NEVER inside Canvas (§6.8) ── */}
-      {!show2D && (
+      {/* ── PanResponder overlay for camera pan/zoom ── */}
+      {/* Rendered ONLY when no furniture is selected (camera mode).
+          When furniture is selected, overlay is removed so the Canvas receives
+          touch events for furniture drag/tap interactions. */}
+      {!show2D && !selectedId && (
         <View
           style={StyleSheet.absoluteFill}
-          pointerEvents="box-none"
           {...panResponder.panHandlers}
         />
       )}
