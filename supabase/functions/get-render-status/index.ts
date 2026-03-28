@@ -204,9 +204,12 @@ Deno.serve(async (req: Request) => {
           .eq('id', render.room_id);
         if (roomErr) console.error('rooms update failed:', JSON.stringify(roomErr));
 
-        await supabase.rpc('increment_rooms_render_count', { room_id: render.room_id }).catch((err: unknown) => {
-          console.warn('increment_rooms_render_count RPC unavailable:', err);
-        });
+        try {
+          const { error: rpcErr } = await supabase.rpc('increment_rooms_render_count', { room_id: render.room_id });
+          if (rpcErr) console.warn('increment_rooms_render_count RPC failed:', rpcErr.message);
+        } catch (rpcCatchErr) {
+          console.warn('increment_rooms_render_count RPC unavailable:', rpcCatchErr);
+        }
 
         console.log('Stage 2 complete:', JSON.stringify({ render_id, image_url: flatImageUrl, panoramic_url: panoramicUrl }));
 
@@ -232,9 +235,12 @@ Deno.serve(async (req: Request) => {
           .eq('id', render.room_id);
         if (roomErr) console.error('rooms update failed:', JSON.stringify(roomErr));
 
-        await supabase.rpc('increment_rooms_render_count', { room_id: render.room_id }).catch((err: unknown) => {
-          console.warn('increment_rooms_render_count RPC unavailable:', err);
-        });
+        try {
+          const { error: rpcErr } = await supabase.rpc('increment_rooms_render_count', { room_id: render.room_id });
+          if (rpcErr) console.warn('increment_rooms_render_count RPC failed:', rpcErr.message);
+        } catch (rpcCatchErr) {
+          console.warn('increment_rooms_render_count RPC unavailable:', rpcCatchErr);
+        }
 
         console.log('Stage 2 fallback (flat only):', JSON.stringify({ render_id, image_url: flatImageUrl }));
 
