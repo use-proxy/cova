@@ -171,6 +171,7 @@ export default function PanoramaViewer({
 
     const loadTexture = async () => {
       try {
+        console.log('[PanoramaViewer] loading:', imageUrl.slice(0, 120));
         // Step 1: Download remote image to local cache
         const filename = `panorama_${Date.now()}.jpg`;
         const localUri = `${FileSystem.cacheDirectory}${filename}`;
@@ -219,6 +220,7 @@ export default function PanoramaViewer({
         textureRef.current = t;
         setTexture(t);
         setLoadState('loaded');
+        console.log(`[PanoramaViewer] texture loaded: ${dims.width}x${dims.height}`);
 
         // Fade sphere in over 300ms — never show a blank sphere
         Animated.timing(canvasOpacity, {
