@@ -1,7 +1,7 @@
 # Cova Sprint Log
 # Updated after every sprint — read at session start
 
-## Spec Completion: 25% (Sprint 4 — product catalog expansion)
+## Spec Completion: 56% (Sprint 7 — Chatbot Full Implementation)
 
 ---
 
@@ -125,11 +125,150 @@ Target: Product catalog expansion
 
 ---
 
+---
+
+## Sprint 7 — COMPLETE
+Target: Chatbot Full Implementation
+
+### Item 1 — Full system prompt on every call
+- [x] chat-room edge function: room type, style blend %, budget, dimensions in feet, furniture list, pinned products, render count, last prompt
+
+### Item 2 — Conversation starter chips
+- [x] 4 starters shown when localMessages.length === 0, hidden after first message, tap to auto-send
+
+### Item 3 — Persistent history in Supabase
+- [x] Loads chat_messages on mount (ordered by created_at), appends on send
+
+### Item 4 — Action triggers with confirmation cards
+- [x] OPEN_SHOP: executes immediately, calls onOpenShop(category) → opens ProductPanel with defaultCategory
+- [x] REGENERATE: shows confirmation card → calls onStartRender
+- [x] ADJUST_BLEND: shows confirmation card → updates Supabase style_blend + triggers render
+- [x] PIN_PRODUCT: shows confirmation card → calls pinProduct from store
+
+### Item 5 — Inline product cards
+- [x] Keyword extraction from Claude response → ilike search on products table
+- [x] Inline product card rendered in message list when suggested_product exists
+
+### Item 6 — 500 char limit + 30s timeout + retry
+- [x] maxLength=500 enforced; char counter shown at 400+, red at 500
+- [x] 30s Promise.race timeout; error message shows "↩ Retry" button
+
+### Supporting changes
+- [x] ProductPanel: defaultCategory prop for OPEN_SHOP filter
+- [x] RenderViewScreen: ChatPanel wired with all new props + callback handlers
+- [x] Switched chat model to claude-haiku-4-5-20251001
+
+### Verification
+- [x] npx tsc --noEmit passes (zero errors)
+- [x] Flows 01, 04, 05, 14 pass (flow 02 pre-existing Budget step failure — not a regression)
+
+### Sprint 7 Gaps Fixed (post-sprint)
+- [x] Gap 1 — Panel slides up from bottom at 60% height; draggable to full screen via PanResponder on drag handle; KAV wraps all panel content (not just input row)
+- [x] Gap 2 — Typing indicator already correctly implemented (3 animated gold dots, isLoading state) ✅
+- [x] Gap 3 — Starter wording fixed to exact spec: "What furniture should I add?" / "Make it feel more cozy" / "What is my color palette?" / "Show me products under $500"
+- [x] Gap 4 — Per-room persistence already correctly implemented via Supabase history query on mount ✅
+
+---
+
+## Sprint 6 — COMPLETE
+Target: Product Panel Full Implementation
+
+### Item 1 — Product Panel UI
+- [x] ProductPanel.tsx: bottom sheet modal, dark navy #0A1628, search bar, price slider $0-$10,000+
+- [x] Retailer filter chips (All/Wayfair/Amazon/IKEA/CB2/West Elm/Target)
+- [x] Category tabs (All/Sofas & Chairs/Tables/Beds/Lighting/Rugs/Accessories)
+- [x] Auto-filter by budget (priceMax synced from room budget_max)
+- [x] Sort by style match score (dot product of product.style_tags vs room.style_blend)
+
+### Item 2 — Product Cards + Indicators
+- [x] Style match indicator bar (gold fill proportional to match %, text percentage)
+- [x] "In Your Room" badge for pinned products
+- [x] "Featured in Design" badge for products from matchedProducts list
+- [x] Recently Viewed row (last 5 tapped, horizontal scroll at top)
+- [x] Pinned Items section (horizontal scroll, gold border, unpin button)
+
+### Item 3 — Product Info Popup
+- [x] Full-width image, name, price, retailer
+- [x] "Over Budget" warning (red price + tag when price > budget)
+- [x] Style match % bar
+- [x] Buy Now: HEAD check + Linking.openURL (SFSafariViewController on iOS)
+- [x] Pin button (disabled when 3 pins reached + not already pinned)
+- [x] Save to Favorites / Saved toggle
+- [x] Browse Similar (sets category filter + dismisses popup)
+- [x] Dismiss
+
+### Item 4 — Pin System
+- [x] pinnedRoomProducts in Zustand store (max 3, persisted)
+- [x] pinProduct / unpinProduct actions
+- [x] "In Your Room" badge in panel for pinned products
+- [x] Pinned products passed to startRender (render-room already handles pinned_products → FLUX prompt)
+- [x] Pinned products persist on Regenerate (passed in doRegenerate)
+
+### Item 5 — Pagination + Favorites
+- [x] 12 products per page, FlatList onEndReached load more
+- [x] Progressive threshold relaxation: if <10 match with priceMax, retry without price filter, show "Showing closest matches to your style" banner
+- [x] My Favorites tab (savedProducts from store, heart-icon save/unsave)
+
+### Pre-sprint
+- [x] Migration 20240027000000_add_wall_color.sql applied to production
+- [x] detect-furniture edge function wired to RoomViewer3DScreen on entry (5s timeout, fallback to buildDefaultFurniture)
+
+### Verification
+- [x] npx tsc --noEmit passes (zero app errors)
+- [x] Flows 01, 02, 04, 05, 14 pass
+
+---
+
+## Sprint 5 — COMPLETE
+Target: 3D Viewer Visual Quality + Interactions
+
+### Item 1 — Wall color extraction
+- [x] supabase/functions/extract-colors/index.ts: imagescript pixel sampling, left/right/back wall regions, averages weighted to back wall
+- [x] Migration 20240027000000_add_wall_color.sql: wall_color_extracted text DEFAULT '#F5F0EB'
+- [x] BoxRoom wallColorOverride prop — render color syncs to 3D viewer
+
+### Item 2 — Floor texture by style
+- [x] Minimalist style: grey floor (no PBR wood texture overlay)
+- [x] All other styles: warm PBR wood texture
+- [x] BoxRoom showGrid prop — toggleable floor grid helper
+
+### Item 3 — Lighting upgrade
+- [x] SceneLighting: pointLight at [2, 2.5, -1] intensity 1.2 color #FFF5E0
+- [x] Ambient intensity normalized to 0.4 across all styles (was 0.45–0.7)
+
+### Item 4 — Furniture interactions
+- [x] Style chips REMOVED from arrange screen (spec compliant)
+- [x] "Generate Render" → "Done" button (saves to Zustand + furniture_placements Supabase)
+- [x] "View from Doorway" button (top right, resets theta=0 fov=60)
+- [x] Floor grid toggle button (connects to BoxRoom showGrid)
+- [x] Reset now requires Alert confirmation ("Reset / Cancel")
+- [x] Product popup upgraded: Buy Now + Move + Dismiss actions
+- [x] FurniturePiece wall collision buffer: 10cm (0.1m) per spec
+
+### Item 5 — Furniture placement Option C hybrid
+- [x] supabase/functions/detect-furniture/index.ts: Claude vision API primary + smart layout fallback
+- [x] Smart layout: sofa back wall, chairs flanking, table centered, lamp corner
+
+### Item 6 — Camera controls
+- [x] CameraController: eye level locked 1.6m (EYE_Y constant)
+- [x] Horizontal orbit only (phi/vertical removed)
+- [x] FOV-based pinch zoom 40–90° (replaces radius-based zoom)
+- [x] CameraControlState: { theta, fov } (phi and radius removed)
+
+### Verification
+- [x] npx tsc --noEmit passes (zero app errors)
+- [x] Flows 01, 02, 05 pass
+
+---
+
 ## Completed
 - [x] Sprint 1: auth + style blend pipeline
 - [x] Sprint 2: room capture all 3 paths + loading screen
 - [x] Sprint 3: panoramic render view + custom 360° LoRA pipeline
 - [x] Sprint 4: product catalog expansion + quiz cards
+- [x] Sprint 5: 3D viewer visual quality + interactions
+- [x] Sprint 6: product panel full implementation
+- [x] Sprint 7: chatbot full implementation
 
 ---
 

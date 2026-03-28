@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, Suspense, useMemo } from 'react';
+import React, { useState, useRef, useCallback, Suspense, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
-  ActivityIndicator,
   PanResponder,
   Animated,
   Dimensions,
@@ -30,21 +29,12 @@ import type { CameraControlState } from '../../components/3d/CameraController';
 import type { StyleName, RoomDimensions, FurniturePiece as FurniturePieceType, FurnitureCatalogItem, FurnitureCategory } from '@cova/shared';
 import { FURNITURE_CATALOG, STYLE_PALETTE, getFurnitureForRoom } from '../../data/furnitureCatalog';
 import { useAppStore } from '../../store';
+import { supabase, callEdgeFunction } from '../../lib/supabase';
 
 type Props = NativeStackScreenProps<RoomStackParamList, 'Viewer3D'>;
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const PHI_MIN = 0.3;
-const PHI_MAX = Math.PI / 2 - 0.05;
-
-const STYLES: { key: StyleName; label: string }[] = [
-  { key: 'coastal', label: 'Ocean Breeze' },
-  { key: 'japandi', label: 'Zen Garden' },
-  { key: 'bohemian', label: 'Boho Spirit' },
-  { key: 'mid_century', label: 'Mid-Century' },
-  { key: 'minimalist', label: 'Pure Lines' },
-];
 
 const PRICE_RANGE_LABELS: Record<string, string> = {
   budget: '$',
@@ -191,10 +181,17 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const testMode = process.env.EXPO_PUBLIC_TEST_RENDER_MODE === 'true';
 
-  const [activeStyle, setActiveStyle] = useState<StyleName>('japandi');
+  const currentRoom = useAppStore((s) => s.currentRoom);
+
+  const [activeStyle] = useState<StyleName>(() => {
+    const blend = currentRoom?.style_blend;
+    if (!blend) return 'japandi';
+    const entries = Object.entries(blend) as [StyleName, number][];
+    entries.sort(([, a], [, b]) => b - a);
+    return entries[0][0];
+  });
   const [sceneKey, setSceneKey] = useState(0);
   const [errorCount, setErrorCount] = useState(0);
-  const [isRendering, setIsRendering] = useState(false);
   const [placedFurniture, setPlacedFurniture] = useState<FurniturePieceType[]>(
     () => buildDefaultFurniture('japandi'),
   );
@@ -202,6 +199,7 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
   const [actionHistory, setActionHistory] = useState<FurniturePieceType[][]>([]);
   const [productInfoItem, setProductInfoItem] = useState<FurnitureCatalogItem | null>(null);
   const [show2D, setShow2D] = useState(false);
+  const [showGrid, setShowGrid] = useState(false);
   const [showCatalog, setShowCatalog] = useState(false);
   const [catalogCategory, setCatalogCategory] = useState<FurnitureCategory | 'all'>('all');
 
@@ -215,8 +213,7 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
 
   const controlRef = useRef<CameraControlState>({
     theta: 0,
-    phi: 1.25,
-    radius: 4.0,
+    fov: 60,
   });
 
   const lastTouchRef = useRef<{ x: number; y: number } | null>(null);
@@ -224,7 +221,73 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
   const touchCountRef = useRef<number>(0);
 
   const user = useAppStore((s) => s.user);
-  const currentRoom = useAppStore((s) => s.currentRoom);
+  const currentRoomDimensions = useAppStore((s) => s.currentRoomDimensions);
+
+  // ── detect-furniture on entry ──
+  // When 3D viewer loads, call detect-furniture edge function to get furniture positions
+  // from the room's render image. Falls back to buildDefaultFurniture silently.
+  useEffect(() => {
+    const renderUrl = currentRoom?.latest_render_url;
+    if (!renderUrl || testMode) return;
+
+    let cancelled = false;
+    const timeoutId = setTimeout(() => { cancelled = true; }, 5000);
+
+    const run = async () => {
+      try {
+        interface FurnitureSuggestion {
+          category: string;
+          x: number;
+          z: number;
+          rotation_y?: number;
+        }
+        interface DetectResult {
+          suggestions: FurnitureSuggestion[];
+          source: string;
+        }
+        const result = await callEdgeFunction<DetectResult>('detect-furniture', {
+          render_url: renderUrl,
+          room_type: currentRoom?.room_type ?? 'living_room',
+          dimensions: currentRoomDimensions ?? DEFAULT_DIMENSIONS,
+        });
+        if (cancelled) return;
+        if (!result?.suggestions?.length) return;
+
+        const newFurniture: FurniturePieceType[] = result.suggestions.slice(0, 6).map((s, i) => {
+          const catalogItem =
+            FURNITURE_CATALOG.find((c) => c.category === s.category) ??
+            FURNITURE_CATALOG[i % FURNITURE_CATALOG.length];
+          return {
+            id: `detected-${i}-${Date.now()}`,
+            catalog_id: catalogItem.id,
+            name: catalogItem.name,
+            category: catalogItem.category,
+            glb_path: catalogItem.glb_path,
+            position: { x: s.x ?? 0, y: s.z ?? 0 },
+            rotation_y: s.rotation_y ?? 0,
+            scale: 1,
+            color_override: null,
+            width: catalogItem.width,
+            depth: catalogItem.depth,
+            height: catalogItem.height,
+          };
+        });
+        setPlacedFurniture(newFurniture);
+      } catch {
+        // fallback to buildDefaultFurniture (already set as initial state)
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
+  // Run once on mount only
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Undo helpers ──
 
@@ -319,10 +382,11 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
           const dy = touches[0].pageY - touches[1].pageY;
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (lastPinchRef.current > 0) {
+            // Pinch → FOV zoom (40–90°) per spec
             const delta = lastPinchRef.current - dist;
-            controlRef.current.radius = Math.max(
-              1.5,
-              Math.min(6.0, controlRef.current.radius + delta * 0.012),
+            controlRef.current.fov = Math.max(
+              40,
+              Math.min(90, controlRef.current.fov + delta * 0.3),
             );
           }
           lastPinchRef.current = dist;
@@ -331,13 +395,9 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
 
         if (touches.length === 1 && lastTouchRef.current) {
           const dx = touches[0].pageX - lastTouchRef.current.x;
-          const dy = touches[0].pageY - lastTouchRef.current.y;
           lastTouchRef.current = { x: touches[0].pageX, y: touches[0].pageY };
+          // Horizontal orbit only — vertical swipe ignored (eye level locked at 1.6m)
           controlRef.current.theta -= dx * 0.007;
-          controlRef.current.phi = Math.max(
-            PHI_MIN,
-            Math.min(PHI_MAX, controlRef.current.phi + dy * 0.005),
-          );
         } else if (touches.length === 1) {
           lastTouchRef.current = { x: touches[0].pageX, y: touches[0].pageY };
         }
@@ -392,20 +452,6 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
     }
   };
 
-  const handleStyleChange = useCallback(
-    (newStyle: StyleName) => {
-      setActiveStyle(newStyle);
-      // Preserve all furniture positions — only clear user color overrides so each
-      // piece renders with the new style's default material (§7.5: colors only, never reset positions).
-      setPlacedFurniture((prev) =>
-        prev.map((item) => ({ ...item, color_override: null })),
-      );
-      updateSelectedId(null);
-      setActionHistory([]);
-      setSceneKey((prev) => prev + 1);
-    },
-    [updateSelectedId],
-  );
 
   const handleError = useCallback(() => {
     setErrorCount((prev) => prev + 1);
@@ -428,28 +474,48 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
   );
 
   const handleReset = useCallback(() => {
-    pushHistory();
-    setPlacedFurniture(buildDefaultFurniture(activeStyle));
-    updateSelectedId(null);
-    setSceneKey((prev) => prev + 1);
+    Alert.alert(
+      'Reset arrangement?',
+      'All furniture will return to default positions.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: () => {
+            pushHistory();
+            setPlacedFurniture(buildDefaultFurniture(activeStyle));
+            updateSelectedId(null);
+            setSceneKey((prev) => prev + 1);
+          },
+        },
+      ],
+    );
   }, [activeStyle, updateSelectedId, pushHistory]);
 
-  const handleAIRender = async () => {
-    if (!user) {
-      Alert.alert('Please sign in', 'You must be signed in to render.');
-      return;
+  const handleDone = useCallback(async () => {
+    // Save furniture arrangement to Zustand
+    useAppStore.getState().setPlacedFurniture(placedFurniture);
+    // Fire-and-forget save to Supabase furniture_placements
+    if (currentRoom?.id) {
+      try {
+        const rows = placedFurniture.map((piece) => ({
+          room_id: currentRoom.id,
+          furniture_catalog_id: piece.catalog_id,
+          position_x: piece.position.x,
+          position_y: piece.position.y,
+          rotation_y: piece.rotation_y,
+          scale: piece.scale,
+        }));
+        await supabase
+          .from('furniture_placements')
+          .upsert(rows, { onConflict: 'room_id,furniture_catalog_id' });
+      } catch (e) {
+        console.warn('furniture_placements save failed (non-blocking):', e);
+      }
     }
-    setIsRendering(true);
-    try {
-      const uri = await captureRef(viewShotRef, { format: 'jpg', quality: 0.9 });
-      useAppStore.getState().setCapturedImageUri(uri);
-      setIsRendering(false);
-      navigation.navigate('RenderView', { room_id: currentRoom?.id });
-    } catch {
-      setIsRendering(false);
-      Alert.alert('Error', 'Could not capture room screenshot.');
-    }
-  };
+    navigation.goBack();
+  }, [placedFurniture, currentRoom, navigation]);
 
   const handleAddFurniture = useCallback((item: FurnitureCatalogItem) => {
     pushHistory();
@@ -572,7 +638,7 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
                 <CameraController controlRef={controlRef} />
                 <Suspense fallback={null}>
                   <SceneLighting style={activeStyle} />
-                  <BoxRoom style={activeStyle} dimensions={roomDimensions} />
+                  <BoxRoom style={activeStyle} dimensions={roomDimensions} showGrid={showGrid} />
                   {placedFurniture.map((item) => {
                     const catalog = findCatalogItem(item.catalog_id);
                     if (!catalog) return null;
@@ -658,26 +724,26 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
         </TouchableOpacity>
       )}
 
-      {/* Style chips row */}
-      <View style={[styles.chipRow, { top: insets.top + 16 }]} pointerEvents="box-none">
-        <ScrollView testID="style-chips" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 56 }}>
-          {STYLES.map((s, index) => {
-            const isActive = activeStyle === s.key;
-            return (
-              <TouchableOpacity
-                key={s.key}
-                testID={`style-chip-${index}`}
-                style={[styles.chip, isActive && styles.chipActive]}
-                onPress={() => handleStyleChange(s.key)}
-              >
-                <Text style={[styles.chipLabel, isActive && styles.chipLabelActive]}>
-                  {s.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
+      {/* View from Doorway button — top right, resets camera to initial position */}
+      <TouchableOpacity
+        style={[styles.doorwayBtn, { top: insets.top + 16 }]}
+        onPress={() => {
+          controlRef.current.theta = 0;
+          controlRef.current.fov = 60;
+        }}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.doorwayBtnText}>Doorway</Text>
+      </TouchableOpacity>
+
+      {/* Grid toggle button */}
+      <TouchableOpacity
+        style={[styles.gridBtn, { top: insets.top + 60 }, showGrid && styles.gridBtnActive]}
+        onPress={() => setShowGrid((v) => !v)}
+        activeOpacity={0.8}
+      >
+        <Text style={[styles.gridBtnText, showGrid && styles.gridBtnTextActive]}>Grid</Text>
+      </TouchableOpacity>
 
       {/* Add furniture FAB */}
       {!selectedId && (
@@ -691,16 +757,15 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
         </TouchableOpacity>
       )}
 
-      {/* Generate Render button */}
+      {/* Done button — saves furniture arrangement and navigates back */}
       {!selectedId && !showCatalog && (
         <View style={styles.renderBtnRow} pointerEvents="box-none">
           <TouchableOpacity
-            style={[styles.renderBtn, isRendering && styles.btnDisabled]}
-            onPress={handleAIRender}
-            disabled={isRendering}
+            style={styles.renderBtn}
+            onPress={handleDone}
             activeOpacity={0.85}
           >
-            <Text style={styles.renderBtnText}>Generate Render</Text>
+            <Text style={styles.renderBtnText}>Done</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -826,16 +891,6 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
         </TouchableOpacity>
       </View>
 
-      {/* ── Rendering overlay ── */}
-      {isRendering && (
-        <View style={styles.renderingOverlay}>
-          <ActivityIndicator size="large" color="#C4A45A" />
-          <Text style={styles.renderingText}>Generating your design...</Text>
-          <Text style={styles.renderingStyle}>
-            {STYLES.find((s) => s.key === activeStyle)?.label ?? activeStyle}
-          </Text>
-        </View>
-      )}
 
       {/* ── Product info bottom sheet ── */}
       {productInfoItem && (
@@ -868,7 +923,7 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
 
             <View style={styles.sheetDimensionsRow}>
               <Text style={styles.sheetDimLabel}>
-                {productInfoItem.width}ft W × {productInfoItem.depth}ft D × {productInfoItem.height}ft H
+                {productInfoItem.width}m W × {productInfoItem.depth}m D × {productInfoItem.height}m H
               </Text>
             </View>
 
@@ -890,6 +945,39 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
                 </View>
               </View>
             )}
+
+            {/* Action buttons: Buy Now / Move / Dismiss */}
+            <View style={styles.sheetActionRow}>
+              <TouchableOpacity
+                style={styles.sheetBuyBtn}
+                onPress={() => Alert.alert('Shop Now', `Find ${productInfoItem.name} at a retailer near you.`)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.sheetBuyBtnText}>Buy Now</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.sheetMoveBtn}
+                onPress={() => {
+                  hideProductInfo();
+                  // Ensure the piece triggering the popup is selected for dragging
+                  const matchingPiece = placedFurniture.find((p) => {
+                    const cat = FURNITURE_CATALOG.find((c) => c.id === p.catalog_id);
+                    return cat?.name === productInfoItem.name;
+                  });
+                  if (matchingPiece) updateSelectedId(matchingPiece.id);
+                }}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.sheetMoveBtnText}>Move</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.sheetDismissBtn}
+                onPress={hideProductInfo}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.sheetDismissBtnText}>Dismiss</Text>
+              </TouchableOpacity>
+            </View>
           </Animated.View>
         </View>
       )}
@@ -1036,32 +1124,46 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // ── Style chips ──
-  chipRow: {
+  // ── View from Doorway button ──
+  doorwayBtn: {
     position: 'absolute',
-    left: 0,
-    right: 0,
-    zIndex: 10,
-  },
-  chip: {
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginRight: 8,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    right: 16,
+    backgroundColor: 'rgba(10,22,40,0.7)',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
+    zIndex: 20,
   },
-  chipActive: {
+  doorwayBtnText: {
+    color: 'white',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+
+  // ── Grid toggle button ──
+  gridBtn: {
+    position: 'absolute',
+    right: 16,
+    backgroundColor: 'rgba(10,22,40,0.7)',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    zIndex: 20,
+  },
+  gridBtnActive: {
     backgroundColor: '#C4A45A',
     borderColor: '#C4A45A',
   },
-  chipLabel: {
+  gridBtnText: {
+    color: 'white',
     fontSize: 13,
     fontWeight: '500',
-    color: 'rgba(255,255,255,0.7)',
   },
-  chipLabelActive: {
+  gridBtnTextActive: {
     color: '#0A1628',
   },
 
@@ -1297,6 +1399,39 @@ const styles = StyleSheet.create({
   sheetColorLabel: { color: '#1A1A1A', fontSize: 14, fontWeight: '600' },
   colorSwatches: { flexDirection: 'row', gap: 8 },
   sheetColorSwatch: { width: 28, height: 28, borderRadius: 14 },
+
+  // ── Product sheet action buttons ──
+  sheetActionRow: {
+    flexDirection: 'row',
+    marginTop: 20,
+    gap: 8,
+  },
+  sheetBuyBtn: {
+    flex: 2,
+    backgroundColor: '#C47B3C',
+    borderRadius: 20,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  sheetBuyBtnText: { color: 'white', fontWeight: '700', fontSize: 14 },
+  sheetMoveBtn: {
+    flex: 1,
+    backgroundColor: 'rgba(27,58,45,0.1)',
+    borderRadius: 20,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1B3A2D',
+  },
+  sheetMoveBtnText: { color: '#1B3A2D', fontWeight: '600', fontSize: 14 },
+  sheetDismissBtn: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.06)',
+    borderRadius: 20,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  sheetDismissBtnText: { color: '#888', fontWeight: '500', fontSize: 14 },
 
   // ── Catalog modal ──
   catalogOverlay: {

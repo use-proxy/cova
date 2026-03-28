@@ -19,7 +19,15 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system';
-import { Accelerometer } from 'expo-sensors';
+// expo-sensors requires native rebuild — conditional require avoids crash on dev builds
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let Accelerometer: any = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  Accelerometer = require('expo-sensors').Accelerometer;
+} catch {
+  // Not compiled in current build — accelerometer features gracefully disabled
+}
 import type { EventSubscription } from 'expo-modules-core';
 import Slider from '@react-native-community/slider';
 import { useNavigation } from '@react-navigation/native';
@@ -322,12 +330,17 @@ function RoomCaptureScreen() {
   // ── Start/stop accelerometer for horizontal check ────────────────────────
   const startSensorChecks = useCallback(() => {
     // Start accelerometer for horizontal check (within 15 degrees)
-    Accelerometer.setUpdateInterval(200);
-    accelSubRef.current = Accelerometer.addListener(({ x, y, z }) => {
-      // Calculate pitch angle in degrees
-      const pitch = Math.abs(Math.atan2(y, Math.sqrt(x * x + z * z)) * (180 / Math.PI));
-      setIsHorizontal(pitch < 15);
-    });
+    if (Accelerometer) {
+      Accelerometer.setUpdateInterval(200);
+      accelSubRef.current = Accelerometer.addListener(({ x, y, z }: { x: number; y: number; z: number }) => {
+        // Calculate pitch angle in degrees
+        const pitch = Math.abs(Math.atan2(y, Math.sqrt(x * x + z * z)) * (180 / Math.PI));
+        setIsHorizontal(pitch < 15);
+      });
+    } else {
+      // expo-sensors not compiled — pass horizontal check automatically
+      setIsHorizontal(true);
+    }
 
     // Light check: pragmatic approach — pass after 1.5s delay
     // Real brightness validation happens server-side

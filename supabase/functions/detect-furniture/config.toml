@@ -1,0 +1,2 @@
+[functions.detect-furniture]
+verify_jwt = false

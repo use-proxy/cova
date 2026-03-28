@@ -105,6 +105,7 @@ device:
     timeout: 8000
 
 # Swipe through refinement cards if they appear
+# All swipes here are optional — quiz may have already completed by confidence after 10 swipes
 - extendedWaitUntil:
     visible:
       id: "quiz-card"
@@ -114,6 +115,7 @@ device:
     id: "quiz-card"
     direction: RIGHT
     duration: 500
+    optional: true
 - waitForAnimationToEnd:
     timeout: 5000
 - extendedWaitUntil:
@@ -125,6 +127,7 @@ device:
     id: "quiz-card"
     direction: RIGHT
     duration: 500
+    optional: true
 - waitForAnimationToEnd:
     timeout: 5000
 - extendedWaitUntil:
@@ -136,6 +139,7 @@ device:
     id: "quiz-card"
     direction: RIGHT
     duration: 500
+    optional: true
 - waitForAnimationToEnd:
     timeout: 5000
 - extendedWaitUntil:
@@ -147,6 +151,7 @@ device:
     id: "quiz-card"
     direction: RIGHT
     duration: 500
+    optional: true
 - waitForAnimationToEnd:
     timeout: 5000
 

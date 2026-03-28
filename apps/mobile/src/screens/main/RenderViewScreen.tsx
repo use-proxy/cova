@@ -33,7 +33,8 @@ import { useAppStore } from '../../store';
 import BeforeAfterSlider from '../../components/BeforeAfterSlider';
 import PanoramaViewer from '../../components/PanoramaViewer';
 import ChatPanel from '../../components/ChatPanel';
-import type { Product, Render } from '@cova/shared';
+import ProductPanel from '../../components/ui/ProductPanel';
+import type { Product, Render, StyleBlend } from '@cova/shared';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const BG = '#0A1628';
@@ -68,7 +69,7 @@ function RenderViewScreen() {
   const insets = useSafeAreaInsets();
 
   const { startRender, pollRenderStatus, renderStatus, renderProgressStage, renderProgress, renderError, currentRender } = useRender();
-  const { matchedProducts, addToCart, cartItems, setRenderStatus, currentRoom, capturedImageUri, budget_max } = useAppStore();
+  const { matchedProducts, addToCart, cartItems, setRenderStatus, currentRoom, capturedImageUri, budget_max, pinnedRoomProducts, placedFurniture } = useAppStore();
 
   // route.params.room_id is only populated when navigating directly within RoomNavigator.
   // When arriving via HomeStack's nested Room screen, room_id is in the parent route and
@@ -87,6 +88,7 @@ function RenderViewScreen() {
   const [showProductPanel, setShowProductPanel] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [similarCategory, setSimilarCategory] = useState<string | null>(null);
+  const [shopDefaultCategory, setShopDefaultCategory] = useState<string | undefined>(undefined);
   const [budgetOverride, setBudgetOverride] = useState<number | null>(null);
   const [showBudgetSlider, setShowBudgetSlider] = useState(false);
   const [tapCoords, setTapCoords] = useState<{ x: number; y: number } | null>(null);
@@ -126,7 +128,7 @@ function RenderViewScreen() {
     setRenderStatus('idle');
     const parent = navigation.getParent();
     if (parent) {
-      parent.reset({ index: 0, routes: [{ name: 'RoomsTab' as never }] });
+      parent.reset({ index: 0, routes: [{ name: 'HomeTab' as never }] });
     } else {
       navigation.goBack();
     }
@@ -471,7 +473,7 @@ function RenderViewScreen() {
     } catch { /* cancelled */ }
   };
 
-  const doRegenerate = async () => {
+  const doRegenerate = useCallback(async () => {
     setShowRegenConfirm(false);
     const blend = currentRoom?.style_blend ?? { coastal: 0.2, japandi: 0.2, bohemian: 0.2, mid_century: 0.2, minimalist: 0.2 };
     let imageBase64 = '';
@@ -497,8 +499,33 @@ function RenderViewScreen() {
       styleBlend: blend,
       imageBase64,
       renderType: 'draft',
+      pinnedProducts: pinnedRoomProducts.map((p) => ({ name: p.name, description: p.description ?? undefined })),
     });
-  };
+  }, [capturedImageUri, currentRoom, pinnedRoomProducts, room_id, startRender]);
+
+  // Chat action handlers
+  const handleChatOpenShop = useCallback((category?: string) => {
+    setShopDefaultCategory(category);
+    setShowChat(false);
+    setShowProductPanel(true);
+    Animated.timing(productPanelX, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [productPanelX]);
+
+  const handleChatStartRender = useCallback(() => {
+    void doRegenerate();
+  }, [doRegenerate]);
+
+  const handleChatAdjustBlend = useCallback(async (newBlend: Record<string, number>) => {
+    if (!room_id || room_id === 'default') return;
+    try {
+      await supabase.from('rooms').update({ style_blend: newBlend }).eq('id', room_id);
+    } catch { /* non-fatal — proceed with render */ }
+    void doRegenerate();
+  }, [room_id, doRegenerate]);
 
   const handleRegenerate = () => {
     setShowRegenConfirm(true);
@@ -844,39 +871,15 @@ function RenderViewScreen() {
         </Animated.View>
       )}
 
-      {/* ── Product panel ── */}
-      <Animated.View style={[styles.productPanel, { transform: [{ translateX: productPanelX }] }]}>
-        <View style={[styles.ppHeader, { paddingTop: insets.top + 12 }]}>
-          <Text style={styles.ppTitle}>Matched Products</Text>
-          <TouchableOpacity onPress={() => toggleProductPanel(false)}>
-            <Text style={styles.ppClose}>✕</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.budgetRow}>
-          <Text style={styles.budgetLabel}>Budget: {formatBudget(activeBudgetDollars)}</Text>
-          <TouchableOpacity onPress={() => setShowBudgetSlider(!showBudgetSlider)}>
-            <Text style={{ fontSize: 16 }}>✏️</Text>
-          </TouchableOpacity>
-        </View>
-        {showBudgetSlider && (
-          <View style={styles.budgetSliderWrap}>
-            <Slider style={styles.budgetSlider} minimumValue={500} maximumValue={10000} step={500} value={activeBudgetDollars} onValueChange={(v: number) => setBudgetOverride(v)} minimumTrackTintColor={GOLD} maximumTrackTintColor="#E8E0D0" thumbTintColor={GOLD} />
-            <View style={styles.budgetSliderLabels}>
-              <Text style={styles.budgetTick}>$500</Text>
-              <Text style={styles.budgetTick}>$10,000</Text>
-            </View>
-          </View>
-        )}
-
-        {filteredProducts.length > 0 && (
-          <TouchableOpacity style={styles.addAllBtn} onPress={handleAddAllToCart}>
-            <Text style={styles.addAllBtnText}>Add All to Cart ({filteredProducts.length})</Text>
-          </TouchableOpacity>
-        )}
-
-        <FlatList data={filteredProducts} renderItem={renderProductCard} keyExtractor={(i) => i.id} contentContainerStyle={{ padding: 12 }} ListEmptyComponent={<Text style={styles.emptyText}>No matched products yet.</Text>} />
-      </Animated.View>
+      {/* ── Product panel (Sprint 6) ── */}
+      <ProductPanel
+        visible={showProductPanel}
+        onClose={() => toggleProductPanel(false)}
+        roomId={room_id}
+        styleBlend={currentRoom?.style_blend}
+        budget={activeBudgetDollars}
+        defaultCategory={shopDefaultCategory}
+      />
 
       {/* ── Overlays ── */}
       {/* Before/after slider — always mounted when original_image_url exists,   */}
@@ -904,6 +907,12 @@ function RenderViewScreen() {
           tapY={tapCoords?.y}
           onClose={() => setShowChat(false)}
           onMessageSent={() => setTapCoords(null)}
+          onOpenShop={handleChatOpenShop}
+          onStartRender={handleChatStartRender}
+          onAdjustBlend={(blend) => void handleChatAdjustBlend(blend as Record<string, number>)}
+          styleBlend={currentRoom?.style_blend as StyleBlend | undefined}
+          placedFurniture={placedFurniture}
+          pinnedRoomProducts={pinnedRoomProducts}
         />
       )}
 

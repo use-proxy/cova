@@ -49,6 +49,8 @@ interface AppState {
   // cart & products
   cartItems: CartItem[];
   matchedProducts: Product[];
+  pinnedRoomProducts: Product[];      // max 3 — pinned to this room's render
+  recentlyViewedProducts: Product[];  // last 5 tapped in product panel
 
   // chat
   messages: ChatMessage[];
@@ -108,6 +110,9 @@ interface AppActions {
   removeFromCart: (id: string) => void;
   clearCart: () => void;
   setMatchedProducts: (products: Product[]) => void;
+  pinProduct: (product: Product) => void;
+  unpinProduct: (productId: string) => void;
+  addToRecentlyViewed: (product: Product) => void;
 
   // chat
   addMessage: (message: ChatMessage) => void;
@@ -317,6 +322,8 @@ export const useAppStore = create<AppState & AppActions>()(
     // ── cart & products defaults ──
     cartItems: [],
     matchedProducts: [],
+    pinnedRoomProducts: [],
+    recentlyViewedProducts: [],
 
     addToCart: (item) =>
       set((state) => {
@@ -338,6 +345,23 @@ export const useAppStore = create<AppState & AppActions>()(
     setMatchedProducts: (products) =>
       set((state) => {
         state.matchedProducts = products;
+      }),
+    pinProduct: (product) =>
+      set((state) => {
+        if (state.pinnedRoomProducts.length < 3 && !state.pinnedRoomProducts.find((p) => p.id === product.id)) {
+          state.pinnedRoomProducts.push(product);
+        }
+      }),
+    unpinProduct: (productId) =>
+      set((state) => {
+        state.pinnedRoomProducts = state.pinnedRoomProducts.filter((p) => p.id !== productId);
+      }),
+    addToRecentlyViewed: (product) =>
+      set((state) => {
+        state.recentlyViewedProducts = [
+          product,
+          ...state.recentlyViewedProducts.filter((p) => p.id !== product.id),
+        ].slice(0, 5);
       }),
 
     // ── chat defaults ──
@@ -417,6 +441,8 @@ export const useAppStore = create<AppState & AppActions>()(
       capturedImageUri: state.capturedImageUri,
       cartItems: state.cartItems,
       savedProducts: state.savedProducts,
+      pinnedRoomProducts: state.pinnedRoomProducts,
+      recentlyViewedProducts: state.recentlyViewedProducts,
       colorScheme: state.colorScheme,
     }),
   },

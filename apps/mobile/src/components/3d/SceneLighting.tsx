@@ -12,7 +12,6 @@ try {
 
 interface StyleLight {
   ambientColor: string;
-  ambientIntensity: number;
   dirColor: string;
   dirIntensity: number;
   dirPosition: [number, number, number];
@@ -23,10 +22,12 @@ interface StyleLight {
   fillPosition: [number, number, number];
 }
 
+// ambientIntensity normalised to 0.4 across all styles per spec
+const AMBIENT_INTENSITY = 0.4;
+
 const STYLE_LIGHTING: Record<StyleName, StyleLight> = {
   japandi: {
     ambientColor: '#FFF8F0',
-    ambientIntensity: 0.5,
     dirColor: '#FFF5E8',
     dirIntensity: 1.8,
     dirPosition: [6, 10, 6],
@@ -38,7 +39,6 @@ const STYLE_LIGHTING: Record<StyleName, StyleLight> = {
   },
   mid_century: {
     ambientColor: '#FFF3E0',
-    ambientIntensity: 0.45,
     dirColor: '#FFD080',
     dirIntensity: 1.8,
     dirPosition: [5, 9, 5] as [number, number, number],
@@ -50,7 +50,6 @@ const STYLE_LIGHTING: Record<StyleName, StyleLight> = {
   },
   coastal: {
     ambientColor: '#F0F8FF',
-    ambientIntensity: 0.7,
     dirColor: '#FFFFFF',
     dirIntensity: 2.2,
     dirPosition: [8, 12, 6],
@@ -62,7 +61,6 @@ const STYLE_LIGHTING: Record<StyleName, StyleLight> = {
   },
   bohemian: {
     ambientColor: '#FFE8D0',
-    ambientIntensity: 0.45,
     dirColor: '#FFB060',
     dirIntensity: 1.6,
     dirPosition: [4, 7, 3],
@@ -74,7 +72,6 @@ const STYLE_LIGHTING: Record<StyleName, StyleLight> = {
   },
   minimalist: {
     ambientColor: '#FFFFFF',
-    ambientIntensity: 0.6,
     dirColor: '#FFFFFF',
     dirIntensity: 2.0,
     dirPosition: [6, 10, 6] as [number, number, number],
@@ -130,7 +127,7 @@ export function SceneLighting({ style }: SceneLightingProps) {
 
   return (
     <>
-      <ambientLight intensity={L.ambientIntensity} color={L.ambientColor} />
+      <ambientLight intensity={AMBIENT_INTENSITY} color={L.ambientColor} />
       <directionalLight
         position={L.dirPosition}
         color={L.dirColor}
@@ -149,6 +146,17 @@ export function SceneLighting({ style }: SceneLightingProps) {
         position={L.fillPosition}
         color={L.fillColor}
         intensity={L.fillIntensity}
+      />
+      {/* Warm point light — simulates interior lamp / window light per spec */}
+      <pointLight
+        position={[2, 2.5, -1]}
+        intensity={1.2}
+        color="#FFF5E0"
+        castShadow
+        shadow-mapSize-width={512}
+        shadow-mapSize-height={512}
+        decay={2}
+        distance={10}
       />
 
       {/* HDRI environment — falls back silently to lights above if loading fails */}

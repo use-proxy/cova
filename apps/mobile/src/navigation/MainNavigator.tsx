@@ -1,23 +1,31 @@
 import React from 'react';
-import { Alert, StyleSheet } from 'react-native';
+import { StyleSheet, View, Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text } from 'react-native';
 import HomeStack from './HomeStack';
-import ShopScreen from '../screens/main/ShopScreen';
 import ProfileScreen from '../screens/main/ProfileScreen';
 
 export type MainTabParamList = {
-  RoomsTab: undefined;
-  ShopTab: undefined;
+  HomeTab: undefined;
+  InspirationTab: undefined;
   ProfileTab: undefined;
-  DiscoverTab: undefined;
 };
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-function DiscoverPlaceholder() {
-  return null;
+function InspirationComingSoon() {
+  return (
+    <View style={csStyles.screen}>
+      <Text style={csStyles.title}>Inspiration</Text>
+      <Text style={csStyles.sub}>Coming Soon</Text>
+    </View>
+  );
 }
+
+const csStyles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: '#0A1628', alignItems: 'center', justifyContent: 'center' },
+  title: { color: '#B8860B', fontSize: 22, fontWeight: '600' },
+  sub: { color: 'rgba(255,255,255,0.5)', fontSize: 16, marginTop: 8 },
+});
 
 export default function MainNavigator({ initialRoute = 'Home' }: { initialRoute?: string }) {
   const HomeStackWithRoute = React.useMemo(
@@ -30,25 +38,25 @@ export default function MainNavigator({ initialRoute = 'Home' }: { initialRoute?
       screenOptions={{
         headerShown: false,
         tabBarStyle: styles.tabBar,
-        tabBarActiveTintColor: '#C47B3C',
-        tabBarInactiveTintColor: 'rgba(255,255,255,0.5)',
+        tabBarActiveTintColor: '#B8860B',
+        tabBarInactiveTintColor: 'rgba(255,255,255,0.4)',
         tabBarLabelStyle: styles.tabLabel,
       }}
     >
       <Tab.Screen
-        name="RoomsTab"
+        name="HomeTab"
         component={HomeStackWithRoute}
         options={{
-          tabBarLabel: 'Rooms',
+          tabBarLabel: 'Home',
           tabBarIcon: ({ color }) => <Text style={[styles.tabIcon, { color }]}>⌂</Text>,
         }}
       />
       <Tab.Screen
-        name="ShopTab"
-        component={ShopScreen}
+        name="InspirationTab"
+        component={InspirationComingSoon}
         options={{
-          tabBarLabel: 'Shop',
-          tabBarIcon: ({ color }) => <Text style={[styles.tabIcon, { color }]}>$</Text>,
+          tabBarLabel: 'Inspiration',
+          tabBarIcon: ({ color }) => <Text style={[styles.tabIcon, { color }]}>✦</Text>,
         }}
       />
       <Tab.Screen
@@ -59,30 +67,17 @@ export default function MainNavigator({ initialRoute = 'Home' }: { initialRoute?
           tabBarIcon: ({ color }) => <Text style={[styles.tabIcon, { color }]}>☺</Text>,
         }}
       />
-      <Tab.Screen
-        name="DiscoverTab"
-        component={DiscoverPlaceholder}
-        listeners={{
-          tabPress: (e) => {
-            e.preventDefault();
-            Alert.alert('Coming Soon', 'Discover is coming soon. You\'ll be able to browse and get inspired by rooms from other Cova users.');
-          },
-        }}
-        options={{
-          tabBarLabel: 'Discover',
-          tabBarIcon: ({ color }) => <Text style={[styles.tabIcon, { color }]}>✦</Text>,
-        }}
-      />
     </Tab.Navigator>
   );
 }
 
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: '#1B3A2D',
+    backgroundColor: '#0A1628',
     height: 60,
     paddingBottom: 8,
-    borderTopWidth: 0,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.08)',
   },
   tabLabel: {
     fontSize: 11,
