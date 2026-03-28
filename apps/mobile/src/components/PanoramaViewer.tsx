@@ -60,6 +60,7 @@ interface SphereSceneProps {
 const SphereScene = memo(function SphereScene({ cameraState, texture }: SphereSceneProps) {
   const { camera } = useThree();
   const meshRef = useRef<THREE.Mesh>(null);
+  const loggedRef = useRef(false);
 
   // Dispose geometry on unmount — prevents VRAM leaks
   useEffect(() => {
@@ -83,7 +84,15 @@ const SphereScene = memo(function SphereScene({ cameraState, texture }: SphereSc
       if (Math.abs(s.velocityPitch) < 0.001) s.velocityPitch = 0;
     }
 
+    // Log once to confirm useFrame is running and camera is at origin
+    if (!loggedRef.current) {
+      loggedRef.current = true;
+      console.log('[PanoramaViewer] useFrame running — camera pos:', camera.position.toArray(), 'hasTexture:', !!texture);
+    }
+
     // ── Camera rotation — YXZ order prevents gimbal lock ────────────────────
+    // Camera stays at origin [0,0,0] — only rotation changes
+    camera.position.set(0, 0, 0);
     camera.rotation.order = 'YXZ';
     camera.rotation.y = -s.yaw;
     camera.rotation.x = s.pitch;
@@ -212,8 +221,8 @@ export default function PanoramaViewer({
         t.minFilter = THREE.LinearFilter;
         t.magFilter = THREE.LinearFilter;
         t.generateMipmaps = false;       // prevents iOS texture artifacts
-        t.colorSpace = THREE.SRGBColorSpace; // preserves FLUX color accuracy (Three.js 0.152+ API)
-        t.flipY = false;                 // expo-gl textures are already oriented correctly
+        t.colorSpace = THREE.SRGBColorSpace; // preserves FLUX color accuracy
+        t.flipY = true;                  // equirectangular images need flipY on sphere
         t.needsUpdate = true;
 
         if (textureRef.current) textureRef.current.dispose();
@@ -351,30 +360,32 @@ export default function PanoramaViewer({
           camera={{ fov: 75, near: 0.1, far: 1000, position: [0, 0, 0] }}
           gl={{
             powerPreference: 'high-performance',
-            antialias: false,             // too expensive on mobile
-            preserveDrawingBuffer: true,  // §6.3 — required on iOS to prevent black screen
-            alpha: true,                  // enable transparent background so flat image shows through
+            antialias: false,
+            preserveDrawingBuffer: true,
+            alpha: false,                 // solid background — alpha causes transparency bugs on physical iOS
           }}
           onCreated={({ gl }) => {
             try {
-              gl.setClearColor(0x000000, 0); // transparent clear — flat image fallback shows through
+              gl.setClearColor(0x0A1628, 1); // dark navy — matches app background
             } catch {
               onFallback?.();
             }
           }}
         >
-          {/* No <color attach="background"> — keep transparent for flat image fallback */}
+          <color attach="background" args={['#0A1628']} />
           <SphereScene cameraState={cameraState} texture={texture} />
         </Canvas>
       </Animated.View>
 
       {/* ── PanResponder View — absoluteFill SIBLING to Canvas View ────────── */}
-      {/* ⚠️ ASSERTION: Must remain a sibling — never parent or child of Canvas */}
-      <View
-        style={StyleSheet.absoluteFill}
-        {...panResponder.panHandlers}
-        pointerEvents={pointerEnabled ? 'box-only' : 'none'}
-      />
+      {/* ⚠️ ASSERTION: Must remain a sibling — never parent or child of Canvas.
+          Rendered AFTER Canvas so it sits on top and captures all touches. */}
+      {pointerEnabled && (
+        <View
+          style={StyleSheet.absoluteFill}
+          {...panResponder.panHandlers}
+        />
+      )}
 
       {/* ── Loading spinner — visible until texture.onLoad fires ────────────── */}
       {loadState === 'loading' && (
