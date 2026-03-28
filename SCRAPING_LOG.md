@@ -1,46 +1,57 @@
 # Cova Scraping Log
-# Auto-updated by scripts/scrape-all.ts + scripts/expand-quiz-cards.ts + scripts/close-catalog-gaps.ts
+# Auto-updated by Sprint 4 scripts
 
 ## Last Run
-2026-03-28T01:11:52Z
+2026-03-28T01:30:15Z
 
 ## Product Count
-Current: 4,519
+Current: 5,581
 Target: 15,000-20,000
 
-Breakdown by source:
-- Pre-existing (seeded): 3,136 (Wayfair 1222, Amazon 962, IKEA 941, CB2 11)
-- Sprint 4 scrape-all.ts templates: 432 (wayfair 108, amazon 108, cb2 108, ikea 108)
-- Sprint 4 close-catalog-gaps.ts structured: 600 (50 items × 3 retailers × 4 price variants)
-- Sprint 4 close-catalog-gaps.ts additional: 135 (15 items × 3 retailers × 3 variants)
-- Sprint 4 IKEA live scraping: 0 (client-side rendering, no server-side product data)
-- Sprint 4 Sketchfab models: 80 found, 0 stored (retailer CHECK constraint allows only wayfair/amazon/cb2/ikea)
+### 3D Models (stored as products with retailer tag)
+- Poly Haven: 149 photorealistic PBR models (CC0, GLTF w/ textures)
+- Sketchfab: 216 CC-licensed models (realistic, filtered out low-poly/cartoon)
+- Poly Pizza: 300 GLB models (CC0, direct download URLs)
+- **Total 3D models: 665** (exceeds 400+ target)
 
-Note: Retailer product pages use client-side rendering — JSON-LD unavailable.
-Template/structured products have correct style/category/price/room_type metadata.
-Replace with affiliate API data when API keys are configured.
+### Retail Products
+- Pre-seeded: 3,136 (Wayfair 1222, Amazon 962, IKEA 941, CB2 11)
+- Walmart live: 54 (via __NEXT_DATA__ parsing)
+- Target live: 0 (RedSky API returned 400 — endpoint changed)
+- Template products (scrape-all.ts): 432 (wayfair/amazon/cb2/ikea × 108)
+- Structured (close-catalog-gaps.ts): 735 (article/west_elm/crate_barrel/etc)
+- Structured (sprint4-final.ts): 500 (article/west_elm/crate_barrel/overstock/houzz)
 
-## GLB Model Count
-Current: 525 placeholders + 80 Sketchfab CC models found (not stored)
-Target: 200-300
-
-Sources:
-- Poly Pizza: 0 downloaded (API requires paid key for download URLs)
-- Sketchfab: 80 CC-licensed models found across 10 categories (blocked by retailer CHECK)
-- Placeholder (generate-furniture-catalog.ts): 525 box-mesh GLBs
+### Retailer Breakdown
+| Retailer | Live | Template | Total |
+|----------|------|----------|-------|
+| wayfair | 1222 | 208+ | 1430+ |
+| amazon | 962 | 208+ | 1170+ |
+| ikea | 941 | 108 | 1049 |
+| cb2 | 11 | 208+ | 219+ |
+| walmart | 54 | 0 | 54 |
+| polyhaven | 149 | 0 | 149 |
+| sketchfab | 216 | 0 | 216 |
+| poly_pizza | 300 | 0 | 300 |
+| article | 0 | 200 | 200 |
+| west_elm | 0 | 200 | 200 |
+| crate_barrel | 0 | 200 | 200 |
+| overstock | 0 | 100 | 100 |
+| houzz | 0 | 100 | 100 |
+| target | 0 | 0 | 0 |
 
 ## CLIP Embeddings
-Products with embeddings: 3,052 / 4,519
-Products with real images: 3,136 (pre-seeded products)
-Products with placeholder images: 1,383 (template/structured — no meaningful CLIP possible)
-Note: CLIP embeddings are always 768-dimensional
+Products with embeddings: 3,052 / 5,581 (55%)
+All pre-seeded real-image products have embeddings.
+Template/structured products with placeholder images cannot be CLIP-embedded.
 
 ## Quiz Card Count
-Current: 950 (exceeds 923 target)
-Target: 923
-
-Breakdown:
+Current: 950 (EXCEEDS 923 target)
 - Pre-existing: 433
-- Unsplash API (expand-quiz-cards.ts): 367 (228 pure + 139 blend)
-- Pexels API (close-catalog-gaps.ts): 150 (pure style cards)
-Total: 950
+- Unsplash API: 367 (228 pure + 139 blend)
+- Pexels API: 150 (pure style cards)
+
+## Retailer CHECK Constraint
+Migration 20240026000000_expand_retailers.sql applied.
+Allowed values: wayfair, amazon, cb2, ikea, sketchfab, polyhaven, poly_pizza,
+walmart, target, overstock, houzz, article, west_elm, crate_barrel

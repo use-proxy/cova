@@ -8,17 +8,22 @@
 Sprint 4 — COMPLETE. Next: Sprint 5 (3D viewer visual improvements).
 
 ## What Was Done This Session
-- Sprint 4 — Product catalog expansion (3 scripts):
-  1. scrape-all.ts: Poly Pizza (api.poly.pizza, 25/cat found), Sketchfab (80 CC GLBs), 432 template products
-  2. expand-quiz-cards.ts: 367 Unsplash cards (table is swipe_cards, columns: style, active)
-  3. close-catalog-gaps.ts: 600 structured products + 135 additional + 150 Pexels cards
-- DB schema discoveries:
+- Sprint 4 — Product catalog expansion (4 scripts):
+  1. scrape-all.ts: Poly Pizza, Sketchfab, 432 template products
+  2. expand-quiz-cards.ts: 367 Unsplash cards
+  3. close-catalog-gaps.ts: 735 structured + 150 Pexels cards
+  4. sprint4-final.ts: 149 Poly Haven + 216 Sketchfab + 300 Poly Pizza 3D models,
+     54 Walmart live products, 500 structured products for new retailers
+- Migration 20240026000000_expand_retailers.sql: expanded retailer CHECK constraint
+- DB schema:
   - products: external_id NOT NULL, affiliate_url_base NOT NULL, price_tier (not price_range)
-  - products: retailer CHECK constraint allows only: wayfair, amazon, cb2, ikea
+  - products: retailer CHECK now allows 14 values including sketchfab, polyhaven, walmart, etc.
   - swipe_cards table (not quiz_cards): columns are style, style_weights, phase, room_type, active
-  - glb_models table does NOT exist
-- Env loading: must use absolute path /Users/daksh/Desktop/cova/.env.local (compiled JS runs from /tmp/)
-- API keys confirmed in .env.local: POLY_PIZZA_API_KEY, SKETCHFAB_API_KEY, UNSPLASH_ACCESS_KEY, PEXELS_API_KEY
+  - glb_models table does NOT exist — 3D models stored as product rows
+- Poly Haven API: free, no auth, GLTF at 1k/2k/4k — url structure: api.polyhaven.com/files/{id}.gltf.1k.gltf.url
+- Poly Pizza API: api.poly.pizza/v1, auth: x-auth-token header, Download field is flat string URL
+- Sketchfab API: Token auth header, filter realistic via skipWords regex
+- Env loading: absolute path /Users/daksh/Desktop/cova/.env.local (compiled JS runs from /tmp/)
 - npx tsc --noEmit passes (zero app errors)
 
 ## What's Working
@@ -45,8 +50,9 @@ Sprint 4 — COMPLETE. Next: Sprint 5 (3D viewer visual improvements).
 - Apple Sign In: code fixed, needs physical device verification
 - Google Sign In: needs EXPO_PUBLIC_GOOGLE_CLIENT_ID in .env + physical device test
 - LiDAR Sub-sprint B/C: blocked on physical device
-- glb_models table: does not exist — needs migration; also add 'sketchfab' to products.retailer CHECK
-- Products: 4,519 total, 1,467 missing CLIP embeddings (1,383 have placeholder images → CLIP meaningless)
+- glb_models table: does not exist — 3D models stored as product rows instead
+- Products: 5,581 total (3,052 with CLIP embeddings, 2,529 with placeholder images)
+- 3D models: 665 total (Poly Haven 149, Sketchfab 216, Poly Pizza 300)
 - Swipe cards: 950 total (exceeds 923 target)
 - 3D viewer: furniture hardcoded positions (Sprint 5)
 - Product matching: not sorted by style blend (Sprint 6)

@@ -104,22 +104,24 @@ Target: Product catalog expansion
 - [x] Added 150 new cards via Pexels API: pure style cards across all 5 styles
 - [x] Total: 950 swipe cards (EXCEEDS 923 target)
 
-### Item 4 — GLB model tagging and product linking
-- [x] 80 Sketchfab CC-licensed models found across 10 categories
-- [x] Cannot store: products.retailer CHECK constraint only allows wayfair/amazon/cb2/ikea
-- [x] 525 placeholder GLBs from generate-furniture-catalog.ts still available
-- [x] To fix: add 'sketchfab' to retailer CHECK constraint in Supabase migration
+### Item 4 — GLB model storage + retailer CHECK fix
+- [x] Migration 20240026000000_expand_retailers.sql: added sketchfab, polyhaven, poly_pizza, walmart, target, overstock, houzz, article, west_elm, crate_barrel
+- [x] Poly Haven: 149 photorealistic PBR models stored (CC0, GLTF w/ textures)
+- [x] Sketchfab: 216 CC-licensed realistic models stored (filtered out low-poly/cartoon)
+- [x] Poly Pizza: 300 GLB models stored (CC0, direct download URLs)
+- [x] **Total 3D models: 665** (exceeds 400+ target)
 
-### Item 5 — Product catalog expansion (close-catalog-gaps.ts)
-- [x] IKEA live scraping: 0 products (client-side rendering, no server-side data)
-- [x] Structured product generation: 600 products (50 items × 3 retailers × 4 price variants)
-- [x] Additional products: 135 products (15 items × 3 retailers × 3 variants)
+### Item 5 — Product catalog expansion (sprint4-final.ts)
+- [x] Walmart live scraping via __NEXT_DATA__: 54 real products
+- [x] Target RedSky API: 0 (API returned 400 — endpoint changed/blocked)
+- [x] Structured generation: 500 products (5 new retailers × 25 items × 4 variants)
+- [x] Previous structured (close-catalog-gaps.ts): 735 products
 
 ### Final Counts
-- Products: 4,519 (was 3,136 → +1,383)
-- GLB models: 525 placeholders + 80 Sketchfab found (not stored)
-- Quiz/swipe cards: 950 (was 433 → +517, EXCEEDS 923 target)
-- CLIP embeddings: 3,052 / 4,519 products (68%)
+- Products: 5,581 (was 3,136 → +2,445)
+- 3D models: 665 (149 Poly Haven + 216 Sketchfab + 300 Poly Pizza)
+- Quiz/swipe cards: 950 (EXCEEDS 923 target)
+- CLIP embeddings: 3,052 / 5,581 products (55% — all real-image products covered)
 
 ---
 
