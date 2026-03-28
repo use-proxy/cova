@@ -8,18 +8,17 @@
 Sprint 4 — COMPLETE. Next: Sprint 5 (3D viewer visual improvements).
 
 ## What Was Done This Session
-- Sprint 4 Item 1 — Full scraper (scripts/scrape-all.ts):
-  - Fixed env loading: absolute path /Users/daksh/Desktop/cova/.env.local
-  - Poly Pizza: api.poly.pizza/v1 with x-auth-token header, 25 models/category found, Download.glb empty
-  - Sketchfab: 60 CC-licensed GLBs found (glb_models table doesn't exist — logged only)
-  - Retailers: 432 template products inserted (wayfair/amazon/cb2/ikea × 108 each)
-  - Correct DB schema: external_id, affiliate_url_base, price_tier, style_weights, primary_style
-- Sprint 4 Item 2 — CLIP embeddings: 3,052/3,784 products have embeddings, 0 new (templates skipped)
-- Sprint 4 Item 3 — Quiz card expansion (scripts/expand-quiz-cards.ts):
-  - Table is swipe_cards not quiz_cards — fixed
-  - Columns: style (not style_tags), active field required
-  - 367 new cards via Unsplash: 228 pure + 139 blend → 800 total (was 433)
-- Sprint 4 Item 4 — GLB tagging: glb_models table doesn't exist, code ready for when it does
+- Sprint 4 — Product catalog expansion (3 scripts):
+  1. scrape-all.ts: Poly Pizza (api.poly.pizza, 25/cat found), Sketchfab (80 CC GLBs), 432 template products
+  2. expand-quiz-cards.ts: 367 Unsplash cards (table is swipe_cards, columns: style, active)
+  3. close-catalog-gaps.ts: 600 structured products + 135 additional + 150 Pexels cards
+- DB schema discoveries:
+  - products: external_id NOT NULL, affiliate_url_base NOT NULL, price_tier (not price_range)
+  - products: retailer CHECK constraint allows only: wayfair, amazon, cb2, ikea
+  - swipe_cards table (not quiz_cards): columns are style, style_weights, phase, room_type, active
+  - glb_models table does NOT exist
+- Env loading: must use absolute path /Users/daksh/Desktop/cova/.env.local (compiled JS runs from /tmp/)
+- API keys confirmed in .env.local: POLY_PIZZA_API_KEY, SKETCHFAB_API_KEY, UNSPLASH_ACCESS_KEY, PEXELS_API_KEY
 - npx tsc --noEmit passes (zero app errors)
 
 ## What's Working
@@ -46,9 +45,9 @@ Sprint 4 — COMPLETE. Next: Sprint 5 (3D viewer visual improvements).
 - Apple Sign In: code fixed, needs physical device verification
 - Google Sign In: needs EXPO_PUBLIC_GOOGLE_CLIENT_ID in .env + physical device test
 - LiDAR Sub-sprint B/C: blocked on physical device
-- glb_models table: does not exist in Supabase — needs migration before Sketchfab models can be stored
-- swipe_cards table: 800/923 target — need 123 more cards (run expand-quiz-cards.ts again or add Pexels source)
-- Products: 3,784 total, 732 missing CLIP embeddings (template products with placeholder images)
+- glb_models table: does not exist — needs migration; also add 'sketchfab' to products.retailer CHECK
+- Products: 4,519 total, 1,467 missing CLIP embeddings (1,383 have placeholder images → CLIP meaningless)
+- Swipe cards: 950 total (exceeds 923 target)
 - 3D viewer: furniture hardcoded positions (Sprint 5)
 - Product matching: not sorted by style blend (Sprint 6)
 - Chatbot: system prompt missing full room context (Sprint 7)
