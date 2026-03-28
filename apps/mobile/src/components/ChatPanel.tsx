@@ -9,6 +9,7 @@ import {
   Dimensions,
   Animated,
   KeyboardAvoidingView,
+  PanResponder,
   Platform,
   Image,
   ScrollView,
@@ -76,32 +77,18 @@ const CHAR_LIMIT = 500;
 const CHAR_WARN = 400;
 const TIMEOUT_MS = 30000;
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const PANEL_HEIGHT = SCREEN_HEIGHT * 0.62;
+const PANEL_HEIGHT_DEFAULT = SCREEN_HEIGHT * 0.62;
 const BG = '#0A1628';
 const GOLD = '#B8860B';
 
 const CONVERSATION_STARTERS = [
-  'Suggest furniture for my style',
-  'What colors work best here?',
-  'Help me stay under budget',
   'What furniture should I add?',
+  'Make it feel more cozy',
+  'What is my color palette?',
+  'Show me products under $500',
 ];
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
-
-function getDominantStyle(blend?: StyleBlend | null): string {
-  if (!blend) return 'your style';
-  const entries = Object.entries(blend).sort(([, a], [, b]) => b - a);
-  const top = entries[0]?.[0];
-  const labels: Record<string, string> = {
-    coastal: 'coastal',
-    japandi: 'japandi',
-    bohemian: 'bohemian',
-    mid_century: 'mid-century',
-    minimalist: 'minimalist',
-  };
-  return labels[top ?? ''] ?? 'your style';
-}
 
 function formatPrice(p: number): string {
   return `$${p.toLocaleString()}`;
@@ -156,6 +143,10 @@ export default function ChatPanel({
 }: ChatPanelProps) {
   const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const flatListRef = useRef<FlatList<LocalMessage>>(null);
+  // ⚠️ Panel height — useRef ONLY. Animated.Value for drag-to-fullscreen gesture.
+  const panelHeightAnim = useRef(new Animated.Value(PANEL_HEIGHT_DEFAULT)).current;
+  const panelHeightRef = useRef(PANEL_HEIGHT_DEFAULT);
+  const dragStartHeightRef = useRef(PANEL_HEIGHT_DEFAULT);
 
   const [localMessages, setLocalMessages] = useState<LocalMessage[]>([]);
   const [inputText, setInputText] = useState('');
@@ -165,12 +156,38 @@ export default function ChatPanel({
   const lastUserMsgRef = useRef<string>('');
   const { pinProduct } = useAppStore();
 
-  const starters = [
-    CONVERSATION_STARTERS[0],
-    CONVERSATION_STARTERS[1],
-    CONVERSATION_STARTERS[2],
-    `Make it more ${getDominantStyle(styleBlend)}`,
-  ];
+  const starters = CONVERSATION_STARTERS;
+
+  // Drag handle PanResponder — drag up to full screen, drag down to snap back to 60%
+  const dragHandlePan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dy) > 3,
+      onPanResponderGrant: () => {
+        dragStartHeightRef.current = panelHeightRef.current;
+      },
+      onPanResponderMove: (_, gs) => {
+        const newH = Math.max(
+          PANEL_HEIGHT_DEFAULT,
+          Math.min(SCREEN_HEIGHT, dragStartHeightRef.current - gs.dy),
+        );
+        panelHeightAnim.setValue(newH);
+        panelHeightRef.current = newH;
+      },
+      onPanResponderRelease: (_, gs) => {
+        const h = panelHeightRef.current;
+        const snapFull = h > SCREEN_HEIGHT * 0.8 || gs.vy < -0.5;
+        const target = snapFull ? SCREEN_HEIGHT : PANEL_HEIGHT_DEFAULT;
+        panelHeightRef.current = target;
+        Animated.spring(panelHeightAnim, {
+          toValue: target,
+          useNativeDriver: false,
+          damping: 20,
+          stiffness: 200,
+        }).start();
+      },
+    }),
+  ).current;
 
   // Slide in on mount
   useEffect(() => {
@@ -493,67 +510,71 @@ export default function ChatPanel({
   return (
     <View testID={testID} style={styles.overlay}>
       <TouchableOpacity style={styles.backdrop} onPress={onClose} activeOpacity={1} />
-      <Animated.View style={[styles.panel, { transform: [{ translateY }] }]}>
-        {/* Drag handle */}
-        <View style={styles.dragHandleRow}>
+      <Animated.View style={[styles.panel, { transform: [{ translateY }], height: panelHeightAnim }]}>
+        {/* Drag handle — PanResponder for drag-to-fullscreen */}
+        <View style={styles.dragHandleRow} {...dragHandlePan.panHandlers}>
           <View style={styles.dragHandle} />
         </View>
 
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>AI Design Assistant</Text>
-          <TouchableOpacity testID="chat-close" onPress={onClose} style={styles.closeBtn}>
-            <Text style={styles.closeBtnText}>✕</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Message list */}
-        {isHistoryLoading ? (
-          <View style={styles.historyLoading}>
-            <Text style={styles.historyLoadingText}>Loading conversation...</Text>
+        {/* KeyboardAvoidingView wraps all content so input stays above keyboard */}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.kavContent}
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>AI Design Assistant</Text>
+            <TouchableOpacity testID="chat-close" onPress={onClose} style={styles.closeBtn}>
+              <Text style={styles.closeBtnText}>✕</Text>
+            </TouchableOpacity>
           </View>
-        ) : (
-          <FlatList
-            ref={flatListRef}
-            data={localMessages}
-            renderItem={renderItem}
-            keyExtractor={(item) => item.id}
-            style={styles.messageList}
-            contentContainerStyle={styles.messageListContent}
-            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-            ListEmptyComponent={
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>Ask me anything about your room design ✨</Text>
-              </View>
-            }
-          />
-        )}
 
-        {/* Conversation starters */}
-        {showStarters && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.starterScroll}
-            contentContainerStyle={styles.starterContent}
-          >
-            {starters.map((starter) => (
-              <TouchableOpacity
-                key={starter}
-                style={styles.starterChip}
-                onPress={() => handleSend(starter)}
-              >
-                <Text style={styles.starterChipText}>{starter}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        )}
+          {/* Message list */}
+          {isHistoryLoading ? (
+            <View style={styles.historyLoading}>
+              <Text style={styles.historyLoadingText}>Loading conversation...</Text>
+            </View>
+          ) : (
+            <FlatList
+              ref={flatListRef}
+              data={localMessages}
+              renderItem={renderItem}
+              keyExtractor={(item) => item.id}
+              style={styles.messageList}
+              contentContainerStyle={styles.messageListContent}
+              onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+              ListEmptyComponent={
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateText}>Ask me anything about your room design ✨</Text>
+                </View>
+              }
+            />
+          )}
 
-        {/* Typing indicator */}
-        {isLoading && <LoadingDots />}
+          {/* Conversation starters */}
+          {showStarters && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.starterScroll}
+              contentContainerStyle={styles.starterContent}
+            >
+              {starters.map((starter) => (
+                <TouchableOpacity
+                  key={starter}
+                  style={styles.starterChip}
+                  onPress={() => handleSend(starter)}
+                >
+                  <Text style={styles.starterChipText}>{starter}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
 
-        {/* Input row */}
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          {/* Typing indicator */}
+          {isLoading && <LoadingDots />}
+
+          {/* Input row */}
           <View style={styles.inputRow}>
             {tapX != null && tapY != null && (
               <View style={styles.pinIndicator}>
@@ -607,12 +628,15 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   panel: {
-    height: PANEL_HEIGHT,
+    // Height is set via Animated.Value (panelHeightAnim) — do NOT add height here
     backgroundColor: BG,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     borderTopWidth: 1,
     borderTopColor: '#1A2A40',
+  },
+  kavContent: {
+    flex: 1,
   },
   dragHandleRow: {
     alignItems: 'center',
