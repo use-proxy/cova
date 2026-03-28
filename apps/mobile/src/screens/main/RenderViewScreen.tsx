@@ -34,7 +34,7 @@ import BeforeAfterSlider from '../../components/BeforeAfterSlider';
 import PanoramaViewer from '../../components/PanoramaViewer';
 import ChatPanel from '../../components/ChatPanel';
 import ProductPanel from '../../components/ui/ProductPanel';
-import type { Product, Render } from '@cova/shared';
+import type { Product, Render, StyleBlend } from '@cova/shared';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const BG = '#0A1628';
@@ -69,7 +69,7 @@ function RenderViewScreen() {
   const insets = useSafeAreaInsets();
 
   const { startRender, pollRenderStatus, renderStatus, renderProgressStage, renderProgress, renderError, currentRender } = useRender();
-  const { matchedProducts, addToCart, cartItems, setRenderStatus, currentRoom, capturedImageUri, budget_max, pinnedRoomProducts } = useAppStore();
+  const { matchedProducts, addToCart, cartItems, setRenderStatus, currentRoom, capturedImageUri, budget_max, pinnedRoomProducts, placedFurniture } = useAppStore();
 
   // route.params.room_id is only populated when navigating directly within RoomNavigator.
   // When arriving via HomeStack's nested Room screen, room_id is in the parent route and
@@ -88,6 +88,7 @@ function RenderViewScreen() {
   const [showProductPanel, setShowProductPanel] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [similarCategory, setSimilarCategory] = useState<string | null>(null);
+  const [shopDefaultCategory, setShopDefaultCategory] = useState<string | undefined>(undefined);
   const [budgetOverride, setBudgetOverride] = useState<number | null>(null);
   const [showBudgetSlider, setShowBudgetSlider] = useState(false);
   const [tapCoords, setTapCoords] = useState<{ x: number; y: number } | null>(null);
@@ -472,7 +473,7 @@ function RenderViewScreen() {
     } catch { /* cancelled */ }
   };
 
-  const doRegenerate = async () => {
+  const doRegenerate = useCallback(async () => {
     setShowRegenConfirm(false);
     const blend = currentRoom?.style_blend ?? { coastal: 0.2, japandi: 0.2, bohemian: 0.2, mid_century: 0.2, minimalist: 0.2 };
     let imageBase64 = '';
@@ -498,9 +499,33 @@ function RenderViewScreen() {
       styleBlend: blend,
       imageBase64,
       renderType: 'draft',
-      pinnedProducts: pinnedRoomProducts.map((p) => ({ name: p.name, description: p.description })),
+      pinnedProducts: pinnedRoomProducts.map((p) => ({ name: p.name, description: p.description ?? undefined })),
     });
-  };
+  }, [capturedImageUri, currentRoom, pinnedRoomProducts, room_id, startRender]);
+
+  // Chat action handlers
+  const handleChatOpenShop = useCallback((category?: string) => {
+    setShopDefaultCategory(category);
+    setShowChat(false);
+    setShowProductPanel(true);
+    Animated.timing(productPanelX, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [productPanelX]);
+
+  const handleChatStartRender = useCallback(() => {
+    void doRegenerate();
+  }, [doRegenerate]);
+
+  const handleChatAdjustBlend = useCallback(async (newBlend: Record<string, number>) => {
+    if (!room_id || room_id === 'default') return;
+    try {
+      await supabase.from('rooms').update({ style_blend: newBlend }).eq('id', room_id);
+    } catch { /* non-fatal — proceed with render */ }
+    void doRegenerate();
+  }, [room_id, doRegenerate]);
 
   const handleRegenerate = () => {
     setShowRegenConfirm(true);
@@ -853,6 +878,7 @@ function RenderViewScreen() {
         roomId={room_id}
         styleBlend={currentRoom?.style_blend}
         budget={activeBudgetDollars}
+        defaultCategory={shopDefaultCategory}
       />
 
       {/* ── Overlays ── */}
@@ -881,6 +907,12 @@ function RenderViewScreen() {
           tapY={tapCoords?.y}
           onClose={() => setShowChat(false)}
           onMessageSent={() => setTapCoords(null)}
+          onOpenShop={handleChatOpenShop}
+          onStartRender={handleChatStartRender}
+          onAdjustBlend={(blend) => void handleChatAdjustBlend(blend as Record<string, number>)}
+          styleBlend={currentRoom?.style_blend as StyleBlend | undefined}
+          placedFurniture={placedFurniture}
+          pinnedRoomProducts={pinnedRoomProducts}
         />
       )}
 

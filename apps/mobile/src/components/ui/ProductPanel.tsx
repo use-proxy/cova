@@ -72,11 +72,12 @@ export interface ProductPanelProps {
   roomId: string;
   styleBlend?: StyleBlend | null;
   budget?: number;
+  defaultCategory?: string;
 }
 
 // ─── Main component ─────────────────────────────────────────────────────────────
 
-export default function ProductPanel({ visible, onClose, styleBlend, budget = 2500 }: ProductPanelProps) {
+export default function ProductPanel({ visible, onClose, styleBlend, budget = 2500, defaultCategory }: ProductPanelProps) {
   const insets = useSafeAreaInsets();
   const {
     pinnedRoomProducts,
@@ -94,7 +95,7 @@ export default function ProductPanel({ visible, onClose, styleBlend, budget = 25
   const [searchQuery, setSearchQuery] = useState('');
   const [priceMax, setPriceMax] = useState(budget);
   const [selectedRetailer, setSelectedRetailer] = useState('All');
-  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState(defaultCategory ?? '');
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [page, setPage] = useState(0);
@@ -176,6 +177,13 @@ export default function ProductPanel({ visible, onClose, styleBlend, budget = 25
   }, [priceMax, selectedCategory, selectedRetailer, searchQuery, styleBlend]);
 
   // Refetch on filter changes (debounced for search)
+  // Sync defaultCategory when panel opens with a new category from OPEN_SHOP action
+  useEffect(() => {
+    if (visible && defaultCategory !== undefined) {
+      setSelectedCategory(defaultCategory);
+    }
+  }, [visible, defaultCategory]);
+
   useEffect(() => {
     if (!visible) return;
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
