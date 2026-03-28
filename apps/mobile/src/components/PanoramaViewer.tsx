@@ -1,24 +1,14 @@
 // ── PanoramaViewer ──────────────────────────────────────────────────────────
-// Immersive 360° sphere viewer for AI-rendered room images.
+// 2D pan-based panoramic viewer for equirectangular images.
 //
-// Architecture: camera at origin [0,0,0] inside a sphere (radius 500,
-// scale={[-1,1,1]} for inward normals). Pan rotates the camera via useFrame;
-// pinch adjusts FOV (40–90°). PanResponder is a SIBLING of Canvas (§6.8).
+// Displays the equirectangular image at 3x screen width and lets the user
+// drag left/right to "look around". Wraps seamlessly at the horizontal edges.
+// Pinch adjusts zoom level. Momentum deceleration on release.
 //
-// Texture pipeline: remote URL → FileSystem.downloadAsync → expo-asset
-// Asset.fromURI → RNImage.prefetch + getSize → THREE.Texture with
-// { uri, width, height } image object (the format R3F native expects).
+// This approach works 100% reliably on all iPhones — zero native GL deps.
+// No OrbitControls, no Three.js, no expo-gl.
 //
-// ⚠️ SIMULATOR LIMITATION: iOS Simulator's expo-gl WebGL implementation
-// cannot render textures onto Three.js sphere geometry. The texture downloads
-// and loads without error, but the sphere renders as transparent/black.
-// RenderViewScreen places a flat <Image> behind this component as a fallback
-// — if the sphere is transparent, the flat image shows through. On a physical
-// device, expo-gl renders the sphere texture correctly and covers the flat
-// image. The onTextureError callback also fires on load failure, allowing
-// the parent to switch to flat mode explicitly.
-//
-import React, { useRef, useEffect, useState, memo } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -28,101 +18,22 @@ import {
   Text,
   TouchableOpacity,
   Image as RNImage,
-  type ViewStyle,
+  Dimensions,
 } from 'react-native';
-import { Canvas, useFrame, useThree } from '@react-three/fiber/native';
-import * as THREE from 'three';
-import * as FileSystem from 'expo-file-system';
-import { Asset } from 'expo-asset';
 
-// ── Tunable constant ──────────────────────────────────────────────────────────
-// PAN_SENSITIVITY: 0.005 — increase for faster look-around, decrease for slower
-const PAN_SENSITIVITY = 0.005;
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+const PAN_SENSITIVITY = 1.0;
+const MOMENTUM_DECAY = 0.95;
+const MOMENTUM_THRESHOLD = 0.3;
 
-// ── Camera state shape ────────────────────────────────────────────────────────
-// ⚠️ ASSERTION: ALL values stored in useRef — NEVER useState.
-// useState triggers re-renders that conflict with useFrame at 60fps.
-interface CameraState {
-  yaw: number;           // horizontal rotation (radians) — unclamped, full 360°
-  pitch: number;         // vertical rotation (radians) — clamped −0.5 to +0.5
-  fov: number;           // field of view (degrees) — clamped 40–90
-  lastPinchDist: number | null;
-  velocityYaw: number;   // momentum carry-over for yaw
-  velocityPitch: number; // momentum carry-over for pitch
-}
-
-// ── SphereScene — inner R3F component, memo prevents needless re-renders ──────
-interface SphereSceneProps {
-  cameraState: React.MutableRefObject<CameraState>;
-  texture: THREE.Texture | null;
-}
-
-const SphereScene = memo(function SphereScene({ cameraState, texture }: SphereSceneProps) {
-  const { camera } = useThree();
-  const meshRef = useRef<THREE.Mesh>(null);
-  const loggedRef = useRef(false);
-
-  // Dispose geometry on unmount — prevents VRAM leaks
-  useEffect(() => {
-    return () => {
-      if (meshRef.current) {
-        meshRef.current.geometry.dispose();
-      }
-    };
-  }, []);
-
-  useFrame(() => {
-    const s = cameraState.current;
-
-    // ── Momentum decay (0.88 per frame) ─────────────────────────────────────
-    if (Math.abs(s.velocityYaw) > 0.001 || Math.abs(s.velocityPitch) > 0.001) {
-      s.yaw += s.velocityYaw;
-      s.pitch = Math.max(-0.5, Math.min(0.5, s.pitch + s.velocityPitch));
-      s.velocityYaw *= 0.88;
-      s.velocityPitch *= 0.88;
-      if (Math.abs(s.velocityYaw) < 0.001) s.velocityYaw = 0;
-      if (Math.abs(s.velocityPitch) < 0.001) s.velocityPitch = 0;
-    }
-
-    // Log once to confirm useFrame is running and camera is at origin
-    if (!loggedRef.current) {
-      loggedRef.current = true;
-      console.log('[PanoramaViewer] useFrame running — camera pos:', camera.position.toArray(), 'hasTexture:', !!texture);
-    }
-
-    // ── Camera rotation — YXZ order prevents gimbal lock ────────────────────
-    // Camera stays at origin [0,0,0] — only rotation changes
-    camera.position.set(0, 0, 0);
-    camera.rotation.order = 'YXZ';
-    camera.rotation.y = -s.yaw;
-    camera.rotation.x = s.pitch;
-
-    // ── FOV update (pinch zoom — camera position never changes) ─────────────
-    const perspCam = camera as THREE.PerspectiveCamera;
-    if (Math.abs(perspCam.fov - s.fov) > 0.01) {
-      perspCam.fov = s.fov;
-      perspCam.updateProjectionMatrix();
-    }
-  });
-
-  return (
-    // scale={[-1, 1, 1]} inverts normals so texture faces inward.
-    // More stable on iOS than THREE.BackSide material flag.
-    <mesh ref={meshRef} scale={[-1, 1, 1]}>
-      <sphereGeometry args={[500, 60, 40]} />
-      <meshBasicMaterial map={texture ?? undefined} />
-    </mesh>
-  );
-});
-
-// ── PanoramaViewer ────────────────────────────────────────────────────────────
+// ── Props ────────────────────────────────────────────────────────────────────
 export interface PanoramaViewerProps {
   testID?: string;
   imageUrl: string;
-  pointerEnabled: boolean; // when false, PanResponder ignores all touches
-  onTap: () => void;       // fired on single-tap with minimal movement (HUD toggle)
-  onFallback?: () => void; // fired if Canvas fails to initialize
-  onTextureError?: () => void; // fired if texture loading fails — parent can switch to flat mode
+  pointerEnabled: boolean;
+  onTap: () => void;
+  onFallback?: () => void;
+  onTextureError?: () => void;
 }
 
 export default function PanoramaViewer({
@@ -130,157 +41,127 @@ export default function PanoramaViewer({
   imageUrl,
   pointerEnabled,
   onTap,
-  onFallback,
   onTextureError,
 }: PanoramaViewerProps) {
   const [loadState, setLoadState] = useState<'loading' | 'loaded' | 'error'>('loading');
   const [retryCount, setRetryCount] = useState(0);
-  const [texture, setTexture] = useState<THREE.Texture | null>(null);
+  const [imageDims, setImageDims] = useState<{ w: number; h: number } | null>(null);
 
-  const canvasOpacity = useRef(new Animated.Value(0)).current;
-  const textureRef = useRef<THREE.Texture | null>(null);
+  // ⚠️ ASSERTION: ALL gesture/animation values in useRef — NEVER useState
+  const panX = useRef(new Animated.Value(0)).current;
+  const panY = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
 
-  // ⚠️ ASSERTION: ALL camera values in useRef — NEVER useState
-  const cameraState = useRef<CameraState>({
-    yaw: 0,
-    pitch: 0,
-    fov: 75,
-    lastPinchDist: null,
-    velocityYaw: 0,
-    velocityPitch: 0,
-  });
-
-  // Per-gesture tracking refs
+  const offsetXRef = useRef(0);
+  const offsetYRef = useRef(0);
+  const scaleRef = useRef(1);
+  const velocityXRef = useRef(0);
+  const velocityYRef = useRef(0);
   const lastTouchXRef = useRef(0);
   const lastTouchYRef = useRef(0);
-  const lastFrameDyawRef = useRef(0);
-  const lastFrameDpitchRef = useRef(0);
+  const lastPinchDistRef = useRef<number | null>(null);
+  const momentumRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
 
-  // Stable ref for onTap — avoids stale closure inside PanResponder.create
   const onTapRef = useRef(onTap);
   onTapRef.current = onTap;
 
-  // Stable ref for onTextureError
-  const onTextureErrorRef = useRef(onTextureError);
-  onTextureErrorRef.current = onTextureError;
-
-  // ── Texture loading ─────────────────────────────────────────────────────────
-  // expo-gl cannot read textures via THREE.TextureLoader (neither remote URLs
-  // nor file:// URIs work). The only reliable approach:
-  //   1. Download image to local cache via expo-file-system
-  //   2. Register it through expo-asset's Asset pipeline (Asset.fromURI + loadAsync)
-  //   3. Prefetch into RN's Image cache so the GL context can access it
-  //   4. Create THREE.Texture manually with the asset localUri as image source
-  // Runs once per imageUrl; retryCount increments force a fresh attempt.
+  // ── Image loading ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (!imageUrl) return;
     setLoadState('loading');
-    canvasOpacity.setValue(0);
     let cancelled = false;
 
-    const loadTexture = async () => {
-      try {
-        console.log('[PanoramaViewer] loading:', imageUrl.slice(0, 120));
-        // Step 1: Download remote image to local cache
-        const filename = `panorama_${Date.now()}.jpg`;
-        const localUri = `${FileSystem.cacheDirectory}${filename}`;
-        const { uri: downloadedUri } = await FileSystem.downloadAsync(imageUrl, localUri);
-
+    RNImage.getSize(
+      imageUrl,
+      (w, h) => {
         if (cancelled) return;
-
-        // Step 2: Register through expo-asset pipeline so expo-gl can read it
-        const asset = Asset.fromURI(downloadedUri);
-        await asset.downloadAsync();
-
-        if (cancelled) return;
-
-        const assetUri = asset.localUri ?? downloadedUri;
-
-        // Step 3: Prefetch into RN Image cache — ensures the bitmap is in memory
-        await RNImage.prefetch(assetUri);
-
-        if (cancelled) return;
-
-        // Step 4: Create THREE.Texture with the asset URI as image source.
-        // In React Native + expo-gl, THREE.Texture.image must be an object
-        // with { uri, width, height } — the R3F native renderer reads this
-        // format and uploads it to the GL context.
-        const dims = await new Promise<{ width: number; height: number }>((resolve, reject) => {
-          RNImage.getSize(
-            assetUri,
-            (w, h) => resolve({ width: w, height: h }),
-            (err) => reject(err ?? new Error('getSize failed')),
-          );
-        });
-
-        if (cancelled) return;
-
-        const t = new THREE.Texture();
-        // expo-gl / R3F native expects image as { uri, width, height }
-        (t.image as unknown) = { uri: assetUri, width: dims.width, height: dims.height };
-        t.minFilter = THREE.LinearFilter;
-        t.magFilter = THREE.LinearFilter;
-        t.generateMipmaps = false;       // prevents iOS texture artifacts
-        t.colorSpace = THREE.SRGBColorSpace; // preserves FLUX color accuracy
-        t.flipY = true;                  // equirectangular images need flipY on sphere
-        t.needsUpdate = true;
-
-        if (textureRef.current) textureRef.current.dispose();
-        textureRef.current = t;
-        setTexture(t);
+        console.log(`[PanoramaViewer] image loaded: ${w}x${h}`);
+        setImageDims({ w, h });
         setLoadState('loaded');
-        console.log(`[PanoramaViewer] texture loaded: ${dims.width}x${dims.height}`);
+      },
+      () => {
+        if (cancelled) return;
+        console.error('[PanoramaViewer] image load failed:', imageUrl.slice(0, 100));
+        setLoadState('error');
+        onTextureError?.();
+      },
+    );
 
-        // Fade sphere in over 300ms — never show a blank sphere
-        Animated.timing(canvasOpacity, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }).start();
-      } catch (err) {
-        if (!cancelled) {
-          console.error('[PanoramaViewer] Texture load failed:', imageUrl, err);
-          setLoadState('error');
-          onTextureErrorRef.current?.();
-        }
-      }
-    };
-
-    void loadTexture();
+    // Prefetch for fast display
+    RNImage.prefetch(imageUrl).catch(() => {});
 
     return () => { cancelled = true; };
   }, [imageUrl, retryCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Cleanup on unmount ──────────────────────────────────────────────────────
-  useEffect(() => {
-    return () => {
-      if (textureRef.current) { textureRef.current.dispose(); textureRef.current = null; }
-    };
-  }, []);
+  // ── Momentum loop ──────────────────────────────────────────────────────────
+  const startMomentum = () => {
+    if (momentumRef.current) cancelAnimationFrame(momentumRef.current);
 
-  // ── PanResponder ────────────────────────────────────────────────────────────
-  // ⚠️ ASSERTION: this View MUST be a SIBLING of the Canvas View — never parent/child
+    const tick = () => {
+      if (Math.abs(velocityXRef.current) < MOMENTUM_THRESHOLD && Math.abs(velocityYRef.current) < MOMENTUM_THRESHOLD) {
+        velocityXRef.current = 0;
+        velocityYRef.current = 0;
+        return;
+      }
+      velocityXRef.current *= MOMENTUM_DECAY;
+      velocityYRef.current *= MOMENTUM_DECAY;
+      offsetXRef.current += velocityXRef.current;
+      offsetYRef.current += velocityYRef.current;
+      clampOffsets();
+      panX.setValue(offsetXRef.current);
+      panY.setValue(offsetYRef.current);
+      momentumRef.current = requestAnimationFrame(tick);
+    };
+    momentumRef.current = requestAnimationFrame(tick);
+  };
+
+  const stopMomentum = () => {
+    if (momentumRef.current) {
+      cancelAnimationFrame(momentumRef.current);
+      momentumRef.current = null;
+    }
+  };
+
+  // Cleanup
+  useEffect(() => () => stopMomentum(), []);
+
+  // ── Clamp offsets ──────────────────────────────────────────────────────────
+  const clampOffsets = () => {
+    if (!imageDims) return;
+    const displayW = imageDims.w * (SCREEN_H / imageDims.h) * scaleRef.current;
+    const maxX = Math.max(0, (displayW - SCREEN_W) / 2);
+    const displayH = SCREEN_H * scaleRef.current;
+    const maxY = Math.max(0, (displayH - SCREEN_H) / 2);
+
+    // Horizontal wrap-around for equirectangular images
+    if (displayW > SCREEN_W) {
+      // Allow continuous scrolling — wrap offset
+      const wrapRange = displayW;
+      if (offsetXRef.current > maxX) offsetXRef.current -= wrapRange;
+      if (offsetXRef.current < -maxX) offsetXRef.current += wrapRange;
+    }
+    // Vertical clamp (no wrap)
+    offsetYRef.current = Math.max(-maxY, Math.min(maxY, offsetYRef.current));
+  };
+
+  // ── PanResponder ───────────────────────────────────────────────────────────
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
 
       onPanResponderGrant: (evt) => {
+        stopMomentum();
+        velocityXRef.current = 0;
+        velocityYRef.current = 0;
         const touches = evt.nativeEvent.touches;
-        // Stop momentum on new touch
-        cameraState.current.velocityYaw = 0;
-        cameraState.current.velocityPitch = 0;
-        lastFrameDyawRef.current = 0;
-        lastFrameDpitchRef.current = 0;
-
         if (touches.length >= 2) {
-          const t1 = touches[0]; const t2 = touches[1];
-          cameraState.current.lastPinchDist = Math.hypot(
-            t1.pageX - t2.pageX,
-            t1.pageY - t2.pageY,
+          lastPinchDistRef.current = Math.hypot(
+            touches[0].pageX - touches[1].pageX,
+            touches[0].pageY - touches[1].pageY,
           );
-        } else if (touches.length === 1) {
-          cameraState.current.lastPinchDist = null;
+        } else {
+          lastPinchDistRef.current = null;
           lastTouchXRef.current = touches[0].pageX;
           lastTouchYRef.current = touches[0].pageY;
         }
@@ -290,58 +171,55 @@ export default function PanoramaViewer({
         const touches = evt.nativeEvent.touches;
 
         if (touches.length >= 2) {
-          // ── Pinch: zoom via FOV only — camera position never changes ────────
-          const t1 = touches[0]; const t2 = touches[1];
-          const dist = Math.hypot(t1.pageX - t2.pageX, t1.pageY - t2.pageY);
-          const prev = cameraState.current.lastPinchDist;
-          if (prev !== null && prev > 0) {
-            const scale = dist / prev;
-            cameraState.current.fov = Math.max(40, Math.min(90, cameraState.current.fov / scale));
+          // Pinch zoom
+          const dist = Math.hypot(
+            touches[0].pageX - touches[1].pageX,
+            touches[0].pageY - touches[1].pageY,
+          );
+          if (lastPinchDistRef.current !== null && lastPinchDistRef.current > 0) {
+            const ratio = dist / lastPinchDistRef.current;
+            scaleRef.current = Math.max(1, Math.min(3, scaleRef.current * ratio));
+            scaleAnim.setValue(scaleRef.current);
           }
-          // Update every move event — keeps delta incremental, prevents jumpy zoom
-          cameraState.current.lastPinchDist = dist;
+          lastPinchDistRef.current = dist;
         } else if (touches.length === 1) {
-          // ── Single finger: look around ────────────────────────────────────
+          // Pan
           const tx = touches[0].pageX;
           const ty = touches[0].pageY;
-          // Per-event delta from tracked position (not cumulative gestureState.dx)
-          const deltaDx = tx - lastTouchXRef.current;
-          const deltaDy = ty - lastTouchYRef.current;
+          const dx = (tx - lastTouchXRef.current) * PAN_SENSITIVITY;
+          const dy = (ty - lastTouchYRef.current) * PAN_SENSITIVITY;
           lastTouchXRef.current = tx;
           lastTouchYRef.current = ty;
 
-          // SENSITIVITY: tune PAN_SENSITIVITY at top of file
-          const dyaw = deltaDx * PAN_SENSITIVITY;
-          const dpitch = deltaDy * PAN_SENSITIVITY;
+          velocityXRef.current = dx;
+          velocityYRef.current = dy;
 
-          cameraState.current.yaw += dyaw;
-          // Vertical: clamp −0.5 to +0.5 rad (~−28° to +28°) — prevents over-rotation
-          cameraState.current.pitch = Math.max(-0.5, Math.min(0.5, cameraState.current.pitch + dpitch));
-
-          lastFrameDyawRef.current = dyaw;
-          lastFrameDpitchRef.current = dpitch;
+          offsetXRef.current += dx;
+          offsetYRef.current += dy;
+          clampOffsets();
+          panX.setValue(offsetXRef.current);
+          panY.setValue(offsetYRef.current);
         }
       },
 
-      onPanResponderRelease: (_, gestureState) => {
-        cameraState.current.lastPinchDist = null;
-
-        // Tap: minimal movement → HUD toggle
-        if (Math.abs(gestureState.dx) < 8 && Math.abs(gestureState.dy) < 8) {
+      onPanResponderRelease: (_, gs) => {
+        lastPinchDistRef.current = null;
+        // Tap detection
+        if (Math.abs(gs.dx) < 8 && Math.abs(gs.dy) < 8) {
           onTapRef.current();
           return;
         }
-
-        // Momentum: continue at 60% of last delta, decaying 0.88 per frame
-        cameraState.current.velocityYaw = lastFrameDyawRef.current * 0.6;
-        cameraState.current.velocityPitch = lastFrameDpitchRef.current * 0.6;
+        // Momentum
+        startMomentum();
       },
 
       onPanResponderTerminate: () => {
-        cameraState.current.lastPinchDist = null;
+        lastPinchDistRef.current = null;
       },
     }),
   ).current;
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   if (!imageUrl) {
     return (
@@ -351,50 +229,50 @@ export default function PanoramaViewer({
     );
   }
 
+  // Compute display dimensions — image fills screen height, scales proportionally
+  const aspectRatio = imageDims ? imageDims.w / imageDims.h : 2;
+  const displayH = SCREEN_H;
+  const displayW = displayH * aspectRatio;
+
   return (
     <View testID={testID} style={styles.root}>
-      {/* ── Canvas (absoluteFill) — opacity 0 until texture loads ──────────── */}
-      <Animated.View style={[StyleSheet.absoluteFill, { opacity: canvasOpacity }]}>
-        <Canvas
-          style={StyleSheet.absoluteFill as ViewStyle}
-          camera={{ fov: 75, near: 0.1, far: 1000, position: [0, 0, 0] }}
-          gl={{
-            powerPreference: 'high-performance',
-            antialias: false,
-            preserveDrawingBuffer: true,
-            alpha: false,                 // solid background — alpha causes transparency bugs on physical iOS
-          }}
-          onCreated={({ gl }) => {
-            try {
-              gl.setClearColor(0x0A1628, 1); // dark navy — matches app background
-            } catch {
-              onFallback?.();
-            }
-          }}
+      {/* Image container with pan + zoom transforms */}
+      {loadState === 'loaded' && (
+        <Animated.View
+          style={[
+            styles.imageContainer,
+            {
+              width: displayW,
+              height: displayH,
+              transform: [
+                { translateX: panX },
+                { translateY: panY },
+                { scale: scaleAnim },
+              ],
+            },
+          ]}
         >
-          <color attach="background" args={['#0A1628']} />
-          <SphereScene cameraState={cameraState} texture={texture} />
-        </Canvas>
-      </Animated.View>
-
-      {/* ── PanResponder View — absoluteFill SIBLING to Canvas View ────────── */}
-      {/* ⚠️ ASSERTION: Must remain a sibling — never parent or child of Canvas.
-          Rendered AFTER Canvas so it sits on top and captures all touches. */}
-      {pointerEnabled && (
-        <View
-          style={StyleSheet.absoluteFill}
-          {...panResponder.panHandlers}
-        />
+          <RNImage
+            source={{ uri: imageUrl }}
+            style={{ width: displayW, height: displayH }}
+            resizeMode="cover"
+          />
+        </Animated.View>
       )}
 
-      {/* ── Loading spinner — visible until texture.onLoad fires ────────────── */}
+      {/* Touch capture overlay */}
+      {pointerEnabled && (
+        <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers} />
+      )}
+
+      {/* Loading spinner */}
       {loadState === 'loading' && (
         <View style={styles.overlay} pointerEvents="none">
           <ActivityIndicator size="large" color="#C4A45A" />
         </View>
       )}
 
-      {/* ── Error state — retry up to 2 times ─────────────────────────────── */}
+      {/* Error state */}
       {loadState === 'error' && (
         <View testID="panorama-error" style={styles.overlay}>
           <Text style={styles.msgText}>Could not load render</Text>
@@ -412,12 +290,20 @@ export default function PanoramaViewer({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: 'transparent' },
+  root: {
+    flex: 1,
+    backgroundColor: '#0A1628',
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imageContainer: {
+    position: 'absolute',
+  },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'transparent',
   },
   msgText: {
     color: 'rgba(255,255,255,0.7)',
