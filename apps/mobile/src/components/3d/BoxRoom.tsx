@@ -9,6 +9,8 @@ const ftToM = (ft: number) => ft * 0.3048;
 interface BoxRoomProps {
   style: StyleName;
   dimensions: RoomDimensions;
+  wallColorOverride?: string;
+  showGrid?: boolean;
 }
 
 // ── Error boundary for texture loading ──
@@ -76,13 +78,13 @@ function TexturedFloor({ w, d }: { w: number; d: number }) {
   );
 }
 
-export function BoxRoom({ style, dimensions }: BoxRoomProps) {
+export function BoxRoom({ style, dimensions, wallColorOverride, showGrid }: BoxRoomProps) {
   const toMeters = dimensions.unit === 'm' ? (v: number) => v : ftToM;
   const w = toMeters(dimensions.width);
   const d = toMeters(dimensions.depth);
   const h = toMeters(dimensions.height);
   const palette = STYLE_PALETTE[style];
-  const wallColor = palette?.walls ?? '#E8E0D5';
+  const wallColor = wallColorOverride ?? palette?.walls ?? '#E8E0D5';
   const floorColor = palette?.floor ?? '#C9BEA8';
   const ceilingColor = palette?.ceiling ?? '#F5F0E8';
   const trimColor = palette?.trim ?? '#8B7355';
@@ -109,13 +111,16 @@ export function BoxRoom({ style, dimensions }: BoxRoomProps) {
         <meshStandardMaterial color={floorColor} roughness={0.8} metalness={0.05} side={THREE.DoubleSide} />
       </mesh>
 
-      {/* PBR textured floor overlay */}
-      <TextureErrorBoundary>
-        <Suspense fallback={null}>
-          <TexturedFloor w={w} d={d} />
-        </Suspense>
-      </TextureErrorBoundary>
+      {/* PBR textured floor overlay — skipped for minimalist (grey concrete, no wood) */}
+      {style !== 'minimalist' && (
+        <TextureErrorBoundary>
+          <Suspense fallback={null}>
+            <TexturedFloor w={w} d={d} />
+          </Suspense>
+        </TextureErrorBoundary>
+      )}
 
+      {/* Ceiling */}
       <mesh
         rotation={[Math.PI / 2, 0, 0]}
         position={[0, h, 0]}
@@ -126,16 +131,19 @@ export function BoxRoom({ style, dimensions }: BoxRoomProps) {
         <meshStandardMaterial color={ceilingColor} roughness={0.95} metalness={0.0} side={THREE.DoubleSide} />
       </mesh>
 
+      {/* Back wall */}
       <mesh position={[0, h / 2, -d / 2]} rotation={[0, 0, 0]} receiveShadow castShadow={false}>
         <planeGeometry args={[w, h]} />
         <meshStandardMaterial color={wallColor} roughness={0.85} metalness={0.0} side={THREE.DoubleSide} />
       </mesh>
 
+      {/* Left wall */}
       <mesh position={[-w / 2, h / 2, 0]} rotation={[0, Math.PI / 2, 0]} receiveShadow castShadow={false}>
         <planeGeometry args={[d, h]} />
         <meshStandardMaterial color={wallColor} roughness={0.85} metalness={0.0} side={THREE.DoubleSide} />
       </mesh>
 
+      {/* Right wall */}
       <mesh position={[w / 2, h / 2, 0]} rotation={[0, -Math.PI / 2, 0]} receiveShadow castShadow={false}>
         <planeGeometry args={[d, h]} />
         <meshStandardMaterial color={wallColor} roughness={0.85} metalness={0.0} side={THREE.DoubleSide} />
@@ -155,7 +163,7 @@ export function BoxRoom({ style, dimensions }: BoxRoomProps) {
         <meshStandardMaterial color={trimColor} roughness={0.3} metalness={0} />
       </mesh>
 
-      {/* ── Crown molding ── */}
+      {/* ── Crown molding (ceiling height indicator) ── */}
       <mesh position={[0, h - crownH / 2, -d / 2 + crownD / 2]}>
         <boxGeometry args={[w, crownH, crownD]} />
         <meshStandardMaterial color={trimColor} roughness={0.3} metalness={0} />
@@ -201,6 +209,14 @@ export function BoxRoom({ style, dimensions }: BoxRoomProps) {
         shadow-mapSize-width={512}
         shadow-mapSize-height={512}
       />
+
+      {/* ── Floor grid (toggleable, off by default) ── */}
+      {showGrid && (
+        <gridHelper
+          args={[Math.max(w, d), 10, 'rgba(255,255,255,0.15)', 'rgba(255,255,255,0.08)']}
+          position={[0, 0.003, 0]}
+        />
+      )}
     </group>
   );
 }

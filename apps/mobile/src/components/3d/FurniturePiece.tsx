@@ -198,9 +198,9 @@ export function FurniturePiece({
             cancelLongPress();
             const halfW = roomWidth / 2;
             const halfD = roomDepth / 2;
-            // Clamp accounts for piece half-dimensions so furniture never clips through walls
-            const nx = Math.max(-(halfW - catalog.width / 2), Math.min(halfW - catalog.width / 2, e.point.x));
-            const nz = Math.max(-(halfD - catalog.depth / 2), Math.min(halfD - catalog.depth / 2, e.point.z));
+            // Clamp: piece half-dimensions + 0.1m (10cm) wall collision buffer per spec
+            const nx = Math.max(-(halfW - catalog.width / 2 - 0.1), Math.min(halfW - catalog.width / 2 - 0.1, e.point.x));
+            const nz = Math.max(-(halfD - catalog.depth / 2 - 0.1), Math.min(halfD - catalog.depth / 2 - 0.1, e.point.z));
             groupRef.current.position.set(nx, 0, nz);
             onDragEnd(piece.id, [nx, 0, nz]);
           }}
