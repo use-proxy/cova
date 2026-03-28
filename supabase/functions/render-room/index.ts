@@ -571,26 +571,32 @@ Deno.serve(async (req: Request) => {
     }
 
     // ── Step 3: Insert renders row ─────────────────────────────────────────
+    const renderId = crypto.randomUUID();
     const { data: render, error: renderError } = await supabase
       .from('renders')
       .insert({
+        id:                       renderId,
         room_id,
         user_id:                  user.id,
         status:                   'processing',
+        render_type:              render_type ?? 'draft',
         style_applied,
         quality_tier:             render_type ?? 'draft',
         replicate_prediction_id:  fluxPredictionId,
         prompt_used:              prompt,
         tokens_charged:           0,
+        tokens_used:              0,
         is_panoramic:             true,
+        created_at:               new Date().toISOString(),
       })
       .select()
       .single();
 
     if (renderError || !render) {
-      logError('render_row_insert_failed', renderError ?? new Error('unknown'), { room_id, user_id: user.id });
+      const errMsg = renderError ? `${renderError.message} (code: ${renderError.code}, details: ${renderError.details})` : 'unknown';
+      logError('render_row_insert_failed', new Error(errMsg), { room_id, user_id: user.id });
       return new Response(
-        JSON.stringify({ error: 'internal_error', message: 'Failed to create render record.' }),
+        JSON.stringify({ error: 'internal_error', message: `Failed to create render record: ${errMsg}` }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
