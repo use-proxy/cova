@@ -106,11 +106,14 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (renderError || !render) {
+      console.error('Render lookup failed:', JSON.stringify({ render_id, user_id: user.id, error: renderError }));
       return new Response(JSON.stringify({ error: 'Render not found' }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    console.log('Poll:', JSON.stringify({ render_id, status: render.status, has_image: !!render.image_url, has_pano_pred: !!render.panoramic_prediction_id }));
 
     // ── Watchdog: fail renders stuck processing > 10 minutes ──
     if (render.status === 'processing' || render.status === 'pending') {
@@ -182,67 +185,61 @@ Deno.serve(async (req: Request) => {
             panoramicUrl = await uploadAndSign(supabase, panoImageUrl, panoStoragePath, user.id, render_id);
           } catch (uploadErr) {
             console.error('Panoramic upload failed:', uploadErr);
-            // Silent fallback — Stage 1 image is still available
           }
         }
 
-        // Mark completed with both URLs
-        await supabase
-          .from('renders')
-          .update({
-            status: 'completed',
-            panoramic_url: panoramicUrl,
-          })
-          .eq('id', render_id);
+        // Use image_url from the DB row (set during Stage 1)
+        const flatImageUrl = render.image_url as string;
 
-        await supabase
+        // Mark completed with both URLs
+        const { error: updateErr } = await supabase
+          .from('renders')
+          .update({ status: 'completed', panoramic_url: panoramicUrl })
+          .eq('id', render_id);
+        if (updateErr) console.error('renders update failed:', JSON.stringify(updateErr));
+
+        const { error: roomErr } = await supabase
           .from('rooms')
-          .update({
-            latest_render_url: render.image_url,
-            updated_at: new Date().toISOString(),
-          })
+          .update({ latest_render_url: flatImageUrl, updated_at: new Date().toISOString() })
           .eq('id', render.room_id);
+        if (roomErr) console.error('rooms update failed:', JSON.stringify(roomErr));
 
         await supabase.rpc('increment_rooms_render_count', { room_id: render.room_id }).catch((err: unknown) => {
           console.warn('increment_rooms_render_count RPC unavailable:', err);
         });
 
+        console.log('Stage 2 complete:', JSON.stringify({ render_id, image_url: flatImageUrl, panoramic_url: panoramicUrl }));
+
         return new Response(
-          JSON.stringify({
-            status: 'completed',
-            image_url: render.image_url,
-            panoramic_url: panoramicUrl,
-          }),
+          JSON.stringify({ status: 'completed', image_url: flatImageUrl, panoramic_url: panoramicUrl }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
       }
 
       if (panoPrediction.status === 'failed' || panoPrediction.status === 'canceled') {
-        console.warn('Stage 2 panoramic prediction failed — falling back to flat render:', panoPrediction.error);
-        // Silent fallback: complete with Stage 1 URL only, no panoramic
-        await supabase
+        console.warn('Stage 2 failed:', panoPrediction.error);
+        const flatImageUrl = render.image_url as string;
+
+        const { error: updateErr } = await supabase
           .from('renders')
           .update({ status: 'completed', panoramic_url: null })
           .eq('id', render_id);
+        if (updateErr) console.error('renders update failed:', JSON.stringify(updateErr));
 
-        await supabase
+        const { error: roomErr } = await supabase
           .from('rooms')
-          .update({
-            latest_render_url: render.image_url,
-            updated_at: new Date().toISOString(),
-          })
+          .update({ latest_render_url: flatImageUrl, updated_at: new Date().toISOString() })
           .eq('id', render.room_id);
+        if (roomErr) console.error('rooms update failed:', JSON.stringify(roomErr));
 
         await supabase.rpc('increment_rooms_render_count', { room_id: render.room_id }).catch((err: unknown) => {
           console.warn('increment_rooms_render_count RPC unavailable:', err);
         });
 
+        console.log('Stage 2 fallback (flat only):', JSON.stringify({ render_id, image_url: flatImageUrl }));
+
         return new Response(
-          JSON.stringify({
-            status: 'completed',
-            image_url: render.image_url,
-            panoramic_url: null,
-          }),
+          JSON.stringify({ status: 'completed', image_url: flatImageUrl, panoramic_url: null }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
       }
@@ -302,10 +299,12 @@ Deno.serve(async (req: Request) => {
       }
 
       // Save Stage 1 URL on the render row
-      await supabase
+      const { error: stage1UpdateErr } = await supabase
         .from('renders')
         .update({ image_url: finalUrl })
         .eq('id', render_id);
+      if (stage1UpdateErr) console.error('Stage 1 image_url update failed:', JSON.stringify(stage1UpdateErr));
+      else console.log('Stage 1 image saved:', finalUrl.slice(0, 80));
 
       // ── Stage 2: Start panoramic LoRA conversion if configured ────────
       // LoRA model: pgoel813/cova-interior-360-lora (trained on 150 Poly Haven equirectangular interiors)
@@ -379,29 +378,26 @@ Deno.serve(async (req: Request) => {
       }
 
       // No Stage 2 or Stage 2 failed to start — complete with flat render only
-      await supabase
+      const { error: completeErr } = await supabase
         .from('renders')
         .update({ status: 'completed', image_url: finalUrl })
         .eq('id', render_id);
+      if (completeErr) console.error('renders complete update failed:', JSON.stringify(completeErr));
 
-      await supabase
+      const { error: roomUpdateErr } = await supabase
         .from('rooms')
-        .update({
-          latest_render_url: finalUrl,
-          updated_at: new Date().toISOString(),
-        })
+        .update({ latest_render_url: finalUrl, updated_at: new Date().toISOString() })
         .eq('id', render.room_id);
+      if (roomUpdateErr) console.error('rooms update failed:', JSON.stringify(roomUpdateErr));
 
       await supabase.rpc('increment_rooms_render_count', { room_id: render.room_id }).catch((err: unknown) => {
         console.warn('increment_rooms_render_count RPC unavailable:', err);
       });
 
+      console.log('Render complete (flat only):', JSON.stringify({ render_id, image_url: finalUrl }));
+
       return new Response(
-        JSON.stringify({
-          status: 'completed',
-          image_url: finalUrl,
-          panoramic_url: null,
-        }),
+        JSON.stringify({ status: 'completed', image_url: finalUrl, panoramic_url: null }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }

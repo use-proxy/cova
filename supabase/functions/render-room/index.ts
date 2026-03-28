@@ -304,14 +304,15 @@ async function startFluxPrediction(
       prompt,
       control_image:       depthMapUrl,
       num_inference_steps: numSteps,
-      guidance_scale:      3.5,
+      guidance_scale:      7.0,
       width:               1024,
       height:              1024,
     };
-    // If an anchor render exists, pass it as the image reference with moderate strength
+    // If an anchor render exists, pass it as the image reference — 0.35 keeps style
+    // influence without original photo bleeding through (was 0.6 = too transparent)
     if (anchorImageUrl) {
       fluxInput.image = anchorImageUrl;
-      fluxInput.image_prompt_strength = 0.6;
+      fluxInput.image_prompt_strength = 0.35;
       console.log('Using anchor image as style reference:', anchorImageUrl);
     }
     const predId = await startPrediction(
@@ -330,13 +331,13 @@ async function startFluxPrediction(
   const fallbackInput: Record<string, unknown> = {
     prompt,
     num_inference_steps: numSteps,
-    guidance_scale:      3.5,
+    guidance_scale:      7.0,
     width:               1024,
     height:              1024,
   };
   if (anchorImageUrl) {
     fallbackInput.image = anchorImageUrl;
-    fallbackInput.image_prompt_strength = 0.6;
+    fallbackInput.image_prompt_strength = 0.35;
   }
   const fallbackPredId = await startPrediction(
     'black-forest-labs', 'flux-2-pro',
