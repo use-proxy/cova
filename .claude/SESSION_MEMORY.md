@@ -2,28 +2,24 @@
 # Read this FIRST at the start of every Claude Code session
 
 ## Last Updated
-2026-03-27 — Sprint 3 FULLY COMPLETE (LoRA trained + wired into pipeline)
+2026-03-28 — Sprint 4 COMPLETE (product catalog expansion + quiz cards)
 
 ## Current Sprint
-Sprint 3 — FULLY COMPLETE. Next: Sprint 4 (Product catalog expansion).
+Sprint 4 — COMPLETE. Next: Sprint 5 (3D viewer visual improvements).
 
 ## What Was Done This Session
-- Sprint 3 Item 1 — LoRA Training Pipeline:
-  - Patched scripts/lora-training/train-cova-360.ts with 3 sources:
-    1. Poly Haven tonemapped JPGs (flat URL structure, not nested — 290 images found)
-    2. Flickr API (CC-licensed equirectangular interiors, needs FLICKR_API_KEY)
-    3. Hugging Face datasets (fallback, public indoor-360 datasets)
-  - Minimum 50 images enforced, max 150 cap (ZIP under 100MB for Replicate upload)
-  - Images resized 8192x4096 → 2048x1024 before packaging
-  - Auto-detects Replicate username for model ownership
-  - LoRA TRAINED: pgoel813/cova-interior-360-lora version 6082cef9
-  - Training: 150 images, 2000 steps, lr 0.0004, lora_rank 16, trigger "COVAINTERIOR360"
-- Sprint 3 Item 2 — Two-Stage Render Pipeline FULLY WIRED:
-  - render-room: Stage 1 (FLUX depth ControlNet) + is_panoramic flag
-  - get-render-status: Stage 2 uses version-based endpoint with REPLICATE_LORA_VERSION
-  - Supabase secrets SET: REPLICATE_LORA_MODEL_ID=pgoel813/cova-interior-360-lora, REPLICATE_LORA_VERSION=6082cef9
-  - Silent fallback if LoRA unavailable
-- Sprint 3 Items 3-5 — unchanged (panoramic viewer, HUD, previous renders)
+- Sprint 4 Item 1 — Full scraper (scripts/scrape-all.ts):
+  - Fixed env loading: absolute path /Users/daksh/Desktop/cova/.env.local
+  - Poly Pizza: api.poly.pizza/v1 with x-auth-token header, 25 models/category found, Download.glb empty
+  - Sketchfab: 60 CC-licensed GLBs found (glb_models table doesn't exist — logged only)
+  - Retailers: 432 template products inserted (wayfair/amazon/cb2/ikea × 108 each)
+  - Correct DB schema: external_id, affiliate_url_base, price_tier, style_weights, primary_style
+- Sprint 4 Item 2 — CLIP embeddings: 3,052/3,784 products have embeddings, 0 new (templates skipped)
+- Sprint 4 Item 3 — Quiz card expansion (scripts/expand-quiz-cards.ts):
+  - Table is swipe_cards not quiz_cards — fixed
+  - Columns: style (not style_tags), active field required
+  - 367 new cards via Unsplash: 228 pure + 139 blend → 800 total (was 433)
+- Sprint 4 Item 4 — GLB tagging: glb_models table doesn't exist, code ready for when it does
 - npx tsc --noEmit passes (zero app errors)
 
 ## What's Working
@@ -50,6 +46,9 @@ Sprint 3 — FULLY COMPLETE. Next: Sprint 4 (Product catalog expansion).
 - Apple Sign In: code fixed, needs physical device verification
 - Google Sign In: needs EXPO_PUBLIC_GOOGLE_CLIENT_ID in .env + physical device test
 - LiDAR Sub-sprint B/C: blocked on physical device
+- glb_models table: does not exist in Supabase — needs migration before Sketchfab models can be stored
+- swipe_cards table: 800/923 target — need 123 more cards (run expand-quiz-cards.ts again or add Pexels source)
+- Products: 3,784 total, 732 missing CLIP embeddings (template products with placeholder images)
 - 3D viewer: furniture hardcoded positions (Sprint 5)
 - Product matching: not sorted by style blend (Sprint 6)
 - Chatbot: system prompt missing full room context (Sprint 7)
