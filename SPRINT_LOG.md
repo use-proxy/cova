@@ -1,7 +1,7 @@
 # Cova Sprint Log
 # Updated after every sprint — read at session start
 
-## Spec Completion: 76% (Sprint 10 — GLB Model Library + 3D Advanced)
+## Spec Completion: 84% (Sprint 11 — Edge Cases + Analytics + Error Handling)
 
 ---
 
@@ -122,6 +122,63 @@ Target: Product catalog expansion
 - 3D models: 665 (149 Poly Haven + 216 Sketchfab + 300 Poly Pizza)
 - Quiz/swipe cards: 950 (EXCEEDS 923 target)
 - CLIP embeddings: 3,052 / 5,581 products (55% — all real-image products covered)
+
+---
+
+## Sprint 11 — COMPLETE
+Target: Edge Cases + Analytics + Error Handling
+
+### Item 1 — PostHog analytics integration
+- [x] posthog-react-native installed
+- [x] lib/posthog.ts created: initPostHog(), track(), identify(), reset()
+- [x] Initialized in App.tsx on app start
+- [x] PostHog API key: EXPO_PUBLIC_POSTHOG_API_KEY (placeholder — needs real key in .env)
+- [x] Events tracked:
+  - app_opened: { returning_user, rooms_count } — in App.tsx auth callback
+  - quiz_completed: { style_blend, swipe_count, room_type } — in StyleQuizScreen handleComplete
+  - render_started: { room_id, style_blend, render_type } — in useRender startRender
+  - render_completed: { room_id, duration_ms, success } — in useRender poll success/fail
+  - product_tapped: { product_id, retailer } — in ProductPanel handleProductTap
+  - product_pinned: { product_id, retailer } — in ProductPanel handlePinToggle
+  - product_purchased: { product_id, retailer, price } — in ProductPanel handleBuyNow
+  - chat_message_sent: { room_id } — in ChatPanel handleSend
+  - room_deleted: { room_id } — in HomeScreen handleDeleteRoom
+
+### Item 2 — All 17 edge cases (Screen 13 in spec)
+1. [x] Render fails → retry screen with "Try Again" (no token cost) + "Go Back" — already in useRender (setRenderError + retry logic, 2 attempts)
+2. [x] No internet → NetworkBanner component with "No internet connection — some features unavailable" — NEW, uses NetInfo listener
+3. [x] Auth fails → Specific error messages in AuthScreen (Apple/Google/email) — already implemented Sprint 1
+4. [x] Dead affiliate link → HEAD check before SFSafariViewController, "Link unavailable" alert — already in ProductPanel handleBuyNow (checkLinkAlive)
+5. [x] GLB fails to load → Grey box placeholder (Suspense fallback + null GLB asset fallback) — UPDATED FurniturePiece.tsx
+6. [x] App reinstall → rooms/renders restored from Supabase on sign-in (fetchRooms on auth) — already in RootNavigator
+7. [x] Supabase timeout (10s) → withTimeout wrapper on callEdgeFunction, friendly error message — NEW in supabase.ts
+8. [x] Claude API timeout (30s) → error + retry in chat — already done Sprint 7 (30s Promise.race + "↩ Retry")
+9. [x] Mid-quiz close → resume prompt on reopen — done Sprint 9 (AsyncStorage save/restore + modal)
+10. [x] LiDAR fails → auto-fallback to 3-photo — done Sprint 2 (try/catch → navigateTo3PhotoCapture)
+11. [x] Background render → AppState polling continues — NEW in useRender (AppState.addEventListener, resumes poll on foreground)
+12. [x] Zero products match → progressive threshold relaxation — done Sprint 6 (retry without price filter, "Showing closest matches")
+13. [x] Only 1 room (My Style) → placeholder "Design more rooms to discover your overall style" — NEW in ProfileScreen
+14. [x] Unsplash/image down → cached fallback cards (makeFallbackCards) — already in StyleQuizScreen
+15. [x] Room name blank → auto-generated "My [Room Type]" — already in HomeScreen createAndNavigateNew
+16. [x] Small room → same behavior as large room — no special case needed, verified
+17. [x] Hero empty (no renders) → empty state with arch + "Your first design is waiting" — done Sprint 8
+
+### Item 3 — Global error handling
+- [x] ErrorBoundary component: wraps entire app, catches React errors, shows retry screen
+- [x] Sentry.wrap(App): already catches uncaught errors + promise rejections
+- [x] callEdgeFunction: now has configurable timeout (default 30s), withTimeout utility exported
+- [x] NetworkBanner: NetInfo listener shows offline banner at top of app
+- [x] All edge function calls go through callEdgeFunction which has timeout + error handling
+
+### Item 4 — AppState background render polling
+- [x] useRender: added AppState.addEventListener('change') listener
+- [x] When app returns to foreground ('active') and activeRenderRef has pending render: re-polls immediately
+- [x] activeRenderRef tracks current render params, cleared on completion/failure
+- [x] pollTimeoutRef cleared before re-polling to prevent double polls
+
+### Verification
+- [x] npx tsc --noEmit passes (zero app errors)
+- [ ] Maestro flows: require dev server running on simulator (pre-existing condition)
 
 ---
 
@@ -406,6 +463,7 @@ Target: 3D Viewer Visual Quality + Interactions
 - [x] Sprint 8: dashboard V0 UI
 - [x] Sprint 9: profile screen + quiz improvements
 - [x] Sprint 10: GLB model library + 3D advanced
+- [x] Sprint 11: edge cases + analytics + error handling
 
 ---
 

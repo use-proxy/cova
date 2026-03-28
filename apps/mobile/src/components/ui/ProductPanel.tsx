@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { track } from '../../lib/posthog';
 import {
   View,
   Text,
@@ -217,6 +218,7 @@ export default function ProductPanel({ visible, onClose, styleBlend, budget = 25
       Alert.alert('Pin limit reached', `You can pin up to ${MAX_PINS} products. Unpin one to add another.`);
     } else {
       pinProduct(product);
+      track('product_pinned', { product_id: product.id, retailer: product.retailer });
     }
   }, [pinnedRoomProducts, pinProduct, unpinProduct]);
 
@@ -243,6 +245,7 @@ export default function ProductPanel({ visible, onClose, styleBlend, budget = 25
     }
     try {
       await Linking.openURL(product.affiliate_url);
+      track('product_purchased', { product_id: product.id, retailer: product.retailer, price: product.price });
     } catch {
       Alert.alert('Error', 'Could not open the product page.');
     }
@@ -251,6 +254,7 @@ export default function ProductPanel({ visible, onClose, styleBlend, budget = 25
   const handleProductTap = useCallback((product: Product) => {
     addToRecentlyViewed(product);
     setSelectedProduct(product);
+    track('product_tapped', { product_id: product.id, retailer: product.retailer });
   }, [addToRecentlyViewed]);
 
   const pinnedIds = new Set(pinnedRoomProducts.map((p) => p.id));

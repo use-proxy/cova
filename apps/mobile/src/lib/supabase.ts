@@ -20,16 +20,27 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
+/** Race a promise against a timeout. Default 10s. */
+export function withTimeout<T>(promise: Promise<T>, ms = 10000): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Having trouble connecting — please try again')), ms),
+    ),
+  ]);
+}
+
 export async function callEdgeFunction<T>(
   functionName: string,
   body: object,
+  timeoutMs = 30000,
 ): Promise<T> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) {
     throw new Error('Not authenticated');
   }
 
-  const response = await fetch(
+  const fetchPromise = fetch(
     `${supabaseUrl}/functions/v1/${functionName}`,
     {
       method: 'POST',
@@ -41,6 +52,8 @@ export async function callEdgeFunction<T>(
       body: JSON.stringify(body),
     },
   );
+
+  const response = await withTimeout(fetchPromise, timeoutMs);
 
   if (!response.ok) {
     const error = await response.json();

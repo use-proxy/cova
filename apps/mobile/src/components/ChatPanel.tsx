@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { track } from '../lib/posthog';
 import {
   View,
   Text,
@@ -247,6 +248,7 @@ export default function ChatPanel({
 
     lastUserMsgRef.current = text;
     setInputText('');
+    track('chat_message_sent', { room_id: roomId });
 
     const userMsg: LocalMessage = {
       id: `user-${Date.now()}`,

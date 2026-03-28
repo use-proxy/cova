@@ -292,7 +292,15 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* ── My Style (only if 2+ completed rooms) ── */}
+        {/* ── My Style (placeholder if <2 rooms, full if 2+) ── */}
+        {completedRooms.length === 1 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>My Style</Text>
+            <View style={styles.styleBarWrap}>
+              <Text style={styles.stylePlaceholder}>Design more rooms to discover your overall style</Text>
+            </View>
+          </View>
+        )}
         {completedRooms.length >= 2 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>My Style</Text>
@@ -610,6 +618,12 @@ const styles = StyleSheet.create({
   styleLabel: {
     color: 'rgba(255,255,255,0.6)',
     fontSize: 12,
+  },
+  stylePlaceholder: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 14,
+    textAlign: 'center',
+    paddingVertical: 8,
   },
 
   // ── Favorites grid ──

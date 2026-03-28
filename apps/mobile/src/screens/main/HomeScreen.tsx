@@ -25,6 +25,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { HomeStackParamList } from '../../navigation/HomeStack';
 import { useAppStore } from '../../store';
 import { supabase } from '../../lib/supabase';
+import { track } from '../../lib/posthog';
 import type { Room, RoomType, Render, StyleName } from '@cova/shared';
 
 const BG = '#0A1628';
@@ -412,6 +413,7 @@ export default function HomeScreen() {
   const handleDeleteRoom = async (room: Room) => {
     await supabase.from('rooms').delete().eq('id', room.id);
     setRooms((prev) => prev.filter((r) => r.id !== room.id));
+    track('room_deleted', { room_id: room.id });
   };
 
   // ── New room ──

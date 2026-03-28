@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Sentry, logProductDeviation, setCurrentScreen, setFlowStep } from '../../lib/sentry';
+import { track } from '../../lib/posthog';
 import {
   View,
   Text,
@@ -400,6 +401,11 @@ function StyleQuizScreen() {
 
     const finalBlend = normalizeBlend(swipeStateRef.current.styleBlend);
     console.log('QUIZ COMPLETE — FINAL BLEND:', JSON.stringify(finalBlend));
+    track('quiz_completed', {
+      style_blend: finalBlend,
+      swipe_count: swipeStateRef.current.swipeCount,
+      room_type: roomType,
+    });
 
     // Save to Zustand store
     useAppStore.getState().setStyleBlend(finalBlend);

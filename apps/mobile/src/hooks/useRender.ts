@@ -1,7 +1,9 @@
 import { useRef, useEffect } from 'react';
+import { AppState } from 'react-native';
 import { useAppStore } from '../store';
 import { callEdgeFunction } from '../lib/supabase';
 import { Sentry, captureProductError } from '../lib/sentry';
+import { track } from '../lib/posthog';
 import type { StyleBlend, RoomType, Render, Product, RoomDimensions } from '@cova/shared';
 
 interface RenderParams {
@@ -30,12 +32,25 @@ export function useRender() {
 
   // Holds the next scheduled poll timeout — cleared on unmount to prevent state updates
   const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const renderStartTimeRef = useRef<number>(0);
+  const activeRenderRef = useRef<{ renderId: string; roomType: RoomType; styleBlend: StyleBlend; budget: number } | null>(null);
 
   useEffect(() => {
+    // AppState listener: resume polling when app returns to foreground
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active' && activeRenderRef.current) {
+        const { renderId, roomType, styleBlend, budget } = activeRenderRef.current;
+        // Clear any stale timeout and re-poll immediately
+        if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
+        pollRenderStatus(renderId, roomType, styleBlend, budget);
+      }
+    });
+
     return () => {
+      subscription.remove();
       if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchMatchedProducts = async (imageUrl: string, roomType: RoomType, styleBlend: StyleBlend, budget: number) => {
     try {
@@ -56,6 +71,7 @@ export function useRender() {
 
   const pollRenderStatus = (renderId: string, roomType: RoomType, styleBlend: StyleBlend, budget: number) => {
     setRenderStatus('processing');
+    activeRenderRef.current = { renderId, roomType, styleBlend, budget };
     const startTime = Date.now();
     // Exponential backoff: 3s → 6s → 12s → 24s → cap at 24s
     const BACKOFF = [3000, 6000, 12000, 24000];
@@ -83,6 +99,7 @@ export function useRender() {
         );
 
         if (data.status === 'completed' && data.image_url) {
+          activeRenderRef.current = null;
           setRenderStatus('completed');
           setRenderProgress(100);
           setRenderProgressStage(LOADING_STAGES[3]);
@@ -91,13 +108,24 @@ export function useRender() {
             image_url: data.image_url,
             panoramic_url: data.panoramic_url ?? null,
           } as Render);
+          track('render_completed', {
+            room_id: renderId,
+            duration_ms: Date.now() - renderStartTimeRef.current,
+            success: true,
+          });
           await fetchMatchedProducts(data.image_url, roomType, styleBlend, budget);
           return;
         }
 
         if (data.status === 'failed') {
+          activeRenderRef.current = null;
           setRenderStatus('failed');
           setRenderError(data.error ?? 'Render failed. Please try again.');
+          track('render_completed', {
+            room_id: renderId,
+            duration_ms: Date.now() - renderStartTimeRef.current,
+            success: false,
+          });
           return;
         }
 
@@ -129,6 +157,12 @@ export function useRender() {
     }
 
     Sentry.addBreadcrumb({ message: `startRender: begin — roomId=${params.roomId} roomType=${params.roomType}`, level: 'info' });
+    renderStartTimeRef.current = Date.now();
+    track('render_started', {
+      room_id: params.roomId,
+      style_blend: params.styleBlend,
+      render_type: params.renderType,
+    });
 
     setRenderStatus('processing');
     setRenderError(null);

@@ -2,24 +2,27 @@
 # Read this FIRST at the start of every Claude Code session
 
 ## Last Updated
-2026-03-28 — Sprint 10 COMPLETE (GLB Model Library + 3D Advanced)
+2026-03-28 — Sprint 11 COMPLETE (Edge Cases + Analytics + Error Handling)
 
 ## Current Sprint
-Sprint 10 — COMPLETE. Next: Sprint 11 (TBD).
+Sprint 11 — COMPLETE. Next: Sprint 12 (TBD).
 
-## What Was Done This Session (Sprint 10)
-- Migration 20240028: added linked_product_id (UUID FK) + dimensions_m (JSONB) to products table
-- Script sprint10-tag-models.ts: tagged 508 3D models with style/room_type/category/dimensions, linked 443 to purchasable products
-- RoomViewer3DScreen: integrated ProductPanel for "Browse Similar" from furniture popup
-- RoomViewer3DScreen: "Browse Similar" button opens ProductPanel filtered to selected furniture's category
-- BoxRoom: added ceiling height measurement indicator (vertical line + ticks on left wall, visible when grid enabled)
-- Floor grid and crown molding already working correctly
+## What Was Done This Session (Sprint 11)
+- PostHog: installed posthog-react-native, created lib/posthog.ts, initialized in App.tsx
+- PostHog events: app_opened, quiz_completed, render_started, render_completed, product_tapped, product_pinned, product_purchased, chat_message_sent, room_deleted
+- ErrorBoundary: React error boundary wrapping entire app, shows retry screen
+- NetworkBanner: NetInfo listener, shows "No internet" banner when offline
+- callEdgeFunction: added configurable timeout (withTimeout utility), default 30s
+- useRender: AppState background polling — resumes poll immediately when app returns to foreground
+- FurniturePiece: grey box fallback when GLB fails to load (Suspense + null asset)
+- ProfileScreen: "Design more rooms" placeholder when user has exactly 1 completed room
+- All 17 spec edge cases verified and handled
 
-## What Was Done Previously (Sprint 9)
-- ProfileScreen rewritten: avatar upload, editable name, design history stats, My Style bar, favorites grid, settings
-- BudgetSliderScreen created: $500-$10k slider between quiz and room capture
-- StyleQuizScreen: "I'm done" button, back button, mid-quiz resume from AsyncStorage
-- All flows now route through BudgetSlider (quiz→budget→capture)
+## What Was Done Previously (Sprint 10)
+- Migration 20240028: linked_product_id + dimensions_m on products table
+- 508 3D models tagged, 443 linked to purchasable products
+- RoomViewer3DScreen: "Browse Similar" button + ProductPanel integration
+- BoxRoom: ceiling height measurement indicator
 
 ## What Was Done Previously (Sprint 7)
 - chat-room edge function: full system prompt (room type, style blend %, budget, dimensions, furniture, pinned products, render count, last prompt)

@@ -6,17 +6,28 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as TrackingTransparency from 'expo-tracking-transparency';
 import { initSentry, Sentry } from './src/lib/sentry';
+import { initPostHog, track, identify } from './src/lib/posthog';
+import { ErrorBoundary } from './src/components/ui/ErrorBoundary';
+import { NetworkBanner } from './src/components/ui/NetworkBanner';
 import RootNavigator from './src/navigation/RootNavigator';
 import { useAppStore } from './src/store';
 import { supabase } from './src/lib/supabase';
 
 initSentry();
+void initPostHog();
 
 function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       useAppStore.getState().setSession(session);
-      if (session?.user) useAppStore.getState().setUser(session.user as any);
+      if (session?.user) {
+        useAppStore.getState().setUser(session.user as any);
+        identify(session.user.id, { email: session.user.email });
+        const rooms = useAppStore.getState().rooms;
+        track('app_opened', { returning_user: true, rooms_count: rooms.length });
+      } else {
+        track('app_opened', { returning_user: false, rooms_count: 0 });
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -54,8 +65,11 @@ function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <StatusBar style="light" />
-        <RootNavigator />
+        <ErrorBoundary>
+          <StatusBar style="light" />
+          <NetworkBanner />
+          <RootNavigator />
+        </ErrorBoundary>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

@@ -141,14 +141,24 @@ export function FurniturePiece({
       position={[piece.position.x, 0, piece.position.y]}
       rotation={[0, piece.rotation_y, 0]}
     >
-      <Suspense fallback={null}>
-        {glbAsset != null && (
+      <Suspense fallback={
+        <mesh>
+          <boxGeometry args={[catalog.width, catalog.height, catalog.depth]} />
+          <meshStandardMaterial color="#555555" transparent opacity={0.5} />
+        </mesh>
+      }>
+        {glbAsset != null ? (
           <FurnitureModel
             asset={glbAsset}
             catalog={catalog}
             isSelected={isSelected}
             colorOverride={piece.color_override}
           />
+        ) : (
+          <mesh>
+            <boxGeometry args={[catalog.width, catalog.height, catalog.depth]} />
+            <meshStandardMaterial color="#555555" transparent opacity={0.5} />
+          </mesh>
         )}
       </Suspense>
 
