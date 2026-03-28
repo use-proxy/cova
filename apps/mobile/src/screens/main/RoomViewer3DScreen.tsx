@@ -28,6 +28,7 @@ import { CameraController } from '../../components/3d/CameraController';
 import type { CameraControlState } from '../../components/3d/CameraController';
 import type { StyleName, RoomDimensions, FurniturePiece as FurniturePieceType, FurnitureCatalogItem, FurnitureCategory } from '@cova/shared';
 import { FURNITURE_CATALOG, STYLE_PALETTE, getFurnitureForRoom } from '../../data/furnitureCatalog';
+import ProductPanel from '../../components/ui/ProductPanel';
 import { useAppStore } from '../../store';
 import { supabase, callEdgeFunction } from '../../lib/supabase';
 
@@ -202,6 +203,9 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
   const [showGrid, setShowGrid] = useState(false);
   const [showCatalog, setShowCatalog] = useState(false);
   const [catalogCategory, setCatalogCategory] = useState<FurnitureCategory | 'all'>('all');
+  const [showProductPanel, setShowProductPanel] = useState(false);
+  const [browseSimilarCategory, setBrowseSimilarCategory] = useState<string | undefined>(undefined);
+  const [browseSimilarPieceId, setBrowseSimilarPieceId] = useState<string | null>(null);
 
   const viewShotRef = useRef<ViewShot>(null);
   const selectedIdRef = useRef<string | null>(null);
@@ -946,7 +950,7 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
               </View>
             )}
 
-            {/* Action buttons: Buy Now / Move / Dismiss */}
+            {/* Action buttons: Buy Now / Browse Similar / Move / Dismiss */}
             <View style={styles.sheetActionRow}>
               <TouchableOpacity
                 style={styles.sheetBuyBtn}
@@ -956,10 +960,28 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
                 <Text style={styles.sheetBuyBtnText}>Buy Now</Text>
               </TouchableOpacity>
               <TouchableOpacity
+                style={styles.sheetBrowseBtn}
+                onPress={() => {
+                  // Find which placed piece maps to this catalog item
+                  const matchingPiece = placedFurniture.find((p) => {
+                    const cat = FURNITURE_CATALOG.find((c) => c.id === p.catalog_id);
+                    return cat?.name === productInfoItem.name;
+                  });
+                  setBrowseSimilarCategory(productInfoItem.category);
+                  setBrowseSimilarPieceId(matchingPiece?.id ?? null);
+                  hideProductInfo();
+                  setShowProductPanel(true);
+                }}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.sheetBrowseBtnText}>Browse Similar</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.sheetActionRow}>
+              <TouchableOpacity
                 style={styles.sheetMoveBtn}
                 onPress={() => {
                   hideProductInfo();
-                  // Ensure the piece triggering the popup is selected for dragging
                   const matchingPiece = placedFurniture.find((p) => {
                     const cat = FURNITURE_CATALOG.find((c) => c.id === p.catalog_id);
                     return cat?.name === productInfoItem.name;
@@ -1050,6 +1072,19 @@ export default function RoomViewer3DScreen({ navigation }: Props) {
           </View>
         </View>
       </Modal>
+
+      {/* ── Browse Similar Product Panel ── */}
+      <ProductPanel
+        visible={showProductPanel}
+        onClose={() => {
+          setShowProductPanel(false);
+          setBrowseSimilarPieceId(null);
+        }}
+        roomId={currentRoom?.id ?? ''}
+        styleBlend={currentRoom?.style_blend ?? null}
+        budget={currentRoom?.budget ?? 5000}
+        defaultCategory={browseSimilarCategory}
+      />
     </View>
   );
 }
@@ -1414,6 +1449,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   sheetBuyBtnText: { color: 'white', fontWeight: '700', fontSize: 14 },
+  sheetBrowseBtn: {
+    flex: 2,
+    backgroundColor: 'rgba(184,134,11,0.15)',
+    borderRadius: 20,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#B8860B',
+  },
+  sheetBrowseBtnText: { color: '#B8860B', fontWeight: '600', fontSize: 14 },
   sheetMoveBtn: {
     flex: 1,
     backgroundColor: 'rgba(27,58,45,0.1)',

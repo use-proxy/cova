@@ -210,6 +210,33 @@ export function BoxRoom({ style, dimensions, wallColorOverride, showGrid }: BoxR
         shadow-mapSize-height={512}
       />
 
+      {/* ── Ceiling height indicator line (subtle dashed line on side wall) ── */}
+      {showGrid && (
+        <mesh position={[-w / 2 + 0.005, h, 0]}>
+          <planeGeometry args={[0.01, 0.01]} />
+          <meshBasicMaterial color="transparent" opacity={0} transparent />
+        </mesh>
+      )}
+      {showGrid && (
+        <group position={[-w / 2 + 0.01, 0, -d / 2 + 0.5]}>
+          {/* Vertical measurement line */}
+          <mesh position={[0, h / 2, 0]}>
+            <boxGeometry args={[0.005, h, 0.005]} />
+            <meshBasicMaterial color="rgba(255,255,255,0.3)" transparent opacity={0.3} />
+          </mesh>
+          {/* Top tick */}
+          <mesh position={[0.03, h - 0.01, 0]}>
+            <boxGeometry args={[0.06, 0.005, 0.005]} />
+            <meshBasicMaterial color="rgba(255,255,255,0.3)" transparent opacity={0.3} />
+          </mesh>
+          {/* Bottom tick */}
+          <mesh position={[0.03, 0.01, 0]}>
+            <boxGeometry args={[0.06, 0.005, 0.005]} />
+            <meshBasicMaterial color="rgba(255,255,255,0.3)" transparent opacity={0.3} />
+          </mesh>
+        </group>
+      )}
+
       {/* ── Floor grid (toggleable, off by default) ── */}
       {showGrid && (
         <gridHelper

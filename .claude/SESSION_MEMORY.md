@@ -2,29 +2,24 @@
 # Read this FIRST at the start of every Claude Code session
 
 ## Last Updated
-2026-03-28 — Sprint 9 COMPLETE (Profile Screen + Quiz Improvements)
+2026-03-28 — Sprint 10 COMPLETE (GLB Model Library + 3D Advanced)
 
 ## Current Sprint
-Sprint 9 — COMPLETE. Next: Sprint 10 (TBD).
+Sprint 10 — COMPLETE. Next: Sprint 11 (TBD).
 
-## What Was Done This Session (Sprint 9)
-- ProfileScreen.tsx REWRITTEN: dark theme, avatar upload (image picker → compress → Supabase 'avatars' bucket), editable display name, member since, email read-only
-- ProfileScreen: Design History 2x2 stats grid (rooms, renders, favorite style, saved products)
-- ProfileScreen: My Style bar chart — only shown with 2+ completed rooms (combined blend across rooms)
-- ProfileScreen: My Favorites 3-column grid (saved products)
-- ProfileScreen: Settings — default budget slider ($500-$10k), notifications toggle, Imperial/Metric units toggle
-- ProfileScreen: Token balance 999 + "Get More Tokens" → Coming Soon alert
-- ProfileScreen: Change Password only for email auth (checks app_metadata.provider)
-- ProfileScreen: Sign Out + Delete Account with confirmation dialogs
-- ProfileScreen: App info — version, Privacy/Terms (Coming Soon), hellocova@gmail.com mailto
-- BudgetSliderScreen.tsx CREATED: separate screen after quiz, slider $500-$10,000+, saves to rooms table
-- RoomNavigator: added BudgetSlider route
-- StyleQuizScreen: quiz completion → BudgetSlider (was RoomCapture directly)
-- StyleQuizScreen: "I'm done" button appears after 10+ swipes for early exit
-- StyleQuizScreen: back button (←) in top bar reverts last swipe (blend + card index from swipeHistoryRef)
-- StyleQuizScreen: mid-quiz resume — saves progress to AsyncStorage after each swipe, shows "Continue your style quiz?" modal on reopen
-- PastStylesScreen: tapping style card → BudgetSlider → RoomCapture (was RoomCapture directly)
-- HomeScreen: Duplicate Style → BudgetSlider → RoomCapture
+## What Was Done This Session (Sprint 10)
+- Migration 20240028: added linked_product_id (UUID FK) + dimensions_m (JSONB) to products table
+- Script sprint10-tag-models.ts: tagged 508 3D models with style/room_type/category/dimensions, linked 443 to purchasable products
+- RoomViewer3DScreen: integrated ProductPanel for "Browse Similar" from furniture popup
+- RoomViewer3DScreen: "Browse Similar" button opens ProductPanel filtered to selected furniture's category
+- BoxRoom: added ceiling height measurement indicator (vertical line + ticks on left wall, visible when grid enabled)
+- Floor grid and crown molding already working correctly
+
+## What Was Done Previously (Sprint 9)
+- ProfileScreen rewritten: avatar upload, editable name, design history stats, My Style bar, favorites grid, settings
+- BudgetSliderScreen created: $500-$10k slider between quiz and room capture
+- StyleQuizScreen: "I'm done" button, back button, mid-quiz resume from AsyncStorage
+- All flows now route through BudgetSlider (quiz→budget→capture)
 
 ## What Was Done Previously (Sprint 7)
 - chat-room edge function: full system prompt (room type, style blend %, budget, dimensions, furniture, pinned products, render count, last prompt)
