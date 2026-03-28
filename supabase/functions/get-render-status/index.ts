@@ -399,9 +399,12 @@ Deno.serve(async (req: Request) => {
         .eq('id', render.room_id);
       if (roomUpdateErr) console.error('rooms update failed:', JSON.stringify(roomUpdateErr));
 
-      await supabase.rpc('increment_rooms_render_count', { room_id: render.room_id }).catch((err: unknown) => {
-        console.warn('increment_rooms_render_count RPC unavailable:', err);
-      });
+      try {
+        const { error: rpcErr } = await supabase.rpc('increment_rooms_render_count', { room_id: render.room_id });
+        if (rpcErr) console.warn('increment_rooms_render_count RPC failed:', rpcErr.message);
+      } catch (rpcCatchErr) {
+        console.warn('increment_rooms_render_count RPC unavailable:', rpcCatchErr);
+      }
 
       console.log('Render complete (flat only):', JSON.stringify({ render_id, image_url: finalUrl }));
 
@@ -433,10 +436,12 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({ status: 'processing', image_url: null, panoramic_url: null, stage: 'rendering' }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
-  } catch (err) {
-    console.error('get-render-status error:', err);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? err.stack : undefined;
+    console.error('get-render-status unhandled error:', msg, stack);
     return new Response(
-      JSON.stringify({ error: 'internal_error', message: 'An unexpected error occurred.' }),
+      JSON.stringify({ error: 'internal_error', message: msg }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   }
