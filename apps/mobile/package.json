@@ -39,7 +39,7 @@
     "expo-linking": "~7.0.5",
     "expo-media-library": "~17.0.6",
     "expo-notifications": "~0.29.14",
-    "expo-sensors": "^55.0.9",
+    "expo-sensors": "^14.0.2",
     "expo-status-bar": "~2.0.1",
     "expo-tracking-transparency": "~5.1.1",
     "expo-updates": "~0.27.5",
