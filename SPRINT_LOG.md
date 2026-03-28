@@ -1,7 +1,7 @@
 # Cova Sprint Log
 # Updated after every sprint — read at session start
 
-## Spec Completion: 47% (Sprint 6 — Product Panel Full Implementation)
+## Spec Completion: 56% (Sprint 7 — Chatbot Full Implementation)
 
 ---
 
@@ -127,6 +127,43 @@ Target: Product catalog expansion
 
 ---
 
+## Sprint 7 — COMPLETE
+Target: Chatbot Full Implementation
+
+### Item 1 — Full system prompt on every call
+- [x] chat-room edge function: room type, style blend %, budget, dimensions in feet, furniture list, pinned products, render count, last prompt
+
+### Item 2 — Conversation starter chips
+- [x] 4 starters shown when localMessages.length === 0, hidden after first message, tap to auto-send
+
+### Item 3 — Persistent history in Supabase
+- [x] Loads chat_messages on mount (ordered by created_at), appends on send
+
+### Item 4 — Action triggers with confirmation cards
+- [x] OPEN_SHOP: executes immediately, calls onOpenShop(category) → opens ProductPanel with defaultCategory
+- [x] REGENERATE: shows confirmation card → calls onStartRender
+- [x] ADJUST_BLEND: shows confirmation card → updates Supabase style_blend + triggers render
+- [x] PIN_PRODUCT: shows confirmation card → calls pinProduct from store
+
+### Item 5 — Inline product cards
+- [x] Keyword extraction from Claude response → ilike search on products table
+- [x] Inline product card rendered in message list when suggested_product exists
+
+### Item 6 — 500 char limit + 30s timeout + retry
+- [x] maxLength=500 enforced; char counter shown at 400+, red at 500
+- [x] 30s Promise.race timeout; error message shows "↩ Retry" button
+
+### Supporting changes
+- [x] ProductPanel: defaultCategory prop for OPEN_SHOP filter
+- [x] RenderViewScreen: ChatPanel wired with all new props + callback handlers
+- [x] Switched chat model to claude-haiku-4-5-20251001
+
+### Verification
+- [x] npx tsc --noEmit passes (zero errors)
+- [x] Flows 01, 04, 05, 14 pass (flow 02 pre-existing Budget step failure — not a regression)
+
+---
+
 ## Sprint 6 — COMPLETE
 Target: Product Panel Full Implementation
 
@@ -225,6 +262,7 @@ Target: 3D Viewer Visual Quality + Interactions
 - [x] Sprint 4: product catalog expansion + quiz cards
 - [x] Sprint 5: 3D viewer visual quality + interactions
 - [x] Sprint 6: product panel full implementation
+- [x] Sprint 7: chatbot full implementation
 
 ---
 

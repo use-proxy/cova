@@ -2,12 +2,21 @@
 # Read this FIRST at the start of every Claude Code session
 
 ## Last Updated
-2026-03-27 — Sprint 6 COMPLETE (Product Panel Full Implementation)
+2026-03-27 — Sprint 7 COMPLETE (Chatbot Full Implementation)
 
 ## Current Sprint
-Sprint 6 — COMPLETE. Next: Sprint 7 (chatbot system prompt full room context).
+Sprint 7 — COMPLETE. Next: Sprint 8 (TBD).
 
-## What Was Done This Session (Sprint 6)
+## What Was Done This Session (Sprint 7)
+- chat-room edge function: full system prompt (room type, style blend %, budget, dimensions, furniture, pinned products, render count, last prompt)
+- chat-room: action trigger parsing (REGENERATE/ADJUST_BLEND/OPEN_SHOP/PIN_PRODUCT), inline product search
+- chat-room: model → claude-haiku-4-5-20251001
+- ChatPanel: full rewrite — dark navy, 4 starter chips, Supabase history on mount, 30s timeout + retry, 500 char limit, action confirmation cards, inline product cards
+- ChatPanel: new props: onOpenShop, onStartRender, onAdjustBlend, styleBlend, placedFurniture, pinnedRoomProducts
+- ProductPanel: defaultCategory prop wired from OPEN_SHOP action
+- RenderViewScreen: ChatPanel wired with all 6 new props, handleChatOpenShop/StartRender/AdjustBlend callbacks
+
+## What Was Done Last Session (Sprint 6)
 - Migration 20240027 applied to production (wall_color_extracted column on rooms)
 - detect-furniture wired to RoomViewer3DScreen on entry (5s timeout, fallback to buildDefaultFurniture)
 - Store: added pinnedRoomProducts (max 3, persisted), recentlyViewedProducts (max 5, persisted)
@@ -77,9 +86,7 @@ Sprint 6 — COMPLETE. Next: Sprint 7 (chatbot system prompt full room context).
 - Products: 5,581 total (3,052 with CLIP embeddings, 2,529 with placeholder images)
 - 3D models: 665 total (Poly Haven 149, Sketchfab 216, Poly Pizza 300)
 - Swipe cards: 950 total (exceeds 923 target)
-- Chatbot: system prompt missing full room context (Sprint 7)
-- wall_color_extracted: migration written, not yet applied to production DB
-- detect-furniture: wired to RoomViewer3DScreen on entry ✅
+- Flow 02 (style quiz): pre-existing "Budget" step failure — not a regression
 
 ## Key Architecture Decisions — Locked
 - CameraControlState: { theta: number; fov: number } — phi and radius REMOVED in Sprint 5
