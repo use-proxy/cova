@@ -314,11 +314,15 @@ Deno.serve(async (req: Request) => {
       else console.log('Stage 1 image saved:', finalUrl.slice(0, 80));
 
       // ── Stage 2: Start panoramic LoRA conversion if configured ────────
-      // LoRA model: pgoel813/cova-interior-360-lora (trained on 150 Poly Haven equirectangular interiors)
-      // Trigger word: COVAINTERIOR360
-      // Secrets: REPLICATE_LORA_MODEL_ID, REPLICATE_LORA_VERSION
       const loraModelId = Deno.env.get('REPLICATE_LORA_MODEL_ID');
       const loraVersion = Deno.env.get('REPLICATE_LORA_VERSION');
+
+      console.log('Stage 2 check:', JSON.stringify({
+        is_panoramic: render.is_panoramic,
+        loraModelId: loraModelId ?? 'NOT SET',
+        loraVersion: loraVersion ? loraVersion.slice(0, 12) : 'NOT SET',
+        will_start: !!(render.is_panoramic && loraModelId && loraVersion),
+      }));
 
       if (render.is_panoramic && loraModelId && loraVersion) {
         try {

@@ -13,9 +13,9 @@
 //      └─ Secrets: REPLICATE_LORA_MODEL_ID, REPLICATE_LORA_VERSION
 //      └─ FALLBACK: flat render only if LoRA unavailable
 //
-// ⚠️ ASSERTION: render-room blocks on Depth Pro (max 120s for cold starts) then fires FLUX async.
-//   Total wall-clock time must stay under Supabase's 150s edge function limit.
-//   FLUX completion + Stage 2 LoRA are polled by get-render-status, not here.
+// ⚠️ ASSERTION: render-room blocks on Depth Pro (max 60s, falls back to flat depth if slow)
+//   then fires FLUX async and returns immediately. Target: <90s total.
+//   FLUX polling + Stage 2 LoRA are handled by get-render-status, not here.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
@@ -263,9 +263,9 @@ async function generateDepthMap(imageDataUri: string, token: string): Promise<st
     'garg-aayush/ml-depth-pro',
   );
 
-  // Poll for depth result. Budget: 120s max — Depth Pro cold starts can take 60-90s.
-  // Supabase edge function limit is 150s, leaving 30s headroom for FLUX start + DB writes.
-  const pred = await resolvePrediction(predId, token, 120_000);
+  // Poll for depth result. Budget: 60s — if Depth Pro cold-starts longer, fall back to flat depth.
+  // This keeps render-room fast (<90s total) well within the 150s edge function limit.
+  const pred = await resolvePrediction(predId, token, 60_000);
 
   // Depth Pro output varies: plain string URL, object { depth_colored }, or array
   const output = pred.output;
@@ -625,6 +625,12 @@ Deno.serve(async (req: Request) => {
     }
 
     // Client now polls get-render-status with this render_id
+    console.log('render-room complete:', JSON.stringify({
+      render_id: render.id,
+      prediction_id: fluxPredictionId,
+      is_panoramic: true,
+    }));
+
     return new Response(
       JSON.stringify({
         render_id:     render.id,
