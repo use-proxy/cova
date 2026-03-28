@@ -112,6 +112,23 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // ── Watchdog: fail renders stuck processing > 10 minutes ──
+    if (render.status === 'processing' || render.status === 'pending') {
+      const createdAt = new Date(render.created_at as string).getTime();
+      const elapsedMs = Date.now() - createdAt;
+      const TEN_MINUTES = 10 * 60 * 1000;
+      if (elapsedMs > TEN_MINUTES) {
+        await supabase
+          .from('renders')
+          .update({ status: 'failed' })
+          .eq('id', render_id);
+        return new Response(
+          JSON.stringify({ status: 'failed', error: 'Render timed out after 10 minutes. Please try again.' }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+    }
+
     // ── Already completed — return both URLs ──────────────────────────────
     if (render.status === 'completed') {
       return new Response(

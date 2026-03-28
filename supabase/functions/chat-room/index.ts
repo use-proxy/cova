@@ -102,9 +102,9 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    const body = await req.json();
     const {
       room_id,
-      message,
       render_image_url,
       tap_x,
       tap_y,
@@ -112,7 +112,40 @@ Deno.serve(async (req: Request) => {
       furniture_list,
       pinned_products,
       last_render_prompt,
-    } = await req.json();
+    } = body;
+
+    // ── Rate limiting: 60 messages per user per hour ──
+    const { data: rateLimitOk } = await supabase.rpc('check_rate_limit', {
+      p_user_id: user.id,
+      p_action: 'chat',
+      p_max_requests: 60,
+    });
+    if (rateLimitOk === false) {
+      return new Response(JSON.stringify({ error: 'Rate limit exceeded, try again later' }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ── Sanitize user message ──
+    let message: string = typeof body.message === 'string' ? body.message : '';
+    // Server-side 500 char truncation
+    if (message.length > 500) message = message.slice(0, 500);
+    // Strip prompt injection attempts
+    const INJECTION_PATTERNS = [
+      /ignore\s+(?:all\s+)?previous\s+instructions/gi,
+      /system\s+prompt/gi,
+      /you\s+are\s+now/gi,
+      /disregard\s+(?:all\s+)?(?:previous|above|prior)/gi,
+      /forget\s+(?:all\s+)?(?:previous|your|the)/gi,
+      /new\s+instructions?\s*:/gi,
+    ];
+    for (const pattern of INJECTION_PATTERNS) {
+      if (pattern.test(message)) {
+        console.warn(`[SECURITY] Prompt injection attempt from user ${user.id}: ${message.slice(0, 100)}`);
+        message = message.replace(pattern, '[filtered]');
+      }
+    }
 
     // ── Fetch room with full context ──
     const { data: room, error: roomError } = await supabase

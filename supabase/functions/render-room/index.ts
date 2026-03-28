@@ -381,6 +381,19 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // ── Rate limiting: 10 renders per user per hour ──
+    const { data: rateLimitOk } = await supabase.rpc('check_rate_limit', {
+      p_user_id: user.id,
+      p_action: 'render',
+      p_max_requests: 10,
+    });
+    if (rateLimitOk === false) {
+      return new Response(JSON.stringify({ error: 'Rate limit exceeded, try again later' }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // ── Parse body ─────────────────────────────────────────────────────────
     const {
       room_id,

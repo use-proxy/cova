@@ -8,12 +8,17 @@
 MVP is code-complete. 12 sprints done. 95% spec completion. All 13 screens implemented. All 17 edge cases handled.
 Remaining 5% requires physical device testing (Apple/Google auth, LiDAR, camera) and manual setup (App Store, affiliate URLs).
 
-## What Was Done This Session (Sprint 12 — Final Polish)
-- Fixed Maestro flow 02 Budget step failure: updated yaml to match "Set Your Budget" text
-- PostHog: fixed deprecated initAsync → new PostHog() constructor
-- PostHog: added style_match_score to product_tapped, trigger_action to chat_message_sent
-- app.json: fixed splash backgroundColor from #1B3A2D → #0A1628 (spec: dark navy)
-- docs/app-store-description.md: name, subtitle, 170-word description, keywords, missing assets list
+## What Was Done This Session (Security Audit — post-MVP)
+- Migration 20240029: RLS security audit — products + swipe_cards write policies tightened to service_role only
+- rate_limits table + check_rate_limit() RPC: atomic per-user per-hour rate limiting
+- render-room: rate limited to 10 renders/user/hour (429 response)
+- chat-room: rate limited to 60 messages/user/hour (429 response)
+- chat-room: prompt injection sanitization — 6 patterns stripped, 500 char server-side truncation
+- get-render-status: 10-minute watchdog — auto-fails stuck renders
+- Total migrations: 29 (20240001 through 20240029)
+
+## What Was Done Previously (Sprint 12 — Final Polish)
+- Fixed flow 02 Budget step, PostHog init, app.json splash bg, app store description
 - Exhaustive spec audit: all 13 screens PASS
 
 ## What Was Done Previously (Sprint 11)

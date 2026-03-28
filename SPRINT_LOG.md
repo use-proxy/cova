@@ -125,6 +125,57 @@ Target: Product catalog expansion
 
 ---
 
+## Security — RLS Audit + Rate Limiting + Prompt Sanitization + Render Watchdog
+
+### Step 1 — RLS Audit Results
+
+| Table | RLS | SELECT | INSERT | UPDATE | DELETE | Status |
+|-------|-----|--------|--------|--------|--------|--------|
+| users | ON | own (id=auth.uid) | own | own | own | PASS |
+| rooms | ON | own (user_id) | own | own | own | PASS |
+| renders | ON | own (user_id) | own | own | own | PASS |
+| chat_messages | ON | own (user_id) | own | own | own | PASS |
+| products | ON | public (authenticated) | service_role only | service_role only | service_role only | FIXED |
+| swipe_cards | ON | public (active=true) | service_role only | service_role only | service_role only | FIXED |
+| furniture_placements | ON | via room FK | via room FK | via room FK | via room FK | PASS |
+| token_transactions | ON | own (user_id) | own | own | own | PASS |
+| cart_items | ON | own (user_id) | own | own | own | PASS |
+| chat_sessions | ON | own (user_id) | own | own | own | PASS |
+| anchor_renders | ON | public | — | — | — | PASS |
+| rate_limits | ON | service_role only | service_role only | service_role only | service_role only | NEW |
+
+### Step 2 — RLS Fixes Applied (migration 20240029)
+- [x] products: added service_role-only INSERT/UPDATE/DELETE policies (was missing write policies)
+- [x] swipe_cards: added service_role-only INSERT/UPDATE/DELETE policies (was missing write policies)
+- [x] rate_limits table: created with user_id, action, window_start, request_count
+- [x] check_rate_limit() RPC function: checks and increments per-user per-hour count
+- [x] cleanup_rate_limits() function: removes rows older than 2 hours
+
+### Step 3 — Rate Limiting
+- [x] render-room: max 10 renders per user per hour (429 if exceeded)
+- [x] chat-room: max 60 messages per user per hour (429 if exceeded)
+- [x] Uses check_rate_limit() RPC — atomic increment + check in single call
+- [x] Window: per-hour, using date_trunc('hour', now())
+
+### Step 4 — Prompt Injection Sanitization (chat-room)
+- [x] Server-side 500 char truncation (enforced even if client fails)
+- [x] 6 injection patterns stripped: "ignore previous instructions", "system prompt", "you are now", "disregard", "forget previous", "new instructions:"
+- [x] Matches replaced with [filtered], original logged to console with user ID
+- [x] Case-insensitive, handles multi-word variations
+
+### Step 5 — Render Timeout Watchdog (get-render-status)
+- [x] Renders stuck in processing/pending for >10 minutes auto-marked as failed
+- [x] Returns failure status to client → retry screen shows
+- [x] No token deduction (token balance is static 999 for MVP)
+
+### Step 6 — Migration Applied
+- [x] npx supabase db push — migration 20240029 applied successfully
+
+### Step 7 — Verification
+- [x] npx tsc --noEmit: zero app errors
+
+---
+
 ## Sprint 12 — COMPLETE (MVP FINAL)
 Target: Complete Polish + Exhaustive Final Audit
 
