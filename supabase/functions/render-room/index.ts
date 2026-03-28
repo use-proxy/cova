@@ -13,7 +13,7 @@
 //      └─ Secrets: REPLICATE_LORA_MODEL_ID, REPLICATE_LORA_VERSION
 //      └─ FALLBACK: flat render only if LoRA unavailable
 //
-// ⚠️ ASSERTION: render-room blocks on Depth Pro (max 45s) then fires FLUX async.
+// ⚠️ ASSERTION: render-room blocks on Depth Pro (max 120s for cold starts) then fires FLUX async.
 //   Total wall-clock time must stay under Supabase's 150s edge function limit.
 //   FLUX completion + Stage 2 LoRA are polled by get-render-status, not here.
 
@@ -261,8 +261,9 @@ async function generateDepthMap(imageDataUri: string, token: string): Promise<st
     'garg-aayush/ml-depth-pro',
   );
 
-  // Poll for depth result. Budget: 90s max, leaving headroom for FLUX start + DB writes.
-  const pred = await resolvePrediction(predId, token, 90_000);
+  // Poll for depth result. Budget: 120s max — Depth Pro cold starts can take 60-90s.
+  // Supabase edge function limit is 150s, leaving 30s headroom for FLUX start + DB writes.
+  const pred = await resolvePrediction(predId, token, 120_000);
 
   // Depth Pro output varies: plain string URL, object { depth_colored }, or array
   const output = pred.output;
