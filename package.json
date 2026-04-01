@@ -38,7 +38,7 @@
     "turbo": "latest",
     "typescript": "^5.3.0"
   },
-  "packageManager": "pnpm@9.0.0",
+  "packageManager": "pnpm@10.33.0",
   "pnpm": {
     "overrides": {
       "react": "18.3.1",
