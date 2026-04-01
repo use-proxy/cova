@@ -28,7 +28,10 @@
         "APIFY_API_TOKEN"
       ],
       "outputs": [
-        "dist/**"
+        "dist/**",
+        "apps/web/.next/**",
+        "apps/web/.next/standalone/**",
+        "apps/web/.next/static/**"
       ]
     },
     "dev": {
