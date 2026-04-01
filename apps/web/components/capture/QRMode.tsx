@@ -28,11 +28,13 @@ export function QRMode({ roomId, onSwitchToUpload }: QRModeProps) {
   const [captureUrl, setCaptureUrl] = useState<string | null>(null)
   const [connected, setConnected] = useState(false)
 
-  // Generate token + build phone-reachable URL on mount
+  // Generate token + build phone-reachable URL with auth session on mount
   useEffect(() => {
     const buildCaptureUrl = async () => {
-      // Step 1: get the JWT token from the API
-      let token: string | null = null
+      const supabase = createBrowserClient()
+
+      // Step 1: get the JWT capture token from the API
+      let captureToken: string | null = null
       try {
         const res = await fetch("/api/capture/generate-token", {
           method: "POST",
@@ -41,22 +43,27 @@ export function QRMode({ roomId, onSwitchToUpload }: QRModeProps) {
         })
         if (res.ok) {
           const data = await res.json()
-          // API returns { url } with token embedded — extract token from it
           const urlObj = new URL(data.url)
-          token = urlObj.searchParams.get("token")
+          captureToken = urlObj.searchParams.get("token")
         }
       } catch (err) {
         console.error("Token generation failed:", err)
       }
 
-      // Step 2: build a phone-reachable base URL
-      let baseUrl: string
+      // Step 2: get the current user's access token so phone is pre-authenticated
+      let accessToken = ""
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        accessToken = session?.access_token ?? ""
+      } catch {
+        // Proceed without access token
+      }
 
+      // Step 3: build a phone-reachable base URL
+      let baseUrl: string
       if (process.env.NEXT_PUBLIC_VERCEL_URL) {
-        // Production on Vercel
         baseUrl = `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
       } else {
-        // Development: fetch local network IP so phones on same WiFi can reach it
         try {
           const ipRes = await fetch("/api/local-ip")
           const { ip } = await ipRes.json()
@@ -66,9 +73,11 @@ export function QRMode({ roomId, onSwitchToUpload }: QRModeProps) {
         }
       }
 
-      const path = `/capture/${roomId}`
-      const url = token ? `${baseUrl}${path}?token=${token}` : `${baseUrl}${path}`
-      setCaptureUrl(url)
+      // Build URL: /capture/mobile with both tokens
+      const params = new URLSearchParams()
+      if (captureToken) params.set("token", captureToken)
+      if (accessToken) params.set("access_token", accessToken)
+      setCaptureUrl(`${baseUrl}/capture/mobile?${params.toString()}`)
     }
 
     buildCaptureUrl()

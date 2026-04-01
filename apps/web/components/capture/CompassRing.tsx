@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef } from "react"
+import { type Ref } from "react"
 import { Check } from "lucide-react"
 
 const DIRECTIONS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"] as const
@@ -12,35 +12,29 @@ interface CompassRingProps {
   size?: number
   allComplete?: boolean
   lockedOn?: boolean
+  needleRef?: Ref<SVGGElement>
 }
 
 export function CompassRing({
   activeIndex,
   currentHeading,
-  startHeading,
   size = 180,
   allComplete = false,
   lockedOn = false,
+  needleRef,
 }: CompassRingProps) {
-  const arrowRef = useRef<SVGGElement>(null)
   const cx = size / 2
   const cy = size / 2
   const radius = size / 2 - 20
   const nodeRadius = 8
 
-  // Arrow rotation: use heading relative to start if available
-  const arrowRotation = (() => {
-    if (currentHeading === null || startHeading === null) {
-      // Desktop fallback: point at the active node statically
-      return activeIndex * 45 - 90
-    }
-    // Real heading: rotate arrow to show where user is facing relative to start
-    const delta = currentHeading - startHeading
-    return delta - 90 // SVG 0° is east, compass 0° is north
-  })()
+  // Static arrow rotation for desktop (no gyro)
+  const staticArrowAngle = activeIndex * 45 - 90
 
   // Pulse speed: faster when locked on
   const pulseDuration = lockedOn ? "0.3s" : "1.5s"
+
+  const hasGyro = currentHeading !== null
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
@@ -119,33 +113,47 @@ export function CompassRing({
           )
         })}
 
-        {/* Center rotating arrow — tracks real heading on mobile, static on desktop */}
+        {/* Compass needle — rotated via ref on mobile (RAF), static on desktop */}
         {!allComplete && (
-          <g
-            ref={arrowRef}
-            style={{
-              transform: `rotate(${arrowRotation}deg)`,
-              transformOrigin: `${cx}px ${cy}px`,
-              transition: currentHeading !== null ? "transform 100ms ease-out" : "none",
-            }}
-          >
-            <line
-              x1={cx}
-              y1={cy}
-              x2={cx + radius * 0.5}
-              y2={cy}
-              stroke="var(--gold)"
-              strokeWidth="2"
-              strokeLinecap="round"
-              opacity="0.8"
-            />
-            {/* Arrowhead */}
-            <polygon
-              points={`${cx + radius * 0.5 + 6},${cy} ${cx + radius * 0.5 - 2},${cy - 4} ${cx + radius * 0.5 - 2},${cy + 4}`}
-              fill="var(--gold)"
-              opacity="0.8"
-            />
-          </g>
+          hasGyro && needleRef ? (
+            // Mobile: needle rotated imperatively via ref from RAF loop
+            <g ref={needleRef}>
+              <line
+                x1={cx}
+                y1={cy}
+                x2={cx + radius * 0.5}
+                y2={cy}
+                stroke="var(--gold)"
+                strokeWidth="2"
+                strokeLinecap="round"
+                opacity="0.8"
+              />
+              <polygon
+                points={`${cx + radius * 0.5 + 6},${cy} ${cx + radius * 0.5 - 2},${cy - 4} ${cx + radius * 0.5 - 2},${cy + 4}`}
+                fill="var(--gold)"
+                opacity="0.8"
+              />
+            </g>
+          ) : (
+            // Desktop: static arrow pointing at active node
+            <g style={{ transform: `rotate(${staticArrowAngle}deg)`, transformOrigin: `${cx}px ${cy}px` }}>
+              <line
+                x1={cx}
+                y1={cy}
+                x2={cx + radius * 0.5}
+                y2={cy}
+                stroke="var(--gold)"
+                strokeWidth="2"
+                strokeLinecap="round"
+                opacity="0.8"
+              />
+              <polygon
+                points={`${cx + radius * 0.5 + 6},${cy} ${cx + radius * 0.5 - 2},${cy - 4} ${cx + radius * 0.5 - 2},${cy + 4}`}
+                fill="var(--gold)"
+                opacity="0.8"
+              />
+            </g>
+          )
         )}
 
         {/* Center dot */}

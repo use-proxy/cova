@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 const PROTECTED_ROUTES = ['/dashboard', '/room', '/quiz', '/capture', '/processing']
-const PUBLIC_ROUTES = ['/', '/auth', '/auth/callback', '/test-viewer']
+const PUBLIC_ROUTES = ['/', '/auth', '/auth/callback', '/test-viewer', '/capture/mobile']
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -35,8 +35,13 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
+  // Check if route is explicitly public (checked first — overrides protected prefix matches)
+  const isPublic = PUBLIC_ROUTES.some((route) =>
+    pathname === route || pathname.startsWith(route + '/')
+  )
+
   // Check if route is protected
-  const isProtected = PROTECTED_ROUTES.some((route) =>
+  const isProtected = !isPublic && PROTECTED_ROUTES.some((route) =>
     pathname.startsWith(route)
   )
 
