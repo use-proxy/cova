@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react"
+import { AuthModal } from "@/components/auth/AuthModal"
 
 // Scroll animation hook
 function useScrollAnimation() {
@@ -54,34 +55,40 @@ function useCountUp(end: number, duration: number = 2000, isVisible: boolean) {
 }
 
 export default function Home() {
+  const [authOpen, setAuthOpen] = useState(false)
+
   return (
     <main className="min-h-screen bg-[var(--navy-darker)]">
-      <Nav />
-      <Hero />
+      <Nav onAuthOpen={() => setAuthOpen(true)} />
+      <Hero onAuthOpen={() => setAuthOpen(true)} />
       <DemoVideo />
       <Interactive3DRoom />
       <ProcessSteps />
       <BeforeAfter />
       <Testimonials />
       <Stats />
-      <Footer />
+      <Footer onAuthOpen={() => setAuthOpen(true)} />
+      <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />
     </main>
   )
 }
 
 // Navigation - just wordmark + one gold button
-function Nav() {
+function Nav({ onAuthOpen }: { onAuthOpen: () => void }) {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 px-6 md:px-12 py-6">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
-        <a 
-          href="/" 
+        <a
+          href="/"
           className="text-[var(--ivory)] font-serif text-2xl tracking-wide lowercase"
         >
           cova
         </a>
-        
-        <button className="bg-[var(--gold-primary)] text-[var(--navy-darker)] px-6 py-2.5 text-sm font-serif tracking-wider uppercase transition-all duration-300 hover:bg-[var(--gold-light)] hover:shadow-[0_0_30px_rgba(201,168,76,0.3)] flex items-center justify-center">
+
+        <button
+          onClick={onAuthOpen}
+          className="bg-[var(--gold-primary)] text-[var(--navy-darker)] px-6 py-2.5 text-sm font-serif tracking-wider uppercase transition-all duration-300 hover:bg-[var(--gold-light)] hover:shadow-[0_0_30px_rgba(201,168,76,0.3)] flex items-center justify-center"
+        >
           <span className="hidden md:inline">Get Early Access</span>
           <span className="md:hidden text-lg">&#8594;</span>
         </button>
@@ -91,7 +98,7 @@ function Nav() {
 }
 
 // Hero Section - Headline, subtext, CTAs
-function Hero() {
+function Hero({ onAuthOpen }: { onAuthOpen: () => void }) {
   const { ref, isVisible } = useScrollAnimation()
 
   return (
@@ -130,7 +137,10 @@ function Hero() {
             isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
           }`}
         >
-          <button className="bg-[var(--gold-primary)] text-[var(--navy-darker)] px-8 py-3.5 font-serif text-sm tracking-wider uppercase transition-all duration-300 hover:bg-[var(--gold-light)] hover:shadow-[0_0_40px_rgba(201,168,76,0.3)]">
+          <button
+            onClick={onAuthOpen}
+            className="bg-[var(--gold-primary)] text-[var(--navy-darker)] px-8 py-3.5 font-serif text-sm tracking-wider uppercase transition-all duration-300 hover:bg-[var(--gold-light)] hover:shadow-[0_0_40px_rgba(201,168,76,0.3)]"
+          >
             Start Designing Free
           </button>
           <button className="border border-[var(--gold-primary)]/40 text-[var(--ivory)] px-8 py-3.5 font-serif text-sm tracking-wider uppercase transition-all duration-300 hover:border-[var(--gold-primary)] hover:bg-[var(--gold-primary)]/5">
@@ -711,7 +721,7 @@ function StatItem({
 }
 
 // Footer - just headline and CTA
-function Footer() {
+function Footer({ onAuthOpen }: { onAuthOpen: () => void }) {
   const { ref, isVisible } = useScrollAnimation()
 
   return (
@@ -731,7 +741,8 @@ function Footer() {
           }`}
         />
         
-        <button 
+        <button
+          onClick={onAuthOpen}
           className={`bg-[var(--gold-primary)] text-[var(--navy-darker)] px-10 py-4 font-serif text-sm tracking-wider uppercase transition-all duration-300 hover:bg-[var(--gold-light)] hover:shadow-[0_0_50px_rgba(201,168,76,0.3)] ${
             isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
           }`}

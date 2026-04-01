@@ -5,7 +5,6 @@ import { NextResponse } from 'next/server'
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/dashboard'
 
   if (code) {
     const cookieStore = await cookies()
@@ -26,10 +25,28 @@ export async function GET(request: Request) {
       }
     )
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    const { data: sessionData, error } = await supabase.auth.exchangeCodeForSession(code)
 
-    if (!error) {
-      return NextResponse.redirect(`${origin}${next}`)
+    if (!error && sessionData.user) {
+      // Check if the user has a profile row
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', sessionData.user.id)
+        .single()
+
+      if (profile) {
+        return NextResponse.redirect(`${origin}/dashboard`)
+      }
+
+      // New user via OAuth — create profile row from auth metadata
+      const meta = sessionData.user.user_metadata
+      await supabase.from('profiles').insert({
+        id: sessionData.user.id,
+        full_name: meta?.full_name ?? meta?.name ?? null,
+      })
+
+      return NextResponse.redirect(`${origin}/capture`)
     }
 
     console.error('Auth callback error:', error)
