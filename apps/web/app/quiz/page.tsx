@@ -1,443 +1,183 @@
-'use client'
+"use client"
 
-import { useEffect, useState, useRef, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
-import { motion, useMotionValue, useTransform, animate } from 'framer-motion'
-import { createBrowserClient } from '@/lib/supabase/client'
-import { useUserStore } from '@/lib/stores/userStore'
+import { useState, useEffect, useCallback, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { createBrowserClient } from "@/lib/supabase/client"
+import { ChevronLeft, Heart, X } from "lucide-react"
+import { ConfidenceBar } from "@/components/quiz/ConfidenceBar"
+import { CardStack } from "@/components/quiz/CardStack"
+import { ReturningUserStrip } from "@/components/quiz/ReturningUserStrip"
 
-interface SwipeCard {
-  id: string
-  image_url: string
-  style_weights: Record<string, number>
-  discriminability_score: number
-  style: string | null
-  phase: string | null
-}
-
-const STYLE_KEYS = ['coastal', 'japandi', 'bohemian', 'minimalist', 'mid_century']
-const TOTAL_CARDS = 25
-const SWIPE_THRESHOLD = 100
-const MIN_STYLE_VALUE = 0.02
-
-export default function QuizPage() {
+function QuizInner() {
   const router = useRouter()
-  const supabase = createBrowserClient()
-  const { setStyleVector } = useUserStore()
+  const searchParams = useSearchParams()
+  const captureSessionId = searchParams.get("session")
 
-  const [cards, setCards] = useState<SwipeCard[]>([])
-  const [currentIndex, setCurrentIndex] = useState(0)
-  const [roomId, setRoomId] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const styleVector = useRef<Record<string, number>>(
-    Object.fromEntries(STYLE_KEYS.map((k) => [k, 0.2]))
-  )
-  const phase2Fetched = useRef(false)
-  const phase3Fetched = useRef(false)
-  const userIdRef = useRef<string | null>(null)
-  const sessionPositionRef = useRef(0)
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [confidence, setConfidence] = useState(0)
+  const [complete, setComplete] = useState(false)
+  const [previousStyleActive, setPreviousStyleActive] = useState(false)
+  const [previousStyleDimmed, setPreviousStyleDimmed] = useState(false)
 
-  // ---------------------------------------------------------------------------
-  // Helpers: top styles + shuffle
-  // ---------------------------------------------------------------------------
-  function getTopStyles(vec: Record<string, number>, n: number): string[] {
-    return [...STYLE_KEYS].sort((a, b) => vec[b] - vec[a]).slice(0, n)
-  }
-
-  function shuffle<T>(arr: T[]): T[] {
-    const a = [...arr]
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1))
-      ;[a[i], a[j]] = [a[j], a[i]]
-    }
-    return a
-  }
-
-  const CARD_FIELDS = 'id, image_url, style_weights, discriminability_score, style, phase'
-
-  // ---------------------------------------------------------------------------
-  // Phase 1 — Baseline (cards 1-15): 3 per style, shuffled
-  // ---------------------------------------------------------------------------
+  // Create style session on mount
   useEffect(() => {
-    async function init() {
-      const { data: userData } = await supabase.auth.getUser()
-      if (!userData.user) {
-        router.push('/auth')
-        return
-      }
-      userIdRef.current = userData.user.id
+    const createSession = async () => {
+      const supabase = createBrowserClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { router.push("/"); return }
 
-      // Create room
-      const { data: room, error: roomCreateError } = await supabase
-        .from('rooms')
-        .insert({ user_id: userData.user.id, status: 'active' })
-        .select('id')
-        .single()
+      const { data, error } = await supabase.from("style_sessions").insert({
+        user_id: user.id,
+        capture_session_id: captureSessionId,
+        swipes: [],
+        confidence: 0,
+        completed: false,
+      }).select("id").single()
 
-      if (roomCreateError) console.error('Room create failed:', roomCreateError)
-      if (room) setRoomId(room.id)
-
-      // Fetch 3 baseline cards per style (15 total)
-      const baselineCards: SwipeCard[] = []
-      for (const style of STYLE_KEYS) {
-        const { data } = await supabase
-          .from('swipe_cards')
-          .select(CARD_FIELDS)
-          .eq('active', true)
-          .eq('phase', 'baseline')
-          .contains('style_weights', { [style]: 1.0 })
-          .limit(3)
-
-        if (data) baselineCards.push(...data)
-      }
-
-      // If not enough baseline cards, fill from any baseline cards
-      if (baselineCards.length < 15) {
-        const existingIds = baselineCards.map((c) => c.id)
-        const { data: fill } = await supabase
-          .from('swipe_cards')
-          .select(CARD_FIELDS)
-          .eq('active', true)
-          .eq('phase', 'baseline')
-          .not('id', 'in', `(${existingIds.join(',')})`)
-          .limit(15 - baselineCards.length)
-
-        if (fill) baselineCards.push(...fill)
-      }
-
-      setCards(shuffle(baselineCards))
-      setLoading(false)
+      if (error) { console.error("Session create error:", error); return }
+      if (data) setSessionId(data.id)
     }
-    init()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    createSession()
+  }, [captureSessionId, router])
 
-  // ---------------------------------------------------------------------------
-  // Phase 2 — Pure confirmation (cards 16-20): prefetch at card 14
-  // ---------------------------------------------------------------------------
-  const fetchPhase2 = useCallback(async () => {
-    if (phase2Fetched.current) return
-    phase2Fetched.current = true
+  const handleComplete = useCallback(() => {
+    setComplete(true)
+    setConfidence(100)
+    // Navigate after animations
+    setTimeout(() => {
+      router.push(`/budget?session=${sessionId}`)
+    }, 1200)
+  }, [router, sessionId])
 
-    const [top1, top2] = getTopStyles(styleVector.current, 2)
+  const handlePreviousSelect = useCallback(async (prevSessionId: string) => {
+    setPreviousStyleActive(true)
+    setPreviousStyleDimmed(true)
 
-    // 3 pure cards from top style + 2 from 2nd style
-    const { data: top1Cards } = await supabase
-      .from('swipe_cards')
-      .select(CARD_FIELDS)
-      .eq('active', true)
-      .eq('phase', 'pure')
-      .contains('style_weights', { [top1]: 1.0 })
-      .limit(3)
+    // Clone the style fingerprint to a new session
+    const supabase = createBrowserClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
 
-    const { data: top2Cards } = await supabase
-      .from('swipe_cards')
-      .select(CARD_FIELDS)
-      .eq('active', true)
-      .eq('phase', 'pure')
-      .contains('style_weights', { [top2]: 1.0 })
-      .limit(2)
+    const { data: prevSession } = await supabase
+      .from("style_sessions")
+      .select("style_fingerprint")
+      .eq("id", prevSessionId)
+      .single()
 
-    const phase2: SwipeCard[] = [
-      ...(top1Cards || []),
-      ...(top2Cards || []),
-    ]
+    if (!prevSession) return
 
-    setCards((prev) => [...prev, ...shuffle(phase2)])
-  }, [supabase])
+    const { data: newSession } = await supabase.from("style_sessions").insert({
+      user_id: user.id,
+      capture_session_id: captureSessionId,
+      style_fingerprint: prevSession.style_fingerprint,
+      confidence: 100,
+      completed: true,
+      swipes: [],
+    }).select("id").single()
 
-  // ---------------------------------------------------------------------------
-  // Phase 3 — Refinement (cards 21-25): prefetch at card 19
-  // ---------------------------------------------------------------------------
-  const fetchPhase3 = useCallback(async () => {
-    if (phase3Fetched.current) return
-    phase3Fetched.current = true
-
-    const [top1, top2] = getTopStyles(styleVector.current, 2)
-
-    // Try refinement cards for this style pair (both orderings)
-    const pairA = `${top1}_${top2}`
-    const pairB = `${top2}_${top1}`
-
-    const { data: refinementCards } = await supabase
-      .from('swipe_cards')
-      .select(CARD_FIELDS)
-      .eq('active', true)
-      .eq('phase', 'refinement')
-      .or(`style.eq.${pairA},style.eq.${pairB}`)
-      .limit(5)
-
-    if (refinementCards && refinementCards.length >= 3) {
-      setCards((prev) => [...prev, ...shuffle(refinementCards)])
-      return
+    if (newSession) {
+      setTimeout(() => {
+        router.push(`/budget?session=${newSession.id}`)
+      }, 800)
     }
+  }, [captureSessionId, router])
 
-    // Fallback: blend cards weighted toward top 2 styles
-    const { data: blendCards } = await supabase
-      .from('swipe_cards')
-      .select(CARD_FIELDS)
-      .eq('active', true)
-      .eq('phase', 'blend')
-      .limit(5)
+  const handlePreviousDismiss = useCallback(() => {
+    setPreviousStyleActive(false)
+    setPreviousStyleDimmed(false)
+  }, [])
 
-    setCards((prev) => [...prev, ...shuffle(blendCards || [])])
-  }, [supabase])
-
-  // ---------------------------------------------------------------------------
-  // Bayesian swipe handler
-  // ---------------------------------------------------------------------------
-  const handleSwipe = useCallback(
-    async (liked: boolean) => {
-      const card = cards[currentIndex]
-      if (!card) return
-
-      // Snapshot style vector BEFORE Bayesian update
-      const styleVectorBefore = { ...styleVector.current }
-
-      // Bayesian update
-      const weights = card.style_weights || {}
-      const disc = card.discriminability_score ?? 0.5
-      const vec = styleVector.current
-
-      for (const key of STYLE_KEYS) {
-        const likelihood = (weights[key] || 0) * disc
-        if (liked) {
-          vec[key] *= 1 + likelihood
-        } else {
-          vec[key] *= 1 - likelihood * 0.5
-        }
+  // Keyboard support
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowRight" || e.key === "l" || e.key === "L") {
+        document.dispatchEvent(new CustomEvent("quiz-swipe", { detail: "right" }))
       }
-
-      // Normalize
-      let total = STYLE_KEYS.reduce((sum, k) => sum + vec[k], 0)
-      if (total > 0) {
-        for (const key of STYLE_KEYS) vec[key] /= total
+      if (e.key === "ArrowLeft" || e.key === "j" || e.key === "J") {
+        document.dispatchEvent(new CustomEvent("quiz-swipe", { detail: "left" }))
       }
+    }
+    window.addEventListener("keydown", handleKey)
+    return () => window.removeEventListener("keydown", handleKey)
+  }, [])
 
-      // Smoothing — prevent any style from reaching 0
-      let needsRenorm = false
-      for (const key of STYLE_KEYS) {
-        if (vec[key] < MIN_STYLE_VALUE) {
-          vec[key] = MIN_STYLE_VALUE
-          needsRenorm = true
-        }
-      }
-      if (needsRenorm) {
-        total = STYLE_KEYS.reduce((sum, k) => sum + vec[k], 0)
-        for (const key of STYLE_KEYS) vec[key] /= total
-      }
-
-      // Snapshot style vector AFTER Bayesian update
-      const styleVectorAfter = { ...vec }
-
-      // Track session position (1-based)
-      sessionPositionRef.current += 1
-
-      // Fire-and-forget: write enriched swipe event to swipe_history
-      if (userIdRef.current) {
-        supabase
-          .from('swipe_history')
-          .insert({
-            user_id: userIdRef.current,
-            card_id: card.id,
-            direction: liked ? 'right' : 'left',
-            dwell_time_ms: null,
-            score_awarded: disc,
-            card_style: card.style,
-            card_phase: card.phase,
-            style_vector_before: styleVectorBefore,
-            style_vector_after: styleVectorAfter,
-            session_position: sessionPositionRef.current,
-            card_image_url: card.image_url,
-          })
-          .then(({ error }) => {
-            if (error) console.error('swipe_history insert failed:', error)
-          })
-      }
-
-      // Save style_blend after every swipe (partial profile survives early exit)
-      const snapshot = { ...vec }
-      if (roomId) {
-        supabase
-          .from('rooms')
-          .update({ style_blend: snapshot })
-          .eq('id', roomId)
-          .then(({ error }) => {
-            if (error) console.error('rooms style_blend update failed:', error)
-          })
-      }
-
-      const nextIndex = currentIndex + 1
-
-      // Prefetch next phase before user runs out of cards
-      if (nextIndex === 14) fetchPhase2()
-      if (nextIndex === 19) fetchPhase3()
-
-      // Quiz complete (25 cards)
-      if (nextIndex >= TOTAL_CARDS || nextIndex >= cards.length) {
-        setStyleVector(Object.values(snapshot))
-
-        // Also save to users table on completion
-        const { data: userData } = await supabase.auth.getUser()
-        if (userData.user) {
-          const { error: userError } = await supabase
-            .from('users')
-            .update({ style_blend: snapshot })
-            .eq('id', userData.user.id)
-          if (userError) console.error('users style_blend update failed:', userError)
-        }
-
-        router.push(`/capture/${roomId}`)
-        return
-      }
-
-      setCurrentIndex(nextIndex)
-    },
-    [cards, currentIndex, roomId, supabase, router, setStyleVector, fetchPhase2, fetchPhase3]
-  )
-
-  if (loading) {
+  if (!sessionId) {
     return (
-      <div style={styles.container}>
-        <p style={{ color: '#8BA3C0' }}>Loading...</p>
+      <div className="fixed inset-0 flex items-center justify-center bg-[#0a1628]">
+        <div className="w-8 h-8 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
-  const visibleCards = cards.slice(currentIndex, currentIndex + 3)
-
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <p style={{ color: '#8BA3C0', fontSize: 14, margin: 0 }}>
-          {Math.min(currentIndex + 1, TOTAL_CARDS)} / {TOTAL_CARDS}
-        </p>
+    <div className="fixed inset-0 bg-[#0a1628] flex flex-col overflow-hidden">
+      {/* Gold shimmer overlay on complete */}
+      {complete && (
+        <div className="fixed inset-0 z-50 pointer-events-none animate-[shimmerSweep_400ms_ease-out_forwards]"
+          style={{
+            background: "linear-gradient(135deg, rgba(201,168,76,0) 0%, rgba(201,168,76,0.15) 50%, rgba(201,168,76,0) 100%)",
+          }}
+        />
+      )}
+
+      {/* Top bar */}
+      <div className="flex items-center justify-between px-5 h-[60px] flex-shrink-0">
+        <button onClick={() => router.back()} className="text-white/40 hover:text-white/60 transition-colors">
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+        <span className="text-xs font-sans uppercase tracking-[0.15em] text-white/50">Your Style</span>
+        <div className="w-5" />
       </div>
 
-      <div style={styles.cardStack}>
-        {visibleCards
-          .map((card, i) => (
-            <SwipeableCard
-              key={card.id}
-              card={card}
-              stackIndex={i}
-              onSwipe={i === 0 ? handleSwipe : undefined}
-            />
-          ))
-          .reverse()}
+      {/* Confidence bar */}
+      <ConfidenceBar confidence={confidence} complete={complete} />
+
+      {/* Returning user strip */}
+      <ReturningUserStrip onSelect={handlePreviousSelect} onDismiss={handlePreviousDismiss} />
+
+      {/* Card stack */}
+      <div className={`flex-1 flex items-center justify-center transition-opacity duration-300 ${previousStyleDimmed ? "opacity-40" : "opacity-100"}`}>
+        {previousStyleActive && (
+          <div className="absolute z-10">
+            <p className="text-sm font-sans text-white/50">Using this style</p>
+          </div>
+        )}
+        {!complete && (
+          <CardStack sessionId={sessionId} onComplete={handleComplete} onConfidenceUpdate={setConfidence} />
+        )}
       </div>
 
-      <div style={styles.hints}>
-        <span style={{ color: '#C0504A' }}>← Not my style</span>
-        <span style={{ color: '#4A9B7F' }}>Love it →</span>
-      </div>
+      {/* Tap buttons */}
+      {!complete && !previousStyleActive && (
+        <div className="flex items-center justify-center gap-8 pb-8 flex-shrink-0">
+          <button
+            onClick={() => document.dispatchEvent(new CustomEvent("quiz-swipe", { detail: "left" }))}
+            className="w-[52px] h-[52px] rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
+            style={{ border: "1.5px solid rgba(239,68,68,0.5)" }}
+          >
+            <X className="w-5 h-5 text-red-400" />
+          </button>
+          <button
+            onClick={() => document.dispatchEvent(new CustomEvent("quiz-swipe", { detail: "right" }))}
+            className="w-[52px] h-[52px] rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
+            style={{ border: "1.5px solid rgba(201,168,76,0.5)" }}
+          >
+            <Heart className="w-5 h-5 text-[#C9A84C]" />
+          </button>
+        </div>
+      )}
     </div>
   )
 }
 
-// ---------------------------------------------------------------------------
-// Swipeable Card Component
-// ---------------------------------------------------------------------------
-
-function SwipeableCard({
-  card,
-  stackIndex,
-  onSwipe,
-}: {
-  card: SwipeCard
-  stackIndex: number
-  onSwipe?: (liked: boolean) => void
-}) {
-  const x = useMotionValue(0)
-  const rotate = useTransform(x, [-200, 200], [-15, 15])
-  const opacity = useTransform(x, [-200, -100, 0, 100, 200], [0.5, 1, 1, 1, 0.5])
-
-  const scale = 1 - stackIndex * 0.04
-  const translateY = stackIndex * 8
-  const brightness = 1 - stackIndex * 0.2
-
+export default function QuizPage() {
   return (
-    <motion.div
-      style={{
-        ...styles.card,
-        x: stackIndex === 0 ? x : 0,
-        rotate: stackIndex === 0 ? rotate : 0,
-        opacity: stackIndex === 0 ? opacity : 1,
-        scale,
-        y: translateY,
-        filter: `brightness(${brightness})`,
-        zIndex: 3 - stackIndex,
-        cursor: stackIndex === 0 ? 'grab' : 'default',
-      }}
-      drag={stackIndex === 0 ? 'x' : false}
-      dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={0.7}
-      onDragEnd={(_, info) => {
-        if (Math.abs(info.offset.x) > SWIPE_THRESHOLD) {
-          const liked = info.offset.x > 0
-          animate(x, liked ? 500 : -500, {
-            duration: 0.3,
-            onComplete: () => onSwipe?.(liked),
-          })
-        } else {
-          animate(x, 0, { duration: 0.3 })
-        }
-      }}
-    >
-      <img
-        src={card.image_url}
-        alt=""
-        draggable={false}
-        style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          borderRadius: 12,
-          userSelect: 'none',
-          pointerEvents: 'none',
-        }}
-      />
-    </motion.div>
+    <Suspense fallback={
+      <div className="fixed inset-0 flex items-center justify-center bg-[#0a1628]">
+        <div className="w-8 h-8 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <QuizInner />
+    </Suspense>
   )
-}
-
-// ---------------------------------------------------------------------------
-// Styles
-// ---------------------------------------------------------------------------
-
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    minHeight: '100vh',
-    background: '#0A1628',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontFamily: 'Inter, sans-serif',
-    position: 'relative',
-  },
-  header: {
-    position: 'absolute',
-    top: 24,
-    right: 24,
-  },
-  cardStack: {
-    position: 'relative',
-    width: 340,
-    height: 460,
-  },
-  card: {
-    position: 'absolute',
-    width: 340,
-    height: 460,
-    borderRadius: 12,
-    overflow: 'hidden',
-    boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-  },
-  hints: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    width: 340,
-    marginTop: 24,
-    fontSize: 13,
-  },
 }
