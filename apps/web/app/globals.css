@@ -3,21 +3,44 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Cova Color Palette */
+  --navy-deep: #0B1F3A;
+  --navy-darker: #091829;
+  --gold-primary: #C9A84C;
+  --gold-light: #D4B460;
+  --ivory: #F5F0E8;
+
+  --background: #091829;
+  --foreground: #F5F0E8;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'EB Garamond', Georgia, serif;
+  scrollbar-width: thin;
+  scrollbar-color: #C9A84C20 transparent;
+}
+
+body::-webkit-scrollbar {
+  width: 6px;
+}
+
+body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+body::-webkit-scrollbar-thumb {
+  background: #C9A84C30;
+  border-radius: 3px;
+}
+
+body::-webkit-scrollbar-thumb:hover {
+  background: #C9A84C50;
 }
 
 @layer utilities {

@@ -11,6 +11,26 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        navy: {
+          deep: "#0B1F3A",
+          darker: "#091829",
+        },
+        gold: {
+          DEFAULT: "#C9A84C",
+          primary: "#C9A84C",
+          light: "#D4B460",
+        },
+        ivory: "#F5F0E8",
+      },
+      fontFamily: {
+        serif: [
+          "var(--font-serif)",
+          "Palatino Linotype",
+          "Book Antiqua",
+          "Palatino",
+          "Georgia",
+          "serif",
+        ],
       },
     },
   },
