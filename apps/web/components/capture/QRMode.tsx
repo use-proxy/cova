@@ -25,7 +25,7 @@ function ArchLogo() {
 }
 
 export function QRMode({ roomId, onSwitchToUpload }: QRModeProps) {
-  const [token, setToken] = useState<string | null>(null)
+  const [captureUrl, setCaptureUrl] = useState<string | null>(null)
   const [connected, setConnected] = useState(false)
 
   // Generate token on mount
@@ -39,37 +39,43 @@ export function QRMode({ roomId, onSwitchToUpload }: QRModeProps) {
         })
         if (res.ok) {
           const data = await res.json()
-          setToken(data.token)
+          // API returns { url } — a full capture URL with token embedded
+          setCaptureUrl(data.url)
+        } else {
+          // Fallback: build URL client-side without token so QR still renders
+          console.error("Token API returned", res.status)
+          setCaptureUrl(`${window.location.origin}/capture/${roomId}`)
         }
       } catch (err) {
         console.error("Token generation failed:", err)
+        setCaptureUrl(`${window.location.origin}/capture/${roomId}`)
       }
     }
     generateToken()
   }, [roomId])
 
-  // Poll for upload from mobile
+  // Poll for upload from mobile — runs independently of QR render
   useEffect(() => {
-    if (!token) return
     const supabase = createBrowserClient()
     const interval = setInterval(async () => {
-      const { data } = await supabase
-        .from("rooms")
-        .select("status")
-        .eq("id", roomId)
-        .single()
+      try {
+        const { data } = await supabase
+          .from("rooms")
+          .select("status")
+          .eq("id", roomId)
+          .single()
 
-      if (data?.status === "processing" || data?.status === "complete") {
-        setConnected(true)
-        clearInterval(interval)
+        if (data?.status === "processing" || data?.status === "complete") {
+          setConnected(true)
+          clearInterval(interval)
+        }
+      } catch {
+        // Ignore polling errors
       }
     }, 3000)
 
     return () => clearInterval(interval)
-  }, [roomId, token])
-
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://covainterior.com"
-  const qrValue = token ? `${appUrl}/capture/${roomId}?token=${token}` : ""
+  }, [roomId])
 
   return (
     <div className="flex flex-col items-center animate-[slideUp_300ms_ease-out]">
@@ -96,10 +102,16 @@ export function QRMode({ roomId, onSwitchToUpload }: QRModeProps) {
           className="p-4 rounded-lg mb-6"
           style={{ border: "2px solid var(--gold-dim)", background: "white" }}
         >
-          {qrValue ? (
-            <QRCode value={qrValue} size={200} level="M" />
+          {captureUrl ? (
+            <QRCode
+              value={captureUrl}
+              size={180}
+              bgColor="#ffffff"
+              fgColor="#0a1628"
+              style={{ borderRadius: 4 }}
+            />
           ) : (
-            <div className="w-[200px] h-[200px] flex items-center justify-center">
+            <div className="w-[180px] h-[180px] flex items-center justify-center">
               <div className="w-6 h-6 border-2 border-[var(--gold)] border-t-transparent rounded-full animate-spin" />
             </div>
           )}

@@ -19,10 +19,21 @@ export function WebcamMode({ onComplete }: WebcamModeProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [flash, setFlash] = useState(false)
   const [cameraReady, setCameraReady] = useState(false)
+  const [hasGyroscope, setHasGyroscope] = useState(false)
+  const [heading, setHeading] = useState<number | null>(null)
   const quality = useQualityChecker(videoRef, cameraReady)
 
   const completedCount = shots.filter(Boolean).length
   const allComplete = completedCount === TOTAL_SHOTS
+
+  // Target angle for current index (0=N=0°, 1=NE=45°, etc.)
+  const targetAngle = currentIndex * 45
+  // Check if heading is roughly aligned (within 30° of target)
+  const isAligned = heading !== null
+    ? Math.abs(((heading - targetAngle + 540) % 360) - 180) < 30
+      || Math.abs(heading - targetAngle) < 30
+      || Math.abs(heading - targetAngle + 360) < 30
+    : false
 
   // Start webcam
   useEffect(() => {
@@ -48,6 +59,34 @@ export function WebcamMode({ onComplete }: WebcamModeProps) {
     }
   }, [])
 
+  // Request device orientation (mobile guidance only — never blocks capture)
+  useEffect(() => {
+    const requestOrientation = async () => {
+      try {
+        const DOE = DeviceOrientationEvent as unknown as {
+          requestPermission?: () => Promise<string>
+        }
+        if (typeof DOE.requestPermission === "function") {
+          const permission = await DOE.requestPermission()
+          if (permission !== "granted") return
+        }
+
+        const handler = (e: DeviceOrientationEvent) => {
+          if (e.alpha !== null) {
+            setHasGyroscope(true)
+            // alpha is 0-360 compass heading (0=N, 90=E, etc.)
+            setHeading(Math.round(e.alpha))
+          }
+        }
+        window.addEventListener("deviceorientation", handler)
+        return () => window.removeEventListener("deviceorientation", handler)
+      } catch {
+        // No gyroscope available (desktop) — that's fine
+      }
+    }
+    requestOrientation()
+  }, [])
+
   // Handle completion
   useEffect(() => {
     if (allComplete) {
@@ -60,6 +99,7 @@ export function WebcamMode({ onComplete }: WebcamModeProps) {
 
   const captureShot = useCallback(() => {
     const video = videoRef.current
+    // Capture enabled whenever quality passes — heading does NOT block
     if (!video || !quality.passing || allComplete) return
 
     // Flash effect
@@ -94,6 +134,20 @@ export function WebcamMode({ onComplete }: WebcamModeProps) {
     })
     setCurrentIndex(index)
   }, [])
+
+  // Build guidance text
+  const guidanceText = (() => {
+    if (allComplete) return null
+    if (!hasGyroscope) {
+      // Desktop — simple position counter
+      return `Position ${currentIndex + 1} of ${TOTAL_SHOTS} \u2014 capture each corner and wall of your room`
+    }
+    // Mobile with gyroscope
+    if (isAligned) {
+      return `Facing ${DIRECTIONS[currentIndex]} \u2014 ready to capture`
+    }
+    return `Turn to face ${DIRECTIONS[currentIndex]}`
+  })()
 
   return (
     <div className="flex flex-col items-center gap-6 w-full max-w-3xl mx-auto animate-[slideUp_300ms_ease-out]">
@@ -145,9 +199,9 @@ export function WebcamMode({ onComplete }: WebcamModeProps) {
         />
 
         {/* Direction label */}
-        {!allComplete && (
+        {guidanceText && (
           <p className="text-xs font-sans uppercase tracking-[0.2em] text-[var(--ivory)]/60 text-center">
-            Face <span className="text-[var(--gold)] font-semibold">{DIRECTIONS[currentIndex]}</span> and tap to capture
+            {guidanceText}
           </p>
         )}
 
