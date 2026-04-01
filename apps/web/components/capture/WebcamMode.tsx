@@ -5,8 +5,22 @@ import { useQualityChecker } from "./QualityChecker"
 import { ShotStrip } from "./ShotStrip"
 import { CompassRing } from "./CompassRing"
 
-const DIRECTIONS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"] as const
 const TOTAL_SHOTS = 8
+
+const POSITION_HINTS = [
+  "Face the first wall or corner",
+  "Turn 45\u00B0 to your right",
+  "Turn 45\u00B0 to your right",
+  "Turn 45\u00B0 to your right",
+  "Turn 45\u00B0 to your right",
+  "Turn 45\u00B0 to your right",
+  "Turn 45\u00B0 to your right",
+  "Turn 45\u00B0 to your right \u2014 last shot",
+]
+
+function normalizeHeading(h: number): number {
+  return ((h % 360) + 360) % 360
+}
 
 interface WebcamModeProps {
   onComplete: (shots: string[]) => void
@@ -16,24 +30,31 @@ export function WebcamMode({ onComplete }: WebcamModeProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const [shots, setShots] = useState<(string | null)[]>(Array(TOTAL_SHOTS).fill(null))
-  const [currentIndex, setCurrentIndex] = useState(0)
+  const [shotIndex, setShotIndex] = useState(0)
   const [flash, setFlash] = useState(false)
   const [cameraReady, setCameraReady] = useState(false)
+
+  // Orientation state
+  const [currentHeading, setCurrentHeading] = useState<number | null>(null)
+  const [startHeading, setStartHeading] = useState<number | null>(null)
   const [hasGyroscope, setHasGyroscope] = useState(false)
-  const [heading, setHeading] = useState<number | null>(null)
+  const [orientationPermission, setOrientationPermission] = useState<"unknown" | "granted" | "denied">("unknown")
+  const [needsPermissionButton, setNeedsPermissionButton] = useState(false)
+
   const quality = useQualityChecker(videoRef, cameraReady)
 
   const completedCount = shots.filter(Boolean).length
   const allComplete = completedCount === TOTAL_SHOTS
 
-  // Target angle for current index (0=N=0°, 1=NE=45°, etc.)
-  const targetAngle = currentIndex * 45
-  // Check if heading is roughly aligned (within 30° of target)
-  const isAligned = heading !== null
-    ? Math.abs(((heading - targetAngle + 540) % 360) - 180) < 30
-      || Math.abs(heading - targetAngle) < 30
-      || Math.abs(heading - targetAngle + 360) < 30
-    : false
+  // Compute target heading for current shot
+  const targetHeading = startHeading !== null ? normalizeHeading(startHeading + shotIndex * 45) : null
+
+  // Check lock-on: within ±15° of target
+  const lockedOn = (() => {
+    if (currentHeading === null || targetHeading === null) return false
+    const delta = ((currentHeading - targetHeading + 540) % 360) - 180
+    return Math.abs(delta) <= 15
+  })()
 
   // Start webcam
   useEffect(() => {
@@ -59,33 +80,45 @@ export function WebcamMode({ onComplete }: WebcamModeProps) {
     }
   }, [])
 
-  // Request device orientation (mobile guidance only — never blocks capture)
+  // Device orientation setup
   useEffect(() => {
-    const requestOrientation = async () => {
-      try {
-        const DOE = DeviceOrientationEvent as unknown as {
-          requestPermission?: () => Promise<string>
-        }
-        if (typeof DOE.requestPermission === "function") {
-          const permission = await DOE.requestPermission()
-          if (permission !== "granted") return
-        }
+    if (typeof window === "undefined") return
 
-        const handler = (e: DeviceOrientationEvent) => {
-          if (e.alpha !== null) {
-            setHasGyroscope(true)
-            // alpha is 0-360 compass heading (0=N, 90=E, etc.)
-            setHeading(Math.round(e.alpha))
-          }
-        }
-        window.addEventListener("deviceorientation", handler)
-        return () => window.removeEventListener("deviceorientation", handler)
-      } catch {
-        // No gyroscope available (desktop) — that's fine
-      }
+    const handleOrientation = (e: DeviceOrientationEvent) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const heading = (e as any).webkitCompassHeading ?? (e.alpha !== null ? 360 - e.alpha : null)
+      if (heading === null) return
+      setHasGyroscope(true)
+      setCurrentHeading(normalizeHeading(heading))
     }
-    requestOrientation()
+
+    const startListening = () => {
+      window.addEventListener("deviceorientation", handleOrientation, true)
+      setOrientationPermission("granted")
+    }
+
+    // Check if iOS permission API exists
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const DOE = DeviceOrientationEvent as any
+    if (typeof DOE.requestPermission === "function") {
+      // iOS 13+ — needs user gesture, show button
+      setNeedsPermissionButton(true)
+    } else {
+      // Android / desktop — no permission needed, just listen
+      startListening()
+    }
+
+    return () => {
+      window.removeEventListener("deviceorientation", handleOrientation, true)
+    }
   }, [])
+
+  // Haptic feedback on lock-on
+  useEffect(() => {
+    if (lockedOn && navigator.vibrate) {
+      navigator.vibrate(40)
+    }
+  }, [lockedOn])
 
   // Handle completion
   useEffect(() => {
@@ -96,6 +129,32 @@ export function WebcamMode({ onComplete }: WebcamModeProps) {
       return () => clearTimeout(timer)
     }
   }, [allComplete, shots, onComplete])
+
+  const requestOrientationPermission = useCallback(async () => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const permission = await (DeviceOrientationEvent as any).requestPermission()
+      if (permission === "granted") {
+        setOrientationPermission("granted")
+        setNeedsPermissionButton(false)
+        // Re-add listener after permission grant
+        const handleOrientation = (e: DeviceOrientationEvent) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const heading = (e as any).webkitCompassHeading ?? (e.alpha !== null ? 360 - e.alpha : null)
+          if (heading === null) return
+          setHasGyroscope(true)
+          setCurrentHeading(normalizeHeading(heading))
+        }
+        window.addEventListener("deviceorientation", handleOrientation, true)
+      } else {
+        setOrientationPermission("denied")
+        setNeedsPermissionButton(false)
+      }
+    } catch {
+      setOrientationPermission("denied")
+      setNeedsPermissionButton(false)
+    }
+  }, [])
 
   const captureShot = useCallback(() => {
     const video = videoRef.current
@@ -115,16 +174,24 @@ export function WebcamMode({ onComplete }: WebcamModeProps) {
     ctx.drawImage(video, 0, 0)
     const dataUrl = canvas.toDataURL("image/jpeg", 0.85)
 
+    // On first capture, lock the start heading
+    if (shotIndex === 0 && startHeading === null && currentHeading !== null) {
+      setStartHeading(currentHeading)
+    } else if (shotIndex === 0 && startHeading === null) {
+      // Desktop with no gyroscope — lock heading 0
+      setStartHeading(0)
+    }
+
     setShots((prev) => {
       const next = [...prev]
-      next[currentIndex] = dataUrl
+      next[shotIndex] = dataUrl
       return next
     })
 
-    if (currentIndex < TOTAL_SHOTS - 1) {
-      setCurrentIndex(currentIndex + 1)
+    if (shotIndex < TOTAL_SHOTS - 1) {
+      setShotIndex(shotIndex + 1)
     }
-  }, [currentIndex, quality.passing, allComplete])
+  }, [shotIndex, quality.passing, allComplete, startHeading, currentHeading])
 
   const removeShot = useCallback((index: number) => {
     setShots((prev) => {
@@ -132,25 +199,53 @@ export function WebcamMode({ onComplete }: WebcamModeProps) {
       next[index] = null
       return next
     })
-    setCurrentIndex(index)
+    setShotIndex(index)
   }, [])
 
   // Build guidance text
   const guidanceText = (() => {
     if (allComplete) return null
+
     if (!hasGyroscope) {
-      // Desktop — simple position counter
-      return `Position ${currentIndex + 1} of ${TOTAL_SHOTS} \u2014 capture each corner and wall of your room`
+      // Desktop — position counter + hint
+      return `Position ${shotIndex + 1} of ${TOTAL_SHOTS} \u2014 ${POSITION_HINTS[shotIndex]}`
     }
+
     // Mobile with gyroscope
-    if (isAligned) {
-      return `Facing ${DIRECTIONS[currentIndex]} \u2014 ready to capture`
+    if (lockedOn) {
+      return "\u2713 Hold steady \u2014 tap to capture"
     }
-    return `Turn to face ${DIRECTIONS[currentIndex]}`
+
+    // Directional guidance: which way to turn
+    if (currentHeading !== null && targetHeading !== null) {
+      const delta = ((targetHeading - currentHeading + 540) % 360) - 180
+      if (delta > 15) return "Rotate right \u2192"
+      if (delta < -15) return "\u2190 Rotate left"
+    }
+
+    return POSITION_HINTS[shotIndex]
   })()
+
+  // Whether guidance text indicates lock-on (for gold color)
+  const isGuidanceLocked = lockedOn && hasGyroscope
 
   return (
     <div className="flex flex-col items-center gap-6 w-full max-w-3xl mx-auto animate-[slideUp_300ms_ease-out]">
+      {/* iOS orientation permission button */}
+      {needsPermissionButton && orientationPermission === "unknown" && (
+        <button
+          onClick={requestOrientationPermission}
+          className="px-4 py-2 rounded-lg text-xs font-sans uppercase tracking-wider transition-colors"
+          style={{
+            border: "1px solid var(--gold-dim)",
+            background: "var(--navy-card)",
+            color: "var(--gold)",
+          }}
+        >
+          Enable compass guidance
+        </button>
+      )}
+
       {/* Webcam feed */}
       <div className="relative w-full aspect-video rounded-2xl overflow-hidden" style={{ border: "1px solid var(--gold-dim)" }}>
         <video
@@ -187,20 +282,26 @@ export function WebcamMode({ onComplete }: WebcamModeProps) {
       )}
 
       {/* Shot strip */}
-      <ShotStrip shots={shots} currentIndex={currentIndex} onRemove={removeShot} />
+      <ShotStrip shots={shots} currentIndex={shotIndex} onRemove={removeShot} />
 
       {/* Compass + controls */}
       <div className="flex flex-col items-center gap-4">
         <CompassRing
-          completedCount={completedCount}
-          currentIndex={currentIndex}
+          activeIndex={shotIndex}
+          currentHeading={currentHeading}
+          startHeading={startHeading}
           size={160}
           allComplete={allComplete}
+          lockedOn={lockedOn}
         />
 
         {/* Direction label */}
         {guidanceText && (
-          <p className="text-xs font-sans uppercase tracking-[0.2em] text-[var(--ivory)]/60 text-center">
+          <p
+            className={`text-xs font-sans uppercase tracking-[0.2em] text-center ${
+              isGuidanceLocked ? "text-[var(--gold)]" : "text-[var(--ivory)]/60"
+            }`}
+          >
             {guidanceText}
           </p>
         )}
@@ -214,7 +315,11 @@ export function WebcamMode({ onComplete }: WebcamModeProps) {
             style={{
               border: "3px solid var(--gold)",
               background: "var(--navy-deep)",
-              boxShadow: quality.passing ? "0 0 20px var(--gold-glow)" : "none",
+              boxShadow: lockedOn
+                ? "0 0 20px #C9A84C"
+                : quality.passing
+                  ? "0 0 20px var(--gold-glow)"
+                  : "none",
             }}
           >
             <div className="w-[54px] h-[54px] rounded-full bg-[var(--gold)]/20" />

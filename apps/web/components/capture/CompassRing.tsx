@@ -1,27 +1,46 @@
 "use client"
 
+import { useRef } from "react"
 import { Check } from "lucide-react"
 
 const DIRECTIONS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"] as const
 
 interface CompassRingProps {
-  completedCount: number
-  currentIndex: number
+  activeIndex: number
+  currentHeading: number | null
+  startHeading: number | null
   size?: number
   allComplete?: boolean
+  lockedOn?: boolean
 }
 
-export function CompassRing({ completedCount, currentIndex, size = 180, allComplete = false }: CompassRingProps) {
+export function CompassRing({
+  activeIndex,
+  currentHeading,
+  startHeading,
+  size = 180,
+  allComplete = false,
+  lockedOn = false,
+}: CompassRingProps) {
+  const arrowRef = useRef<SVGGElement>(null)
   const cx = size / 2
   const cy = size / 2
   const radius = size / 2 - 20
   const nodeRadius = 8
 
-  // Arrow pointing to current target node
-  const currentAngle = (currentIndex * 45 - 90) * (Math.PI / 180)
-  const arrowLength = radius * 0.5
-  const arrowX = cx + Math.cos(currentAngle) * arrowLength
-  const arrowY = cy + Math.sin(currentAngle) * arrowLength
+  // Arrow rotation: use heading relative to start if available
+  const arrowRotation = (() => {
+    if (currentHeading === null || startHeading === null) {
+      // Desktop fallback: point at the active node statically
+      return activeIndex * 45 - 90
+    }
+    // Real heading: rotate arrow to show where user is facing relative to start
+    const delta = currentHeading - startHeading
+    return delta - 90 // SVG 0° is east, compass 0° is north
+  })()
+
+  // Pulse speed: faster when locked on
+  const pulseDuration = lockedOn ? "0.3s" : "1.5s"
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
@@ -34,12 +53,12 @@ export function CompassRing({ completedCount, currentIndex, size = 180, allCompl
           const angle = (i * 45 - 90) * (Math.PI / 180)
           const x = cx + Math.cos(angle) * radius
           const y = cy + Math.sin(angle) * radius
-          const isCompleted = i < completedCount
-          const isCurrent = i === currentIndex && !allComplete
+          const isCompleted = i < activeIndex
+          const isCurrent = i === activeIndex && !allComplete
 
           return (
             <g key={dir}>
-              {/* Pulse ring for current */}
+              {/* Pulse ring for current node */}
               {isCurrent && (
                 <circle
                   cx={x}
@@ -50,12 +69,27 @@ export function CompassRing({ completedCount, currentIndex, size = 180, allCompl
                   strokeWidth="1.5"
                   opacity="0.6"
                 >
-                  <animate attributeName="r" from={String(nodeRadius + 2)} to={String(nodeRadius + 8)} dur="1.5s" repeatCount="indefinite" />
-                  <animate attributeName="opacity" from="0.6" to="0" dur="1.5s" repeatCount="indefinite" />
+                  <animate attributeName="r" from={String(nodeRadius + 2)} to={String(nodeRadius + 8)} dur={pulseDuration} repeatCount="indefinite" />
+                  <animate attributeName="opacity" from="0.6" to="0" dur={pulseDuration} repeatCount="indefinite" />
                 </circle>
               )}
 
-              {/* Node */}
+              {/* Sonar ping on lock-on */}
+              {isCurrent && lockedOn && (
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={nodeRadius}
+                  fill="none"
+                  stroke="var(--gold)"
+                  strokeWidth="1"
+                >
+                  <animate attributeName="r" from={String(nodeRadius)} to={String(nodeRadius * 2.5)} dur="0.8s" repeatCount="indefinite" />
+                  <animate attributeName="opacity" from="0.8" to="0" dur="0.8s" repeatCount="indefinite" />
+                </circle>
+              )}
+
+              {/* Node circle */}
               <circle
                 cx={x}
                 cy={y}
@@ -66,7 +100,7 @@ export function CompassRing({ completedCount, currentIndex, size = 180, allCompl
                 className={isCompleted ? "animate-[scaleIn_300ms_ease-out]" : ""}
               />
 
-              {/* Direction label */}
+              {/* Direction label on current node */}
               {isCurrent && (
                 <text
                   x={x}
@@ -85,18 +119,33 @@ export function CompassRing({ completedCount, currentIndex, size = 180, allCompl
           )
         })}
 
-        {/* Center arrow pointing to current target */}
+        {/* Center rotating arrow — tracks real heading on mobile, static on desktop */}
         {!allComplete && (
-          <line
-            x1={cx}
-            y1={cy}
-            x2={arrowX}
-            y2={arrowY}
-            stroke="var(--gold)"
-            strokeWidth="2"
-            strokeLinecap="round"
-            opacity="0.8"
-          />
+          <g
+            ref={arrowRef}
+            style={{
+              transform: `rotate(${arrowRotation}deg)`,
+              transformOrigin: `${cx}px ${cy}px`,
+              transition: currentHeading !== null ? "transform 100ms ease-out" : "none",
+            }}
+          >
+            <line
+              x1={cx}
+              y1={cy}
+              x2={cx + radius * 0.5}
+              y2={cy}
+              stroke="var(--gold)"
+              strokeWidth="2"
+              strokeLinecap="round"
+              opacity="0.8"
+            />
+            {/* Arrowhead */}
+            <polygon
+              points={`${cx + radius * 0.5 + 6},${cy} ${cx + radius * 0.5 - 2},${cy - 4} ${cx + radius * 0.5 - 2},${cy + 4}`}
+              fill="var(--gold)"
+              opacity="0.8"
+            />
+          </g>
         )}
 
         {/* Center dot */}

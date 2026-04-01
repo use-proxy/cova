@@ -28,9 +28,11 @@ export function QRMode({ roomId, onSwitchToUpload }: QRModeProps) {
   const [captureUrl, setCaptureUrl] = useState<string | null>(null)
   const [connected, setConnected] = useState(false)
 
-  // Generate token on mount
+  // Generate token + build phone-reachable URL on mount
   useEffect(() => {
-    const generateToken = async () => {
+    const buildCaptureUrl = async () => {
+      // Step 1: get the JWT token from the API
+      let token: string | null = null
       try {
         const res = await fetch("/api/capture/generate-token", {
           method: "POST",
@@ -39,19 +41,37 @@ export function QRMode({ roomId, onSwitchToUpload }: QRModeProps) {
         })
         if (res.ok) {
           const data = await res.json()
-          // API returns { url } — a full capture URL with token embedded
-          setCaptureUrl(data.url)
-        } else {
-          // Fallback: build URL client-side without token so QR still renders
-          console.error("Token API returned", res.status)
-          setCaptureUrl(`${window.location.origin}/capture/${roomId}`)
+          // API returns { url } with token embedded — extract token from it
+          const urlObj = new URL(data.url)
+          token = urlObj.searchParams.get("token")
         }
       } catch (err) {
         console.error("Token generation failed:", err)
-        setCaptureUrl(`${window.location.origin}/capture/${roomId}`)
       }
+
+      // Step 2: build a phone-reachable base URL
+      let baseUrl: string
+
+      if (process.env.NEXT_PUBLIC_VERCEL_URL) {
+        // Production on Vercel
+        baseUrl = `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+      } else {
+        // Development: fetch local network IP so phones on same WiFi can reach it
+        try {
+          const ipRes = await fetch("/api/local-ip")
+          const { ip } = await ipRes.json()
+          baseUrl = `http://${ip}:3000`
+        } catch {
+          baseUrl = window.location.origin
+        }
+      }
+
+      const path = `/capture/${roomId}`
+      const url = token ? `${baseUrl}${path}?token=${token}` : `${baseUrl}${path}`
+      setCaptureUrl(url)
     }
-    generateToken()
+
+    buildCaptureUrl()
   }, [roomId])
 
   // Poll for upload from mobile — runs independently of QR render
