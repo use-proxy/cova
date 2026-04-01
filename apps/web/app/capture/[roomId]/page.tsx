@@ -5,11 +5,13 @@ import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { createBrowserClient } from '@/lib/supabase/client'
 import QRCode from 'react-qr-code'
 
+const MAX_RECORDING_SECONDS = 60
+
 const GUIDANCE_MESSAGES = [
-  'Slowly pan around the room',
-  'Point at the ceiling',
-  'Get that corner',
-  'Almost there',
+  'Slowly turn in a full circle',
+  'Keep turning steadily',
+  'Almost halfway around',
+  'Keep going, nice and slow',
 ]
 
 export default function CapturePage() {
@@ -66,6 +68,8 @@ function MobileCapture({
   const [uploading, setUploading] = useState(false)
   const [guidanceIndex, setGuidanceIndex] = useState(0)
   const [stream, setStream] = useState<MediaStream | null>(null)
+  const [secondsLeft, setSecondsLeft] = useState(MAX_RECORDING_SECONDS)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Validate token if present (QR flow)
   useEffect(() => {
@@ -123,12 +127,26 @@ function MobileCapture({
     recorder.start(100)
     mediaRecorderRef.current = recorder
     setRecording(true)
+    setSecondsLeft(MAX_RECORDING_SECONDS)
+
+    // Auto-stop at 60 seconds
+    timerRef.current = setInterval(() => {
+      setSecondsLeft((prev) => {
+        if (prev <= 1) {
+          if (timerRef.current) clearInterval(timerRef.current)
+          recorder.stop()
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
   }, [stream])
 
   const stopRecording = useCallback(async () => {
     const recorder = mediaRecorderRef.current
     if (!recorder) return
 
+    if (timerRef.current) clearInterval(timerRef.current)
     setRecording(false)
     setUploading(true)
 
@@ -189,15 +207,34 @@ function MobileCapture({
 
       {/* Guidance overlay */}
       <div style={styles.guidanceOverlay}>
-        <p style={{ color: '#F8F6F1', fontSize: 16, textAlign: 'center' }}>
-          {recording ? GUIDANCE_MESSAGES[guidanceIndex] : 'Tap to start recording'}
-        </p>
+        {recording ? (
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ color: '#C9A84C', fontSize: 28, fontWeight: 700, margin: 0 }}>
+              {secondsLeft}s
+            </p>
+            <p style={{ color: '#F8F6F1', fontSize: 16, marginTop: 4 }}>
+              {GUIDANCE_MESSAGES[guidanceIndex]}
+            </p>
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', maxWidth: 280 }}>
+            <p style={{ color: '#F8F6F1', fontSize: 16, marginBottom: 8 }}>
+              Stand in the center of your room
+            </p>
+            <p style={{ color: '#8BA3C0', fontSize: 13 }}>
+              Turn slowly in a full circle (60 seconds) &middot; Keep all lights on &middot; Hold phone at chest height
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Upload overlay */}
       {uploading && (
         <div style={styles.uploadOverlay}>
-          <p style={{ color: '#F8F6F1', fontSize: 18 }}>Uploading video...</p>
+          <p style={{ color: '#F8F6F1', fontSize: 18 }}>Processing your room...</p>
+          <p style={{ color: '#8BA3C0', fontSize: 14, marginTop: 8 }}>
+            This usually takes about a minute
+          </p>
         </div>
       )}
 

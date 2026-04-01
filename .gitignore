@@ -19,6 +19,23 @@ scripts/backfill.log
 .github/workflows/verify.yml
 # macOS
 .DS_Store
+**/.DS_Store
+
+# Python cache
+**/__pycache__/
+*.pyc
+*.pyo
+
+# Test artifacts
+modal_pipeline/test_trimmed.mp4
+modal_pipeline/test1*.mp4
+
+# Large catalog data (already in Supabase)
+modal_pipeline/catalog_data/etsy_products.json
+modal_pipeline/catalog_data/overstock_products.json
+
+# Diagnostic reports (may contain secrets)
+diagnostic_report.json
 
 # Expo
 .expo/

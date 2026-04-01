@@ -1,0 +1,46 @@
+{
+  "date": "2026-04-01",
+  "task": "M6 Catalog Expansion — Etsy + Overstock",
+  "previous_total": 14000,
+  "new_total": 15902,
+  "new_products_added": 1902,
+  "retailer_breakdown": {
+    "amazon": 13167,
+    "ikea": 833,
+    "etsy": 413,
+    "overstock": 1489
+  },
+  "embedding_coverage": {
+    "embedded": 15902,
+    "unembedded": 0,
+    "coverage_pct": 100.0
+  },
+  "etsy_scraping": {
+    "queries_run": 40,
+    "raw_items_fetched": 6000,
+    "unique_home_relevant": 413,
+    "note": "Etsy search returns many non-home items and heavy overlap across queries"
+  },
+  "overstock_scraping": {
+    "queries_run": 10,
+    "raw_items_fetched": 1500,
+    "unique_products": 1489,
+    "note": "Excellent yield, minimal overlap"
+  },
+  "clip_embedding": {
+    "model": "openai/clip-vit-large-patch14",
+    "gpu": "A10G",
+    "products_embedded": 1903,
+    "failures": 0,
+    "time_seconds": 211
+  },
+  "index": {
+    "type": "ivfflat",
+    "lists": 50,
+    "status": "rebuilt"
+  },
+  "migrations_applied": [
+    "20240037000000_add_etsy_retailer.sql",
+    "20240038000000_rebuild_ivfflat_expanded.sql"
+  ]
+}

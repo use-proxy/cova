@@ -103,46 +103,86 @@ app = modal.App("cova-room-reconstruction", image=image)
 # Constants
 # ---------------------------------------------------------------------------
 
-MAX_FRAMES = 32  # Cap frames to stay within A10G 24GB VRAM
-TARGET_FPS = 1   # Extract 1 frame per second from video
+MAX_FRAMES = 80  # Safe limit for A100-40GB with full SH export
+TARGET_FPS = 4  # Extract 4 frames per second from video
+MIN_FRAMES = 10  # Minimum frames before rejecting video
 
 
 # ---------------------------------------------------------------------------
 # Helper: extract frames from video
 # ---------------------------------------------------------------------------
 def extract_frames(video_path: str, output_dir: str) -> list[str]:
-    """Extract frames from video at 1 FPS, capped at MAX_FRAMES."""
+    """Extract frames from video at TARGET_FPS, with quality filtering."""
     import cv2
+    import numpy as np
 
     vs = cv2.VideoCapture(video_path)
     fps = vs.get(cv2.CAP_PROP_FPS)
     if fps <= 0:
         fps = 30.0
-    frame_interval = max(1, int(fps * TARGET_FPS))
+
+    total_frames = int(vs.get(cv2.CAP_PROP_FRAME_COUNT))
+    duration = total_frames / fps
+    print(f"[cova] Video: {duration:.1f}s, {fps}fps, {total_frames} total frames")
+
+    frame_interval = max(1, int(fps / TARGET_FPS))
+    print(f"[cova] Extracting every {frame_interval}th frame (TARGET_FPS={TARGET_FPS})")
 
     frame_paths = []
+    last_frame = None
     count = 0
-    frame_num = 0
+    saved = 0
+    skipped_blur = 0
+    skipped_dark = 0
+    skipped_similar = 0
 
     while True:
         got_frame, frame = vs.read()
         if not got_frame:
             break
         count += 1
-        if count % frame_interval == 0:
-            path = os.path.join(output_dir, f"{frame_num:06d}.png")
-            cv2.imwrite(path, frame)
-            frame_paths.append(path)
-            frame_num += 1
-            if frame_num >= MAX_FRAMES:
-                break
+
+        if count % frame_interval != 0:
+            continue
+
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        # Skip dark frames
+        if gray.mean() < 30:
+            skipped_dark += 1
+            continue
+
+        # Skip blurry frames
+        laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+        if laplacian_var < 20:
+            skipped_blur += 1
+            continue
+
+        # Skip frames too similar to previous (redundant)
+        if last_frame is not None:
+            diff = np.mean(np.abs(gray.astype(float) - last_frame.astype(float)))
+            if diff < 1.5:
+                skipped_similar += 1
+                continue
+
+        path = os.path.join(output_dir, f"{saved:06d}.png")
+        cv2.imwrite(path, frame)
+        frame_paths.append(path)
+        last_frame = gray
+        saved += 1
+
+        if saved >= MAX_FRAMES:
+            break
 
     vs.release()
 
-    if len(frame_paths) < 2:
+    print(f"[cova] Frame extraction: {saved} kept, {skipped_blur} blurry, "
+          f"{skipped_dark} dark, {skipped_similar} redundant")
+
+    if len(frame_paths) < MIN_FRAMES:
         raise ValueError(
-            f"Need at least 2 frames, got {len(frame_paths)}. "
-            "Video may be too short or corrupted."
+            f"Only {len(frame_paths)} usable frames extracted. "
+            "Video may be too short, too dark, or too shaky."
         )
 
     return sorted(frame_paths)
@@ -153,11 +193,90 @@ def extract_frames(video_path: str, output_dir: str) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
+# Helper: validate reconstruction quality
+# ---------------------------------------------------------------------------
+def _validate_reconstruction(gaussians) -> dict:
+    import numpy as np
+    import torch
+
+    means = gaussians.means[0].detach().cpu().numpy()
+    opacities = gaussians.opacities[0].detach().cpu().numpy()
+
+    scene_extent = np.max(means, axis=0) - np.min(means, axis=0)
+    max_extent = float(np.max(scene_extent))
+    mean_opacity = float(np.mean(opacities))
+    num_gaussians = len(means)
+
+    issues = []
+    if max_extent < 0.3:
+        issues.append(f"Scene too small (extent={max_extent:.3f}) - likely collapsed")
+    if mean_opacity < 0.3:
+        issues.append(f"Low opacity (mean={mean_opacity:.3f}) - likely noisy")
+    if num_gaussians < 500000:
+        issues.append(f"Too few Gaussians ({num_gaussians}) - likely failed")
+
+    quality = "good" if not issues else "poor"
+
+    print(f"[cova] Reconstruction quality: {quality}")
+    print(f"[cova] Scene extent: {scene_extent}, max: {max_extent:.3f}")
+    print(f"[cova] Mean opacity: {mean_opacity:.3f}")
+    print(f"[cova] Gaussians: {num_gaussians}")
+    if issues:
+        for issue in issues:
+            print(f"[cova] WARNING: {issue}")
+
+    return {
+        "quality": quality,
+        "num_gaussians": num_gaussians,
+        "max_extent": max_extent,
+        "mean_opacity": mean_opacity,
+        "issues": issues,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Helper: upload to Supabase with retry
+# ---------------------------------------------------------------------------
+def _upload_with_retry(client, storage_path: str, file_bytes: bytes, max_retries: int = 3):
+    import time
+
+    file_size_mb = len(file_bytes) / 1e6
+    print(f"[cova] Uploading {file_size_mb:.1f}MB to {storage_path}")
+
+    for attempt in range(max_retries):
+        try:
+            client.storage.from_("room-videos").upload(
+                path=storage_path,
+                file=file_bytes,
+                file_options={"content-type": "application/octet-stream"},
+            )
+            print(f"[cova] Upload successful on attempt {attempt + 1}")
+            return
+        except Exception as e:
+            if attempt < max_retries - 1:
+                wait = 2 ** attempt
+                print(f"[cova] Upload attempt {attempt + 1} failed: {e}. "
+                      f"Retrying in {wait}s...")
+                time.sleep(wait)
+            else:
+                print(f"[cova] Falling back to update...")
+                client.storage.from_("room-videos").update(
+                    path=storage_path,
+                    file=file_bytes,
+                    file_options={"content-type": "application/octet-stream"},
+                )
+                print(f"[cova] Update successful")
+                return
+
+
+# ---------------------------------------------------------------------------
 # Core reconstruction logic (shared by webhook and CLI)
 # ---------------------------------------------------------------------------
 def _run_reconstruction(video_bytes: bytes, room_id: str, user_id: str) -> dict:
     import sys
     sys.path.insert(0, "/AnySplat")
+
+    os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
     import gc
     import torch
@@ -177,6 +296,20 @@ def _run_reconstruction(video_bytes: bytes, room_id: str, user_id: str) -> dict:
         with open(video_path, "wb") as f:
             f.write(video_bytes)
 
+        import subprocess
+        rotated_path = os.path.join(tmpdir, "input_rotated.mp4")
+        result = subprocess.run([
+            "ffmpeg", "-i", video_path,
+            "-vf", "transpose=1",
+            "-c:a", "copy",
+            rotated_path, "-y"
+        ], capture_output=True)
+        if result.returncode == 0:
+            video_path = rotated_path
+            print("[cova] Rotated portrait video to landscape")
+        else:
+            print("[cova] ffmpeg rotation failed, using original")
+
         print(f"[cova] Extracting frames from video ({len(video_bytes) / 1e6:.1f} MB)...")
         frame_paths = extract_frames(video_path, frames_dir)
         print(f"[cova] Extracted {len(frame_paths)} frames")
@@ -189,9 +322,23 @@ def _run_reconstruction(video_bytes: bytes, room_id: str, user_id: str) -> dict:
         volume.commit()
         print("[cova] Model loaded")
 
-        # Process images
+        # Process images with CLAHE contrast enhancement
         def process_image(img_path: str) -> torch.Tensor:
-            img = Image.open(img_path).convert("RGB")
+            import cv2
+            import numpy as np
+
+            # Read with OpenCV for preprocessing
+            img_cv = cv2.imread(img_path)
+
+            # Apply CLAHE to improve contrast for indoor scenes
+            lab = cv2.cvtColor(img_cv, cv2.COLOR_BGR2LAB)
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+            lab[:, :, 0] = clahe.apply(lab[:, :, 0])
+            img_cv = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+
+            # Convert to PIL and resize
+            img = Image.fromarray(cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB))
+
             w, h = img.size
             if w > h:
                 new_h = 448
@@ -203,6 +350,7 @@ def _run_reconstruction(video_bytes: bytes, room_id: str, user_id: str) -> dict:
             left = (new_w - 448) // 2
             top = (new_h - 448) // 2
             img = img.crop((left, top, left + 448, top + 448))
+
             return torchvision.transforms.ToTensor()(img) * 2.0 - 1.0
 
         images = torch.stack([process_image(p) for p in frame_paths], dim=0)
@@ -213,6 +361,7 @@ def _run_reconstruction(video_bytes: bytes, room_id: str, user_id: str) -> dict:
 
         # Run inference
         print("[cova] Running AnySplat inference...")
+        torch.cuda.empty_cache()
         with torch.no_grad():
             gaussians, pred_context_pose = model.inference(images)
         num_gaussians = int(gaussians.means.shape[1])
@@ -222,7 +371,11 @@ def _run_reconstruction(video_bytes: bytes, room_id: str, user_id: str) -> dict:
         gc.collect()
         torch.cuda.empty_cache()
 
-        # Export full Gaussian PLY (binary, all attributes, no downsampling)
+        # Validate reconstruction quality
+        import numpy as np
+        quality_info = _validate_reconstruction(gaussians)
+
+        # Export full Gaussian PLY (binary, all attributes)
         from src.model.ply_export import export_ply
 
         ply_path = os.path.join(tmpdir, "room.ply")
@@ -233,13 +386,61 @@ def _run_reconstruction(video_bytes: bytes, room_id: str, user_id: str) -> dict:
             gaussians.harmonics[0],
             gaussians.opacities[0],
             Path(ply_path),
-            save_sh_dc_only=True,
+            save_sh_dc_only=False,
         )
 
         file_size = os.path.getsize(ply_path)
         print(f"[cova] PLY exported: {file_size / 1e6:.1f} MB ({num_gaussians} gaussians)")
 
-        # Upload to Supabase Storage (Pro plan — no size limit)
+        # If full SH file is too large, re-export with DC only
+        if file_size > 480 * 1e6:
+            print(f"[cova] WARNING: PLY too large ({file_size / 1e6:.0f}MB), "
+                  f"re-exporting with DC-only SH")
+            export_ply(
+                gaussians.means[0],
+                gaussians.scales[0],
+                gaussians.rotations[0],
+                gaussians.harmonics[0],
+                gaussians.opacities[0],
+                Path(ply_path),
+                save_sh_dc_only=True,
+            )
+            file_size = os.path.getsize(ply_path)
+            print(f"[cova] Re-exported PLY: {file_size / 1e6:.1f} MB")
+
+        # If DC-only is still too large, downsample by opacity
+        if file_size > 480 * 1e6:
+            print(f"[cova] PLY still too large ({file_size / 1e6:.1f}MB), "
+                  f"downsampling Gaussians by opacity...")
+            MAX_GAUSSIANS = 2_000_000
+            opacities_flat = gaussians.opacities[0]
+            if opacities_flat.shape[0] > MAX_GAUSSIANS:
+                _, top_idx = torch.topk(opacities_flat, MAX_GAUSSIANS)
+                top_idx = top_idx.sort().values
+                from src.model.types import Gaussians as GaussiansType
+                gaussians_ds = GaussiansType(
+                    means=gaussians.means[0][top_idx].unsqueeze(0),
+                    covariances=gaussians.covariances[0][top_idx].unsqueeze(0),
+                    harmonics=gaussians.harmonics[0][top_idx].unsqueeze(0),
+                    opacities=gaussians.opacities[0][top_idx].unsqueeze(0),
+                    scales=gaussians.scales[0][top_idx].unsqueeze(0),
+                    rotations=gaussians.rotations[0][top_idx].unsqueeze(0),
+                )
+                export_ply(
+                    gaussians_ds.means[0],
+                    gaussians_ds.scales[0],
+                    gaussians_ds.rotations[0],
+                    gaussians_ds.harmonics[0],
+                    gaussians_ds.opacities[0],
+                    Path(ply_path),
+                    save_sh_dc_only=True,
+                )
+                file_size = os.path.getsize(ply_path)
+                num_gaussians = MAX_GAUSSIANS
+                print(f"[cova] Downsampled to {MAX_GAUSSIANS:,} Gaussians: "
+                      f"{file_size / 1e6:.1f}MB")
+
+        # Upload to Supabase Storage
         supabase_url = os.environ["SUPABASE_URL"]
         supabase_key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
         client = create_client(supabase_url, supabase_key)
@@ -249,11 +450,7 @@ def _run_reconstruction(video_bytes: bytes, room_id: str, user_id: str) -> dict:
         with open(ply_path, "rb") as f:
             file_bytes = f.read()
 
-        client.storage.from_("room-videos").upload(
-            path=storage_path,
-            file=file_bytes,
-            file_options={"content-type": "application/octet-stream", "upsert": "true"},
-        )
+        _upload_with_retry(client, storage_path, file_bytes)
 
         print(f"[cova] Uploaded to Supabase: {storage_path}")
 
@@ -261,17 +458,21 @@ def _run_reconstruction(video_bytes: bytes, room_id: str, user_id: str) -> dict:
         signed = client.storage.from_("room-videos").create_signed_url(storage_path, 86400)
         splat_url = signed.get("signedURL", "") if isinstance(signed, dict) else ""
 
-        # Upsert rooms table (update if exists, insert if not — handles CLI test runs)
-        client.table("rooms").upsert({
-            "id": room_id,
-            "user_id": user_id,
-            "splat_url": splat_url,
-            "splat_path": storage_path,
-            "status": "complete",
-            "room_type": "living_room",
-        }).execute()
-
-        print(f"[cova] Updated rooms table for {room_id} → status=complete")
+        import uuid as _uuid
+        # Only upsert if user_id is a valid UUID (skip for CLI test runs)
+        try:
+            _uuid.UUID(user_id)
+            client.table("rooms").upsert({
+                "id": room_id,
+                "user_id": user_id,
+                "splat_url": splat_url,
+                "splat_path": storage_path,
+                "status": "complete",
+                "room_type": "living_room",
+            }).execute()
+            print(f"[cova] Updated rooms table for {room_id} → status=complete")
+        except ValueError:
+            print(f"[cova] Skipping DB upsert — test-user is not a valid UUID")
 
         return {
             "room_id": room_id,
@@ -280,6 +481,9 @@ def _run_reconstruction(video_bytes: bytes, room_id: str, user_id: str) -> dict:
             "num_gaussians": num_gaussians,
             "num_frames": len(frame_paths),
             "file_size_bytes": file_size,
+            "quality": quality_info["quality"],
+            "max_extent": quality_info["max_extent"],
+            "mean_opacity": quality_info["mean_opacity"],
         }
 
 
@@ -287,7 +491,7 @@ def _run_reconstruction(video_bytes: bytes, room_id: str, user_id: str) -> dict:
 # Modal function: reconstruct room (direct call)
 # ---------------------------------------------------------------------------
 @app.function(
-    gpu="a10g",
+    gpu="a100-40gb",
     timeout=600,
     volumes={"/model_cache": volume},
     secrets=[modal.Secret.from_name("supabase-credentials")],
@@ -305,7 +509,7 @@ def reconstruct_room(
 # Modal web endpoint: reconstruct room (HTTP webhook)
 # ---------------------------------------------------------------------------
 @app.function(
-    gpu="a10g",
+    gpu="a100-40gb",
     timeout=600,
     volumes={"/model_cache": volume},
     secrets=[modal.Secret.from_name("supabase-credentials")],
@@ -360,6 +564,18 @@ def main(input_video: str, room_id: str = "", user_id: str = "test-user"):
     if not room_id:
         room_id = str(_uuid.uuid4())
         print(f"Generated room_id: {room_id}")
+
+    print("""
+[cova] === CAPTURE GUIDANCE FOR BEST RESULTS ===
+[cova] 1. Record in LANDSCAPE orientation (horizontal)
+[cova] 2. Record for 60-90 seconds minimum
+[cova] 3. Walk slowly - barely walking pace
+[cova] 4. Three passes: waist height, lower, upper
+[cova] 5. Cover all walls, corners, and furniture
+[cova] 6. Keep all lights on, avoid direct sunlight
+[cova] 7. Use standard lens (not ultra-wide)
+[cova] ==========================================
+""")
 
     with open(input_video, "rb") as f:
         video_bytes = f.read()

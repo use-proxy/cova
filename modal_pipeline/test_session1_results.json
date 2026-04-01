@@ -1,0 +1,10 @@
+{
+  "world_id": "99204f84-05d0-4276-acae-d48d7f2c509d",
+  "pano_url": "https://cdn.marble.worldlabs.ai/99204f84-05d0-4276-acae-d48d7f2c509d/3694ba10-f31a-44b6-8bd8-f109a5720f0f_pano/rgb_0.png",
+  "spz_urls": {
+    "500k": "https://cdn.marble.worldlabs.ai/99204f84-05d0-4276-acae-d48d7f2c509d/1beeca69-4186-47ad-88c2-806ee82ff28d_sand_500k.spz",
+    "full_res": "https://cdn.marble.worldlabs.ai/99204f84-05d0-4276-acae-d48d7f2c509d/47372c30-41d7-4f26-8a73-33805aa3970b_sand.spz",
+    "100k": "https://cdn.marble.worldlabs.ai/99204f84-05d0-4276-acae-d48d7f2c509d/a07ccf88-28cb-46a6-9e25-94df30f93e64_sand_100k.spz"
+  },
+  "marble_url": "https://marble.worldlabs.ai/world/99204f84-05d0-4276-acae-d48d7f2c509d"
+}

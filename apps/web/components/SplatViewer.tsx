@@ -9,17 +9,24 @@ import { useRoomStore } from '@/lib/stores/roomStore'
 
 interface SplatViewerProps {
   url: string
+  spzUrl?: string
+  spzUrl500k?: string
   roomId?: string
   hasRedesign?: boolean
+  onLoad?: () => void
 }
 
 export default function SplatViewer({
   url,
+  spzUrl,
+  spzUrl500k,
   roomId,
   hasRedesign = false,
+  onLoad,
 }: SplatViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [isLoaded, setIsLoaded] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [activeView, setActiveView] = useState<'real' | 'redesigned'>('real')
 
   // --- Telemetry refs (no re-renders) ---
@@ -90,59 +97,112 @@ export default function SplatViewer({
     const canvas = canvasRef.current
     if (!canvas) return
 
-    const scene = new THREE.Scene()
-    scene.background = new THREE.Color(0x0a1628)
+    // Use SPZ URLs if available, falling back to legacy PLY url
+    const initialUrl = spzUrl500k || spzUrl || url
+    const fullResUrl = spzUrl || url
 
-    const camera = new THREE.PerspectiveCamera(
-      60,
-      canvas.clientWidth / canvas.clientHeight,
-      0.1,
-      1000
-    )
-    camera.position.set(0, 1, 3)
-
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
-    renderer.setSize(canvas.clientWidth, canvas.clientHeight)
-    renderer.setPixelRatio(window.devicePixelRatio)
-
-    const splatMesh = new SplatMesh({ url })
-    scene.add(splatMesh)
-
-    // Mark loaded after a reasonable delay (SplatMesh loads async internally)
-    const loadTimeout = setTimeout(() => setIsLoaded(true), 3000)
-
-    const controls = new SparkControls({ canvas })
-
-    const handleResize = () => {
-      const w = window.innerWidth
-      const h = window.innerHeight
-      camera.aspect = w / h
-      camera.updateProjectionMatrix()
-      renderer.setSize(w, h)
-    }
-    window.addEventListener('resize', handleResize)
+    setLoadError(null)
 
     let animId: number
+    let loadTimeout: ReturnType<typeof setTimeout>
+    let upgradeTimeout: ReturnType<typeof setTimeout>
 
-    const animate = () => {
-      controls.update(camera)
-      renderer.render(scene, camera)
-      animId = requestAnimationFrame(animate)
-    }
-    animate()
+    try {
+      const scene = new THREE.Scene()
+      scene.background = new THREE.Color(0x0a1628)
 
-    return () => {
-      cancelAnimationFrame(animId)
-      clearTimeout(loadTimeout)
-      window.removeEventListener('resize', handleResize)
-      renderer.dispose()
+      const camera = new THREE.PerspectiveCamera(
+        60,
+        canvas.clientWidth / canvas.clientHeight,
+        0.1,
+        1000
+      )
+      camera.position.set(0, 1, 3)
+
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
+      renderer.setSize(canvas.clientWidth, canvas.clientHeight)
+      renderer.setPixelRatio(window.devicePixelRatio)
+
+      // Load initial (500k or full_res)
+      const splatMesh = new SplatMesh({ url: initialUrl })
+      scene.add(splatMesh)
+
+      loadTimeout = setTimeout(() => {
+        setIsLoaded(true)
+        onLoad?.()
+      }, 3000)
+
+      // Progressive upgrade: swap to full_res after 5 seconds
+      if (spzUrl500k && fullResUrl !== initialUrl) {
+        upgradeTimeout = setTimeout(() => {
+          try {
+            const fullResMesh = new SplatMesh({ url: fullResUrl })
+            scene.remove(splatMesh)
+            scene.add(fullResMesh)
+          } catch {
+            // Keep 500k if full_res fails
+          }
+        }, 5000)
+      }
+
+      const controls = new SparkControls({ canvas })
+
+      const handleResize = () => {
+        const w = window.innerWidth
+        const h = window.innerHeight
+        camera.aspect = w / h
+        camera.updateProjectionMatrix()
+        renderer.setSize(w, h)
+      }
+      window.addEventListener('resize', handleResize)
+
+      const animate = () => {
+        controls.update(camera)
+        renderer.render(scene, camera)
+        animId = requestAnimationFrame(animate)
+      }
+      animate()
+
+      return () => {
+        cancelAnimationFrame(animId)
+        clearTimeout(loadTimeout)
+        clearTimeout(upgradeTimeout)
+        window.removeEventListener('resize', handleResize)
+        renderer.dispose()
+      }
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Failed to load 3D room')
     }
-  }, [url])
+  }, [url, spzUrl, spzUrl500k, onLoad])
 
   return (
     <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
+      {/* Error state */}
+      {loadError && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: '#0A1628',
+            zIndex: 20,
+            fontFamily: 'Inter, sans-serif',
+          }}
+        >
+          <p style={{ color: '#C0504A', fontSize: 16, fontWeight: 600, marginBottom: 8 }}>
+            Unable to load 3D room
+          </p>
+          <p style={{ color: '#8BA3C0', fontSize: 13, maxWidth: 320, textAlign: 'center' }}>
+            The room file could not be loaded. Please try refreshing the page.
+          </p>
+        </div>
+      )}
+
       {/* Loading spinner */}
-      {!isLoaded && (
+      {!isLoaded && !loadError && (
         <div
           style={{
             position: 'absolute',

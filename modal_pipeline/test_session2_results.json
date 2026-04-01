@@ -1,0 +1,13 @@
+{
+  "session1_pano_url": "https://cdn.marble.worldlabs.ai/99204f84-05d0-4276-acae-d48d7f2c509d/3694ba10-f31a-44b6-8bd8-f109a5720f0f_pano/rgb_0.png",
+  "prompt": "Redesign this dorm room in warm minimalist japandi style. Replace all existing furniture and soft furnishings with: a low solid oak platform bed with clean lines, a minimalist walnut coffee table with tapered legs, a clean-lined linen sofa in warm grey, a natural jute rug, simple oak bookshelf, and floating white shelves. Use materials: solid oak, walnut, natural linen, ceramic, glass. Color palette: warm white, natural wood tones, soft grey, muted sage. Keep all walls, floors, windows, ceiling, doors, and architectural features exactly as they are. Preserve all room dimensions, proportions, and existing lighting direction. The result must look like a photorealistic interior design photograph. Equirectangular panorama, 360 degree view.",
+  "redesigned_pano_url": "https://replicate.delivery/xezq/kyeJiLsa6dTPD6Tnoi5bUBSvXlCyIfYESSvshIvvsLFkulWWA/tmpp32g36om.png",
+  "style_blend": {
+    "coastal": 0.0,
+    "japandi": 0.7,
+    "minimalist": 0.3,
+    "bohemian": 0.0,
+    "mid_century": 0.0
+  },
+  "image_size_bytes": 1454280
+}

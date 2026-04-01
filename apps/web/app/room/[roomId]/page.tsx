@@ -26,6 +26,10 @@ const RoomChatbot = dynamic(() => import('@/components/RoomChatbot'), {
   ssr: false,
 })
 
+const RoomOverlay = dynamic(() => import('./RoomOverlay'), {
+  ssr: false,
+})
+
 interface PageProps {
   params: Promise<{ roomId: string }>
 }
@@ -40,30 +44,47 @@ export default async function RoomViewerPage({ params }: PageProps) {
 
   const { data: room } = await supabase
     .from('rooms')
-    .select('id, splat_path, redesign_splat_url, status')
+    .select(
+      'id, splat_path, marble_spz_url, marble_spz_url_500k, redesign_pano_url, redesign_status, status, marble_plus_thumbnail_url, furniture_matches_count'
+    )
     .eq('id', roomId)
     .single()
 
-  if (!room || !room.splat_path) {
+  if (!room) {
     redirect(`/processing/${roomId}`)
   }
 
-  // Generate signed URL for splat file (1 hour)
-  const { data: signed } = await supabase.storage
-    .from('room-videos')
-    .createSignedUrl(room.splat_path, 3600)
+  // Use Marble SPZ if available, fall back to legacy PLY signed URL
+  const spzUrl = room.marble_spz_url || ''
+  const spzUrl500k = room.marble_spz_url_500k || ''
 
-  if (!signed?.signedUrl) {
+  let viewerUrl = ''
+  if (spzUrl) {
+    viewerUrl = spzUrl
+  } else if (room.splat_path) {
+    const { data: signed } = await supabase.storage
+      .from('room-videos')
+      .createSignedUrl(room.splat_path, 3600)
+    viewerUrl = signed?.signedUrl ?? ''
+  }
+
+  if (!viewerUrl) {
     redirect(`/processing/${roomId}`)
   }
+
+  const hasRedesign = !!room.marble_spz_url
+  const hasFurniture = (room.furniture_matches_count ?? 0) > 0
 
   return (
-    <main style={{ margin: 0, padding: 0, overflow: 'hidden' }}>
+    <main style={{ margin: 0, padding: 0, overflow: 'hidden', position: 'relative' }}>
       <SplatViewer
-        url={signed.signedUrl}
+        url={viewerUrl}
+        spzUrl={spzUrl || undefined}
+        spzUrl500k={spzUrl500k || undefined}
         roomId={roomId}
-        hasRedesign={!!room.redesign_splat_url}
+        hasRedesign={hasRedesign}
       />
+      {hasFurniture && <RoomOverlay roomId={roomId} />}
       <RoomChatbot roomId={roomId} />
     </main>
   )

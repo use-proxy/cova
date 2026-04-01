@@ -36,41 +36,32 @@ async function callAnthropic(messages: AnthropicMessage[], system: string, tools
   return res.json() as Promise<AnthropicResponse>
 }
 
-// ---------- CLIP embedding via Replicate ----------
+// ---------- CLIP text embedding via Modal ----------
+// Calls the cova-clip-text-embed endpoint on Modal, which runs the TEXT encoder
+// of openai/clip-vit-large-patch14 — the exact same model whose IMAGE encoder
+// was used to embed all product images in embed_catalog_gpu.py.
+// This ensures text and image embeddings share the same vector space.
+//
+// IMPORTANT: CLIP cross-modal (text→image) cosine similarity is naturally
+// lower than image→image similarity.  Typical relevant matches score 0.25-0.35,
+// irrelevant ones < 0.18.  The search threshold is tuned accordingly.
 async function getClipEmbedding(text: string): Promise<number[] | null> {
+  const embedUrl = process.env.CLIP_TEXT_EMBED_URL
+  if (!embedUrl) return null
+
   try {
-    // Start prediction
-    const createRes = await fetch('https://api.replicate.com/v1/predictions', {
+    const res = await fetch(embedUrl, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.REPLICATE_API_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        version: '75b33f253f7714a281ad3e9b28f63e3232d583716ef6718f2e46641077ea040a',
-        input: { text: text },
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+      signal: AbortSignal.timeout(30_000),
     })
-    if (!createRes.ok) return null
-    const prediction = await createRes.json()
+    if (!res.ok) return null
 
-    // Poll for completion (max 30s)
-    let result = prediction
-    const start = Date.now()
-    while (result.status !== 'succeeded' && result.status !== 'failed' && Date.now() - start < 30000) {
-      await new Promise(r => setTimeout(r, 500))
-      const pollRes = await fetch(`https://api.replicate.com/v1/predictions/${result.id}`, {
-        headers: { 'Authorization': `Bearer ${process.env.REPLICATE_API_TOKEN}` },
-      })
-      result = await pollRes.json()
-    }
-
-    if (result.status === 'succeeded' && result.output) {
-      // Output is an array of embeddings; take the first
-      const embedding = Array.isArray(result.output[0]) ? result.output[0] : result.output
-      return embedding
-    }
-    return null
+    const data = await res.json()
+    const embedding: number[] | undefined = data.embedding
+    if (!embedding || embedding.length !== 768) return null
+    return embedding
   } catch {
     return null
   }
@@ -135,7 +126,7 @@ async function executeSearchProducts(
   if (embedding && embedding.length > 0) {
     const { data } = await db.rpc('search_products_by_embedding', {
       query_embedding: embedding,
-      match_threshold: 0.55,
+      match_threshold: 0.20,
       match_count: 10,
     })
     products = data || []
@@ -171,7 +162,7 @@ async function executeSearchProducts(
     retailer: p.retailer,
     price: p.price,
     image_url: p.image_url,
-    product_url: buildAffiliateUrl(p.product_url || '', p.retailer || ''),
+    product_url: buildAffiliateUrl(p.affiliate_url || p.product_url || '', p.retailer || ''),
     category: p.category,
   }))
 
@@ -216,7 +207,7 @@ async function executeFilterProducts(
 
   const { data } = await db
     .from('room_products')
-    .select('product:products(id, name, price, category, retailer, image_url, product_url)')
+    .select('product:products(id, name, price, category, retailer, image_url, affiliate_url)')
     .eq('room_id', roomId)
 
   let items = (data || []).map((rp: any) => rp.product).filter(Boolean)
@@ -243,7 +234,7 @@ async function executeFilterProducts(
     retailer: p.retailer,
     price: p.price,
     image_url: p.image_url,
-    product_url: buildAffiliateUrl(p.product_url || '', p.retailer || ''),
+    product_url: buildAffiliateUrl(p.affiliate_url || '', p.retailer || ''),
     category: p.category,
   }))
 
@@ -444,7 +435,7 @@ export async function POST(request: Request) {
     // Load current product matches for room
     const { data: roomProducts } = await db
       .from('room_products')
-      .select('product:products(name, price, category, retailer, image_url, product_url)')
+      .select('product:products(name, price, category, retailer, image_url, affiliate_url)')
       .eq('room_id', roomId)
 
     const products = (roomProducts || []).map((rp: any) => rp.product).filter(Boolean)

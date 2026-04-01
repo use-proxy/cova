@@ -11,6 +11,7 @@ import time
 image = (
     modal.Image.debian_slim(python_version="3.10")
     .pip_install(
+        "numpy<2",
         "torch==2.2.0",
         "transformers==4.38.0",
         "Pillow==10.2.0",
@@ -133,8 +134,11 @@ class CLIPEmbedder:
                     failures.append({"id": p["id"], "reason": f"DB update: {resp.status_code}"})
 
             except Exception as e:
+                import traceback
+                tb = traceback.format_exc()
+                print(f"[CLIP] FAILED {p['id']}: {e}\n{tb}")
                 failed += 1
-                failures.append({"id": p["id"], "reason": str(e)[:100]})
+                failures.append({"id": p["id"], "reason": str(e)[:200]})
 
             # Log progress every 100 products
             if (idx + 1) % 100 == 0:

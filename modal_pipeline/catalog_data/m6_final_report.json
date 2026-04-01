@@ -1,0 +1,86 @@
+{
+  "milestone": "M6",
+  "task": "CLIP Embedding Pipeline",
+  "completed_at": "2026-04-01T00:40:13Z",
+  "total_products": 14000,
+  "embedded": 13999,
+  "failed": 1,
+  "coverage_pct": 99.99,
+  "failure_reason": "1 Amazon CDN timeout (m.media-amazon.com)",
+  "model": "openai/clip-vit-large-patch14",
+  "embedding_dim": 768,
+  "index": "IVFFlat (lists=50, vector_cosine_ops)",
+  "embedding_time_minutes": 13.6,
+  "gpu": "A10G x5 containers on Modal",
+  "search_verification": [
+    {
+      "query": "VINGLI Convertible Modular Sectional Sofa with Deep Seat & M",
+      "category": "sofa",
+      "search_time_ms": 655,
+      "result_count": 5,
+      "top_3": [
+        {
+          "name": "VINGLI Convertible Modular Sectional Sofa with Deep Seat & M",
+          "similarity": 1,
+          "retailer": "amazon"
+        },
+        {
+          "name": "Homall Modular Sectional U Shaped Sofa Couches for Living Ro",
+          "similarity": 0.9254,
+          "retailer": "amazon"
+        },
+        {
+          "name": "ONBRILL 105\" Modular Sectional Sleeper Sofa with Pull Out Be",
+          "similarity": 0.9195,
+          "retailer": "amazon"
+        }
+      ]
+    },
+    {
+      "query": "H\u00c4LLEBR\u00c4CKA Sheer curtains, 1 pair",
+      "category": "window_treatment",
+      "search_time_ms": 464,
+      "result_count": 5,
+      "top_3": [
+        {
+          "name": "H\u00c4LLEBR\u00c4CKA Sheer curtains, 1 pair",
+          "similarity": 1,
+          "retailer": "ikea"
+        },
+        {
+          "name": "KORGMOTT Black-out curtains, 1 pair",
+          "similarity": 0.9343,
+          "retailer": "ikea"
+        },
+        {
+          "name": "DYT\u00c5G Curtains, 1 pair",
+          "similarity": 0.9287,
+          "retailer": "ikea"
+        }
+      ]
+    },
+    {
+      "query": "Large Gold Antique Mirror, Tall Arched Floor Mirror,Ornate D",
+      "category": "mirror",
+      "search_time_ms": 231,
+      "result_count": 5,
+      "top_3": [
+        {
+          "name": "Large Gold Antique Mirror, Tall Arched Floor Mirror,Ornate D",
+          "similarity": 1,
+          "retailer": "amazon"
+        },
+        {
+          "name": "Chende Arched Full Length Mirror, 59\" x 30\" Large Decorative",
+          "similarity": 0.9158,
+          "retailer": "amazon"
+        },
+        {
+          "name": "Gold Rectangle Mirror, 47\"x22\" Geometric Art Deco Mirror wit",
+          "similarity": 0.8846,
+          "retailer": "amazon"
+        }
+      ]
+    }
+  ]
+}
