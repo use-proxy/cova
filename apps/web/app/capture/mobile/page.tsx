@@ -22,14 +22,21 @@ function angleDelta(current: number, target: number): number {
 
 // ─── Permission Gate Screen ───────────────────────────────
 function GyroPermissionGate({ onGranted, onDenied }: { onGranted: () => void; onDenied: () => void }) {
-  const handleRequest = async () => {
-    try {
+  // Must be synchronous — iOS cancels the permission dialog if called from async
+  const handleRequest = () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (typeof (DeviceOrientationEvent as any).requestPermission === "function") {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = await (DeviceOrientationEvent as any).requestPermission()
-      if (result === "granted") onGranted()
-      else onDenied()
-    } catch {
-      onDenied()
+      (DeviceOrientationEvent as any).requestPermission()
+        .then((result: string) => {
+          if (result === "granted") onGranted()
+          else onDenied()
+        })
+        .catch(() => {
+          onDenied()
+        })
+    } else {
+      onGranted()
     }
   }
 
@@ -57,7 +64,7 @@ function GyroPermissionGate({ onGranted, onDenied }: { onGranted: () => void; on
         onClick={onDenied}
         className="mt-4 text-xs font-sans text-[var(--ivory)]/40 uppercase tracking-wider"
       >
-        Skip — capture without compass
+        Skip — use manual capture
       </button>
     </div>
   )
@@ -82,7 +89,6 @@ function MobileCaptureInner() {
   const rafRef = useRef<number>(0)
 
   // ── React state (only for things that change the component tree) ──
-  const [ready, setReady] = useState(false)
   const [cameraReady, setCameraReady] = useState(false)
   const [gyroPermission, setGyroPermission] = useState<"pending" | "granted" | "denied" | "unavailable">("pending")
   const [shots, setShots] = useState<(string | null)[]>(Array(TOTAL_SHOTS).fill(null))
@@ -94,20 +100,12 @@ function MobileCaptureInner() {
   const allComplete = shots.filter(Boolean).length === TOTAL_SHOTS
   const isIOS = typeof navigator !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent)
 
-  // ── Step 0: Auth — set session then unblock immediately ──
+  // ── Step 0: Auth — set session in background (does not block UI) ──
   useEffect(() => {
-    const init = async () => {
-      if (accessToken) {
-        const supabase = createBrowserClient()
-        try {
-          await supabase.auth.setSession({ access_token: accessToken, refresh_token: "" })
-        } catch (e) {
-          console.error("Session error:", e)
-        }
-      }
-      setReady(true)
-    }
-    init()
+    if (!accessToken) return
+    const supabase = createBrowserClient()
+    supabase.auth.setSession({ access_token: accessToken, refresh_token: "" })
+      .catch((e) => console.error("Session error:", e))
   }, [accessToken])
 
   // ── Step 0b: Detect gyro capability ──
@@ -126,11 +124,18 @@ function MobileCaptureInner() {
     }
   }, [])
 
-  // ── Step 1: Start camera immediately when ready ──
+  // ── Safety timeout: auto-deny if stuck on pending for 3s ──
   useEffect(() => {
-    if (!ready) return
-    // Skip permission gate on non-iOS (gyro already granted or unavailable)
-    if (gyroPermission === "pending") return // Wait for user to interact with gate
+    const timeout = setTimeout(() => {
+      setGyroPermission((prev) => (prev === "pending" ? "denied" : prev))
+    }, 3000)
+    return () => clearTimeout(timeout)
+  }, [])
+
+  // ── Step 1: Start camera as soon as permission gate clears ──
+  useEffect(() => {
+    // Don't start camera while permission gate is showing
+    if (gyroPermission === "pending") return
 
     const startCamera = async () => {
       try {
@@ -149,7 +154,7 @@ function MobileCaptureInner() {
     }
     startCamera()
     return () => { streamRef.current?.getTracks().forEach((t) => t.stop()) }
-  }, [ready, gyroPermission])
+  }, [gyroPermission])
 
   // ── Step 2: Heading listener ──
   useEffect(() => {
@@ -308,16 +313,7 @@ function MobileCaptureInner() {
     setShotIndex(newIndex)
   }, [quality.passing, allComplete, gyroPermission])
 
-  // ── Render: Loading ──
-  if (!ready) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-[var(--navy-deep)]">
-        <div className="w-8 h-8 border-2 border-[var(--gold)] border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
-  }
-
-  // ── Render: iOS Permission Gate ──
+  // ── Render: iOS Permission Gate (shown before camera) ──
   if (gyroPermission === "pending") {
     return (
       <GyroPermissionGate
