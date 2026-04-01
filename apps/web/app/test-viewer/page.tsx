@@ -1,7 +1,9 @@
-import dynamic from 'next/dynamic'
+export const dynamic = 'force-dynamic'
+
+import dynamicImport from 'next/dynamic'
 import { createClient } from '@supabase/supabase-js'
 
-const SplatViewer = dynamic(() => import('@/components/SplatViewer'), {
+const SplatViewer = dynamicImport(() => import('@/components/SplatViewer'), {
   ssr: false,
   loading: () => (
     <div style={{

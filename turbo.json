@@ -9,6 +9,24 @@
       "dependsOn": [
         "^build"
       ],
+      "env": [
+        "NEXT_PUBLIC_SUPABASE_URL",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+        "NEXT_PUBLIC_APP_URL",
+        "NEXT_PUBLIC_POSTHOG_KEY",
+        "NEXT_PUBLIC_POSTHOG_HOST",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "SUPABASE_JWT_SECRET",
+        "ANTHROPIC_API_KEY",
+        "REPLICATE_API_TOKEN",
+        "SENTRY_DSN",
+        "MODAL_TOKEN_ID",
+        "MODAL_TOKEN_SECRET",
+        "MODAL_WEBHOOK_URL",
+        "AMAZON_AFFILIATE_TAG",
+        "MARBLE_API_KEY",
+        "APIFY_API_TOKEN"
+      ],
       "outputs": [
         "dist/**"
       ]
