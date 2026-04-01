@@ -4,10 +4,14 @@
 
 :root {
   /* Cova Color Palette */
-  --navy-deep: #0B1F3A;
+  --navy-deep: #0a1628;
   --navy-darker: #091829;
+  --navy-card: #0d1f3c;
+  --gold: #C9A84C;
   --gold-primary: #C9A84C;
   --gold-light: #D4B460;
+  --gold-dim: rgba(201,168,76,0.3);
+  --gold-glow: rgba(201,168,76,0.15);
   --ivory: #F5F0E8;
 
   --background: #091829;
@@ -47,4 +51,32 @@ body::-webkit-scrollbar-thumb:hover {
   .text-balance {
     text-wrap: balance;
   }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Capture page animations */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes flash {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 0.6; }
 }
