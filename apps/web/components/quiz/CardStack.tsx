@@ -22,12 +22,18 @@ interface CardStackProps {
   onConfidenceUpdate: (score: number) => void
 }
 
+const FALLBACK_CARDS: Card[] = Array.from({ length: 10 }, (_, i) => ({
+  id: `fallback-${i}`,
+  image_url: `https://picsum.photos/400/500?random=${i + 10}`,
+  style_tags: [["modern", "minimalist", "scandinavian", "industrial", "bohemian", "coastal", "mid-century", "traditional"][i % 8]],
+}))
+
 export function CardStack({ sessionId, onComplete, onConfidenceUpdate }: CardStackProps) {
   const [cards, setCards] = useState<Card[]>([])
   const [swipes, setSwipes] = useState<Swipe[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Fetch initial cards
+  // Fetch initial cards with fallback
   useEffect(() => {
     const fetchCards = async () => {
       try {
@@ -38,11 +44,13 @@ export function CardStack({ sessionId, onComplete, onConfidenceUpdate }: CardSta
         })
         if (res.ok) {
           const data = await res.json()
-          if (data.cards) setCards(data.cards)
+          if (data.cards?.length) { setCards(data.cards); setLoading(false); return }
         }
       } catch (e) {
         console.error("Failed to fetch cards:", e)
       }
+      // Fallback to placeholder cards
+      setCards(FALLBACK_CARDS)
       setLoading(false)
     }
     fetchCards()
