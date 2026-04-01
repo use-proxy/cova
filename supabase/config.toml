@@ -22,7 +22,8 @@ file_size_limit = "50MiB"
 
 [auth]
 enabled = true
-site_url = "http://localhost:3000"
+site_url = "https://covainterior.com"
+additional_redirect_urls = ["https://covainterior.com/**", "http://localhost:3000/**"]
 
 [auth.email]
 enable_signup = true

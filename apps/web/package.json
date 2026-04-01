@@ -19,6 +19,7 @@
     "react-dom": "^18",
     "react-qr-code": "^2.0.18",
     "three": "^0.183.2",
+    "three-web": "npm:three@0.169.0",
     "zustand": "^5.0.12"
   },
   "devDependencies": {
