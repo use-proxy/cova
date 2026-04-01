@@ -9,60 +9,129 @@ import { CompassRing } from "@/components/capture/CompassRing"
 import { useQualityChecker } from "@/components/capture/QualityChecker"
 
 const TOTAL_SHOTS = 8
+const RING_CX = 70
+const RING_CY = 70
 
 function normalizeHeading(h: number): number {
   return ((h % 360) + 360) % 360
 }
 
-function angleDelta(a: number, b: number): number {
-  return ((a - b + 540) % 360) - 180
+function angleDelta(current: number, target: number): number {
+  return ((current - target + 540) % 360) - 180
 }
 
+// ─── Permission Gate Screen ───────────────────────────────
+function GyroPermissionGate({ onGranted, onDenied }: { onGranted: () => void; onDenied: () => void }) {
+  const handleRequest = async () => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = await (DeviceOrientationEvent as any).requestPermission()
+      if (result === "granted") onGranted()
+      else onDenied()
+    } catch {
+      onDenied()
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[var(--navy-deep)] px-8">
+      {/* Compass icon */}
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none" className="mb-8">
+        <circle cx="32" cy="32" r="28" stroke="var(--gold)" strokeWidth="2" fill="none" />
+        <line x1="32" y1="32" x2="32" y2="12" stroke="var(--gold)" strokeWidth="2.5" strokeLinecap="round" />
+        <circle cx="32" cy="32" r="4" fill="var(--gold)" />
+      </svg>
+      <h2 className="font-serif text-2xl text-[var(--ivory)] text-center mb-3">
+        Enable compass guidance
+      </h2>
+      <p className="font-sans text-sm text-[var(--ivory)]/50 text-center mb-8 max-w-xs">
+        Cova uses your compass to guide you through each angle of your room
+      </p>
+      <button
+        onClick={handleRequest}
+        className="px-8 py-3.5 rounded-lg bg-[var(--gold)] text-[var(--navy-deep)] font-sans text-sm font-semibold uppercase tracking-widest"
+      >
+        Enable Compass
+      </button>
+      <button
+        onClick={onDenied}
+        className="mt-4 text-xs font-sans text-[var(--ivory)]/40 uppercase tracking-wider"
+      >
+        Skip — capture without compass
+      </button>
+    </div>
+  )
+}
+
+// ─── Main Mobile Capture ──────────────────────────────────
 function MobileCaptureInner() {
   const searchParams = useSearchParams()
   const accessToken = searchParams.get("access_token")
-  // captureToken available via searchParams.get("token") for future validation
 
-
+  // ── Refs for rAF-based DOM updates (no re-render) ──
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const headingRef = useRef<number>(0)
   const needleRef = useRef<SVGGElement>(null)
+  const arcRef = useRef<SVGCircleElement>(null)
+  const guidanceRef = useRef<HTMLParagraphElement>(null)
+  const captureButtonRef = useRef<HTMLButtonElement>(null)
+  const lockedInRef = useRef<boolean>(false)
+  const startHeadingRef = useRef<number | null>(null)
+  const shotIndexRef = useRef<number>(0)
   const rafRef = useRef<number>(0)
 
-  const [authenticated, setAuthenticated] = useState(false)
+  // ── React state (only for things that change the component tree) ──
+  const [ready, setReady] = useState(false)
   const [cameraReady, setCameraReady] = useState(false)
-  const [gyroAvailable, setGyroAvailable] = useState(false)
-  const [gyroRequested, setGyroRequested] = useState(false)
+  const [gyroPermission, setGyroPermission] = useState<"pending" | "granted" | "denied" | "unavailable">("pending")
   const [shots, setShots] = useState<(string | null)[]>(Array(TOTAL_SHOTS).fill(null))
   const [shotIndex, setShotIndex] = useState(0)
-  const [startHeading, setStartHeading] = useState<number | null>(null)
-  const [lockedIn, setLockedIn] = useState(false)
-  const [guidance, setGuidance] = useState<"rotate-left" | "rotate-right" | "aligned" | "first">("first")
   const [flash, setFlash] = useState(false)
   const [done, setDone] = useState(false)
-  const [displayHeading, setDisplayHeading] = useState<number>(0)
 
   const quality = useQualityChecker(videoRef, cameraReady)
-  const completedCount = shots.filter(Boolean).length
-  const allComplete = completedCount === TOTAL_SHOTS
+  const allComplete = shots.filter(Boolean).length === TOTAL_SHOTS
+  const isIOS = typeof navigator !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent)
 
-  // Authenticate with access token from QR
+  // ── Step 0: Auth — set session then unblock immediately ──
   useEffect(() => {
-    if (!accessToken) {
-      setAuthenticated(true) // no token = proceed unauthenticated (token-based capture)
-      return
+    const init = async () => {
+      if (accessToken) {
+        const supabase = createBrowserClient()
+        try {
+          await supabase.auth.setSession({ access_token: accessToken, refresh_token: "" })
+        } catch (e) {
+          console.error("Session error:", e)
+        }
+      }
+      setReady(true)
     }
-    const supabase = createBrowserClient()
-    supabase.auth.setSession({
-      access_token: accessToken,
-      refresh_token: "",
-    }).then(() => setAuthenticated(true))
+    init()
   }, [accessToken])
 
-  // Start camera
+  // ── Step 0b: Detect gyro capability ──
   useEffect(() => {
-    if (!authenticated) return
+    if (typeof DeviceOrientationEvent === "undefined") {
+      setGyroPermission("unavailable")
+      return
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (typeof (DeviceOrientationEvent as any).requestPermission === "function") {
+      // iOS — need user gesture, show permission gate
+      setGyroPermission("pending")
+    } else {
+      // Android / desktop — auto-granted
+      setGyroPermission("granted")
+    }
+  }, [])
+
+  // ── Step 1: Start camera immediately when ready ──
+  useEffect(() => {
+    if (!ready) return
+    // Skip permission gate on non-iOS (gyro already granted or unavailable)
+    if (gyroPermission === "pending") return // Wait for user to interact with gate
+
     const startCamera = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -80,84 +149,106 @@ function MobileCaptureInner() {
     }
     startCamera()
     return () => { streamRef.current?.getTracks().forEach((t) => t.stop()) }
-  }, [authenticated])
+  }, [ready, gyroPermission])
 
-  // Gyro permission request (must be on user gesture)
-  const requestGyroPermission = useCallback(async () => {
-    setGyroRequested(true)
-    if (typeof DeviceOrientationEvent === "undefined") {
-      setGyroAvailable(false)
-      return
-    }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const DOE = DeviceOrientationEvent as any
-    if (typeof DOE.requestPermission === "function") {
-      try {
-        const result = await DOE.requestPermission()
-        setGyroAvailable(result === "granted")
-      } catch {
-        setGyroAvailable(false)
-      }
-    } else {
-      setGyroAvailable(true)
-    }
-  }, [])
-
-  // Listen for device orientation once gyro is available
+  // ── Step 2: Heading listener ──
   useEffect(() => {
-    if (!gyroAvailable) return
-
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    if (gyroPermission !== "granted") return
     const handler = (e: DeviceOrientationEvent) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const raw = isIOS ? (e as any).webkitCompassHeading : (360 - (e.alpha ?? 0)) % 360
-      if (raw == null) return
-      headingRef.current = normalizeHeading(raw)
+      if (isIOS) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const h = (e as any).webkitCompassHeading
+        if (h != null) headingRef.current = normalizeHeading(h)
+      } else {
+        if (e.alpha != null) headingRef.current = normalizeHeading((360 - e.alpha) % 360)
+      }
     }
     window.addEventListener("deviceorientation", handler, true)
     return () => window.removeEventListener("deviceorientation", handler, true)
-  }, [gyroAvailable])
+  }, [gyroPermission, isIOS])
 
-  // RAF loop: update compass UI from headingRef without React re-renders
+  // ── Step 3: rAF loop — DOM updates via refs only ──
   useEffect(() => {
-    if (!gyroAvailable) return
+    if (gyroPermission !== "granted") return
 
     const tick = () => {
       const heading = headingRef.current
-      setDisplayHeading(heading)
+      const shotIdx = shotIndexRef.current
+      const startH = startHeadingRef.current
 
-      // Rotate needle via ref (no re-render)
+      // Rotate needle via ref
       if (needleRef.current) {
-        needleRef.current.setAttribute("transform", `rotate(${heading}, 80, 80)`)
+        needleRef.current.setAttribute("transform", `rotate(${heading}, ${RING_CX}, ${RING_CY})`)
       }
 
-      // Guidance logic
-      if (shotIndex === 0 && startHeading === null) {
-        setGuidance("first")
-        setLockedIn(false)
-      } else if (startHeading !== null) {
-        const target = normalizeHeading(startHeading + shotIndex * 45)
-        const delta = angleDelta(heading, target)
+      // Shot 0: free capture
+      if (shotIdx === 0 || startH === null) {
+        if (guidanceRef.current) {
+          guidanceRef.current.textContent = "Point at any wall and tap to begin"
+          guidanceRef.current.style.color = "rgba(255,255,255,0.6)"
+        }
+        if (captureButtonRef.current) {
+          captureButtonRef.current.disabled = false
+          captureButtonRef.current.style.opacity = "1"
+          captureButtonRef.current.style.boxShadow = "0 0 20px rgba(201,168,76,0.3)"
+          captureButtonRef.current.style.borderColor = "#C9A84C"
+        }
+        rafRef.current = requestAnimationFrame(tick)
+        return
+      }
 
-        if (Math.abs(delta) <= 15) {
-          if (!lockedIn) {
-            setLockedIn(true)
-            navigator.vibrate?.(40)
-          }
-          setGuidance("aligned")
-        } else {
-          setLockedIn(false)
-          setGuidance(delta > 0 ? "rotate-right" : "rotate-left")
+      // Shots 1-7: angle check
+      const target = (startH + shotIdx * 45) % 360
+      const delta = angleDelta(heading, target)
+      const absDelta = Math.abs(delta)
+
+      // Progress arc
+      if (arcRef.current) {
+        const CIRCUMFERENCE = 2 * Math.PI * 52 // ring radius in CompassRing
+        const progress = Math.min(absDelta, 45) / 45
+        const dashOffset = CIRCUMFERENCE - CIRCUMFERENCE * progress * 0.125
+        arcRef.current.style.strokeDashoffset = String(dashOffset)
+      }
+
+      if (absDelta <= 15) {
+        // LOCKED ON
+        if (!lockedInRef.current) {
+          lockedInRef.current = true
+          navigator.vibrate?.(40)
+        }
+        if (guidanceRef.current) {
+          guidanceRef.current.textContent = "\u2713 Hold steady \u2014 tap to capture"
+          guidanceRef.current.style.color = "#C9A84C"
+        }
+        if (captureButtonRef.current) {
+          captureButtonRef.current.disabled = false
+          captureButtonRef.current.style.opacity = "1"
+          captureButtonRef.current.style.boxShadow = "0 0 28px rgba(201,168,76,0.7)"
+          captureButtonRef.current.style.borderColor = "#C9A84C"
+        }
+      } else {
+        // NOT LOCKED ON
+        lockedInRef.current = false
+        if (guidanceRef.current) {
+          guidanceRef.current.textContent = delta > 0 ? "\u2192 Rotate right" : "\u2190 Rotate left"
+          guidanceRef.current.style.color = "rgba(255,255,255,0.6)"
+        }
+        if (captureButtonRef.current) {
+          captureButtonRef.current.disabled = true
+          captureButtonRef.current.style.opacity = "0.35"
+          captureButtonRef.current.style.boxShadow = "none"
+          captureButtonRef.current.style.borderColor = "rgba(201,168,76,0.25)"
         }
       }
 
       rafRef.current = requestAnimationFrame(tick)
     }
+
     rafRef.current = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(rafRef.current)
-  }, [gyroAvailable, shotIndex, startHeading, lockedIn])
+  }, [gyroPermission])
 
-  // Upload + completion
+  // ── Upload on completion ──
   useEffect(() => {
     if (!allComplete) return
     const upload = async () => {
@@ -165,7 +256,6 @@ function MobileCaptureInner() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { setDone(true); return }
 
-      // Extract roomId from captureToken URL or use a placeholder
       const uploadPromises = shots.map(async (shot, i) => {
         if (!shot) return
         const path = `${user.id}/mobile-capture/shot_${i}.jpg`
@@ -180,16 +270,19 @@ function MobileCaptureInner() {
     return () => clearTimeout(timer)
   }, [allComplete, shots])
 
-  const captureShot = useCallback(() => {
+  // ── Step 4: Capture handler ──
+  const handleCapture = useCallback(() => {
     const video = videoRef.current
     if (!video || !quality.passing || allComplete) return
 
-    // On mobile with gyro: must be locked on (except shot 0)
-    if (gyroAvailable && shotIndex > 0 && !lockedIn) return
+    // Gyro lock check (except shot 0 and desktop)
+    if (gyroPermission === "granted" && shotIndexRef.current > 0 && !lockedInRef.current) return
 
+    // Flash
     setFlash(true)
     setTimeout(() => setFlash(false), 150)
 
+    // Capture frame
     const canvas = document.createElement("canvas")
     canvas.width = video.videoWidth
     canvas.height = video.videoHeight
@@ -198,42 +291,43 @@ function MobileCaptureInner() {
     ctx.drawImage(video, 0, 0)
     const dataUrl = canvas.toDataURL("image/jpeg", 0.85)
 
-    // Lock start heading on first shot
-    if (shotIndex === 0 && startHeading === null) {
-      setStartHeading(headingRef.current)
+    // Shot 0: lock start heading
+    if (shotIndexRef.current === 0) {
+      startHeadingRef.current = headingRef.current
     }
+
+    const newIndex = shotIndexRef.current + 1
+    shotIndexRef.current = newIndex
+    lockedInRef.current = false
 
     setShots((prev) => {
       const next = [...prev]
-      next[shotIndex] = dataUrl
+      next[newIndex - 1] = dataUrl
       return next
     })
+    setShotIndex(newIndex)
+  }, [quality.passing, allComplete, gyroPermission])
 
-    setLockedIn(false)
-    if (shotIndex < TOTAL_SHOTS - 1) {
-      setShotIndex(shotIndex + 1)
-    }
-  }, [shotIndex, quality.passing, allComplete, gyroAvailable, lockedIn, startHeading])
+  // ── Render: Loading ──
+  if (!ready) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-[var(--navy-deep)]">
+        <div className="w-8 h-8 border-2 border-[var(--gold)] border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
 
-  // Capture button enabled logic
-  const captureEnabled = (() => {
-    if (!quality.passing || !cameraReady || allComplete) return false
-    if (!gyroAvailable) return true // desktop fallback
-    if (shotIndex === 0) return true // first shot always ok
-    return lockedIn
-  })()
+  // ── Render: iOS Permission Gate ──
+  if (gyroPermission === "pending") {
+    return (
+      <GyroPermissionGate
+        onGranted={() => setGyroPermission("granted")}
+        onDenied={() => setGyroPermission("denied")}
+      />
+    )
+  }
 
-  // Guidance text
-  const guidanceText = (() => {
-    if (allComplete) return null
-    if (!gyroAvailable) return `Position ${shotIndex + 1} of ${TOTAL_SHOTS}`
-    if (guidance === "first") return "Point at any wall and capture to begin"
-    if (guidance === "aligned") return "\u2713 Hold steady \u2014 tap to capture"
-    if (guidance === "rotate-right") return "Rotate right \u2192"
-    if (guidance === "rotate-left") return "\u2190 Rotate left"
-    return null
-  })()
-
+  // ── Render: Done ──
   if (done) {
     return (
       <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[var(--navy-deep)] animate-[fadeIn_500ms_ease-out]">
@@ -248,25 +342,15 @@ function MobileCaptureInner() {
     )
   }
 
-  if (!authenticated) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-[var(--navy-deep)]">
-        <div className="w-8 h-8 border-2 border-[var(--gold)] border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
-  }
+  const gyroActive = gyroPermission === "granted"
+  const desktopMode = gyroPermission === "unavailable" || gyroPermission === "denied"
 
+  // ── Render: Camera UI ──
   return (
     <div className="fixed inset-0 bg-[var(--navy-deep)] flex flex-col">
       {/* Full viewport camera */}
       <div className="relative flex-1">
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted
-          className="absolute inset-0 w-full h-full object-cover"
-        />
+        <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover" />
 
         {/* Quality rejection border */}
         {!quality.passing && cameraReady && (
@@ -279,10 +363,10 @@ function MobileCaptureInner() {
         {/* Top bar */}
         <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/50 to-transparent">
           <span className="font-serif text-sm text-[var(--ivory)]">Capture Your Room</span>
-          <span className="text-sm font-sans text-[var(--gold)] font-semibold">{shotIndex + 1}/{TOTAL_SHOTS}</span>
+          <span className="text-sm font-sans text-[var(--gold)] font-semibold">{Math.min(shotIndex + 1, TOTAL_SHOTS)}/{TOTAL_SHOTS}</span>
         </div>
 
-        {/* Shot strip below top bar */}
+        {/* Shot strip */}
         <div className="absolute top-12 left-0 right-0 px-4">
           <ShotStrip shots={shots} currentIndex={shotIndex} />
         </div>
@@ -295,23 +379,8 @@ function MobileCaptureInner() {
         )}
       </div>
 
-      {/* Bottom controls overlay */}
+      {/* Bottom controls */}
       <div className="absolute bottom-0 left-0 right-0 pb-8 pt-16 px-4 flex flex-col items-center gap-3 bg-gradient-to-t from-black/70 to-transparent">
-        {/* Gyro permission button (iOS, one-time) */}
-        {!gyroRequested && cameraReady && (
-          <button
-            onClick={requestGyroPermission}
-            className="px-4 py-2 rounded-lg text-xs font-sans uppercase tracking-wider mb-2 transition-colors"
-            style={{
-              border: "1px solid var(--gold-dim)",
-              background: "var(--navy-card)",
-              color: "var(--gold)",
-            }}
-          >
-            Enable compass guidance
-          </button>
-        )}
-
         {/* Quality message */}
         {!quality.passing && quality.message && (
           <p className="text-sm font-sans text-red-400 uppercase tracking-wider text-center">
@@ -319,39 +388,41 @@ function MobileCaptureInner() {
           </p>
         )}
 
-        {/* Guidance text */}
-        {guidanceText && (
-          <p className={`text-xs font-sans uppercase tracking-[0.2em] text-center ${
-            guidance === "aligned" && gyroAvailable ? "text-[var(--gold)]" : "text-[var(--ivory)]/60"
-          }`}>
-            {guidanceText}
-          </p>
-        )}
+        {/* Guidance text — updated via ref on gyro, or static on desktop */}
+        <p
+          ref={guidanceRef}
+          className="text-xs font-sans uppercase tracking-[0.2em] text-center text-[var(--ivory)]/60"
+        >
+          {desktopMode
+            ? `Position ${shotIndex + 1} of ${TOTAL_SHOTS} \u2014 capture each wall and corner`
+            : "Point at any wall and tap to begin"}
+        </p>
 
         {/* Compass ring */}
-        {gyroRequested && (
+        {!allComplete && (
           <CompassRing
             activeIndex={shotIndex}
-            currentHeading={gyroAvailable ? displayHeading : null}
-            startHeading={startHeading}
+            currentHeading={gyroActive ? headingRef.current : null}
+            startHeading={startHeadingRef.current}
             size={140}
             allComplete={allComplete}
-            lockedOn={lockedIn}
-            needleRef={needleRef}
+            lockedOn={lockedInRef.current}
+            needleRef={gyroActive ? needleRef : undefined}
+            arcRef={gyroActive ? arcRef : undefined}
           />
         )}
 
-        {/* Capture button */}
+        {/* Capture button — style updated via ref in rAF loop when gyro active */}
         {!allComplete && (
           <button
-            onClick={captureShot}
-            disabled={!captureEnabled}
-            className="w-[72px] h-[72px] rounded-full flex items-center justify-center transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+            ref={captureButtonRef}
+            onClick={handleCapture}
+            disabled={!quality.passing || !cameraReady}
+            className="w-[72px] h-[72px] rounded-full flex items-center justify-center transition-[opacity] duration-200 disabled:cursor-not-allowed"
             style={{
               border: "3px solid var(--gold)",
               background: "var(--navy-deep)",
-              boxShadow: lockedIn ? "0 0 24px rgba(201,168,76,0.6)"
-                : captureEnabled ? "0 0 20px var(--gold-glow)" : "none",
+              boxShadow: "0 0 20px var(--gold-glow)",
             }}
           >
             <div className="w-[54px] h-[54px] rounded-full bg-[var(--gold)]/20" />

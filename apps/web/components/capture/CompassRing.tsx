@@ -13,6 +13,7 @@ interface CompassRingProps {
   allComplete?: boolean
   lockedOn?: boolean
   needleRef?: Ref<SVGGElement>
+  arcRef?: Ref<SVGCircleElement>
 }
 
 export function CompassRing({
@@ -22,11 +23,13 @@ export function CompassRing({
   allComplete = false,
   lockedOn = false,
   needleRef,
+  arcRef,
 }: CompassRingProps) {
   const cx = size / 2
   const cy = size / 2
   const radius = size / 2 - 20
   const nodeRadius = 8
+  const circumference = 2 * Math.PI * radius
 
   // Static arrow rotation for desktop (no gyro)
   const staticArrowAngle = activeIndex * 45 - 90
@@ -39,8 +42,26 @@ export function CompassRing({
   return (
     <div className="relative" style={{ width: size, height: size }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        {/* Ring */}
+        {/* Background ring */}
         <circle cx={cx} cy={cy} r={radius} fill="none" stroke="var(--gold-dim)" strokeWidth="1" />
+
+        {/* Progress arc — fills as user rotates toward target, updated via ref */}
+        {hasGyro && arcRef && (
+          <circle
+            ref={arcRef}
+            cx={cx}
+            cy={cy}
+            r={radius}
+            fill="none"
+            stroke="var(--gold)"
+            strokeWidth="3"
+            strokeDasharray={circumference}
+            strokeDashoffset={circumference}
+            strokeLinecap="round"
+            transform={`rotate(-90, ${cx}, ${cy})`}
+            style={{ transition: "stroke-dashoffset 0.1s linear" }}
+          />
+        )}
 
         {/* Nodes */}
         {DIRECTIONS.map((dir, i) => {
@@ -116,37 +137,13 @@ export function CompassRing({
         {/* Compass needle — rotated via ref on mobile (RAF), static on desktop */}
         {!allComplete && (
           hasGyro && needleRef ? (
-            // Mobile: needle rotated imperatively via ref from RAF loop
-            <g ref={needleRef}>
-              <line
-                x1={cx}
-                y1={cy}
-                x2={cx + radius * 0.5}
-                y2={cy}
-                stroke="var(--gold)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                opacity="0.8"
-              />
-              <polygon
-                points={`${cx + radius * 0.5 + 6},${cy} ${cx + radius * 0.5 - 2},${cy - 4} ${cx + radius * 0.5 - 2},${cy + 4}`}
-                fill="var(--gold)"
-                opacity="0.8"
-              />
+            <g ref={needleRef} style={{ transformOrigin: `${cx}px ${cy}px` }}>
+              <line x1={cx} y1={cy} x2={cx} y2={cy - radius * 0.5} stroke="var(--gold)" strokeWidth="2" strokeLinecap="round" />
+              <circle cx={cx} cy={cy} r={4} fill="var(--gold)" />
             </g>
           ) : (
-            // Desktop: static arrow pointing at active node
             <g style={{ transform: `rotate(${staticArrowAngle}deg)`, transformOrigin: `${cx}px ${cy}px` }}>
-              <line
-                x1={cx}
-                y1={cy}
-                x2={cx + radius * 0.5}
-                y2={cy}
-                stroke="var(--gold)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                opacity="0.8"
-              />
+              <line x1={cx} y1={cy} x2={cx + radius * 0.5} y2={cy} stroke="var(--gold)" strokeWidth="2" strokeLinecap="round" opacity="0.8" />
               <polygon
                 points={`${cx + radius * 0.5 + 6},${cy} ${cx + radius * 0.5 - 2},${cy - 4} ${cx + radius * 0.5 - 2},${cy + 4}`}
                 fill="var(--gold)"

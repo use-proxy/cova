@@ -35,6 +35,7 @@ export function WebcamMode({ onComplete }: WebcamModeProps) {
   const streamRef = useRef<MediaStream | null>(null)
   const headingRef = useRef<number>(0)
   const needleRef = useRef<SVGGElement>(null)
+  const arcRef = useRef<SVGCircleElement>(null)
   const rafRef = useRef<number>(0)
 
   const [shots, setShots] = useState<(string | null)[]>(Array(TOTAL_SHOTS).fill(null))
@@ -306,6 +307,7 @@ export function WebcamMode({ onComplete }: WebcamModeProps) {
           allComplete={allComplete}
           lockedOn={lockedIn}
           needleRef={needleRef}
+          arcRef={gyroAvailable ? arcRef : undefined}
         />
 
         {/* Direction label */}
