@@ -1,775 +1,323 @@
-# CLAUDE.md — Cova Project Intelligence File
-# "tinder for your home" | AI Interior Design App
-# Daksh Parikh & Pranav Goel | hellocova@gmail.com
-# Bundle ID: ai.cova.app | Supabase: xdeacbmkdwqrwxonqaqh
-#
-# ⚠️ READ ORDER AT SESSION START — MANDATORY:
-# 1. SESSION_MEMORY.md (~/Desktop/cova/.claude/SESSION_MEMORY.md)
-# 2. COVA_MVP_SPEC_v1.1.docx (repo root — THE master spec, overrides everything)
-#    → Convert with: pandoc COVA_MVP_SPEC_v1.1.docx -t markdown -o /tmp/spec.md
-#    → Or read the pre-converted COVA_MVP_SPEC_v1.1.md if present
-# 3. SPRINT_LOG.md (repo root — current progress)
-# 4. This file (CLAUDE.md — architecture, rules, known errors)
-#
-# COVA_MVP_SPEC_v1.1.docx is the PRIMARY SPEC AUTHORITY.
-# It wins over this file wherever they conflict.
-# This file (CLAUDE.md) wins over individual prompts for architecture rules.
-# PRODUCT_TRUTH.md is superseded — do not use it.
+# COVA V1 — Claude Code Constraints
+# Copy this file to: apps/web/CLAUDE.md AND root CLAUDE.md
+# READ THIS BEFORE EVERY SESSION. NO EXCEPTIONS.
+# Last updated: March 30, 2026 | Spec: v7
 
 ---
 
-## 0. MANDATORY SESSION START
+## Project Identity
 
-Every session begins with this exact sequence. No exceptions.
-
-```
-1. Read ~/Desktop/cova/.claude/SESSION_MEMORY.md
-2. Read MVP_SPEC.md fully
-3. Read SPRINT_LOG.md
-4. Read this file
-5. Only then write any code
-```
-
-Every session ends with:
-```
-1. Update SESSION_MEMORY.md: what changed, what failed, what's next
-2. Update SPRINT_LOG.md: mark completed, note skipped items with reason
-3. git add -A && git commit -m "sprint: [description]" && git push origin main
-```
+- **Product:** Cova — AI interior design web app
+- **Repo:** github.com/pgoel813/cova
+- **Web app:** `apps/web/` (Next.js 14 App Router)
+- **Pipeline:** `modal_pipeline/` (Python only)
+- **Supabase project:** xdeacbmkdwqrwxonqaqh
+- **Production domain:** covainterior.com
+- **Spec:** cova_v1_complete_spec_v7.docx (single source of truth)
+- **Founders:** Daksh Parikh + Pranav Goel
 
 ---
 
-## 1. SPRINT EXECUTION PIPELINE
+## 12 HARD RULES — NEVER VIOLATE THESE
 
-Every fix, feature, or change follows this pipeline. No exceptions.
+1. **NEVER use localStorage or sessionStorage.**
+   Auth state uses HTTP-only cookies via `@supabase/ssr`. Any localStorage usage will break auth on page refresh. Use `createBrowserClient` from `@supabase/ssr` in Client Components, `createServerClient` in Server Components and API routes.
 
-**Step 1 — Read spec**: Identify the exact spec item from MVP_SPEC.md with its acceptance criteria.
+2. **ALWAYS dynamic import SplatViewer with `ssr: false`.**
+   ```typescript
+   const SplatViewer = dynamic(() => import('@/components/SplatViewer'), { ssr: false })
+   ```
+   Three.js requires the `window` object. Violating this causes a build error.
 
-**Step 2 — Planner Agent**: `Use the planner agent to break this into implementation phases.`
-Planner reads MVP_SPEC.md + CLAUDE.md + files in scope. Outputs numbered phase list. Touches ZERO code.
+3. **NEVER import `@sparkjsdev/spark` at module level in any page file.**
+   SparkJS must only be imported inside the dynamically imported SplatViewer component. Any top-level import in a Next.js page or layout will crash the build.
 
-**Step 3 — Executor Agent**: `Use the executor agent to implement phase [N].`
-Implements exactly one phase. Only touches files in scope. Stops if out-of-scope file must be touched.
+4. **ALWAYS use `createBrowserClient` from `@supabase/ssr` in Client Components (`'use client'`).**
+   Never import from `@supabase/supabase-js` directly in App Router code.
 
-**Step 4 — Verifier Agent**: `Use the verifier agent to verify phase [N] against the spec.`
-Returns PASS / FAIL / PARTIAL with file:line refs. If FAIL/PARTIAL → executor re-implements only that phase.
+5. **ALWAYS use `createServerClient` from `@supabase/ssr` in Server Components, API routes, and middleware.**
+   Session must be updated in `middleware.ts` using the `updateSession()` pattern from `@supabase/ssr` docs.
 
-**Step 5 — TypeScript check**: `npx tsc --noEmit` — must pass with zero errors before marking done.
+6. **NEVER call CLIP embedding from any client-side code.**
+   CLIP embeddings are generated server-side only — in Supabase Edge Functions or Next.js API routes. Never in `'use client'` components.
 
-**Step 6 — Maestro smoke test**: Run relevant flow from the 5 approved flows (see §5).
+7. **NEVER expose `SUPABASE_SERVICE_ROLE_KEY` in any `NEXT_PUBLIC_` variable.**
+   Service role key must only appear in server-side code.
 
-**Step 7 — Mark done**: Update SPRINT_LOG.md and SESSION_MEMORY.md. Commit.
+8. **NEVER show style names to the user in any string.**
+   The five style names — Japandi, Bohemian, Coastal, Mid-Century Modern, Minimalist — must never appear in any user-facing label, tooltip, placeholder, heading, or message. Use descriptive language only (e.g. "your design style").
 
----
+9. **SparkJS import path is `@sparkjsdev/spark` — never load from CDN.**
+   The npm package is the correct and only source.
 
-## 2. PROJECT OVERVIEW
+10. **QR capture token must be validated before any video upload is permitted.**
+    JWT token in QR code URL must be verified in `/api/capture/validate-token` before Supabase Storage accepts the upload. Invalid or expired token = 401 response.
 
-React Native iOS-only app. Core loop: Style Quiz → Room Capture → AI Render → 360° Panoramic View → Arrange Furniture → Buy Products.
+11. **NEVER modify `apps/mobile/` directory.**
+    The V0 iOS app must remain untouched. All V1 work is in `apps/web/` and `modal_pipeline/` only. If a file path starts with `apps/mobile/`, do not touch it.
 
-**The #1 Product Rule:** The AI render IS the product. The panoramic view is the primary experience. The 3D viewer is the furniture arrangement tool only — never the primary experience.
-
-**Core User Flow:**
-```
-Splash (2s fade) → Auth →
-  New User: Room Entry → Instructions → Style Quiz → Budget Slider → Room Capture → Loading → Render View
-  Returning User: Dashboard → New Room → Past Styles Page → [pick style or start fresh] → Budget Slider → Room Capture → Loading → Render View
-```
-
-**NOT MVP — Never Build These:**
-- Discover/Explore social feed, Realtor mode, Designer marketplace
-- Real token payments / Apple IAP / Stripe
-- Light mode theme, iPad support
-- AR walkthrough scan, Re-render from furniture arrangement
-- Share Cova referral, Style switching post-render, Recreate This Room
-
-**Already Seeded — Do Not Re-Run Data Pipeline:**
-- 3,136 products (Wayfair 1222, Amazon 962, IKEA 941, CB2 11)
-- 423 swipe cards in swipe-cards bucket
-- CLIP embeddings 768-dim with IVFFlat index
-- Migrations: 20240018000000, 20240019000000, 20240020000000
-- DO NOT RE-RUN DATA PIPELINE SCRIPTS — creates duplicates
+12. **NEVER modify Supabase Edge Functions except one specific change.**
+    Only permitted change: in `chat-room` Edge Function, change model name from `claude-haiku-4-5-20251001` to `claude-sonnet-4-5`. The other 5 Edge Functions (`render-room`, `get-render-status`, `match-products`, `detect-furniture`, `extract-colors`) are frozen.
 
 ---
 
-## 3. MONOREPO STRUCTURE
+## Supabase Schema Rules
 
-```
-~/Desktop/cova/
-├── CLAUDE.md                           ← this file (architecture rules)
-├── MVP_SPEC.md                         ← single source of truth for product
-├── SPRINT_LOG.md                       ← sprint progress tracking
-├── SCRAPING_LOG.md                     ← product/GLB scraping results
-├── package.json                        ← pnpm overrides (critical — see §4)
-├── .claude/
-│   ├── SESSION_MEMORY.md               ← cross-session memory (read first)
-│   └── agents/{planner,executor,verifier}.md
-│
-├── apps/mobile/
-│   ├── app.json                        ← bundle: ai.cova.app, iOS only, newArchEnabled:false, userInterfaceStyle:dark
-│   ├── metro.config.js                 ← MUST include glb/gltf/hdr in assetExts
-│   ├── .env                            ← ONLY anon key + URL (never secrets)
-│   ├── src/
-│   │   ├── screens/auth/{SplashScreen,AuthScreen}.tsx
-│   │   ├── screens/main/
-│   │   │   ├── HomeScreen.tsx          ← Dashboard (masonry grid, hero render, tabs)
-│   │   │   ├── StyleQuizScreen.tsx     ← Bayesian algorithm, card swiping
-│   │   │   ├── RoomCaptureScreen.tsx   ← LiDAR + 3-photo + single photo/upload
-│   │   │   ├── RoomViewer3DScreen.tsx  ← 3D arrange screen (GLB furniture)
-│   │   │   ├── RenderViewScreen.tsx    ← panoramic render view, HUD, chat
-│   │   │   ├── ShopScreen.tsx          ← product panel
-│   │   │   └── ProfileScreen.tsx       ← profile, favorites, settings
-│   │   ├── components/3d/{BoxRoom,SceneLighting,FurniturePiece,CameraController,PanoramaViewer}.tsx
-│   │   ├── components/ui/{TokenBalance,LoadingOverlay,ProductPanel,ChatPanel}.tsx
-│   │   ├── navigation/RootNavigator.tsx
-│   │   ├── store/index.ts              ← Zustand, ALL slices
-│   │   ├── hooks/{useRender,useAuth,useRoomPlan}.ts
-│   │   ├── lib/{supabase,posthog}.ts   ← single instances
-│   │   └── data/{furnitureCatalog,glbAssets}.ts
-│   ├── modules/{RoomPlanModule.swift,RoomPlanModule.m}
-│   └── assets/{3d/furniture/*.glb, textures/*.{jpg,hdr}}
-│
-├── packages/shared/src/{types,index}.ts   ← ALL shared TS types
-│
-├── scripts/
-│   └── scrape-all.ts                   ← autonomous product + GLB scraper
-│
-└── supabase/functions/
-    ├── render-room/index.ts            ← FLUX render pipeline
-    ├── get-render-status/index.ts      ← polling endpoint
-    ├── clip-embed/index.ts             ← 768-dim CLIP embeddings
-    ├── match-products/index.ts         ← style-matched product ranking
-    ├── chat-room/index.ts              ← Claude API chatbot
-    ├── delete-account/index.ts         ← full account deletion
-    └── tests/render-pipeline.test.ts   ← must always exist
-```
+**FROZEN — never alter:**
+- `products` table (5,581+ rows with 768-dim CLIP embeddings)
+- `quiz_cards` table (950 rows)
+- All existing table columns
+- All existing Edge Functions (except `chat-room` model name)
 
----
-
-## 4. LOCKED VERSIONS — NEVER CHANGE FOR ANY REASON
-
-```
-expo                         ~52.0.49       (never 53+)
-react                        18.3.1 EXACT
-react-dom                    18.3.1 EXACT
-@react-three/fiber           8.17.10 EXACT  (8.18+ breaks expo-gl on iOS)
-@react-three/drei            9.88.0 EXACT
-three                        0.155.0 EXACT  (0.156+ breaks geometry/material APIs)
-@react-three/postprocessing  2.15.0
-node                         20.x           (never 22+)
-```
-
-Root `package.json` pnpm overrides — must always be present:
-```json
-{ "pnpm": { "overrides": { "react": "18.3.1", "react-dom": "18.3.1", "three": "0.155.0" } } }
-```
-
-Verify: `pnpm why three` → must show `0.155.0`. `pnpm list @react-three/fiber` → `8.17.10`.
-
----
-
-## 5. MAESTRO SMOKE TESTS — 5 FLOWS ONLY
-
-Run all 5 after every sprint. Archive flows 03, 06-15 — do not run them.
-
-```bash
-./maestro-sim.sh apps/mobile/.maestro/flows/01_splash_and_auth.yaml
-./maestro-sim.sh apps/mobile/.maestro/flows/02_style_quiz_precise.yaml
-./maestro-sim.sh apps/mobile/.maestro/flows/04_render_pipeline_precise.yaml
-./maestro-sim.sh apps/mobile/.maestro/flows/05_panorama_viewer_precise.yaml
-./maestro-sim.sh apps/mobile/.maestro/flows/14_returning_user_precise.yaml
-```
-
-Test credentials:
-- New user: test.newuser@hellocova.com / CovaTest123!
-- Returning user: test.returning@hellocova.com / CovaTest123!
-- Returning user ID: aa19e895-0582-4947-bf65-5ca06ab65a89
-- Returning room ID: e1269ec5
-- Simulator: iPhone 16e — LiDAR NOT available in Simulator, use physical device for LiDAR
-
----
-
-## 6. HARD RULES — NEVER VIOLATE
-
-```
-□ NO OrbitControls — causes "Cannot set properties of undefined (setting 'style')" crash
-□ NO API keys in client code — all AI calls through Supabase Edge Functions only
-□ NO TypeScript 'any' anywhere
-□ newArchEnabled: false in app.json — never change
-□ userInterfaceStyle: dark in app.json — force dark mode
-□ isTablet: false in app.json — iPhone only
-□ All images: compress to 1024px wide / 0.8 JPEG quality before any upload or API call
-□ CLIP embeddings: always 768-dimensional — never 1024
-□ useRef for camera and animation values — never useState in 3D components
-□ Only one panel open at a time — opening chat dismisses product panel and vice versa
-□ All affiliate links open in SFSafariViewController — never external browser
-□ Supabase email verification: DISABLED in Auth settings
-□ Camera values: place "⚠️ ASSERTION: useRef ONLY" comment in every 3D camera file
-□ No style names (Japandi/Coastal/etc) in user-facing strings
-□ No Node.js built-in imports in Edge Functions (Deno runtime)
-□ No service role key in client code — only anon key
-□ Keep all secrets in .env — never commit .env to git
-□ Suspense wraps all useGLTF calls
-□ Images compressed before ANY upload: ImageManipulator 1024px wide, quality 0.8
-```
-
----
-
-## 7. STYLE BLEND — SINGLE SOURCE OF TRUTH
-
-The quiz style blend drives EVERYTHING downstream. No exceptions. Never use a default or placeholder blend.
-
-```
-FLUX prompt:     weighted by blend ratio — 60% coastal = 60% coastal language in prompt
-Anchor render:   selected by true cosine similarity of style_weights vectors
-3D furniture:    filtered and ordered by style blend — dominant style pieces loaded first
-Products:        ranked 70% CLIP similarity + 30% style blend match
-Chatbot:         receives full blend in every system prompt, every single call
-Pipeline:        quiz → blend → render → furniture → products → chat
-```
-
----
-
-## 8. V0 INTEGRATION — REQUIRED
-
-Use V0 (v0.dev) for ALL new screens and significant UI components BEFORE Claude Code integrates them.
-
-Always specify in every V0 prompt:
-- React Native + Expo
-- TypeScript
-- Dark navy background #0A1628
-- Gold accents #B8860B
-- No web-specific APIs
-
-Claude Code handles Supabase + Zustand integration after V0 generates the component.
-
-V0 required for: Past Styles Page, Photo Guidance Overlay, 3-Photo Capture screens, Product Info Pop-up, Masonry Grid, Hero Render card, Inspiration tab, Arrangement Summary view.
-
----
-
-## 9. POSTHOG ANALYTICS — REQUIRED
-
-PostHog free tier. Add track() call at every critical step.
-
-```typescript
-import PostHog from 'posthog-react-native';
-// Track these events minimum:
-posthog.capture('quiz_started', { room_type });
-posthog.capture('quiz_completed', { blend, swipe_count, completion_reason });
-posthog.capture('room_capture_completed', { method: 'lidar' | 'three_photo' | 'single' | 'upload' });
-posthog.capture('render_generated', { room_id, model_used });
-posthog.capture('render_viewed', { room_id });
-posthog.capture('render_failed', { room_id, error });
-posthog.capture('product_panel_opened', { room_id });
-posthog.capture('product_pinned', { product_id, room_id });
-posthog.capture('product_bought', { product_id, retailer });
-posthog.capture('chat_opened', { room_id });
-posthog.capture('chat_message_sent', { room_id });
-posthog.capture('chat_action_triggered', { action_type, room_id });
-posthog.capture('arrange_opened', { room_id });
-posthog.capture('arrange_saved', { furniture_count, room_id });
-posthog.capture('auth_completed', { method: 'apple' | 'google' | 'email' });
-posthog.capture('auth_failed', { method, error });
-posthog.capture('account_deleted');
-```
-
----
-
-## 10. FORBIDDEN IMPORTS
-
-### 10.1 OrbitControls — hard crash on iOS
-Forbidden: `OrbitControls`, `MapControls`, `TrackballControls`, `FlyControls`, `PointerLockControls`
-From any path: `@react-three/drei` or `three/examples/`
-Only permitted camera: `CameraController.tsx` using PanResponder + `useFrame`
-
-### 10.2 Node.js built-ins in Edge Functions (Deno runtime)
-```typescript
-// ❌ FORBIDDEN
-import fs from 'fs';
-import path from 'path';
-import { Buffer } from 'buffer';
-import crypto from 'crypto';
-
-// ✅ USE INSTEAD
-globalThis.crypto.subtle  // crypto
-const data = await Deno.readFile(path)  // file ops
-fetch()  // HTTP
-```
-
-### 10.3 Service role key in client code
-```typescript
-// ❌ NEVER
-createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY)
-
-// ✅ ALWAYS
-createClient(
-  process.env.EXPO_PUBLIC_SUPABASE_URL!,
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
-)
-```
-
----
-
-## 11. SELF-DEBUGGING PROTOCOL
-
-**Layer 1 — Before generating any file:**
-Check every rule in this file. Rewrite plan if any rule violated.
-
-**Layer 2 — Per-file checklist (run internally after each file):**
-```
-□ No forbidden imports (§10)
-□ All packages at exact pinned versions (§4)
-□ All TS types from @cova/shared — no local redefinitions
-□ All AI/external calls through Supabase Edge Functions only
-□ No API keys in client code
-□ Loading + error + empty states in every UI component
-□ No TypeScript 'any'
-□ OrbitControls absent from all 3D files
-□ Camera values in useRef only in 3D components
-□ No style names in user-facing strings
-```
-
-**Layer 3 — Component-level checks:**
-- 3D: no OrbitControls, no useState camera, Canvas has `preserveDrawingBuffer:true` + background color set, radius clamped
-- Edge Functions: no Node.js imports, CORS headers on all responses, JWT verified first
-- UI: loading/error/empty states, no style names, colors from COLORS constant
-
----
-
-## 12. DATABASE SCHEMA
-
-**Supabase project:** xdeacbmkdwqrwxonqaqh
-**Email verification:** DISABLED
-**RLS:** enabled on all tables
-**Storage buckets:** room-photos, renders, avatars, swipe-cards, assets (all private)
-
+**PERMITTED additions only (run once, idempotent):**
 ```sql
--- Core tables
-users (id, display_name, avatar_url, default_budget, units, member_since)
+ALTER TABLE renders ADD COLUMN IF NOT EXISTS splat_url TEXT;
+ALTER TABLE renders ADD COLUMN IF NOT EXISTS redesign_splat_url TEXT;
+ALTER TABLE renders ADD COLUMN IF NOT EXISTS style_vector FLOAT[];
+ALTER TABLE renders ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT false;
+ALTER TABLE renders ADD COLUMN IF NOT EXISTS modal_job_id TEXT;
+ALTER TABLE renders ADD COLUMN IF NOT EXISTS marble_operation_id TEXT;
+```
 
-rooms (
-  id, user_id, name, type,
-  style_blend jsonb,           -- single source of truth for all downstream
-  budget,
-  render_url,                  -- most recent render
-  render_history jsonb[],      -- all renders stored
-  dimensions jsonb,            -- {width, depth, height, unit: "m"}
-  furniture_positions jsonb,   -- saved arrange screen positions
-  pinned_products jsonb,       -- pinned product IDs
-  created_at, updated_at
-)
+Storage bucket: `room-videos` — private, with RLS (users can INSERT/SELECT own videos only). Create via Supabase dashboard.
 
-quiz_cards (id, image_url, style_weights jsonb, phase, room_type, discriminability_score)
+---
 
-products (
-  id, name, price, retailer, affiliate_url, image_url,
-  clip_embedding vector(768),  -- ALWAYS 768-dim
-  style_weights jsonb,
-  category, room_types text[], price_range
-)
+## AI Pipeline Architecture
 
-chat_messages (id, room_id, user_id, role, content, action_trigger jsonb, created_at)
-favorites (id, user_id, product_id, created_at)
-pinned_products (id, room_id, product_id, glb_model_id, position jsonb)
-glb_models (id, filename, style text[], room_type text[], category, price_range, dimensions jsonb, thumbnail_url, product_id)
-token_transactions (id, user_id, action, amount, created_at)
+**Track 1 — Real Room Reconstruction (~30s, ~$0.40)**
+Video → AnySplat on Modal A10G → Gaussian splat (SPZ) + camera poses → Supabase Storage
 
--- Atomic render count — always use this, never raw read-modify-write
-SELECT increment_rooms_render_count('room-uuid');
+**Track 2 — AI Redesign (~4.5-6.5 min, ~$1.10)**
+AnySplat splat → gsplat renders equirectangular 360° panorama from room centroid → Lang-SAM segments furniture → FLUX Fill removes furniture (Replicate) → FLUX Kontext Pro places new furniture (Replicate) → Marble API (primary) OR SHARP on Modal (fallback) → redesigned 3D splat
 
--- dimensions_json always in meters
-{ "width": 4.9, "depth": 4.3, "height": 2.7, "unit": "m" }
+**Track 3 — Product Matching (~26s, ~$0.15)**
+gsplat renders 6 undistorted perspective cube face crops (front/back/left/right/ceiling/floor) from redesigned room → Claude Vision detects ALL furniture on 6 crops in parallel → project detections to 3D world coordinates using AnySplat depth + camera poses → deduplicate by 3D proximity (0.5m threshold) → CLIP embed each crop (Replicate) → pgvector cosine search → style vector re-ranking (×1.10 match, ×0.85 no match) → retailer diversity enforcement → top 3 per item → THREE.Sprite hotspots at 3D world coordinates in SparkJS
+
+**Critical pipeline rules:**
+- Detect furniture on CUBE FACES not on equirectangular panorama (distortion problem)
+- CLIP similarity threshold: 0.65 (not 0.70 — maximizes hotspot coverage)
+- Modal GPU: A10G primary, L4 or A100 fallback
+- Marble is primary 3D lift, SHARP is fallback — both maintained until M7 testing
+
+---
+
+## Product Matching — Retailer Lineup
+
+**Tier 1 (active/applying now):**
+- **Amazon:** cova03-20 tag (ACTIVE) — unlimited products
+- **Target:** Impact network (application submitted, pending approval)
+- **Article:** article.com/affiliates (apply now) — ~2,000 curated products
+- **IKEA:** direct links, no affiliate, $0 commission — ~10,000 products
+
+**Tier 2 (apply this week):**
+- **Crate & Barrel:** Sovrn network — 5% commission
+- **CB2:** Sovrn network (same account as Crate & Barrel) — 5% commission
+- **West Elm:** ShareASale — 3% commission
+- **Ruggable:** CJ (existing account) — up to 6% commission
+- **One Kings Lane:** CJ (existing account) — up to 12% commission
+
+**Tier 3 (before M6):**
+- **Pottery Barn:** ShareASale — up to 4% commission
+- **Overstock/Beyond:** CJ — up to 6% commission
+- **Etsy:** Awin — 4% commission
+
+**Wayfair:** Program currently closed to new publishers. Check cj.com quarterly. Add when reopens.
+
+Target clean product count: ~18,150 across all sources
+
+---
+
+## UI Design System
+
+- **Background:** #0A1628 (deep navy)
+- **Surface:** #0F1F3D (cards, panels)
+- **Border:** #1E3A5F
+- **Gold primary:** #C9A84C (CTAs, hotspots, active states)
+- **Gold subtle:** #F0D080
+- **White warm:** #F8F6F1 (primary text)
+- **Text secondary:** #8BA3C0
+- **Success:** #4A9B7F
+- **Error:** #C0504A
+- **Font headings:** Playfair Display (room names, landing headline only)
+- **Font UI:** Inter (all other text)
+- **Border radius:** 12px cards, 8px inputs, 24px pills
+- **Motion:** 200ms ease-out all transitions
+
+- **UI generation platform:** v0 by Vercel (v0.dev) — outputs real Next.js/React/Tailwind code
+- **Animation library:** Framer Motion (the library, not Framer the website builder)
+- **Rule:** Generate screens in v0 ONLY after the underlying feature works functionally
+
+---
+
+## Milestone Sequence (M0–M14)
+
+Pre-milestone conversation required before any milestone begins. Nothing gets built until that conversation happens.
+
+| Milestone | Description | Status |
+|-----------|-------------|--------|
+| **M0** | Setup — accounts, credentials, Supabase columns, repo, CLAUDE.md | **CURRENT** |
+| M1 | Pipeline Proof CRITICAL — AnySplat on Modal, walk through real room in browser | |
+| M2 | Seed Catalog — Wayfair replaced; scrape one retailer (~1,000 products) to validate matching | |
+| M3 | Web Foundation — Next.js scaffold, auth (all 3 methods), routing | |
+| M4 | Quiz + Capture + UI Pass 1 — quiz ported, Path A+B capture, v0 generates quiz/capture screens | |
+| M5 | Processing + Viewer + UI Pass 2 — processing UI, SparkJS viewer, real room loads | |
+| M6 | Full Catalog Completion — all 12 retailers, ~18,000 clean products, IVFFlat rebuilt | |
+| M7 | AI Redesign Pipeline — full pipeline end-to-end, Marble vs SHARP decision | |
+| M8 | Commerce — cube face detection, CLIP matching, hotspots, product panel, affiliate URLs | |
+| M9 | Chatbot + Analytics + UI Pass 3 — chatbot, PostHog, Sentry, remaining screens | |
+| M10 | Polish + User Testing — error states, 5 real user tests | |
+| M11 | Deployment — Vercel production, covainterior.com | |
+| M12 | iOS Shell — Expo WebView, camera bridge, TestFlight | |
+| M13 | Final UI Polish + Landing Page — demo video, full polish | |
+| M14 | VC Prep — example rooms, pitch deck, demo script | |
+
+---
+
+## Tech Stack (exact versions)
+
+```
+next@14.2.x
+typescript@5.x
+tailwindcss@3.4.x
+@supabase/ssr@latest
+@supabase/supabase-js@2.x
+@sparkjsdev/spark@latest
+three@latest
+@react-three/fiber@8.x
+zustand@4.x
+framer-motion@11.x
+react-qr-code@latest
+jose@latest
+sharp@latest
+replicate@latest
+posthog-js@latest
+@sentry/nextjs@latest
+zod@3.x
 ```
 
 ---
 
-## 13. ZUSTAND STORE SLICES
+## Repo Structure
 
-```typescript
-authSlice: {
-  user, session, isLoading,
-  signIn(provider: 'apple' | 'google' | 'email'),
-  signOut, deleteAccount
-}
-
-roomSlice: {
-  rooms, currentRoom, currentRoomDimensions,
-  placedFurniture, pinnedProducts, activeStyle,
-  isLoading,
-  fetchRooms, createRoom, setCurrentRoom,
-  setRoomDimensions, setActiveStyle,
-  addFurniture, removeFurniture,
-  updateFurniturePosition, updateFurnitureRotation,
-  saveFurniturePlacements,
-  pinProduct, unpinProduct
-}
-
-renderSlice: {
-  currentRender, renderHistory, isRendering,
-  renderProgress, renderError,
-  startRender, pollRenderStatus, retryRender
-}
-
-quizSlice: {
-  cards, styleBlend, swipeCount, phase,
-  isComplete, isFetchingRefinement,
-  swipeRight, swipeLeft, swipeBack,
-  handleComplete, fetchRefinementCards, resetQuiz
-}
-
-productSlice: {
-  products, favorites, pinnedItems,
-  isLoading, searchQuery, activeCategory,
-  fetchProducts, addFavorite, removeFavorite,
-  pinProduct, unpinProduct
-}
-
-chatSlice: {
-  messages, isLoading, conversationStarters,
-  sendMessage, triggerAction, loadHistory
-}
-
-uiSlice: {
-  tokenBalance,        // always 999 for MVP
-  isHUDVisible, hudTimeout,
-  showHUD, hideHUD,
-  activePanelType,     // 'chat' | 'shop' | null — only one open at a time
-  setActivePanel
-}
+```
+apps/
+  mobile/              <- FROZEN. Never touch.
+  web/                 <- All web work here
+    CLAUDE.md          <- This file (copy here)
+    app/               <- Next.js App Router pages
+    components/        <- React components
+    lib/               <- Shared utilities
+    .env.local         <- Never commit
+modal_pipeline/        <- Python only. Not TypeScript.
+  room_reconstruction.py
+  catalog_builder.py
+.claude/
+  SESSION_MEMORY.md    <- Update after every session
+CLAUDE.md              <- This file (also at root)
 ```
 
 ---
 
-## 14. BRAND AND UI CONSTANTS
-
-```typescript
-export const COLORS = {
-  primary: '#0A1628',      // dark navy — backgrounds
-  accent: '#B8860B',       // gold — CTAs, highlights, accents
-  background: '#0A1628',   // dark navy throughout (dark mode forced)
-  textPrimary: '#FFFFFF',
-  textSecondary: '#888888',
-  textMuted: '#555555',
-  error: '#C62828',
-  success: '#2E7D32',
-  gold: '#B8860B',
-  navy: '#0A1628',
-}
-
-export const RADIUS = { card: 16, button: 28, modal: 20, input: 12 }
-
-export const SHADOW = {
-  card: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 4
-  }
-}
-
-// Font: SF Pro system font only. No custom fonts.
-// No style names (Coastal/Japandi/etc) in user-facing strings.
-```
-
----
-
-## 15. ENVIRONMENT VARIABLES
+## Environment Variables (apps/web/.env.local)
 
 ```bash
-# apps/mobile/.env — ONLY these two
-EXPO_PUBLIC_SUPABASE_URL=https://xdeacbmkdwqrwxonqaqh.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=[anon key]
+# Supabase (copy from root .env.local)
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+SUPABASE_JWT_SECRET=
 
-# Supabase Edge Function secrets — NEVER in .env, client code, or git
-# Set via: supabase secrets set KEY=value
-SUPABASE_SERVICE_ROLE_KEY
-REPLICATE_API_TOKEN
-ANTHROPIC_API_KEY
-APPLE_SHARED_SECRET
-POSTHOG_API_KEY
-SKETCHFAB_API_KEY  # for GLB scraping only
-```
+# Analytics + monitoring (copy from apps/mobile/.env)
+NEXT_PUBLIC_POSTHOG_KEY=
+NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
+SENTRY_DSN=
 
-`app.json` infoPlist (add if missing):
-```json
-"NSCameraUsageDescription": "Cova needs camera access to capture your room",
-"NSPhotoLibraryUsageDescription": "Cova needs photo access to upload room photos",
-"NSPhotoLibraryAddUsageDescription": "Cova needs to save your room designs"
-```
+# App URL
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 
----
+# AI APIs (copy from root .env.local)
+REPLICATE_API_TOKEN=
+ANTHROPIC_API_KEY=
 
-## 16. RENDER PIPELINE SPEC
+# Modal (created today — in .env.local already)
+MODAL_TOKEN_ID=
+MODAL_TOKEN_SECRET=
 
-```
-Input:  room photo (Photo 1) + unified depth map + style_blend + pinned_products
-Model:  PRIMARY — equirectangular panoramic FLUX model (image-to-image, denoising 0.60)
-        FALLBACK — current FLUX with improved sphere projection if no good panoramic model
-ControlNet: depth map for structural guidance
-Prompt: "[weighted style blend language] [room type] interior, preserve original wall colors,
-         preserve ceiling height, preserve window positions, preserve door positions,
-         preserve room architecture, [pinned items as 'must include'] photorealistic, 8k,
-         interior photography, equirectangular panoramic"
-Output: equirectangular 360° image (2:1 ratio, min 2048x1024px)
-        stored in renders bucket, URL in rooms.render_url
-        previous URL added to rooms.render_history array
+# Marble (pending API approval)
+MARBLE_API_KEY=
 
-Denoising strength: 0.60 (balances style vs structural preservation)
-Target accuracy: ~70% structural preservation — acceptable for MVP
-Polling: every 3s with exponential backoff, 120s timeout
-Retry:   3 attempts, no token cost on failure
+# Affiliate tags
+AMAZON_AFFILIATE_TAG=cova03-20
+TARGET_AFFILIATE_ID=
+ARTICLE_AFFILIATE_ID=
+CRATE_BARREL_AFFILIATE_ID=
+CB2_AFFILIATE_ID=
+WEST_ELM_AFFILIATE_ID=
+RUGGABLE_AFFILIATE_ID=
+ONE_KINGS_LANE_AFFILIATE_ID=
+POTTERY_BARN_AFFILIATE_ID=
+OVERSTOCK_AFFILIATE_ID=
+ETSY_AFFILIATE_ID=
 ```
 
 ---
 
-## 17. QUIZ ALGORITHM SPEC
+## M0 Status (as of March 30, 2026)
 
-```
-Algorithm: Bayesian Preference Learning with Maximum Information Gain card selection
-Start:     all styles at equal probability (0.2 each for 5 styles)
-Right swipe: blend[k] *= (1 + weights[k] * 0.6)
-Left swipe:  blend[k] *= (1 - weights[k] * 0.4)
-Normalize:   after every swipe — sum always equals 1.0
-Card select: maximum information gain — card that most reduces uncertainty about preferences
-Phase 1 threshold: 0.60 confidence
-Phase 2 threshold: 0.65 confidence (refinement cards for top 2 styles)
-Min swipes: 10 before completion
-Timeout:    120s — handleComplete(force=true) bypasses all guards
-Back button: reverts blend to pre-swipe state, overwrites previous swipe completely
-isFetchingRefinementRef: blocks handleComplete while Phase 2 fetch is in-flight
-Render guard: NEVER call handleComplete from render function
-              show loading spinner if isFetchingRefinementRef && currentIndex >= cards.length
-3s safety timer: release isFetchingRefinementRef if fetch takes >3s
-```
+**Done:**
+- [x] CJ Affiliate account created + W-9 submitted
+- [x] Wayfair confirmed closed to new publishers
+- [x] Amazon cova03-20 confirmed active
+- [x] Impact account created (pending domain verification)
+- [x] covainterior.com registered on Namecheap
+- [x] Namecheap MX records added for ImprovMX
+- [x] Modal account created + tokens in .env.local
+- [x] Repo cleaned up (deleted redundant files)
+- [x] CLAUDE.md created (this file)
+- [x] SESSION_MEMORY.md created
 
----
-
-## 18. 3D VIEWER SPEC
-
-```
-Room geometry:  BoxRoom sized from depth map dimensions
-Wall color:     sampled from FLUX render image, painted on BoxRoom walls
-Floor texture:  style-matched (coastal=bleached wood, japandi=warm oak,
-                bohemian=reclaimed dark, mid_century=walnut, minimalist=grey concrete)
-Lighting:       point light (window simulation) + ambient fill + shadows enabled
-SSAO:           active, tuned for depth without performance impact
-Camera:         eye level locked at 1.6m, FOV 40°-90°, cannot exit room boundary
-Controls:       pan=drag, zoom=pinch, select=tap, move=drag after Move tap, rotate=two-finger
-Rotate snaps:   45° increments
-Wall collision: furniture centroid cannot be within 10cm of wall boundary
-Floor boundary: furniture centroid must stay inside room polygon
-Undo:           single level — reverts last move or rotation
-GLB placement:  Option C hybrid — vision API primary, smart layout fallback
-                Closest GLB: category + style + CLIP thumbnail similarity
-```
+**Pending — come back to:**
+- [ ] ImprovMX — wait for DNS propagation, set up hello@covainterior.com
+- [ ] Impact — verify covainterior.com, apply to Target
+- [ ] Amazon tax info — after EIN obtained
+- [ ] Replicate — confirm token active, add to .env.local
+- [ ] Anthropic — confirm key active, add to .env.local
+- [ ] Sentry DSN — find from V0, add to .env.local
+- [ ] PostHog key — find from V0, add to .env.local
+- [ ] Marble API — request access at worldlabs.ai
+- [ ] Supabase — run 6 SQL ALTER TABLE statements
+- [ ] Supabase — create room-videos storage bucket with RLS
+- [ ] apps/web/ — create Next.js 14 scaffold
+- [ ] apps/web/.env.local — populate all variables
+- [ ] apps/mobile/ — confirm still builds untouched
 
 ---
 
-## 19. CHATBOT SYSTEM PROMPT TEMPLATE
+## Before Starting Any Claude Code Session
 
-Every single Claude API call MUST include this full context:
-
-```
-You are Cova's interior design advisor helping a user redesign their [room_type].
-
-Style blend: [weighted breakdown e.g. 60% Coastal, 40% Japandi]
-Budget: [$budget_range]
-Room dimensions: [width x depth x height from depth map]
-Current furniture in 3D viewer: [list of GLB names and approximate positions]
-Pinned products: [list of pinned product names]
-Renders generated for this room: [count]
-Last render prompt used: [prompt_text]
-
-Give specific, actionable interior design advice personalized to THIS exact room.
-Never give generic advice. Always reference their specific style blend, furniture,
-and room in every response.
-
-Available actions you can trigger (include in response when appropriate):
-REGENERATE — generates a new render
-ADJUST_BLEND: [new_weights] — adjusts style blend then regenerates (updates Supabase permanently)
-OPEN_SHOP — opens product panel
-PIN_PRODUCT: [product_id] — pins a specific product
-
-IMPORTANT: REGENERATE and ADJUST_BLEND require explicit user confirmation before executing.
-Always present as a confirmation card — never auto-execute.
-```
+1. Read `.claude/SESSION_MEMORY.md`
+2. Confirm current milestone
+3. Have pre-milestone conversation if starting a new milestone
+4. Read relevant spec section (cova_v1_complete_spec_v7.docx)
+5. Update SESSION_MEMORY.md when session ends
 
 ---
 
-## 20. KNOWN ERRORS AND EXACT FIXES
+## Known Decisions Log
 
-### Three.js / expo-gl / R3F
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `Cannot set properties of undefined (setting 'style')` | OrbitControls | Remove every OrbitControls import immediately |
-| White void at walls | Canvas background missing | `<color attach="background" args={[wallColor]} />` as first Canvas child |
-| Camera freezes after furniture select | selectedIdRef not reset | Done handler: `selectedIdRef.current = null; setForceUpdate(n=>n+1)` |
-| Furniture drag rotates camera | PanResponder conflict | `onMoveShouldSetPanResponder` returns false when `selectedIdRef.current !== null` |
-| `useGLTF` crash | Missing Suspense | Wrap all FurniturePiece in `<Suspense fallback={null}>` |
-| GLB bundling error | Not in metro assetExts | `config.resolver.assetExts.push('glb','gltf','hdr')` |
-| HDRI crash / VRAM | HDR too large | 1K resolution only; fallback to point lights |
-| Furniture floating | GLB origin not at y=0 | `position={[0, yOffset, 0]}` on primitive group |
-| SSAO TypeError | Version mismatch | Verify `@react-three/postprocessing` === `2.15.0` |
-| Pinch zoom jumpy | pinchStartDistRef not reset | Reset `pinchStartDistRef.current = dist` at end of each move |
-| Selection ring invisible | Ring clips into floor | `position={[0, 0.01, 0]}` on ring group |
-| `three is undefined` | Wrong pnpm version hoisted | Verify overrides in root package.json; `pnpm why three` |
-| Black screen Canvas | gl prop missing | `gl={{ preserveDrawingBuffer: true }}` |
-| Panorama sphere distorted | Wrong sphere scale | scale={[-1, 1, 1]} for inward normals, camera at [0,0,0] |
-| Panorama black on Simulator | GLView intercepts | Use testMode flat image fallback in Simulator |
-
-### React Native / Expo
-| Error | Cause | Fix |
-|-------|-------|-----|
-| Metro crash | Watchman missing | `brew install watchman` |
-| `ExpoModulesCore` not found | Need native rebuild | `npx expo run:ios` not `expo start` |
-| Camera/library permission never prompts | Missing infoPlist key | Add to `ios.infoPlist` in app.json — rebuild |
-| `pnpm install` gets wrong versions | Missing pnpm overrides | Add overrides block — `pnpm install` again |
-| Duplicate symbol build fail | Two bridge files registered | Remove one `.m` file |
-| `Module AppRegistry not registered` | React version mismatch | Verify react + react-dom both === 18.3.1 |
-| EAS node version error | Node 22+ | `nvm use 20` |
-| Password toggle fails iOS 26 + Maestro | secureTextEntry + Maestro | Use workaround per existing auth implementation |
-
-### Supabase / Edge Functions
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `Deno is not defined` | Node.js import | Replace with Deno equivalents |
-| CORS error | Missing headers | `Access-Control-Allow-Origin: *` + handle OPTIONS |
-| `JWT expired` | Stale session | `supabase.auth.getSession()` — never store JWT string manually |
-| RLS violation | Missing policy | Verify `auth.uid() = user_id` policy exists |
-| `relation does not exist` | Migration not applied | `supabase db push` |
-| Vector search wrong | 1024-dim vs 768-dim | Always 768 everywhere — never 1024 |
-| Replicate stuck in `starting` | Queue congestion | Exponential backoff 3s/6s/12s/24s, timeout 120s |
-| Storage upload fails | Bucket missing | Verify: room-photos, renders, avatars, swipe-cards, assets |
-| Image exceeds limit | Uncompressed photo | ImageManipulator: 1024px wide, quality 0.8 — compress BEFORE upload |
-| FLUX URL 404 | Wrong endpoint format | `/v1/models/` not `/v1/predictions` + version |
-| render_count race condition | Raw read-modify-write | Use `increment_rooms_render_count(room_id)` RPC |
-
-### RoomPlan Swift — Known Failures and Fixes
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `exceedSceneSizeLimit` | Previous session not released | `session.stop(); session = nil` before new scan |
-| `worldTrackingFailed` | Low light / featureless surface | Show: "Move to well-lit area with visible textures" |
-| `No such module 'RoomPlan'` | iOS target below 16.0 | Set deployment target to 16.0 in Podfile and app.json |
-| `NativeModules.RoomPlanModule` undefined | Swift files missing from Xcode | Add both `.swift` + `.m` to Xcode project — rebuild |
-| `RCTBridgeModule` not found | New Architecture enabled | `"newArchEnabled": false` in app.json — rebuild |
-| Phantom walls in scan | Mirrors or glass in room | Show: "Cover mirrors before scanning" |
-| Empty dimensions returned | Too dark | Show: "Ensure good lighting" |
-| LiDAR not available | Non-LiDAR device | Hide LiDAR option via device capability check — show 3-photo instead |
-
-**LiDAR Bulletproof Fallback — Always Present:**
-```typescript
-try {
-  const result = await NativeModules.RoomPlanModule.startScan();
-  // proceed with LiDAR
-} catch (error) {
-  // auto-fallback — never crash
-  showMessage("Room scan unavailable — let's use photos instead");
-  navigateTo3PhotoCapture();
-}
-```
-
----
-
-## 21. GLOBAL ERROR HANDLING PATTERNS
-
-```typescript
-// Supabase timeout
-const withTimeout = async (promise: Promise<any>, ms = 10000) => {
-  const timeout = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('timeout')), ms)
-  );
-  return Promise.race([promise, timeout]);
-};
-
-// Render failure
-if (renderError) {
-  return <RetryScreen
-    message="Something went wrong with your render"
-    onRetry={() => retryRender(roomId)} // no token cost
-    onBack={() => navigation.navigate('Dashboard')}
-  />;
-}
-
-// Dead affiliate link check
-const checkLinkAlive = async (url: string): Promise<boolean> => {
-  try {
-    const res = await fetch(url, { method: 'HEAD' });
-    return res.ok;
-  } catch { return false; }
-};
-
-// Product panel empty state
-if (products.length === 0) {
-  // relax style threshold and retry
-  await fetchProducts({ ...params, styleThreshold: params.styleThreshold * 0.7 });
-  // show "Showing closest matches to your style"
-}
-
-// Claude API timeout in chat
-const chatTimeout = setTimeout(() => {
-  addMessage({ role: 'assistant', content: 'Having trouble thinking — please try again', isError: true });
-}, 30000);
-```
-
----
-
-## 22. SELF-CHECK BEFORE COMPLETING ANY TASK
-
-```
-□ MVP_SPEC.md item has acceptance criteria — all criteria met
-□ SESSION_MEMORY.md updated with what was done
-□ SPRINT_LOG.md updated — item marked complete
-□ npx tsc --noEmit passes with zero errors
-□ Relevant Maestro flow passes
-□ No OrbitControls anywhere
-□ No useState for camera values in 3D components — useRef only
-□ Canvas has preserveDrawingBuffer:true + background color set
-□ No Node.js imports in Edge Functions
-□ No API keys in client code
-□ All images compressed: 1024px / 0.8 JPEG before any upload
-□ CLIP = 768-dim always
-□ Style blend passed to ALL downstream systems
-□ Supabase email verification still DISABLED
-□ newArchEnabled still false
-□ All packages still at locked versions
-□ git commit and push done
-```
-
----
-
-## 23. KEY COMMANDS
-
-```bash
-# Start app
-cd ~/Desktop/cova/apps/mobile && npx expo start --dev-client
-# Press 'i' for iOS Simulator
-
-# TypeScript check (run after every significant change)
-npx tsc --noEmit
-
-# Maestro smoke tests (run all 5 after every sprint)
-./maestro-sim.sh apps/mobile/.maestro/flows/01_splash_and_auth.yaml
-./maestro-sim.sh apps/mobile/.maestro/flows/02_style_quiz_precise.yaml
-./maestro-sim.sh apps/mobile/.maestro/flows/04_render_pipeline_precise.yaml
-./maestro-sim.sh apps/mobile/.maestro/flows/05_panorama_viewer_precise.yaml
-./maestro-sim.sh apps/mobile/.maestro/flows/14_returning_user_precise.yaml
-
-# Autonomous product + GLB scraper (overnight)
-npx ts-node scripts/scrape-all.ts &
-# Results in SCRAPING_LOG.md
-
-# Commit sprint
-git add -A && git commit -m "sprint: [description]" && git push origin main
-
-# Verify package versions
-pnpm why three                    # must show 0.155.0
-pnpm list @react-three/fiber      # must show 8.17.10
-pnpm list expo                    # must show ~52.0.49
-```
-
----
-
-*Owners: Daksh Parikh & Pranav Goel | hellocova@gmail.com*
-*Update §20 (Known Errors) whenever a new error is encountered and resolved.*
-*MVP_SPEC.md is the product authority. This file is the architecture authority.*
-*PRODUCT_TRUTH.md is superseded — do not use.*
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Reconstruction | AnySplat on Modal A10G | Feed-forward, no COLMAP, indoor-trained |
+| Redesign input | gsplat 360° panorama | Solves single-frame coverage problem |
+| Furniture segmentation | Lang-SAM | Text-prompted, no bounding boxes |
+| 3D lift | Marble (primary) + SHARP (fallback) | Both until M7 testing |
+| Product detection | 6 cube face crops | Eliminates equirectangular distortion |
+| UI generation | v0 + Framer Motion | Real Next.js code output |
+| CLIP threshold | 0.65 | Maximizes hotspot coverage |
+| Wayfair replacement | 12-retailer lineup | ~18,150 clean products |
+| Domain | covainterior.com | Registered Namecheap March 30 2026 |
+| UI platform | v0 by Vercel | NOT Framer (website builder) |
+| App name | Cova | Domain covainterior.com is separate |
+| W-9 | SSN individual (Daksh Parikh) | EIN application failed online |
+| Tax info | Defer Amazon tax until EIN | Get EIN before submitting |

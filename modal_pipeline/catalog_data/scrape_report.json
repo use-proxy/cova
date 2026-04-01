@@ -1,0 +1,67 @@
+{
+  "timestamp": "2026-03-31 15:55:36",
+  "results": {
+    "amazon": {
+      "scraped": 13167,
+      "inserted": 13167
+    },
+    "ikea": {
+      "scraped": 833,
+      "inserted": 833
+    },
+    "wayfair": {
+      "scraped": 0,
+      "inserted": 0,
+      "note": "paid scraper FAILED"
+    },
+    "etsy": {
+      "scraped": 0,
+      "inserted": 0,
+      "note": "both scrapers returned 0 items"
+    },
+    "overstock": {
+      "scraped": 0,
+      "inserted": 0,
+      "note": "scraper returned 0 items"
+    },
+    "cb2": {
+      "scraped": 0,
+      "inserted": 0,
+      "note": "no dedicated scraper available"
+    },
+    "crate_barrel": {
+      "scraped": 0,
+      "inserted": 0,
+      "note": "no dedicated scraper available"
+    },
+    "west_elm": {
+      "scraped": 0,
+      "inserted": 0,
+      "note": "no dedicated scraper available"
+    },
+    "pottery_barn": {
+      "scraped": 0,
+      "inserted": 0,
+      "note": "no dedicated scraper available"
+    },
+    "ruggable": {
+      "scraped": 0,
+      "inserted": 0,
+      "note": "no dedicated scraper available"
+    },
+    "one_kings_lane": {
+      "scraped": 0,
+      "inserted": 0,
+      "note": "no dedicated scraper available"
+    }
+  },
+  "total_inserted": 14000,
+  "final_count": 14000,
+  "notes": [
+    "Amazon dominated with 13,167 products across 68 keyword searches",
+    "IKEA contributed 833 products across 10 furniture categories",
+    "Wayfair, Etsy, Overstock scrapers all returned 0 items (actors broken/incompatible)",
+    "CB2/C&B/WestElm/PotteryBarn are JS SPAs with no Apify actors available",
+    "14,000 products meets the minimum threshold of 14,000-20,000 target"
+  ]
+}

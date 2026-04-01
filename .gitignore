@@ -8,6 +8,7 @@ dist
 supabase/.branches
 supabase/.temp
 apps/mobile/.env
+apps/mobile/.env.save
 assets/3d/furniture/*.glb
 assets/3d/furniture/Quaternius*
 assets/3d/furniture/kenney*

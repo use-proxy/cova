@@ -1,179 +1,375 @@
-# Cova Session Memory
-# Read this FIRST at the start of every Claude Code session
+# COVA V1 — Session Memory
+# .claude/SESSION_MEMORY.md
+# Update this file at the END of every Claude Code session.
+# Read this file at the START of every Claude Code session.
 
-## Last Updated
-2026-03-28 — Sprint 12 COMPLETE — MVP COMPLETE
+---
 
 ## Current State
-MVP is code-complete. 12 sprints done. 95% spec completion. All 13 screens implemented. All 17 edge cases handled.
-Remaining 5% requires physical device testing (Apple/Google auth, LiDAR, camera) and manual setup (App Store, affiliate URLs).
 
-## What Was Done This Session (3D Viewer Overhaul)
-- RoomViewer3DScreen: PanResponder overlay changed from pointerEvents="box-none" → overlay only rendered when no furniture selected (was blocking ALL camera touches on physical device)
-- RoomViewer3DScreen: when furniture selected, overlay removed so Canvas receives touch events for drag
-- RoomViewer3DScreen: buildDefaultFurniture now uses activeStyle instead of hardcoded 'japandi'
-- RoomViewer3DScreen: detect-furniture catalog lookup now prefers style-matched items
-- BoxRoom: doorway frame removed (user is inside room, frame blocked the view)
-- BoxRoom: STYLE_PALETTE wall colors updated — coastal #F8F8F5, japandi #EDE8E0, bohemian #F5EFE6, mid-century #F2EBD9, minimalist #FAFAFA
-- BoxRoom: floor colors updated — coastal bleached #D4C8A8, japandi warm oak #A08060, bohemian dark #6B4E32, mid-century walnut #6B4E32, minimalist grey #B8B8B8
+- **Current Milestone:** M5 — Processing + Viewer (NOT STARTED)
+- **Last Updated:** March 30, 2026
+- **Last Session:** M4 Quiz + Capture. Adaptive Bayesian quiz, mobile camera capture, QR desktop flow, processing page.
 
-## What Was Done Previously (Render Quality Improvements)
-- render-room: guidance_scale 7→9, controlnet_conditioning_scale 0.9, negative prompt added, num_steps 50, image_prompt_strength 0.3
-- render-room: structural preservation prompt rewritten — exact wall/floor/ceiling/window/door positions
-- render-room: style descriptors rewritten — richer, more specific per style (rattan, macrame, walnut legs, etc.)
-- get-render-status: Stage 2 LoRA — guidance_scale 2.5, lora_scale 1.0, prompt_strength 0.7, detailed logging
-- get-render-status: added `stage` field to all processing responses ('rendering' or 'panoramic')
-- get-render-status: logs at Stage 2 start, success, and failure with full request details
-- useRender: 5-stage loading messages — "Analyzing room" → "Building style" → "Creating panorama" → "Almost ready" → "Design ready"
-- useRender: progress mapped to stages (0-15%, 15-40%, 40-80%, 80-95%, 100%), uses server `stage` field
-- useRender: timeout increased from 120s to 180s to accommodate Stage 2 panoramic
-- RoomCaptureScreen: image compression quality 0.8 → 0.92 for better Depth Pro input
-- Issue 6 (3-photo merge): render-room only receives single image_base64 — multi-photo merge would require client-side stitching; deferred as Photo 1 is the primary depth reference
+---
 
-## What Was Done Previously
-### Physical device bug fixes
-- RoomCaptureScreen: horizontal check relaxed from 15° to 25° (small rooms), light check timer 1.5s → 0.5s, indicators changed from red to amber (warnings not blockers)
-- callEdgeFunction: default timeout increased from 30s to 60s, render-room call uses 120s (blocks on depth map up to 45s)
-- callEdgeFunction: improved error logging — console.error with function name, HTTP status, error body
-- withTimeout: error message now shows actual timeout duration instead of generic "Having trouble connecting"
-- useRender: added console.error on render failure with full error details
+## What Is Complete
 
-### Security Audit (earlier this session)
-- Migration 20240029: RLS audit — products + swipe_cards write policies tightened
-- Migration 20240030: Fixed FOR ALL USING → explicit INSERT WITH CHECK on rooms, renders, chat_messages, token_transactions, cart_items, users
-- rate_limits table + check_rate_limit() RPC, render-room 10/hr, chat-room 60/hr
-- Prompt injection sanitization, 10-minute render watchdog
-- Total migrations: 30 (20240001 through 20240030)
+### Planning & Spec
+- [x] Full V1 spec written and finalized (cova_v1_complete_spec_v7.docx)
+- [x] AI pipeline finalized: AnySplat → gsplat 360° panorama → Lang-SAM → FLUX Fill → FLUX Kontext → Marble/SHARP
+- [x] Product matching finalized: 6 cube face crops → Claude Vision → CLIP → pgvector
+- [x] Milestone sequence finalized: M0–M14 in dependency order
+- [x] UI/UX design system defined: navy/gold, v0 + Framer Motion
+- [x] Retailer lineup finalized: 12 retailers replacing Wayfair (~18,150 products)
+- [x] Scraping plan finalized with in-depth step-by-step instructions
+- [x] CLAUDE.md written and updated with all decisions
+- [x] SESSION_MEMORY.md written
 
-## What Was Done Previously (Sprint 12 — Final Polish)
-- Fixed flow 02 Budget step, PostHog init, app.json splash bg, app store description
-- Exhaustive spec audit: all 13 screens PASS
+### V0 iOS App (frozen)
+- [x] Products table: 5,581 products with 768-dim CLIP embeddings
+- [x] quiz_cards table: 950 cards
+- [x] IVFFlat vector index on products
+- [x] 6 Edge Functions deployed
+- [x] Style quiz Bayesian algorithm working
+- [x] Basic dashboard working
 
-## What Was Done Previously (Sprint 11)
-- PostHog analytics: 9 events across quiz, render, products, chat, rooms
-- ErrorBoundary, NetworkBanner, Supabase timeout wrapper
-- AppState background render polling, GLB grey box fallback
-- All 17 edge cases verified
+### M0 Progress (March 30, 2026)
+- [x] CJ Affiliate account created + W-9 submitted (SSN, individual)
+- [x] Wayfair confirmed closed to new publishers
+- [x] Amazon cova03-20 confirmed active (tax info deferred until EIN)
+- [x] Impact account created (pending domain verification)
+- [x] covainterior.com registered on Namecheap ($11.28/year)
+- [x] Namecheap MX records added (mx1/mx2.improvmx.com)
+- [x] Modal account created + MODAL_TOKEN_ID + MODAL_TOKEN_SECRET in apps/web/.env.local
+- [x] Repo cleanup: deleted redundant files (BUILDGUIDE.md, MASTER_STRATEGY.md, Cova_V1_Build_Guide.docx, TESTING.md, PRODUCT_TRUTH.md.archived, CLEANUP_REPORT.md, MVP_SPEC.md, root app.json, root .env, debug PNGs)
+- [x] apps/mobile/.env.save removed from git tracking
+- [x] Duplicate ANTHROPIC_API_KEY removed from root .env.local
+- [x] CLAUDE.md created at root and apps/web/CLAUDE.md
+- [x] .claude/SESSION_MEMORY.md created
 
-## What Was Done Previously (Sprint 7)
-- chat-room edge function: full system prompt (room type, style blend %, budget, dimensions, furniture, pinned products, render count, last prompt)
-- chat-room: action trigger parsing (REGENERATE/ADJUST_BLEND/OPEN_SHOP/PIN_PRODUCT), inline product search
-- chat-room: model → claude-haiku-4-5-20251001
-- ChatPanel: full rewrite — dark navy, 4 starter chips, Supabase history on mount, 30s timeout + retry, 500 char limit, action confirmation cards, inline product cards
-- ChatPanel: new props: onOpenShop, onStartRender, onAdjustBlend, styleBlend, placedFurniture, pinnedRoomProducts
-- ProductPanel: defaultCategory prop wired from OPEN_SHOP action
-- RenderViewScreen: ChatPanel wired with all 6 new props, handleChatOpenShop/StartRender/AdjustBlend callbacks
+### M1 Progress (March 30, 2026)
+- [x] AnySplat pipeline deployed on Modal A10G (modal_pipeline/room_reconstruction.py)
+- [x] AnySplat source code copied locally to modal_pipeline/anysplat/
+- [x] Modal image: pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime base + all deps
+- [x] 3.28M Gaussian reconstruction of real room
+- [x] PLY compressed 223MB → 2.9MB via voxel downsampling (open3d)
+- [x] Uploaded to Supabase room-videos bucket
+- [x] SparkJS test viewer at /test-viewer with signed URL from server component
+- [x] next.config.mjs webpack fix for SparkJS asset module compatibility
+- [x] @sparkjsdev/spark + three.js installed in apps/web/
 
-## What Was Done Last Session (Sprint 6)
-- Migration 20240027 applied to production (wall_color_extracted column on rooms)
-- detect-furniture wired to RoomViewer3DScreen on entry (5s timeout, fallback to buildDefaultFurniture)
-- Store: added pinnedRoomProducts (max 3, persisted), recentlyViewedProducts (max 5, persisted)
-- Store: added pinProduct, unpinProduct, addToRecentlyViewed actions
-- useRender: added pinnedProducts to RenderParams, passed to render-room edge function
-- ProductPanel.tsx CREATED from scratch (components/ui/ProductPanel.tsx):
-  - Bottom sheet Modal with spring animation
-  - For Your Room tab: search, price slider ($0-$10k+), retailer chips, category tabs
-  - Product cards: style match bar, "In Your Room" badge, "Featured in Design" badge
-  - Pinned Items section (horizontal scroll, gold border, unpin)
-  - Recently Viewed row (last 5 tapped, horizontal scroll)
-  - Progressive threshold relaxation: retry without price filter if <10 results
-  - Pagination: 12/load, onEndReached load more
-  - Product info popup: image, price, "Over Budget" warning, buy now (HEAD check + Linking), pin, save, browse similar
-  - Favorites tab: savedProducts from store
-- RenderViewScreen: replaced inline product panel Animated.View with ProductPanel component
-- RenderViewScreen: doRegenerate now passes pinnedRoomProducts to startRender
-- All 5 flows passing (01, 02, 04, 05, 14)
+### M2 Progress (March 30, 2026)
+- [x] pgvector search validated against existing 5,581 product catalog
+- [x] buildAffiliateUrl() built for all 11 retailers in apps/web/lib/affiliates.ts
+- [x] 15/15 affiliate URL tests passing (apps/web/lib/affiliates.test.ts)
+- [x] Test script at modal_pipeline/test_catalog.py (CLIP via Replicate → pgvector search)
+- [x] Target affiliate removed — program ended January 5, 2026
+- Known issue: category mismatches and duplicate products in V0 catalog — fix during M6 quality filtering
 
-## What Was Done Previously (Sprint 5)
-- Sprint 5 — 3D Viewer Visual Quality + Interactions (all 6 items):
-  1. extract-colors Edge Function: imagescript pixel sampling of render image, wall regions averaged
-  2. Migration 20240027: wall_color_extracted text column on rooms table
-  3. BoxRoom: wallColorOverride prop, showGrid prop, minimalist-specific floor (no wood texture)
-  4. SceneLighting: pointLight [2,2.5,-1] intensity 1.2 #FFF5E0, ambient normalized to 0.4
-  5. FurniturePiece: 10cm wall collision buffer (was piece-half only)
-  6. CameraController rewrite: eye level locked 1.6m, horizontal orbit only, FOV zoom 40-90°
-     CameraControlState now { theta: number; fov: number } (phi and radius REMOVED)
-  7. RoomViewer3DScreen overhaul: style chips removed, "Done" button (save+goBack),
-     "View from Doorway" button (resets theta=0 fov=60), grid toggle, Reset confirmation dialog,
-     product popup Buy Now/Move/Dismiss, FOV-based pinch in panResponder
-  8. detect-furniture Edge Function: Claude vision API primary + smart layout fallback
-  9. expo-sensors conditional require in RoomCaptureScreen (avoids native module crash on dev builds)
-- Flows 01, 02, 05 ✅ passing after session
+### M3 Progress (March 30, 2026)
+- [x] Supabase client setup: lib/supabase/client.ts (createBrowserClient) + server.ts (createServerSupabaseClient)
+- [x] Middleware with route protection (/dashboard, /room, /quiz, /capture, /processing)
+- [x] Auth callback route (app/auth/callback/route.ts) — OAuth code exchange working
+- [x] Zustand stores: userStore (user, styleVector) + roomStore (roomId, splatUrl, processingStage)
+- [x] All 3 auth methods configured: Google OAuth, Apple Sign In, email magic link
+- [x] /auth page with sign in UI (functional, not styled with v0 yet)
+- [x] /dashboard page — server component, session-protected, shows user email + sign out
+- [x] SignOutButton client component
+- [x] IMPORTANT: Supabase project uses NEW publishable key format (sb_publishable_ / sb_secret_). Legacy JWT keys (eyJ...) are disabled. Always use publishable keys from Settings → API keys → first section.
 
-## What's Working
-- Auth flow: Apple/Google/email code all correct
-- Style quiz Bayesian algorithm
-- FLUX prompt: weighted by style blend with proportional descriptors
-- Anchor render: true cosine similarity selection
-- Room capture: all 3 paths (LiDAR → 3-photo → single/upload)
-- Loading screen with design tips
-- Two-stage render pipeline (flat + 360° LoRA)
-- Panoramic sphere viewer with touch/pinch controls
-- HUD: auto-hide 3s, regenerate confirmation, save to Cova, first celebration
-- Previous renders row with tap-to-swap
-- Before/After compare slider
-- 3D Viewer: eye level 1.6m locked, FOV zoom, floor grid, Done button, View from Doorway
+### M4 Progress (March 30, 2026)
+- [x] Style quiz: 3-phase adaptive Bayesian algorithm (app/quiz/page.tsx)
+  - Phase 1: 15 baseline cards (3 per style, shuffled)
+  - Phase 2: 5 pure confirmation cards (top 2 styles, prefetched at card 14)
+  - Phase 3: 5 refinement cards (style pair, prefetched at card 19)
+- [x] Bayesian update: likelihood × discriminability_score, likes stronger than dislikes (0.5× penalty)
+- [x] Smoothing: MIN_VALUE=0.02 prevents any style from reaching 0
+- [x] style_blend saves to rooms table after EVERY swipe (partial profile survives early exit)
+- [x] style_blend also saves to users table on quiz completion
+- [x] Desktop capture: QR code with JWT token (jose) + 3s polling (app/capture/[roomId]/page.tsx)
+- [x] Mobile capture: getUserMedia camera UI with guidance messages (app/capture/[roomId]/page.tsx)
+- [x] Processing placeholder page with polling + retry (app/processing/[roomId]/page.tsx)
+- [x] API routes: /api/pipeline/start, /api/capture/generate-token, /api/capture/validate-token
+- [x] Framer Motion card animations (drag, rotate, spring)
+- DEFERRED to M11: mobile video recording + upload test (requires HTTPS on covainterior.com)
+- DEFERRED to M13: all v0 UI polish (build features functionally first)
+- IMPORTANT: swipe_history table does NOT exist — V0 mobile app doesn't use it either. Swipes are not individually recorded, only the cumulative style_blend is saved.
+- IMPORTANT: rooms.status CHECK constraint only allows 'active' and 'archived'. Do NOT set status to 'processing', 'video_uploaded', etc. — those will fail the CHECK constraint.
 
-## Trained LoRA Model
-- Model: pgoel813/cova-interior-360-lora
-- Version: 6082cef9
-- Trigger word: COVAINTERIOR360
-- Supabase secrets: REPLICATE_LORA_MODEL_ID, REPLICATE_LORA_VERSION (both SET)
+---
 
-## Key Architecture Decisions (Sprint 6)
-- ProductPanel: Modal-based bottom sheet (not Animated.View side panel) — spec compliant
-- Pin system: Zustand only (no separate Supabase table for MVP) — pinnedRoomProducts persisted via AsyncStorage
-- Style match score: computed client-side dot product (product.style_tags vs room.style_blend)
-- detect-furniture: fires once on RoomViewer3DScreen mount, 5s timeout, silent fallback
+## What Is In Progress / Pending
 
-## What Needs Physical Device Testing
-- Apple Sign In: code complete, needs physical device + Apple Developer
-- Google Sign In: code complete, needs EXPO_PUBLIC_GOOGLE_CLIENT_ID + physical device
-- LiDAR RoomPlan: code complete, needs iPhone 12 Pro+ with LiDAR
-- Camera capture: all 3 paths coded, needs camera access
-- App Store screenshots: 6 screenshots on 6.7" iPhone
-- PostHog live event verification
+### Come Back To (waiting on DNS propagation)
+- [ ] ImprovMX — DNS needs to propagate for covainterior.com, then set up hello@covainterior.com → cova.interior@gmail.com
+- [ ] Impact — once hello@covainterior.com works, verify domain, then apply to Target
 
-## What Needs Manual Setup Before App Store
-- App Store Connect account + app listing
-- Apple Developer certificate + provisioning profiles
-- EAS Build production configuration
-- Real GOOGLE_CLIENT_ID in .env
-- Verify affiliate URLs for Wayfair/Amazon/IKEA/CB2
-- App icon verification: dark navy + gold arches, all sizes
+### Still To Complete for M0
+- [ ] Article — apply at article.com/affiliates
+- [ ] Sovrn — create account, apply to Crate & Barrel + CB2
+- [ ] ShareASale — create account, apply to West Elm + Pottery Barn
+- [ ] CJ — apply to Ruggable, One Kings Lane, Overstock (existing CJ account)
+- [ ] Awin — create account, apply to Etsy
+- [ ] Replicate — confirm token active, add to apps/web/.env.local
+- [ ] Anthropic — confirm key active, add to apps/web/.env.local
+- [ ] Sentry — find DSN from V0 mobile .env, add to apps/web/.env.local
+- [ ] PostHog — find key from V0 mobile .env, add to apps/web/.env.local
+- [ ] Marble API — request access at worldlabs.ai
+- [ ] Supabase — run 6 SQL ALTER TABLE statements in SQL editor
+- [ ] Supabase — create room-videos storage bucket with RLS
+- [ ] apps/mobile/ — confirm still builds untouched
+- [ ] Amazon — submit tax info once EIN obtained
 
-## Data Counts
-- Products: 5,581 total (3,052 with CLIP embeddings)
-- 3D models: 665 (508 tagged + linked in Sprint 10)
-- Swipe cards: 950 (exceeds 923 target)
-- Migrations: 28 total (20240001 through 20240028)
+### Known Issues to Fix Before M5
+- [ ] Voxel downsampling too aggressive: 3,284,492 → 60,796 points (1.8% retained). Room geometry present but sparse point cloud, not photorealistic. Fix: reduce voxel_size from 0.02 to 0.005, or use random subsampling to keep 500K-1M points. Better fix: upgrade Supabase to Pro ($25/mo) for 500MB uploads and skip downsampling entirely.
+- [ ] PLY format used instead of SPZ (SparkJS native compressed splat format). SPZ will render significantly better — photorealistic Gaussian splatting vs point cloud. Fix in M5: convert PLY → SPZ using gsplat export.
+- [ ] RoPE2D CUDA version not compiled — using slow PyTorch fallback. Fix: compile RoPE2D during image build for faster inference.
+- [ ] HuggingFace unauthenticated requests — set HF_TOKEN in Modal secrets for higher rate limits and faster model weight downloads.
 
-## Key Architecture Decisions — Locked
-- CameraControlState: { theta: number; fov: number } — phi and radius REMOVED in Sprint 5
-- Eye level: EYE_Y = 1.6m constant, horizontal orbit only
-- FOV range: 40-90° (controlled by pinch gesture, replaces radius zoom)
-- ORBIT_RADIUS: fixed at 4.5m (no user-adjustable radius)
-- Two-stage render: FLUX ControlNet → LoRA 360° conversion (fallback: flat render)
-- LoRA model: pgoel813/cova-interior-360-lora version 6082cef9
-- LoRA trigger word: COVAINTERIOR360
-- Panoramic viewer: sphere radius 500, scale [-1,1,1], camera [0,0,0], PanResponder
-- Furniture in render: baked into image (not 3D GLB overlay)
-- Token economy: static 999, no payments for MVP
-- Save: Cova profile only, not camera roll
-- Back arrow: always resets to Dashboard (stack cleared)
-- First celebration: one-time per user, tracked in AsyncStorage
+---
 
-## Test Credentials
-- New user: test.newuser@hellocova.com / CovaTest123!
-- Returning user: test.returning@hellocova.com / CovaTest123!
-- Returning user ID: aa19e895-0582-4947-bf65-5ca06ab65a89
-- Returning room ID: e1269ec5
+## Known Issues / Blockers
 
-## Approaches That Failed — Do Not Retry
-- Corner drag calibration for room capture — removed
-- Fixed phase quiz algorithm — replaced with Bayesian
-- Calling handleComplete from render function — fixed with isFetchingRefinementRef
-- npm install in GitHub Actions — fixed to pnpm
-- Dynamic import() in React Native components — use static imports at file top
-- Canvas/GLView touch interception: pointerEvents="none" does NOT work — must skip Canvas entirely in testMode
-- expo-sensors static import in RoomCaptureScreen — crashes when native module not compiled; use conditional require()
+- **ImprovMX DNS propagation:** covainterior.com was just registered. DNS takes 15min-2hrs to propagate. Check again in an hour.
+- **Impact pending:** Waiting on domain verification. Manual approval request submitted.
+- **Marble API:** Not yet requested. worldlabs.ai — start today, may need approval.
+- **EIN:** IRS online application failed (likely visa/SSN matching issue). Need to file Form SS-4 by fax to get EIN. Deferred — not blocking M0 or M1.
+- **Wayfair:** Program closed to new publishers. Check cj.com quarterly.
+
+---
+
+## Tech Decisions Log
+
+| Date | Decision | Rationale |
+|------|----------|-----------|
+| Mar 2026 | AnySplat for reconstruction | Feed-forward, no COLMAP, indoor-trained |
+| Mar 2026 | gsplat equirectangular panorama | Solves single-frame coverage problem |
+| Mar 2026 | Lang-SAM for furniture segmentation | Text-prompted, no bounding boxes |
+| Mar 2026 | Marble (primary) + SHARP (fallback) | Both maintained until M7 testing |
+| Mar 2026 | 6 cube face crops for product detection | Eliminates equirectangular distortion |
+| Mar 2026 | v0 + Framer Motion for UI | Real Next.js code, not separate platform |
+| Mar 2026 | CLIP similarity threshold 0.65 | Maximizes hotspot coverage vs 0.70 |
+| Mar 2026 | 12-retailer lineup (no Wayfair) | Wayfair closed, ~18,150 clean products |
+| Mar 30 2026 | covainterior.com domain | Registered Namecheap, $11.28/year |
+| Mar 30 2026 | W-9 with SSN | EIN application failed online |
+| Mar 30 2026 | Amazon tax info deferred | Wait for EIN before submitting |
+| Mar 30 2026 | Modal base image: pytorch/pytorch:2.2.0-cuda12.1 | Pre-built PyTorch+CUDA, avoids Modal PyPI mirror issues |
+| Mar 30 2026 | AnySplat source copied locally (not cloned in build) | GitHub blocked in Modal image build containers |
+| Mar 30 2026 | pytorch3d not needed for inference | Only used in training loss functions |
+| Mar 30 2026 | SparkJS webpack fix: parser url:false | Fixes asset/inline generator incompatibility with Next.js |
+| Mar 30 2026 | Target affiliate removed | Program ended January 5, 2026 — no longer available |
+| Mar 30 2026 | Reuse V0 catalog for M2 validation | 5,581 products already have CLIP embeddings, no scraping needed |
+| Mar 30 2026 | Supabase publishable key format (sb_publishable_) | New format, legacy JWT keys disabled — always use Settings → API keys |
+| Mar 30 2026 | Auth callback writes cookies via cookieStore.set() | Writing to response.cookies broke PKCE flow — cookieStore is canonical |
+| Mar 30 2026 | 3-phase adaptive quiz (baseline→pure→refinement) | Matches V0 iOS adaptive algorithm, uses discriminability_score |
+| Mar 30 2026 | Bayesian style updating (not simple accumulation) | Likes 1× weight, dislikes 0.5× weight, MIN_VALUE=0.02 smoothing |
+| Mar 30 2026 | swipe_history table does not exist | V0 mobile doesn't use it — only cumulative style_blend is saved |
+| Mar 30 2026 | rooms.status CHECK: only 'active'/'archived' | Cannot set 'processing'/'video_uploaded' — will fail constraint |
+| Mar 30 2026 | UI polish deferred to M13 | Build all features functionally first, v0 screen generation last |
+| Mar 30 2026 | Mobile capture testing deferred to M11 | Requires HTTPS deployment on covainterior.com |
+
+---
+
+## Session Log
+
+### Session March 30, 2026
+**Milestone:** M0
+**Goal:** Complete all pre-M0 affiliate, domain, and service account setup
+
+**Completed:**
+- CJ account + W-9 submitted
+- Wayfair confirmed closed
+- Amazon confirmed active
+- Impact account created
+- covainterior.com registered
+- Namecheap MX records added
+- Modal account + tokens in .env.local
+- Repo cleanup (deleted 10+ redundant files)
+- CLAUDE.md fully updated
+- SESSION_MEMORY.md created
+
+**Left for next session:**
+- DNS propagation → ImprovMX → Impact verification
+- All remaining API tokens in .env.local
+- Supabase schema additions
+- Next.js scaffold
+- Remaining affiliate applications (Article, Sovrn, ShareASale, Awin)
+
+**Issues encountered:**
+- IRS EIN online application rejected (visa/SSN issue) — using SSN on W-9 instead
+- Wayfair US closed to new publishers — replaced with 12-retailer lineup
+- Impact requires domain verification — submitted manual approval request
+- ImprovMX DNS not yet propagated — check in 1-2 hours
+
+---
+
+### Session March 30, 2026 — M1 Pipeline Proof
+**Milestone:** M1 — Pipeline Proof
+**Goal:** Deploy AnySplat on Modal, reconstruct real room, view in browser
+
+**Completed:**
+- AnySplat pipeline deployed on Modal A10G ✅
+- 3.28M Gaussian reconstruction of real room ✅
+- PLY compressed 223MB → 2.9MB via voxel downsampling ✅
+- Uploaded to Supabase room-videos bucket ✅
+- SparkJS rendering confirmed in browser at /test-viewer ✅
+- M1 gate passed — 3D room visible in browser
+
+**Known issues to fix before M5:**
+- Voxel downsampling too aggressive: 3,284,492 → 60,796 points (only 1% retained).
+  Room geometry is present but looks like a sparse point cloud, not photorealistic.
+  Fix: use smarter compression — reduce voxel_size from 0.02 to 0.005, or use
+  random subsampling to keep 500K-1M points while staying under 50MB.
+  Better fix: upgrade Supabase to Pro ($25/mo) to allow 500MB uploads and skip
+  downsampling entirely. Do this before M5.
+- PLY format used instead of SPZ (SparkJS native compressed splat format).
+  SPZ will render significantly better — photorealistic Gaussian splatting vs point cloud.
+  Fix in M5 when the real viewer is built: convert PLY → SPZ using gsplat's export.
+- RoPE2D CUDA version not compiled — using slow PyTorch fallback.
+  Fix: compile RoPE2D during image build for faster inference.
+- HuggingFace unauthenticated requests — set HF_TOKEN in Modal secrets for
+  higher rate limits and faster model weight downloads.
+
+**Files modified:**
+- modal_pipeline/room_reconstruction.py (full AnySplat pipeline)
+- modal_pipeline/anysplat/ (local copy of AnySplat repo)
+- apps/web/app/test-viewer/page.tsx (test viewer page)
+- apps/web/components/SplatViewer.tsx (SparkJS viewer component)
+- apps/web/next.config.mjs (webpack fix for SparkJS)
+- apps/web/package.json (@sparkjsdev/spark, three, @supabase/ssr, @supabase/supabase-js)
+
+**Left for M2:**
+- Pre-M2 conversation required before starting
+- Upgrade Supabase to Pro before M5 to fix PLY size limit
+- Add HF_TOKEN to Modal secrets
+- Compile RoPE2D CUDA version in image build
+
+---
+
+### Session March 30, 2026 — M2 Seed Catalog Validation
+**Milestone:** M2 — Seed Catalog Validation
+**Goal:** Validate pgvector search returns relevant results, build affiliate URL builder
+
+**Completed:**
+- pgvector search validated against 5,581 existing products via modal_pipeline/test_catalog.py
+- buildAffiliateUrl() implemented for all 11 retailers (Amazon, IKEA, Article, Crate & Barrel, CB2, West Elm, Pottery Barn, Ruggable, One Kings Lane, Overstock, Etsy)
+- 15/15 affiliate URL tests passing
+- Target affiliate removed from .env.local (program ended January 5, 2026)
+- M2 gate passed — catalog search works, affiliate URLs generate correctly
+
+**Known issues deferred to M6:**
+- Category mismatches and duplicate products in V0 catalog — fix during M6 quality filtering
+
+**Left for M3:**
+- Pre-M3 conversation required before starting
+- M3 scope: Next.js scaffold, auth (all 3 methods), routing
+
+**Files modified:**
+- modal_pipeline/test_catalog.py (pgvector search test script)
+- apps/web/lib/affiliates.ts (affiliate URL builder)
+- apps/web/lib/affiliates.test.ts (15 tests)
+- apps/web/.env.local (removed TARGET_AFFILIATE_ID)
+
+---
+
+### Session March 30, 2026 — M3 Web Foundation
+**Milestone:** M3 — Web Foundation
+**Goal:** Build auth, routing, middleware, Zustand stores for apps/web/
+
+**Completed:**
+- Supabase client setup: lib/supabase/client.ts + server.ts
+- Middleware with route protection (protected: /dashboard, /room, /quiz, /capture, /processing)
+- Auth callback route with PKCE code exchange
+- Zustand stores: userStore (user + styleVector) + roomStore (roomId + processingStage)
+- All 3 auth methods: Google OAuth, Apple Sign In, email magic link
+- /auth page with functional sign in UI
+- /dashboard server component with session check + sign out
+- Debugged auth flow: callback cookies must use cookieStore.set() not response.cookies
+- Debugged API key: Supabase uses new sb_publishable_ format, not legacy JWT keys
+- M3 gate passed — auth flow works end-to-end
+
+**Issues encountered:**
+- Auth callback initially failed — cookies were written to response object instead of cookieStore, breaking PKCE flow
+- Supabase anon key was wrong format — project uses new publishable keys (sb_publishable_), not legacy JWT (eyJ...)
+- Google OAuth button needed explicit type="button" to prevent default form submission
+
+**Left for M4:**
+- Pre-M4 conversation required before starting
+- M4 scope: quiz ported, Path A+B capture, v0 generates quiz/capture screens
+
+**Files modified:**
+- apps/web/lib/supabase/client.ts (browser client)
+- apps/web/lib/supabase/server.ts (server client)
+- apps/web/middleware.ts (route protection + session refresh)
+- apps/web/app/auth/page.tsx (sign in page)
+- apps/web/app/auth/callback/route.ts (OAuth code exchange)
+- apps/web/app/dashboard/page.tsx (protected dashboard)
+- apps/web/app/dashboard/SignOutButton.tsx (client component)
+- apps/web/lib/stores/userStore.ts (Zustand)
+- apps/web/lib/stores/roomStore.ts (Zustand)
+- apps/web/package.json (added zustand)
+
+---
+
+### Session March 30, 2026 — M4 Quiz + Capture
+**Milestone:** M4 — Quiz + Capture + UI Pass 1
+**Goal:** Build style quiz, room capture (mobile + desktop), processing page
+
+**Completed:**
+- 3-phase adaptive Bayesian style quiz with Framer Motion card animations
+- Phase 1: 15 baseline cards (3 per style), Phase 2: 5 pure confirmation, Phase 3: 5 refinement
+- Bayesian update with discriminability_score, likes stronger than dislikes
+- style_blend saves after every swipe (partial profile survives early exit)
+- Desktop capture: QR code with JWT token generation + 3s polling
+- Mobile capture: getUserMedia camera UI with guidance messages
+- Processing placeholder with status polling + retry button
+- API routes: /api/pipeline/start, /api/capture/generate-token, /api/capture/validate-token
+- Debugged: swipe_history table doesn't exist (removed insert), swipe_cards uses direction not swiped_right
+- Debugged: rooms.status CHECK only allows 'active'/'archived'
+- Removed mode=camera override (was temp testing only)
+
+**Issues encountered:**
+- swipe_history inserts failed — table doesn't exist in DB, V0 mobile doesn't use it either
+- rooms.status CHECK constraint only allows 'active'/'archived' — cannot use 'processing'/'video_uploaded'
+- Baseline card fetch needed per-style queries to ensure even distribution
+
+**Deferred:**
+- Mobile video recording test → M11 (requires HTTPS)
+- All v0 UI polish → M13 (build features first)
+
+**Left for M5:**
+- Pre-M5 conversation required before starting
+- M5 scope: processing UI, SparkJS viewer, real room loads
+
+**Files modified:**
+- apps/web/app/quiz/page.tsx (adaptive Bayesian quiz)
+- apps/web/app/capture/[roomId]/page.tsx (mobile camera + desktop QR)
+- apps/web/app/processing/[roomId]/page.tsx (polling + retry)
+- apps/web/app/api/pipeline/start/route.ts (pipeline trigger)
+- apps/web/app/api/capture/generate-token/route.ts (JWT signing)
+- apps/web/app/api/capture/validate-token/route.ts (JWT verification)
+- apps/web/package.json (framer-motion, react-qr-code, jose)
+
+---
+
+## Session Template (copy for each new session)
+
+```
+### Session [DATE]
+**Milestone:** M[X]
+**Goal:** [What this session builds]
+
+**Completed:**
+- item 1
+
+**Left for next session:**
+- item 1
+
+**Issues encountered:**
+- none
+
+**Files modified:**
+- apps/web/[...]
+- modal_pipeline/[...]
+```
