@@ -59,8 +59,14 @@ export function ChatPanel({ isOpen, onClose, onMinimize, initialMessages = [], c
         }),
       })
 
-      if (!res.ok || !res.body) {
-        throw new Error("Chat API failed")
+      if (!res.ok) {
+        const errorText = await res.text()
+        console.error("Chat API error response:", res.status, errorText)
+        throw new Error(`API ${res.status}: ${errorText}`)
+      }
+
+      if (!res.body) {
+        throw new Error("No response body")
       }
 
       setIsTyping(false)
@@ -88,9 +94,10 @@ export function ChatPanel({ isOpen, onClose, onMinimize, initialMessages = [], c
     } catch (err) {
       console.error("Chat error:", err)
       setIsTyping(false)
+      setStreamingId(null)
       setMessages((prev) => [
         ...prev,
-        { id: assistantId, role: "assistant", content: "I'm having trouble connecting right now. Please try again." },
+        { id: assistantId, role: "assistant", content: `Sorry, I had trouble connecting. ${err instanceof Error ? err.message : "Please try again."}` },
       ])
     }
   }, [messages, context])
