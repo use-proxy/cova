@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useEffect, useCallback, Suspense } from "react"
+import { useState, useEffect, useCallback, useRef, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { ChevronLeft, Heart, X } from "lucide-react"
 import { ConfidenceBar } from "@/components/quiz/ConfidenceBar"
-import { CardStack } from "@/components/quiz/CardStack"
+import { CardStack, type CardStackHandle } from "@/components/quiz/CardStack"
 import { ReturningUserStrip } from "@/components/quiz/ReturningUserStrip"
 
 function QuizInner() {
@@ -18,6 +18,7 @@ function QuizInner() {
   const [complete, setComplete] = useState(false)
   const [previousStyleActive, setPreviousStyleActive] = useState(false)
   const [previousStyleDimmed, setPreviousStyleDimmed] = useState(false)
+  const cardStackRef = useRef<CardStackHandle>(null)
 
   // Safety timeout — always render after 2s no matter what
   useEffect(() => {
@@ -107,14 +108,17 @@ function QuizInner() {
     setPreviousStyleDimmed(false)
   }, [])
 
-  // Keyboard support
+  // Keyboard support — calls the same swipe path as drag and buttons
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
+      if (["ArrowLeft", "ArrowRight", "j", "J", "l", "L"].includes(e.key)) {
+        e.preventDefault()
+      }
       if (e.key === "ArrowRight" || e.key === "l" || e.key === "L") {
-        document.dispatchEvent(new CustomEvent("quiz-swipe", { detail: "right" }))
+        cardStackRef.current?.swipe("right")
       }
       if (e.key === "ArrowLeft" || e.key === "j" || e.key === "J") {
-        document.dispatchEvent(new CustomEvent("quiz-swipe", { detail: "left" }))
+        cardStackRef.current?.swipe("left")
       }
     }
     window.addEventListener("keydown", handleKey)
@@ -163,7 +167,7 @@ function QuizInner() {
           </div>
         )}
         {!complete && (
-          <CardStack sessionId={sessionId} onComplete={handleComplete} onConfidenceUpdate={setConfidence} />
+          <CardStack ref={cardStackRef} sessionId={sessionId} onComplete={handleComplete} onConfidenceUpdate={setConfidence} />
         )}
       </div>
 
@@ -171,14 +175,14 @@ function QuizInner() {
       {!complete && !previousStyleActive && (
         <div className="flex items-center justify-center gap-8 pb-8 flex-shrink-0">
           <button
-            onClick={() => document.dispatchEvent(new CustomEvent("quiz-swipe", { detail: "left" }))}
+            onClick={() => cardStackRef.current?.swipe("left")}
             className="w-[52px] h-[52px] rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
             style={{ border: "1.5px solid rgba(239,68,68,0.5)" }}
           >
             <X className="w-5 h-5 text-red-400" />
           </button>
           <button
-            onClick={() => document.dispatchEvent(new CustomEvent("quiz-swipe", { detail: "right" }))}
+            onClick={() => cardStackRef.current?.swipe("right")}
             className="w-[52px] h-[52px] rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
             style={{ border: "1.5px solid rgba(201,168,76,0.5)" }}
           >

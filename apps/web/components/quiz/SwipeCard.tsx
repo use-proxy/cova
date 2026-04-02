@@ -73,7 +73,7 @@ export function SwipeCard({ imageUrl, onSwipe, isTop, style, className }: SwipeC
           : style?.transform,
         transition: dragging ? "none" : swiping ? "transform 300ms ease-out, opacity 300ms ease-out" : "transform 400ms cubic-bezier(0.175, 0.885, 0.32, 1.275)",
         opacity: swiping ? 0 : style?.opacity ?? 1,
-        boxShadow: isTop && !swiping ? edgeGlow : "0 20px 60px rgba(0,0,0,0.5)",
+        boxShadow: isTop && !swiping ? edgeGlow : "0 24px 80px rgba(0,0,0,0.6)",
         cursor: isTop ? "grab" : "default",
       }}
       onPointerDown={handlePointerDown}
@@ -81,7 +81,7 @@ export function SwipeCard({ imageUrl, onSwipe, isTop, style, className }: SwipeC
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
     >
-      <div className="w-full h-full rounded-2xl overflow-hidden" style={{ boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}>
+      <div className="w-full h-full rounded-2xl overflow-hidden" style={{ boxShadow: "0 24px 80px rgba(0,0,0,0.6)" }}>
         {imgError ? (
           <div className="w-full h-full bg-[#0d1f3c] flex items-center justify-center">
             <svg width="48" height="32" viewBox="0 0 32 20" fill="none">
@@ -92,7 +92,7 @@ export function SwipeCard({ imageUrl, onSwipe, isTop, style, className }: SwipeC
           <img
             src={imageUrl}
             alt=""
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover object-center"
             draggable={false}
             onError={() => setImgError(true)}
           />
