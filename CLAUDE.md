@@ -1,7 +1,7 @@
 # COVA V1 — Claude Code Constraints
 # Copy this file to: apps/web/CLAUDE.md AND root CLAUDE.md
 # READ THIS BEFORE EVERY SESSION. NO EXCEPTIONS.
-# Last updated: March 30, 2026 | Spec: v7
+# Last updated: April 1, 2026 | Spec: v7
 
 ---
 
@@ -301,6 +301,14 @@ ETSY_AFFILIATE_ID=
 3. Have pre-milestone conversation if starting a new milestone
 4. Read relevant spec section (cova_v1_complete_spec_v7.docx)
 5. Update SESSION_MEMORY.md when session ends
+
+---
+
+## Screen Build Log
+
+| Screen | Route | Status | Notes |
+|--------|-------|--------|-------|
+| Screen 11 — Dashboard | `/dashboard` | **DONE** | RoomCard, StatsRow, StyleProfile, NewRoomCTA, ChatBubble; mock data; Supabase fallback |
 
 ---
 

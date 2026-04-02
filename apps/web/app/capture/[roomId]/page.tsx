@@ -79,9 +79,9 @@ export default function CapturePage() {
 
       setShowCompletion(true)
 
-      // Redirect to processing after completion animation
+      // Redirect to quiz after completion animation
       setTimeout(() => {
-        router.push(`/processing/${roomId}`)
+        router.push(`/quiz?session=${roomId}`)
       }, 2500)
     },
     [roomId, router]

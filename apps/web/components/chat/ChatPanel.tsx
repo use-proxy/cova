@@ -35,6 +35,8 @@ export function ChatPanel({ isOpen, onClose, onMinimize, initialMessages = [], c
   const [isTyping, setIsTyping] = useState(false)
   const [streamingId, setStreamingId] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const streamingTextRef = useRef("")
+  const streamingIdRef = useRef<string | null>(null)
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -70,26 +72,28 @@ export function ChatPanel({ isOpen, onClose, onMinimize, initialMessages = [], c
       }
 
       setIsTyping(false)
+      streamingTextRef.current = ""
+      streamingIdRef.current = assistantId
       setStreamingId(assistantId)
-
-      // Stream tokens
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let fullText = ""
 
       // Add empty assistant message to start streaming into
       setMessages((prev) => [...prev, { id: assistantId, role: "assistant", content: "" }])
 
+      // Stream tokens
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        fullText += decoder.decode(value, { stream: true })
-        const currentText = fullText
+        streamingTextRef.current += decoder.decode(value, { stream: true })
+        const currentText = streamingTextRef.current
         setMessages((prev) =>
           prev.map((m) => (m.id === assistantId ? { ...m, content: currentText } : m))
         )
       }
 
+      streamingIdRef.current = null
       setStreamingId(null)
     } catch (err) {
       console.error("Chat error:", err)
@@ -162,6 +166,7 @@ export function ChatPanel({ isOpen, onClose, onMinimize, initialMessages = [], c
         {messages.map((msg, i) => (
           <ChatMessage
             key={msg.id}
+            id={msg.id}
             role={msg.role}
             content={msg.content}
             isStreaming={msg.id === streamingId}

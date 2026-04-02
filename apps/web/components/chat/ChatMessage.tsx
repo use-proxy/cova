@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { ProductSearchResult } from "./ProductSearchResult"
 
 interface ChatMessageProps {
+  id: string
   role: "user" | "assistant"
   content: string
   isStreaming?: boolean
@@ -22,15 +23,26 @@ function parseProducts(text: string) {
   }
 }
 
-export function ChatMessage({ role, content, isStreaming = false, isFirst = false }: ChatMessageProps) {
-  const [displayedText, setDisplayedText] = useState(isStreaming ? "" : content)
+export function ChatMessage({ id, role, content, isStreaming = false, isFirst = false }: ChatMessageProps) {
+  const [displayedText, setDisplayedText] = useState("")
+  const prevIdRef = useRef<string>("")
 
-  // Typewriter effect for streaming
   useEffect(() => {
-    if (!isStreaming) {
+    // Streaming: display text directly as chunks arrive, no typewriter
+    if (isStreaming) {
+      prevIdRef.current = id  // mark as seen so we don't replay after streaming ends
       setDisplayedText(content)
       return
     }
+
+    // Same id already processed (was streaming, or typewriter already ran) — update immediately
+    if (id === prevIdRef.current) {
+      setDisplayedText(content)
+      return
+    }
+
+    // New historical message — run typewriter once
+    prevIdRef.current = id
     let i = 0
     const interval = setInterval(() => {
       i++
@@ -38,7 +50,7 @@ export function ChatMessage({ role, content, isStreaming = false, isFirst = fals
       if (i >= content.length) clearInterval(interval)
     }, 12)
     return () => clearInterval(interval)
-  }, [content, isStreaming])
+  }, [id, isStreaming, content])
 
   const { cleanText, products } = parseProducts(displayedText)
 

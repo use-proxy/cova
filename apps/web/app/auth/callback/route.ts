@@ -46,7 +46,7 @@ export async function GET(request: Request) {
         full_name: meta?.full_name ?? meta?.name ?? null,
       })
 
-      return NextResponse.redirect(`${origin}/capture`)
+      return NextResponse.redirect(`${origin}/capture/new`)
     }
 
     console.error('Auth callback error:', error)

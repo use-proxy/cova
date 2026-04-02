@@ -210,7 +210,7 @@ function BudgetInner() {
         console.error("Budget save error:", e)
       }
     }
-    router.push(`/furniture?session=${sessionId}`)
+    router.push(`/processing?session=${sessionId}`)
   }, [sessionId, selected, tier.range, router])
 
   return (
