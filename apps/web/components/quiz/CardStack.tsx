@@ -128,9 +128,9 @@ export const CardStack = forwardRef<CardStackHandle, CardStackProps>(
 
     if (loading) {
       return (
-        <div className="relative w-full flex items-center justify-center" style={{ width: "min(92vw, 520px)", aspectRatio: "3/2" }}>
+        <div className="relative" style={{ width: "min(92vw, 560px)", aspectRatio: "3/2" }}>
           <div
-            className="w-full h-full rounded-2xl"
+            className="absolute inset-0 rounded-2xl"
             style={{
               background: "linear-gradient(90deg, #0d1f3c 0%, rgba(201,168,76,0.08) 50%, #0d1f3c 100%)",
               backgroundSize: "200% 100%",
@@ -143,28 +143,36 @@ export const CardStack = forwardRef<CardStackHandle, CardStackProps>(
 
     if (cards.length === 0) {
       return (
-        <div className="flex items-center justify-center" style={{ width: "min(92vw, 520px)", aspectRatio: "3/2" }}>
+        <div className="flex items-center justify-center" style={{ width: "min(92vw, 560px)", aspectRatio: "3/2" }}>
           <p className="text-white/50 text-sm font-sans uppercase tracking-wider">No more cards</p>
         </div>
       )
     }
 
+    const visibleCards = cards.slice(0, 3)
+
     return (
-      <div className="relative" style={{ width: "min(92vw, 520px)", aspectRatio: "3/2" }}>
-        {cards.slice(0, 3).map((card, i) => (
-          <SwipeCard
+      <div className="relative" style={{ width: "min(92vw, 560px)", aspectRatio: "3/2" }}>
+        {visibleCards.map((card, i) => (
+          <div
             key={card.id}
-            imageUrl={card.image_url}
-            isTop={i === 0}
-            onSwipe={handleSwipe}
-            className="inset-0"
             style={{
-              zIndex: 3 - i,
-              transform: i === 0 ? undefined : `scale(${1 - i * 0.04}) translateY(${i * 10}px)`,
-              opacity: i === 0 ? 1 : i === 1 ? 0.65 : 0.35,
+              position: "absolute",
+              inset: 0,
+              transform: `scale(${1 - i * 0.04}) translateY(${i * 12}px)`,
+              opacity: 1 - i * 0.3,
+              zIndex: visibleCards.length - i,
+              transformOrigin: "bottom center",
+              transition: i === 0 ? "none" : "transform 300ms ease, opacity 300ms ease",
               pointerEvents: i === 0 ? "auto" : "none",
             }}
-          />
+          >
+            <SwipeCard
+              imageUrl={card.image_url}
+              isTop={i === 0}
+              onSwipe={i === 0 ? handleSwipe : () => {}}
+            />
+          </div>
         ))}
       </div>
     )

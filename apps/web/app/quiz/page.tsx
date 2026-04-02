@@ -160,7 +160,7 @@ function QuizInner() {
       <ReturningUserStrip onSelect={handlePreviousSelect} onDismiss={handlePreviousDismiss} />
 
       {/* Card stack */}
-      <div className={`flex-1 flex items-center justify-center transition-opacity duration-300 ${previousStyleDimmed ? "opacity-40" : "opacity-100"}`}>
+      <div className={`flex-1 flex items-center justify-center pb-6 transition-opacity duration-300 ${previousStyleDimmed ? "opacity-40" : "opacity-100"}`}>
         {previousStyleActive && (
           <div className="absolute z-10">
             <p className="text-sm font-sans text-white/50">Using this style</p>
@@ -173,7 +173,7 @@ function QuizInner() {
 
       {/* Tap buttons */}
       {!complete && !previousStyleActive && (
-        <div className="flex items-center justify-center gap-8 pb-8 flex-shrink-0">
+        <div className="flex items-center justify-center gap-8 pb-8 mb-safe flex-shrink-0">
           <button
             onClick={() => cardStackRef.current?.swipe("left")}
             className="w-[52px] h-[52px] rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
