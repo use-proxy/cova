@@ -118,3 +118,44 @@ body::-webkit-scrollbar-thumb:hover {
   0%, 100% { box-shadow: 0 0 0 0 rgba(201,168,76,0); }
   50% { box-shadow: 0 0 0 8px rgba(201,168,76,0.15); }
 }
+
+/* Processing screen — "The Forge" */
+@keyframes archDraw {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes archBreathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ringRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes glow1drift {
+  from { transform: translate(-50%, -50%) translate(0px, 0px); }
+  to { transform: translate(-50%, -50%) translate(30px, -20px); }
+}
+
+@keyframes glow2drift {
+  from { transform: translate(0, 0); }
+  to { transform: translate(20px, -30px); }
+}
+
+@keyframes glow3drift {
+  from { transform: translate(0, 0); }
+  to { transform: translate(-25px, 15px); }
+}
+
+@keyframes completionFlash {
+  0% { opacity: 0; }
+  50% { opacity: 0.8; }
+  100% { opacity: 0; }
+}
