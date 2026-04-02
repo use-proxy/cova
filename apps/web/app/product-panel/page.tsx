@@ -58,14 +58,23 @@ const MOCK_PRODUCTS: Product[] = [
   },
 ]
 
-export default function ProductPanelTestPage() {
-  const [panelOpen, setPanelOpen] = useState(false)
-  const [matchIndex, setMatchIndex] = useState(0)
+interface Hotspot {
+  id: string
+  label: string
+  x: number
+  y: number
+  products: Product[]
+}
 
-  const openPanel = (index: number) => {
-    setMatchIndex(index)
-    setPanelOpen(true)
-  }
+const MOCK_HOTSPOTS: Hotspot[] = [
+  { id: "1", label: "Linen Sofa", x: 48, y: 58, products: MOCK_PRODUCTS },
+  { id: "2", label: "Oak Coffee Table", x: 52, y: 72, products: MOCK_PRODUCTS.slice(1) },
+  { id: "3", label: "Floor Lamp", x: 72, y: 45, products: MOCK_PRODUCTS.slice(0, 2) },
+  { id: "4", label: "Area Rug", x: 50, y: 80, products: MOCK_PRODUCTS.slice(2) },
+]
+
+export default function ProductPanelTestPage() {
+  const [activeHotspot, setActiveHotspot] = useState<Hotspot | null>(null)
 
   return (
     <div className="fixed inset-0 bg-[#0a1628]">
@@ -79,47 +88,72 @@ export default function ProductPanelTestPage() {
         <div className="absolute inset-0 bg-gradient-to-t from-[#0a1628] via-transparent to-[#0a1628]/50" />
       </div>
 
-      {/* Hotspot */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2">
-        <span className="px-3 py-1 rounded-full text-[10px] font-sans uppercase tracking-[0.1em] text-[#C9A84C]"
-          style={{ background: "rgba(13,31,60,0.9)", border: "1px solid rgba(201,168,76,0.3)" }}>
-          Linen Sofa
-        </span>
-        <button
-          onClick={() => openPanel(0)}
-          className="w-10 h-10 rounded-full flex items-center justify-center"
-          style={{
-            border: "2px solid #C9A84C",
-            background: "rgba(201,168,76,0.15)",
-            boxShadow: "0 0 20px rgba(201,168,76,0.3)",
-            animation: "dotPulse 1.5s ease infinite",
-          }}
-        >
-          <div className="w-3 h-3 rounded-full bg-[#C9A84C]" />
-        </button>
-      </div>
-
-      {/* Test controls */}
-      <div className="absolute bottom-8 left-0 right-0 flex items-center justify-center gap-3 z-30">
-        {["Open Panel", "Match 2", "Match 3"].map((label, i) => (
-          <button
-            key={label}
-            onClick={() => openPanel(i)}
-            className="px-4 py-2 rounded-lg text-xs font-sans uppercase tracking-wider text-[#C9A84C] transition-colors hover:bg-[#C9A84C]/10"
-            style={{ border: "1px solid rgba(201,168,76,0.3)", background: "rgba(13,31,60,0.9)" }}
+      {/* Hotspots */}
+      {MOCK_HOTSPOTS.map((hotspot) => {
+        const isActive = activeHotspot?.id === hotspot.id
+        return (
+          <div
+            key={hotspot.id}
+            className="absolute flex flex-col items-center gap-2 -translate-x-1/2 -translate-y-1/2 z-10"
+            style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%` }}
           >
-            {label}
-          </button>
-        ))}
-      </div>
+            {/* Label badge — always visible when active, hover-visible otherwise */}
+            <span
+              className={`px-3 py-1 rounded-full text-[10px] font-sans uppercase tracking-[0.1em] text-[#C9A84C] transition-all duration-200 ${
+                isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+              }`}
+              style={{
+                background: "rgba(13,31,60,0.9)",
+                border: `1px solid ${isActive ? "#C9A84C" : "rgba(201,168,76,0.3)"}`,
+                pointerEvents: "none",
+              }}
+            >
+              {hotspot.label}
+            </span>
+
+            {/* Pulsing dot */}
+            <button
+              onClick={() => setActiveHotspot(hotspot)}
+              className="group relative w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200"
+              style={{
+                border: `2px solid ${isActive ? "#C9A84C" : "rgba(201,168,76,0.7)"}`,
+                background: isActive ? "rgba(201,168,76,0.25)" : "rgba(201,168,76,0.15)",
+                boxShadow: isActive
+                  ? "0 0 30px rgba(201,168,76,0.5)"
+                  : "0 0 20px rgba(201,168,76,0.3)",
+              }}
+            >
+              {/* Pulse ring */}
+              <div
+                className="absolute inset-0 rounded-full"
+                style={{
+                  border: "1.5px solid rgba(201,168,76,0.4)",
+                  animation: "dotPulse 1.5s ease infinite",
+                }}
+              />
+              <div className="w-3 h-3 rounded-full bg-[#C9A84C]" />
+
+              {/* Hover label for non-active hotspots */}
+              {!isActive && (
+                <span
+                  className="absolute -top-8 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full text-[9px] font-sans uppercase tracking-[0.08em] text-[#C9A84C] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
+                  style={{ background: "rgba(13,31,60,0.9)", border: "1px solid rgba(201,168,76,0.3)" }}
+                >
+                  {hotspot.label}
+                </span>
+              )}
+            </button>
+          </div>
+        )
+      })}
 
       {/* Product Panel */}
       <ProductPanel
-        isOpen={panelOpen}
-        onClose={() => setPanelOpen(false)}
-        furnitureName="Linen Sofa"
-        products={MOCK_PRODUCTS}
-        initialMatchIndex={matchIndex}
+        isOpen={activeHotspot !== null}
+        onClose={() => setActiveHotspot(null)}
+        furnitureName={activeHotspot?.label ?? ""}
+        products={activeHotspot?.products ?? []}
+        initialMatchIndex={0}
       />
     </div>
   )
