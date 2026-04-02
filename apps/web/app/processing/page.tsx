@@ -205,8 +205,11 @@ function DetailPills() {
           }}
         >
           <div
-            className="w-1 h-1 rounded-full bg-[#C9A84C]"
-            style={{ animation: `pulse 1.5s ease infinite ${i * 0.5}s` }}
+            className="rounded-full bg-[#C9A84C]"
+            style={{
+              width: 6, height: 6,
+              animation: `dotPulse 1.5s ease infinite ${i * 0.5}s`,
+            }}
           />
           <span className="text-[10px] font-sans uppercase tracking-[0.1em] text-[#C9A84C]/70">{label}</span>
         </div>
@@ -230,12 +233,31 @@ function ProcessingInner() {
   const [complete, setComplete] = useState(false)
   const [showReady, setShowReady] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [breathingActive, setBreathingActive] = useState(false)
+  const archPathRef = useRef<SVGPathElement>(null)
   const startTimeRef = useRef(Date.now())
 
   useParticleCanvas(canvasRef)
 
   // Mount animation
   useEffect(() => { setMounted(true) }, [])
+
+  // Arch draw-on animation via ref (accurate path length)
+  useEffect(() => {
+    if (archPathRef.current) {
+      const length = archPathRef.current.getTotalLength()
+      archPathRef.current.style.strokeDasharray = String(length)
+      archPathRef.current.style.strokeDashoffset = String(length)
+      requestAnimationFrame(() => {
+        if (archPathRef.current) {
+          archPathRef.current.style.transition = "stroke-dashoffset 1.4s ease-in-out"
+          archPathRef.current.style.strokeDashoffset = "0"
+        }
+      })
+    }
+    const timer = setTimeout(() => setBreathingActive(true), 1500)
+    return () => clearTimeout(timer)
+  }, [])
 
   // Progress ticker
   useEffect(() => {
@@ -359,19 +381,31 @@ function ProcessingInner() {
 
       {/* Main content */}
       <div className="relative z-[2] flex flex-col items-center justify-center min-h-screen px-6 gap-6">
-        {/* Arch logo — draw on + breathe */}
-        <svg width={48} height={30} viewBox="0 0 32 20" fill="none" className="animate-[archBreathe_3s_ease-in-out_infinite]">
-          <path
-            d="M2 18Q16 2 30 18"
-            stroke="#C9A84C"
-            strokeWidth="2"
-            strokeLinecap="round"
-            fill="none"
-            strokeDasharray="60"
-            strokeDashoffset="60"
-            style={{ animation: "archDraw 1.2s ease-out forwards" }}
+        {/* Arch logo — draw on + breathe + glow */}
+        <div className="relative flex items-center justify-center">
+          {/* Soft gold glow behind arch */}
+          <div
+            className="absolute pointer-events-none"
+            style={{
+              width: 120, height: 80,
+              background: "radial-gradient(ellipse, rgba(201,168,76,0.2), transparent 70%)",
+              animation: "archGlow 3s ease-in-out infinite",
+            }}
           />
-        </svg>
+          <svg
+            width={80} height={50} viewBox="0 0 32 20" fill="none"
+            style={{ animation: breathingActive ? "archBreathe 3s ease-in-out infinite" : "none" }}
+          >
+            <path
+              ref={archPathRef}
+              d="M2 18 Q16 2 30 18"
+              stroke="#C9A84C"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              fill="none"
+            />
+          </svg>
+        </div>
 
         {/* Headline */}
         <h1
