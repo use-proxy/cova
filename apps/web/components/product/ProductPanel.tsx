@@ -14,10 +14,11 @@ interface ProductPanelProps {
 
 export function ProductPanel({ isOpen, onClose, furnitureName, products, initialMatchIndex = 0 }: ProductPanelProps) {
   const [activeMatch, setActiveMatch] = useState(initialMatchIndex)
-  const [swipeOffset, setSwipeOffset] = useState(0)
-  const [swiping, setSwiping] = useState(false)
-  const dragStartRef = useRef<number | null>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+  const cardContainerRef = useRef<HTMLDivElement>(null)
+  const dragStartX = useRef<number | null>(null)
+  const dragCurrentX = useRef<number>(0)
+  const isDragging = useRef<boolean>(false)
 
   // Reset match index when products change
   useEffect(() => { setActiveMatch(initialMatchIndex) }, [initialMatchIndex])
@@ -36,29 +37,96 @@ export function ProductPanel({ isOpen, onClose, furnitureName, products, initial
     return () => window.removeEventListener("keydown", handleKey)
   }, [isOpen, onClose])
 
+  // Animate card entrance when activeMatch changes (from tab click)
+  const animateCardEntrance = useCallback((direction: 1 | -1) => {
+    const el = cardContainerRef.current
+    if (!el) return
+    // Instantly position off-screen on the entrance side
+    el.style.transition = "none"
+    el.style.transform = `translateX(${direction * -110}%)`
+    el.style.opacity = "0"
+    // Next frame: animate in
+    requestAnimationFrame(() => {
+      if (!cardContainerRef.current) return
+      cardContainerRef.current.style.transition = "transform 300ms ease-out, opacity 300ms ease-out"
+      cardContainerRef.current.style.transform = "translateX(0)"
+      cardContainerRef.current.style.opacity = "1"
+    })
+  }, [])
+
+  const goToMatch = useCallback((index: number) => {
+    if (index === activeMatch || index < 0 || index >= products.length) return
+    const direction = index > activeMatch ? -1 : 1 // new card enters from the direction of navigation
+    setActiveMatch(index)
+    animateCardEntrance(direction)
+  }, [activeMatch, products.length, animateCardEntrance])
+
+  // Swipe handlers
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    dragStartRef.current = e.clientX
-    setSwiping(false)
+    dragStartX.current = e.clientX
+    isDragging.current = true
+    dragCurrentX.current = 0
+    cardContainerRef.current?.setPointerCapture(e.pointerId)
   }, [])
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (dragStartRef.current === null) return
-    const delta = e.clientX - dragStartRef.current
-    if (Math.abs(delta) > 10) setSwiping(true)
-    setSwipeOffset(delta)
+    if (!isDragging.current || dragStartX.current === null) return
+    dragCurrentX.current = e.clientX - dragStartX.current
+    if (cardContainerRef.current) {
+      cardContainerRef.current.style.transform = `translateX(${dragCurrentX.current}px)`
+      cardContainerRef.current.style.transition = "none"
+    }
   }, [])
 
   const handlePointerUp = useCallback(() => {
-    if (dragStartRef.current === null) return
-    if (swipeOffset < -60 && activeMatch < products.length - 1) {
-      setActiveMatch((m) => m + 1)
-    } else if (swipeOffset > 60 && activeMatch > 0) {
-      setActiveMatch((m) => m - 1)
+    if (!isDragging.current) return
+    isDragging.current = false
+
+    const delta = dragCurrentX.current
+    dragCurrentX.current = 0
+
+    if (Math.abs(delta) > 60) {
+      const direction = delta > 0 ? 1 : -1
+      const el = cardContainerRef.current
+      if (el) {
+        // Fly card off screen
+        el.style.transition = "transform 300ms ease-out, opacity 300ms ease-out"
+        el.style.transform = `translateX(${direction * 110}%)`
+        el.style.opacity = "0"
+      }
+      setTimeout(() => {
+        // Change match
+        if (direction < 0 && activeMatch < products.length - 1) {
+          setActiveMatch((m) => m + 1)
+        } else if (direction > 0 && activeMatch > 0) {
+          setActiveMatch((m) => m - 1)
+        }
+        // Animate new card in from opposite side
+        const entranceDir = direction
+        requestAnimationFrame(() => {
+          const el2 = cardContainerRef.current
+          if (!el2) return
+          el2.style.transition = "none"
+          el2.style.transform = `translateX(${entranceDir * -110}%)`
+          el2.style.opacity = "0"
+          requestAnimationFrame(() => {
+            if (!cardContainerRef.current) return
+            cardContainerRef.current.style.transition = "transform 300ms ease-out, opacity 300ms ease-out"
+            cardContainerRef.current.style.transform = "translateX(0)"
+            cardContainerRef.current.style.opacity = "1"
+          })
+        })
+      }, 300)
+    } else {
+      // Spring back
+      if (cardContainerRef.current) {
+        cardContainerRef.current.style.transition = "transform 400ms cubic-bezier(0.175, 0.885, 0.32, 1.275)"
+        cardContainerRef.current.style.transform = "translateX(0)"
+      }
     }
-    setSwipeOffset(0)
-    setSwiping(false)
-    dragStartRef.current = null
-  }, [swipeOffset, activeMatch, products.length])
+
+    dragStartX.current = null
+  }, [activeMatch, products.length])
 
   const product = products[activeMatch]
 
@@ -76,7 +144,7 @@ export function ProductPanel({ isOpen, onClose, furnitureName, products, initial
         onClick={onClose}
       />
 
-      {/* Panel — desktop: right slide, mobile: bottom sheet */}
+      {/* Panel */}
       <div
         ref={panelRef}
         className="fixed z-50 bg-[#0d1f3c] flex flex-col overflow-hidden
@@ -121,11 +189,11 @@ export function ProductPanel({ isOpen, onClose, furnitureName, products, initial
           {products.map((_, i) => (
             <button
               key={i}
-              onClick={() => setActiveMatch(i)}
+              onClick={() => goToMatch(i)}
               className="px-3 py-1.5 rounded-full text-[10px] font-sans uppercase tracking-[0.1em] transition-all duration-200"
               style={{
                 background: i === activeMatch ? "#C9A84C" : "transparent",
-                color: i === activeMatch ? "#0a1628" : "white/60",
+                color: i === activeMatch ? "#0a1628" : "rgba(255,255,255,0.6)",
                 border: i === activeMatch ? "none" : "1px solid rgba(201,168,76,0.3)",
               }}
             >
@@ -152,16 +220,13 @@ export function ProductPanel({ isOpen, onClose, furnitureName, products, initial
         {/* Swipeable product card area */}
         {product && (
           <div
-            className="flex-1 overflow-y-auto touch-pan-y"
+            ref={cardContainerRef}
+            className="flex-1 overflow-y-auto"
+            style={{ touchAction: "pan-y", userSelect: "none", cursor: "grab" }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
-            style={{
-              transform: swiping ? `translateX(${swipeOffset * 0.3}px)` : undefined,
-              opacity: swiping ? 1 - Math.abs(swipeOffset) / 400 : 1,
-              transition: swiping ? "none" : "transform 300ms ease-out, opacity 300ms ease-out",
-            }}
           >
             <ProductCard
               key={product.id}
