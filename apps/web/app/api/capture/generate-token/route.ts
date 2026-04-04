@@ -35,7 +35,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { roomId } = await request.json()
+  const body = await request.json() as { roomId?: string; room_id?: string }
+  // Accept both snake_case (new) and camelCase (legacy)
+  const roomId = body.room_id ?? body.roomId
+
+  if (!roomId) {
+    return NextResponse.json({ error: 'room_id is required' }, { status: 400 })
+  }
 
   const secret = new TextEncoder().encode(process.env.SUPABASE_JWT_SECRET!)
   const token = await new SignJWT({ roomId, userId: user.id })
@@ -44,7 +50,7 @@ export async function POST(request: Request) {
     .sign(secret)
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-  const url = `${appUrl}/capture/${roomId}?token=${token}`
+  const url = `${appUrl}/capture/mobile/${token}`
 
-  return NextResponse.json({ url })
+  return NextResponse.json({ token, url })
 }

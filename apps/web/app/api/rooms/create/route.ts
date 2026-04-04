@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
-export async function POST() {
+export async function POST(request: Request) {
   const cookieStore = await cookies()
 
   const supabase = createServerClient(
@@ -31,12 +31,20 @@ export async function POST() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  let roomType = 'living_room'
+  try {
+    const body = await request.json() as { room_type?: string }
+    if (body.room_type) roomType = body.room_type
+  } catch {
+    // Body is optional
+  }
+
   const { data: room, error: insertError } = await supabase
     .from('rooms')
     .insert({
       user_id: user.id,
       pipeline_status: 'pending',
-      original_image_url: '',
+      room_type: roomType,
     })
     .select('id')
     .single()
@@ -45,6 +53,7 @@ export async function POST() {
     return NextResponse.json({ error: 'Failed to create room' }, { status: 500 })
   }
 
-  return NextResponse.json({ room_id: room.id })
+  // Return both id (spec) and room_id (legacy) for backward compat
+  return NextResponse.json({ id: room.id, room_id: room.id })
 }
 

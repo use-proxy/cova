@@ -1,6 +1,6 @@
 "use client"
 
-export type CaptureMode = "phone" | "webcam" | "upload"
+export type CaptureMode = "phone" | "upload"
 
 interface ModeSwitcherProps {
   mode: CaptureMode
@@ -8,9 +8,8 @@ interface ModeSwitcherProps {
 }
 
 const modes: { value: CaptureMode; label: string }[] = [
-  { value: "phone", label: "Use Phone" },
-  { value: "webcam", label: "Use Webcam" },
-  { value: "upload", label: "Upload Files" },
+  { value: "phone", label: "Scan QR" },
+  { value: "upload", label: "Upload Photo" },
 ]
 
 export function ModeSwitcher({ mode, onModeChange }: ModeSwitcherProps) {

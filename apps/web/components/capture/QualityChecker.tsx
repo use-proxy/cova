@@ -1,128 +1,126 @@
-"use client"
+'use client'
 
-import { useEffect, useRef, useCallback, useState } from "react"
-
-export interface QualityState {
-  passing: boolean
-  message: string | null
+export interface QualityResult {
+  passed: boolean
+  score: number
+  issues: QualityIssue[]
 }
 
-interface QualityCheckerProps {
-  videoRef: React.RefObject<HTMLVideoElement | null>
-  enabled: boolean
-  onQualityChange: (quality: QualityState) => void
+export interface QualityIssue {
+  type: 'blur' | 'too_dark' | 'too_small' | 'too_large'
+  message: string
+  severity: 'error' | 'warning'
 }
 
-function computeBlurScore(imageData: ImageData): number {
+const MIN_WIDTH = 800
+const MIN_HEIGHT = 600
+const MAX_FILE_SIZE_MB = 10
+const BLUR_THRESHOLD = 100
+
+export function checkImageQuality(
+  file: File,
+  imageElement: HTMLImageElement
+): Promise<QualityResult> {
+  return new Promise((resolve) => {
+    const issues: QualityIssue[] = []
+
+    // File size check
+    const sizeMB = file.size / (1024 * 1024)
+    if (sizeMB > MAX_FILE_SIZE_MB) {
+      issues.push({
+        type: 'too_large',
+        message: `Photo is ${sizeMB.toFixed(1)}MB. Please use a photo under 10MB.`,
+        severity: 'error',
+      })
+    }
+
+    // Resolution check
+    if (
+      imageElement.naturalWidth < MIN_WIDTH ||
+      imageElement.naturalHeight < MIN_HEIGHT
+    ) {
+      issues.push({
+        type: 'too_small',
+        message: 'Photo resolution is too low. Please use a higher quality photo.',
+        severity: 'error',
+      })
+    }
+
+    // Blur detection via Laplacian variance
+    try {
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        const sampleSize = 200
+        canvas.width = sampleSize
+        canvas.height = sampleSize
+
+        const srcX = (imageElement.naturalWidth - sampleSize) / 2
+        const srcY = (imageElement.naturalHeight - sampleSize) / 2
+
+        ctx.drawImage(
+          imageElement,
+          srcX, srcY, sampleSize, sampleSize,
+          0, 0, sampleSize, sampleSize
+        )
+
+        const imageData = ctx.getImageData(0, 0, sampleSize, sampleSize)
+        const variance = computeLaplacianVariance(imageData)
+
+        if (variance < BLUR_THRESHOLD) {
+          issues.push({
+            type: 'blur',
+            message: 'Photo appears blurry. For best results use a clear, steady shot.',
+            severity: 'warning',
+          })
+        }
+      }
+    } catch {
+      // Blur check failed — do not block upload
+    }
+
+    const errors = issues.filter((i) => i.severity === 'error')
+    const warnings = issues.filter((i) => i.severity === 'warning')
+    const score = Math.max(0, 100 - errors.length * 40 - warnings.length * 15)
+
+    resolve({
+      passed: errors.length === 0,
+      score,
+      issues,
+    })
+  })
+}
+
+function computeLaplacianVariance(imageData: ImageData): number {
   const { data, width, height } = imageData
-  // Convert to grayscale and compute Laplacian variance
   const gray = new Float32Array(width * height)
+
   for (let i = 0; i < width * height; i++) {
-    const idx = i * 4
-    gray[i] = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2]
+    gray[i] =
+      0.299 * (data[i * 4] ?? 0) +
+      0.587 * (data[i * 4 + 1] ?? 0) +
+      0.114 * (data[i * 4 + 2] ?? 0)
   }
 
   let sum = 0
   let sumSq = 0
   let count = 0
+
   for (let y = 1; y < height - 1; y++) {
     for (let x = 1; x < width - 1; x++) {
       const idx = y * width + x
       const laplacian =
-        gray[idx - width] + gray[idx + width] + gray[idx - 1] + gray[idx + 1] - 4 * gray[idx]
+        -4 * (gray[idx] ?? 0) +
+        (gray[idx - 1] ?? 0) +
+        (gray[idx + 1] ?? 0) +
+        (gray[idx - width] ?? 0) +
+        (gray[idx + width] ?? 0)
       sum += laplacian
       sumSq += laplacian * laplacian
       count++
     }
   }
+
   const mean = sum / count
   return sumSq / count - mean * mean
-}
-
-function computeMeanBrightness(imageData: ImageData): number {
-  const { data } = imageData
-  let sum = 0
-  const pixelCount = data.length / 4
-  for (let i = 0; i < data.length; i += 4) {
-    sum += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
-  }
-  return sum / pixelCount
-}
-
-export function useQualityChecker(
-  videoRef: React.RefObject<HTMLVideoElement | null>,
-  enabled: boolean
-): QualityState {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const [quality, setQuality] = useState<QualityState>({ passing: true, message: null })
-  const lastCheckRef = useRef(0)
-
-  const checkQuality = useCallback(() => {
-    const video = videoRef.current
-    if (!video || !enabled || video.readyState < 2) return
-
-    const now = Date.now()
-    if (now - lastCheckRef.current < 500) return
-    lastCheckRef.current = now
-
-    if (!canvasRef.current) {
-      canvasRef.current = document.createElement("canvas")
-    }
-    const canvas = canvasRef.current
-    // Use small size for performance
-    const w = 160
-    const h = 120
-    canvas.width = w
-    canvas.height = h
-    const ctx = canvas.getContext("2d", { willReadFrequently: true })
-    if (!ctx) return
-
-    ctx.drawImage(video, 0, 0, w, h)
-    const imageData = ctx.getImageData(0, 0, w, h)
-
-    const brightness = computeMeanBrightness(imageData)
-    if (brightness < 40) {
-      setQuality({ passing: false, message: "Too dark \u2014 find more light" })
-      return
-    }
-    if (brightness > 220) {
-      setQuality({ passing: false, message: "Too bright \u2014 avoid direct light" })
-      return
-    }
-
-    const blurScore = computeBlurScore(imageData)
-    if (blurScore < 80) {
-      setQuality({ passing: false, message: "Too much motion \u2014 hold steady" })
-      return
-    }
-
-    setQuality({ passing: true, message: null })
-  }, [videoRef, enabled])
-
-  useEffect(() => {
-    if (!enabled) {
-      setQuality({ passing: true, message: null })
-      return
-    }
-
-    let rafId: number
-    const loop = () => {
-      checkQuality()
-      rafId = requestAnimationFrame(loop)
-    }
-    rafId = requestAnimationFrame(loop)
-    return () => cancelAnimationFrame(rafId)
-  }, [enabled, checkQuality])
-
-  return quality
-}
-
-export function QualityCheckerComponent({ videoRef, enabled, onQualityChange }: QualityCheckerProps) {
-  const quality = useQualityChecker(videoRef, enabled)
-
-  useEffect(() => {
-    onQualityChange(quality)
-  }, [quality, onQualityChange])
-
-  return null
 }

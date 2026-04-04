@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useRef } from "react"
 import { Upload, X } from "lucide-react"
-import { ShotStrip } from "./ShotStrip"
 
 const TOTAL_SLOTS = 8
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/heic", "image/webp"]
@@ -160,9 +159,6 @@ export function UploadMode({ onComplete }: UploadModeProps) {
           ))}
         </div>
       )}
-
-      {/* Shot strip (small) */}
-      <ShotStrip shots={previews} currentIndex={slots.findIndex((s) => s === null)} />
 
       {/* Process button */}
       {allFilled && (

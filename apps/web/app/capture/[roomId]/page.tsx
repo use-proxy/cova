@@ -6,7 +6,6 @@ import { ArrowLeft } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { ModeSwitcher, type CaptureMode } from "@/components/capture/ModeSwitcher"
 import { QRMode } from "@/components/capture/QRMode"
-import { WebcamMode } from "@/components/capture/WebcamMode"
 import { UploadMode } from "@/components/capture/UploadMode"
 import { CompletionScreen } from "@/components/capture/CompletionScreen"
 
@@ -42,9 +41,9 @@ export default function CapturePage() {
     Array(TOTAL_SLOTS).fill(null)
   )
 
-  // Auto-select webcam on mobile (they're already on the phone)
+  // Mobile defaults to upload (direct camera via file input in upload mode)
   useEffect(() => {
-    if (isMobile) setMode("webcam")
+    if (isMobile) setMode("upload")
   }, [isMobile])
 
   const uploadPhotos = useCallback(
@@ -146,13 +145,6 @@ export default function CapturePage() {
       setUploading(false)
     },
     [roomId, TOTAL_SLOTS]
-  )
-
-  const handleWebcamComplete = useCallback(
-    (shots: string[]) => {
-      uploadPhotos(shots)
-    },
-    [uploadPhotos]
   )
 
   const handleUploadComplete = useCallback(
@@ -275,9 +267,6 @@ export default function CapturePage() {
               roomId={roomId}
               onSwitchToUpload={() => setMode("upload")}
             />
-          )}
-          {mode === "webcam" && (
-            <WebcamMode onComplete={handleWebcamComplete} />
           )}
           {mode === "upload" && (
             <UploadMode onComplete={handleUploadComplete} />
