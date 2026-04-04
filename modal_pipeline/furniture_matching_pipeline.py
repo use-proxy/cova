@@ -20,20 +20,73 @@ app = modal.App("cova-furniture-matching", image=image)
 
 ANTHROPIC_API_BASE = "https://api.anthropic.com/v1"
 
+# Maps Claude Vision labels → exact DB category strings
 LABEL_TO_CATEGORY = {
+    # Sofas
     "sofa": "sofa", "couch": "sofa", "sectional": "sofa", "loveseat": "sofa",
-    "chair": "chair", "armchair": "chair", "accent chair": "chair",
-    "coffee table": "table", "side table": "table", "dining table": "table",
-    "end table": "table", "console table": "table",
+    "settee": "sofa",
+    # Chairs
+    "accent chair": "accent_chair", "armchair": "accent_chair", "lounge chair": "accent_chair",
+    "chair": "accent_chair",
+    "dining chair": "dining_chair", "side chair": "dining_chair",
+    "office chair": "office_chair", "desk chair": "office_chair",
+    # Tables
+    "coffee table": "coffee_table", "cocktail table": "coffee_table",
+    "side table": "side_table", "end table": "side_table", "accent table": "side_table",
+    "dining table": "dining_table", "kitchen table": "dining_table",
+    "console table": "side_table", "entry table": "side_table",
+    "nightstand": "nightstand", "bedside table": "nightstand", "night stand": "nightstand",
+    # Beds
     "bed": "bed", "bed frame": "bed", "platform bed": "bed",
-    "bookshelf": "storage", "shelving unit": "storage", "dresser": "storage",
-    "cabinet": "storage", "wardrobe": "storage",
-    "floor lamp": "lighting", "table lamp": "lighting", "pendant light": "lighting",
-    "rug": "rug", "area rug": "rug",
-    "desk": "desk", "office desk": "desk",
+    # Storage
+    "bookshelf": "bookshelf", "bookcase": "bookshelf",
+    "shelving unit": "storage", "shelf": "storage", "cabinet": "storage",
+    "wardrobe": "wardrobe", "closet": "wardrobe",
+    "dresser": "dresser", "chest of drawers": "dresser",
+    "media console": "media_unit", "tv stand": "media_unit", "entertainment center": "media_unit",
+    "storage": "storage",
+    # Lighting
+    "floor lamp": "floor_lamp", "standing lamp": "floor_lamp",
+    "table lamp": "table_lamp", "desk lamp": "table_lamp",
+    "pendant light": "ceiling_light", "chandelier": "ceiling_light",
+    "ceiling light": "ceiling_light", "hanging lamp": "ceiling_light",
+    "lamp": "floor_lamp",
+    # Rugs
+    "rug": "rug", "area rug": "rug", "carpet": "rug",
+    # Other
+    "desk": "desk", "office desk": "desk", "writing desk": "desk",
+    "ottoman": "ottoman", "pouf": "ottoman", "footstool": "ottoman",
+    "mirror": "mirror", "wall mirror": "mirror",
 }
 
-VALID_CATEGORIES = ["sofa", "chair", "table", "bed", "storage", "lighting", "rug", "decor", "desk"]
+# All category values that actually exist in the products table
+VALID_CATEGORIES = [
+    "sofa", "accent_chair", "dining_chair", "office_chair",
+    "coffee_table", "dining_table", "side_table", "nightstand",
+    "bed", "storage", "bookshelf", "wardrobe", "dresser", "media_unit",
+    "floor_lamp", "table_lamp", "ceiling_light",
+    "rug", "decor", "desk", "ottoman", "mirror",
+    "wall_art", "soft_furnishing", "window_treatment", "other",
+]
+
+# Categories Claude Vision should use in prompts (excludes non-furniture categories)
+PROMPT_CATEGORIES = [c for c in VALID_CATEGORIES
+                     if c not in {"wall_art", "soft_furnishing", "window_treatment", "other"}]
+
+# Category groups for broader matching when exact category has few results
+CATEGORY_GROUPS = {
+    "tables": ["coffee_table", "dining_table", "side_table", "nightstand"],
+    "chairs": ["accent_chair", "dining_chair", "office_chair"],
+    "lighting": ["floor_lamp", "table_lamp", "ceiling_light"],
+    "storage_all": ["storage", "bookshelf", "wardrobe", "dresser", "media_unit"],
+}
+
+def get_category_group(category: str) -> list:
+    """Return related categories for broader matching fallback."""
+    for group_cats in CATEGORY_GROUPS.values():
+        if category in group_cats:
+            return group_cats
+    return [category]
 
 
 def detect_furniture_with_claude(pano_bytes, anthropic_key, style_blend):
@@ -44,17 +97,26 @@ def detect_furniture_with_claude(pano_bytes, anthropic_key, style_blend):
     dominant_styles = [s for s, w in sorted(style_blend.items(), key=lambda x: x[1], reverse=True) if w > 0.1]
     style_context = ", ".join(dominant_styles)
 
+    cats_str = ", ".join(PROMPT_CATEGORIES)
+
     prompt = f"""Analyze this equirectangular 360° panorama of a redesigned room in {style_context} style.
 
 Identify up to 8 distinct, purchasable furniture pieces. Focus on large items:
-sofas, chairs, tables, beds, storage, lamps, rugs, desks.
+sofas, chairs, tables, beds, shelves, lamps, rugs, desks.
 
 For each piece provide:
-1. label: simple name (e.g. "sofa", "coffee table")
-2. description: detailed (material, color, style, shape)
-3. category: one of: sofa, chair, table, bed, storage, lighting, rug, decor, desk
-4. azimuth_degrees: horizontal position (0=left edge, 180=center, 360=right edge)
-5. search_query: 8-12 word query for finding this product online
+1. label: simple descriptive name (e.g. "accent chair", "coffee table", "floor lamp")
+2. description: detailed visual description including material, color, finish, shape, and style
+3. category: MUST be one of these exact values: {cats_str}
+4. azimuth_degrees: horizontal position in panorama, 0-360 clockwise (0=left edge, 180=center, 360=right edge)
+5. elevation_degrees: vertical position, -90 (floor) to +90 (ceiling), 0 = eye level. Guide:
+   - Floor items (rug, coffee table): -30 to -40
+   - Seated furniture (sofa, chair, ottoman): -15 to -25
+   - Standing furniture (shelving, dresser, side table): -5 to +10
+   - Wall art, mirrors: +5 to +20
+   - Floor lamps (base on floor, shade near eye level): -5 to +5
+   - Pendant/ceiling lights: +50 to +75
+6. search_query: 8-15 word descriptive shopping query. MUST include: material (wood/metal/fabric/leather), primary color, style ({style_context}), specific furniture type, and 2-3 shape/detail descriptors. Example: "mid-century walnut round coffee table with tapered splayed legs minimalist"
 
 Return ONLY a JSON array. No explanation, no markdown."""
 
@@ -89,21 +151,37 @@ Return ONLY a JSON array. No explanation, no markdown."""
 
     validated = []
     for item in furniture_list:
-        label = item.get("label", "").lower()
-        category = item.get("category", "").lower()
+        label = item.get("label", "").lower().strip()
+        category = item.get("category", "").lower().strip()
+        # Normalize category to match DB exactly
         if category not in VALID_CATEGORIES:
-            category = LABEL_TO_CATEGORY.get(label, "decor")
+            # Try label-based lookup first
+            category = LABEL_TO_CATEGORY.get(label)
+            if not category:
+                # Try partial matching on label words
+                for map_key, map_val in LABEL_TO_CATEGORY.items():
+                    if map_key in label or label in map_key:
+                        category = map_val
+                        break
+            if not category:
+                category = "decor"
+        search_query = item.get("search_query", "").strip()
+        if len(search_query.split()) < 6:
+            # Enrich thin search queries with description + style
+            desc = item.get("description", label)
+            search_query = f"{desc} {style_context} style"
         validated.append({
             "label": label,
             "description": item.get("description", label),
             "category": category,
             "azimuth_degrees": float(item.get("azimuth_degrees", 180)),
-            "search_query": item.get("search_query", item.get("description", label)),
+            "elevation_degrees": float(item.get("elevation_degrees", -25)),
+            "search_query": search_query,
         })
 
     print(f"[furniture] Detected {len(validated)} pieces via Claude Vision")
     for f in validated:
-        print(f"  - {f['label']} ({f['category']}) @ {f['azimuth_degrees']}°")
+        print(f"  - {f['label']} ({f['category']}) @ az={f['azimuth_degrees']}° el={f['elevation_degrees']}°")
     return validated
 
 
@@ -117,33 +195,46 @@ def detect_furniture_fallback(style_blend):
     FALLBACK_FURNITURE = {
         "japandi": [
             {"label": "sofa", "description": "grey linen two-seat sofa with clean lines and tapered oak legs",
-             "category": "sofa", "azimuth_degrees": 160, "search_query": "grey linen minimalist sofa tapered wood legs japandi"},
+             "category": "sofa", "azimuth_degrees": 160, "elevation_degrees": -20,
+             "search_query": "grey linen two-seat sofa clean lines tapered oak legs japandi minimalist living room"},
             {"label": "sofa", "description": "grey linen three-seat sofa with low profile and cushioned back",
-             "category": "sofa", "azimuth_degrees": 200, "search_query": "grey linen low profile sofa minimalist living room"},
+             "category": "sofa", "azimuth_degrees": 200, "elevation_degrees": -20,
+             "search_query": "grey linen three-seat low profile sofa cushioned back minimalist scandinavian"},
             {"label": "coffee table", "description": "round natural oak coffee table with tapered legs, minimalist design",
-             "category": "table", "azimuth_degrees": 180, "search_query": "round natural oak coffee table minimalist japandi"},
+             "category": "coffee_table", "azimuth_degrees": 180, "elevation_degrees": -35,
+             "search_query": "round natural solid oak coffee table tapered splayed legs minimalist japandi living room"},
             {"label": "accent chair", "description": "dark brown leather accent chair with wooden frame",
-             "category": "chair", "azimuth_degrees": 220, "search_query": "brown leather accent chair wood frame minimalist"},
-            {"label": "floor lamp", "description": "tall modern floor lamp with white shade and slim metal base",
-             "category": "lighting", "azimuth_degrees": 100, "search_query": "modern floor lamp white shade slim metal base"},
+             "category": "accent_chair", "azimuth_degrees": 220, "elevation_degrees": -18,
+             "search_query": "dark brown faux leather accent chair solid wood frame mid-century modern minimalist"},
+            {"label": "floor lamp", "description": "tall modern floor lamp with white fabric shade and slim metal base",
+             "category": "floor_lamp", "azimuth_degrees": 100, "elevation_degrees": 0,
+             "search_query": "modern tall floor lamp white fabric drum shade slim brushed nickel metal base minimalist"},
             {"label": "area rug", "description": "round natural jute area rug in warm beige tone",
-             "category": "rug", "azimuth_degrees": 180, "search_query": "round natural jute area rug beige minimalist"},
+             "category": "rug", "azimuth_degrees": 180, "elevation_degrees": -38,
+             "search_query": "round natural handwoven jute area rug warm beige tone minimalist boho living room"},
             {"label": "shelving unit", "description": "wall-mounted oak floating shelves with minimal brackets",
-             "category": "storage", "azimuth_degrees": 300, "search_query": "oak floating wall shelves minimal japandi"},
+             "category": "bookshelf", "azimuth_degrees": 300, "elevation_degrees": 5,
+             "search_query": "wall-mounted natural oak floating shelves invisible bracket minimalist japandi living room"},
             {"label": "side table", "description": "small oak side cabinet with clean lines and natural finish",
-             "category": "table", "azimuth_degrees": 320, "search_query": "small oak side table cabinet natural minimalist"},
+             "category": "side_table", "azimuth_degrees": 320, "elevation_degrees": -15,
+             "search_query": "small natural oak side table clean lines rounded edges minimalist scandinavian bedroom"},
         ],
         "minimalist": [
             {"label": "sofa", "description": "white modular sofa with clean lines", "category": "sofa",
-             "azimuth_degrees": 180, "search_query": "white modular sofa minimalist clean lines"},
-            {"label": "coffee table", "description": "glass and steel coffee table", "category": "table",
-             "azimuth_degrees": 180, "search_query": "glass steel coffee table modern minimalist"},
-            {"label": "chair", "description": "matte black accent chair", "category": "chair",
-             "azimuth_degrees": 220, "search_query": "matte black accent chair modern minimalist"},
-            {"label": "floor lamp", "description": "arc floor lamp chrome finish", "category": "lighting",
-             "azimuth_degrees": 120, "search_query": "arc floor lamp chrome modern minimalist"},
-            {"label": "rug", "description": "light grey area rug simple pattern", "category": "rug",
-             "azimuth_degrees": 180, "search_query": "light grey area rug minimalist simple"},
+             "azimuth_degrees": 180, "elevation_degrees": -20,
+             "search_query": "white modular sectional sofa clean lines boucle fabric minimalist modern living room"},
+            {"label": "coffee table", "description": "glass and steel coffee table", "category": "coffee_table",
+             "azimuth_degrees": 180, "elevation_degrees": -35,
+             "search_query": "tempered glass top coffee table brushed steel frame modern minimalist rectangular living room"},
+            {"label": "accent chair", "description": "matte black accent chair", "category": "accent_chair",
+             "azimuth_degrees": 220, "elevation_degrees": -18,
+             "search_query": "matte black faux leather accent chair sleek metal legs modern minimalist living room"},
+            {"label": "floor lamp", "description": "arc floor lamp chrome finish", "category": "floor_lamp",
+             "azimuth_degrees": 120, "elevation_degrees": 0,
+             "search_query": "tall arc floor lamp chrome polished finish white marble base modern minimalist"},
+            {"label": "area rug", "description": "light grey area rug simple pattern", "category": "rug",
+             "azimuth_degrees": 180, "elevation_degrees": -38,
+             "search_query": "light grey solid color area rug low pile soft polyester minimalist modern living room"},
         ],
     }
 
@@ -160,34 +251,132 @@ def embed_text_with_clip(text, clip_embed_url):
     return resp.json()["embedding"]
 
 
-def search_products(embedding, category, supabase_url, supabase_key, match_count=3):
-    """Search products by CLIP embedding via existing Supabase RPC."""
+def _filter_by_category(results, category, match_count):
+    """Apply exact -> group -> unfiltered category matching."""
+    if not category:
+        return results[:match_count]
+    exact = [r for r in results if r.get("category") == category]
+    if len(exact) >= match_count:
+        return exact[:match_count]
+    group_cats = get_category_group(category)
+    if len(group_cats) > 1:
+        grouped = [r for r in results if r.get("category") in group_cats]
+        if len(grouped) >= match_count:
+            return grouped[:match_count]
+        if grouped:
+            return grouped
+    return exact if exact else results[:match_count]
+
+
+def _rpc_search(supabase_url, supabase_key, rpc_name, embedding, fetch_count):
+    """Call a Supabase RPC search function."""
     import requests
     resp = requests.post(
-        f"{supabase_url}/rest/v1/rpc/search_products_by_embedding",
+        f"{supabase_url}/rest/v1/rpc/{rpc_name}",
         headers={
             "apikey": supabase_key,
             "Authorization": f"Bearer {supabase_key}",
             "Content-Type": "application/json",
         },
-        json={
-            "query_embedding": embedding,
-            "match_count": match_count * 3,  # fetch extra, filter by category
-            "match_threshold": 0.0,
-        },
+        json={"query_embedding": embedding, "match_count": fetch_count, "match_threshold": 0.0},
         timeout=30,
     )
+    return resp
+
+
+def search_products(embedding, category, supabase_url, supabase_key, match_count=3):
+    """Search products by CLIP embedding. Tries fusion first, falls back to image-only."""
+    fetch_count = match_count * 5
+
+    # Try fusion embeddings first (higher quality)
+    fusion_resp = _rpc_search(supabase_url, supabase_key, "search_products_by_fusion_embedding", embedding, fetch_count)
+    if fusion_resp.ok:
+        fusion_results = fusion_resp.json()
+        if fusion_results:
+            filtered = _filter_by_category(fusion_results, category, match_count)
+            if filtered:
+                print(f"  [fusion] Using fusion embeddings (top sim={filtered[0].get('similarity', 0):.3f})")
+                return filtered
+            # Fusion had results but none matched category — return best by similarity
+            return fusion_results[:match_count]
+
+    # Fallback to image-only embeddings (fusion RPC doesn't exist yet or returned error)
+    resp = _rpc_search(supabase_url, supabase_key, "search_products_by_embedding", embedding, fetch_count)
     if not resp.ok:
         print(f"[furniture] Search failed: {resp.status_code} {resp.text[:200]}")
         return []
-    results = resp.json()
-    # Filter by category
-    if category:
-        results = [r for r in results if r.get("category") == category]
-    return results[:match_count]
+    return _filter_by_category(resp.json(), category, match_count)
 
 
-def store_matches(room_id, furniture_item, matches, supabase_client):
+def detect_2d_hotspots(perspective_bytes, furniture_labels, anthropic_key):
+    """Use Claude Vision on perspective render to get 2D hotspot positions (x%, y%)."""
+    import requests
+
+    img_b64 = base64.standard_b64encode(perspective_bytes).decode("utf-8")
+
+    # Detect media type
+    media_type = "image/jpeg"
+    if perspective_bytes[:4] == b'\x89PNG':
+        media_type = "image/png"
+
+    labels_str = ", ".join(f'"{l}"' for l in furniture_labels)
+    prompt = (
+        f"For each furniture piece listed, identify its center point in this image and return JSON:\n"
+        f"[{{\"label\": \"sofa\", \"x\": 45.2, \"y\": 62.1}}, ...]\n"
+        f"x and y are percentages from top-left corner (0-100).\n"
+        f"Only return JSON, no other text.\n\n"
+        f"Furniture pieces to locate: [{labels_str}]"
+    )
+
+    resp = requests.post(
+        f"{ANTHROPIC_API_BASE}/messages",
+        headers={
+            "x-api-key": anthropic_key,
+            "anthropic-version": "2023-06-01",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": "claude-sonnet-4-20250514",
+            "max_tokens": 1024,
+            "messages": [{
+                "role": "user",
+                "content": [
+                    {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": img_b64}},
+                    {"type": "text", "text": prompt},
+                ],
+            }],
+        },
+        timeout=30,
+    )
+
+    resp_json = resp.json()
+    if "error" in resp_json:
+        raise RuntimeError(f"Anthropic API error: {resp_json['error']}")
+
+    content = resp_json["content"][0]["text"].strip()
+    if content.startswith("```"):
+        content = content.split("```")[1]
+        if content.startswith("json"):
+            content = content[4:]
+    content = content.strip()
+    hotspots = json.loads(content)
+
+    # Build label -> (x, y) lookup
+    lookup = {}
+    for h in hotspots:
+        label = h.get("label", "").lower().strip()
+        x = float(h.get("x", -1))
+        y = float(h.get("y", -1))
+        if 0 <= x <= 100 and 0 <= y <= 100:
+            lookup[label] = (x, y)
+
+    print(f"[hotspots] Detected {len(lookup)} 2D positions from perspective render")
+    for label, (x, y) in lookup.items():
+        print(f"  - {label}: ({x:.1f}%, {y:.1f}%)")
+    return lookup
+
+
+def store_matches(room_id, furniture_item, matches, supabase_client, hotspot_lookup=None):
     """Store furniture matches in room_products table."""
     if not matches:
         return 0
@@ -196,18 +385,32 @@ def store_matches(room_id, furniture_item, matches, supabase_client):
         "room_id", room_id
     ).eq("furniture_label", furniture_item["label"]).execute()
 
+    # Look up 2D hotspot position
+    label = furniture_item["label"]
+    hotspot_x = None
+    hotspot_y = None
+    if hotspot_lookup:
+        pos = hotspot_lookup.get(label)
+        if pos:
+            hotspot_x, hotspot_y = pos
+
     records = []
     for rank, m in enumerate(matches[:3], start=1):
-        records.append({
+        record = {
             "room_id": room_id,
             "product_id": m["id"],
-            "furniture_label": furniture_item["label"],
+            "furniture_label": label,
             "furniture_description": furniture_item["description"],
             "similarity_score": m.get("similarity", 0),
             "rank": rank,
             "azimuth_degrees": furniture_item["azimuth_degrees"],
+            "elevation_degrees": furniture_item.get("elevation_degrees", -25),
             "is_unlocked": False,
-        })
+        }
+        if hotspot_x is not None:
+            record["hotspot_x"] = hotspot_x
+            record["hotspot_y"] = hotspot_y
+        records.append(record)
     if records:
         supabase_client.table("room_products").insert(records).execute()
     return len(records)
@@ -220,7 +423,7 @@ def store_matches(room_id, furniture_item, matches, supabase_client):
         modal.Secret.from_name("anthropic-credentials"),
     ],
 )
-def match_furniture_to_products(room_id: str, user_id: str) -> dict:
+def match_furniture_to_products(room_id: str, user_id: str, fixed_furniture: list = None) -> dict:
     """Main pipeline: detect furniture + match to catalog."""
     import requests as req
     from supabase import create_client
@@ -238,7 +441,7 @@ def match_furniture_to_products(room_id: str, user_id: str) -> dict:
 
     try:
         room = client.table("rooms").select(
-            "redesign_pano_url, marble_plus_pano_url, marble_pano_url, style_blend, room_type"
+            "redesign_pano_url, marble_plus_pano_url, marble_pano_url, perspective_render_url, style_blend, room_type, fixed_furniture"
         ).eq("id", room_id).single().execute().data
 
         if not room:
@@ -274,9 +477,26 @@ def match_furniture_to_products(room_id: str, user_id: str) -> dict:
         if not furniture_items:
             raise RuntimeError("No furniture detected")
 
-        # Match each piece
+        # Filter out fixed furniture (within ±20° azimuth of a fixed piece)
+        room_fixed = fixed_furniture or room.get("fixed_furniture") or []
+        if room_fixed:
+            fixed_azimuths = [f.get("azimuth_degrees", f.get("azimuth", 0)) for f in room_fixed if isinstance(f, dict)]
+            filtered_items = []
+            for item in furniture_items:
+                item_az = item.get("azimuth_degrees", 0)
+                is_near_fixed = any(
+                    abs((item_az - faz + 180) % 360 - 180) < 20
+                    for faz in fixed_azimuths
+                )
+                if not is_near_fixed:
+                    filtered_items.append(item)
+                else:
+                    print(f"  [fixed] Skipping {item['label']} @ az={item_az}° (near fixed furniture)")
+            furniture_items = filtered_items if filtered_items else furniture_items
+
+        # Match each piece via CLIP
         all_matches = []
-        total_stored = 0
+        matched_items = []  # (furniture_item, matches) pairs for storing after hotspot detection
 
         for item in furniture_items:
             print(f"\n[furniture] Matching: {item['label']} ({item['category']})")
@@ -295,8 +515,7 @@ def match_furniture_to_products(room_id: str, user_id: str) -> dict:
             if matches:
                 top = matches[0]
                 print(f"  Top: {top.get('name','?')[:50]} (${top.get('price',0):.2f}, sim={top.get('similarity',0):.3f})")
-                stored = store_matches(room_id, item, matches, client)
-                total_stored += stored
+                matched_items.append((item, matches))
                 all_matches.append({
                     "furniture": item["label"],
                     "category": item["category"],
@@ -308,10 +527,36 @@ def match_furniture_to_products(room_id: str, user_id: str) -> dict:
                 print(f"  No matches found")
             time.sleep(0.3)
 
+        # 2D hotspot detection from perspective render
+        hotspot_lookup = None
+        perspective_url = room.get("perspective_render_url")
+        if perspective_url:
+            try:
+                print(f"\n[hotspots] Detecting 2D positions from perspective render...")
+                persp_resp = req.get(perspective_url, timeout=60)
+                if persp_resp.ok:
+                    labels = [item["label"] for item, _ in matched_items]
+                    hotspot_lookup = detect_2d_hotspots(persp_resp.content, labels, anthropic_key)
+                else:
+                    print(f"[hotspots] Failed to download perspective render: {persp_resp.status_code}")
+            except Exception as e:
+                print(f"[hotspots] 2D detection failed (falling back to azimuth/elevation): {e}")
+        else:
+            print(f"\n[hotspots] No perspective_render_url — using azimuth/elevation positioning")
+
+        # Store all matches with hotspot data
+        total_stored = 0
+        for item, matches in matched_items:
+            stored = store_matches(room_id, item, matches, client, hotspot_lookup=hotspot_lookup)
+            total_stored += stored
+
+        # Check current status — don't overwrite 'complete' if Plus already finished
+        current = client.table("rooms").select("redesign_status").eq("id", room_id).single().execute().data
+        final_status = "complete" if (current and current.get("redesign_status") == "complete") else "video_ready"
+
         client.table("rooms").update({
             "furniture_matches_count": total_stored,
-            "redesign_status": "complete",
-            "status": "complete",
+            "redesign_status": final_status,
         }).eq("id", room_id).execute()
 
         print(f"\n[furniture] Done! {len(furniture_items)} detected, {total_stored} matches stored")
@@ -340,10 +585,11 @@ def match_furniture_to_products(room_id: str, user_id: str) -> dict:
 def furniture_matching_webhook(item: dict):
     room_id = item.get("room_id")
     user_id = item.get("user_id", "test-user")
+    fixed_furniture = item.get("fixed_furniture", [])
     if not room_id:
         return {"error": "room_id required"}
     try:
-        result = match_furniture_to_products.local(room_id, user_id)
+        result = match_furniture_to_products.local(room_id, user_id, fixed_furniture=fixed_furniture)
         return {"status": "complete", **result}
     except Exception as e:
         return {"status": "error", "error": str(e)}

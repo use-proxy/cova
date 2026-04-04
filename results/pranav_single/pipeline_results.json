@@ -1,0 +1,43 @@
+{
+  "input_photo": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/sign/room-uploads/IMG_9885.JPG?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84ODk1MjRhNy1iZmE1LTQzYzctYjVlNy0wN2RjMDBkMzIzMTUiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJyb29tLXVwbG9hZHMvSU1HXzk4ODUuSlBHIiwiaWF0IjoxNzc1MTY0NTkxLCJleHAiOjE3NzU3NjkzOTF9.kmBSw4JgmbH3eqLGpyswYN76vXUaV1gvJr_ILvjWwqc",
+  "depth_map_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/sign/room-videos/test-pranav-single/stage0_depth.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84ODk1MjRhNy1iZmE1LTQzYzctYjVlNy0wN2RjMDBkMzIzMTUiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJyb29tLXZpZGVvcy90ZXN0LXByYW5hdi1zaW5nbGUvc3RhZ2UwX2RlcHRoLnBuZyIsImlhdCI6MTc3NTE2NjE2NiwiZXhwIjoxNzc1MjUyNTY2fQ.ralFT76E-Mg_p3rSt5MImmReTGVeo4pIes_aHMmzdyw",
+  "mask_original_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/sign/room-videos/test-pranav-single/mask_original.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84ODk1MjRhNy1iZmE1LTQzYzctYjVlNy0wN2RjMDBkMzIzMTUiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJyb29tLXZpZGVvcy90ZXN0LXByYW5hdi1zaW5nbGUvbWFza19vcmlnaW5hbC5wbmciLCJpYXQiOjE3NzUxNjYyMTUsImV4cCI6MTc3NTI1MjYxNX0.fO5ZKBrOfMYyAdPl4ujWe2SK2vHonly9EjKhiAc-ZZU",
+  "mask_dilated_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/sign/room-videos/test-pranav-single/mask_dilated.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84ODk1MjRhNy1iZmE1LTQzYzctYjVlNy0wN2RjMDBkMzIzMTUiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJyb29tLXZpZGVvcy90ZXN0LXByYW5hdi1zaW5nbGUvbWFza19kaWxhdGVkLnBuZyIsImlhdCI6MTc3NTE2NjIxNiwiZXhwIjoxNzc1MjUyNjE2fQ.HTAIDh729mtjRCU03tCcDOGdp0ywhI7w51RSfAt2gq8",
+  "mask_eroded_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/sign/room-videos/test-pranav-single/mask_eroded.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84ODk1MjRhNy1iZmE1LTQzYzctYjVlNy0wN2RjMDBkMzIzMTUiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJyb29tLXZpZGVvcy90ZXN0LXByYW5hdi1zaW5nbGUvbWFza19lcm9kZWQucG5nIiwiaWF0IjoxNzc1MTY2MjE2LCJleHAiOjE3NzUyNTI2MTZ9.CckTA3M7kPCUQnNZwWqmtz7LTeghRX-Uf2yYXXOnTwM",
+  "pass_a_clean_room_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/sign/room-videos/test-pranav-single/stage2_pass_a_clean.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84ODk1MjRhNy1iZmE1LTQzYzctYjVlNy0wN2RjMDBkMzIzMTUiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJyb29tLXZpZGVvcy90ZXN0LXByYW5hdi1zaW5nbGUvc3RhZ2UyX3Bhc3NfYV9jbGVhbi5wbmciLCJpYXQiOjE3NzUxNjYyNDMsImV4cCI6MTc3NTI1MjY0M30.2n7uxdE6vxTMsNZ_ZnBDP9iBaVDpFmNaHxCRJxbI228",
+  "pass_b_v1_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/sign/room-videos/test-pranav-single/stage2_pass_b_v1.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84ODk1MjRhNy1iZmE1LTQzYzctYjVlNy0wN2RjMDBkMzIzMTUiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJyb29tLXZpZGVvcy90ZXN0LXByYW5hdi1zaW5nbGUvc3RhZ2UyX3Bhc3NfYl92MS5wbmciLCJpYXQiOjE3NzUxNjYyNzIsImV4cCI6MTc3NTI1MjY3Mn0.jxR2g2enJTk9Wz7aa3T-YynD_vw5RePUf5DY0uUU6Qo",
+  "pass_b_v2_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/sign/room-videos/test-pranav-single/stage2_pass_b_v2.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84ODk1MjRhNy1iZmE1LTQzYzctYjVlNy0wN2RjMDBkMzIzMTUiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJyb29tLXZpZGVvcy90ZXN0LXByYW5hdi1zaW5nbGUvc3RhZ2UyX3Bhc3NfYl92Mi5wbmciLCJpYXQiOjE3NzUxNjYyNzMsImV4cCI6MTc3NTI1MjY3M30.YnC8xuVlN_LzZDbbUzHwUeUkQjOY6JBsOVHj7w1-SAs",
+  "pass_b_v3_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/sign/room-videos/test-pranav-single/stage2_pass_b_v3.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84ODk1MjRhNy1iZmE1LTQzYzctYjVlNy0wN2RjMDBkMzIzMTUiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJyb29tLXZpZGVvcy90ZXN0LXByYW5hdi1zaW5nbGUvc3RhZ2UyX3Bhc3NfYl92My5wbmciLCJpYXQiOjE3NzUxNjYyNzUsImV4cCI6MTc3NTI1MjY3NX0.cybXY6JB2LD5aZmBY9riPT3H80qAiJeHMJyb9nB7-s0",
+  "quality_gate_winner": "v2",
+  "quality_gate_scores": {
+    "v1": {
+      "photorealism": 5,
+      "style_match": 4,
+      "lighting": 5,
+      "room_recognition": 7,
+      "designer_quality": 4,
+      "total": 25
+    },
+    "v2": {
+      "photorealism": 6,
+      "style_match": 6,
+      "lighting": 6,
+      "room_recognition": 7,
+      "designer_quality": 6,
+      "total": 31
+    },
+    "v3": {
+      "photorealism": 5,
+      "style_match": 5,
+      "lighting": 5,
+      "room_recognition": 7,
+      "designer_quality": 4,
+      "total": 26
+    }
+  },
+  "final_redesign_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/sign/room-videos/test-pranav-single/stage4_final_redesign.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84ODk1MjRhNy1iZmE1LTQzYzctYjVlNy0wN2RjMDBkMzIzMTUiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJyb29tLXZpZGVvcy90ZXN0LXByYW5hdi1zaW5nbGUvc3RhZ2U0X2ZpbmFsX3JlZGVzaWduLnBuZyIsImlhdCI6MTc3NTE2NjMwNCwiZXhwIjoxNzc1MjUyNzA0fQ.k6PSaNNVIY0axQC0mmIiKI7BY1G067y3c6RSGZfHfJs",
+  "marble_world_url": "",
+  "marble_spz_full": "",
+  "marble_spz_500k": "",
+  "total_time_seconds": 180
+}

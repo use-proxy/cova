@@ -2,21 +2,30 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-const STATUS_MESSAGES: Record<string, { message: string; progress: number }> = {
-  pending: { message: 'Getting ready...', progress: 0 },
-  queued: { message: 'Queued for processing...', progress: 5 },
-  video_processing: { message: 'Processing your video...', progress: 10 },
-  marble_generating: { message: 'Building your room...', progress: 25 },
-  pano_ready: { message: 'Room captured! Redesigning...', progress: 35 },
-  kontext_processing: { message: 'AI is redesigning your space...', progress: 50 },
-  kontext_complete: { message: 'Redesign complete! Building 3D...', progress: 65 },
-  marble_plus_queued: { message: 'Queued for 3D generation...', progress: 68 },
-  marble_plus_processing: { message: 'Creating your 3D world...', progress: 80 },
-  marble_plus_complete: { message: 'Finding matching furniture...', progress: 90 },
-  matching_queued: { message: 'Queued for furniture matching...', progress: 92 },
-  matching_products: { message: 'Matching furniture to products...', progress: 95 },
-  complete: { message: 'Your redesign is ready!', progress: 100 },
-  error: { message: 'Something went wrong. Please try again.', progress: 0 },
+const PROGRESS_MAP: Record<string, { percent: number; message: string }> = {
+  pending: { percent: 0, message: 'Getting ready...' },
+  queued: { percent: 5, message: 'Queued for processing...' },
+  uploading_photos: { percent: 5, message: 'Uploading your photos...' },
+  generating_mini_world: { percent: 15, message: 'Scanning your room...' },
+  mini_world_ready: { percent: 25, message: 'Room captured!' },
+  awaiting_furniture_selection: { percent: 30, message: 'Waiting for your selections...' },
+  kontext_processing: { percent: 45, message: 'Redesigning your room...' },
+  kontext_complete: { percent: 60, message: 'Design complete. Building your world...' },
+  depth_processing: { percent: 70, message: 'Analyzing your space...' },
+  video_processing: { percent: 85, message: 'Crafting your walkthrough...' },
+  video_ready: { percent: 95, message: 'Almost ready...' },
+  matching_products: { percent: 97, message: 'Finding your furniture...' },
+  matching_queued: { percent: 92, message: 'Queued for furniture matching...' },
+  plus_processing: { percent: 98, message: 'Enhancing 3D quality...' },
+  complete: { percent: 100, message: 'Your room is ready!' },
+  error: { percent: 0, message: 'Something went wrong. Please try again.' },
+  // Legacy statuses
+  video_processing_legacy: { percent: 10, message: 'Processing your video...' },
+  marble_generating: { percent: 25, message: 'Building your room...' },
+  pano_ready: { percent: 35, message: 'Room captured! Redesigning...' },
+  marble_plus_queued: { percent: 68, message: 'Queued for 3D generation...' },
+  marble_plus_processing: { percent: 80, message: 'Creating your 3D world...' },
+  marble_plus_complete: { percent: 90, message: 'Finding matching furniture...' },
 }
 
 export async function GET(request: NextRequest) {
@@ -59,28 +68,79 @@ export async function GET(request: NextRequest) {
   const { data: room } = await supabase
     .from('rooms')
     .select(
-      'id, status, redesign_status, marble_spz_url, marble_spz_url_500k, marble_plus_thumbnail_url, furniture_matches_count, redesign_pano_url'
+      `id, status, redesign_status,
+       marble_spz_url, marble_spz_url_500k, marble_spz_url_100k,
+       marble_mini_spz_url, marble_plus_thumbnail_url,
+       furniture_matches_count, redesign_pano_url,
+       flythrough_ready, flythrough_video_url, flythrough_duration_seconds,
+       plus_upgrade_ready, plus_started_at, plus_completed_at,
+       hotspot_timing, pipeline_mode, pipeline_cost_log,
+       pre_detection_result, fixed_furniture, capture_mode`
     )
     .eq('id', roomId)
     .eq('user_id', user.id)
     .single()
 
+  const { data: roomProducts } = await supabase
+    .from('room_products')
+    .select('id, hotspot_x, hotspot_y, furniture_label, matches')
+    .eq('room_id', roomId)
+
   if (!room) {
     return NextResponse.json({ error: 'Room not found' }, { status: 404 })
   }
 
-  const statusInfo = STATUS_MESSAGES[room.redesign_status ?? 'pending'] ?? {
-    message: 'Processing...',
-    progress: 50,
+  const statusKey = room.redesign_status ?? 'pending'
+  const statusInfo = PROGRESS_MAP[statusKey] ?? { percent: 50, message: 'Processing...' }
+
+  // Compute Plus ETA
+  let plusEtaSeconds: number | null = null
+  if (room.plus_started_at && !room.plus_upgrade_ready) {
+    const elapsed = (Date.now() - new Date(room.plus_started_at).getTime()) / 1000
+    plusEtaSeconds = Math.max(0, Math.round(330 - elapsed))
   }
 
   return NextResponse.json({
     roomId,
-    status: room.redesign_status,
-    message: statusInfo.message,
-    progress: statusInfo.progress,
-    isComplete: room.redesign_status === 'complete',
-    isError: room.redesign_status === 'error',
+    redesign_status: statusKey,
+    progress_percent: statusInfo.percent,
+    progress_message: statusInfo.message,
+    isComplete: statusKey === 'complete',
+    isError: statusKey === 'error',
+
+    // Flythrough video
+    flythrough_ready: room.flythrough_ready ?? false,
+    flythrough_video_url: room.flythrough_video_url ?? null,
+    flythrough_duration_seconds: room.flythrough_duration_seconds ?? null,
+
+    // Plus upgrade
+    plus_upgrade_ready: room.plus_upgrade_ready ?? false,
+    plus_started_at: room.plus_started_at ?? null,
+    plus_completed_at: room.plus_completed_at ?? null,
+    plus_eta_seconds: plusEtaSeconds,
+
+    // SPZ URLs
+    marble_spz_url: room.marble_spz_url ?? null,
+    marble_mini_spz_url: room.marble_mini_spz_url ?? null,
+    marble_spz_url_500k: room.marble_spz_url_500k ?? null,
+    marble_spz_url_100k: room.marble_spz_url_100k ?? null,
+
+    // Hotspot timing
+    hotspot_timing: room.hotspot_timing ?? null,
+
+    // Pipeline info
+    pipeline_mode: room.pipeline_mode ?? 'full',
+    pipeline_cost_log: room.pipeline_cost_log ?? null,
+
+    // Pre-detection
+    pre_detection_result: room.pre_detection_result ?? null,
+    fixed_furniture: room.fixed_furniture ?? null,
+
+    // Perspective render + hotspots
+    perspective_render_url: room.redesign_pano_url ?? null,
+    room_products: roomProducts ?? [],
+
+    // Legacy compat
     spzUrl: room.marble_spz_url,
     spzUrl500k: room.marble_spz_url_500k,
     thumbnailUrl: room.marble_plus_thumbnail_url,

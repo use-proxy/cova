@@ -70,4 +70,96 @@
   --ivory:        #F5F0E8;
   --background:   var(--color-navy-darker);
   --foreground:   var(--color-text-primary);
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+   * COVA V1 TOKEN SYSTEM — canonical --cova-* naming
+   * Used by Tailwind config, components, and layout files
+   * ═══════════════════════════════════════════════════════════════════════════ */
+
+  /* ─── Backgrounds / Surfaces ───────────────────────────────────────────── */
+  --cova-bg:         #0A1628;   /* deepest page background */
+  --cova-surface:    #0F1F3D;   /* cards, panels */
+  --cova-surface-2:  #132847;   /* elevated surface (modals, drawers) */
+  --cova-surface-3:  #1A3258;   /* highest surface (tooltips, popovers) */
+
+  /* ─── Gold ──────────────────────────────────────────────────────────────── */
+  --cova-gold:       #C9A84C;
+  --cova-gold-light: #F0D080;
+  --cova-gold-dim:   rgba(201, 168, 76, 0.30);
+  --cova-gold-glow:  rgba(201, 168, 76, 0.15);
+
+  /* ─── Text ──────────────────────────────────────────────────────────────── */
+  --cova-ivory:      #F8F6F1;   /* primary text — warm white */
+  --cova-ivory-dim:  rgba(248, 246, 241, 0.70); /* secondary text */
+  --cova-muted:      #8BA3C0;   /* tertiary / labels */
+  --cova-subtle:     rgba(139, 163, 192, 0.50); /* disabled, placeholder */
+
+  /* ─── Borders ───────────────────────────────────────────────────────────── */
+  --cova-border:      #1E3A5F;
+  --cova-border-gold: rgba(201, 168, 76, 0.20);
+  --cova-border-dim:  rgba(30, 58, 95, 0.50);
+
+  /* ─── Semantic ──────────────────────────────────────────────────────────── */
+  --cova-success:    #4A9B7F;
+  --cova-success-bg: rgba(74, 155, 127, 0.12);
+  --cova-error:      #C0504A;
+  --cova-error-bg:   rgba(192, 80, 74, 0.12);
+  --cova-warning:    #D4A017;
+  --cova-warning-bg: rgba(212, 160, 23, 0.12);
+
+  /* ─── Typography ────────────────────────────────────────────────────────── */
+  --font-serif: 'EB Garamond', 'Palatino Linotype', Georgia, serif;
+  --font-sans:  'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono:  'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+
+  /* ─── Font size scale ───────────────────────────────────────────────────── */
+  --text-xs:   0.75rem;    /* 12px */
+  --text-sm:   0.875rem;   /* 14px */
+  --text-base: 1rem;       /* 16px */
+  --text-lg:   1.125rem;   /* 18px */
+  --text-xl:   1.25rem;    /* 20px */
+  --text-2xl:  1.5rem;     /* 24px */
+  --text-3xl:  1.875rem;   /* 30px */
+  --text-4xl:  2.25rem;    /* 36px */
+  --text-5xl:  3rem;       /* 48px */
+
+  /* ─── Spacing scale (4px base) ─────────────────────────────────────────── */
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:   12px;
+  --space-4:   16px;
+  --space-5:   20px;
+  --space-6:   24px;
+  --space-8:   32px;
+  --space-10:  40px;
+  --space-12:  48px;
+  --space-16:  64px;
+  --space-20:  80px;
+
+  /* ─── Border radius ─────────────────────────────────────────────────────── */
+  --radius-sm:   6px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
+  --radius-2xl:  24px;
+  --radius-full: 9999px;
+
+  /* ─── Shadows ───────────────────────────────────────────────────────────── */
+  --shadow-sm:   0 1px 3px rgba(0,0,0,0.40);
+  --shadow-md:   0 4px 12px rgba(0,0,0,0.50);
+  --shadow-lg:   0 8px 32px rgba(0,0,0,0.60);
+  --shadow-gold: 0 0 20px rgba(201, 168, 76, 0.25);
+
+  /* ─── Transitions ───────────────────────────────────────────────────────── */
+  --transition-fast:   100ms ease-out;
+  --transition-base:   200ms ease-out;
+  --transition-slow:   350ms ease-out;
+  --transition-spring: 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ─── Z-index scale ─────────────────────────────────────────────────────── */
+  --z-base:    0;
+  --z-raised:  10;
+  --z-overlay: 100;
+  --z-modal:   200;
+  --z-top:     300;
 }

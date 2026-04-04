@@ -1,8 +1,8 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const PROTECTED_ROUTES = ['/dashboard', '/room', '/viewer', '/quiz', '/capture', '/processing', '/budget']
-const PUBLIC_ROUTES = ['/', '/auth', '/auth/callback', '/test-viewer', '/capture/mobile', '/chatbot', '/product-panel']
+const PROTECTED_ROUTES = ['/capture', '/quiz', '/budget', '/processing', '/room', '/dashboard']
+const PUBLIC_ROUTES = ['/', '/auth', '/auth/callback', '/test-viewer', '/chatbot', '/product-panel']
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -45,13 +45,9 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          )
-          supabaseResponse = NextResponse.next({ request })
-          cookiesToSet.forEach(({ name, value, options }) =>
+          cookiesToSet.forEach(({ name, value, options }) => {
             supabaseResponse.cookies.set(name, value, options)
-          )
+          })
         },
       },
     })
@@ -61,7 +57,14 @@ export async function middleware(request: NextRequest) {
     if (!user) {
       const url = request.nextUrl.clone()
       url.pathname = '/auth'
-      return NextResponse.redirect(url)
+
+      // Ensure any refreshed/rotated session cookies are forwarded to the redirect.
+      const redirectResponse = NextResponse.redirect(url)
+      supabaseResponse.cookies.getAll().forEach((cookie) => {
+        redirectResponse.cookies.set(cookie.name, cookie.value, cookie as any)
+      })
+
+      return redirectResponse
     }
 
     return supabaseResponse

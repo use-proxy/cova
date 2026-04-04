@@ -1,0 +1,10 @@
+{
+  "prediction_id": "kw1j5x4z59rmt0cx9ngack6yg0",
+  "replicate_output_url": "https://replicate.delivery/xezq/QXdfbLfoYdrpyE9e5By361VckCMh2ufIdgrJqjmObmJD03bZB/tmpjx8td7h5.jpg",
+  "supabase_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-videos/test-redesign/flux_redesigned_perspective.jpg",
+  "supabase_bucket": "room-videos",
+  "supabase_path": "test-redesign/flux_redesigned_perspective.jpg",
+  "source_image_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/sign/room-uploads/IMG_9864.jpeg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84ODk1MjRhNy1iZmE1LTQzYzctYjVlNy0wN2RjMDBkMzIzMTUiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJyb29tLXVwbG9hZHMvSU1HXzk4NjQuanBlZyIsImlhdCI6MTc3NTA5MjU0OCwiZXhwIjoxNzc1Njk3MzQ4fQ.U9ZaG_T8A0Lel6hvji7hjK1XbA7fYPBZzF9XDwIggug",
+  "prompt": "Transform this college dorm room into a stunning Japandi interior design. Replace the beds with low-profile platform beds with natural wood frames and clean white linen. Replace the office chairs with minimalist wooden chairs. Add a bamboo floor lamp in the corner. Replace the carpet with light oak hardwood flooring. Remove all clutter from the floor. Add small potted plants on the desk. Keep the same room dimensions, windows, and ceiling. The result should look like a professional interior design magazine photo in Japandi style.",
+  "total_time_seconds": 12
+}

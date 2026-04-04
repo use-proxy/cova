@@ -20,6 +20,7 @@ interface CardStackProps {
   sessionId: string
   onComplete: () => void
   onConfidenceUpdate: (score: number) => void
+  onSwipe?: (direction: "left" | "right", styleTags: string[]) => void
 }
 
 export interface CardStackHandle {
@@ -33,7 +34,7 @@ const FALLBACK_CARDS: Card[] = Array.from({ length: 10 }, (_, i) => ({
 }))
 
 export const CardStack = forwardRef<CardStackHandle, CardStackProps>(
-  function CardStack({ sessionId, onComplete, onConfidenceUpdate }, ref) {
+  function CardStack({ sessionId, onComplete, onConfidenceUpdate, onSwipe }, ref) {
     const [cards, setCards] = useState<Card[]>([])
     const [swipes, setSwipes] = useState<Swipe[]>([])
     const [loading, setLoading] = useState(true)
@@ -81,6 +82,7 @@ export const CardStack = forwardRef<CardStackHandle, CardStackProps>(
       const updatedSwipes = [...swipes, newSwipe]
       setSwipes(updatedSwipes)
       setCards((prev) => prev.slice(1))
+      onSwipe?.(direction, topCard.style_tags)
 
       // Check confidence
       try {
@@ -117,7 +119,7 @@ export const CardStack = forwardRef<CardStackHandle, CardStackProps>(
       } catch (e) {
         console.error("Failed to fetch next card:", e)
       }
-    }, [cards, swipes, sessionId, onComplete, onConfidenceUpdate])
+    }, [cards, swipes, sessionId, onComplete, onConfidenceUpdate, onSwipe])
 
     // Expose swipe method via ref
     useImperativeHandle(ref, () => ({

@@ -3,55 +3,20 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { RoomCard } from "@/components/dashboard/RoomCard"
+import { RoomCard, Room } from "@/components/dashboard/RoomCard"
 import { StyleProfile } from "@/components/dashboard/StyleProfile"
 import { NewRoomCTA } from "@/components/dashboard/NewRoomCTA"
 
-// ─── Mock data (replaced by Supabase fetch once tables are populated) ──────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-const MOCK_ROOMS = [
-  {
-    id: "1",
-    name: "Living Room",
-    date: "March 2026",
-    styleBlend: "JAPANDI · MID-CENTURY",
-    totalCost: 3240,
-    thumbnail: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800",
-    sessionId: "test",
-  },
-  {
-    id: "2",
-    name: "Bedroom",
-    date: "February 2026",
-    styleBlend: "SCANDINAVIAN · MINIMAL",
-    totalCost: 2180,
-    thumbnail: "https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=800",
-    sessionId: "test2",
-  },
-  {
-    id: "3",
-    name: "Home Office",
-    date: "January 2026",
-    styleBlend: "INDUSTRIAL · MODERN",
-    totalCost: 1840,
-    thumbnail: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=800",
-    sessionId: "test3",
-  },
-]
-
-const MOCK_USER = {
-  name: "Pranav",
-  initials: "P",
-  styleFingerprint: [
-    { name: "Japandi", percentage: 78 },
-    { name: "Mid-Century", percentage: 52 },
-    { name: "Minimalist", percentage: 34 },
-  ],
-  adjectives: ["Warm", "Textured", "Grounded"],
-  totalRooms: 3,
-  totalValue: 7260,
-  avgMatchScore: 94,
-  primaryStyle: "Japandi",
+interface RoomRow {
+  id: string
+  created_at: string
+  pipeline_status: string | null
+  perspective_render_url: string | null
+  style_blend: Record<string, number> | null
+  budget_tier: string | null
+  plus_upgrade_ready: boolean | null
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -61,6 +26,44 @@ function getTimeGreeting(): string {
   if (h < 12) return "Good morning"
   if (h < 17) return "Good afternoon"
   return "Good evening"
+}
+
+function toRoom(r: RoomRow): Room {
+  const d = new Date(r.created_at)
+  const month = d.toLocaleString("default", { month: "long" })
+  const year = d.getFullYear()
+  const styleBlend = r.style_blend
+    ? Object.entries(r.style_blend)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 2)
+        .map(([k]) => k.toUpperCase())
+        .join(" · ")
+    : ""
+  return {
+    id: r.id,
+    name: "Room",
+    date: `${month} ${year}`,
+    styleBlend,
+    totalCost: 0,
+    thumbnail: r.perspective_render_url ?? "",
+    sessionId: r.id,
+  }
+}
+
+function aggregateStyles(rooms: RoomRow[]): { name: string; percentage: number }[] {
+  const totals: Record<string, number> = {}
+  const counts: Record<string, number> = {}
+  for (const room of rooms) {
+    if (!room.style_blend || typeof room.style_blend !== "object") continue
+    for (const [key, val] of Object.entries(room.style_blend)) {
+      totals[key] = (totals[key] ?? 0) + val
+      counts[key] = (counts[key] ?? 0) + 1
+    }
+  }
+  return Object.entries(totals)
+    .map(([name, total]) => ({ name, percentage: Math.round((total / counts[name]) * 100) }))
+    .sort((a, b) => b.percentage - a.percentage)
+    .slice(0, 3)
 }
 
 function SectionDivider() {
@@ -79,48 +82,58 @@ function SectionDivider() {
 
 export default function DashboardPage() {
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false)
-  const [userName, setUserName] = useState(MOCK_USER.name)
-  const [userInitials, setUserInitials] = useState(MOCK_USER.initials)
+  const [userName, setUserName] = useState("")
+  const [userInitials, setUserInitials] = useState("")
   const [greeting, setGreeting] = useState("")
+  const [rooms, setRooms] = useState<RoomRow[]>([])
   const router = useRouter()
 
   useEffect(() => {
     setGreeting(getTimeGreeting())
 
-    try {
-      const supabase = createBrowserClient()
-      supabase.auth.getUser().then(({ data: { user } }) => {
-        if (!user) return
-        const rawName =
-          user.user_metadata?.full_name ??
-          user.user_metadata?.name ??
-          user.email?.split("@")[0] ??
-          MOCK_USER.name
-        const display = rawName.charAt(0).toUpperCase() + rawName.slice(1)
-        setUserName(display)
-        setUserInitials(display.charAt(0).toUpperCase())
-      })
-    } catch {
-      // Supabase env vars not yet configured — mock data already shown
-    }
+    const supabase = createBrowserClient()
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return
+
+      const rawName =
+        user.user_metadata?.full_name ??
+        user.user_metadata?.name ??
+        user.email?.split("@")[0] ??
+        ""
+      const display = rawName.charAt(0).toUpperCase() + rawName.slice(1)
+      setUserName(display)
+      setUserInitials(display.charAt(0).toUpperCase())
+
+      const { data } = await supabase
+        .from("rooms")
+        .select(
+          "id, created_at, pipeline_status, perspective_render_url, style_blend, budget_tier, plus_upgrade_ready"
+        )
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+
+      if (data) setRooms(data as RoomRow[])
+    })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSignOut = async () => {
     setAvatarMenuOpen(false)
-    try {
-      const supabase = createBrowserClient()
-      await supabase.auth.signOut()
-    } catch {
-      // env vars absent, just redirect
-    }
-    router.push("/auth")
+    const supabase = createBrowserClient()
+    await supabase.auth.signOut()
+    router.push("/")
   }
 
+  // ── Derived data ──────────────────────────────────────────────────────────
+
+  const transformedRooms: Room[] = rooms.map(toRoom)
+  const aggregatedStyles = aggregateStyles(rooms)
+  const primaryStyle = aggregatedStyles[0]?.name ?? "—"
+
   const stats = [
-    { value: String(MOCK_USER.totalRooms), label: "ROOMS DESIGNED" },
-    { value: `$${MOCK_USER.totalValue.toLocaleString()}`, label: "FURNITURE VALUE" },
-    { value: MOCK_USER.primaryStyle, label: "PRIMARY STYLE" },
-    { value: `${MOCK_USER.avgMatchScore}%`, label: "AVG MATCH SCORE" },
+    { value: String(rooms.length), label: "ROOMS DESIGNED" },
+    { value: "$0", label: "FURNITURE VALUE" },
+    { value: primaryStyle, label: "PRIMARY STYLE" },
+    { value: "94%", label: "AVG MATCH SCORE" },
   ]
 
   return (
@@ -167,7 +180,7 @@ export default function DashboardPage() {
             </svg>
             <span
               className="text-lg text-white"
-              style={{ fontFamily: "Playfair Display, Georgia, serif" }}
+              style={{ fontFamily: "var(--font-serif)" }}
             >
               Cova
             </span>
@@ -246,7 +259,7 @@ export default function DashboardPage() {
           >
             <h1
               className="text-3xl text-white leading-tight"
-              style={{ fontFamily: "Playfair Display, Georgia, serif" }}
+              style={{ fontFamily: "var(--font-serif)" }}
             >
               {greeting},{" "}
               <em style={{ fontStyle: "italic", color: "#C9A84C" }}>
@@ -261,7 +274,7 @@ export default function DashboardPage() {
                 lineHeight: 1.65,
               }}
             >
-              {MOCK_USER.totalRooms} rooms designed. Your style is evolving.
+              {rooms.length} rooms designed. Your style is evolving.
             </p>
           </section>
 
@@ -289,7 +302,7 @@ export default function DashboardPage() {
               >
                 <p
                   className="text-2xl text-white leading-none"
-                  style={{ fontFamily: "Playfair Display, Georgia, serif" }}
+                  style={{ fontFamily: "var(--font-serif)" }}
                 >
                   {stat.value}
                 </p>
@@ -307,10 +320,10 @@ export default function DashboardPage() {
 
           {/* Two-column: Featured room card + Style DNA */}
           <div className="grid md:grid-cols-2 gap-8">
-            <RoomCard rooms={MOCK_ROOMS} />
+            <RoomCard rooms={transformedRooms} />
             <StyleProfile
-              styles={MOCK_USER.styleFingerprint}
-              adjectives={MOCK_USER.adjectives}
+              styles={aggregatedStyles}
+              adjectives={[]}
             />
           </div>
 

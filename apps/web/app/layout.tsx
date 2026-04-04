@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { EB_Garamond } from "next/font/google";
+import { EB_Garamond, Inter } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 
@@ -9,15 +9,15 @@ const ebGaramond = EB_Garamond({
   display: "swap",
 });
 
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-  weight: "100 900",
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
 });
 
 const geistMono = localFont({
   src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
+  variable: "--font-mono",
   weight: "100 900",
 });
 
@@ -35,7 +35,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${ebGaramond.variable} ${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${ebGaramond.variable} ${inter.variable} ${geistMono.variable} antialiased`}
       >
         {children}
       </body>

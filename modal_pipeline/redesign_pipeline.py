@@ -233,6 +233,24 @@ def run_flux_kontext(pano_url: str, prompt: str, replicate_token: str, timeout: 
     raise RuntimeError(f"FLUX Kontext timed out after {timeout}s")
 
 
+def generate_perspective_prompt(style_blend: dict) -> str:
+    """Build the perspective render prompt from style_blend."""
+    dominant = get_dominant_styles(style_blend)
+    style_parts = []
+    for s in dominant:
+        vocab = STYLE_VOCABULARY.get(s, {})
+        feel = vocab.get("feel", s)
+        style_parts.append(feel)
+    style_description = " and ".join(style_parts) if style_parts else "modern minimalist"
+    return (
+        f"Architectural interior photography, eye-level perspective, "
+        f"{style_description} room, professional real estate photography, "
+        f"dramatic moody lighting, warm ambient light, sharp detail, "
+        f"ultra realistic, wide angle 24mm lens, no distortion, "
+        f"cinematic color grade, deep shadows, photorealistic, 8K"
+    )
+
+
 def store_redesigned_pano(
     image_url: str, room_id: str, user_id: str, supabase_client,
     prompt: str, style_info: dict,
@@ -269,6 +287,48 @@ def store_redesigned_pano(
 
     print(f"[kontext] Stored at: {storage_path}")
     return storage_path
+
+
+def store_perspective_render(image_url: str, room_id: str, supabase_url: str, supabase_key: str) -> str:
+    """Download perspective render and store in Supabase room-videos bucket."""
+    import requests
+
+    print("[perspective] Downloading perspective render...")
+    img_resp = requests.get(image_url, timeout=60)
+    img_resp.raise_for_status()
+    img_bytes = img_resp.content
+    print(f"[perspective] Downloaded: {len(img_bytes) / 1e6:.1f}MB")
+
+    storage_path = f"{room_id}/perspective_render.jpg"
+    requests.post(
+        f"{supabase_url}/storage/v1/object/room-videos/{storage_path}",
+        headers={
+            "apikey": supabase_key,
+            "Authorization": f"Bearer {supabase_key}",
+            "Content-Type": "image/jpeg",
+            "x-upsert": "true",
+        },
+        data=img_bytes,
+        timeout=30,
+    )
+
+    # Generate signed URL
+    sign_resp = requests.post(
+        f"{supabase_url}/storage/v1/object/sign/room-videos/{storage_path}",
+        headers={
+            "apikey": supabase_key,
+            "Authorization": f"Bearer {supabase_key}",
+            "Content-Type": "application/json",
+        },
+        json={"expiresIn": 604800},
+        timeout=10,
+    )
+    if sign_resp.ok:
+        signed_path = sign_resp.json().get("signedURL", "")
+        if signed_path.startswith("/object/"):
+            return f"{supabase_url}/storage/v1{signed_path}"
+        return f"{supabase_url}{signed_path}"
+    return f"{supabase_url}/storage/v1/object/room-videos/{storage_path}"
 
 
 @app.function(
@@ -328,10 +388,41 @@ def redesign_room(room_id: str, user_id: str) -> dict:
 
         print(f"[kontext] Prompt ({prompt_source}): {prompt[:150]}...")
 
-        # Run FLUX Kontext
-        redesigned_url = run_flux_kontext(pano_url, prompt, replicate_token)
+        # Build perspective prompt
+        perspective_prompt = generate_perspective_prompt(style_blend)
+        print(f"[perspective] Prompt: {perspective_prompt[:120]}...")
 
-        # Store
+        # Run both FLUX calls in parallel
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        pano_result = [None]
+        perspective_result = [None]
+        pano_error = [None]
+        perspective_error = [None]
+
+        def run_pano():
+            try:
+                pano_result[0] = run_flux_kontext(pano_url, prompt, replicate_token)
+            except Exception as e:
+                pano_error[0] = e
+
+        def run_perspective():
+            try:
+                perspective_result[0] = run_flux_kontext(pano_url, perspective_prompt, replicate_token)
+            except Exception as e:
+                perspective_error[0] = e
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            futures = [executor.submit(run_pano), executor.submit(run_perspective)]
+            for f in as_completed(futures):
+                pass  # Wait for both
+
+        # Pano is critical — must succeed
+        if pano_error[0]:
+            raise pano_error[0]
+        redesigned_url = pano_result[0]
+
+        # Store pano
         dominant_styles = get_dominant_styles(style_blend)
         style_info = {
             "dominant_styles": dominant_styles,
@@ -347,10 +438,35 @@ def redesign_room(room_id: str, user_id: str) -> dict:
         )
         redesign_signed_url = signed.get("signedURL", redesigned_url)
 
+        # Store perspective render (non-critical — log error but don't fail)
+        perspective_render_url = None
+        if perspective_error[0]:
+            print(f"[perspective] FLUX failed (non-critical): {perspective_error[0]}")
+        elif perspective_result[0]:
+            try:
+                perspective_render_url = store_perspective_render(
+                    perspective_result[0], room_id, supabase_url, supabase_key,
+                )
+                print(f"[perspective] Stored: {perspective_render_url[:80]}...")
+            except Exception as e:
+                print(f"[perspective] Store failed (non-critical): {e}")
+
+        # Write data first, status last
         client.table("rooms").update({
             "redesign_pano_url": redesigned_url,
+        }).eq("id", room_id).execute()
+
+        # Write perspective URL if column exists (requires migration)
+        if perspective_render_url:
+            try:
+                client.table("rooms").update({
+                    "perspective_render_url": perspective_render_url,
+                }).eq("id", room_id).execute()
+            except Exception as e:
+                print(f"[perspective] Could not write URL to DB (column may not exist): {e}")
+
+        client.table("rooms").update({
             "redesign_status": "kontext_complete",
-            "status": "redesign_processing",
         }).eq("id", room_id).execute()
 
         print(f"[kontext] Session 2 complete!")
@@ -358,8 +474,10 @@ def redesign_room(room_id: str, user_id: str) -> dict:
             "room_id": room_id,
             "redesigned_pano_url": redesigned_url,
             "redesigned_pano_signed_url": redesign_signed_url,
+            "perspective_render_url": perspective_render_url,
             "storage_path": storage_path,
             "prompt": prompt,
+            "perspective_prompt": perspective_prompt,
             "prompt_source": prompt_source,
             "dominant_styles": dominant_styles,
         }

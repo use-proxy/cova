@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useEffect, useRef, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { createBrowserClient } from "@/lib/supabase/client"
 import { ChevronLeft } from "lucide-react"
 
 interface Tier {
@@ -149,14 +148,23 @@ function TierSlider({ selected, onSelect }: { selected: number; onSelect: (tier:
 }
 
 // ─── Main Budget Page ──────────────────────────────────────
+const TIER_MAX: Record<number, number> = {
+  0: 500,
+  1: 2000,
+  2: 5000,
+  3: 15000,
+  4: 999999,
+}
+
 function BudgetInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const sessionId = searchParams.get("session")
+  const roomId = searchParams.get("roomId")
 
   const [selected, setSelected] = useState(1) // 0-indexed
   const [bouncing, setBouncing] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState(false)
   const [showPulse, setShowPulse] = useState(false)
   const dragStart = useRef<number | null>(null)
 
@@ -198,20 +206,28 @@ function BudgetInner() {
   }, [])
 
   const handleContinue = useCallback(async () => {
-    setSaving(true)
-    if (sessionId) {
-      try {
-        const supabase = createBrowserClient()
-        await supabase
-          .from("style_sessions")
-          .update({ budget_tier: selected + 1, budget_range: tier.range })
-          .eq("id", sessionId)
-      } catch (e) {
-        console.error("Budget save error:", e)
-      }
+    if (!roomId) {
+      router.push("/")
+      return
     }
-    router.push(`/processing?session=${sessionId}`)
-  }, [sessionId, selected, tier.range, router])
+    setSaving(true)
+    setSaveError(false)
+    try {
+      const res = await fetch(`/api/rooms/${roomId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          budget_tier: TIERS[selected].label.toLowerCase(),
+          budget_max: TIER_MAX[selected],
+        }),
+      })
+      if (!res.ok) throw new Error("save failed")
+      router.push(`/processing/${roomId}`)
+    } catch {
+      setSaveError(true)
+      setSaving(false)
+    }
+  }, [roomId, selected, router])
 
   return (
     <div className="fixed inset-0 bg-[#0a1628] flex flex-col overflow-hidden animate-[slideUp_300ms_ease-out]">
@@ -278,6 +294,11 @@ function BudgetInner() {
         <p className="text-xs font-sans text-white/40 uppercase tracking-wider transition-all duration-200">
           Estimated budget: <span className="text-white/60">{tier.range}</span>
         </p>
+
+        {/* Error */}
+        {saveError && (
+          <p className="text-sm text-[#C0504A]">Something went wrong, please try again</p>
+        )}
 
         {/* CTA */}
         <button

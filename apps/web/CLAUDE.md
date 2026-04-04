@@ -1,7 +1,7 @@
 # COVA V1 — Claude Code Constraints
 # Copy this file to: apps/web/CLAUDE.md AND root CLAUDE.md
 # READ THIS BEFORE EVERY SESSION. NO EXCEPTIONS.
-# Last updated: March 30, 2026 | Spec: v7
+# Last updated: April 1, 2026 | Spec: v7
 
 ---
 
@@ -57,7 +57,7 @@
     The V0 iOS app must remain untouched. All V1 work is in `apps/web/` and `modal_pipeline/` only. If a file path starts with `apps/mobile/`, do not touch it.
 
 12. **NEVER modify Supabase Edge Functions except one specific change.**
-    Only permitted change: in `chat-room` Edge Function, change model name from `claude-haiku-4-5-20251001` to `claude-sonnet-4-5`. The other 5 Edge Functions (`render-room`, `get-render-status`, `match-products`, `detect-furniture`, `extract-colors`) are frozen.
+    Only permitted change: in `chat-room` Edge Function, change model name from `claude-haiku-4-5-20251001` to `claude-sonnet-4-5` (already done in Session 0). All other Edge Functions are FROZEN: `render-room`, `get-render-status`, `match-products`, `detect-furniture`, `extract-colors`, `clip-embed`, `aggregate-style-profiles`, `delete-account`, `generate-depth-map`.
 
 ---
 
@@ -139,7 +139,7 @@ Target clean product count: ~18,150 across all sources
 - **Text secondary:** #8BA3C0
 - **Success:** #4A9B7F
 - **Error:** #C0504A
-- **Font headings:** Playfair Display (room names, landing headline only)
+- **Font headings:** EB Garamond (room names, landing headline only)
 - **Font UI:** Inter (all other text)
 - **Border radius:** 12px cards, 8px inputs, 24px pills
 - **Motion:** 200ms ease-out all transitions
@@ -156,15 +156,15 @@ Pre-milestone conversation required before any milestone begins. Nothing gets bu
 
 | Milestone | Description | Status |
 |-----------|-------------|--------|
-| **M0** | Setup — accounts, credentials, Supabase columns, repo, CLAUDE.md | **CURRENT** |
-| M1 | Pipeline Proof CRITICAL — AnySplat on Modal, walk through real room in browser | |
-| M2 | Seed Catalog — Wayfair replaced; scrape one retailer (~1,000 products) to validate matching | |
-| M3 | Web Foundation — Next.js scaffold, auth (all 3 methods), routing | |
-| M4 | Quiz + Capture + UI Pass 1 — quiz ported, Path A+B capture, v0 generates quiz/capture screens | |
-| M5 | Processing + Viewer + UI Pass 2 — processing UI, SparkJS viewer, real room loads | |
-| M6 | Full Catalog Completion — all 12 retailers, ~18,000 clean products, IVFFlat rebuilt | |
-| M7 | AI Redesign Pipeline — full pipeline end-to-end, Marble vs SHARP decision | |
-| M8 | Commerce — cube face detection, CLIP matching, hotspots, product panel, affiliate URLs | |
+| M0 | Setup — accounts, credentials, Supabase columns, repo, CLAUDE.md | ✅ DONE |
+| M1 | Pipeline Proof CRITICAL — AnySplat on Modal, walk through real room in browser | ✅ DONE |
+| M2 | Seed Catalog — Wayfair replaced; scrape one retailer (~1,000 products) to validate matching | ✅ DONE |
+| M3 | Web Foundation — Next.js scaffold, auth (all 3 methods), routing | ✅ DONE |
+| M4 | Quiz + Capture + UI Pass 1 — quiz ported, Path A+B capture, v0 generates quiz/capture screens | ✅ DONE |
+| M5 | Processing + Viewer + UI Pass 2 — processing UI, SparkJS viewer, real room loads | ✅ DONE |
+| M6 | Full Catalog Completion — all 12 retailers, ~18,000 clean products, IVFFlat rebuilt | ✅ DONE |
+| M7 | AI Redesign Pipeline — full pipeline end-to-end, Marble vs SHARP decision | ✅ DONE |
+| **M8** | **Commerce — cube face detection, CLIP matching, hotspots, product panel, affiliate URLs** | **🔄 IN PROGRESS** |
 | M9 | Chatbot + Analytics + UI Pass 3 — chatbot, PostHog, Sentry, remaining screens | |
 | M10 | Polish + User Testing — error states, 5 real user tests | |
 | M11 | Deployment — Vercel production, covainterior.com | |
@@ -177,24 +177,25 @@ Pre-milestone conversation required before any milestone begins. Nothing gets bu
 ## Tech Stack (exact versions)
 
 ```
-next@14.2.x
+next@14.2.35
 typescript@5.x
 tailwindcss@3.4.x
-@supabase/ssr@latest
-@supabase/supabase-js@2.x
-@sparkjsdev/spark@latest
-three@latest
-@react-three/fiber@8.x
-zustand@4.x
-framer-motion@11.x
-react-qr-code@latest
-jose@latest
-sharp@latest
-replicate@latest
-posthog-js@latest
-@sentry/nextjs@latest
+@supabase/ssr@0.10.0
+@supabase/supabase-js@2.101.0
+@sparkjsdev/spark@0.1.10
+three@0.183.2
+zustand@5.0.12
+framer-motion@12.38.0
+react-qr-code@2.0.18
+jose@6.2.2
+replicate@1.x
+posthog-js@1.x
+@sentry/nextjs@9.x
 zod@3.x
+@anthropic-ai/sdk@0.82.0
+lucide-react@1.7.0
 ```
+Note: `sharp` is Python/pipeline only (not in web app). `@react-three/fiber` removed — SparkJS used instead.
 
 ---
 
@@ -301,6 +302,14 @@ ETSY_AFFILIATE_ID=
 3. Have pre-milestone conversation if starting a new milestone
 4. Read relevant spec section (cova_v1_complete_spec_v7.docx)
 5. Update SESSION_MEMORY.md when session ends
+
+---
+
+## Screen Build Log
+
+| Screen | Route | Status | Notes |
+|--------|-------|--------|-------|
+| Screen 11 — Dashboard | `/dashboard` | **DONE** | RoomCard, StatsRow, StyleProfile, NewRoomCTA, ChatBubble; mock data; Supabase fallback |
 
 ---
 

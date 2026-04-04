@@ -1,0 +1,18 @@
+{
+  "test_e": {
+    "world_id": "85cb08c9-fbf1-447c-be76-8fc49a1a7306",
+    "marble_url": "https://marble.worldlabs.ai/world/85cb08c9-fbf1-447c-be76-8fc49a1a7306",
+    "spz_full": "https://cdn.marble.worldlabs.ai/85cb08c9-fbf1-447c-be76-8fc49a1a7306/65b1b4da-3d1b-4f45-877f-c2b955e60c51_ceramic.spz",
+    "spz_500k": "https://cdn.marble.worldlabs.ai/85cb08c9-fbf1-447c-be76-8fc49a1a7306/e92776c2-9d93-40fa-a27c-cef867fe256f_ceramic_500k.spz",
+    "spz_100k": "https://cdn.marble.worldlabs.ai/85cb08c9-fbf1-447c-be76-8fc49a1a7306/55207ec9-987d-4fe7-b678-aee7e7260bdf_dust_100k.spz",
+    "pano_url": "https://cdn.marble.worldlabs.ai/85cb08c9-fbf1-447c-be76-8fc49a1a7306/6aeb0b24-1bfc-4b10-9c7e-593f6a1031fd_panos/rgb_0.png",
+    "thumbnail_url": "https://cdn.marble.worldlabs.ai/85cb08c9-fbf1-447c-be76-8fc49a1a7306/935a39f2-45bf-43b8-b2b6-18946fcb69da_dust_mpi/thumbnail.webp",
+    "method": "multi-image-reconstruct",
+    "label": "E-portrait-1x-reconstruct",
+    "model": "marble-1.0",
+    "photo_count": 8,
+    "reconstruct_images": true,
+    "upload_time_s": 3.9,
+    "total_time_s": 554.1
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "test_f": {
+    "world_id": "a66578fc-aaef-4897-a510-90352a1a4689",
+    "marble_url": "https://marble.worldlabs.ai/world/a66578fc-aaef-4897-a510-90352a1a4689",
+    "spz_full": "https://cdn.marble.worldlabs.ai/a66578fc-aaef-4897-a510-90352a1a4689/e75e90cb-4c66-4ed3-856c-ab3d49d90574_sand.spz",
+    "spz_500k": "https://cdn.marble.worldlabs.ai/a66578fc-aaef-4897-a510-90352a1a4689/2e1e26ac-432c-4360-95c5-f90b5d41659a_sand_500k.spz",
+    "spz_100k": "https://cdn.marble.worldlabs.ai/a66578fc-aaef-4897-a510-90352a1a4689/a1f33592-7bd7-4313-8fe5-2b4f14f65f1c_sand_100k.spz",
+    "pano_url": "https://cdn.marble.worldlabs.ai/a66578fc-aaef-4897-a510-90352a1a4689/b3234239-0838-4599-b4ec-ceb679dc3af5_pano/rgb_0.png",
+    "thumbnail_url": "https://cdn.marble.worldlabs.ai/a66578fc-aaef-4897-a510-90352a1a4689/13195476-6b1c-48a9-915c-8c928f8e6acc_sand_mpi/thumbnail.webp",
+    "method": "multi-image-reconstruct",
+    "label": "F-portrait-1x-mini-reconstruct",
+    "model": "Marble 0.1-mini",
+    "photo_count": 8,
+    "reconstruct_images": true,
+    "asset_ids": [
+      "64ada8cb-5d8b-4c5e-bb1d-05fe6b2d2b14",
+      "217a07af-a968-450f-bd06-09803fbd2de8",
+      "a3659ef7-f4e4-4a01-82e1-c5c0ad05cab6",
+      "29dfbb97-4884-48cc-944b-0e3196c93d25",
+      "bc86a54b-6900-433c-b6bd-158b5d74d736",
+      "d92c17ac-3783-40d7-8211-840d467fc88f",
+      "20ebe61f-0db3-4f6c-8b76-7763b4242694",
+      "0ba0535e-1a88-413c-ab3a-02ba33976c4d"
+    ],
+    "upload_time_s": 4.4,
+    "total_time_s": 72.6
+  }
+}

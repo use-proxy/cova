@@ -1,0 +1,34 @@
+{
+  "multi_image": {
+    "world_id": "da94cd27-81d3-4fb8-93cb-227635d9b380",
+    "marble_url": "https://marble.worldlabs.ai/world/da94cd27-81d3-4fb8-93cb-227635d9b380",
+    "spz_full": "https://cdn.marble.worldlabs.ai/da94cd27-81d3-4fb8-93cb-227635d9b380/8ed785bf-7671-4226-b7d2-df303e585d94_sand.spz",
+    "spz_500k": "https://cdn.marble.worldlabs.ai/da94cd27-81d3-4fb8-93cb-227635d9b380/740cb156-6130-4965-b2d2-9b210ed62dd1_sand_500k.spz",
+    "spz_100k": "https://cdn.marble.worldlabs.ai/da94cd27-81d3-4fb8-93cb-227635d9b380/02c3d66a-f77b-4c27-bf39-019b20651fa2_sand_100k.spz",
+    "pano_url": "https://cdn.marble.worldlabs.ai/da94cd27-81d3-4fb8-93cb-227635d9b380/dbd60aa7-f74e-4575-a43a-339724af71c7_pano/rgb_0.png",
+    "thumbnail_url": "https://cdn.marble.worldlabs.ai/da94cd27-81d3-4fb8-93cb-227635d9b380/a0efa4c0-8fc2-4439-8e2f-7970e68280a8_sand_mpi/thumbnail.webp",
+    "method": "multi-image",
+    "photo_count": 4,
+    "azimuths": [
+      0,
+      90,
+      180,
+      270
+    ],
+    "upload_time_s": 4.7,
+    "total_time_s": 35.7
+  },
+  "video": {
+    "world_id": "cd12c26f-83e7-4a81-b727-5ccb325c3876",
+    "marble_url": "https://marble.worldlabs.ai/world/cd12c26f-83e7-4a81-b727-5ccb325c3876",
+    "spz_full": "https://cdn.marble.worldlabs.ai/cd12c26f-83e7-4a81-b727-5ccb325c3876/52412285-531e-4f96-9eff-75144425c147_sand.spz",
+    "spz_500k": "https://cdn.marble.worldlabs.ai/cd12c26f-83e7-4a81-b727-5ccb325c3876/c0ab75f4-3b92-4736-a556-b5a02b599453_sand_500k.spz",
+    "spz_100k": "https://cdn.marble.worldlabs.ai/cd12c26f-83e7-4a81-b727-5ccb325c3876/01488707-271e-4cae-a389-fd22a47b59e7_sand_100k.spz",
+    "pano_url": "https://cdn.marble.worldlabs.ai/cd12c26f-83e7-4a81-b727-5ccb325c3876/7d015497-cf91-440c-b4a3-5f18fc4594ba_pano/rgb_0.png",
+    "thumbnail_url": "https://cdn.marble.worldlabs.ai/cd12c26f-83e7-4a81-b727-5ccb325c3876/42ffd344-0922-4db3-baf1-84d8e57db513_sand_mpi/thumbnail.webp",
+    "method": "video",
+    "video_size_mb": 9.3,
+    "upload_time_s": 1.9,
+    "total_time_s": 77.8
+  }
+}

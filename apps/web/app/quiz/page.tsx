@@ -12,6 +12,8 @@ function QuizInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const captureSessionId = searchParams.get("session")
+  const roomId = searchParams.get("roomId")
+  const skipQuiz = searchParams.get("skipQuiz") === "true"
 
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [confidence, setConfidence] = useState(0)
@@ -19,6 +21,14 @@ function QuizInner() {
   const [previousStyleActive, setPreviousStyleActive] = useState(false)
   const [previousStyleDimmed, setPreviousStyleDimmed] = useState(false)
   const cardStackRef = useRef<CardStackHandle>(null)
+  const styleScoresRef = useRef<Record<string, number>>({})
+
+  // Skip quiz: navigate immediately
+  useEffect(() => {
+    if (skipQuiz && roomId) {
+      router.push(`/budget?roomId=${roomId}`)
+    }
+  }, [skipQuiz, roomId, router])
 
   // Safety timeout — always render after 2s no matter what
   useEffect(() => {
@@ -61,14 +71,39 @@ function QuizInner() {
     createSession()
   }, [captureSessionId])
 
-  const handleComplete = useCallback(() => {
+  const handleSwipeScore = useCallback((direction: "left" | "right", styleTags: string[]) => {
+    const delta = direction === "right" ? 1.0 : -0.3
+    const scores = { ...styleScoresRef.current }
+    for (const tag of styleTags) {
+      scores[tag] = Math.max(0, (scores[tag] ?? 0) + delta)
+    }
+    const total = Object.values(scores).reduce((a, b) => a + b, 0)
+    if (total > 0) {
+      for (const k of Object.keys(scores)) {
+        scores[k] = Math.round((scores[k] / total) * 10000) / 10000
+      }
+    }
+    styleScoresRef.current = scores
+  }, [])
+
+  const handleComplete = useCallback(async () => {
     setComplete(true)
     setConfidence(100)
-    // Navigate after animations
+    if (roomId) {
+      try {
+        await fetch(`/api/rooms/${roomId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ style_blend: styleScoresRef.current }),
+        })
+      } catch (e) {
+        console.error("Failed to save style blend:", e)
+      }
+    }
     setTimeout(() => {
-      router.push(`/budget?session=${sessionId}`)
+      router.push(roomId ? `/budget?roomId=${roomId}` : `/budget?session=${sessionId}`)
     }, 1200)
-  }, [router, sessionId])
+  }, [router, roomId, sessionId])
 
   const handlePreviousSelect = useCallback(async (prevSessionId: string) => {
     setPreviousStyleActive(true)
@@ -167,7 +202,7 @@ function QuizInner() {
           </div>
         )}
         {!complete && (
-          <CardStack ref={cardStackRef} sessionId={sessionId} onComplete={handleComplete} onConfidenceUpdate={setConfidence} />
+          <CardStack ref={cardStackRef} sessionId={sessionId} onComplete={handleComplete} onConfidenceUpdate={setConfidence} onSwipe={handleSwipeScore} />
         )}
       </div>
 

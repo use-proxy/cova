@@ -1,8 +1,8 @@
 """
-Cova M7 Session 3 — Marble Plus 3D Lift Pipeline
-Takes redesign_pano_url, uploads to Marble Plus as panoramic image,
-generates navigable 3D redesigned room.
-Cost: 1,500 credits ($1.20) with is_pano: true.
+Cova — Marble Plus 3D Lift Pipeline (Reconstruction Mode)
+Takes up to 8 capture photos, uploads to Marble Plus with reconstruct_images.
+Generates navigable 3D room from the same photos used by Mini.
+Cost: 1,500 credits ($1.20) with reconstruct_images.
 """
 
 import os
@@ -21,117 +21,77 @@ app = modal.App("cova-marble-plus-pipeline", image=image)
 MARBLE_BASE_URL = "https://api.worldlabs.ai/marble/v1"
 
 
-def download_redesigned_pano(redesign_pano_url, room_id, user_id, supabase_client):
-    """Download redesigned pano from URL, fallback to Supabase storage."""
+def upload_photo_to_marble(photo_url, index, marble_key):
+    """Download photo from URL, upload to Marble GCS. Returns media_asset_id."""
     import requests
 
-    print(f"[marble+] Downloading redesigned pano...")
-    try:
-        resp = requests.get(redesign_pano_url, timeout=60)
-        if resp.ok:
-            pano_bytes = resp.content
-            print(f"[marble+] Downloaded from URL: {len(pano_bytes)/1e6:.1f}MB")
-            if "replicate.delivery" in redesign_pano_url:
-                storage_path = f"{user_id}/{room_id}/redesigned_pano.png"
-                try:
-                    supabase_client.storage.from_("room-videos").upload(
-                        path=storage_path, file=pano_bytes,
-                        file_options={"content-type": "image/png"},
-                    )
-                except Exception:
-                    try:
-                        supabase_client.storage.from_("room-videos").update(
-                            path=storage_path, file=pano_bytes,
-                            file_options={"content-type": "image/png"},
-                        )
-                    except Exception as e:
-                        print(f"[marble+] Warning: could not store copy: {e}")
-            return pano_bytes
-    except Exception as e:
-        print(f"[marble+] Direct URL failed: {e}")
+    img_resp = requests.get(photo_url, timeout=60)
+    img_resp.raise_for_status()
+    img_bytes = img_resp.content
+    print(f"[marble+] Downloaded photo {index}: {len(img_bytes)/1e6:.1f}MB")
 
-    storage_path = f"{user_id}/{room_id}/redesigned_pano.png"
-    print(f"[marble+] Trying Supabase storage: {storage_path}")
-    pano_bytes = supabase_client.storage.from_("room-videos").download(storage_path)
-    print(f"[marble+] Downloaded from Supabase: {len(pano_bytes)/1e6:.1f}MB")
-    return pano_bytes
-
-
-def upload_pano_to_marble(pano_bytes, marble_key):
-    """Upload panorama image to Marble. Returns media_asset_id."""
-    import requests
-
-    resp = requests.post(
+    prep_resp = requests.post(
         f"{MARBLE_BASE_URL}/media-assets:prepare_upload",
         headers={"WLT-Api-Key": marble_key, "Content-Type": "application/json"},
-        json={"file_name": "redesigned_room.png", "kind": "image", "extension": "png"},
+        json={"file_name": f"plus_photo_{index}.jpg", "kind": "image", "extension": "jpg"},
         timeout=30,
     )
-    resp.raise_for_status()
-    data = resp.json()
-    media_asset_id = data["media_asset"]["media_asset_id"]
+    prep_resp.raise_for_status()
+    data = prep_resp.json()
+    asset_id = data["media_asset"]["media_asset_id"]
     upload_url = data["upload_info"]["upload_url"]
     size_limit = data["upload_info"]["required_headers"]["x-goog-content-length-range"]
-    print(f"[marble+] Media asset: {media_asset_id}")
 
     upload_resp = requests.put(
-        upload_url, data=pano_bytes,
+        upload_url, data=img_bytes,
         headers={"x-goog-content-length-range": size_limit},
         timeout=120,
     )
     if upload_resp.status_code not in (200, 204):
-        raise RuntimeError(f"GCS upload failed: {upload_resp.status_code} {upload_resp.text[:300]}")
-    print("[marble+] Upload successful")
-    return media_asset_id
+        raise RuntimeError(f"GCS upload failed for photo {index}: {upload_resp.status_code}")
+
+    print(f"[marble+] Uploaded photo {index} -> {asset_id}")
+    return asset_id
 
 
-def generate_plus_world(media_asset_id, marble_key):
-    """Generate Marble Plus world from pano. Returns operation_id."""
-    import requests
-
-    resp = requests.post(
-        f"{MARBLE_BASE_URL}/worlds:generate",
-        headers={"WLT-Api-Key": marble_key, "Content-Type": "application/json"},
-        json={
-            "model": "Marble 0.1-plus",
-            "display_name": "Cova Redesigned Room",
-            "world_prompt": {
-                "type": "image",
-                "image_prompt": {
-                    "source": "media_asset",
-                    "media_asset_id": media_asset_id,
-                    "is_pano": True,
-                },
-            },
-            "permission": {"public": False},
-        },
-        timeout=30,
-    )
-    resp.raise_for_status()
-    operation_id = resp.json()["operation_id"]
-    print(f"[marble+] Operation: {operation_id}")
-    return operation_id
-
-
-def poll_plus_operation(operation_id, marble_key, max_wait=600, poll_interval=15):
-    """Poll Marble Plus operation (~5-6 min). Returns world_id."""
+def poll_plus_operation(operation_id, marble_key, max_wait=780, poll_interval=15):
+    """Poll Marble Plus operation (~5-10 min for 8-photo reconstruct). Returns world_id."""
     import requests
 
     start = time.time()
+    consecutive_errors = 0
     while time.time() - start < max_wait:
-        resp = requests.get(
-            f"{MARBLE_BASE_URL}/operations/{operation_id}",
-            headers={"WLT-Api-Key": marble_key}, timeout=30,
-        )
-        resp.raise_for_status()
-        result = resp.json()
+        try:
+            resp = requests.get(
+                f"{MARBLE_BASE_URL}/operations/{operation_id}",
+                headers={"WLT-Api-Key": marble_key}, timeout=30,
+            )
+            if resp.status_code != 200:
+                consecutive_errors += 1
+                print(f"[marble+] Poll HTTP {resp.status_code}: {resp.text[:200]} (error {consecutive_errors}/5)")
+                if consecutive_errors >= 5:
+                    raise RuntimeError(f"Marble Plus polling failed {consecutive_errors} times, last: {resp.status_code}")
+                time.sleep(poll_interval)
+                continue
+            consecutive_errors = 0
+            result = resp.json()
+        except requests.exceptions.RequestException as e:
+            consecutive_errors += 1
+            print(f"[marble+] Poll network error: {e} (error {consecutive_errors}/5)")
+            if consecutive_errors >= 5:
+                raise RuntimeError(f"Marble Plus polling failed {consecutive_errors} times: {e}")
+            time.sleep(poll_interval)
+            continue
+
         if result.get("done"):
             if result.get("error"):
                 desc = result.get("metadata", {}).get("progress", {}).get("description", "")
+                print(f"[marble+] Operation failed. Full response: {json.dumps(result)[:500]}")
                 raise RuntimeError(f"Marble Plus failed: {result['error']} | {desc}")
             world_id = (result.get("metadata", {}).get("world_id")
                         or result.get("response", {}).get("world_id"))
             if not world_id:
+                print(f"[marble+] No world_id in done response: {json.dumps(result)[:500]}")
                 raise RuntimeError("Operation complete but no world_id")
             elapsed = time.time() - start
             print(f"[marble+] World: {world_id} ({elapsed:.0f}s)")
@@ -211,37 +171,92 @@ def store_spz(spz_url, room_id, user_id, supabase_client, resolution="full_res")
 )
 def generate_redesigned_3d_world(room_id: str, user_id: str) -> dict:
     """
-    Main pipeline: redesign_pano_url -> Marble Plus -> navigable 3D world.
-    Cost: $1.20 (1,500 credits with is_pano: true).
+    Main pipeline: 8 capture photos -> Marble Plus reconstruct -> navigable 3D world.
+    Cost: $1.20 (1,500 credits with reconstruct_images).
     """
     from supabase import create_client
+    from concurrent.futures import ThreadPoolExecutor, as_completed
 
     supabase_url = os.environ["SUPABASE_URL"]
     supabase_key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
     marble_key = os.environ["MARBLE_API_KEY"]
     client = create_client(supabase_url, supabase_key)
 
-    client.table("rooms").update({
-        "redesign_status": "marble_plus_processing",
-        "status": "redesign_processing",
-    }).eq("id", room_id).execute()
-
+    # Do NOT overwrite redesign_status here — depth-video/furniture may be running
+    # Plus runs in background; only set plus_upgrade_ready when done
     try:
         room = client.table("rooms").select(
-            "redesign_pano_url, user_id, room_type"
+            "capture_photo_urls, user_id, room_type, style_blend"
         ).eq("id", room_id).single().execute().data
 
         if not room:
             raise RuntimeError(f"Room {room_id} not found")
-        redesign_pano_url = room.get("redesign_pano_url")
-        if not redesign_pano_url:
-            raise RuntimeError(f"Room {room_id} has no redesign_pano_url")
 
-        print(f"[marble+] Pano: {redesign_pano_url[:80]}...")
+        photo_urls = room.get("capture_photo_urls") or []
+        if len(photo_urls) < 4:
+            raise RuntimeError(f"Room {room_id} has {len(photo_urls)} photos, need at least 4")
 
-        pano_bytes = download_redesigned_pano(redesign_pano_url, room_id, user_id, client)
-        media_asset_id = upload_pano_to_marble(pano_bytes, marble_key)
-        operation_id = generate_plus_world(media_asset_id, marble_key)
+        # Limit to 8 photos max
+        photo_urls = photo_urls[:8]
+        print(f"[marble+] Using {len(photo_urls)} capture photos")
+
+        # Build style text prompt
+        style_blend = room.get("style_blend") or {}
+        room_type = room.get("room_type", "living room")
+        dominant_styles = sorted(style_blend.items(), key=lambda x: x[1], reverse=True)
+        dominant_style = dominant_styles[0][0] if dominant_styles else "modern"
+        text_prompt = f"photorealistic {room_type} interior in {dominant_style} style, navigable 3D world, accurate room geometry"
+
+        # Upload all photos to Marble in parallel
+        print(f"[marble+] Uploading {len(photo_urls)} photos to Marble...")
+        asset_ids = [None] * len(photo_urls)
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            futures = {
+                executor.submit(upload_photo_to_marble, url, i, marble_key): i
+                for i, url in enumerate(photo_urls)
+            }
+            for future in as_completed(futures):
+                idx = futures[future]
+                asset_ids[idx] = future.result()
+
+        print(f"[marble+] All {len(asset_ids)} photos uploaded")
+
+        # Build multi-image prompt with reconstruct_images
+        multi_image_prompt = [
+            {
+                "azimuth": None,
+                "content": {
+                    "source": "media_asset",
+                    "media_asset_id": asset_id,
+                },
+            }
+            for asset_id in asset_ids
+        ]
+
+        import requests
+        gen_resp = requests.post(
+            f"{MARBLE_BASE_URL}/worlds:generate",
+            headers={"WLT-Api-Key": marble_key, "Content-Type": "application/json"},
+            json={
+                "model": "Marble 0.1-plus",
+                "display_name": f"Cova Room {room_id} - Plus",
+                "world_prompt": {
+                    "type": "multi-image",
+                    "multi_image_prompt": multi_image_prompt,
+                    "reconstruct_images": True,
+                    "text_prompt": text_prompt,
+                    "disable_recaption": True,
+                },
+                "permission": {"public": False},
+            },
+            timeout=30,
+        )
+        gen_data = gen_resp.json()
+        if "operation_id" not in gen_data:
+            raise RuntimeError(f"Marble Plus generate failed ({gen_resp.status_code}): {json.dumps(gen_data)[:500]}")
+        operation_id = gen_data["operation_id"]
+        print(f"[marble+] Operation: {operation_id}")
+
         world_id = poll_plus_operation(operation_id, marble_key)
         assets = fetch_plus_assets(world_id, marble_key)
 
@@ -251,6 +266,8 @@ def generate_redesigned_3d_world(room_id: str, user_id: str) -> dict:
         signed = client.storage.from_("room-videos").create_signed_url(spz_storage_path, 86400)
         spz_signed_url = signed.get("signedURL", assets["spz_url_full_res"])
 
+        import datetime
+        # Write Plus data first
         client.table("rooms").update({
             "marble_plus_world_id": world_id,
             "marble_spz_url": assets["spz_url_full_res"],
@@ -258,11 +275,27 @@ def generate_redesigned_3d_world(room_id: str, user_id: str) -> dict:
             "marble_spz_url_100k": assets["spz_url_100k"],
             "marble_plus_pano_url": assets.get("pano_url"),
             "marble_plus_thumbnail_url": assets.get("thumbnail_url"),
-            "redesign_status": "marble_plus_complete",
-            "status": "redesign_complete",
+            "plus_upgrade_ready": True,
+            "plus_completed_at": datetime.datetime.utcnow().isoformat(),
         }).eq("id", room_id).execute()
+        # Only promote to "complete" if currently video_ready (don't clobber error state)
+        current = client.table("rooms").select("redesign_status").eq("id", room_id).single().execute().data
+        if current and current.get("redesign_status") in ("video_ready", "marble_plus_processing"):
+            client.table("rooms").update({"redesign_status": "complete"}).eq("id", room_id).execute()
 
-        print(f"[marble+] Session 3 complete! World: {assets['marble_url']}")
+        # Notify the web app that Plus is complete (best effort)
+        app_url = os.environ.get("NEXT_PUBLIC_APP_URL", "")
+        if app_url:
+            try:
+                callback_resp = requests.get(
+                    f"{app_url}/api/pipeline/plus-complete?roomId={room_id}",
+                    timeout=10,
+                )
+                print(f"[marble+] Callback status: {callback_resp.status_code}")
+            except Exception as cb_err:
+                print(f"[marble+] Callback failed (non-fatal): {cb_err}")
+
+        print(f"[marble+] Complete! World: {assets['marble_url']}")
         return {
             "room_id": room_id,
             "world_id": world_id,
@@ -277,9 +310,14 @@ def generate_redesigned_3d_world(room_id: str, user_id: str) -> dict:
         }
 
     except Exception as e:
+        import traceback
         print(f"[marble+] ERROR: {e}")
+        print(f"[marble+] Traceback: {traceback.format_exc()}")
+        # Don't clobber redesign_status — Plus is a background upgrade, not critical path
+        # Only mark plus as failed, leave video_ready/complete intact
         client.table("rooms").update({
-            "redesign_status": "error", "status": "error",
+            "plus_upgrade_ready": False,
+            "plus_completed_at": None,
         }).eq("id", room_id).execute()
         raise
 

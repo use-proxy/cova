@@ -28,23 +28,21 @@ export async function GET(request: Request) {
     const { data: sessionData, error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error && sessionData.user) {
-      // Check if the user has a profile row
-      const { data: profile } = await supabase
-        .from('profiles')
+      // Check if the user has any rooms
+      const { data: rooms, error: roomsError } = await supabase
+        .from('rooms')
         .select('id')
-        .eq('id', sessionData.user.id)
-        .single()
+        .eq('user_id', sessionData.user.id)
+        .limit(1)
 
-      if (profile) {
-        return NextResponse.redirect(`${origin}/dashboard`)
+      if (roomsError) {
+        console.error('Rooms check error:', roomsError)
+        return NextResponse.redirect(`${origin}/capture/new`)
       }
 
-      // New user via OAuth — create profile row from auth metadata
-      const meta = sessionData.user.user_metadata
-      await supabase.from('profiles').insert({
-        id: sessionData.user.id,
-        full_name: meta?.full_name ?? meta?.name ?? null,
-      })
+      if (rooms && rooms.length > 0) {
+        return NextResponse.redirect(`${origin}/dashboard`)
+      }
 
       return NextResponse.redirect(`${origin}/capture/new`)
     }

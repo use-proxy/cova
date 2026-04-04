@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 
   const { data: room } = await supabase
     .from('rooms')
-    .select('id, redesign_pano_url, marble_spz_url, user_id')
+    .select('id, redesign_pano_url, marble_spz_url, user_id, fixed_furniture, style_blend')
     .eq('id', roomId)
     .eq('user_id', user.id)
     .single()
@@ -57,7 +57,11 @@ export async function POST(request: NextRequest) {
   fetch(webhookUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ room_id: roomId, user_id: user.id }),
+    body: JSON.stringify({
+      room_id: roomId,
+      user_id: user.id,
+      fixed_furniture: room.fixed_furniture ?? [],
+    }),
   }).catch((err) => console.error('[furniture] Webhook failed:', err))
 
   return NextResponse.json({ success: true, roomId, status: 'matching_queued' })
@@ -94,7 +98,7 @@ export async function GET(request: NextRequest) {
   const { data: matches } = await supabase
     .from('room_products')
     .select(
-      `id, furniture_label, furniture_description, similarity_score, rank, azimuth_degrees, is_unlocked,
+      `id, furniture_label, furniture_description, similarity_score, rank, azimuth_degrees, elevation_degrees, is_unlocked,
        products (id, name, price, category, retailer, affiliate_url, image_url, style_tags)`
     )
     .eq('room_id', roomId)

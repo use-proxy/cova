@@ -1,0 +1,27 @@
+{
+  "test_plus": {
+    "world_id": "c201ead0-ea5d-49c4-a4f4-df125c7abf7f",
+    "marble_url": "https://marble.worldlabs.ai/world/c201ead0-ea5d-49c4-a4f4-df125c7abf7f",
+    "spz_full": "https://cdn.marble.worldlabs.ai/c201ead0-ea5d-49c4-a4f4-df125c7abf7f/be5f89cd-ed2a-4a8e-89ee-d846a901efb3_ceramic.spz",
+    "spz_500k": "https://cdn.marble.worldlabs.ai/c201ead0-ea5d-49c4-a4f4-df125c7abf7f/7ac27411-6963-476b-b9a7-1f6f1d83bffd_ceramic_500k.spz",
+    "spz_100k": "https://cdn.marble.worldlabs.ai/c201ead0-ea5d-49c4-a4f4-df125c7abf7f/6b6fd52d-6fd1-4a3a-923b-29584950bdff_dust_100k.spz",
+    "pano_url": "https://cdn.marble.worldlabs.ai/c201ead0-ea5d-49c4-a4f4-df125c7abf7f/749e3534-9fbd-4728-9c0f-fb6be13df8ac_panos/rgb_0.png",
+    "thumbnail_url": "https://cdn.marble.worldlabs.ai/c201ead0-ea5d-49c4-a4f4-df125c7abf7f/dca8833e-a275-4467-9db9-bbc703cd93b9_dust_mpi/thumbnail.webp",
+    "method": "multi-image-reconstruct",
+    "label": "Plus-portrait-1x-reconstruct",
+    "model": "Marble 0.1-plus",
+    "photo_count": 8,
+    "reconstruct_images": true,
+    "asset_ids": [
+      "64ada8cb-5d8b-4c5e-bb1d-05fe6b2d2b14",
+      "217a07af-a968-450f-bd06-09803fbd2de8",
+      "a3659ef7-f4e4-4a01-82e1-c5c0ad05cab6",
+      "29dfbb97-4884-48cc-944b-0e3196c93d25",
+      "bc86a54b-6900-433c-b6bd-158b5d74d736",
+      "d92c17ac-3783-40d7-8211-840d467fc88f",
+      "20ebe61f-0db3-4f6c-8b76-7763b4242694",
+      "0ba0535e-1a88-413c-ab3a-02ba33976c4d"
+    ],
+    "total_time_s": 368.5
+  }
+}

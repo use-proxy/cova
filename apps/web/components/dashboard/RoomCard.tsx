@@ -126,12 +126,12 @@ export function RoomCard({ rooms }: RoomCardProps) {
           opacity: 0,
           animation: "dashCardIn 500ms ease-out 400ms forwards",
         }}
-        onClick={() => router.push(`/viewer/${featured.sessionId}`)}
+        onClick={() => router.push(`/room/${featured.id}`)}
         role="link"
         tabIndex={0}
         aria-label={`View ${featured.name} room, designed ${featured.date}`}
         onKeyDown={(e) => {
-          if (e.key === "Enter") router.push(`/viewer/${featured.sessionId}`)
+          if (e.key === "Enter") router.push(`/room/${featured.id}`)
         }}
       >
         {/* Parallax image */}
@@ -205,7 +205,7 @@ export function RoomCard({ rooms }: RoomCardProps) {
                 }}
                 onClick={(e) => {
                   e.stopPropagation()
-                  router.push(`/viewer/${featured.sessionId}`)
+                  router.push(`/room/${featured.id}`)
                 }}
                 aria-label={`View ${featured.name} room`}
               >
@@ -219,7 +219,7 @@ export function RoomCard({ rooms }: RoomCardProps) {
                   color: "#C9A84C",
                   fontFamily: "Inter, sans-serif",
                 }}
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); router.push(`/room/${featured.id}?shop=true`) }}
                 aria-label={`Shop ${featured.name} furniture`}
               >
                 Shop
@@ -248,11 +248,11 @@ export function RoomCard({ rooms }: RoomCardProps) {
                 opacity: 0,
                 animation: `slideUp 400ms ease-out ${600 + i * 100}ms forwards`,
               }}
-              onClick={() => router.push(`/viewer/${room.sessionId}`)}
+              onClick={() => router.push(`/room/${room.id}`)}
               tabIndex={0}
               aria-label={`View ${room.name} room, designed ${room.date}`}
               onKeyDown={(e) => {
-                if (e.key === "Enter") router.push(`/viewer/${room.sessionId}`)
+                if (e.key === "Enter") router.push(`/room/${room.id}`)
               }}
             >
               <img

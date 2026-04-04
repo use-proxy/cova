@@ -1,11 +1,12 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { SplatMesh, SparkControls } from '@sparkjsdev/spark'
 import { createBrowserClient } from '@/lib/supabase/client'
 import { useUserStore } from '@/lib/stores/userStore'
 import { useRoomStore } from '@/lib/stores/roomStore'
+import { useCameraStore } from '@/lib/stores/cameraStore'
 
 interface SplatViewerProps {
   url: string
@@ -33,12 +34,6 @@ export default function SplatViewer({
   const entryTimestamp = useRef<number>(Date.now())
   const hotspotClickCount = useRef<number>(0)
   const hasFlushed = useRef<boolean>(false)
-
-  /** Increment when a hotspot is clicked. Wire to hotspot handler in M7. */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- wired in M7 when hotspots exist
-  const onHotspotClick = useCallback(() => {
-    hotspotClickCount.current += 1
-  }, [])
 
   // Flush engagement data to redesign_feedback
   useEffect(() => {
@@ -156,9 +151,19 @@ export default function SplatViewer({
       }
       window.addEventListener('resize', handleResize)
 
+      const _dirVec = new THREE.Vector3()
+      const setCameraState = useCameraStore.getState().setCameraState
+
       const animate = () => {
         controls.update(camera)
         renderer.render(scene, camera)
+
+        // Extract camera look direction and publish to store
+        _dirVec.set(0, 0, -1).applyQuaternion(camera.quaternion)
+        const yaw = Math.atan2(_dirVec.x, _dirVec.z)
+        const pitch = Math.asin(Math.max(-1, Math.min(1, _dirVec.y)))
+        setCameraState(yaw, pitch, camera.fov * (Math.PI / 180), camera.aspect)
+
         animId = requestAnimationFrame(animate)
       }
       animate()

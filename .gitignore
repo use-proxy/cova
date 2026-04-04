@@ -8,8 +8,9 @@
 *.env
 .env.backup
 .env.bak
-# Claude Code local settings (may contain bash history with secrets)
+# Claude Code settings (accumulates bash history with secrets)
 .claude/settings.local.json
+.claude/settings.json
 node_modules
 .pnpm-store
 .next

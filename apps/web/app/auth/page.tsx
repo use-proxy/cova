@@ -37,7 +37,7 @@ export default function AuthPage() {
     if (error) {
       setMessage(error.message)
     } else {
-      setMessage('Check your email for a login link.')
+      setMessage('Check your email for a magic link')
     }
   }
 
@@ -65,7 +65,7 @@ export default function AuthPage() {
           style={{
             color: '#F8F6F1',
             fontSize: 28,
-            fontFamily: 'Playfair Display, serif',
+            fontFamily: 'var(--font-serif)',
             marginBottom: 32,
             textAlign: 'center',
           }}

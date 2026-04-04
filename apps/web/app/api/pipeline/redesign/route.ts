@@ -41,7 +41,9 @@ export async function POST(request: NextRequest) {
 
   const { data: room } = await supabase
     .from('rooms')
-    .select('id, marble_pano_url, redesign_status, user_id')
+    .select(
+      'id, marble_pano_url, redesign_status, user_id, fixed_furniture, inpainting_mask_url, style_blend, budget'
+    )
     .eq('id', roomId)
     .eq('user_id', user.id)
     .single()
@@ -52,7 +54,7 @@ export async function POST(request: NextRequest) {
 
   if (!room.marble_pano_url) {
     return NextResponse.json(
-      { error: 'Room panorama not ready. Complete video processing first.' },
+      { error: 'Room panorama not ready. Complete capture first.' },
       { status: 400 }
     )
   }
@@ -62,18 +64,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Redesign pipeline not configured' }, { status: 500 })
   }
 
-  await supabase.from('rooms').update({ redesign_status: 'queued' }).eq('id', roomId)
+  await supabase.from('rooms').update({ redesign_status: 'kontext_processing' }).eq('id', roomId)
 
+  // Pass fixed furniture and mask info to the Modal pipeline via webhook payload
   fetch(webhookUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ room_id: roomId, user_id: user.id }),
+    body: JSON.stringify({
+      room_id: roomId,
+      user_id: user.id,
+      fixed_furniture: room.fixed_furniture ?? [],
+      inpainting_mask_url: room.inpainting_mask_url ?? null,
+    }),
   }).catch((err) => console.error('[redesign] Webhook trigger failed:', err))
 
   return NextResponse.json({
     success: true,
     roomId,
-    status: 'queued',
+    status: 'kontext_processing',
     message: 'Redesign started',
   })
 }

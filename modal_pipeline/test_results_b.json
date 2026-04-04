@@ -1,0 +1,15 @@
+{
+  "flux_prediction_id": "b1rhzhk0mhrmy0cx9pbbnj2z64",
+  "flux_output_url": "https://replicate.delivery/xezq/pphrtv2dG8onF1SVHb4GUW3XuN2w0Lc3cfVibxSV4HmBafWWA/tmpww4znarc.jpg",
+  "marble_world_id": "c74429ba-82fa-43ff-bfd2-843029076d5b",
+  "marble_url": "https://marble.worldlabs.ai/world/c74429ba-82fa-43ff-bfd2-843029076d5b",
+  "spz_urls": {
+    "500k": "https://cdn.marble.worldlabs.ai/c74429ba-82fa-43ff-bfd2-843029076d5b/60835ebd-b3bd-4489-a4b0-9feb5bb96d95_ceramic_500k.spz",
+    "100k": "https://cdn.marble.worldlabs.ai/c74429ba-82fa-43ff-bfd2-843029076d5b/cd644322-1fb2-464f-aab8-f77feaee1534_dust_100k.spz",
+    "150k": "https://cdn.marble.worldlabs.ai/c74429ba-82fa-43ff-bfd2-843029076d5b/5291ec5e-db5d-4c8d-a31e-fb46001d7e60_ceramic_150k.spz",
+    "full_res": "https://cdn.marble.worldlabs.ai/c74429ba-82fa-43ff-bfd2-843029076d5b/c643150c-7e7d-4039-ab2c-6caaf995632f_ceramic.spz"
+  },
+  "pano_url": "https://cdn.marble.worldlabs.ai/c74429ba-82fa-43ff-bfd2-843029076d5b/af40b876-9fbc-4a73-98aa-594e407f7524_panos/rgb_0.png",
+  "thumbnail_url": "https://cdn.marble.worldlabs.ai/c74429ba-82fa-43ff-bfd2-843029076d5b/e0ca1647-d78d-435b-83ce-ad4ba8ef0b90_dust_mpi/thumbnail.webp",
+  "total_time_seconds": 308
+}

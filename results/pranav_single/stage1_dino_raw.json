@@ -1,0 +1,265 @@
+{
+  "detections": [
+    {
+      "bbox": [
+        3674,
+        1568,
+        3916,
+        1823
+      ],
+      "confidence": 0.8112541437149048,
+      "label": "white water pitcher"
+    },
+    {
+      "bbox": [
+        3866,
+        722,
+        4666,
+        1290
+      ],
+      "confidence": 0.6539145708084106,
+      "label": "poster"
+    },
+    {
+      "bbox": [
+        2651,
+        1452,
+        3103,
+        1814
+      ],
+      "confidence": 0.4630943238735199,
+      "label": "computer monitor second monitor"
+    },
+    {
+      "bbox": [
+        5086,
+        2091,
+        5695,
+        3764
+      ],
+      "confidence": 0.5703489184379578,
+      "label": "black office chair black gaming chair"
+    },
+    {
+      "bbox": [
+        570,
+        1618,
+        2564,
+        2327
+      ],
+      "confidence": 0.6379003524780273,
+      "label": "dark patterned comforter"
+    },
+    {
+      "bbox": [
+        2042,
+        1219,
+        2500,
+        1814
+      ],
+      "confidence": 0.6235244274139404,
+      "label": "cardboard box"
+    },
+    {
+      "bbox": [
+        4501,
+        1714,
+        4925,
+        1915
+      ],
+      "confidence": 0.5432506799697876,
+      "label": "laptop"
+    },
+    {
+      "bbox": [
+        229,
+        1822,
+        398,
+        2085
+      ],
+      "confidence": 0.5568137168884277,
+      "label": "energy drink"
+    },
+    {
+      "bbox": [
+        12,
+        2345,
+        2380,
+        4118
+      ],
+      "confidence": 0.5137461423873901,
+      "label": "white comforter grey waffle blanket"
+    },
+    {
+      "bbox": [
+        5043,
+        1394,
+        5212,
+        1662
+      ],
+      "confidence": 0.5986512899398804,
+      "label": "blue water bottle"
+    },
+    {
+      "bbox": [
+        2,
+        1816,
+        135,
+        2131
+      ],
+      "confidence": 0.4370752274990082,
+      "label": "plastic bottle blue water bottle"
+    },
+    {
+      "bbox": [
+        3930,
+        1514,
+        4313,
+        1877
+      ],
+      "confidence": 0.39401522278785706,
+      "label": "pillow"
+    },
+    {
+      "bbox": [
+        2673,
+        2754,
+        3075,
+        3067
+      ],
+      "confidence": 0.4419958293437958,
+      "label": "nike sneakers shoes"
+    },
+    {
+      "bbox": [
+        2641,
+        2229,
+        3216,
+        2782
+      ],
+      "confidence": 0.6234521269798279,
+      "label": "black backpack"
+    },
+    {
+      "bbox": [
+        492,
+        1906,
+        821,
+        2052
+      ],
+      "confidence": 0.38034334778785706,
+      "label": "paper documents"
+    },
+    {
+      "bbox": [
+        2423,
+        2792,
+        2616,
+        2998
+      ],
+      "confidence": 0.4484677016735077,
+      "label": "slippers"
+    },
+    {
+      "bbox": [
+        4212,
+        2911,
+        4798,
+        3227
+      ],
+      "confidence": 0.43727898597717285,
+      "label": "duffel plastic bag"
+    },
+    {
+      "bbox": [
+        2578,
+        1359,
+        3188,
+        1916
+      ],
+      "confidence": 0.3599608242511749,
+      "label": "second monitor"
+    },
+    {
+      "bbox": [
+        144,
+        1685,
+        407,
+        2068
+      ],
+      "confidence": 0.4354120194911957,
+      "label": "plastic bag plastic bottle"
+    },
+    {
+      "bbox": [
+        2071,
+        3675,
+        2868,
+        4262
+      ],
+      "confidence": 0.43176138401031494,
+      "label": "duffel bag open luggage"
+    },
+    {
+      "bbox": [
+        2899,
+        2813,
+        3064,
+        3050
+      ],
+      "confidence": 0.3218119740486145,
+      "label": "slippers"
+    },
+    {
+      "bbox": [
+        3932,
+        1510,
+        4865,
+        1882
+      ],
+      "confidence": 0.38425761461257935,
+      "label": "pillow"
+    },
+    {
+      "bbox": [
+        3785,
+        2481,
+        4653,
+        3020
+      ],
+      "confidence": 0.362751305103302,
+      "label": "duffel clothes"
+    },
+    {
+      "bbox": [
+        3771,
+        2465,
+        4807,
+        3240
+      ],
+      "confidence": 0.3506275415420532,
+      "label": "clothes"
+    },
+    {
+      "bbox": [
+        3293,
+        1703,
+        3599,
+        2491
+      ],
+      "confidence": 0.40801411867141724,
+      "label": "clothes"
+    },
+    {
+      "bbox": [
+        348,
+        1738,
+        818,
+        2072
+      ],
+      "confidence": 0.35188648104667664,
+      "label": "paper documents"
+    }
+  ],
+  "result_image": "https://replicate.delivery/xezq/PYz5xt0jc46qBxc8XkDRHeTKCnfZWscIfs3fYydqNpc9OlcZB/result.png"
+}

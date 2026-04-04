@@ -1,0 +1,32 @@
+{
+  "scores": {
+    "v1": {
+      "photorealism": 5,
+      "style_match": 4,
+      "lighting": 5,
+      "room_recognition": 7,
+      "designer_quality": 4,
+      "total": 25
+    },
+    "v2": {
+      "photorealism": 6,
+      "style_match": 6,
+      "lighting": 6,
+      "room_recognition": 7,
+      "designer_quality": 6,
+      "total": 31
+    },
+    "v3": {
+      "photorealism": 5,
+      "style_match": 5,
+      "lighting": 5,
+      "room_recognition": 7,
+      "designer_quality": 4,
+      "total": 26
+    }
+  },
+  "winner": "v2",
+  "winner_total": 31,
+  "issues": "V2 shows cleaner Japandi-leaning elements (neutral bedding, minimal vases, muted tones) but the table surface items look composited rather than naturally photographed. The large artwork swap on the back wall is unconvincing and has a dark flat appearance inconsistent with room lighting. Clothing clutter on floor remains, undermining the Japandi aesthetic. The glass vases on the foreground table are the strongest Japandi element but their shadows and reflections don't fully match ambient light direction from the window.",
+  "recommendation": "regenerate"
+}

@@ -59,15 +59,15 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-[var(--navy-darker)]">
-      <Nav onAuthOpen={() => setAuthOpen(true)} />
-      <Hero onAuthOpen={() => setAuthOpen(true)} />
+      <Nav onAuthOpen={() => { window.location.href = '/auth' }} />
+      <Hero onAuthOpen={() => { window.location.href = '/auth' }} />
       <DemoVideo />
       <Interactive3DRoom />
       <ProcessSteps />
       <BeforeAfter />
       <Testimonials />
       <Stats />
-      <Footer onAuthOpen={() => setAuthOpen(true)} />
+      <Footer onAuthOpen={() => { window.location.href = '/auth' }} />
       <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />
     </main>
   )

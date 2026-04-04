@@ -1,0 +1,27 @@
+{
+  "left": {
+    "angle": "left",
+    "prediction_id": "gdftmhd8z1rmy0cx9pe898cck8",
+    "replicate_url": "https://replicate.delivery/xezq/eKuQOUdysO1dTKMyCs0ZK4mbIOk7E9ifACpoVrgfVPd709tsA/tmp7e3bm047.jpg",
+    "supabase_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-videos/test-redesign/test_d_left.jpg"
+  },
+  "back": {
+    "angle": "back",
+    "prediction_id": "beebgzd8z9rmy0cx9pe9p7q1sg",
+    "replicate_url": "https://replicate.delivery/xezq/ZKkoBjTSW05PJtubeqAtIKgCtalh9tUKv55trhohlIBSdfWWA/tmpk6ixx_z2.jpg",
+    "supabase_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-videos/test-redesign/test_d_back.jpg"
+  },
+  "front": {
+    "angle": "front",
+    "prediction_id": "hn968xn8x9rmt0cx9pebw52jcm",
+    "replicate_url": "https://replicate.delivery/xezq/MPmRUTe37xxOWyL6Y71eXV16PhLtaefQUw64SgbXoVasq7bZB/tmp_yoyqi16.jpg",
+    "supabase_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-videos/test-redesign/test_d_front.jpg"
+  },
+  "right": {
+    "angle": "right",
+    "prediction_id": "dwxx3xn901rmr0cx9pe9emhydm",
+    "replicate_url": "https://replicate.delivery/xezq/5WnHkNH1Psb8PZ3Nfch6RpfCqnhsehZfSnpTNywge1hZW33yC/tmpjr44n46e.jpg",
+    "supabase_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-videos/test-redesign/test_d_right.jpg"
+  },
+  "total_time_seconds": 32
+}
