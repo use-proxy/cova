@@ -9,3 +9,6 @@ export function createAdminClient() {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 }
+
+// Alias used by session 8+ route handlers
+export const createAdminSupabaseClient = createAdminClient
