@@ -19,14 +19,19 @@ Last updated: 2026-04-03
 │   │   │   │   └── rooms/      ← Room CRUD + status
 │   │   │   ├── auth/           ← Auth page + callback
 │   │   │   ├── budget/         ← Budget selection
-│   │   │   ├── capture/        ← Room capture flow
+│   │   │   ├── capture/        ← Legacy capture routes (kept for back-compat)
+│   │   │   │   ├── mobile/
+│   │   │   │   │   └── [token]/page.tsx  ← QR handoff: single-photo mobile camera
+│   │   │   │   └── [roomId]/page.tsx     ← Legacy route (QR+Upload, no webcam)
+│   │   │   ├── design/
+│   │   │   │   └── step-6/page.tsx       ← CANONICAL capture entry point (hybrid)
 │   │   │   ├── dashboard/      ← User dashboard
 │   │   │   ├── processing/     ← Pipeline progress screen
 │   │   │   ├── quiz/           ← Style quiz
 │   │   │   └── room/[roomId]/  ← 3D viewer + chatbot
 │   │   ├── components/
 │   │   │   ├── auth/           ← AuthModal
-│   │   │   ├── capture/        ← QRMode, WebcamMode, UploadMode, etc.
+│   │   │   ├── capture/        ← QRCapture, MobileCapture, UploadFallback, CaptureResult, QualityChecker
 │   │   │   ├── chat/           ← ChatBubble, ChatPanel, ChatMessage
 │   │   │   ├── dashboard/      ← RoomCard, StatsRow, StyleProfile, NewRoomCTA
 │   │   │   ├── layout/         ← AppShell

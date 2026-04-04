@@ -26,7 +26,7 @@ Quiz — swipe cards to build style fingerprint
     ↓
 Budget selection — 5 tiers ($0–$15k+)
     ↓
-Capture — multi-photo or QR-to-phone camera
+Step 6 — Room Capture (Hybrid Mode — LOCKED DECISION)
     ↓
 Processing (2–3 min)
   ├── Track 1: Room reconstruction → 3D splat (AnySplat on Modal A10G)
@@ -150,6 +150,54 @@ Controlled by `PIPELINE_MODE` env var. Default: `full`.
 - Detect furniture on **cube face crops**, not equirectangular panorama (distortion issue)
 - Fusion embeddings (text+image) preferred over image-only when available
 - Category group fallback: if exact category not found, search related categories
+
+---
+
+## Step 6 — Room Capture (Hybrid Mode — LOCKED DECISION)
+
+Device detection determines the primary capture path:
+
+**MOBILE (any phone/tablet):**
+- Primary: "Take Photo" button
+- Opens rear camera directly via: `<input type="file" accept="image/*" capture="environment">`
+- One photo, landscape orientation preferred
+- AR framing guide overlay shown before capture
+
+**DESKTOP (laptop/computer):**
+- Primary: QR code auto-generated on page load
+- User scans QR with phone → opens `/capture/mobile/[token]`
+- Phone takes photo → sends to desktop session via Supabase realtime channel
+- No webcam mode. Webcam photos are insufficient quality for FLUX render pipeline
+
+**FALLBACK (both device types):**
+- "Upload from camera roll" — standard file picker, no `capture=` attribute, opens gallery
+
+**LIDAR (iPhone 12 Pro+ only):**
+- Detected via user agent
+- MVP: shows "Coming soon for Pro iPhones" toast
+- Post-MVP: Apple RoomPlan API integration
+
+**QUALITY CHECK (runs on all paths before proceeding):**
+- Client-side quality assessment before upload
+- Blur detection via Laplacian variance
+- Minimum resolution: 800×600
+- Maximum file size: 10MB
+- If fails: show specific error with retry option
+- If passes: upload to Supabase Storage room-photos bucket
+
+**DELETED MODES (do not reintroduce):**
+- Webcam mode: removed permanently
+- Multi-shot / ShotStrip: removed permanently
+- 4-wall capture: not in V1
+
+**EXISTING INFRASTRUCTURE KEPT:**
+- QR token generation: `app/api/capture/generate-token/`
+- QR token validation: `app/api/capture/validate-token/`
+- Mobile capture page: `app/capture/mobile/[token]/page.tsx`
+- `QualityChecker.tsx`: kept, wired into new flow
+- Supabase realtime channel for QR handoff: kept
+
+**CANONICAL ENTRY POINT:** `app/design/step-6/page.tsx`
 
 ---
 

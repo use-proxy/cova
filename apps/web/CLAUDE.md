@@ -59,6 +59,12 @@
 12. **NEVER modify Supabase Edge Functions except one specific change.**
     Only permitted change: in `chat-room` Edge Function, change model name from `claude-haiku-4-5-20251001` to `claude-sonnet-4-5` (already done in Session 0). All other Edge Functions are FROZEN: `render-room`, `get-render-status`, `match-products`, `detect-furniture`, `extract-colors`, `clip-embed`, `aggregate-style-profiles`, `delete-account`, `generate-depth-map`.
 
+16. **The capture flow is HYBRID — QR for desktop, direct camera for mobile, upload as fallback.**
+    NEVER reintroduce webcam mode.
+    NEVER reintroduce multi-shot/ShotStrip flow.
+    Always wire new capture UI through `app/design/step-6/page.tsx` not `app/capture/`.
+    Mobile QR handoff page lives at `app/capture/mobile/[token]/page.tsx`.
+
 ---
 
 ## Supabase Schema Rules

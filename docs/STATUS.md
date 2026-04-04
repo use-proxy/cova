@@ -113,6 +113,14 @@ The pipeline runs end-to-end. Rooms can be created, captured, processed through 
 
 ---
 
+## Decisions Log
+
+| Date | Decision | Scope |
+|------|----------|-------|
+| 2026-04-04 | Hybrid capture: QR desktop + direct mobile + upload fallback. Webcam removed permanently. QualityChecker kept. Step 6 (`app/design/step-6/page.tsx`) is canonical capture entry point. `app/capture/mobile/[token]/page.tsx` handles QR handoff. | Both |
+
+---
+
 ## Next Session Goals
 
 1. Verify hotspot UX end-to-end on real room
