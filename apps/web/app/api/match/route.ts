@@ -130,7 +130,7 @@ export async function POST(request: Request) {
     const { data: candidates } = await admin
       .from('products')
       .select('*')
-      .eq('in_stock', true)
+      .eq('active', true)
       .contains('room_types', [room_type])
       .gte('price', budget_range[0] * 0.5)
       .lte('price', budget_range[1] * 1.5)
@@ -143,7 +143,7 @@ export async function POST(request: Request) {
       const { data: fallbackCandidates } = await admin
         .from('products')
         .select('*')
-        .eq('in_stock', true)
+        .eq('active', true)
         .gte('price', budget_range[0] * 0.5)
         .lte('price', budget_range[1] * 1.5)
         .limit(50)
@@ -160,10 +160,9 @@ export async function POST(request: Request) {
       .map((product: Tables<'products'>) => {
         // Visual similarity via CLIP cosine
         let visualSim = 0.5
-        if (queryEmbedding.length > 0 && product.clip_embedding_data) {
+        if (queryEmbedding.length > 0 && product.clip_embedding) {
           try {
-            const productEmbedding = product.clip_embedding_data as number[]
-            visualSim = cosineSimilarity(queryEmbedding, productEmbedding)
+            visualSim = cosineSimilarity(queryEmbedding, product.clip_embedding)
           } catch {
             visualSim = 0.5
           }
@@ -181,9 +180,9 @@ export async function POST(request: Request) {
         // Behavioral (0 until data accumulates)
         const behavioral = 0
 
-        // Affiliate weight (lightly weighted)
-        const affiliateWeight =
-          product.commission_rate != null ? Math.min(product.commission_rate / 10, 1) : 0
+        // Affiliate weight — based on price tier (proxy for margin/commission)
+        const tierWeights: Record<string, number> = { budget: 0.3, mid: 0.6, premium: 0.9 }
+        const affiliateWeight = product.price_tier ? (tierWeights[product.price_tier] ?? 0.5) : 0.5
 
         // Exact COVA scoring formula
         const score =
@@ -198,7 +197,7 @@ export async function POST(request: Request) {
           name: product.name,
           price: product.price ?? 0,
           retailer: product.retailer ?? '',
-          affiliate_url: product.affiliate_url ?? '',
+          affiliate_url: product.affiliate_url ?? product.affiliate_url_base ?? '',
           image_url: product.image_url ?? '',
           match_score: score,
           match_label: getMatchLabel(score),

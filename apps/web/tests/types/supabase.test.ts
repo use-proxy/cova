@@ -94,20 +94,32 @@ describe('Supabase Type Definitions', () => {
       type ProductRow = Tables<'products'>
       const mockProduct: ProductRow = {
         id: 'uuid-here',
+        external_id: 'ext-123',
         name: 'Test Sofa',
-        retailer: 'Article',
+        retailer: 'article',
         price: 1200,
-        affiliate_url: 'https://article.com/sofa',
+        currency: 'USD',
+        category: 'seating',
+        subcategory: null,
+        affiliate_url_base: 'https://article.com/sofa',
+        affiliate_url: 'https://article.com/sofa?ref=cova',
         image_url: 'https://example.com/sofa.jpg',
-        clip_embedding_data: null,
+        clip_embedding: null,
+        clip_fusion_embedding: null,
         style_tags: ['modern', 'minimal'],
         room_types: ['living_room'],
+        price_tier: 'mid',
         in_stock: true,
-        commission_rate: 5,
+        active: true,
+        width_inches: null,
+        depth_inches: null,
+        height_inches: null,
+        price_last_checked: null,
         created_at: new Date().toISOString(),
       }
       expect(mockProduct.in_stock).toBe(true)
-      expect(mockProduct.commission_rate).toBe(5)
+      expect(mockProduct.active).toBe(true)
+      expect(mockProduct.clip_embedding).toBeNull()
     })
 
     it('interactions table has all required columns', () => {

@@ -143,44 +143,77 @@ export interface Database {
       products: {
         Row: {
           id: string
+          external_id: string
           name: string
-          retailer: string | null
-          price: number | null
+          retailer: string
+          price: number
+          currency: string
+          category: string
+          subcategory: string | null
+          image_url: string
+          affiliate_url_base: string
           affiliate_url: string | null
-          image_url: string | null
-          clip_embedding_data: Json | null
+          clip_embedding: number[] | null
+          clip_fusion_embedding: number[] | null
           style_tags: string[] | null
-          room_types: string[] | null
+          room_types: string[]
+          price_tier: string | null
           in_stock: boolean
-          commission_rate: number | null
+          active: boolean
+          width_inches: number | null
+          depth_inches: number | null
+          height_inches: number | null
+          price_last_checked: string | null
           created_at: string
         }
         Insert: {
           id?: string
+          external_id: string
           name: string
-          retailer?: string | null
-          price?: number | null
+          retailer: string
+          price: number
+          currency?: string
+          category: string
+          subcategory?: string | null
+          image_url: string
+          affiliate_url_base: string
           affiliate_url?: string | null
-          image_url?: string | null
-          clip_embedding_data?: Json | null
+          clip_embedding?: number[] | null
+          clip_fusion_embedding?: number[] | null
           style_tags?: string[] | null
-          room_types?: string[] | null
+          room_types?: string[]
+          price_tier?: string | null
           in_stock?: boolean
-          commission_rate?: number | null
+          active?: boolean
+          width_inches?: number | null
+          depth_inches?: number | null
+          height_inches?: number | null
+          price_last_checked?: string | null
           created_at?: string
         }
         Update: {
           id?: string
+          external_id?: string
           name?: string
-          retailer?: string | null
-          price?: number | null
+          retailer?: string
+          price?: number
+          currency?: string
+          category?: string
+          subcategory?: string | null
+          image_url?: string
+          affiliate_url_base?: string
           affiliate_url?: string | null
-          image_url?: string | null
-          clip_embedding_data?: Json | null
+          clip_embedding?: number[] | null
+          clip_fusion_embedding?: number[] | null
           style_tags?: string[] | null
-          room_types?: string[] | null
+          room_types?: string[]
+          price_tier?: string | null
           in_stock?: boolean
-          commission_rate?: number | null
+          active?: boolean
+          width_inches?: number | null
+          depth_inches?: number | null
+          height_inches?: number | null
+          price_last_checked?: string | null
           created_at?: string
         }
       }
@@ -215,7 +248,49 @@ export interface Database {
       }
     }
     Views: Record<string, never>
-    Functions: Record<string, never>
+    Functions: {
+      search_products_by_embedding: {
+        Args: {
+          query_embedding: number[]
+          match_threshold?: number
+          match_count?: number
+        }
+        Returns: {
+          id: string
+          name: string
+          retailer: string
+          price: number
+          category: string
+          image_url: string
+          affiliate_url: string
+          style_tags: string[]
+          room_types: string[]
+          width_inches: number | null
+          depth_inches: number | null
+          height_inches: number | null
+          similarity: number
+        }[]
+      }
+      search_products_by_fusion_embedding: {
+        Args: {
+          query_embedding: number[]
+          match_threshold?: number
+          match_count?: number
+        }
+        Returns: {
+          id: string
+          name: string
+          retailer: string
+          price: number
+          image_url: string
+          affiliate_url: string
+          category: string
+          style_tags: string[]
+          room_types: string[]
+          similarity: number
+        }[]
+      }
+    }
     Enums: {
       budget_tier: 'budget' | 'mid' | 'premium' | 'luxury'
       entry_path: 'pairs' | 'natural_language' | 'inspo_photo'
