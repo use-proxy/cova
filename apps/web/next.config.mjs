@@ -4,6 +4,47 @@ const require = createRequire(import.meta.url)
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '*.supabase.co',
+      },
+      {
+        protocol: 'https',
+        hostname: 'replicate.delivery',
+      },
+      {
+        protocol: 'https',
+        hostname: 'pbxt.replicate.delivery',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.replicate.com',
+      },
+    ],
+  },
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+        ],
+      },
+    ]
+  },
   webpack: (config) => {
     // SparkJS uses `new URL("data:application/wasm;base64,...")` which triggers
     // webpack's asset module processing with incompatible generator options.
@@ -27,4 +68,4 @@ const nextConfig = {
   },
 }
 
-export default nextConfig;
+export default nextConfig
