@@ -1,6 +1,15 @@
 .env
 .env.local
 .env*.local
+.env.*.local
+.env.development
+.env.production
+.env.test
+*.env
+.env.backup
+.env.bak
+# Claude Code local settings (may contain bash history with secrets)
+.claude/settings.local.json
 node_modules
 .pnpm-store
 .next

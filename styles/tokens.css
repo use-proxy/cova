@@ -1,0 +1,73 @@
+/**
+ * Cova Design Tokens
+ * Single source of truth for all brand colors, typography, and spacing.
+ * Import this file wherever CSS variables are needed.
+ *
+ * Usage in JSX inline styles:  style={{ background: 'var(--color-navy-base)' }}
+ * Usage in Tailwind:           className="bg-[var(--color-navy-base)]"
+ * Usage in plain CSS:          background: var(--color-navy-base);
+ */
+
+:root {
+  /* ─── Color: Navy ──────────────────────────────────────────────────────── */
+  --color-navy-base:    #0A1628;   /* Page background, deepest layer */
+  --color-navy-darker:  #091829;   /* Alternate background */
+  --color-navy-card:    #0F1F3D;   /* Card / panel surface */
+  --color-navy-card-alt:#0d1f3c;   /* Alternate card surface (slight variation) */
+  --color-navy-border:  #1E3A5F;   /* Borders, dividers */
+
+  /* ─── Color: Gold ──────────────────────────────────────────────────────── */
+  --color-gold:         #C9A84C;   /* Primary CTA, hotspots, active states */
+  --color-gold-subtle:  #F0D080;   /* Subtle gold, secondary highlights */
+  --color-gold-dim:     rgba(201, 168, 76, 0.30);  /* Dim gold for backgrounds */
+  --color-gold-glow:    rgba(201, 168, 76, 0.15);  /* Glow effects */
+  --color-gold-border:  rgba(201, 168, 76, 0.20);  /* Gold-tinted borders */
+
+  /* ─── Color: Text ──────────────────────────────────────────────────────── */
+  --color-text-primary:   #F8F6F1; /* Warm white — main body text */
+  --color-text-secondary: #8BA3C0; /* Muted — captions, labels */
+  --color-text-disabled:  rgba(248, 246, 241, 0.40); /* Disabled state */
+
+  /* ─── Color: Semantic ──────────────────────────────────────────────────── */
+  --color-success:  #4A9B7F;
+  --color-error:    #C0504A;
+  --color-warning:  #D4A017;
+
+  /* ─── Typography ───────────────────────────────────────────────────────── */
+  --font-heading: 'EB Garamond', 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
+  --font-ui:      'Inter', system-ui, -apple-system, sans-serif;
+
+  /* ─── Border radius ─────────────────────────────────────────────────────── */
+  --radius-card:  12px;
+  --radius-input:  8px;
+  --radius-pill:  24px;
+  --radius-sm:     6px;
+
+  /* ─── Spacing scale ─────────────────────────────────────────────────────── */
+  --space-xs:  4px;
+  --space-sm:  8px;
+  --space-md:  16px;
+  --space-lg:  24px;
+  --space-xl:  32px;
+  --space-2xl: 48px;
+
+  /* ─── Motion ────────────────────────────────────────────────────────────── */
+  --transition-fast:    150ms ease-out;
+  --transition-default: 200ms ease-out;
+  --transition-slow:    350ms ease-out;
+  --transition-panel:   500ms cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* ─── Aliases for legacy globals.css names ──────────────────────────────── */
+  /* These map the old variable names to the new token names for compatibility */
+  --navy-deep:    var(--color-navy-base);
+  --navy-darker:  var(--color-navy-darker);
+  --navy-card:    var(--color-navy-card);
+  --gold:         var(--color-gold);
+  --gold-primary: var(--color-gold);
+  --gold-light:   #D4B460;
+  --gold-dim:     var(--color-gold-dim);
+  --gold-glow:    var(--color-gold-glow);
+  --ivory:        #F5F0E8;
+  --background:   var(--color-navy-darker);
+  --foreground:   var(--color-text-primary);
+}

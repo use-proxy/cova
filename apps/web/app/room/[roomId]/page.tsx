@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/admin'
 import dynamic from 'next/dynamic'
 
 const SplatViewer = dynamic(() => import('@/components/SplatViewer'), {
@@ -37,10 +37,7 @@ interface PageProps {
 export default async function RoomViewerPage({ params }: PageProps) {
   const { roomId } = await params
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+  const supabase = createAdminClient()
 
   const { data: room } = await supabase
     .from('rooms')
@@ -68,23 +65,20 @@ export default async function RoomViewerPage({ params }: PageProps) {
     viewerUrl = signed?.signedUrl ?? ''
   }
 
-  if (!viewerUrl) {
-    redirect(`/processing/${roomId}`)
-  }
-
   const hasRedesign = !!room.marble_spz_url
-  const hasFurniture = (room.furniture_matches_count ?? 0) > 0
 
   return (
     <main style={{ margin: 0, padding: 0, overflow: 'hidden', position: 'relative' }}>
-      <SplatViewer
-        url={viewerUrl}
-        spzUrl={spzUrl || undefined}
-        spzUrl500k={spzUrl500k || undefined}
-        roomId={roomId}
-        hasRedesign={hasRedesign}
-      />
-      {hasFurniture && <RoomOverlay roomId={roomId} />}
+      {viewerUrl && (
+        <SplatViewer
+          url={viewerUrl}
+          spzUrl={spzUrl || undefined}
+          spzUrl500k={spzUrl500k || undefined}
+          roomId={roomId}
+          hasRedesign={hasRedesign}
+        />
+      )}
+      <RoomOverlay roomId={roomId} />
       <RoomChatbot roomId={roomId} />
     </main>
   )

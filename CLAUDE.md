@@ -185,8 +185,8 @@ tailwindcss@3.4.x
 @sparkjsdev/spark@latest
 three@latest
 @react-three/fiber@8.x
-zustand@4.x
-framer-motion@11.x
+zustand@5.x
+framer-motion@12.x
 react-qr-code@latest
 jose@latest
 sharp@latest

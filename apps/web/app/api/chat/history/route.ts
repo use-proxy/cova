@@ -1,7 +1,6 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { createClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function GET(request: Request) {
   try {
@@ -23,10 +22,7 @@ export async function GET(request: Request) {
     }
 
     // Verify user owns room
-    const db = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    const db = createAdminClient()
 
     const { data: room } = await db
       .from('rooms')
@@ -48,7 +44,7 @@ export async function GET(request: Request) {
       .limit(50)
 
     return NextResponse.json({ messages: messages || [] })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Chat history error:', error)
     return NextResponse.json({ error: 'Failed to fetch history' }, { status: 500 })
   }

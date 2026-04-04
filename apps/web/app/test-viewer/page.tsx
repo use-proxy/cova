@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import dynamicImport from 'next/dynamic'
-import { createClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 const SplatViewer = dynamicImport(() => import('@/components/SplatViewer'), {
   ssr: false,
@@ -24,10 +24,7 @@ const SplatViewer = dynamicImport(() => import('@/components/SplatViewer'), {
 const PLY_PATH = 'test-user/14989918-d087-41fb-8442-d5b5f32b537d/room.ply'
 
 export default async function TestViewerPage() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+  const supabase = createAdminClient()
 
   const { data, error } = await supabase.storage
     .from('room-videos')
