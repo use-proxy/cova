@@ -258,6 +258,9 @@ importers:
       three:
         specifier: 0.155.0
         version: 0.155.0
+      three-web:
+        specifier: npm:three@0.183.2
+        version: three@0.183.2
       zod:
         specifier: ^3.25.28
         version: 3.25.76
@@ -7437,6 +7440,9 @@ packages:
 
   three@0.155.0:
     resolution: {integrity: sha512-sNgCYmDijnIqkD/bMfk+1pHg3YzsxW7V2ChpuP6HCQ8NiZr3RufsXQr8M3SSUMjW4hG+sUk7YbyuY0DncaDTJQ==}
+
+  three@0.183.2:
+    resolution: {integrity: sha512-di3BsL2FEQ1PA7Hcvn4fyJOlxRRgFYBpMTcyOgkwJIaDOdJMebEFPA+t98EvjuljDx4hNulAGwF6KIjtwI5jgQ==}
 
   throat@5.0.0:
     resolution: {integrity: sha512-fcwX4mndzpLQKBS1DVYhGAcYaYt7vsHNIvQV+WXMvnow5cgjPphq5CaayLaGsjRdSCKZFNGt7/GYAuXaNOiYCA==}
@@ -16520,6 +16526,8 @@ snapshots:
       three: 0.155.0
 
   three@0.155.0: {}
+
+  three@0.183.2: {}
 
   throat@5.0.0: {}
 
