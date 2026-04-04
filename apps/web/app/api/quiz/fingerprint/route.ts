@@ -14,17 +14,75 @@ interface FingerprintRequestBody {
   room_type: string
 }
 
+// All 64 binary combinations of 6 dimensions
+// Dimensions: [luminosity, density, temperature, form, era, texture]
+// 1 = high (bright, layered, warm, organic, traditional, textured)
+// 0 = low  (moody, minimal, cool, geometric, modern, smooth)
 const STYLE_NAMES: Record<string, string> = {
-  '111111': 'Warm Maximalist',
-  '111110': 'Bohemian Eclectic',
-  '111100': 'Rustic Traditional',
-  '110000': 'Scandinavian Minimal',
   '000000': 'Cool Minimalist',
   '000001': 'Industrial Modern',
-  '001100': 'Japandi',
-  '011100': 'Warm Japandi',
+  '000010': 'Geometric Contemporary',
+  '000011': 'Urban Loft',
+  '000100': 'Organic Minimal',
+  '000101': 'Japandi',
+  '000110': 'Nature Modern',
+  '000111': 'Earthy Minimalist',
+  '001000': 'Cool Layered',
+  '001001': 'Dark Academic',
+  '001010': 'Maximalist Industrial',
+  '001011': 'Moody Eclectic',
+  '001100': 'Warm Japandi',
+  '001101': 'Boho Minimal',
+  '001110': 'Jungle Modern',
+  '001111': 'Organic Maximalist',
+  '010000': 'Coastal Minimal',
+  '010001': 'Scandinavian Modern',
+  '010010': 'Cool Nordic',
+  '010011': 'Nordic Industrial',
+  '010100': 'Coastal Organic',
+  '010101': 'Scandinavian Natural',
+  '010110': 'Biophilic Minimal',
+  '010111': 'Nordic Boho',
+  '011000': 'Coastal Layered',
+  '011001': 'French Country Light',
+  '011010': 'Maximalist Coastal',
+  '011011': 'Eclectic Light',
+  '011100': 'Organic Coastal',
+  '011101': 'Bohemian Coastal',
+  '011110': 'Tropical Modern',
+  '011111': 'Maximalist Organic',
+  '100000': 'Moody Minimal',
+  '100001': 'Dark Modern',
+  '100010': 'Concrete Chic',
+  '100011': 'Brutalist Warm',
+  '100100': 'Organic Moody',
+  '100101': 'Warm Industrial',
+  '100110': 'Dark Nature',
+  '100111': 'Moody Organic',
+  '101000': 'Warm Layered',
+  '101001': 'Amber Eclectic',
   '101010': 'Transitional',
+  '101011': 'Rich Traditional',
+  '101100': 'Organic Transitional',
+  '101101': 'Warm Eclectic',
+  '101110': 'Warm Nature',
+  '101111': 'Bohemian Warm',
+  '110000': 'Scandinavian Minimal',
+  '110001': 'Mid-Century Light',
+  '110010': 'Bright Contemporary',
+  '110011': 'Airy Industrial',
   '110100': 'Organic Modern',
+  '110101': 'Bright Japandi',
+  '110110': 'Biophilic Modern',
+  '110111': 'Airy Organic',
+  '111000': 'Bright Maximalist',
+  '111001': 'Hollywood Regency',
+  '111010': 'Maximalist Modern',
+  '111011': 'Glam Eclectic',
+  '111100': 'Rustic Traditional',
+  '111101': 'Bohemian Eclectic',
+  '111110': 'Warm Maximalist',
+  '111111': 'Grand Eclectic',
 }
 
 function computeFingerprint(responses: QuizResponse[]): number[] {
@@ -50,8 +108,7 @@ function computeFingerprint(responses: QuizResponse[]): number[] {
 
 function getStyleName(fingerprint: number[]): string {
   const key = fingerprint.map((d) => (d >= 0.5 ? '1' : '0')).join('')
-
-  return STYLE_NAMES[key] ?? STYLE_NAMES[key.slice(0, 4) + '00'] ?? 'Curated Modern'
+  return STYLE_NAMES[key] ?? 'Curated Modern'
 }
 
 function fingerprintToStyleTagsSimple(fingerprint: number[]): string[] {

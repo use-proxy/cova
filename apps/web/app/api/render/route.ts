@@ -1,6 +1,8 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { buildFluxPrompt, runFluxRender } from '@/lib/ai/flux'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { withRetry } from '@/lib/retry'
+import { checkRateLimit } from '@/lib/rateLimit'
 import { NextResponse } from 'next/server'
 import type { InsertTables } from '@/types/supabase'
 
@@ -34,6 +36,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const rateLimit = checkRateLimit(user.id, 'render')
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded', retry_after: rateLimit.retryAfterSeconds },
+        { status: 429 }
+      )
+    }
+
     const body = (await request.json()) as RenderRequestBody
 
     const {
@@ -60,12 +70,9 @@ export async function POST(request: Request) {
       constraints ?? []
     )
 
-    const renderUrl = await runFluxRender(
-      photo_url,
-      depth_map_url,
-      positive,
-      negative,
-      style_strength
+    const renderUrl = await withRetry(
+      () => runFluxRender(photo_url, depth_map_url, positive, negative, style_strength),
+      { maxAttempts: 3, initialDelayMs: 2000 }
     )
 
     const admin = createAdminSupabaseClient()

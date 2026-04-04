@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
+import { checkRateLimit } from '@/lib/rateLimit'
 import {
   embedImage,
   cosineSimilarity,
@@ -104,6 +105,14 @@ export async function POST(request: Request) {
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const rateLimit = checkRateLimit(user.id, 'match')
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded', retry_after: rateLimit.retryAfterSeconds },
+        { status: 429 }
+      )
     }
 
     const body = (await request.json()) as MatchRequestBody
