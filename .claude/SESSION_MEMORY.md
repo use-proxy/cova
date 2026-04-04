@@ -7,10 +7,10 @@
 
 ## Current State
 
-- **Current Milestone:** M7 COMPLETE — All 5 sessions done, full pipeline wired
-- **Last Updated:** April 1, 2026
-- **Last Session:** M7 Session 5 — Frontend wiring, SplatViewer SPZ, hotspots, product panel
-- **Diagnostic Run:** March 31, 2026 — PASS (see diagnostic_report.json)
+- **Current Milestone:** M8 IN PROGRESS — Backend infrastructure complete, UI next
+- **Last Updated:** April 4, 2026
+- **Last Session:** Overnight optimization — 133→166 tests, schema fixed, 15 new modules
+- **Diagnostic Run:** April 4, 2026 — 166/166 PASS, tsc clean
 
 ---
 
