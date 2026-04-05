@@ -124,9 +124,10 @@ async function runSingleConfig(config: ScraperConfig, state: RunState): Promise<
   }
 
   log('SCRAPE', 'INFO', `Starting actor: ${config.label} (${config.actorId})`)
+  log('SCRAPE', 'INFO', `Actor input: ${JSON.stringify(config.input)}`)
 
   try {
-    // Launch actor
+    // Launch actor — input passed directly, no wrapper
     const run = await client.actor(config.actorId).call(config.input, {
       memory: 1024,
       timeout: 3600, // 1 hour max per run
