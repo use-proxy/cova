@@ -7,6 +7,7 @@ import { useFingerprintStore } from '@/lib/store/fingerprint'
 import { useSessionStore } from '@/lib/store/session'
 import { createBrowserClient } from '@/lib/supabase/client'
 import ShopRoom, { type DetectedItem, type MatchedProduct } from '@/components/cova/ShopRoom'
+import { StepIndicator } from '@/components/cova/StepIndicator'
 import type { KeepMaskItem } from '@/lib/store/room'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -152,12 +153,15 @@ export default function Step10Page() {
   if (!renderUrl) return null
 
   return (
-    <ShopRoom
-      renderUrl={renderUrl}
-      detections={displayDetections}
-      productsByItem={productsByItem}
-      isLoadingProducts={isLoadingProducts}
-      onBuyClick={handleBuyClick}
-    />
+    <>
+      <StepIndicator currentStep={10} totalSteps={10} />
+      <ShopRoom
+        renderUrl={renderUrl}
+        detections={displayDetections}
+        productsByItem={productsByItem}
+        isLoadingProducts={isLoadingProducts}
+        onBuyClick={handleBuyClick}
+      />
+    </>
   )
 }

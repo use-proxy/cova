@@ -1,12 +1,39 @@
 'use client'
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 
 // ---------- Types ----------
+
+interface ChatProduct {
+  product_url: string
+  image_url?: string
+  name: string
+  retailer?: string
+  price?: number
+}
+
+interface StyleUpdateData {
+  updated?: Record<string, number>
+  [key: string]: unknown
+}
+
+interface CostItem {
+  name: string
+  price?: number
+}
+
+interface CostsData {
+  category?: string
+  items?: CostItem[]
+  total?: number
+  [key: string]: unknown
+}
+
+type ToolResultData = ChatProduct[] | StyleUpdateData | CostsData
+
 interface ToolResult {
   type: 'products' | 'style_update' | 'costs' | 'filtered_products'
-  data: any
+  data: ToolResultData
 }
 
 interface Message {
@@ -21,8 +48,16 @@ interface RoomChatbotProps {
   roomId: string
 }
 
+interface HistoryMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  tool_results?: ToolResult[]
+  created_at: string
+}
+
 // ---------- Product Card ----------
-function ProductCard({ product }: { product: any }) {
+function ProductCard({ product }: { product: ChatProduct }) {
   return (
     <a
       href={product.product_url}
@@ -84,7 +119,7 @@ function ProductCard({ product }: { product: any }) {
 }
 
 // ---------- Style Update Card ----------
-function StyleUpdateCard({ data }: { data: any }) {
+function StyleUpdateCard({ data }: { data: StyleUpdateData }) {
   const styles = data.updated || {}
   return (
     <div
@@ -114,7 +149,7 @@ function StyleUpdateCard({ data }: { data: any }) {
 }
 
 // ---------- Costs Card ----------
-function CostsCard({ data }: { data: any }) {
+function CostsCard({ data }: { data: CostsData }) {
   return (
     <div
       style={{
@@ -129,7 +164,7 @@ function CostsCard({ data }: { data: any }) {
       <div style={{ color: '#C9A84C', fontWeight: 600, marginBottom: 6 }}>
         Room Costs {data.category !== 'all' ? `(${data.category})` : ''}
       </div>
-      {data.items?.map((item: any, i: number) => (
+      {data.items?.map((item: CostItem, i: number) => (
         <div
           key={i}
           style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}
@@ -167,10 +202,10 @@ function ToolResultsRenderer({ results }: { results: ToolResult[] }) {
           case 'filtered_products':
             return (
               <div key={i}>
-                {result.data?.map((product: any, j: number) => (
+                {Array.isArray(result.data) && result.data.map((product: ChatProduct, j: number) => (
                   <ProductCard key={j} product={product} />
                 ))}
-                {(!result.data || result.data.length === 0) && (
+                {(!result.data || (Array.isArray(result.data) && result.data.length === 0)) && (
                   <div style={{ fontSize: 12, color: '#8BA3C0', marginTop: 6, fontStyle: 'italic' }}>
                     No matching products found.
                   </div>
@@ -178,9 +213,9 @@ function ToolResultsRenderer({ results }: { results: ToolResult[] }) {
               </div>
             )
           case 'style_update':
-            return <StyleUpdateCard key={i} data={result.data} />
+            return <StyleUpdateCard key={i} data={result.data as StyleUpdateData} />
           case 'costs':
-            return <CostsCard key={i} data={result.data} />
+            return <CostsCard key={i} data={result.data as CostsData} />
           default:
             return null
         }
@@ -247,9 +282,9 @@ export default function RoomChatbot({ roomId }: RoomChatbotProps) {
     try {
       const res = await fetch(`/api/chat/history?roomId=${roomId}`)
       if (res.ok) {
-        const { messages: history } = await res.json()
+        const { messages: history } = (await res.json()) as { messages: HistoryMessage[] }
         setMessages(
-          (history || []).map((m: any) => ({
+          (history || []).map((m: HistoryMessage) => ({
             id: m.id,
             role: m.role,
             content: m.content,

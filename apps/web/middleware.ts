@@ -1,7 +1,14 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const PROTECTED_ROUTES = ['/design']
+// Steps 1-5 are open (no auth required). Steps 6+ require auth.
+const PROTECTED_ROUTES = [
+  '/design/step-6',
+  '/design/step-7',
+  '/design/step-8',
+  '/design/step-9',
+  '/design/step-10',
+]
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Share2, ArrowLeftRight } from 'lucide-react'
 import { useRoomStore } from '@/lib/store/room'
+import { StepIndicator } from '@/components/cova/StepIndicator'
 
 export default function Step8Page() {
   const router = useRouter()
@@ -50,6 +51,7 @@ export default function Step8Page() {
         background: 'var(--cova-bg)',
       }}
     >
+      <StepIndicator currentStep={8} totalSteps={10} />
       {/* ── After image (AI render) ──────────────────────────────────────────── */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img

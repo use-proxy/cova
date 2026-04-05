@@ -17,16 +17,16 @@ export function StepIndicator({ currentStep, totalSteps }: StepIndicatorProps) {
         right: 0,
         zIndex: 50,
         height: 3,
-        background: '#0F1F3D',
+        background: 'var(--cova-surface)',
       }}
     >
       <div
         style={{
           height: '100%',
           width: `${percentage}%`,
-          background: '#C9A84C',
+          background: 'var(--cova-gold)',
           transition: 'width 400ms ease',
-          boxShadow: '0 0 8px rgba(201,168,76,0.5)',
+          boxShadow: '0 0 8px var(--cova-gold-glow)',
         }}
       />
     </div>

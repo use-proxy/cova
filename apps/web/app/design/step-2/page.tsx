@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { QUIZ_PAIRS } from "@/lib/ai/quiz-data";
-import { useFingerprintStore } from "@/lib/store";
+import { useFingerprintStore, useSessionStore } from "@/lib/store";
 import { StepIndicator } from "@/components/cova/StepIndicator";
 
 const TOTAL_PAIRS = 19;
@@ -16,7 +16,8 @@ type Response = {
 
 export default function StyleQuizPage() {
   const router = useRouter();
-  const { roomType } = useFingerprintStore();
+  const { roomType, setFingerprint } = useFingerprintStore();
+  const { setStep } = useSessionStore();
   const pairs = QUIZ_PAIRS[roomType ?? "living-room"] ?? QUIZ_PAIRS["living-room"]!;
 
   const [currentPair, setCurrentPair] = useState(0);
@@ -33,6 +34,42 @@ export default function StyleQuizPage() {
 
   // Progress width based on cards answered
   const progressWidth = ((currentPair / TOTAL_PAIRS) * 9 + 9).toFixed(1);
+
+  // Call fingerprint API then navigate to step-3
+  const completeQuiz = useCallback(
+    async (finalResponses: Response[]) => {
+      try {
+        const apiResponses = finalResponses.map((r) => ({
+          pair_id: r.pairId,
+          chosen: r.chosen,
+          super_liked: r.superLiked,
+        }));
+        const res = await fetch("/api/quiz/fingerprint", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            responses: apiResponses,
+            entry_path: "pairs",
+            room_type: roomType ?? "living-room",
+          }),
+        });
+        if (res.ok) {
+          const data = (await res.json()) as {
+            fingerprint: number[];
+            style_name: string;
+            style_chips?: string[];
+          };
+          setFingerprint(data.fingerprint, data.style_name);
+        }
+      } catch {
+        // Non-blocking — store will use defaults on step-3
+      } finally {
+        setStep(3);
+        router.push("/design/step-3");
+      }
+    },
+    [roomType, setFingerprint, setStep, router]
+  );
 
   const handleSelection = useCallback(
     (side: "left" | "right") => {
@@ -54,10 +91,11 @@ export default function StyleQuizPage() {
           chosen: side === "left" ? "A" : "B",
           superLiked: false,
         };
-        setResponses((prev) => [...prev, newResponse]);
+        const updatedResponses = [...responses, newResponse];
+        setResponses(updatedResponses);
 
         if (currentPair === TOTAL_PAIRS - 1) {
-          router.push("/design/step-3");
+          void completeQuiz(updatedResponses);
         } else {
           setSelectedCard(null);
           setExitPhase(false);
@@ -72,7 +110,7 @@ export default function StyleQuizPage() {
         }
       }, 1000);
     },
-    [isAnimating, currentPair, router, pairs]
+    [isAnimating, currentPair, responses, completeQuiz, pairs]
   );
 
   const handleBack = useCallback(() => {
@@ -101,9 +139,6 @@ export default function StyleQuizPage() {
     const timer = setTimeout(() => setEnterPhase(false), 460);
     return () => clearTimeout(timer);
   }, []);
-
-  // suppress unused variable warning
-  void responses;
 
   const activePair = pairs[currentPair];
   const imgUrlA = activePair?.imageA?.url ?? "";
@@ -154,7 +189,7 @@ export default function StyleQuizPage() {
       className="fixed inset-0 flex flex-col overflow-hidden"
       style={{ backgroundColor: "#091829" }}
     >
-      <StepIndicator currentStep={2} totalSteps={11} />
+      <StepIndicator currentStep={2} totalSteps={10} />
       {/* TOP ZONE - Progress */}
       <div className="flex flex-col items-center pt-4 pb-2" style={{ height: "12%" }}>
         <p
@@ -191,7 +226,7 @@ export default function StyleQuizPage() {
           className="mt-2 text-center font-sans"
           style={{ fontSize: "11px", color: "#4A5E7A", letterSpacing: "0.15em", textTransform: "uppercase" }}
         >
-          Step 2 of 11
+          Step 2 of 10
         </p>
 
         {/* Warmup text - only on warmup card */}
@@ -422,9 +457,10 @@ export default function StyleQuizPage() {
               chosen: "B",
               superLiked: false,
             };
-            setResponses((prev) => [...prev, newResponse]);
+            const updatedResponses = [...responses, newResponse];
+            setResponses(updatedResponses);
             if (currentPair === TOTAL_PAIRS - 1) {
-              router.push("/design/step-3");
+              void completeQuiz(updatedResponses);
             } else {
               setCurrentPair((prev) => prev + 1);
             }

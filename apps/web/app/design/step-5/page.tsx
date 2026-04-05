@@ -166,7 +166,7 @@ export default function Step5Page() {
         padding: '24px',
       }}
     >
-      <StepIndicator currentStep={5} totalSteps={11} />
+      <StepIndicator currentStep={5} totalSteps={10} />
 
       <div
         style={{

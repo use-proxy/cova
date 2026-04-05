@@ -8,6 +8,7 @@ import { useRoomStore } from '@/lib/store/room'
 import { useFingerprintStore } from '@/lib/store/fingerprint'
 import { useSessionStore } from '@/lib/store/session'
 import { useRefineStore } from '@/lib/store/refine'
+import { StepIndicator } from '@/components/cova/StepIndicator'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -450,6 +451,7 @@ export default function Step7Page() {
         padding: '0 24px',
       }}
     >
+      <StepIndicator currentStep={7} totalSteps={10} />
       {/* Heading */}
       <h1
         style={{

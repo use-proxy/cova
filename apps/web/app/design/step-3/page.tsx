@@ -183,13 +183,14 @@ export default function Step3Page() {
     }, 1900)
     // t=2300ms: Labels fade in
     const t6 = setTimeout(() => setLabelsVisible(true), 2300)
-    // t=2800ms: Style name types in
+    // t=2800ms: "Your Design DNA" types in (style name never shown per Rule 8)
+    const TYPING_TEXT = "Your Design DNA"
     const t7 = setTimeout(() => {
       setShowCursor(true)
       let i = 0
       const typeInterval = setInterval(() => {
-        if (i < styleName.length) {
-          setTypedName(styleName.slice(0, i + 1))
+        if (i < TYPING_TEXT.length) {
+          setTypedName(TYPING_TEXT.slice(0, i + 1))
           i++
         } else {
           clearInterval(typeInterval)
@@ -393,7 +394,7 @@ export default function Step3Page() {
         }}
       />
 
-      <StepIndicator currentStep={3} totalSteps={11} />
+      <StepIndicator currentStep={3} totalSteps={10} />
 
       {/* Share button */}
       <button
@@ -700,7 +701,7 @@ export default function Step3Page() {
                   <>
                     <img
                       src={renderUrls[i]!}
-                      alt={`${photo.name} redesigned in ${styleName}`}
+                      alt={`${photo.name} redesigned to your style`}
                       className="absolute inset-0 w-full h-full object-cover"
                     />
                     <div
@@ -713,7 +714,7 @@ export default function Step3Page() {
                         className="px-2.5 py-1 rounded-full text-[11px] font-sans text-[#091829]"
                         style={{ background: "#C9A84C" }}
                       >
-                        {styleName}
+                        Your style
                       </span>
                     </div>
                   </>
@@ -739,7 +740,7 @@ export default function Step3Page() {
                         className="px-2.5 py-1 rounded-full text-[11px] font-sans text-[#091829]"
                         style={{ background: "#C9A84C" }}
                       >
-                        {styleName}
+                        Your style
                       </span>
                     </div>
                   </>

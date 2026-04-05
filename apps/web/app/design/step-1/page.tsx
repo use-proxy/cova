@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { StepIndicator } from "@/components/cova/StepIndicator";
+import { useFingerprintStore, useSessionStore } from "@/lib/store";
 
 // Color constants
 const COLORS = {
@@ -492,9 +493,23 @@ function BudgetCarousel({
   );
 }
 
+// Map carousel tier index (0-4) to store BudgetTier + range
+const TIER_INDEX_TO_STORE: Array<{
+  tier: 'budget' | 'mid' | 'premium' | 'luxury';
+  range: [number, number];
+}> = [
+  { tier: 'budget',  range: [500,   2000]  }, // Thrift
+  { tier: 'mid',     range: [2000,  8000]  }, // Balanced
+  { tier: 'premium', range: [8000,  25000] }, // Premium
+  { tier: 'luxury',  range: [25000, 75000] }, // Luxury
+  { tier: 'luxury',  range: [75000, 500000]}, // Ultra → maps to luxury
+];
+
 // Main page component
 export default function CovaDesignStep1() {
   const router = useRouter();
+  const { setRoomType, setBudget } = useFingerprintStore();
+  const { setStep } = useSessionStore();
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const [selectedTier, setSelectedTier] = useState(1); // Default to "Balanced"
   const [ctaUnlocked, setCtaUnlocked] = useState(false);
@@ -512,7 +527,11 @@ export default function CovaDesignStep1() {
 
   const handleContinue = () => {
     if (!selectedRoom) return;
-    console.log({ room: selectedRoom, tier: selectedTier });
+    // Save room type and budget to store before navigating
+    setRoomType(selectedRoom);
+    const budgetMap = TIER_INDEX_TO_STORE[selectedTier] ?? TIER_INDEX_TO_STORE[1]!;
+    setBudget(budgetMap.tier, budgetMap.range);
+    setStep(2);
     router.push("/design/step-2");
   };
 
@@ -521,7 +540,7 @@ export default function CovaDesignStep1() {
       className="min-h-screen overflow-y-auto"
       style={{ background: COLORS.background }}
     >
-      <StepIndicator currentStep={1} totalSteps={11} />
+      <StepIndicator currentStep={1} totalSteps={10} />
 
       {/* Step indicator */}
       <div
@@ -533,7 +552,7 @@ export default function CovaDesignStep1() {
           letterSpacing: "0.15em",
         }}
       >
-        Step 1 of 11
+        Step 1 of 10
       </div>
 
       {/* Section 1: Room Type Selection */}

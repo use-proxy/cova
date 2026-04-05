@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useRoomStore } from '@/lib/store/room'
 import { useSessionStore } from '@/lib/store/session'
 import { useRefineStore } from '@/lib/store/refine'
+import { StepIndicator } from '@/components/cova/StepIndicator'
 
 // ─── Cycling placeholder texts ───────────────────────────────────────────────
 
@@ -132,6 +133,7 @@ export default function Step9Page() {
       className="fixed inset-0 flex flex-col overflow-hidden"
       style={{ backgroundColor: '#091829' }}
     >
+      <StepIndicator currentStep={9} totalSteps={10} />
       {/* ── Zone 1: Render image ──────────────────────────────────────────── */}
       <div className="relative flex-1 min-h-0 overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}

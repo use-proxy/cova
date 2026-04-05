@@ -25,7 +25,7 @@ export const useSessionStore = create<SessionState>()(
       ...INITIAL_STATE,
       setStep: (step) => set({ currentStep: step }),
       nextStep: () => set((state) => ({
-        currentStep: Math.min(state.currentStep + 1, 11)
+        currentStep: Math.min(state.currentStep + 1, 10)
       })),
       prevStep: () => set((state) => ({
         currentStep: Math.max(state.currentStep - 1, 1)
