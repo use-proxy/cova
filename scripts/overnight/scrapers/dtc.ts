@@ -83,7 +83,7 @@ export const dtcConfigs: ScraperConfig[] = DTC_URLS.map((entry, i) => ({
     startUrls: [{ url: entry.url }],
     pageFunction: PAGE_FUNCTION,
     maxPagesPerCrawl: 5,
-    waitUntil: 'networkidle2',
+    waitUntil: ['networkidle2'],
     proxyConfiguration: { useApifyProxy: true },
   },
   maxItems: 200,

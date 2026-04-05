@@ -90,7 +90,7 @@ export const ikeaConfigs: ScraperConfig[] = IKEA_URLS.map((url, i) => ({
     startUrls: [{ url }],
     pageFunction: PAGE_FUNCTION,
     maxPagesPerCrawl: 5,
-    waitUntil: 'networkidle2',
+    waitUntil: ['networkidle2'],
     proxyConfiguration: { useApifyProxy: true },
   },
   maxItems: 200,

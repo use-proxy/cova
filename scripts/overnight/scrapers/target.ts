@@ -85,7 +85,7 @@ export const targetConfigs: ScraperConfig[] = TARGET_URLS.map((url, i) => ({
     startUrls: [{ url }],
     pageFunction: PAGE_FUNCTION,
     maxPagesPerCrawl: 4,
-    waitUntil: 'networkidle2',
+    waitUntil: ['networkidle2'],
     proxyConfiguration: { useApifyProxy: true },
   },
   maxItems: 100,

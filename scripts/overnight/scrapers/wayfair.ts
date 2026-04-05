@@ -134,7 +134,7 @@ export const wayfairGenericConfigs: ScraperConfig[] = WAYFAIR_URLS.slice(0, 5).m
     startUrls: [{ url }],
     pageFunction: PAGE_FUNCTION,
     maxPagesPerCrawl: 3,
-    waitUntil: 'networkidle2',
+    waitUntil: ['networkidle2'],
     proxyConfiguration: { useApifyProxy: true },
   },
   maxItems: 500,

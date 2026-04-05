@@ -93,7 +93,7 @@ export const crateBarrelConfigs: ScraperConfig[] = CB_URLS.map((entry, i) => ({
     startUrls: [{ url: entry.url }],
     pageFunction: PAGE_FUNCTION,
     maxPagesPerCrawl: 4,
-    waitUntil: 'networkidle2',
+    waitUntil: ['networkidle2'],
     proxyConfiguration: { useApifyProxy: true },
   },
   maxItems: 150,

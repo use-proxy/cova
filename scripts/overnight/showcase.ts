@@ -157,6 +157,14 @@ function appendShowcaseUrl(styleName: string, roomType: string, index: number, u
 export async function runShowcase(state: RunState): Promise<void> {
   log('SHOWCASE', 'INFO', 'Showcase generation starting — 12 styles × 4 rooms × 3 renders = 144 total')
 
+  // Ensure showcase bucket exists
+  try {
+    await supabase.storage.createBucket('showcase', { public: true })
+    log('SHOWCASE', 'INFO', 'Created showcase storage bucket')
+  } catch {
+    // Bucket already exists — safe to ignore
+  }
+
   // Init showcase URLs file
   if (!fs.existsSync(SHOWCASE_URLS_FILE)) {
     fs.writeFileSync(SHOWCASE_URLS_FILE, '# Showcase Render URLs\n\n')
