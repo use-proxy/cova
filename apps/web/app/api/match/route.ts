@@ -19,6 +19,7 @@ interface MatchRequestBody {
   fingerprint_vector: number[]
   budget_range: [number, number]
   room_type: string
+  item_label?: string
 }
 
 interface RankedProduct {
@@ -41,8 +42,15 @@ interface ClaudeVisionQuery {
   dimensions_estimate: string
 }
 
-async function buildClaudeVisionQuery(imageUrl: string): Promise<ClaudeVisionQuery> {
+async function buildClaudeVisionQuery(
+  imageUrl: string,
+  itemLabel?: string
+): Promise<ClaudeVisionQuery> {
   try {
+    const focusClause = itemLabel
+      ? `Focus specifically on the ${itemLabel} in this room render. Describe it for product matching.`
+      : 'Describe this furniture piece for product matching.'
+
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 512,
@@ -59,7 +67,7 @@ async function buildClaudeVisionQuery(imageUrl: string): Promise<ClaudeVisionQue
             },
             {
               type: 'text',
-              text: `Describe this furniture piece for product matching. Be specific and concise.
+              text: `${focusClause} Be specific and concise.
                 Return only valid JSON with these fields:
                 {
                   "description": "one sentence description",
@@ -116,14 +124,14 @@ export async function POST(request: Request) {
     }
 
     const body = (await request.json()) as MatchRequestBody
-    const { render_crop_url, fingerprint_vector, budget_range, room_type } = body
+    const { render_crop_url, fingerprint_vector, budget_range, room_type, item_label } = body
 
     if (!render_crop_url || !fingerprint_vector || !budget_range) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
     // Layer 1: Claude Vision query construction
-    const visionQuery = await buildClaudeVisionQuery(render_crop_url)
+    const visionQuery = await buildClaudeVisionQuery(render_crop_url, item_label)
 
     // Layer 2: CLIP embedding + pgvector search
     let queryEmbedding: number[]
