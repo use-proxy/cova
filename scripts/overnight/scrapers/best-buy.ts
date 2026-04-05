@@ -15,9 +15,8 @@ export const bestBuyConfigs: ScraperConfig[] = BEST_BUY_URLS.map((url, i) => ({
   retailer: 'best_buy' as const,
   actorId: 'apify/e-commerce-scraping-tool',
   input: {
-    startUrls: [{ url }],
+    url,
     maxItems: 150,
-    proxyConfiguration: { useApifyProxy: true },
   },
   maxItems: 150,
   label: `Best Buy ${i + 1}/${BEST_BUY_URLS.length}: ${url.split('/').slice(-2, -1)[0]}`,

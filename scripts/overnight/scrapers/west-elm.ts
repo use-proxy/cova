@@ -22,9 +22,8 @@ export const westElmConfigs: ScraperConfig[] = WEST_ELM_URLS.map((url, i) => ({
   retailer: 'west_elm' as const,
   actorId: 'apify/e-commerce-scraping-tool',
   input: {
-    startUrls: [{ url }],
+    url,
     maxItems: 200,
-    proxyConfiguration: { useApifyProxy: true },
   },
   maxItems: 200,
   label: `West Elm ${i + 1}/${WEST_ELM_URLS.length}: ${url.split('/').slice(-2, -1)[0]}`,

@@ -21,9 +21,8 @@ export const articleConfigs: ScraperConfig[] = ARTICLE_URLS.map((url, i) => ({
   retailer: 'article' as const,
   actorId: 'apify/e-commerce-scraping-tool',
   input: {
-    startUrls: [{ url }],
+    url,
     maxItems: 150,
-    proxyConfiguration: { useApifyProxy: true },
   },
   maxItems: 150,
   label: `Article ${i + 1}/${ARTICLE_URLS.length}: ${url.split('/').slice(-1)[0]}`,

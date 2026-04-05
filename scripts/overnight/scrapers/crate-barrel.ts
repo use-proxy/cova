@@ -25,9 +25,8 @@ export const crateBarrelConfigs: ScraperConfig[] = CB_URLS.map((entry, i) => ({
   retailer: entry.retailer,
   actorId: 'apify/e-commerce-scraping-tool',
   input: {
-    startUrls: [{ url: entry.url }],
+    url: entry.url,
     maxItems: 200,
-    proxyConfiguration: { useApifyProxy: true },
   },
   maxItems: 200,
   label: `${entry.retailer === 'cb2' ? 'CB2' : 'C&B'} ${i + 1}/${CB_URLS.length}: ${entry.url.split('/').slice(-2, -1)[0]}`,

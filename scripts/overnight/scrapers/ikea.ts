@@ -22,9 +22,8 @@ export const ikeaConfigs: ScraperConfig[] = IKEA_URLS.map((url, i) => ({
   retailer: 'ikea' as const,
   actorId: 'apify/e-commerce-scraping-tool',
   input: {
-    startUrls: [{ url }],
+    url,
     maxItems: 200,
-    proxyConfiguration: { useApifyProxy: true },
   },
   maxItems: 200,
   label: `IKEA ${i + 1}/${IKEA_URLS.length}: ${url.split('/').slice(-2, -1)[0]}`,

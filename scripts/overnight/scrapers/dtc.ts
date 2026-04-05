@@ -15,9 +15,8 @@ export const dtcConfigs: ScraperConfig[] = DTC_URLS.map((entry, i) => ({
   retailer: entry.retailer,
   actorId: 'apify/e-commerce-scraping-tool',
   input: {
-    startUrls: [{ url: entry.url }],
+    url: entry.url,
     maxItems: 150,
-    proxyConfiguration: { useApifyProxy: true },
   },
   maxItems: 150,
   label: `DTC ${entry.retailer} ${i + 1}/${DTC_URLS.length}: ${entry.url.split('/').slice(-1)[0]}`,
