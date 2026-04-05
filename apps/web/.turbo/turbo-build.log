@@ -1,0 +1,296 @@
+
+> web@0.1.0 build /Users/daksh/Desktop/cova/apps/web
+> next build
+
+  ▲ Next.js 14.2.35
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+ ⚠ Compiled with warnings
+
+./node_modules/require-in-the-middle/index.js
+Critical dependency: require function is used in a way in which dependencies cannot be statically extracted
+
+Import trace for requested module:
+./node_modules/require-in-the-middle/index.js
+./node_modules/@opentelemetry/instrumentation/build/esm/platform/node/instrumentation.js
+./node_modules/@opentelemetry/instrumentation/build/esm/platform/node/index.js
+./node_modules/@opentelemetry/instrumentation/build/esm/platform/index.js
+./node_modules/@opentelemetry/instrumentation/build/esm/index.js
+./node_modules/@sentry/node/build/cjs/integrations/tracing/postgresjs.js
+./node_modules/@sentry/node/build/cjs/index.js
+./node_modules/@sentry/nextjs/build/cjs/index.server.js
+./lib/errors.ts
+./app/design/step-6/page.tsx
+
+   Linting and checking validity of types ...
+
+./app/api/chat/history/route.ts
+48:5  Warning: Unexpected console statement.  no-console
+
+./app/api/chat/route.ts
+15:3  Warning: Unexpected console statement.  no-console
+16:3  Warning: Unexpected console statement.  no-console
+27:5  Warning: Unexpected console statement.  no-console
+79:9  Warning: Unexpected console statement.  no-console
+111:5  Warning: Unexpected console statement.  no-console
+132:11  Warning: Unexpected console statement.  no-console
+134:11  Warning: Unexpected console statement.  no-console
+146:5  Warning: Unexpected console statement.  no-console
+
+./app/api/pipeline/depth-video/route.ts
+87:21  Warning: Unexpected console statement.  no-console
+
+./app/api/pipeline/furniture-match/route.ts
+65:21  Warning: Unexpected console statement.  no-console
+
+./app/api/pipeline/marble-mini-final/route.ts
+74:21  Warning: Unexpected console statement.  no-console
+
+./app/api/pipeline/marble-multi-image/route.ts
+79:21  Warning: Unexpected console statement.  no-console
+
+./app/api/pipeline/marble-plus/route.ts
+74:21  Warning: Unexpected console statement.  no-console
+
+./app/api/pipeline/marble-plus-background/route.ts
+71:21  Warning: Unexpected console statement.  no-console
+
+./app/api/pipeline/marble-process/route.ts
+70:21  Warning: Unexpected console statement.  no-console
+
+./app/api/pipeline/pre-detect/route.ts
+67:23  Warning: Unexpected console statement.  no-console
+
+./app/api/pipeline/redesign/route.ts
+79:21  Warning: Unexpected console statement.  no-console
+
+./app/api/pipeline/resume/route.ts
+70:23  Warning: Unexpected console statement.  no-console
+
+./app/api/pipeline/start/route.ts
+60:7  Warning: Unexpected console statement.  no-console
+69:7  Warning: Unexpected console statement.  no-console
+86:21  Warning: Unexpected console statement.  no-console
+134:27  Warning: Unexpected console statement.  no-console
+213:5  Warning: Unexpected console statement.  no-console
+216:5  Warning: Unexpected console statement.  no-console
+256:5  Warning: Unexpected console statement.  no-console
+
+./app/auth/callback/route.ts
+39:9  Warning: Unexpected console statement.  no-console
+50:5  Warning: Unexpected console statement.  no-console
+
+./app/capture/[roomId]/page.tsx
+113:15  Warning: Unexpected console statement.  no-console
+129:17  Warning: Unexpected console statement.  no-console
+132:15  Warning: Unexpected console statement.  no-console
+136:11  Warning: Unexpected console statement.  no-console
+241:21  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./app/capture/new/page.tsx
+44:9  Warning: Unexpected console statement.  no-console
+
+./app/chatbot/page.tsx
+40:9  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./app/furniture-selection/[roomId]/page.tsx
+190:5  Warning: Unexpected console statement.  no-console
+
+./app/page.tsx
+88:6  Warning: React Hook useEffect has a missing dependency: 'rooms.length'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+94:6  Warning: React Hook useEffect has a missing dependency: 'fingerprints.length'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./app/processing/[roomId]/page.tsx
+198:13  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./app/processing/page.tsx
+326:6  Warning: React Hook useEffect has a missing dependency: 'triggerCompletion'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+334:6  Warning: React Hook useEffect has a missing dependency: 'triggerCompletion'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./app/product-panel/page.tsx
+83:9  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./app/quiz/page.tsx
+65:9  Warning: Unexpected console statement.  no-console
+100:9  Warning: Unexpected console statement.  no-console
+
+./app/room/[roomId]/RoomOverlay.tsx
+84:7  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+155:17  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./app/viewer/[sessionId]/page.tsx
+96:9  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/RoomChatbot.tsx
+48:9  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/SplatViewer.tsx
+72:22  Warning: Unexpected console statement.  no-console
+
+./components/capture/QRMode.tsx
+50:9  Warning: Unexpected console statement.  no-console
+
+./components/capture/UploadMode.tsx
+140:19  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/chat/ChatPanel.tsx
+66:9  Warning: Unexpected console statement.  no-console
+99:7  Warning: Unexpected console statement.  no-console
+
+./components/chat/ProductSearchResult.tsx
+30:13  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/dashboard/RoomCard.tsx
+139:11  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+258:15  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/product/ProductImageGallery.tsx
+66:13  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/product/SimilarItems.tsx
+30:15  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/quiz/CardStack.tsx
+56:11  Warning: Unexpected console statement.  no-console
+103:9  Warning: Unexpected console statement.  no-console
+120:9  Warning: Unexpected console statement.  no-console
+
+./components/quiz/SwipeCard.tsx
+89:11  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./lib/affiliates.test.ts
+27:5  Warning: Unexpected console statement.  no-console
+31:5  Warning: Unexpected console statement.  no-console
+42:1  Warning: Unexpected console statement.  no-console
+189:1  Warning: Unexpected console statement.  no-console
+
+./lib/env.ts
+55:5  Warning: Unexpected console statement.  no-console
+63:7  Warning: Unexpected console statement.  no-console
+
+./lib/errors.ts
+61:5  Warning: Unexpected console statement.  no-console
+70:5  Warning: Unexpected console statement.  no-console
+
+./lib/interactions.ts
+40:7  Warning: Unexpected console statement.  no-console
+44:5  Warning: Unexpected console statement.  no-console
+
+./lib/marble.ts
+182:7  Warning: Unexpected console statement.  no-console
+209:3  Warning: Unexpected console statement.  no-console
+211:3  Warning: Unexpected console statement.  no-console
+213:3  Warning: Unexpected console statement.  no-console
+215:3  Warning: Unexpected console statement.  no-console
+217:3  Warning: Unexpected console statement.  no-console
+219:3  Warning: Unexpected console statement.  no-console
+221:3  Warning: Unexpected console statement.  no-console
+223:3  Warning: Unexpected console statement.  no-console
+246:3  Warning: Unexpected console statement.  no-console
+252:3  Warning: Unexpected console statement.  no-console
+254:3  Warning: Unexpected console statement.  no-console
+256:3  Warning: Unexpected console statement.  no-console
+258:3  Warning: Unexpected console statement.  no-console
+264:3  Warning: Unexpected console statement.  no-console
+266:3  Warning: Unexpected console statement.  no-console
+268:3  Warning: Unexpected console statement.  no-console
+271:3  Warning: Unexpected console statement.  no-console
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/basic-features/eslint#disabling-rules
+   Collecting page data ...
+   Generating static pages (0/56) ...
+Chat history error: B [Error]: Dynamic server usage: Route /api/chat/history couldn't be rendered statically because it used `request.url`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at V (/Users/daksh/Desktop/cova/apps/web/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:21778)
+    at Object.get (/Users/daksh/Desktop/cova/apps/web/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:29465)
+    at d (/Users/daksh/Desktop/cova/apps/web/.next/server/app/api/chat/history/route.js:1:858)
+    at /Users/daksh/Desktop/cova/apps/web/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:38417
+    at /Users/daksh/Desktop/cova/apps/web/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+    at NoopContextManager.with (/Users/daksh/Desktop/cova/apps/web/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:14:19)
+    at ContextAPI.with (/Users/daksh/Desktop/cova/apps/web/node_modules/@opentelemetry/api/build/src/api/context.js:51:46)
+    at NoopTracer.startActiveSpan (/Users/daksh/Desktop/cova/apps/web/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:54:31)
+    at ProxyTracer.startActiveSpan (/Users/daksh/Desktop/cova/apps/web/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:27:24)
+    at /Users/daksh/Desktop/cova/apps/web/node_modules/next/dist/server/lib/trace/tracer.js:122:103 {
+  description: "Route /api/chat/history couldn't be rendered statically because it used `request.url`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+   Generating static pages (14/56) 
+   Generating static pages (28/56) 
+   Generating static pages (42/56) 
+ ✓ Generating static pages (56/56)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                               Size     First Load JS
+┌ ○ /                                     15.3 kB         103 kB
+├ ○ /_not-found                           879 B          88.5 kB
+├ ƒ /api/auth/callback                    0 B                0 B
+├ ƒ /api/capture/generate-token           0 B                0 B
+├ ƒ /api/capture/validate-token           0 B                0 B
+├ ƒ /api/chat                             0 B                0 B
+├ ƒ /api/chat/history                     0 B                0 B
+├ ƒ /api/design-dna/card                  0 B                0 B
+├ ƒ /api/detect                           0 B                0 B
+├ ○ /api/local-ip                         0 B                0 B
+├ ƒ /api/match                            0 B                0 B
+├ ƒ /api/parse-constraints                0 B                0 B
+├ ƒ /api/pipeline/depth-video             0 B                0 B
+├ ƒ /api/pipeline/furniture-match         0 B                0 B
+├ ƒ /api/pipeline/marble-mini-final       0 B                0 B
+├ ƒ /api/pipeline/marble-multi-image      0 B                0 B
+├ ƒ /api/pipeline/marble-plus             0 B                0 B
+├ ƒ /api/pipeline/marble-plus-background  0 B                0 B
+├ ƒ /api/pipeline/marble-process          0 B                0 B
+├ ƒ /api/pipeline/plus-complete           0 B                0 B
+├ ƒ /api/pipeline/pre-detect              0 B                0 B
+├ ƒ /api/pipeline/redesign                0 B                0 B
+├ ƒ /api/pipeline/resume                  0 B                0 B
+├ ƒ /api/pipeline/start                   0 B                0 B
+├ ƒ /api/quiz/confidence                  0 B                0 B
+├ ƒ /api/quiz/fingerprint                 0 B                0 B
+├ ƒ /api/quiz/next-card                   0 B                0 B
+├ ƒ /api/render                           0 B                0 B
+├ ƒ /api/render/refine                    0 B                0 B
+├ ƒ /api/rooms/[roomId]                   0 B                0 B
+├ ƒ /api/rooms/capture                    0 B                0 B
+├ ƒ /api/rooms/create                     0 B                0 B
+├ ƒ /api/rooms/status                     0 B                0 B
+├ ○ /auth                                 1.77 kB         151 kB
+├ ƒ /auth/callback                        0 B                0 B
+├ ○ /budget                               3.97 kB        91.6 kB
+├ ƒ /capture/[roomId]                     6.18 kB         162 kB
+├ ƒ /capture/mobile/[token]               3.85 kB         159 kB
+├ ○ /capture/new                          835 B          88.5 kB
+├ ○ /chatbot                              1.16 kB        93.5 kB
+├ ○ /dashboard                            6.81 kB         156 kB
+├ ○ /design/step-1                        370 B            88 kB
+├ ○ /design/step-10                       370 B            88 kB
+├ ○ /design/step-11                       371 B            88 kB
+├ ○ /design/step-2                        368 B            88 kB
+├ ○ /design/step-3                        369 B            88 kB
+├ ○ /design/step-4                        370 B            88 kB
+├ ○ /design/step-5                        372 B            88 kB
+├ ○ /design/step-6                        7.65 kB         169 kB
+├ ○ /design/step-7                        369 B            88 kB
+├ ○ /design/step-8                        369 B            88 kB
+├ ○ /design/step-9                        369 B            88 kB
+├ ƒ /furniture-selection/[roomId]         3.47 kB        91.1 kB
+├ ○ /processing                           4.19 kB         154 kB
+├ ƒ /processing/[roomId]                  2.35 kB          90 kB
+├ ○ /product-panel                        2.65 kB        94.6 kB
+├ ○ /quiz                                 6.27 kB         156 kB
+├ ƒ /room/[roomId]                        7.45 kB         437 kB
+├ ƒ /room/[roomId]/3d                     45.2 kB         133 kB
+├ ƒ /test-viewer                          3.71 kB         429 kB
+└ ƒ /viewer/[sessionId]                   2.31 kB          99 kB
++ First Load JS shared by all             87.6 kB
+  ├ chunks/7115-4dc25b17606a988b.js       31.7 kB
+  ├ chunks/fd9d1056-6c355823bb33c4e5.js   53.7 kB
+  └ other shared chunks (total)           2.27 kB
+
+
+ƒ Middleware                              77.5 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

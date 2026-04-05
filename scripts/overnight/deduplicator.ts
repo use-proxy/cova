@@ -1,3 +1,7 @@
+import * as dotenv from 'dotenv'
+dotenv.config({ path: '../.env.local' })
+dotenv.config({ path: '../apps/web/.env.local' })
+
 import { createClient } from '@supabase/supabase-js'
 import { NormalizedProduct, RunState } from './types'
 import { log } from './logger'

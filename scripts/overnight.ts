@@ -2,10 +2,8 @@ import * as dotenv from 'dotenv'
 import * as path from 'path'
 import * as fs from 'fs'
 
-// Load env from apps/web/.env.local (canonical location)
-dotenv.config({ path: path.join(process.cwd(), 'apps', 'web', '.env.local') })
-// Fallback to root .env.local
-dotenv.config({ path: path.join(process.cwd(), '.env.local') })
+dotenv.config({ path: '../.env.local' })
+dotenv.config({ path: '../apps/web/.env.local' })
 
 import { log, writeSummary } from './overnight/logger'
 import { loadState, saveState } from './overnight/state'
