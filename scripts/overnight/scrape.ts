@@ -58,24 +58,40 @@ function getAllConfigGroups(): ConfigGroup[] {
 }
 
 function normalizeRawItem(item: Record<string, unknown>, retailer: RetailerSlug): RawProduct | null {
+  // Name: handle title (e-commerce tool, Amazon junglee) + name (Wayfair, web-scraper)
   const name = String(item.name ?? item.title ?? item.productName ?? '').trim()
-  const priceRaw = item.price ?? item.salePrice ?? item.regularPrice ?? item.currentPrice
-  const price = typeof priceRaw === 'number'
-    ? priceRaw
-    : parseFloat(String(priceRaw ?? '0').replace(/[^0-9.]/g, ''))
 
+  // Price: handle string ("$299.99", "$1,299.00") or number — strip all non-numeric except dot
+  const priceRaw = item.price ?? item.salePrice ?? item.regularPrice ?? item.currentPrice
+  if (priceRaw == null) return null
+  const priceStr = typeof priceRaw === 'number' ? String(priceRaw) : String(priceRaw).replace(/,/g, '')
+  const price = parseFloat(priceStr.replace(/[^0-9.]/g, ''))
+
+  // Image: handle images[] array (may be strings or objects with url/src), image, imageUrl
   let image_url = ''
   if (Array.isArray(item.images) && item.images.length > 0) {
-    image_url = String(item.images[0])
-  } else {
-    image_url = String(item.image_url ?? item.imageUrl ?? item.thumbnailUrl ?? item.imageLink ?? item.thumbnailImage ?? item.mainImage ?? item.image ?? '')
+    const first = item.images[0]
+    if (typeof first === 'string') {
+      image_url = first
+    } else if (first && typeof first === 'object') {
+      const imgObj = first as Record<string, unknown>
+      image_url = String(imgObj.url ?? imgObj.src ?? imgObj.href ?? '')
+    }
+  }
+  if (!image_url) {
+    image_url = String(
+      item.image_url ?? item.imageUrl ?? item.image ??
+      item.thumbnailUrl ?? item.imageLink ?? item.thumbnailImage ?? item.mainImage ?? ''
+    )
   }
   // Handle protocol-relative URLs
   if (image_url.startsWith('//')) image_url = 'https:' + image_url
 
-  const product_url = String(item.product_url ?? item.productUrl ?? item.url ?? item.link ?? '')
+  // URL: handle url (e-commerce, Amazon, Wayfair), productUrl, product_url
+  const product_url = String(item.url ?? item.productUrl ?? item.product_url ?? item.link ?? '')
+
   const raw_description = String(item.description ?? item.shortDescription ?? item.desc ?? '')
-  const raw_category = String(item.category ?? item.categoryName ?? '')
+  const raw_category = String(item.category ?? item.categoryName ?? item.breadcrumbs ?? '')
   const raw_material = item.material != null ? String(item.material) : undefined
   const raw_dimensions = item.dimensions != null ? String(item.dimensions) : undefined
 
@@ -206,18 +222,25 @@ export async function runScraping(state: RunState): Promise<void> {
   const tier2 = groups.filter((g) => g.tier === 2).flatMap((g) => g.configs)
   const tier3 = groups.filter((g) => g.tier === 3).flatMap((g) => g.configs)
 
-  // Run up to 3 actors simultaneously
+  // Non-Wayfair: up to 3 concurrent actors
+  // Wayfair: serial (1 at a time) with 10s delay between launches to avoid rate limits
   const limit = pLimit(3)
+  const wayfairLimit = pLimit(1)
 
   const allConfigs = [...tier1, ...tier2, ...tier3]
   const total = allConfigs.length
   let completed = 0
 
   log('SCRAPE', 'INFO', `Total scraper configs: ${total} (Tier1: ${tier1.length}, Tier2: ${tier2.length}, Tier3: ${tier3.length})`)
+  log('SCRAPE', 'INFO', 'Wayfair configs will run serially (1 at a time) with 10s delay between runs')
+
+  let wayfairLaunchCount = 0
 
   await Promise.allSettled(
-    allConfigs.map((config) =>
-      limit(async () => {
+    allConfigs.map((config) => {
+      const queue = config.retailer === 'wayfair' ? wayfairLimit : limit
+
+      return queue(async () => {
         if (isAllStopped()) {
           log('SCRAPE', 'WARN', `Credits exhausted — skipping: ${config.label}`)
           return
@@ -229,11 +252,18 @@ export async function runScraping(state: RunState): Promise<void> {
           return
         }
 
+        // 10s delay between Wayfair launches (skip delay on first run)
+        if (config.retailer === 'wayfair' && wayfairLaunchCount > 0) {
+          log('SCRAPE', 'INFO', `Wayfair rate-limit pause: 15s before ${config.label}`)
+          await new Promise((r) => setTimeout(r, 15000))
+        }
+        if (config.retailer === 'wayfair') wayfairLaunchCount++
+
         await runSingleConfig(config, state)
         completed++
         log('SCRAPE', 'INFO', `Progress: ${completed}/${total} configs completed`)
       })
-    )
+    })
   )
 
   log('SCRAPE', 'SUCCESS', `Scraping complete. Processed ${completed}/${total} configs`)

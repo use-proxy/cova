@@ -2,8 +2,8 @@ import * as dotenv from 'dotenv'
 import * as path from 'path'
 import * as fs from 'fs'
 
-dotenv.config({ path: '../.env.local' })
-dotenv.config({ path: '../apps/web/.env.local' })
+dotenv.config({ path: '.env.local' })
+dotenv.config({ path: 'apps/web/.env.local' })
 
 import { log, writeSummary } from './overnight/logger'
 import { loadState, saveState } from './overnight/state'
@@ -13,6 +13,17 @@ import { runScraping } from './overnight/scrape'
 import { runEmbeddingWithTimeout } from './overnight/embed'
 import { runShowcase } from './overnight/showcase'
 import { runStorageEmbed } from './overnight/storage-embed'
+// Scraper configs — imported for dry-run reporting (module cache means no double-load)
+import { wayfairConfigs } from './overnight/scrapers/wayfair'
+import { amazonConfigs } from './overnight/scrapers/amazon'
+import { ikeaConfigs } from './overnight/scrapers/ikea'
+import { westElmConfigs } from './overnight/scrapers/west-elm'
+import { crateBarrelConfigs } from './overnight/scrapers/crate-barrel'
+import { articleConfigs } from './overnight/scrapers/article'
+import { targetConfigs } from './overnight/scrapers/target'
+import { bestBuyConfigs } from './overnight/scrapers/best-buy'
+import { bhConfigs } from './overnight/scrapers/bh'
+import { dtcConfigs } from './overnight/scrapers/dtc'
 
 // ─── Environment validation ────────────────────────────────────────────────────
 const REQUIRED_ENV = [
@@ -59,8 +70,81 @@ function printBanner(startedAt: string): void {
   console.log('\n' + banner + '\n')
 }
 
+// ─── Dry-run mode ─────────────────────────────────────────────────────────────
+function runDryRun(): void {
+  const state = loadState()
+
+  const allGroups = [
+    { tier: 1, configs: articleConfigs },
+    { tier: 1, configs: westElmConfigs },
+    { tier: 1, configs: dtcConfigs },
+    { tier: 1, configs: wayfairConfigs },
+    { tier: 2, configs: ikeaConfigs },
+    { tier: 2, configs: crateBarrelConfigs },
+    { tier: 2, configs: targetConfigs },
+    { tier: 3, configs: amazonConfigs },
+    { tier: 3, configs: bestBuyConfigs },
+    { tier: 3, configs: bhConfigs },
+  ]
+
+  const allConfigs = allGroups.flatMap((g) => g.configs)
+  const scraped = new Set(state.scraped_urls)
+
+  // Count per retailer
+  const retailerCounts: Record<string, { total: number; pending: number }> = {}
+  for (const config of allConfigs) {
+    const key = `${config.retailer}:${config.label}`
+    const r = config.retailer
+    if (!retailerCounts[r]) retailerCounts[r] = { total: 0, pending: 0 }
+    retailerCounts[r]!.total++
+    if (!scraped.has(key)) retailerCounts[r]!.pending++
+  }
+
+  const showcaseRemaining = 144 - state.showcase_completed.length
+
+  // Map retailer → actor
+  const actorByRetailer: Record<string, string> = {}
+  for (const config of allConfigs) {
+    actorByRetailer[config.retailer] = (config as { actorId: string }).actorId
+  }
+
+  console.log('\nDRY-RUN MODE — no jobs will start\n')
+  console.log('═'.repeat(60))
+  console.log('  SCRAPER CONFIGS')
+  console.log('═'.repeat(60))
+  for (const [retailer, counts] of Object.entries(retailerCounts)) {
+    const skipped = counts.total - counts.pending
+    const actor = actorByRetailer[retailer] ?? '?'
+    console.log(`  ${retailer.padEnd(20)} ${String(counts.pending).padStart(3)}/${counts.total} pending  (${skipped} done)  [${actor}]`)
+  }
+  console.log('─'.repeat(60))
+  console.log(`  TOTAL               ${allConfigs.filter((c) => !scraped.has(`${c.retailer}:${c.label}`)).length}/${allConfigs.length} pending`)
+  console.log('')
+  console.log('═'.repeat(50))
+  console.log('  SHOWCASE')
+  console.log('═'.repeat(50))
+  console.log(`  Completed: ${state.showcase_completed.length}/144`)
+  console.log(`  Remaining: ${showcaseRemaining}`)
+  console.log('')
+  console.log('═'.repeat(50))
+  console.log('  STATE')
+  console.log('═'.repeat(50))
+  console.log(`  Total scraped:  ${state.total_scraped}`)
+  console.log(`  Total embedded: ${state.total_embedded}`)
+  console.log(`  Total failed:   ${state.total_failed}`)
+  console.log('═'.repeat(50))
+  console.log('')
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 async function main(): Promise<void> {
+  const isDryRun = process.argv.includes('--dry-run')
+
+  if (isDryRun) {
+    runDryRun()
+    process.exit(0)
+  }
+
   validateEnv()
 
   const startedAt = new Date().toISOString()

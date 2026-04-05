@@ -1,6 +1,6 @@
 import * as dotenv from 'dotenv'
-dotenv.config({ path: '../.env.local' })
-dotenv.config({ path: '../apps/web/.env.local' })
+dotenv.config({ path: '.env.local' })
+dotenv.config({ path: 'apps/web/.env.local' })
 
 import { createClient } from '@supabase/supabase-js'
 import Replicate from 'replicate'
@@ -344,6 +344,7 @@ async function retryFailed(state: RunState): Promise<void> {
 export async function runEmbedding(state: RunState): Promise<void> {
   ensureDirs()
   log('EMBED', 'INFO', 'Embedding job starting — watching data/processed/ for batches')
+  log('EMBED', 'INFO', 'Watching data/processed/ for batch files...')
 
   const processedFiles = new Set<string>()
 
@@ -355,6 +356,7 @@ export async function runEmbedding(state: RunState): Promise<void> {
     for (const file of files) {
       if (!processedFiles.has(file)) {
         processedFiles.add(file)
+        log('EMBED', 'INFO', `New batch detected: ${file}`)
         await processBatchFile(path.join(PROCESSED_DIR, file), state)
       }
     }
@@ -376,6 +378,7 @@ export async function runEmbedding(state: RunState): Promise<void> {
     try {
       watcher = fs.watch(PROCESSED_DIR, async (_event, filename) => {
         if (filename?.endsWith('.json') && !processedFiles.has(filename)) {
+          log('EMBED', 'INFO', `New batch detected: ${filename}`)
           // Small delay to ensure file is fully written
           await new Promise((r) => setTimeout(r, 2000))
           await processNewFiles()

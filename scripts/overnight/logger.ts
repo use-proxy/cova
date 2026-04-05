@@ -69,13 +69,35 @@ export function getStats(): RunStats {
   return { ...stats }
 }
 
+let _creditStatus: string | null = null
+
+export function setLastCreditStatus(status: string): void {
+  _creditStatus = status
+}
+
 export function writeSummary(): void {
   const elapsed = Math.round((Date.now() - startTime) / 1000)
   const elapsedMin = Math.floor(elapsed / 60)
   const elapsedSec = elapsed % 60
 
   const s = getStats()
-  const summary = [
+
+  // Estimated time remaining based on embed rate
+  let etaLine = ''
+  if (s.embedded > 0 && elapsed > 0) {
+    const ratePerSec = s.embedded / elapsed
+    // Rough estimate: assume ~18000 total products
+    const totalEstimate = 18000
+    const remaining = Math.max(0, totalEstimate - s.embedded)
+    if (ratePerSec > 0) {
+      const etaSec = Math.round(remaining / ratePerSec)
+      const etaHr = Math.floor(etaSec / 3600)
+      const etaMin = Math.floor((etaSec % 3600) / 60)
+      etaLine = `ETA (embed ~18k): ~${etaHr}h ${etaMin}m`
+    }
+  }
+
+  const summaryLines = [
     '',
     '─'.repeat(60),
     `SUMMARY — ${new Date().toISOString()}`,
@@ -84,9 +106,14 @@ export function writeSummary(): void {
     `Embedded: ${s.embedded}`,
     `Failed: ${s.failed}`,
     `Showcase: ${s.showcaseGenerated}/144`,
-    '─'.repeat(60),
-    '',
-  ].join('\n')
+  ]
+
+  if (etaLine) summaryLines.push(etaLine)
+  if (_creditStatus) summaryLines.push(`Apify Credits: ${_creditStatus}`)
+
+  summaryLines.push('─'.repeat(60), '')
+
+  const summary = summaryLines.join('\n')
 
   try {
     fs.appendFileSync(LOG_FILE, summary)

@@ -1,6 +1,6 @@
 import * as dotenv from 'dotenv'
-dotenv.config({ path: '../.env.local' })
-dotenv.config({ path: '../apps/web/.env.local' })
+dotenv.config({ path: '.env.local' })
+dotenv.config({ path: 'apps/web/.env.local' })
 
 import { createClient } from '@supabase/supabase-js'
 import Replicate from 'replicate'
@@ -163,6 +163,15 @@ export async function runShowcase(state: RunState): Promise<void> {
     log('SHOWCASE', 'INFO', 'Created showcase storage bucket')
   } catch {
     // Bucket already exists — safe to ignore
+  }
+
+  // Verify bucket is accessible
+  try {
+    const { data: buckets } = await supabase.storage.listBuckets()
+    const exists = buckets?.some((b) => b.name === 'showcase')
+    log('SHOWCASE', exists ? 'SUCCESS' : 'ERROR', exists ? 'Showcase bucket confirmed' : 'Showcase bucket creation failed — uploads may fail')
+  } catch {
+    log('SHOWCASE', 'WARN', 'Could not verify showcase bucket — proceeding anyway')
   }
 
   // Init showcase URLs file

@@ -419,6 +419,17 @@ function inferStyleTags(name: string, description: string, material?: string): S
   return tagArr.slice(0, 4) as StyleTag[]
 }
 
+// ─── Schema detection ─────────────────────────────────────────────────────────
+// Identifies which scraper produced the raw item so callers can pre-process fields.
+export function detectSchema(item: Record<string, unknown>): 'ecommerce' | 'amazon' | 'wayfair' {
+  // junglee/free-amazon-product-scraper: has asin field
+  if ('asin' in item) return 'amazon'
+  // 123webdata/wayfair-scraper: has name (not title) + imageUrl, no asin
+  if (typeof item.name === 'string' && 'imageUrl' in item && !('title' in item)) return 'wayfair'
+  // apify/e-commerce-scraping-tool: has title, images array, url
+  return 'ecommerce'
+}
+
 // ─── Main export ──────────────────────────────────────────────────────────────
 export function normalizeProduct(raw: RawProduct): NormalizedProduct | null {
   try {

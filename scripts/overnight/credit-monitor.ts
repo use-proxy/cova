@@ -1,14 +1,27 @@
+import * as dotenv from 'dotenv'
+dotenv.config({ path: '.env.local' })
+dotenv.config({ path: 'apps/web/.env.local' })
+
 import axios from 'axios'
-import { log } from './logger'
+import { log, setLastCreditStatus } from './logger'
 import { ApifyCreditStatus } from './types'
 
-const APIFY_TOKEN = process.env.APIFY_API_TOKEN ?? process.env.APIFY_TOKEN ?? ''
+// Read token lazily — module loads before dotenv runs in the entry point
+function getApifyToken(): string {
+  return process.env.APIFY_TOKEN ?? process.env.APIFY_API_TOKEN ?? ''
+}
 
 let stopNewRuns = false
 let stopAllRuns = false
 let lastStatus: ApifyCreditStatus | null = null
 
 export async function getCreditStatus(): Promise<ApifyCreditStatus> {
+  const token = getApifyToken()
+  if (!token) {
+    log('CREDITS', 'WARN', 'No Apify token found — skipping credit check, assuming credits available')
+    return lastStatus ?? { remainingCredits: 50, usedCredits: 0, monthlyLimit: 100 }
+  }
+
   try {
     const response = await axios.get<{
       data: {
@@ -20,7 +33,7 @@ export async function getCreditStatus(): Promise<ApifyCreditStatus> {
           creditsUsd?: number
         }
       }
-    }>(`https://api.apify.com/v2/users/me?token=${APIFY_TOKEN}`, {
+    }>(`https://api.apify.com/v2/users/me?token=${token}`, {
       timeout: 10000,
     })
 
@@ -38,8 +51,8 @@ export async function getCreditStatus(): Promise<ApifyCreditStatus> {
     lastStatus = status
     return status
   } catch (err) {
-    log('CREDITS', 'WARN', `Failed to fetch credit status: ${err instanceof Error ? err.message : String(err)}`)
-    // Return last known status or safe defaults
+    // Never let a credit check failure stop scraping — log as WARN, return safe defaults
+    log('CREDITS', 'WARN', `Credit check failed (${err instanceof Error ? err.message : String(err)}) — assuming credits available`)
     return lastStatus ?? { remainingCredits: 50, usedCredits: 0, monthlyLimit: 100 }
   }
 }
@@ -58,7 +71,9 @@ export async function pollCredits(): Promise<void> {
   const status = await getCreditStatus()
   const pct = status.monthlyLimit > 0 ? (status.remainingCredits / status.monthlyLimit) * 100 : 100
 
-  log('CREDITS', 'INFO', `Apify credits: $${status.remainingCredits.toFixed(2)} remaining ($${status.usedCredits.toFixed(2)} used of $${status.monthlyLimit.toFixed(2)}) — ${pct.toFixed(0)}% left`)
+  const creditLine = `$${status.remainingCredits.toFixed(2)} remaining ($${status.usedCredits.toFixed(2)} used of $${status.monthlyLimit.toFixed(2)}) — ${pct.toFixed(0)}% left`
+  log('CREDITS', 'INFO', `Apify credits: ${creditLine}`)
+  setLastCreditStatus(creditLine)
 
   if (pct <= 5) {
     stopAllRuns = true
