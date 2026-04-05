@@ -22,7 +22,7 @@ export const westElmConfigs: ScraperConfig[] = WEST_ELM_URLS.map((url, i) => ({
   retailer: 'west_elm' as const,
   actorId: 'apify/e-commerce-scraping-tool',
   input: {
-    url,
+    startUrls: [{ url }],
     maxItems: 200,
   },
   maxItems: 200,

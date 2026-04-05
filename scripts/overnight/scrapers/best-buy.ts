@@ -15,7 +15,7 @@ export const bestBuyConfigs: ScraperConfig[] = BEST_BUY_URLS.map((url, i) => ({
   retailer: 'best_buy' as const,
   actorId: 'apify/e-commerce-scraping-tool',
   input: {
-    url,
+    startUrls: [{ url }],
     maxItems: 150,
   },
   maxItems: 150,

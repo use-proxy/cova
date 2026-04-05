@@ -27,9 +27,8 @@ export const amazonConfigs: ScraperConfig[] = AMAZON_URLS.map((url, i) => ({
   retailer: 'amazon' as const,
   actorId: 'junglee/free-amazon-product-scraper',
   input: {
-    startUrls: [{ url }],
+    categoryUrls: [url],
     maxItems: 300,
-    proxyConfiguration: { useApifyProxy: true },
   },
   maxItems: 300,
   label: `Amazon ${i + 1}/${AMAZON_URLS.length}: ${url.split('k=')[1]?.split('&')[0]?.replace(/\+/g, ' ') ?? url.slice(-20)}`,

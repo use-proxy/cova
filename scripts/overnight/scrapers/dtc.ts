@@ -15,7 +15,7 @@ export const dtcConfigs: ScraperConfig[] = DTC_URLS.map((entry, i) => ({
   retailer: entry.retailer,
   actorId: 'apify/e-commerce-scraping-tool',
   input: {
-    url: entry.url,
+    startUrls: [{ url: entry.url }],
     maxItems: 150,
   },
   maxItems: 150,

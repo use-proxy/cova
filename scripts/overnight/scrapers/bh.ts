@@ -11,7 +11,7 @@ export const bhConfigs: ScraperConfig[] = BH_URLS.map((url, i) => ({
   retailer: 'bh' as const,
   actorId: 'apify/e-commerce-scraping-tool',
   input: {
-    url,
+    startUrls: [{ url }],
     maxItems: 100,
   },
   maxItems: 100,

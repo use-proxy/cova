@@ -22,7 +22,7 @@ export const ikeaConfigs: ScraperConfig[] = IKEA_URLS.map((url, i) => ({
   retailer: 'ikea' as const,
   actorId: 'apify/e-commerce-scraping-tool',
   input: {
-    url,
+    startUrls: [{ url }],
     maxItems: 200,
   },
   maxItems: 200,

@@ -18,7 +18,7 @@ export const targetConfigs: ScraperConfig[] = TARGET_URLS.map((url, i) => ({
   retailer: 'target' as const,
   actorId: 'apify/e-commerce-scraping-tool',
   input: {
-    url,
+    startUrls: [{ url }],
     maxItems: 200,
   },
   maxItems: 200,
