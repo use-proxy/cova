@@ -3,8 +3,10 @@ import { buildFluxPrompt } from '@/lib/ai/flux'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { NextResponse } from 'next/server'
 import Replicate from 'replicate'
+import Anthropic from '@anthropic-ai/sdk'
 
 const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN })
+const anthropic = new Anthropic()
 
 interface RenderRequestBody {
   photo_url: string
@@ -23,6 +25,7 @@ interface RenderRequestBody {
   constraints: string[]
   room_id: string
   style_strength?: number
+  refinement_text?: string
 }
 
 export async function POST(request: Request) {
@@ -55,19 +58,43 @@ export async function POST(request: Request) {
       constraints,
       room_id,
       style_strength = 0.85,
+      refinement_text,
     } = body
 
     if (!photo_url || !fingerprint_vector || !room_type || !budget || !room_id) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    const { positive, negative } = buildFluxPrompt(
+    const { positive: positiveBase, negative } = buildFluxPrompt(
       fingerprint_vector,
       room_type,
       budget,
       inclusions ?? [],
       constraints ?? []
     )
+
+    let positive = positiveBase
+
+    if (refinement_text && refinement_text.trim()) {
+      const refineResponse = await anthropic.messages.create({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 300,
+        messages: [{
+          role: 'user',
+          content: `You are modifying an interior design render prompt.
+
+Current prompt: "${positive}"
+User instruction: "${refinement_text}"
+
+Modify the prompt to incorporate the user's instruction while preserving the core style, room type, and budget constraints. Return only the modified prompt string. No explanation, no quotes, no preamble.`,
+        }],
+      })
+
+      const refined = refineResponse.content[0]
+      if (refined.type === 'text' && refined.text.trim()) {
+        positive = refined.text.trim()
+      }
+    }
 
     const prediction = await replicate.predictions.create({
       model: 'black-forest-labs/flux-kontext-pro',

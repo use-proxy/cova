@@ -7,6 +7,7 @@ import { AlertTriangle } from 'lucide-react'
 import { useRoomStore } from '@/lib/store/room'
 import { useFingerprintStore } from '@/lib/store/fingerprint'
 import { useSessionStore } from '@/lib/store/session'
+import { useRefineStore } from '@/lib/store/refine'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -253,6 +254,7 @@ export default function Step7Page() {
     dimensions,
   } = useFingerprintStore()
   const { setStep } = useSessionStore()
+  const { refinementText, styleStrength, clearRefinement } = useRefineStore()
 
   const [renderState, setRenderState] = useState<RenderState>('idle')
   const [renderError, setRenderError] = useState<RenderErrorInfo | null>(null)
@@ -315,8 +317,20 @@ export default function Step7Page() {
           constraints: constraints ?? [],
           dimensions: dimensions ?? undefined,
           room_id: roomId,
+          style_strength: styleStrength,
+          ...(refinementText ? { refinement_text: refinementText } : {}),
         }),
       })
+
+      if (res.status === 401) {
+        clearTimeout(timeoutRef.current!)
+        setRenderState('failed')
+        setRenderError({
+          variant: 'failed',
+          message: 'Please sign in to generate renders.',
+        })
+        return
+      }
 
       if (!res.ok) {
         const errData = (await res.json().catch(() => ({}))) as { error?: string }
@@ -344,6 +358,7 @@ export default function Step7Page() {
           if (statusData.status === 'complete') {
             clearInterval(pollRef.current!)
             clearTimeout(timeoutRef.current!)
+            clearRefinement()
             setRenderUrl(statusData.render_url)
             setRenderState('complete')
             setStep(8)
@@ -386,6 +401,9 @@ export default function Step7Page() {
     constraints,
     dimensions,
     roomId,
+    refinementText,
+    styleStrength,
+    clearRefinement,
     setRenderUrl,
     setStep,
     router,
