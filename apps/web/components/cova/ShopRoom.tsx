@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -31,23 +31,28 @@ interface ShopRoomProps {
   onBuyClick: (product: MatchedProduct) => void
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Match color map ──────────────────────────────────────────────────────────
 
-const COLLAPSED_VISIBLE_PX = 130
-
-const MATCH_COLORS = {
+const MATCH_COLORS: Record<MatchedProduct['match_label'], string> = {
   'Perfect Match': '#4A9B7F',
   'Very Similar': '#C9A84C',
   'Inspired By': '#8A9BB5',
-} as const
+}
 
 // ─── Skeleton card ────────────────────────────────────────────────────────────
 
 function SkeletonCard() {
   return (
     <div
-      className="flex-shrink-0 rounded-xl overflow-hidden relative"
-      style={{ width: '168px', height: '220px', backgroundColor: '#F5F0E8' }}
+      style={{
+        width: '168px',
+        height: '280px',
+        backgroundColor: '#F5F0E8',
+        borderRadius: '14px',
+        overflow: 'hidden',
+        position: 'relative',
+        flexShrink: 0,
+      }}
     >
       <motion.div
         animate={{ x: ['-100%', '200%'] }}
@@ -56,14 +61,15 @@ function SkeletonCard() {
           position: 'absolute',
           inset: 0,
           width: '50%',
-          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent)',
+          background:
+            'linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent)',
         }}
       />
     </div>
   )
 }
 
-// ─── Product card ─────────────────────────────────────────────────────────────
+// ─── Product card (v0 — ivory) ────────────────────────────────────────────────
 
 function ProductCard({
   product,
@@ -82,11 +88,22 @@ function ProductCard({
 
   return (
     <div
-      className="flex-shrink-0 rounded-xl overflow-hidden"
-      style={{ width: '168px', backgroundColor: '#091829', border: '1px solid #1E3A5F' }}
+      style={{
+        width: '168px',
+        backgroundColor: '#F5F0E8',
+        borderRadius: '14px',
+        overflow: 'hidden',
+        flexShrink: 0,
+      }}
     >
       {/* Product image */}
-      <div style={{ height: '112px', overflow: 'hidden', backgroundColor: '#0F1F3D' }}>
+      <div
+        style={{
+          height: '140px',
+          overflow: 'hidden',
+          backgroundColor: '#E8E0D0',
+        }}
+      >
         {product.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -95,52 +112,87 @@ function ProductCard({
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />
         ) : (
-          <div style={{ width: '100%', height: '100%', backgroundColor: '#0F1F3D' }} />
+          <div style={{ width: '100%', height: '100%', backgroundColor: '#E8E0D0' }} />
         )}
       </div>
 
       {/* Info */}
       <div style={{ padding: '10px 10px 12px' }}>
-        {/* Match badge */}
-        <span
-          className="font-sans text-[10px] font-medium px-2 py-0.5 rounded-full"
-          style={{ color: matchColor, backgroundColor: `${matchColor}1A` }}
-        >
-          {product.match_label}
-        </span>
-
         {/* Name */}
         <p
-          className="font-sans text-[12px] font-medium mt-1.5 leading-tight"
           style={{
-            color: '#F8F6F1',
+            fontSize: '12px',
+            fontWeight: 600,
+            color: '#1A2D42',
+            lineHeight: 1.3,
             display: '-webkit-box',
             WebkitLineClamp: 2,
             WebkitBoxOrient: 'vertical',
             overflow: 'hidden',
+            marginBottom: '6px',
           }}
         >
           {product.name}
         </p>
 
-        {/* Retailer + price */}
-        <div className="flex items-center justify-between mt-1.5">
-          <span className="font-sans text-[11px]" style={{ color: '#8A9BB5' }}>
+        {/* Retailer + match dot */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+            marginBottom: '5px',
+          }}
+        >
+          <span
+            style={{
+              width: '7px',
+              height: '7px',
+              borderRadius: '50%',
+              backgroundColor: matchColor,
+              flexShrink: 0,
+            }}
+          />
+          <span style={{ fontSize: '11px', color: '#6B7A8D' }}>
             {product.retailer}
           </span>
-          <span className="font-sans text-[13px] font-semibold" style={{ color: '#C9A84C' }}>
-            {formattedPrice}
-          </span>
         </div>
+
+        {/* Price */}
+        <p
+          style={{
+            fontSize: '15px',
+            fontWeight: 700,
+            color: '#1A2D42',
+            marginBottom: '8px',
+          }}
+        >
+          {formattedPrice}
+        </p>
 
         {/* Buy button */}
         <button
           onClick={onBuyClick}
-          className="w-full mt-2 font-sans text-[12px] font-semibold py-2 rounded-lg transition-opacity hover:opacity-90"
-          style={{ backgroundColor: '#C9A84C', color: '#091829', border: 'none', cursor: 'pointer' }}
+          style={{
+            width: '100%',
+            backgroundColor: '#C9A84C',
+            color: '#091829',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '8px',
+            fontSize: '12px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            marginBottom: '6px',
+          }}
         >
           Buy →
         </button>
+
+        {/* Trust line */}
+        <p style={{ fontSize: '10px', color: '#8A9BB5', textAlign: 'center' }}>
+          via {product.retailer}
+        </p>
       </div>
     </div>
   )
@@ -158,6 +210,7 @@ export default function ShopRoom({
   const [isExpanded, setIsExpanded] = useState(false)
   const [activeTab, setActiveTab] = useState(detections[0]?.id ?? '')
   const [dotsVisible, setDotsVisible] = useState(false)
+  const [hoveredDot, setHoveredDot] = useState<string | null>(null)
 
   // Reveal dots after 1.5s
   useEffect(() => {
@@ -173,10 +226,14 @@ export default function ShopRoom({
   }, [detections, activeTab])
 
   const currentProducts = productsByItem[activeTab] ?? []
+
+  // True when detections is just the synthetic fallback
+  const isSynthetic =
+    detections.length === 1 && detections[0].id === 'your-room'
   const visibleItemCount = detections.filter((d) => d.id !== 'your-room').length
 
-  function handleDotClick(item: DetectedItem) {
-    setActiveTab(item.id)
+  function handleDotClick(id: string) {
+    setActiveTab(id)
     setIsExpanded(true)
   }
 
@@ -186,212 +243,346 @@ export default function ShopRoom({
     setIsExpanded(true)
   }
 
+  function handleBackdropClick() {
+    setIsExpanded(false)
+  }
+
   return (
     <div className="fixed inset-0 overflow-hidden" style={{ backgroundColor: '#091829' }}>
-      {/* ── Background render ──────────────────────────────────────────────── */}
+      {/* ── CSS animations ─────────────────────────────────────────────────── */}
+      <style>{`
+        @keyframes dot-pulse {
+          0%, 100% { transform: scale(1); opacity: 0.6; }
+          50% { transform: scale(1.35); opacity: 0.25; }
+        }
+        .animate-dot-pulse {
+          animation: dot-pulse 2.2s ease-in-out infinite;
+        }
+        @keyframes fade-in {
+          from { opacity: 0; transform: translateY(4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.2s ease-out forwards;
+        }
+        .scrollbar-hide {
+          scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
+
+      {/* ── Layer 1: render image ──────────────────────────────────────────── */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={renderUrl}
         alt="Your redesigned room"
+        crossOrigin="anonymous"
         className="absolute inset-0 w-full h-full object-cover"
       />
 
-      {/* ── Hotspot dots ───────────────────────────────────────────────────── */}
-      <AnimatePresence>
-        {dotsVisible &&
-          detections.map((item) => {
-            // No dot for synthetic "your-room" fallback item
-            if (item.id === 'your-room') return null
-            const isActive = activeTab === item.id
+      {/* Bottom gradient */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            'linear-gradient(to top, rgba(9,24,41,0.95) 0%, rgba(9,24,41,0.4) 40%, transparent 70%)',
+          pointerEvents: 'none',
+        }}
+      />
+      {/* Top gradient */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            'linear-gradient(to bottom, rgba(9,24,41,0.45) 0%, transparent 28%)',
+          pointerEvents: 'none',
+        }}
+      />
 
-            return (
-              <motion.button
-                key={item.id}
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0, opacity: 0 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                onClick={() => handleDotClick(item)}
+      {/* ── Step indicator ─────────────────────────────────────────────────── */}
+      <div
+        className="absolute top-5 left-5 right-5"
+        style={{ zIndex: 10, pointerEvents: 'none' }}
+      >
+        <div className="flex items-center justify-between mb-2">
+          <span className="font-sans text-[11px]" style={{ color: '#8A9BB5' }}>
+            10 of 10
+          </span>
+        </div>
+        <div
+          className="h-[2px] rounded-full overflow-hidden"
+          style={{ backgroundColor: 'rgba(255,255,255,0.15)' }}
+        >
+          {/* 100% filled — final step */}
+          <div
+            className="h-full rounded-full"
+            style={{ width: '100%', backgroundColor: '#C9A84C' }}
+          />
+        </div>
+      </div>
+
+      {/* ── Clickable backdrop (collapses sheet on click) ──────────────────── */}
+      <div
+        className="absolute inset-0"
+        style={{ zIndex: 15 }}
+        onClick={handleBackdropClick}
+      />
+
+      {/* ── Layer 2: hotspot dots ──────────────────────────────────────────── */}
+      {detections.map((item, index) => {
+        // No dot for synthetic fallback item
+        if (item.id === 'your-room') return null
+
+        const isActive = activeTab === item.id && isExpanded
+        const staggerDelay = 1.5 + index * 0.2
+
+        return (
+          <div
+            key={item.id}
+            style={{
+              position: 'absolute',
+              left: `${item.left}%`,
+              top: `${item.top}%`,
+              transform: 'translate(-50%, -50%)',
+              zIndex: 20,
+              opacity: dotsVisible ? 1 : 0,
+              transition: `opacity 0.4s ease ${staggerDelay}s`,
+            }}
+          >
+            {/* Outer pulse ring */}
+            <div
+              className="animate-dot-pulse"
+              style={{
+                position: 'absolute',
+                width: '44px',
+                height: '44px',
+                borderRadius: '50%',
+                backgroundColor: isActive
+                  ? 'rgba(201,168,76,0.25)'
+                  : 'rgba(201,168,76,0.15)',
+                border: '1.5px solid rgba(201,168,76,0.5)',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                pointerEvents: 'none',
+              }}
+            />
+
+            {/* Inner dot (clickable) */}
+            <button
+              onClick={() => handleDotClick(item.id)}
+              onMouseEnter={() => setHoveredDot(item.id)}
+              onMouseLeave={() => setHoveredDot(null)}
+              style={{
+                position: 'relative',
+                zIndex: 1,
+                width: '20px',
+                height: '20px',
+                borderRadius: '50%',
+                backgroundColor: isActive ? '#C9A84C' : 'rgba(201,168,76,0.85)',
+                border: isActive
+                  ? '2px solid #F8F6F1'
+                  : '2px solid rgba(248,246,241,0.6)',
+                boxShadow: isActive
+                  ? '0 0 14px rgba(201,168,76,0.8)'
+                  : '0 0 6px rgba(201,168,76,0.45)',
+                cursor: 'pointer',
+                padding: 0,
+                display: 'block',
+              }}
+            />
+
+            {/* Hover label */}
+            {hoveredDot === item.id && (
+              <div
+                className="animate-fade-in"
                 style={{
                   position: 'absolute',
-                  left: `${item.left}%`,
-                  top: `${item.top}%`,
-                  transform: 'translate(-50%, -50%)',
-                  background: 'none',
-                  border: 'none',
-                  padding: 0,
-                  cursor: 'pointer',
+                  bottom: '28px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  backgroundColor: 'rgba(9,24,41,0.9)',
+                  color: '#F8F6F1',
+                  fontSize: '11px',
+                  fontFamily: 'var(--font-sans)',
+                  fontWeight: 500,
+                  padding: '4px 8px',
+                  borderRadius: '6px',
+                  whiteSpace: 'nowrap',
+                  backdropFilter: 'blur(8px)',
+                  WebkitBackdropFilter: 'blur(8px)',
+                  border: '1px solid rgba(201,168,76,0.3)',
+                  pointerEvents: 'none',
                 }}
               >
-                {/* Outer ring */}
-                <span
-                  style={{
-                    display: 'block',
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    backgroundColor: isActive ? 'rgba(201,168,76,0.35)' : 'rgba(201,168,76,0.2)',
-                    border: '2px solid #C9A84C',
-                    boxShadow: isActive
-                      ? '0 0 14px rgba(201,168,76,0.7)'
-                      : '0 0 6px rgba(201,168,76,0.35)',
-                    position: 'relative',
-                  }}
-                >
-                  {/* Inner dot */}
-                  <span
-                    style={{
-                      display: 'block',
-                      width: '10px',
-                      height: '10px',
-                      borderRadius: '50%',
-                      backgroundColor: '#C9A84C',
-                      position: 'absolute',
-                      top: '50%',
-                      left: '50%',
-                      transform: 'translate(-50%, -50%)',
-                    }}
-                  />
-                </span>
-              </motion.button>
-            )
-          })}
-      </AnimatePresence>
+                {item.label}
+              </div>
+            )}
+          </div>
+        )
+      })}
 
-      {/* ── Bottom sheet ───────────────────────────────────────────────────── */}
-      <motion.div
-        animate={{ y: isExpanded ? 0 : `calc(100% - ${COLLAPSED_VISIBLE_PX}px)` }}
-        transition={{ type: 'spring', stiffness: 280, damping: 30 }}
+      {/* ── Layer 3: bottom sheet ──────────────────────────────────────────── */}
+      <div
+        className="absolute bottom-0 left-0 right-0 overflow-hidden transition-all duration-300 ease-in-out"
         style={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: '72vh',
+          height: isExpanded ? '72%' : '120px',
           backgroundColor: '#0D2035',
           borderTopLeftRadius: '24px',
           borderTopRightRadius: '24px',
-          display: 'flex',
-          flexDirection: 'column',
+          zIndex: 25,
         }}
+        onClick={(e) => e.stopPropagation()}
       >
-        {/* ── Always-visible header ─────────────────────────────────────── */}
-        <div
-          className="flex-shrink-0 px-5 pt-3 pb-2 cursor-pointer"
-          onClick={() => setIsExpanded((v) => !v)}
-        >
-          {/* Drag handle */}
-          <div className="flex justify-center mb-3">
-            <div className="w-8 h-1 rounded-full" style={{ backgroundColor: '#1E3A5F' }} />
-          </div>
+        {/* ── Collapsed state ─────────────────────────────────────────────── */}
+        {!isExpanded && (
+          <div
+            className="h-full px-5 pt-3 cursor-pointer"
+            onClick={() => setIsExpanded(true)}
+          >
+            {/* Drag handle */}
+            <div className="flex justify-center mb-3">
+              <div
+                className="w-8 h-1 rounded-full"
+                style={{ backgroundColor: '#1E3A5F' }}
+              />
+            </div>
 
-          {/* Title + chevron */}
-          <div className="flex items-center justify-between mb-3">
-            <span className="font-sans text-[14px] font-medium" style={{ color: '#F8F6F1' }}>
-              {visibleItemCount > 0 ? `${visibleItemCount} items found` : 'Tap items to explore'}
-            </span>
-            <motion.div
-              animate={{ rotate: isExpanded ? 180 : 0 }}
-              transition={{ duration: 0.2 }}
+            {/* Title + count */}
+            <div className="flex items-center justify-between mb-3">
+              <span
+                style={{
+                  fontFamily: 'var(--font-serif)',
+                  fontSize: '17px',
+                  color: '#F8F6F1',
+                }}
+              >
+                Shop your room
+              </span>
+              <span className="font-sans text-[12px]" style={{ color: '#8A9BB5' }}>
+                {isSynthetic
+                  ? 'Tap to explore'
+                  : `${visibleItemCount} items found`}
+              </span>
+            </div>
+
+            {/* Pill strip */}
+            <div
+              className="scrollbar-hide flex gap-2 overflow-x-auto pb-1"
+              onClick={(e) => e.stopPropagation()}
             >
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <path
-                  d="M5 12.5l5-5 5 5"
-                  stroke="#8A9BB5"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </motion.div>
+              {detections.map((item) => {
+                const isActive = activeTab === item.id
+                return (
+                  <button
+                    key={item.id}
+                    onClick={(e) => handlePillClick(item.id, e)}
+                    className="flex-shrink-0 font-sans text-[12px] font-medium px-3 py-1.5 rounded-full"
+                    style={{
+                      backgroundColor: isActive ? '#C9A84C' : 'transparent',
+                      color: isActive ? '#091829' : '#8A9BB5',
+                      border: `1px solid ${isActive ? '#C9A84C' : '#1E3A5F'}`,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                )
+              })}
+            </div>
           </div>
+        )}
 
-          {/* Item pills */}
-          <div
-            className="flex gap-2 overflow-x-auto pb-1"
-            style={{ scrollbarWidth: 'none' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {detections.map((item) => {
-              const isActive = activeTab === item.id
-              return (
-                <button
-                  key={item.id}
-                  onClick={(e) => handlePillClick(item.id, e)}
-                  className="flex-shrink-0 font-sans text-[12px] font-medium px-3 py-1.5 rounded-full transition-colors"
-                  style={{
-                    backgroundColor: isActive ? '#C9A84C' : 'transparent',
-                    color: isActive ? '#091829' : '#8A9BB5',
-                    border: `1px solid ${isActive ? '#C9A84C' : '#1E3A5F'}`,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {item.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
+        {/* ── Expanded state ───────────────────────────────────────────────── */}
+        {isExpanded && (
+          <div className="h-full flex flex-col px-5 pt-3">
+            {/* Drag handle */}
+            <div className="flex justify-center mb-3 flex-shrink-0">
+              <div
+                className="w-8 h-1 rounded-full"
+                style={{ backgroundColor: '#1E3A5F' }}
+              />
+            </div>
 
-        {/* ── Expanded: product grid ────────────────────────────────────── */}
-        <div
-          className="flex-1 overflow-y-auto px-5 pt-2 pb-6"
-          style={{ scrollbarWidth: 'none' }}
-        >
-          {/* Tab bar — mirrors pills for clarity when expanded */}
-          <div
-            className="flex gap-2 overflow-x-auto mb-4"
-            style={{ scrollbarWidth: 'none' }}
-          >
-            {detections.map((item) => {
-              const isActive = activeTab === item.id
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveTab(item.id)}
-                  className="flex-shrink-0 font-sans text-[13px] font-medium px-4 py-2 rounded-full transition-colors"
-                  style={{
-                    backgroundColor: isActive ? '#C9A84C' : 'transparent',
-                    color: isActive ? '#091829' : '#8A9BB5',
-                    border: `1px solid ${isActive ? '#C9A84C' : '#1E3A5F'}`,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {item.label}
-                </button>
-              )
-            })}
-          </div>
+            {/* Header: title + X */}
+            <div className="flex items-center justify-between mb-4 flex-shrink-0">
+              <span
+                style={{
+                  fontFamily: 'var(--font-serif)',
+                  fontSize: '20px',
+                  color: '#F8F6F1',
+                }}
+              >
+                Shop your room
+              </span>
+              <button
+                onClick={() => setIsExpanded(false)}
+                className="font-sans"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#8A9BB5',
+                  fontSize: '22px',
+                  lineHeight: 1,
+                  padding: '0 2px',
+                }}
+              >
+                ×
+              </button>
+            </div>
 
-          {/* Product cards */}
-          <div
-            className="flex gap-3 overflow-x-auto pb-2"
-            style={{ scrollbarWidth: 'none' }}
-          >
-            {isLoadingProducts && currentProducts.length === 0 ? (
-              <>
-                <SkeletonCard />
-                <SkeletonCard />
-                <SkeletonCard />
-              </>
-            ) : currentProducts.length > 0 ? (
-              currentProducts.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  onBuyClick={() => onBuyClick(product)}
-                />
-              ))
-            ) : (
-              <p className="font-sans text-[13px]" style={{ color: '#8A9BB5' }}>
-                No products found for this item.
-              </p>
-            )}
+            {/* Tab bar */}
+            <div className="scrollbar-hide flex gap-2 overflow-x-auto mb-4 flex-shrink-0">
+              {detections.map((item) => {
+                const isActive = activeTab === item.id
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveTab(item.id)}
+                    className="flex-shrink-0 font-sans text-[13px] font-medium px-4 py-2 rounded-full"
+                    style={{
+                      backgroundColor: isActive ? '#C9A84C' : 'transparent',
+                      color: isActive ? '#091829' : '#8A9BB5',
+                      border: `1px solid ${isActive ? '#C9A84C' : '#1E3A5F'}`,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Product grid */}
+            <div className="scrollbar-hide flex gap-3 overflow-x-auto flex-1 pb-6 items-start">
+              {isLoadingProducts && currentProducts.length === 0 ? (
+                <>
+                  <SkeletonCard />
+                  <SkeletonCard />
+                  <SkeletonCard />
+                </>
+              ) : currentProducts.length > 0 ? (
+                currentProducts.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    onBuyClick={() => onBuyClick(product)}
+                  />
+                ))
+              ) : (
+                <p className="font-sans text-[13px]" style={{ color: '#8A9BB5' }}>
+                  No products found for this item.
+                </p>
+              )}
+            </div>
           </div>
-        </div>
-      </motion.div>
+        )}
+      </div>
     </div>
   )
 }
