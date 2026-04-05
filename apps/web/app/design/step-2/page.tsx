@@ -2,14 +2,10 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { QUIZ_PAIRS } from "@/lib/ai/quiz-data";
+import { useFingerprintStore } from "@/lib/store";
 
-const TOTAL_PAIRS = 15;
-
-const PAIRS = Array.from({ length: 15 }, (_, i) => ({
-  id: `pair-${i}`,
-  imageA: { url: null, alt: `Style option A ${i + 1}` },
-  imageB: { url: null, alt: `Style option B ${i + 1}` },
-}));
+const TOTAL_PAIRS = 19;
 
 type Response = {
   pairId: string;
@@ -19,6 +15,9 @@ type Response = {
 
 export default function StyleQuizPage() {
   const router = useRouter();
+  const { roomType } = useFingerprintStore();
+  const pairs = QUIZ_PAIRS[roomType ?? "living-room"] ?? QUIZ_PAIRS["living-room"]!;
+
   const [currentPair, setCurrentPair] = useState(0);
   const [responses, setResponses] = useState<Response[]>([]);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -48,8 +47,9 @@ export default function StyleQuizPage() {
 
       // Next pair at 1000ms
       setTimeout(() => {
+        const activePair = pairs[currentPair];
         const newResponse: Response = {
-          pairId: PAIRS[currentPair].id,
+          pairId: activePair?.id ?? `pair-${String(currentPair + 1).padStart(2, "0")}`,
           chosen: side === "left" ? "A" : "B",
           superLiked: false,
         };
@@ -71,7 +71,7 @@ export default function StyleQuizPage() {
         }
       }, 1000);
     },
-    [isAnimating, currentPair, router]
+    [isAnimating, currentPair, router, pairs]
   );
 
   const handleBack = useCallback(() => {
@@ -91,7 +91,6 @@ export default function StyleQuizPage() {
     if (isAnimating) return;
     const deltaX = e.clientX - pointerStartX.current;
     if (Math.abs(deltaX) > 40) {
-      // Swipe left chooses right, swipe right chooses left
       handleSelection(deltaX > 0 ? "left" : "right");
     }
   };
@@ -104,6 +103,11 @@ export default function StyleQuizPage() {
 
   // suppress unused variable warning
   void responses;
+
+  const activePair = pairs[currentPair];
+  const imgUrlA = activePair?.imageA?.url ?? "";
+  const imgUrlB = activePair?.imageB?.url ?? "";
+  const isWarmup = activePair?.isWarmup ?? (currentPair === 0);
 
   const getCardStyle = (side: "left" | "right") => {
     const isSelected = selectedCard === side;
@@ -151,7 +155,6 @@ export default function StyleQuizPage() {
     >
       {/* TOP ZONE - Progress */}
       <div className="flex flex-col items-center pt-4 pb-2" style={{ height: "12%" }}>
-        {/* Question counter — prominent, at the very top */}
         <p
           className="text-center font-sans mb-3"
           style={{ fontSize: "13px", color: "#8A9BB5" }}
@@ -189,13 +192,13 @@ export default function StyleQuizPage() {
           Step 2 of 11
         </p>
 
-        {/* Warmup text - only on first card */}
+        {/* Warmup text - only on warmup card */}
         <p
           className="mt-1 text-center font-sans italic"
           style={{
             fontSize: "11px",
             color: "#4A5E7A",
-            opacity: currentPair === 0 ? 1 : 0,
+            opacity: isWarmup ? 1 : 0,
             transition: "opacity 300ms ease",
             height: 16,
           }}
@@ -234,20 +237,30 @@ export default function StyleQuizPage() {
             onMouseEnter={() => setLastHovered("left")}
             onMouseLeave={() => setLastHovered(null)}
           >
-            {/* Room sketch SVG */}
-            <svg
-              className="absolute inset-0 m-auto"
-              width="60%"
-              height="60%"
-              viewBox="0 0 100 80"
-              fill="none"
-              style={{ opacity: 0.5 }}
-            >
-              <rect x="10" y="10" width="30" height="25" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
-              <line x1="5" y1="70" x2="95" y2="70" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
-              <path d="M20 70 L20 50 Q30 45 40 50 L40 70" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
-              <path d="M60 70 L60 55 L85 55 L85 70" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
-            </svg>
+            {/* Real image */}
+            {imgUrlA ? (
+              <img
+                src={imgUrlA}
+                alt={activePair?.imageA?.alt ?? "Style option A"}
+                className="absolute inset-0 w-full h-full object-cover"
+                draggable={false}
+              />
+            ) : (
+              /* Fallback placeholder when images not yet generated */
+              <svg
+                className="absolute inset-0 m-auto"
+                width="60%"
+                height="60%"
+                viewBox="0 0 100 80"
+                fill="none"
+                style={{ opacity: 0.5 }}
+              >
+                <rect x="10" y="10" width="30" height="25" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
+                <line x1="5" y1="70" x2="95" y2="70" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
+                <path d="M20 70 L20 50 Q30 45 40 50 L40 70" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
+                <path d="M60 70 L60 55 L85 55 L85 70" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
+              </svg>
+            )}
 
             {/* Bottom gradient overlay */}
             <div
@@ -325,20 +338,30 @@ export default function StyleQuizPage() {
             onMouseEnter={() => setLastHovered("right")}
             onMouseLeave={() => setLastHovered(null)}
           >
-            {/* Room sketch SVG */}
-            <svg
-              className="absolute inset-0 m-auto"
-              width="60%"
-              height="60%"
-              viewBox="0 0 100 80"
-              fill="none"
-              style={{ opacity: 0.5 }}
-            >
-              <rect x="60" y="8" width="35" height="28" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
-              <line x1="5" y1="70" x2="95" y2="70" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
-              <ellipse cx="35" cy="60" rx="25" ry="8" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
-              <path d="M70 70 L70 50 L90 50 L90 70" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
-            </svg>
+            {/* Real image */}
+            {imgUrlB ? (
+              <img
+                src={imgUrlB}
+                alt={activePair?.imageB?.alt ?? "Style option B"}
+                className="absolute inset-0 w-full h-full object-cover"
+                draggable={false}
+              />
+            ) : (
+              /* Fallback placeholder */
+              <svg
+                className="absolute inset-0 m-auto"
+                width="60%"
+                height="60%"
+                viewBox="0 0 100 80"
+                fill="none"
+                style={{ opacity: 0.5 }}
+              >
+                <rect x="60" y="8" width="35" height="28" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
+                <line x1="5" y1="70" x2="95" y2="70" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
+                <ellipse cx="35" cy="60" rx="25" ry="8" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
+                <path d="M70 70 L70 50 L90 50 L90 70" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
+              </svg>
+            )}
 
             {/* Bottom gradient overlay */}
             <div
@@ -390,18 +413,18 @@ export default function StyleQuizPage() {
         {/* Neither / Skip button */}
         <button
           onClick={() => {
-            if (isAnimating) return
-            // Skip this pair — record as skipped, advance
+            if (isAnimating) return;
+            const activePair = pairs[currentPair];
             const newResponse: Response = {
-              pairId: PAIRS[currentPair].id,
-              chosen: "B", // default, flagged as skipped
+              pairId: activePair?.id ?? `pair-${String(currentPair + 1).padStart(2, "0")}`,
+              chosen: "B",
               superLiked: false,
-            }
-            setResponses((prev) => [...prev, newResponse])
+            };
+            setResponses((prev) => [...prev, newResponse]);
             if (currentPair === TOTAL_PAIRS - 1) {
-              router.push("/design/step-3")
+              router.push("/design/step-3");
             } else {
-              setCurrentPair((prev) => prev + 1)
+              setCurrentPair((prev) => prev + 1);
             }
           }}
           disabled={isAnimating}
@@ -417,12 +440,12 @@ export default function StyleQuizPage() {
             letterSpacing: "0.04em",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = "rgba(201,168,76,0.3)"
-            e.currentTarget.style.color = "#8A9BB5"
+            e.currentTarget.style.borderColor = "rgba(201,168,76,0.3)";
+            e.currentTarget.style.color = "#8A9BB5";
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = "rgba(74,94,122,0.4)"
-            e.currentTarget.style.color = "#4A5E7A"
+            e.currentTarget.style.borderColor = "rgba(74,94,122,0.4)";
+            e.currentTarget.style.color = "#4A5E7A";
           }}
         >
           Neither — skip

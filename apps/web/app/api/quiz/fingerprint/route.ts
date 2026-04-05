@@ -14,114 +14,228 @@ interface FingerprintRequestBody {
   room_type: string
 }
 
-// All 64 binary combinations of 6 dimensions
-// Dimensions: [luminosity, density, temperature, form, era, texture]
-// 1 = high (bright, layered, warm, organic, traditional, textured)
-// 0 = low  (moody, minimal, cool, geometric, modern, smooth)
-const STYLE_NAMES: Record<string, string> = {
-  '000000': 'Cool Minimalist',
-  '000001': 'Industrial Modern',
-  '000010': 'Geometric Contemporary',
-  '000011': 'Urban Loft',
-  '000100': 'Organic Minimal',
-  '000101': 'Japandi',
-  '000110': 'Nature Modern',
-  '000111': 'Earthy Minimalist',
-  '001000': 'Cool Layered',
-  '001001': 'Dark Academic',
-  '001010': 'Maximalist Industrial',
-  '001011': 'Moody Eclectic',
-  '001100': 'Warm Japandi',
-  '001101': 'Boho Minimal',
-  '001110': 'Jungle Modern',
-  '001111': 'Organic Maximalist',
-  '010000': 'Coastal Minimal',
-  '010001': 'Scandinavian Modern',
-  '010010': 'Cool Nordic',
-  '010011': 'Nordic Industrial',
-  '010100': 'Coastal Organic',
-  '010101': 'Scandinavian Natural',
-  '010110': 'Biophilic Minimal',
-  '010111': 'Nordic Boho',
-  '011000': 'Coastal Layered',
-  '011001': 'French Country Light',
-  '011010': 'Maximalist Coastal',
-  '011011': 'Eclectic Light',
-  '011100': 'Organic Coastal',
-  '011101': 'Bohemian Coastal',
-  '011110': 'Tropical Modern',
-  '011111': 'Maximalist Organic',
-  '100000': 'Moody Minimal',
-  '100001': 'Dark Modern',
-  '100010': 'Concrete Chic',
-  '100011': 'Brutalist Warm',
-  '100100': 'Organic Moody',
-  '100101': 'Warm Industrial',
-  '100110': 'Dark Nature',
-  '100111': 'Moody Organic',
-  '101000': 'Warm Layered',
-  '101001': 'Amber Eclectic',
-  '101010': 'Transitional',
-  '101011': 'Rich Traditional',
-  '101100': 'Organic Transitional',
-  '101101': 'Warm Eclectic',
-  '101110': 'Warm Nature',
-  '101111': 'Bohemian Warm',
-  '110000': 'Scandinavian Minimal',
-  '110001': 'Mid-Century Light',
-  '110010': 'Bright Contemporary',
-  '110011': 'Airy Industrial',
-  '110100': 'Organic Modern',
-  '110101': 'Bright Japandi',
-  '110110': 'Biophilic Modern',
-  '110111': 'Airy Organic',
-  '111000': 'Bright Maximalist',
-  '111001': 'Hollywood Regency',
-  '111010': 'Maximalist Modern',
-  '111011': 'Glam Eclectic',
-  '111100': 'Rustic Traditional',
-  '111101': 'Bohemian Eclectic',
-  '111110': 'Warm Maximalist',
-  '111111': 'Grand Eclectic',
+// ── 10-dimension system ───────────────────────────────────────────────────────
+// Indices: 0=luminosity, 1=density, 2=temperature, 3=form, 4=era,
+//          5=texture, 6=scale, 7=nature, 8=saturation, 9=materialOrigin
+
+interface PairDefinition {
+  primaryDimension: string | null
+  secondaryDimension: string | null
+  contrastLevel: 'extreme' | 'mid' | 'fine' | null
+  aIntensity: number
+  bIntensity: number
+  isWarmup: boolean
 }
+
+const PAIR_DEFINITIONS: Record<string, PairDefinition> = {
+  'pair-01': { primaryDimension: 'luminosity',     secondaryDimension: 'temperature',   contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
+  'pair-02': { primaryDimension: 'density',        secondaryDimension: null,            contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
+  'pair-03': { primaryDimension: 'temperature',    secondaryDimension: null,            contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
+  'pair-04': { primaryDimension: 'nature',         secondaryDimension: 'materialOrigin',contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
+  'pair-05': { primaryDimension: 'saturation',     secondaryDimension: null,            contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
+  'pair-06': { primaryDimension: 'luminosity',     secondaryDimension: null,            contrastLevel: 'mid',     aIntensity: 0.25,bIntensity: 0.75,isWarmup: false },
+  'pair-07': { primaryDimension: 'temperature',    secondaryDimension: null,            contrastLevel: 'mid',     aIntensity: 0.25,bIntensity: 0.75,isWarmup: false },
+  'pair-08': { primaryDimension: 'density',        secondaryDimension: null,            contrastLevel: 'mid',     aIntensity: 0.25,bIntensity: 0.75,isWarmup: false },
+  'pair-09': { primaryDimension: 'form',           secondaryDimension: 'scale',         contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
+  'pair-10': { primaryDimension: 'era',            secondaryDimension: null,            contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
+  'pair-11': { primaryDimension: 'texture',        secondaryDimension: 'materialOrigin',contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
+  'pair-12': { primaryDimension: 'nature',         secondaryDimension: null,            contrastLevel: 'mid',     aIntensity: 0.25,bIntensity: 0.75,isWarmup: false },
+  'pair-13': { primaryDimension: 'saturation',     secondaryDimension: null,            contrastLevel: 'mid',     aIntensity: 0.25,bIntensity: 0.75,isWarmup: false },
+  'pair-14': { primaryDimension: 'scale',          secondaryDimension: null,            contrastLevel: 'mid',     aIntensity: 0.25,bIntensity: 0.75,isWarmup: false },
+  'pair-15': { primaryDimension: 'luminosity',     secondaryDimension: null,            contrastLevel: 'fine',    aIntensity: 0.35,bIntensity: 0.65,isWarmup: false },
+  'pair-16': { primaryDimension: 'temperature',    secondaryDimension: null,            contrastLevel: 'fine',    aIntensity: 0.35,bIntensity: 0.65,isWarmup: false },
+  'pair-17': { primaryDimension: 'materialOrigin', secondaryDimension: null,            contrastLevel: 'fine',    aIntensity: 0.35,bIntensity: 0.65,isWarmup: false },
+  'pair-18': { primaryDimension: 'form',           secondaryDimension: null,            contrastLevel: 'mid',     aIntensity: 0.25,bIntensity: 0.75,isWarmup: false },
+  'pair-19': { primaryDimension: null,             secondaryDimension: null,            contrastLevel: null,      aIntensity: 0.0, bIntensity: 1.0, isWarmup: true  },
+}
+
+
+// Contrast-level weights
+const CONTRAST_WEIGHTS: Record<string, number> = {
+  extreme: 0.25,
+  mid:     0.35,
+  fine:    0.40,
+}
+
+// Dimension order in fingerprint vector
+const DIMENSION_ORDER = [
+  'luminosity', 'density', 'temperature', 'form', 'era',
+  'texture', 'scale', 'nature', 'saturation', 'materialOrigin',
+] as const
+
+// ── 12 named styles ───────────────────────────────────────────────────────────
+
+interface StyleDefinition {
+  name: string
+  chips: string[]
+  // 10-float center vector in dimension order above
+  center: number[]
+}
+
+const STYLES: StyleDefinition[] = [
+  {
+    name: 'Warm Japandi',
+    chips: ['warm neutrals', 'organic textures', 'natural materials', 'minimal layers'],
+    center: [0.75, 0.2, 0.8, 0.75, 0.45, 0.7, 0.35, 0.7, 0.35, 0.65],
+  },
+  {
+    name: 'Organic Modern',
+    chips: ['curved forms', 'natural wood', 'earthy tones', 'artisan craft'],
+    center: [0.7, 0.45, 0.75, 0.8, 0.25, 0.7, 0.5, 0.75, 0.5, 0.7],
+  },
+  {
+    name: 'Scandi Hygge',
+    chips: ['cozy textures', 'cool palette', 'soft lighting', 'lived-in warmth'],
+    center: [0.6, 0.5, 0.3, 0.5, 0.25, 0.65, 0.35, 0.5, 0.35, 0.55],
+  },
+  {
+    name: 'Coastal Light',
+    chips: ['natural light', 'relaxed elegance', 'soft whites', 'organic flow'],
+    center: [0.85, 0.3, 0.5, 0.65, 0.2, 0.45, 0.5, 0.6, 0.3, 0.45],
+  },
+  {
+    name: 'Bohemian Layered',
+    chips: ['rich layers', 'global influences', 'curated chaos', 'living textures'],
+    center: [0.5, 0.8, 0.7, 0.7, 0.5, 0.8, 0.45, 0.85, 0.65, 0.8],
+  },
+  {
+    name: 'Dark Luxe',
+    chips: ['dramatic depth', 'velvet richness', 'brass accents', 'intimate scale'],
+    center: [0.2, 0.5, 0.65, 0.45, 0.65, 0.75, 0.25, 0.35, 0.45, 0.55],
+  },
+  {
+    name: 'Heritage Maximalist',
+    chips: ['antique detail', 'collected over time', 'warm richness', 'storied pieces'],
+    center: [0.45, 0.85, 0.65, 0.4, 0.85, 0.75, 0.55, 0.5, 0.55, 0.7],
+  },
+  {
+    name: 'Zen Sanctuary',
+    chips: ['intentional emptiness', 'pure light', 'silent spaces', 'mindful living'],
+    center: [0.8, 0.1, 0.5, 0.65, 0.2, 0.2, 0.3, 0.5, 0.15, 0.35],
+  },
+  {
+    name: 'Industrial Edge',
+    chips: ['raw materials', 'urban grit', 'structural beauty', 'matte finishes'],
+    center: [0.3, 0.45, 0.2, 0.15, 0.2, 0.3, 0.5, 0.1, 0.3, 0.2],
+  },
+  {
+    name: 'Moody Eclectic',
+    chips: ['dramatic layers', 'bold color', 'collected character', 'rich darkness'],
+    center: [0.15, 0.8, 0.6, 0.5, 0.7, 0.75, 0.4, 0.55, 0.7, 0.65],
+  },
+  {
+    name: 'Parisian Chic',
+    chips: ['effortless elegance', 'muted sophistication', 'ornate restraint', 'timeless charm'],
+    center: [0.55, 0.5, 0.5, 0.45, 0.65, 0.5, 0.5, 0.4, 0.3, 0.5],
+  },
+  {
+    name: 'Desert Modern',
+    chips: ['earthy architecture', 'warm terracotta', 'angular forms', 'sun-baked palette'],
+    center: [0.75, 0.25, 0.8, 0.2, 0.2, 0.7, 0.45, 0.45, 0.55, 0.6],
+  },
+]
+
+// Dimension weights for style matching (weighted Euclidean distance)
+const DIMENSION_MATCH_WEIGHTS = [
+  1.5,  // luminosity
+  1.2,  // density
+  1.5,  // temperature
+  1.0,  // form
+  0.6,  // era
+  0.8,  // texture
+  0.9,  // scale
+  1.1,  // nature
+  1.0,  // saturation
+  0.8,  // materialOrigin
+]
+
+// ── Fingerprint computation ───────────────────────────────────────────────────
 
 function computeFingerprint(responses: QuizResponse[]): number[] {
-  // Initialize 6 dimensions at 0.5 (neutral)
-  const dimensions = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
+  // Per-dimension: accumulate weighted votes
+  const dimVoteSum: Record<string, number> = {}
+  const dimWeightSum: Record<string, number> = {}
 
-  // Score each response
-  // Super likes weighted 3x per COVA_CONTEXT.md
-  responses.forEach((response, index) => {
-    if (index === 0) return // Skip warmup card
-    const weight = response.super_liked ? 3 : 1
-    // Distribute signal across dimensions based on pair index
-    // This is a simplified distribution — real Bayesian
-    // implementation in V1.1
-    const dimIndex = index % 6
-    const signal = response.chosen === 'A' ? 0.1 : -0.1
-    dimensions[dimIndex] = (dimensions[dimIndex] ?? 0.5) + signal * weight
+  for (const dim of DIMENSION_ORDER) {
+    dimVoteSum[dim] = 0
+    dimWeightSum[dim] = 0
+  }
+
+  for (const response of responses) {
+    const def = PAIR_DEFINITIONS[response.pair_id]
+    if (!def) continue
+    if (def.isWarmup) continue
+
+    const chosenA = response.chosen === 'A'
+    const superLikeMultiplier = response.super_liked ? 3 : 1
+    const contrastWeight = def.contrastLevel ? (CONTRAST_WEIGHTS[def.contrastLevel] ?? 0.35) : 0.35
+
+    // Primary dimension vote
+    if (def.primaryDimension) {
+      const primaryVote = chosenA ? def.aIntensity : def.bIntensity
+      const effectiveWeight = contrastWeight * superLikeMultiplier
+      dimVoteSum[def.primaryDimension]! += primaryVote * effectiveWeight
+      dimWeightSum[def.primaryDimension]! += effectiveWeight
+    }
+
+    // Secondary dimension vote (half weight signal)
+    if (def.secondaryDimension) {
+      const secondaryVote = chosenA ? def.aIntensity : def.bIntensity
+      const effectiveWeight = contrastWeight * superLikeMultiplier * 0.5
+      dimVoteSum[def.secondaryDimension]! += secondaryVote * effectiveWeight
+      dimWeightSum[def.secondaryDimension]! += effectiveWeight
+    }
+  }
+
+  // Normalize: average per dimension, default 0.5 if no votes
+  return DIMENSION_ORDER.map((dim) => {
+    const wSum = dimWeightSum[dim] ?? 0
+    if (wSum === 0) return 0.5
+    const val = (dimVoteSum[dim] ?? 0) / wSum
+    return Math.max(0, Math.min(1, val))
   })
-
-  // Normalize to [0, 1]
-  return dimensions.map((d) => Math.max(0, Math.min(1, d)))
 }
 
-function getStyleName(fingerprint: number[]): string {
-  const key = fingerprint.map((d) => (d >= 0.5 ? '1' : '0')).join('')
-  return STYLE_NAMES[key] ?? 'Curated Modern'
+// ── Style matching ────────────────────────────────────────────────────────────
+
+function matchStyle(fp: number[]): StyleDefinition {
+  let bestStyle = STYLES[0]!
+  let bestDist = Infinity
+
+  for (const style of STYLES) {
+    const dist = Math.sqrt(
+      fp.reduce((sum, val, i) => {
+        const diff = val - (style.center[i] ?? 0.5)
+        return sum + diff * diff * (DIMENSION_MATCH_WEIGHTS[i] ?? 1.0)
+      }, 0)
+    )
+    if (dist < bestDist) {
+      bestDist = dist
+      bestStyle = style
+    }
+  }
+
+  return bestStyle
 }
 
-function fingerprintToStyleTagsSimple(fingerprint: number[]): string[] {
-  const labels = [
-    (fingerprint[0] ?? 0.5) >= 0.5 ? 'bright' : 'moody',
-    (fingerprint[1] ?? 0.5) >= 0.5 ? 'layered' : 'minimal',
-    (fingerprint[2] ?? 0.5) >= 0.5 ? 'warm' : 'cool',
-    (fingerprint[3] ?? 0.5) >= 0.5 ? 'organic' : 'geometric',
-    (fingerprint[4] ?? 0.5) >= 0.5 ? 'traditional' : 'modern',
-    (fingerprint[5] ?? 0.5) >= 0.5 ? 'textured' : 'smooth',
+// ── Style tags (10-dim) ───────────────────────────────────────────────────────
+
+function fingerprintToStyleTags(fp: number[]): string[] {
+  return [
+    (fp[0] ?? 0.5) >= 0.5 ? 'bright' : 'moody',
+    (fp[1] ?? 0.5) >= 0.5 ? 'layered' : 'minimal',
+    (fp[2] ?? 0.5) >= 0.5 ? 'warm' : 'cool',
+    (fp[3] ?? 0.5) >= 0.5 ? 'organic' : 'geometric',
+    (fp[4] ?? 0.5) >= 0.5 ? 'traditional' : 'modern',
+    (fp[5] ?? 0.5) >= 0.5 ? 'textured' : 'smooth',
+    (fp[6] ?? 0.5) >= 0.5 ? 'grand' : 'intimate',
+    (fp[7] ?? 0.5) >= 0.5 ? 'biophilic' : 'urban',
+    (fp[8] ?? 0.5) >= 0.5 ? 'colorful' : 'muted',
+    (fp[9] ?? 0.5) >= 0.5 ? 'artisanal' : 'manufactured',
   ]
-  return labels
 }
+
+// ── Route handler ─────────────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
   try {
@@ -138,7 +252,9 @@ export async function POST(request: Request) {
     }
 
     const fingerprint = computeFingerprint(responses)
-    const styleName = getStyleName(fingerprint)
+    const matchedStyle = matchStyle(fingerprint)
+    const styleName = matchedStyle.name
+    const styleChips = matchedStyle.chips
 
     // Save fingerprint if user is authenticated
     if (user) {
@@ -156,7 +272,8 @@ export async function POST(request: Request) {
     return NextResponse.json({
       fingerprint,
       style_name: styleName,
-      style_tags: fingerprintToStyleTagsSimple(fingerprint),
+      style_chips: styleChips,
+      style_tags: fingerprintToStyleTags(fingerprint),
     })
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Internal server error'

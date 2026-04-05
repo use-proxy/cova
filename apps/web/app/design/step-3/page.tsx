@@ -3,15 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useFingerprintStore } from "@/lib/store"
-
-// Stock room photo URLs stored in Supabase Storage.
-// These are the three base images FLUX redesigns every time.
-// Upload these once to Supabase Storage bucket 'room-photos'.
-const STOCK_PHOTOS = [
-  { url: process.env.NEXT_PUBLIC_STOCK_LIVING_ROOM_URL ?? "", name: "Living Room" },
-  { url: process.env.NEXT_PUBLIC_STOCK_BEDROOM_URL ?? "", name: "Bedroom" },
-  { url: process.env.NEXT_PUBLIC_STOCK_HOME_OFFICE_URL ?? "", name: "Home Office" },
-]
+import { STOCK_PHOTOS as QUIZ_STOCK_PHOTOS } from "@/lib/ai/quiz-data"
 
 const axisLabels = ["Luminosity", "Density", "Temperature", "Form", "Era", "Texture"]
 const adjustChips = ["Warmer", "Cooler", "More minimal", "More layered", "More modern", "More classic"]
@@ -33,11 +25,18 @@ export default function Step3Page() {
   const router = useRouter()
 
   // Read fingerprint from Zustand store (set by Step 2 quiz)
-  const { fingerprint: storedFingerprint, styleName: storedStyleName } = useFingerprintStore()
+  const { fingerprint: storedFingerprint, styleName: storedStyleName, roomType } = useFingerprintStore()
+
+  // Resolve stock photos for the current room type
+  const stockPhotosForRoom = QUIZ_STOCK_PHOTOS[roomType ?? "living-room"] ?? QUIZ_STOCK_PHOTOS["living-room"] ?? []
+  const STOCK_PHOTOS = stockPhotosForRoom.map((p, i) => ({
+    url: p.url,
+    name: (roomType ?? "living-room").replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase()) + ` ${i + 1}`,
+  }))
 
   // Fall back to mock if store empty (direct navigation in dev)
   const [fingerprint, setFingerprint] = useState<number[]>(
-    storedFingerprint ?? [0.7, 0.3, 0.8, 0.7, 0.4, 0.6]
+    storedFingerprint ?? [0.7, 0.3, 0.8, 0.7, 0.4, 0.6, 0.5, 0.5, 0.5, 0.5]
   )
   const [styleName, setStyleName] = useState(storedStyleName ?? "Warm Japandi")
   const [styleChips, setStyleChips] = useState<string[]>([

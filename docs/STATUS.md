@@ -1,5 +1,5 @@
 # Cova — Build Status
-Last updated: 2026-04-03
+Last updated: 2026-04-04
 
 ---
 
@@ -120,6 +120,15 @@ The pipeline runs end-to-end. Rooms can be created, captured, processed through 
 | 2026-04-04 | Hybrid capture: QR desktop + direct mobile + upload fallback. Webcam removed permanently. QualityChecker kept. Step 6 (`app/design/step-6/page.tsx`) is canonical capture entry point. `app/capture/mobile/[token]/page.tsx` handles QR handoff. | Both |
 
 ---
+
+## Decisions Log (continued)
+
+| Date | Decision | Scope |
+|------|----------|-------|
+| 2026-04-04 | 10-dimension fingerprint system replaces 6-dimension. Dimensions: luminosity, density, temperature, form, era, texture, scale, nature, saturation, materialOrigin. Weighted Euclidean distance style matching. 12 named styles. | apps/web/app/api/quiz/fingerprint/route.ts |
+| 2026-04-04 | 19 quiz pairs (up from 15). Three contrast levels: extreme (0.1/0.9), mid (0.25/0.75), fine (0.35/0.65). Contrast weight: extreme=0.25, mid=0.35, fine=0.40. | scripts/generate-all-images.ts |
+| 2026-04-04 | Quiz images generated via Replicate FLUX 1.1 Pro. 342 pair images + 27 stock photos across 9 room types. Stored in quiz-pairs and room-photos Supabase buckets. | scripts/generate-all-images.ts |
+| 2026-04-04 | FLUX prompt builder updated to use all 10 fingerprint dimensions. | apps/web/lib/ai/flux.ts |
 
 ## Next Session Goals
 

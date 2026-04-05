@@ -4,42 +4,22 @@ const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 })
 
-// Fingerprint dimension indices per COVA_CONTEXT.md:
-// 0: Luminosity  0=Dark/Moody,        1=Bright/Airy
-// 1: Density     0=Minimal,           1=Maximal
-// 2: Temperature 0=Cool/Slate,        1=Warm/Amber
-// 3: Form        0=Geometric,         1=Organic/Curved
-// 4: Era         0=Contemporary,      1=Traditional
-// 5: Texture     0=Smooth/Polished,   1=Tactile/Rough
+// Fingerprint dimension indices (10-dim system):
+// 0: Luminosity     0=Dark/Moody         1=Bright/Airy
+// 1: Density        0=Minimal            1=Maximalist
+// 2: Temperature    0=Cool/Slate         1=Warm/Amber
+// 3: Form           0=Geometric          1=Organic/Curved
+// 4: Era            0=Contemporary       1=Traditional
+// 5: Texture        0=Smooth             1=Tactile/Rough
+// 6: Scale          0=Intimate           1=Grand/Expansive
+// 7: Nature         0=Urban/Manufactured 1=Biophilic
+// 8: Saturation     0=Muted/Mono         1=Bold/Colorful
+// 9: MaterialOrigin 0=Manufactured       1=Artisanal
 
-const LUMINOSITY_MAP = {
-  high: 'bright airy space flooded with natural light, open and inviting',
-  low: 'moody dramatic intimate lighting, rich shadows and atmosphere',
-}
-
-const DENSITY_MAP = {
-  high: 'richly layered maximalist space, curated objects and thoughtful collections',
-  low: 'minimal breathing space, intentional emptiness and considered negative space',
-}
-
-const TEMPERATURE_MAP = {
-  high: 'warm amber tones, honey wood, terracotta, warm whites and golden accents',
-  low: 'cool slate concrete steel, cool whites and blue-grey tones',
-}
-
-const FORM_MAP = {
-  high: 'organic curves natural materials rattan linen woven textures soft silhouettes',
-  low: 'geometric precision clean lines structured forms sharp angles and order',
-}
-
-const ERA_MAP = {
-  high: 'classic heritage antique traditional craft timeless and storied pieces',
-  low: 'contemporary cutting edge ultra-modern forward-thinking design',
-}
-
-const TEXTURE_MAP = {
-  high: 'tactile richness chunky knits rough linen natural stone weathered wood',
-  low: 'smooth surfaces polished lacquered sleek refined and frictionless',
+function dimDesc(value: number, high: string, mid: string, low: string): string {
+  if (value >= 0.7) return high
+  if (value <= 0.3) return low
+  return mid
 }
 
 const BUDGET_MAP = {
@@ -49,10 +29,6 @@ const BUDGET_MAP = {
   luxury: 'designer brands investment pieces bespoke craftsmanship, top-tier materials',
 }
 
-function mapDimension(value: number): 'high' | 'low' {
-  return value >= 0.5 ? 'high' : 'low'
-}
-
 export function buildFluxPrompt(
   fingerprint: number[],
   roomType: string,
@@ -60,15 +36,69 @@ export function buildFluxPrompt(
   inclusions: string[],
   constraints: string[]
 ): { positive: string; negative: string } {
-  const [luminosity, density, temperature, form, era, texture] = fingerprint
+  const [luminosity, density, temperature, form, era, texture, scale, nature, saturation, materialOrigin] = fingerprint
 
   const styleDescriptors = [
-    LUMINOSITY_MAP[mapDimension(luminosity ?? 0.5)],
-    DENSITY_MAP[mapDimension(density ?? 0.5)],
-    TEMPERATURE_MAP[mapDimension(temperature ?? 0.5)],
-    FORM_MAP[mapDimension(form ?? 0.5)],
-    ERA_MAP[mapDimension(era ?? 0.5)],
-    TEXTURE_MAP[mapDimension(texture ?? 0.5)],
+    dimDesc(
+      luminosity ?? 0.5,
+      'bright airy flooded with natural light',
+      'comfortable balanced lighting',
+      'moody dramatic intimate lighting'
+    ),
+    dimDesc(
+      density ?? 0.5,
+      'richly layered maximalist curated objects',
+      'well-furnished comfortable',
+      'minimal breathing space intentional emptiness'
+    ),
+    dimDesc(
+      temperature ?? 0.5,
+      'warm amber tones honey wood terracotta',
+      'neutral balanced temperature',
+      'cool slate concrete steel cool whites'
+    ),
+    dimDesc(
+      form ?? 0.5,
+      'organic curves natural materials rattan linen',
+      'balanced forms',
+      'geometric precision clean lines structured'
+    ),
+    dimDesc(
+      era ?? 0.5,
+      'classic heritage antique traditional craft',
+      'transitional timeless',
+      'contemporary cutting edge ultra-modern'
+    ),
+    dimDesc(
+      texture ?? 0.5,
+      'tactile richness chunky knits rough linen stone',
+      'balanced texture',
+      'smooth surfaces polished lacquered sleek'
+    ),
+    dimDesc(
+      scale ?? 0.5,
+      'grand expansive high ceilings statement pieces',
+      'comfortable proportions',
+      'intimate cozy human scale nook-like'
+    ),
+    dimDesc(
+      nature ?? 0.5,
+      'abundant plants biophilic natural wood stone',
+      'few natural elements',
+      'urban manufactured no plants industrial'
+    ),
+    dimDesc(
+      saturation ?? 0.5,
+      'bold rich color jewel tones confident palette',
+      'moderate color presence',
+      'monochromatic muted tonal restrained'
+    ),
+    dimDesc(
+      materialOrigin ?? 0.5,
+      'artisan handmade pottery woven craft visible',
+      'mix of handmade and manufactured',
+      'precision manufactured factory perfect'
+    ),
   ].join(', ')
 
   const budgetDescriptor = BUDGET_MAP[budgetTier]
