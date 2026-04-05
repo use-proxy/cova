@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { StepIndicator } from "@/components/cova/StepIndicator";
 
 // Color constants
 const COLORS = {
@@ -520,17 +521,7 @@ export default function CovaDesignStep1() {
       className="min-h-screen overflow-y-auto"
       style={{ background: COLORS.background }}
     >
-      {/* Progress bar */}
-      <div className="fixed top-0 left-0 right-0 z-50">
-        <div style={{ height: 1, background: COLORS.gold, opacity: 0.3 }} />
-        <div
-          style={{
-            height: 2,
-            width: "9%",
-            background: COLORS.gold,
-          }}
-        />
-      </div>
+      <StepIndicator currentStep={1} totalSteps={11} />
 
       {/* Step indicator */}
       <div

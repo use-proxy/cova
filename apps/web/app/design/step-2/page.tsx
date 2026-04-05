@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { QUIZ_PAIRS } from "@/lib/ai/quiz-data";
 import { useFingerprintStore } from "@/lib/store";
+import { StepIndicator } from "@/components/cova/StepIndicator";
 
 const TOTAL_PAIRS = 19;
 
@@ -153,6 +154,7 @@ export default function StyleQuizPage() {
       className="fixed inset-0 flex flex-col overflow-hidden"
       style={{ backgroundColor: "#091829" }}
     >
+      <StepIndicator currentStep={2} totalSteps={11} />
       {/* TOP ZONE - Progress */}
       <div className="flex flex-col items-center pt-4 pb-2" style={{ height: "12%" }}>
         <p

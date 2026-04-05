@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Check, Plus, X } from "lucide-react";
 import { useFingerprintStore, useSessionStore } from "@/lib/store";
 import type { WallLayout } from "@/lib/store/fingerprint";
+import { StepIndicator } from "@/components/cova/StepIndicator";
 
 // Color constants
 const colors = {
@@ -1122,20 +1123,7 @@ export default function Step4Page() {
       className="min-h-screen flex flex-col"
       style={{ background: colors.navy }}
     >
-      {/* Progress bar */}
-      <div
-        className="w-full"
-        style={{ height: 3, background: colors.surface2 }}
-      >
-        <div
-          style={{
-            width: "36.4%",
-            height: "100%",
-            background: colors.gold,
-            transition: "width 400ms ease",
-          }}
-        />
-      </div>
+      <StepIndicator currentStep={4} totalSteps={11} />
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto pb-40">

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useFingerprintStore } from "@/lib/store"
 import { STOCK_PHOTOS as QUIZ_STOCK_PHOTOS } from "@/lib/ai/quiz-data"
+import { StepIndicator } from "@/components/cova/StepIndicator"
 
 const axisLabels = ["Luminosity", "Density", "Temperature", "Form", "Era", "Texture"]
 const adjustChips = ["Warmer", "Cooler", "More minimal", "More layered", "More modern", "More classic"]
@@ -392,18 +393,7 @@ export default function Step3Page() {
         }}
       />
 
-      {/* Progress bar */}
-      <div className="fixed top-0 left-0 right-0 z-40">
-        <div className="h-1 bg-[#112540]">
-          <div
-            className="h-full bg-[#C9A84C] transition-all duration-500"
-            style={{ width: "27%" }}
-          />
-        </div>
-        <p className="text-center text-[11px] text-[#8A9BB5] mt-2 font-sans">
-          Step 3 of 11
-        </p>
-      </div>
+      <StepIndicator currentStep={3} totalSteps={11} />
 
       {/* Share button */}
       <button
