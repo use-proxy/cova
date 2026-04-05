@@ -256,17 +256,16 @@ export default function Step7Page() {
 
   const [renderState, setRenderState] = useState<RenderState>('idle')
   const [renderError, setRenderError] = useState<RenderErrorInfo | null>(null)
-  const [_elapsed, setElapsed] = useState(0)
 
   const firedRef = useRef(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Clear intervals on unmount
   useEffect(() => {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current)
-      if (timerRef.current) clearInterval(timerRef.current)
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
     }
   }, [])
 
@@ -278,7 +277,7 @@ export default function Step7Page() {
     budgetRange !== null &&
     roomId !== null
 
-  // Fire render
+  // Fire render — POSTs to start prediction, then polls status every 3s
   const fireRender = useCallback(async () => {
     if (!isValid) {
       setRenderState('invalid')
@@ -287,84 +286,92 @@ export default function Step7Page() {
 
     setRenderState('pending')
     setRenderError(null)
-    setElapsed(0)
 
-    // 1s elapsed timer
-    timerRef.current = setInterval(() => {
-      setElapsed((prev) => {
-        const next = prev + 1
-        if (next >= 90) {
-          clearInterval(timerRef.current!)
-          // timeout handled below in the fetch rejection path
-        }
-        return next
+    // 90s hard timeout
+    timeoutRef.current = setTimeout(() => {
+      if (pollRef.current) clearInterval(pollRef.current)
+      setRenderState('timeout')
+      setRenderError({
+        variant: 'timeout',
+        message: "This is taking longer than usual. Your room is saved — tap to try again.",
       })
-    }, 1000)
-
-    // 90s abort controller
-    const controller = new AbortController()
-    const timeoutHandle = setTimeout(() => controller.abort(), 90_000)
+    }, 90_000)
 
     try {
+      // Step 1: kick off prediction
       const res = await fetch('/api/render', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        signal: controller.signal,
         body: JSON.stringify({
           photo_url: originalPhotoUrl,
           depth_map_url: depthMapUrl ?? undefined,
           keep_mask: keepMask ?? null,
           fingerprint_vector: fingerprint,
           room_type: roomType,
-          budget: budgetTier,           // API expects the tier string
+          budget: budgetTier,
           budget_tier: budgetTier,
           style_name: styleName ?? undefined,
           inclusions: inclusions ?? [],
           constraints: constraints ?? [],
           dimensions: dimensions ?? undefined,
           room_id: roomId,
-          modified_prompt: undefined,   // populated by step-9 refine flow (future)
         }),
       })
-
-      clearTimeout(timeoutHandle)
-      clearInterval(timerRef.current!)
 
       if (!res.ok) {
         const errData = (await res.json().catch(() => ({}))) as { error?: string }
         throw new Error(errData.error ?? `HTTP ${res.status}`)
       }
 
-      const data = (await res.json()) as
-        | { render_url: string; render_session_id: string }
-        | { error: string }
+      const startData = (await res.json()) as { prediction_id: string } | { error: string }
+      if ('error' in startData) throw new Error(startData.error)
 
-      if ('error' in data) throw new Error(data.error)
+      const { prediction_id: predictionId } = startData
 
-      setRenderUrl(data.render_url)
-      setRenderState('complete')
-      setStep(8)
-      router.push('/design/step-8')
+      // Step 2: poll status every 3s
+      pollRef.current = setInterval(async () => {
+        try {
+          const statusRes = await fetch(
+            `/api/render/status?prediction_id=${predictionId}&room_id=${roomId}`
+          )
+          if (!statusRes.ok) return // transient error — keep polling
+
+          const statusData = (await statusRes.json()) as
+            | { status: 'processing' }
+            | { status: 'complete'; render_url: string }
+            | { status: 'failed'; error?: string }
+
+          if (statusData.status === 'complete') {
+            clearInterval(pollRef.current!)
+            clearTimeout(timeoutRef.current!)
+            setRenderUrl(statusData.render_url)
+            setRenderState('complete')
+            setStep(8)
+            router.push('/design/step-8')
+          } else if (statusData.status === 'failed') {
+            clearInterval(pollRef.current!)
+            clearTimeout(timeoutRef.current!)
+            setRenderState('failed')
+            setRenderError({
+              variant: 'failed',
+              message: "The render didn't complete. Your room is saved — tap to try again.",
+            })
+          }
+          // status === 'processing': do nothing, keep polling
+        } catch {
+          // transient poll error — keep polling
+        }
+      }, 3000)
     } catch (err) {
-      clearTimeout(timeoutHandle)
-      clearInterval(timerRef.current!)
-
-      const isAbort =
-        err instanceof Error && (err.name === 'AbortError' || err.message.includes('aborted'))
-
-      if (isAbort) {
-        setRenderState('timeout')
-        setRenderError({
-          variant: 'timeout',
-          message: "This is taking longer than usual. Your room is saved — tap to try again.",
-        })
-      } else {
-        setRenderState('failed')
-        setRenderError({
-          variant: 'failed',
-          message: "The render didn't complete. Your room is saved — tap to try again.",
-        })
-      }
+      clearTimeout(timeoutRef.current!)
+      setRenderState('failed')
+      setRenderError({
+        variant: 'failed',
+        message:
+          err instanceof Error
+            ? err.message
+            : "The render didn't complete. Your room is saved — tap to try again.",
+      })
     }
   }, [
     isValid,

@@ -1,10 +1,10 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { buildFluxPrompt, runFluxRender } from '@/lib/ai/flux'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { withRetry } from '@/lib/retry'
+import { buildFluxPrompt } from '@/lib/ai/flux'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { NextResponse } from 'next/server'
-import type { InsertTables } from '@/types/supabase'
+import Replicate from 'replicate'
+
+const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN })
 
 interface RenderRequestBody {
   photo_url: string
@@ -48,7 +48,6 @@ export async function POST(request: Request) {
 
     const {
       photo_url,
-      depth_map_url,
       fingerprint_vector,
       room_type,
       budget,
@@ -70,37 +69,23 @@ export async function POST(request: Request) {
       constraints ?? []
     )
 
-    const renderUrl = await withRetry(
-      () => runFluxRender(photo_url, depth_map_url, positive, negative, style_strength),
-      { maxAttempts: 3, initialDelayMs: 2000 }
-    )
-
-    const admin = createAdminSupabaseClient()
-
-    const renderSessionInsert: InsertTables<'render_sessions'> = {
-      room_id,
-      render_url: renderUrl,
-      prompt: positive,
-      style_strength,
-      iteration: 1,
-    }
-
-    const { data: renderSession, error: renderSessionError } = await admin
-      .from('render_sessions')
-      .insert(renderSessionInsert)
-      .select('id')
-      .single()
-
-    if (renderSessionError) {
-      throw new Error(`Failed to save render session: ${renderSessionError.message}`)
-    }
-
-    await admin.from('rooms').update({ render_url: renderUrl }).eq('id', room_id)
-
-    return NextResponse.json({
-      render_url: renderUrl,
-      render_session_id: renderSession.id,
+    const prediction = await replicate.predictions.create({
+      model: 'black-forest-labs/flux-kontext-pro',
+      input: {
+        prompt: positive,
+        input_image: photo_url,
+        guidance: style_strength * 10,
+        output_format: 'jpg',
+        output_quality: 90,
+        safety_tolerance: 2,
+        // metadata carried through for status route DB write
+        _room_id: room_id,
+        _negative_prompt: negative,
+        _style_strength: style_strength,
+      },
     })
+
+    return NextResponse.json({ prediction_id: prediction.id })
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Internal server error'
     return NextResponse.json({ error: message }, { status: 500 })
