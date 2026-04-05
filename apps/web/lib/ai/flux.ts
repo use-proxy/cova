@@ -29,12 +29,29 @@ const BUDGET_MAP = {
   luxury: 'designer brands investment pieces bespoke craftsmanship, top-tier materials',
 }
 
+export type RoomPhysicalContext = {
+  roomLength?: number | null
+  roomWidth?: number | null
+  ceilingHeight?: number | null
+  naturalLight?: string | null
+  floorType?: string | null
+  wallFinish?: string | null
+  fixedElements?: string[]
+  wallLayout?: {
+    top: Array<{ type: string; position: number }>
+    bottom: Array<{ type: string; position: number }>
+    left: Array<{ type: string; position: number }>
+    right: Array<{ type: string; position: number }>
+  } | null
+}
+
 export function buildFluxPrompt(
   fingerprint: number[],
   roomType: string,
   budgetTier: 'budget' | 'mid' | 'premium' | 'luxury',
   inclusions: string[],
-  constraints: string[]
+  constraints: string[],
+  roomContext?: RoomPhysicalContext
 ): { positive: string; negative: string } {
   const [luminosity, density, temperature, form, era, texture, scale, nature, saturation, materialOrigin] = fingerprint
 
@@ -111,10 +128,102 @@ export function buildFluxPrompt(
   const constraintText =
     constraints.length > 0 ? `Design constraints: ${constraints.join(', ')}.` : ''
 
+  // Build room physical context
+  const roomContextParts: string[] = []
+  if (roomContext) {
+    if (roomContext.roomLength && roomContext.roomWidth) {
+      const sqft = Math.round(roomContext.roomLength * roomContext.roomWidth)
+      roomContextParts.push(`${sqft} square foot room`)
+    }
+    if (roomContext.ceilingHeight) {
+      roomContextParts.push(`${roomContext.ceilingHeight}ft ceiling height`)
+    }
+    if (roomContext.naturalLight) {
+      const lightMap: Record<string, string> = {
+        'No windows': 'no natural light, artificial lighting only',
+        'One small window': 'limited natural light from one small window',
+        'One large window': 'good natural light from one large window',
+        'Multiple windows': 'well-lit with multiple windows',
+        'Floor-to-ceiling windows': 'abundant natural light, floor-to-ceiling windows',
+      }
+      const lightDesc = lightMap[roomContext.naturalLight]
+      if (lightDesc) roomContextParts.push(lightDesc)
+    }
+    if (roomContext.floorType) {
+      const floorMap: Record<string, string> = {
+        'Hardwood': 'hardwood floors',
+        'Light laminate': 'light laminate flooring',
+        'Carpet': 'carpeted floor',
+        'Tile': 'tile floor',
+        'Concrete': 'concrete floor',
+      }
+      const floorDesc = floorMap[roomContext.floorType]
+      if (floorDesc) roomContextParts.push(floorDesc)
+    }
+    if (
+      roomContext.wallFinish &&
+      roomContext.wallFinish !== 'Painted (standard)' &&
+      roomContext.wallFinish !== 'Unsure'
+    ) {
+      const wallMap: Record<string, string> = {
+        'Exposed brick': 'exposed brick walls',
+        'Wallpaper': 'wallpapered walls',
+        'Wood paneling': 'wood-paneled walls',
+        'Concrete': 'raw concrete walls',
+      }
+      const wallDesc = wallMap[roomContext.wallFinish]
+      if (wallDesc) roomContextParts.push(wallDesc)
+    }
+    if (roomContext.fixedElements && roomContext.fixedElements.length > 0) {
+      const elementMap: Record<string, string> = {
+        'Fireplace': 'fireplace as focal point on one wall',
+        'Built-in shelves': 'built-in shelving on walls',
+        'Exposed brick': 'exposed brick feature wall',
+        'Open to kitchen': 'open plan connected to kitchen',
+        'Structural column': 'structural column in room',
+        'Radiator': 'radiator on wall',
+        'Bay window': 'bay window',
+        'Sloped ceiling': 'sloped ceiling',
+      }
+      const elements = roomContext.fixedElements
+        .map((e) => elementMap[e])
+        .filter(Boolean) as string[]
+      if (elements.length > 0) {
+        roomContextParts.push(`existing fixed elements: ${elements.join(', ')}`)
+      }
+    }
+    if (roomContext.wallLayout) {
+      const layout = roomContext.wallLayout
+      const wallNames: Record<string, string> = {
+        top: 'back wall', bottom: 'front wall',
+        left: 'left wall', right: 'right wall',
+      }
+      const wallDesc: string[] = []
+      Object.entries(layout).forEach(([wall, items]) => {
+        if (!items || items.length === 0) return
+        const windows = items.filter((i) => i.type === 'window').length
+        const doors = items.filter((i) => i.type === 'door').length
+        const parts: string[] = []
+        if (windows > 0) parts.push(`${windows} window${windows > 1 ? 's' : ''}`)
+        if (doors > 0) parts.push(`${doors} door${doors > 1 ? 's' : ''}`)
+        if (parts.length > 0)
+          wallDesc.push(`${wallNames[wall]} has ${parts.join(' and ')}`)
+      })
+      if (wallDesc.length > 0) {
+        roomContextParts.push(wallDesc.join(', '))
+      }
+    }
+  }
+
+  const roomContextText = roomContextParts.length > 0
+    ? roomContextParts.join(', ')
+    : ''
+
   const positive = [
     `Photorealistic interior design render of a ${roomType}.`,
     styleDescriptors,
     budgetDescriptor,
+    roomContextText,
     inclusionText,
     constraintText,
     'Professional interior photography, perfect lighting, high resolution, magazine quality.',

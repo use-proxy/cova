@@ -4,6 +4,13 @@ type BudgetTier = 'budget' | 'mid' | 'premium' | 'luxury'
 type EntryPath = 'pairs' | 'natural_language' | 'inspo_photo'
 type Dimensions = 'small' | 'medium' | 'large'
 
+export type WallLayout = {
+  top: Array<{ type: 'window' | 'door'; position: number }>
+  bottom: Array<{ type: 'window' | 'door'; position: number }>
+  left: Array<{ type: 'window' | 'door'; position: number }>
+  right: Array<{ type: 'window' | 'door'; position: number }>
+}
+
 interface QuizResponse {
   pairId: string
   chosen: string
@@ -21,6 +28,17 @@ interface FingerprintState {
   dimensions: Dimensions | null
   constraints: string[]
   inclusions: string[]
+  // Room physical details (step 4)
+  roomLength: number | null
+  roomWidth: number | null
+  ceilingHeight: number | null
+  naturalLight: string | null
+  wallLayout: WallLayout | null
+  fixedElements: string[]
+  floorType: string | null
+  wallFinish: string | null
+  hasCloset: boolean
+  closetWall: string | null
   setRoomType: (roomType: string) => void
   setBudget: (tier: BudgetTier, range: [number, number]) => void
   addQuizResponse: (response: QuizResponse) => void
@@ -29,6 +47,18 @@ interface FingerprintState {
   setDimensions: (dimensions: Dimensions) => void
   toggleConstraint: (constraint: string) => void
   toggleInclusion: (inclusion: string) => void
+  setRoomDimensions: (dims: {
+    length: number | null
+    width: number | null
+    ceilingHeight: number | null
+    naturalLight: string | null
+  }) => void
+  setWallLayout: (layout: WallLayout) => void
+  setFixedElements: (elements: string[]) => void
+  setSurfaces: (floor: string, wall: string) => void
+  setCloset: (hasCloset: boolean, wall: string | null) => void
+  setConstraints: (constraints: string[]) => void
+  setInclusions: (inclusions: string[]) => void
   resetFingerprint: () => void
 }
 
@@ -50,6 +80,16 @@ const INITIAL_STATE = {
   dimensions: null,
   constraints: [],
   inclusions: [],
+  roomLength: null,
+  roomWidth: null,
+  ceilingHeight: null,
+  naturalLight: null,
+  wallLayout: null,
+  fixedElements: [],
+  floorType: null,
+  wallFinish: null,
+  hasCloset: false,
+  closetWall: null,
 }
 
 export const useFingerprintStore = create<FingerprintState>()(
@@ -79,6 +119,18 @@ export const useFingerprintStore = create<FingerprintState>()(
         ? state.inclusions.filter((i) => i !== inclusion)
         : [...state.inclusions, inclusion],
     })),
+    setRoomDimensions: (dims) => set({
+      roomLength: dims.length,
+      roomWidth: dims.width,
+      ceilingHeight: dims.ceilingHeight,
+      naturalLight: dims.naturalLight,
+    }),
+    setWallLayout: (layout) => set({ wallLayout: layout }),
+    setFixedElements: (elements) => set({ fixedElements: elements }),
+    setSurfaces: (floor, wall) => set({ floorType: floor, wallFinish: wall }),
+    setCloset: (hasCloset, wall) => set({ hasCloset, closetWall: wall }),
+    setConstraints: (constraints) => set({ constraints }),
+    setInclusions: (inclusions) => set({ inclusions }),
     resetFingerprint: () => set(INITIAL_STATE),
   })
 )
