@@ -1,0 +1,18 @@
+{
+  "room-cards/bedroom": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/landing-assets/room-cards/bedroom.jpg",
+  "room-cards/studio": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/landing-assets/room-cards/studio.jpg",
+  "room-cards/living-room": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/landing-assets/room-cards/living-room.jpg",
+  "room-cards/home-office": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/landing-assets/room-cards/home-office.jpg",
+  "room-cards/dining-room": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/landing-assets/room-cards/dining-room.jpg",
+  "room-cards/bathroom": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/landing-assets/room-cards/bathroom.jpg",
+  "room-cards/dorm-room": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/landing-assets/room-cards/dorm-room.jpg",
+  "hero/before-neutral": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/landing-assets/hero/before-neutral.jpg",
+  "room-cards/first-apartment": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/landing-assets/room-cards/first-apartment.jpg",
+  "room-cards/outdoor": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/landing-assets/room-cards/outdoor.jpg",
+  "hero/after-nordic-minimal": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/landing-assets/hero/after-nordic-minimal.jpg",
+  "shoppable-render": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/landing-assets/shoppable-render.jpg",
+  "hero/after-warm-japandi": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/landing-assets/hero/after-warm-japandi.jpg",
+  "person-taking-photo": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/landing-assets/person-taking-photo.jpg",
+  "hero/after-organic-modern": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/landing-assets/hero/after-organic-modern.jpg",
+  "smart-room": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/landing-assets/smart-room.jpg"
+}

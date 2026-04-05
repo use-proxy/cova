@@ -130,6 +130,19 @@ The pipeline runs end-to-end. Rooms can be created, captured, processed through 
 | 2026-04-04 | Quiz images generated via Replicate FLUX 1.1 Pro. 342 pair images + 27 stock photos across 9 room types. Stored in quiz-pairs and room-photos Supabase buckets. | scripts/generate-all-images.ts |
 | 2026-04-04 | FLUX prompt builder updated to use all 10 fingerprint dimensions. | apps/web/lib/ai/flux.ts |
 
+## Landing Page Real Images (2026-04-04)
+
+- [x] 16 FLUX images generated and uploaded to `landing-assets` Supabase bucket (public)
+- [x] 9 room card photos wired into `/design/step-1` — Camera placeholder replaced with real images
+- [x] Hero before/after: 3 styled pairs (Nordic Minimal, Warm Japandi, Organic Modern) with 1 shared before
+- [x] Step 01 phone SVG replaced with real lifestyle photo (person-taking-photo.jpg)
+- [x] Step 02 quiz SVG replaced with real pair-01 images from living-room quiz pairs
+- [x] Step 03 hotspot SVG replaced with shoppable render + SVG ellipse hotspot overlay (3 products)
+- [x] Smart Integration SVG replaced with real smart-room photo + gold glow overlay reacting to chip hover
+- [x] Decision: hotspot overlay uses SVG bounding ellipses over real FLUX render
+- [x] All URLs saved to `scripts/landing-urls.json`
+- [x] Build passes clean
+
 ## Next Session Goals
 
 1. Verify hotspot UX end-to-end on real room

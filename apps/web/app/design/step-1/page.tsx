@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Camera, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 
 // Color constants
 const COLORS = {
@@ -20,15 +20,15 @@ const COLORS = {
 
 // Room types
 const ROOMS = [
-  { id: "living-room", name: "Living Room", preset: false },
-  { id: "bedroom", name: "Bedroom", preset: false },
-  { id: "studio", name: "Studio", preset: false },
-  { id: "home-office", name: "Home Office", preset: false },
-  { id: "dining-room", name: "Dining Room", preset: false },
-  { id: "bathroom", name: "Bathroom", preset: false },
-  { id: "outdoor", name: "Outdoor", preset: false },
-  { id: "dorm-room", name: "Dorm Room", preset: true },
-  { id: "first-apartment", name: "First Apartment", preset: true },
+  { id: "living-room", name: "Living Room", preset: false, imageUrl: "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/landing-assets/room-cards/living-room.jpg" },
+  { id: "bedroom", name: "Bedroom", preset: false, imageUrl: "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/landing-assets/room-cards/bedroom.jpg" },
+  { id: "studio", name: "Studio", preset: false, imageUrl: "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/landing-assets/room-cards/studio.jpg" },
+  { id: "home-office", name: "Home Office", preset: false, imageUrl: "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/landing-assets/room-cards/home-office.jpg" },
+  { id: "dining-room", name: "Dining Room", preset: false, imageUrl: "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/landing-assets/room-cards/dining-room.jpg" },
+  { id: "bathroom", name: "Bathroom", preset: false, imageUrl: "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/landing-assets/room-cards/bathroom.jpg" },
+  { id: "outdoor", name: "Outdoor", preset: false, imageUrl: "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/landing-assets/room-cards/outdoor.jpg" },
+  { id: "dorm-room", name: "Dorm Room", preset: true, imageUrl: "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/landing-assets/room-cards/dorm-room.jpg" },
+  { id: "first-apartment", name: "First Apartment", preset: true, imageUrl: "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/landing-assets/room-cards/first-apartment.jpg" },
 ];
 
 // Budget tiers
@@ -147,10 +147,22 @@ function RoomCard({
           style={{
             height: "70%",
             background: COLORS.elevated,
-            filter: isHovered ? "brightness(1.1)" : "brightness(1)",
             transition: "filter 250ms ease",
           }}
         >
+          <img
+            src={room.imageUrl}
+            alt={room.name}
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{
+              filter: isSelected
+                ? "brightness(0.7)"
+                : isHovered
+                  ? "brightness(0.85)"
+                  : "brightness(0.75)",
+              transition: "filter 250ms ease",
+            }}
+          />
           {/* Gradient overlay */}
           <div
             className="absolute inset-0"
@@ -158,13 +170,6 @@ function RoomCard({
               background: `linear-gradient(transparent 60%, rgba(9,24,41,0.6))`,
             }}
           />
-          {/* Camera placeholder icon */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Camera
-              size={32}
-              style={{ color: "rgba(201,168,76,0.25)" }}
-            />
-          </div>
         </div>
 
         {/* Label area - bottom 30% */}
