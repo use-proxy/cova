@@ -107,6 +107,16 @@
   --cova-warning:    #D4A017;
   --cova-warning-bg: rgba(212, 160, 23, 0.12);
 
+  /* ─── Keep / Remove (step-6 detection UI) ──────────────────────────────── */
+  --cova-keep:          #1A7A4A;
+  --cova-keep-bright:   #2ECC71;
+  --cova-keep-bg:       rgba(26, 122, 74, 0.18);
+  --cova-keep-bg-hover: rgba(26, 122, 74, 0.30);
+  --cova-remove:        #E74C3C;
+  --cova-remove-dark:   #C0392B;
+  --cova-remove-bg:     rgba(192, 57, 43, 0.12);
+  --cova-dim:           #4A5E7A;
+
   /* ─── Typography ────────────────────────────────────────────────────────── */
   --font-serif: 'EB Garamond', 'Palatino Linotype', Georgia, serif;
   --font-sans:  'Inter', system-ui, -apple-system, sans-serif;

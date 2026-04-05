@@ -37,9 +37,20 @@ export async function POST(request: Request) {
 
     if (room_id) {
       const admin = createAdminSupabaseClient()
+      // Map detections to KeepMaskItems (keep: null = undecided)
+      const keepMask = allDetections.map((d) => ({
+        type: d.type,
+        label: d.label,
+        bbox: d.bbox,
+        confidence: d.confidence,
+        keep: null as boolean | null,
+      }))
       await admin
         .from('rooms')
-        .update({ depth_map_url: depthResult.depth_map_url })
+        .update({
+          depth_map_url: depthResult.depth_map_url,
+          keep_mask: keepMask,
+        })
         .eq('id', room_id)
     }
 
