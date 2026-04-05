@@ -55,3 +55,9 @@ diagnostic_report.json
 ios/Podfile.lock
 ios/cova.xcworkspace/
 ios/cova/PrivacyInfo.xcprivacy
+
+# Overnight pipeline data
+data/scraped/
+data/processed/
+data/state/
+data/failed/

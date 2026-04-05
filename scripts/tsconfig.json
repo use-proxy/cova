@@ -11,7 +11,9 @@
     "outDir": "dist"
   },
   "include": [
-    "*.ts"
+    "*.ts",
+    "overnight.ts",
+    "overnight/**/*.ts"
   ],
   "ts-node": {
     "transpileOnly": true,
