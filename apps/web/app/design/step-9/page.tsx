@@ -1,27 +1,59 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
 import { useRoomStore } from '@/lib/store/room'
-import { useFingerprintStore } from '@/lib/store/fingerprint'
 import { useSessionStore } from '@/lib/store/session'
 import { useRefineStore } from '@/lib/store/refine'
+
+// ─── Cycling placeholder texts ───────────────────────────────────────────────
+
+const PLACEHOLDERS = [
+  'Add more natural light...',
+  'Include a statement rug...',
+  'Change the palette to warmer tones...',
+  'Replace the sofa with something more modern...',
+  'Make it feel more cozy and inviting...',
+]
+
+// ─── Slider transform labels ─────────────────────────────────────────────────
+
+function getTransformLabel(value: number): { label: string; description: string } {
+  if (value <= 25)
+    return {
+      label: 'Subtle touch-up',
+      description: 'Adjust colors, lighting, and small details. Furniture stays the same.',
+    }
+  if (value <= 50)
+    return {
+      label: 'Moderate refresh',
+      description: 'New palette and accessories. Main furniture pieces are replaced.',
+    }
+  if (value <= 75)
+    return {
+      label: 'Significant redesign',
+      description: 'New furniture, new palette, new layout. Same room structure.',
+    }
+  return {
+    label: 'Complete reimagination',
+    description: 'Everything changes. Only the walls and floor stay.',
+  }
+}
+
+// ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function Step9Page() {
   const router = useRouter()
 
   const { renderUrl, renderSessions, addRenderSession } = useRoomStore()
-  const { inclusions, toggleInclusion } = useFingerprintStore()
   const { setStep } = useSessionStore()
   const { setRefinement, clearRefinement } = useRefineStore()
 
-  // suppress unused-var warnings — inclusions/toggleInclusion kept for future Task 6 expansion
-  void inclusions
-  void toggleInclusion
-
   const [inputValue, setInputValue] = useState('')
   const [sliderValue, setSliderValue] = useState(70)
+  const [isFocused, setIsFocused] = useState(false)
+  const [placeholderIndex, setPlaceholderIndex] = useState(0)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Guard — redirect if no render URL
   useEffect(() => {
@@ -29,6 +61,15 @@ export default function Step9Page() {
       router.replace('/design/step-8')
     }
   }, [renderUrl, router])
+
+  // Cycle placeholder every 3s when unfocused and textarea is empty
+  useEffect(() => {
+    if (isFocused || inputValue.trim()) return
+    const interval = setInterval(() => {
+      setPlaceholderIndex((i) => (i + 1) % PLACEHOLDERS.length)
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [isFocused, inputValue])
 
   if (!renderUrl) return null
 
@@ -75,279 +116,246 @@ export default function Step9Page() {
   }
 
   function handleAddSomething() {
-    setInputValue((prev) => (prev.trim() ? prev : 'Include a '))
+    setInputValue('Include a ')
+    setTimeout(() => {
+      const el = textareaRef.current
+      if (!el) return
+      el.focus()
+      el.setSelectionRange(el.value.length, el.value.length)
+    }, 0)
   }
 
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
-      style={{
-        minHeight: '100svh',
-        background: 'var(--cova-bg)',
-        display: 'flex',
-        flexDirection: 'column',
-        paddingBottom: 40,
-      }}
-    >
-      {/* ── Progress ──────────────────────────────────────────────────────── */}
-      <div style={{ padding: '20px 24px 0' }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'flex-end',
-          marginBottom: 8,
-        }}>
-          <span style={{
-            fontFamily: 'var(--font-sans)',
-            fontSize: 'var(--text-xs)',
-            color: 'var(--cova-muted)',
-          }}>
-            9 of 10
-          </span>
-        </div>
-        <div style={{
-          height: 2,
-          background: 'var(--cova-subtle)',
-          borderRadius: 9999,
-          overflow: 'hidden',
-        }}>
-          <div style={{
-            width: `${(9 / 10) * 100}%`,
-            height: '100%',
-            background: 'var(--cova-gold)',
-            borderRadius: 9999,
-          }} />
-        </div>
-      </div>
+  const transformInfo = getTransformLabel(sliderValue)
 
-      {/* ── Render image ──────────────────────────────────────────────────── */}
-      <div style={{
-        position: 'relative',
-        width: '100%',
-        aspectRatio: '4 / 3',
-        marginTop: 20,
-        overflow: 'hidden',
-        background: 'var(--cova-surface)',
-      }}>
+  return (
+    <div
+      className="fixed inset-0 flex flex-col overflow-hidden"
+      style={{ backgroundColor: '#091829' }}
+    >
+      {/* ── Zone 1: Render image ──────────────────────────────────────────── */}
+      <div className="relative flex-1 min-h-0 overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={renderUrl}
           alt="Your redesigned room"
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            display: 'block',
-          }}
+          className="absolute inset-0 w-full h-full object-cover"
         />
 
-        {/* Version badge — hidden for first render */}
-        {showVersionBadge && (
-          <div style={{
-            position: 'absolute',
-            top: 12,
-            right: 12,
-            background: 'rgba(10, 22, 40, 0.85)',
-            border: '1px solid var(--cova-border)',
-            borderRadius: 24,
-            padding: '4px 12px',
-            fontFamily: 'var(--font-sans)',
-            fontSize: 'var(--text-xs)',
-            color: 'var(--cova-gold)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-          }}>
-            Version {versionNumber}
+        {/* Progress bar overlay */}
+        <div className="absolute top-5 left-5 right-5">
+          <div className="flex items-center justify-between mb-2">
+            <span className="font-sans text-[11px]" style={{ color: '#8A9BB5' }}>
+              9 of 10
+            </span>
           </div>
+          <div
+            className="h-[2px] rounded-full overflow-hidden"
+            style={{ backgroundColor: 'rgba(255,255,255,0.15)' }}
+          >
+            <div
+              className="h-full rounded-full"
+              style={{ width: `${(9 / 10) * 100}%`, backgroundColor: '#C9A84C' }}
+            />
+          </div>
+        </div>
+
+        {/* Version badge — hidden on first render */}
+        {showVersionBadge && (
+          <p
+            className="absolute top-4 right-5 font-sans text-[11px]"
+            style={{ color: '#8A9BB5' }}
+          >
+            Version {versionNumber}
+          </p>
         )}
       </div>
 
-      {/* ── Action section ────────────────────────────────────────────────── */}
-      <div style={{ padding: '28px 24px 0', flex: 1 }}>
-
-        {/* Heading */}
-        <h1 style={{
-          fontFamily: 'var(--font-serif)',
-          fontSize: 'var(--text-2xl)',
-          color: 'var(--cova-ivory)',
-          margin: '0 0 6px',
-        }}>
-          How does it look?
-        </h1>
-        <p style={{
-          fontFamily: 'var(--font-sans)',
-          fontSize: 'var(--text-sm)',
-          color: 'var(--cova-muted)',
-          margin: '0 0 24px',
-        }}>
-          Refine the design or move on to shop your look.
-        </p>
-
-        {/* Refinement textarea */}
-        <textarea
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          placeholder="Describe what you'd like to change..."
-          rows={3}
-          style={{
-            width: '100%',
-            background: 'var(--cova-surface)',
-            border: '1px solid var(--cova-border)',
-            borderRadius: 8,
-            padding: '12px 14px',
-            fontFamily: 'var(--font-sans)',
-            fontSize: 'var(--text-sm)',
-            color: 'var(--cova-ivory)',
-            resize: 'none',
-            outline: 'none',
-            boxSizing: 'border-box',
-            transition: 'border-color var(--transition-base)',
-          }}
-        />
-
-        {/* Style strength slider */}
-        <div style={{ marginTop: 16 }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 8,
-          }}>
-            <span style={{
-              fontFamily: 'var(--font-sans)',
-              fontSize: 'var(--text-xs)',
-              color: 'var(--cova-muted)',
-            }}>
-              Style strength
-            </span>
-            <span style={{
-              fontFamily: 'var(--font-sans)',
-              fontSize: 'var(--text-xs)',
-              color: 'var(--cova-gold)',
-            }}>
-              {sliderValue}%
-            </span>
-          </div>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            value={sliderValue}
-            onChange={(e) => setSliderValue(Number(e.target.value))}
-            style={{
-              width: '100%',
-              accentColor: 'var(--cova-gold)',
-              cursor: 'pointer',
-            }}
-          />
+      {/* ── Zone 2: Panel ────────────────────────────────────────────────── */}
+      <div
+        className="relative flex-shrink-0 w-full overflow-y-auto"
+        style={{
+          backgroundColor: '#0D2035',
+          borderTopLeftRadius: '24px',
+          borderTopRightRadius: '24px',
+          marginTop: '-24px',
+          maxHeight: 'min(68vh, 680px)',
+        }}
+      >
+        {/* Drag handle */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-8 h-1 rounded-full" style={{ backgroundColor: '#1E3A5F' }} />
         </div>
 
-        {/* Quick-action: Add Something */}
-        <button
-          onClick={handleAddSomething}
-          style={{
-            marginTop: 12,
-            background: 'transparent',
-            border: '1px solid var(--cova-border)',
-            borderRadius: 24,
-            padding: '6px 14px',
-            fontFamily: 'var(--font-sans)',
-            fontSize: 'var(--text-xs)',
-            color: 'var(--cova-muted)',
-            cursor: 'pointer',
-            transition: 'border-color var(--transition-base)',
-          }}
-        >
-          + Add something
-        </button>
+        <div className="px-5 pb-8 pt-3">
+          {/* Header row */}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-serif text-[22px] font-normal" style={{ color: '#F8F6F1' }}>
+              How does it look?
+            </h2>
+            <button
+              onClick={handleShopThisLook}
+              className="font-sans text-[14px] transition-colors hover:underline"
+              style={{
+                color: '#C9A84C',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              Shop This Look →
+            </button>
+          </div>
 
-        {/* Primary: Refine My Design */}
-        <button
-          onClick={handleRefine}
-          disabled={isRefineDisabled}
-          style={{
-            marginTop: 20,
-            width: '100%',
-            background: isRefineDisabled ? '#8A6E2E' : 'var(--cova-gold)',
-            color: 'var(--cova-bg)',
-            border: 'none',
-            borderRadius: 12,
-            padding: '14px 28px',
-            fontSize: 15,
-            fontWeight: 600,
-            cursor: isRefineDisabled ? 'not-allowed' : 'pointer',
-            fontFamily: 'var(--font-sans)',
-            opacity: isRefineDisabled ? 0.6 : 1,
-            transition: 'opacity var(--transition-base)',
-          }}
-        >
-          Refine My Design
-        </button>
+          {/* Textarea card */}
+          <div
+            className="rounded-xl p-3 mb-3 transition-colors"
+            style={{
+              backgroundColor: '#091829',
+              border: `1px solid ${isFocused ? '#C9A84C' : '#1E3A5F'}`,
+            }}
+          >
+            <textarea
+              ref={textareaRef}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+              placeholder={PLACEHOLDERS[placeholderIndex]}
+              rows={3}
+              className="w-full bg-transparent font-sans text-[14px] leading-relaxed resize-none outline-none"
+              style={{ color: '#F8F6F1', caretColor: '#C9A84C' }}
+            />
+            <div className="flex justify-end mt-1">
+              <button
+                onClick={handleAddSomething}
+                className="font-sans text-[12px] px-3 py-1 rounded-full transition-colors"
+                style={{
+                  color: '#8A9BB5',
+                  backgroundColor: '#0D2035',
+                  border: '1px solid #1E3A5F',
+                  cursor: 'pointer',
+                }}
+              >
+                + Add something
+              </button>
+            </div>
+          </div>
 
-        {/* Secondary: Try Again */}
-        <button
-          onClick={handleTryAgain}
-          style={{
-            marginTop: 10,
-            width: '100%',
-            background: 'transparent',
-            color: 'var(--cova-muted)',
-            border: '1px solid var(--cova-border)',
-            borderRadius: 12,
-            padding: '14px 28px',
-            fontSize: 15,
-            fontWeight: 500,
-            cursor: 'pointer',
-            fontFamily: 'var(--font-sans)',
-            transition: 'border-color var(--transition-base)',
-          }}
-        >
-          Try Again
-        </button>
+          {/* Slider section */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="font-sans text-[12px]" style={{ color: '#8A9BB5' }}>
+                Design transformation
+              </span>
+            </div>
 
-        {/* Secondary: Shop This Look */}
-        <button
-          onClick={handleShopThisLook}
-          style={{
-            marginTop: 10,
-            width: '100%',
-            background: 'transparent',
-            color: 'var(--cova-gold)',
-            border: '1px solid var(--cova-gold)',
-            borderRadius: 12,
-            padding: '14px 28px',
-            fontSize: 15,
-            fontWeight: 600,
-            cursor: 'pointer',
-            fontFamily: 'var(--font-sans)',
-            transition: 'border-color var(--transition-base)',
-          }}
-        >
-          Shop This Look →
-        </button>
+            {/* Live transform label */}
+            <div>
+              <p
+                className="font-sans text-[13px] font-medium mb-1"
+                style={{ color: '#C9A84C' }}
+              >
+                {transformInfo.label}
+              </p>
+              <p
+                className="font-sans text-[12px] mb-3 leading-relaxed"
+                style={{ color: '#8A9BB5', minHeight: '32px' }}
+              >
+                {transformInfo.description}
+              </p>
+            </div>
 
-        {/* Tertiary: Start Over */}
-        <button
-          onClick={handleStartOver}
-          style={{
-            marginTop: 8,
-            width: '100%',
-            background: 'transparent',
-            color: 'var(--cova-muted)',
-            border: 'none',
-            padding: '10px',
-            fontSize: 13,
-            fontWeight: 400,
-            cursor: 'pointer',
-            fontFamily: 'var(--font-sans)',
-            textDecoration: 'underline',
-            opacity: 0.7,
-          }}
-        >
-          Start Over
-        </button>
+            {/* Custom slider track */}
+            <div className="relative h-8 flex items-center">
+              {/* Track background */}
+              <div
+                className="absolute left-0 right-0 h-1 rounded-full overflow-hidden"
+                style={{ backgroundColor: '#1E3A5F' }}
+              >
+                {/* Filled portion */}
+                <div
+                  className="h-full rounded-full"
+                  style={{ width: `${sliderValue}%`, backgroundColor: '#C9A84C' }}
+                />
+              </div>
+              {/* Visual thumb */}
+              <div
+                className="absolute w-5 h-5 rounded-full pointer-events-none"
+                style={{
+                  left: `calc(${sliderValue}% - 10px)`,
+                  backgroundColor: '#C9A84C',
+                  border: '2px solid #091829',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.4)',
+                }}
+              />
+              {/* Invisible native input */}
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={sliderValue}
+                onChange={(e) => setSliderValue(Number(e.target.value))}
+                className="absolute inset-0 w-full opacity-0 cursor-pointer"
+              />
+            </div>
+
+            {/* Rail labels */}
+            <div className="flex justify-between mt-1">
+              <span className="font-sans text-[11px]" style={{ color: '#3A5272' }}>
+                Subtle
+              </span>
+              <span className="font-sans text-[11px]" style={{ color: '#3A5272' }}>
+                Complete
+              </span>
+            </div>
+          </div>
+
+          {/* Primary: Refine My Design */}
+          <button
+            onClick={handleRefine}
+            disabled={isRefineDisabled}
+            className="w-full font-sans text-[15px] font-semibold py-[14px] transition-opacity"
+            style={{
+              backgroundColor: isRefineDisabled ? '#8A6E2E' : '#C9A84C',
+              color: '#091829',
+              borderRadius: '14px',
+              border: 'none',
+              opacity: isRefineDisabled ? 0.6 : 1,
+              cursor: isRefineDisabled ? 'not-allowed' : 'pointer',
+            }}
+          >
+            Refine My Design
+          </button>
+
+          {/* Secondary row: Try Again + Start Over */}
+          <div className="flex gap-3 mt-3">
+            <button
+              onClick={handleTryAgain}
+              className="flex-1 font-sans text-[14px] font-medium py-[12px] rounded-xl transition-colors"
+              style={{
+                backgroundColor: 'transparent',
+                color: '#8A9BB5',
+                border: '1px solid #1E3A5F',
+                cursor: 'pointer',
+              }}
+            >
+              Try Again
+            </button>
+            <button
+              onClick={handleStartOver}
+              className="flex-1 font-sans text-[14px] font-medium py-[12px] rounded-xl transition-colors"
+              style={{
+                backgroundColor: 'transparent',
+                color: '#8A9BB5',
+                border: '1px solid #1E3A5F',
+                cursor: 'pointer',
+              }}
+            >
+              Start Over
+            </button>
+          </div>
+        </div>
       </div>
-    </motion.div>
+    </div>
   )
 }
