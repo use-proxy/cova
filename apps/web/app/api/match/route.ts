@@ -1,108 +1,58 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { checkRateLimit } from '@/lib/rateLimit'
-import {
-  embedImage,
-  cosineSimilarity,
-  fingerprintToStyleTags,
-  computeFingerprintAlignment,
-  computeBudgetFit,
-} from '@/lib/ai/clip'
+import { embedImage } from '@/lib/ai/clip'
+import { cropAndUploadRenderRegion } from '@/lib/ai/renderCrop'
+import { searchProducts, buildSearchQuery, isTechItem, type SerperProduct } from '@/lib/ai/serper'
 import Anthropic from '@anthropic-ai/sdk'
 import { NextResponse } from 'next/server'
-import type { Tables } from '@/types/supabase'
 
 const anthropic = new Anthropic()
 
+// ── Types ─────────────────────────────────────────────────────────────────────
+
 interface MatchRequestBody {
-  render_crop_url: string
+  render_url: string
+  item_id: string
+  item_label: string
+  item_bbox: [number, number, number, number]  // [x,y,w,h] fractions
+  item_keep: boolean | null
   fingerprint_vector: number[]
-  budget_range: [number, number]
+  budget_range: [number, number] | null
   room_type: string
-  item_label?: string
+  room_id: string
 }
 
-interface RankedProduct {
-  id: string
-  name: string
-  price: number
-  retailer: string
-  affiliate_url: string
-  image_url: string
-  match_score: number
-  match_label: 'Perfect Match' | 'Very Similar' | 'Inspired By'
-  style_tags: string[]
-}
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-interface ClaudeVisionQuery {
-  description: string
-  style_tags: string[]
-  material: string
-  color: string
-  dimensions_estimate: string
-}
-
-async function buildClaudeVisionQuery(
-  imageUrl: string,
-  itemLabel?: string
-): Promise<ClaudeVisionQuery> {
-  try {
-    const focusClause = itemLabel
-      ? `Focus specifically on the ${itemLabel} in this room render. Describe it for product matching.`
-      : 'Describe this furniture piece for product matching.'
-
-    const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 512,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'image',
-              source: {
-                type: 'url',
-                url: imageUrl,
-              },
-            },
-            {
-              type: 'text',
-              text: `${focusClause} Be specific and concise.
-                Return only valid JSON with these fields:
-                {
-                  "description": "one sentence description",
-                  "style_tags": ["tag1", "tag2", "tag3"],
-                  "material": "primary material",
-                  "color": "primary color",
-                  "dimensions_estimate": "approximate size"
-                }
-                No markdown, no explanation, just the JSON.`,
-            },
-          ],
-        },
-      ],
-    })
-
-    const text =
-      message.content[0].type === 'text' ? message.content[0].text.trim() : '{}'
-
-    return JSON.parse(text) as ClaudeVisionQuery
-  } catch {
-    return {
-      description: 'furniture piece',
-      style_tags: [],
-      material: 'unknown',
-      color: 'unknown',
-      dimensions_estimate: 'unknown',
-    }
+function cosineSimilarity(a: number[], b: number[]): number {
+  if (a.length !== b.length) return 0
+  let dot = 0, magA = 0, magB = 0
+  for (let i = 0; i < a.length; i++) {
+    dot += (a[i] ?? 0) * (b[i] ?? 0)
+    magA += (a[i] ?? 0) * (a[i] ?? 0)
+    magB += (b[i] ?? 0) * (b[i] ?? 0)
   }
+  const mag = Math.sqrt(magA) * Math.sqrt(magB)
+  return mag === 0 ? 0 : dot / mag
+}
+
+function computeBudgetScore(price: number, range: [number, number]): number {
+  const [min, max] = range
+  const mid = (min + max) / 2
+  if (price < min) return 0.70 + 0.30 * (price / min)   // under budget: 70-100%
+  if (price > max) return Math.max(0, 1 - (price - max) / max)  // over: falls to 0
+  // Within range: peaks at midpoint
+  const distFromMid = Math.abs(price - mid) / (max - min)
+  return 1 - 0.3 * distFromMid
 }
 
 function getMatchLabel(score: number): 'Perfect Match' | 'Very Similar' | 'Inspired By' {
   if (score >= 0.85) return 'Perfect Match'
-  if (score >= 0.7) return 'Very Similar'
+  if (score >= 0.75) return 'Very Similar'
   return 'Inspired By'
 }
+
+// ── Route handler ─────────────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
   try {
@@ -124,109 +74,195 @@ export async function POST(request: Request) {
     }
 
     const body = (await request.json()) as MatchRequestBody
-    const { render_crop_url, fingerprint_vector, budget_range, room_type, item_label } = body
+    const {
+      render_url,
+      item_id,
+      item_label,
+      item_bbox,
+      item_keep,
+      budget_range,
+      room_type,
+      room_id,
+    } = body
 
-    if (!render_crop_url || !fingerprint_vector || !budget_range) {
+    if (!render_url || !item_id || !item_label || !item_bbox || !room_id || !room_type) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Layer 1: Claude Vision query construction
-    const visionQuery = await buildClaudeVisionQuery(render_crop_url, item_label)
+    // Hard reject kept items — no replacement needed
+    if (item_keep === true) {
+      return NextResponse.json(
+        { error: 'Item is marked as kept — no replacement needed' },
+        { status: 400 }
+      )
+    }
 
-    // Layer 2: CLIP embedding + pgvector search
-    let queryEmbedding: number[]
+    // Step 1: Crop the render to the item bbox
+    const cropUrl = await cropAndUploadRenderRegion(
+      render_url,
+      { x: item_bbox[0], y: item_bbox[1], w: item_bbox[2], h: item_bbox[3] },
+      room_id,
+      item_id,
+    )
+
+    // Step 2: Claude Vision — describe the cropped item for search
+    let itemDescription = item_label
     try {
-      queryEmbedding = await embedImage(render_crop_url)
-    } catch {
-      queryEmbedding = []
-    }
-
-    const admin = createAdminSupabaseClient()
-
-    // Fetch candidate products filtered by room type and budget
-    const { data: candidates } = await admin
-      .from('products')
-      .select('*')
-      .eq('active', true)
-      .contains('room_types', [room_type])
-      .gte('price', budget_range[0] * 0.5)
-      .lte('price', budget_range[1] * 1.5)
-      .limit(50)
-
-    let productList = candidates ?? []
-
-    if (productList.length === 0) {
-      // Fallback: fetch without room type filter
-      const { data: fallbackCandidates } = await admin
-        .from('products')
-        .select('*')
-        .eq('active', true)
-        .gte('price', budget_range[0] * 0.5)
-        .lte('price', budget_range[1] * 1.5)
-        .limit(50)
-
-      productList = fallbackCandidates ?? []
-    }
-
-    const fingerprintTags = fingerprintToStyleTags(fingerprint_vector)
-
-    // Layer 3: Unified ranking with exact COVA formula
-    // Score = 0.35*visual_sim + 0.30*fingerprint_align +
-    //         0.20*budget_fit + 0.10*behavioral + 0.05*affiliate_weight
-    const ranked: RankedProduct[] = productList
-      .map((product: Tables<'products'>) => {
-        // Visual similarity via CLIP cosine
-        let visualSim = 0.5
-        if (queryEmbedding.length > 0 && product.clip_embedding) {
-          try {
-            visualSim = cosineSimilarity(queryEmbedding, product.clip_embedding)
-          } catch {
-            visualSim = 0.5
-          }
-        }
-
-        // Fingerprint alignment
-        const fingerprintAlign = computeFingerprintAlignment(
-          product.style_tags ?? [],
-          fingerprintTags
-        )
-
-        // Budget fit
-        const budgetFit = computeBudgetFit(product.price ?? 0, budget_range)
-
-        // Behavioral (0 until data accumulates)
-        const behavioral = 0
-
-        // Affiliate weight — based on price tier (proxy for margin/commission)
-        const tierWeights: Record<string, number> = { budget: 0.3, mid: 0.6, premium: 0.9 }
-        const affiliateWeight = product.price_tier ? (tierWeights[product.price_tier] ?? 0.5) : 0.5
-
-        // Exact COVA scoring formula
-        const score =
-          0.35 * visualSim +
-          0.3 * fingerprintAlign +
-          0.2 * budgetFit +
-          0.1 * behavioral +
-          0.05 * affiliateWeight
-
-        return {
-          id: product.id,
-          name: product.name,
-          price: product.price ?? 0,
-          retailer: product.retailer ?? '',
-          affiliate_url: product.affiliate_url ?? product.affiliate_url_base ?? '',
-          image_url: product.image_url ?? '',
-          match_score: score,
-          match_label: getMatchLabel(score),
-          style_tags: product.style_tags ?? [],
-        }
+      const visionResponse = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 300,
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: { type: 'url', url: cropUrl },
+            },
+            {
+              type: 'text',
+              text: `Describe this ${item_label} for product matching.
+Focus only on essential visual attributes that would help find a real product:
+- Material (e.g. "solid walnut wood", "bouclé fabric", "brushed brass")
+- Color (e.g. "warm camel", "charcoal grey", "natural oak")
+- Form (e.g. "low-profile with tapered legs", "rounded arms", "arc silhouette")
+- Scale indicator (e.g. "3-seater", "large", "accent")
+Do NOT describe lighting, shadows, or room context.
+Return a single search-optimized phrase under 15 words.
+Example: "low-profile walnut coffee table tapered hairpin legs mid-century"`,
+            },
+          ],
+        }],
       })
-      .sort((a, b) => b.match_score - a.match_score)
-      .slice(0, 8)
+      const first = visionResponse.content[0]
+      if (first.type === 'text' && first.text.trim()) {
+        itemDescription = first.text.trim()
+      }
+    } catch (err) {
+      console.warn('[match] Claude Vision failed, using item label:', err)
+    }
+
+    // Step 3: Serper Shopping — two queries in parallel
+    const isTech = isTechItem(item_label)
+    const specificQuery = buildSearchQuery(itemDescription, budget_range, isTech)
+    const broaderQuery = buildSearchQuery(item_label, budget_range, isTech)
+
+    const [specificResults, broaderResults] = await Promise.allSettled([
+      searchProducts(specificQuery, 10),
+      searchProducts(broaderQuery, 10),
+    ])
+
+    // Combine and deduplicate by productUrl
+    const allProductsMap = new Map<string, SerperProduct>()
+    if (specificResults.status === 'fulfilled') {
+      specificResults.value.products.forEach((p) => allProductsMap.set(p.productUrl, p))
+    }
+    if (broaderResults.status === 'fulfilled') {
+      broaderResults.value.products.forEach((p) => {
+        if (!allProductsMap.has(p.productUrl)) allProductsMap.set(p.productUrl, p)
+      })
+    }
+    const candidates = Array.from(allProductsMap.values())
+
+    // If Serper returned nothing (no API key, rate limited, etc.) — empty response
+    if (candidates.length === 0) {
+      return NextResponse.json({
+        products: [],
+        item_description: itemDescription,
+        queries_used: [specificQuery, broaderQuery],
+      })
+    }
+
+    // Step 4: CLIP embed the crop
+    let cropEmbedding: number[] = []
+    try {
+      cropEmbedding = await embedImage(cropUrl)
+    } catch (err) {
+      console.warn('[match] Crop CLIP embed failed:', err)
+    }
+
+    // Step 5: CLIP embed product images and re-rank by visual similarity
+    const CLIP_THRESHOLD = 0.70
+    const BATCH_SIZE = 10
+
+    type ScoredProduct = SerperProduct & {
+      visualScore: number
+      budgetScore: number
+      finalScore: number
+    }
+    const candidatesWithScores: ScoredProduct[] = []
+
+    const candidateSlice = candidates.slice(0, 20)  // cap at 20 CLIP calls
+
+    for (let i = 0; i < candidateSlice.length; i += BATCH_SIZE) {
+      const batch = candidateSlice.slice(i, i + BATCH_SIZE)
+      const embedResults = await Promise.allSettled(
+        batch.map((product) => embedImage(product.imageUrl))
+      )
+
+      batch.forEach((product, idx) => {
+        const embResult = embedResults[idx]
+        if (!embResult || embResult.status !== 'fulfilled') return
+
+        const productEmbedding = embResult.value
+
+        // If crop embedding failed, skip visual filtering
+        const visualScore =
+          cropEmbedding.length > 0
+            ? cosineSimilarity(cropEmbedding, productEmbedding)
+            : 0.75  // neutral score when crop embed unavailable
+
+        // Hard filter — skip visually dissimilar products
+        if (cropEmbedding.length > 0 && visualScore < CLIP_THRESHOLD) return
+
+        const budgetScore = budget_range
+          ? computeBudgetScore(product.price, budget_range)
+          : 0.75
+
+        const qualityScore = product.rating ? product.rating / 5 : 0.70
+
+        // Final score: 60% visual, 30% budget, 10% quality
+        const finalScore =
+          0.60 * visualScore +
+          0.30 * budgetScore +
+          0.10 * qualityScore
+
+        candidatesWithScores.push({ ...product, visualScore, budgetScore, finalScore })
+      })
+    }
+
+    // Sort by finalScore descending, take top 5
+    const topProducts = candidatesWithScores
+      .sort((a, b) => b.finalScore - a.finalScore)
+      .slice(0, 5)
+
+    // If CLIP filtering eliminated everything, fall back to top budget-scored candidates
+    const finalProducts = topProducts.length > 0
+      ? topProducts
+      : candidates
+          .slice(0, 5)
+          .map((p) => ({
+            ...p,
+            visualScore: 0.70,
+            budgetScore: budget_range ? computeBudgetScore(p.price, budget_range) : 0.75,
+            finalScore: 0.70,
+          }))
 
     return NextResponse.json({
-      products: ranked,
-      query_description: visionQuery.description,
+      products: finalProducts.map((p) => ({
+        id: crypto.randomUUID(),
+        name: p.title,
+        retailer: p.retailer,
+        price: p.price,
+        affiliate_url: p.productUrl,
+        image_url: p.imageUrl,
+        match_score: p.finalScore,
+        match_label: getMatchLabel(p.visualScore),
+        is_sale: p.isSale,
+        rating: p.rating,
+        rating_count: p.ratingCount,
+      })),
+      item_description: itemDescription,
+      queries_used: [specificQuery, broaderQuery],
     })
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Internal server error'

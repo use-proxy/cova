@@ -26,6 +26,7 @@
     "react-dom": "^18",
     "react-qr-code": "^2.0.18",
     "replicate": "^1.0.1",
+    "sharp": "^0.34.5",
     "three": "^0.183.2",
     "three-web": "npm:three@0.183.2",
     "zod": "^3.25.28",

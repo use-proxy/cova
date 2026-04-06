@@ -21,6 +21,8 @@ function toDetectedItems(mask: KeepMaskItem[] | null): DetectedItem[] {
       label: item.label,
       left: (item.bbox[0] + item.bbox[2] / 2) * 100,  // center X as %
       top: (item.bbox[1] + item.bbox[3] / 2) * 100,   // center Y as %
+      bbox: item.bbox,
+      keep: item.keep,
     }))
 }
 
@@ -37,6 +39,8 @@ export default function Step10Page() {
 
   const [productsByItem, setProductsByItem] = useState<Record<string, MatchedProduct[]>>({})
   const [isLoadingProducts, setIsLoadingProducts] = useState(true)
+  const [roomTotal, setRoomTotal] = useState(0)
+  const [savings, setSavings] = useState<number | null>(null)
   const hasFiredRef = useRef(false)
 
   // Guard — redirect if no renderUrl
@@ -53,10 +57,22 @@ export default function Step10Page() {
       ? detections
       : [{ id: 'your-room', label: 'Your Room', left: 50, top: 50 }]
 
+  // Compute room total and savings when productsByItem changes
+  useEffect(() => {
+    const total = Object.values(productsByItem)
+      .map((products) => products[0]?.price ?? 0)  // top recommendation per item
+      .reduce((sum, price) => sum + price, 0)
+
+    setRoomTotal(total)
+
+    const budgetMax = budgetRange?.[1] ?? 0
+    setSavings(budgetMax > 0 && total > 0 ? budgetMax - total : null)
+  }, [productsByItem, budgetRange])
+
   // Pre-fire all match requests in parallel on mount
   useEffect(() => {
     if (hasFiredRef.current || !renderUrl) return
-    if (!fingerprint || !budgetRange || !roomType) {
+    if (!fingerprint || !budgetRange || !roomType || !roomId) {
       setIsLoadingProducts(false)
       return
     }
@@ -66,16 +82,21 @@ export default function Step10Page() {
       setIsLoadingProducts(true)
 
       if (detections.length === 0) {
-        // Zero-detection fallback — single general match with no item_label
+        // Zero-detection fallback — general match over full render
         try {
           const r = await fetch('/api/match', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              render_crop_url: renderUrl,
+              render_url: renderUrl,
+              item_id: 'your-room',
+              item_label: 'General Room',
+              item_bbox: [0, 0, 1, 1],  // full image
+              item_keep: null,
               fingerprint_vector: fingerprint,
               budget_range: budgetRange,
               room_type: roomType,
+              room_id: roomId,
             }),
           })
           const data = (await r.json()) as { products: MatchedProduct[] }
@@ -95,11 +116,15 @@ export default function Step10Page() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              render_crop_url: renderUrl,
+              render_url: renderUrl,
+              item_id: detection.id,
+              item_label: detection.label,
+              item_bbox: detection.bbox ?? [0, 0, 1, 1],
+              item_keep: detection.keep ?? null,
               fingerprint_vector: fingerprint,
               budget_range: budgetRange,
               room_type: roomType,
-              item_label: detection.label,
+              room_id: roomId,
             }),
           })
           if (!res.ok) throw new Error(`Match failed for ${detection.label}`)
@@ -120,7 +145,7 @@ export default function Step10Page() {
     }
 
     void fireAllMatches()
-  }, [detections, renderUrl, fingerprint, budgetRange, roomType]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [detections, renderUrl, fingerprint, budgetRange, roomType, roomId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleBuyClick = useCallback(
     async (product: MatchedProduct) => {
@@ -137,14 +162,11 @@ export default function Step10Page() {
         })
         .then(() => {}, () => {})
 
-      // Inject affiliate tag and open in new tab
+      // Open product URL in new tab (Serper results carry full affiliate URLs)
       try {
-        const url = new URL(product.affiliate_url)
-        url.searchParams.set('tag', 'cova03-20')
-        window.open(url.toString(), '_blank', 'noopener,noreferrer')
-      } catch {
-        // Fallback if URL parsing fails
         window.open(product.affiliate_url, '_blank', 'noopener,noreferrer')
+      } catch {
+        // swallow
       }
     },
     [roomId]
@@ -161,6 +183,8 @@ export default function Step10Page() {
         productsByItem={productsByItem}
         isLoadingProducts={isLoadingProducts}
         onBuyClick={handleBuyClick}
+        roomTotal={roomTotal}
+        savings={savings}
       />
     </>
   )

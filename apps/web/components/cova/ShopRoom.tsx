@@ -10,6 +10,8 @@ export interface DetectedItem {
   label: string
   left: number  // bbox center X as % of image width (0–100)
   top: number   // bbox center Y as % of image height (0–100)
+  bbox?: [number, number, number, number]  // [x,y,w,h] fractions — for match API
+  keep?: boolean | null                    // three-state — for match API guard
 }
 
 export interface MatchedProduct {
@@ -21,6 +23,9 @@ export interface MatchedProduct {
   image_url: string
   match_score: number
   match_label: 'Perfect Match' | 'Very Similar' | 'Inspired By'
+  is_sale?: boolean
+  rating?: number | null
+  rating_count?: number | null
 }
 
 interface ShopRoomProps {
@@ -29,6 +34,8 @@ interface ShopRoomProps {
   productsByItem: Record<string, MatchedProduct[]>
   isLoadingProducts: boolean
   onBuyClick: (product: MatchedProduct) => void
+  roomTotal?: number
+  savings?: number | null
 }
 
 // ─── Match color map ──────────────────────────────────────────────────────────
@@ -206,6 +213,8 @@ export default function ShopRoom({
   productsByItem,
   isLoadingProducts,
   onBuyClick,
+  roomTotal = 0,
+  savings = null,
 }: ShopRoomProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [activeTab, setActiveTab] = useState(detections[0]?.id ?? '')
@@ -451,7 +460,7 @@ export default function ShopRoom({
             </div>
 
             {/* Title + count */}
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-1">
               <span
                 style={{
                   fontFamily: 'var(--font-serif)',
@@ -467,6 +476,31 @@ export default function ShopRoom({
                   : `${visibleItemCount} items found`}
               </span>
             </div>
+
+            {/* Room total + savings */}
+            {roomTotal > 0 && (
+              <div className="flex items-center gap-3 mb-2">
+                <span className="font-sans text-[11px]" style={{ color: '#F8F6F1', opacity: 0.7 }}>
+                  Room total:{' '}
+                  {new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: 'USD',
+                    maximumFractionDigits: 0,
+                  }).format(roomTotal)}
+                </span>
+                {savings !== null && savings > 0 && (
+                  <span className="font-sans text-[11px]" style={{ color: '#C9A84C' }}>
+                    Saved{' '}
+                    {new Intl.NumberFormat('en-US', {
+                      style: 'currency',
+                      currency: 'USD',
+                      maximumFractionDigits: 0,
+                    }).format(savings)}{' '}
+                    vs budget
+                  </span>
+                )}
+              </div>
+            )}
 
             {/* Pill strip */}
             <div
@@ -508,7 +542,7 @@ export default function ShopRoom({
             </div>
 
             {/* Header: title + X */}
-            <div className="flex items-center justify-between mb-4 flex-shrink-0">
+            <div className="flex items-center justify-between mb-1 flex-shrink-0">
               <span
                 style={{
                   fontFamily: 'var(--font-serif)',
@@ -534,6 +568,31 @@ export default function ShopRoom({
                 ×
               </button>
             </div>
+
+            {/* Room total + savings (expanded) */}
+            {roomTotal > 0 && (
+              <div className="flex items-center gap-3 mb-3 flex-shrink-0">
+                <span className="font-sans text-[11px]" style={{ color: '#F8F6F1', opacity: 0.7 }}>
+                  Room total:{' '}
+                  {new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: 'USD',
+                    maximumFractionDigits: 0,
+                  }).format(roomTotal)}
+                </span>
+                {savings !== null && savings > 0 && (
+                  <span className="font-sans text-[11px]" style={{ color: '#C9A84C' }}>
+                    Saved{' '}
+                    {new Intl.NumberFormat('en-US', {
+                      style: 'currency',
+                      currency: 'USD',
+                      maximumFractionDigits: 0,
+                    }).format(savings)}{' '}
+                    vs budget
+                  </span>
+                )}
+              </div>
+            )}
 
             {/* Tab bar */}
             <div className="scrollbar-hide flex gap-2 overflow-x-auto mb-4 flex-shrink-0">
