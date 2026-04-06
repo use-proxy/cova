@@ -36,9 +36,9 @@ function getFingerprintAccessoryTerms(fingerprint: number[]): string {
   if ((fingerprint[4] ?? 0.5) > 0.65) terms.push('vintage antique heritage')
   if ((fingerprint[4] ?? 0.5) < 0.35) terms.push('contemporary modern current')
 
-  // Index 8: Saturation
-  if ((fingerprint[8] ?? 0.5) > 0.65) terms.push('refined elegant')
-  if ((fingerprint[8] ?? 0.5) < 0.35) terms.push('casual relaxed cozy')
+  // Index 8: Saturation (0=Muted/Mono, 1=Bold/Colorful)
+  if ((fingerprint[8] ?? 0.5) > 0.65) terms.push('vibrant rich colorful bold palette')
+  if ((fingerprint[8] ?? 0.5) < 0.35) terms.push('muted tonal desaturated earthy neutral')
 
   return terms.join(' ')
 }
