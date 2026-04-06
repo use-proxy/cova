@@ -7,6 +7,12 @@ import { useFingerprintStore, useSessionStore } from "@/lib/store";
 import type { WallLayout } from "@/lib/store/fingerprint";
 import { StepIndicator } from "@/components/cova/StepIndicator";
 import { parseMeasurementParams, isIOS, isAndroid } from "@/lib/measureBridge";
+import dynamic from "next/dynamic";
+
+const RoomMeasure = dynamic(
+  () => import("@/components/capture/RoomMeasure"),
+  { ssr: false }
+);
 
 // Color constants
 const colors = {
@@ -1011,6 +1017,8 @@ export default function Step4Page() {
   const [pulsedChip, setPulsedChip] = useState<string | null>(null);
   const [measurementSource, setMeasurementSource] = useState<'shortcut' | null>(null);
   const [deviceType, setDeviceType] = useState<'ios' | 'android' | 'desktop'>('desktop');
+  const [showWebXR, setShowWebXR] = useState(false);
+  const [webXRSupported, setWebXRSupported] = useState(false);
 
   // Pre-fill from Siri Shortcut URL params on mount (window.location avoids Suspense requirement)
   useEffect(() => {
@@ -1028,6 +1036,13 @@ export default function Step4Page() {
     if (isIOS()) setDeviceType('ios');
     else if (isAndroid()) setDeviceType('android');
     else setDeviceType('desktop');
+  }, []);
+
+  // Check WebXR support on Android
+  useEffect(() => {
+    import('@/lib/measureBridge').then(({ supportsWebXRMeasurement }) => {
+      void supportsWebXRMeasurement().then(setWebXRSupported);
+    });
   }, []);
 
   useEffect(() => {
@@ -1138,6 +1153,20 @@ export default function Step4Page() {
   };
 
   if (!mounted) return null;
+
+  if (showWebXR) {
+    return (
+      <RoomMeasure
+        onMeasurementComplete={(measuredLength, measuredWidth) => {
+          setLength(String(measuredLength));
+          setWidth(String(measuredWidth));
+          setShowWebXR(false);
+          setMeasurementSource('shortcut'); // reuse shortcut confirmation UI
+        }}
+        onCancel={() => setShowWebXR(false)}
+      />
+    );
+  }
 
   return (
     <div
@@ -1268,9 +1297,31 @@ export default function Step4Page() {
               )}
 
               {deviceType === 'android' && measurementSource !== 'shortcut' && (
-                <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: colors.muted }}>
-                  💡 Use Google Measure app or a tape measure for accurate dimensions
-                </p>
+                <>
+                  {webXRSupported ? (
+                    <button
+                      onClick={() => setShowWebXR(true)}
+                      style={{
+                        display: 'inline-block',
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        background: colors.gold,
+                        color: colors.navy,
+                        fontFamily: 'Inter, sans-serif',
+                        fontSize: '13px',
+                        fontWeight: 500,
+                        border: 'none',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Measure with Camera
+                    </button>
+                  ) : (
+                    <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: colors.muted }}>
+                      💡 Use Google Measure app or a tape measure for accurate dimensions
+                    </p>
+                  )}
+                </>
               )}
 
               {deviceType === 'desktop' && measurementSource !== 'shortcut' && (
