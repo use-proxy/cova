@@ -10,6 +10,23 @@ import ShopRoom, { type DetectedItem, type MatchedProduct } from '@/components/c
 import { StepIndicator } from '@/components/cova/StepIndicator'
 import type { KeepMaskItem } from '@/lib/store/room'
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type Accessory = {
+  id: string
+  name: string
+  retailer: string
+  price: number
+  affiliate_url: string
+  image_url: string
+  match_score: number
+  match_label: 'Perfect Match' | 'Very Similar' | 'Inspired By'
+  category: string
+  is_sale?: boolean
+  rating?: number | null
+  rating_count?: number | null
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function toDetectedItems(mask: KeepMaskItem[] | null): DetectedItem[] {
@@ -32,7 +49,7 @@ export default function Step10Page() {
   const router = useRouter()
 
   const { renderUrl, keepMask, roomId } = useRoomStore()
-  const { fingerprint, budgetRange, roomType } = useFingerprintStore()
+  const { fingerprint, budgetRange, roomType, styleName } = useFingerprintStore()
   const { setStep } = useSessionStore()
 
   void setStep // available for future navigation buttons; suppress lint
@@ -41,6 +58,7 @@ export default function Step10Page() {
   const [isLoadingProducts, setIsLoadingProducts] = useState(true)
   const [roomTotal, setRoomTotal] = useState(0)
   const [savings, setSavings] = useState<number | null>(null)
+  const [accessories, setAccessories] = useState<Accessory[]>([])
   const hasFiredRef = useRef(false)
 
   // Guard — redirect if no renderUrl
@@ -81,6 +99,11 @@ export default function Step10Page() {
     async function fireAllMatches() {
       setIsLoadingProducts(true)
 
+      // Kept items labels for coherence + accessories context
+      const keptItemLabels = (keepMask ?? [])
+        .filter((item) => item.keep === true)
+        .map((item) => item.label)
+
       if (detections.length === 0) {
         // Zero-detection fallback — general match over full render
         try {
@@ -105,6 +128,28 @@ export default function Step10Page() {
           // swallow — productsByItem stays empty
         } finally {
           setIsLoadingProducts(false)
+        }
+
+        // Accessories pass for zero-detection fallback
+        try {
+          const accessoriesRes = await fetch('/api/match/accessories', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              styleName: styleName,
+              fingerprint: fingerprint,
+              roomType: roomType,
+              budgetRange: budgetRange,
+              primaryItemLabels: displayDetections.map((d) => d.label),
+              keptItemLabels,
+            }),
+          })
+          if (accessoriesRes.ok) {
+            const accessoriesData = await accessoriesRes.json() as { accessories: Accessory[] }
+            setAccessories(accessoriesData.accessories)
+          }
+        } catch {
+          // Accessories are non-critical — continue without them
         }
         return
       }
@@ -133,15 +178,63 @@ export default function Step10Page() {
         })
       )
 
-      const byItem: Record<string, MatchedProduct[]> = {}
+      let byItem: Record<string, MatchedProduct[]> = {}
       results.forEach((result) => {
         if (result.status === 'fulfilled') {
           byItem[result.value.id] = result.value.products
         }
       })
 
+      // Coherence check — may swap outlier item to its next-best alternative
+      try {
+        const coherenceRes = await fetch('/api/match/coherence', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            productsByItem: byItem,
+            styleName: styleName,
+            fingerprint: fingerprint,
+            roomType: roomType,
+            keptItemLabels,
+          }),
+        })
+        if (coherenceRes.ok) {
+          const coherenceData = await coherenceRes.json() as {
+            productsByItem: typeof byItem
+            coherenceScore: number
+            wasAdjusted: boolean
+            adjustmentReason: string | null
+          }
+          byItem = coherenceData.productsByItem
+        }
+      } catch {
+        // Coherence check is non-critical — continue without it
+      }
+
       setProductsByItem(byItem)
       setIsLoadingProducts(false)
+
+      // Accessories pass — runs after products are shown
+      try {
+        const accessoriesRes = await fetch('/api/match/accessories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            styleName: styleName,
+            fingerprint: fingerprint,
+            roomType: roomType,
+            budgetRange: budgetRange,
+            primaryItemLabels: displayDetections.map((d) => d.label),
+            keptItemLabels,
+          }),
+        })
+        if (accessoriesRes.ok) {
+          const accessoriesData = await accessoriesRes.json() as { accessories: Accessory[] }
+          setAccessories(accessoriesData.accessories)
+        }
+      } catch {
+        // Accessories are non-critical — continue without them
+      }
     }
 
     void fireAllMatches()
@@ -185,6 +278,7 @@ export default function Step10Page() {
         onBuyClick={handleBuyClick}
         roomTotal={roomTotal}
         savings={savings}
+        accessories={accessories}
       />
     </>
   )

@@ -28,6 +28,8 @@ export interface MatchedProduct {
   rating_count?: number | null
 }
 
+type AccessoryProduct = MatchedProduct & { category: string }
+
 interface ShopRoomProps {
   renderUrl: string
   detections: DetectedItem[]
@@ -36,6 +38,7 @@ interface ShopRoomProps {
   onBuyClick: (product: MatchedProduct) => void
   roomTotal?: number
   savings?: number | null
+  accessories?: AccessoryProduct[]
 }
 
 // ─── Match color map ──────────────────────────────────────────────────────────
@@ -215,6 +218,7 @@ export default function ShopRoom({
   onBuyClick,
   roomTotal = 0,
   savings = null,
+  accessories = [],
 }: ShopRoomProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [activeTab, setActiveTab] = useState(detections[0]?.id ?? '')
@@ -617,26 +621,91 @@ export default function ShopRoom({
               })}
             </div>
 
-            {/* Product grid */}
-            <div className="scrollbar-hide flex gap-3 overflow-x-auto flex-1 pb-6 items-start">
-              {isLoadingProducts && currentProducts.length === 0 ? (
-                <>
-                  <SkeletonCard />
-                  <SkeletonCard />
-                  <SkeletonCard />
-                </>
-              ) : currentProducts.length > 0 ? (
-                currentProducts.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    onBuyClick={() => onBuyClick(product)}
-                  />
-                ))
-              ) : (
-                <p className="font-sans text-[13px]" style={{ color: '#8A9BB5' }}>
-                  No products found for this item.
-                </p>
+            {/* Scrollable content: products + accessories */}
+            <div className="flex-1 overflow-y-auto">
+              {/* Product grid (horizontal scroll) */}
+              <div className="scrollbar-hide flex gap-3 overflow-x-auto pb-3 items-start">
+                {isLoadingProducts && currentProducts.length === 0 ? (
+                  <>
+                    <SkeletonCard />
+                    <SkeletonCard />
+                    <SkeletonCard />
+                  </>
+                ) : currentProducts.length > 0 ? (
+                  currentProducts.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      onBuyClick={() => onBuyClick(product)}
+                    />
+                  ))
+                ) : (
+                  <p className="font-sans text-[13px]" style={{ color: '#8A9BB5' }}>
+                    No products found for this item.
+                  </p>
+                )}
+              </div>
+
+              {/* Complete the Look — accessory recommendations */}
+              {accessories.length > 0 && (
+                <div style={{ marginTop: '24px', paddingBottom: '16px' }}>
+                  {/* Section header */}
+                  <div style={{ marginBottom: '12px' }}>
+                    <p
+                      style={{
+                        fontFamily: 'var(--font-sans)',
+                        fontSize: '11px',
+                        fontWeight: 500,
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                        color: '#C9A84C',
+                      }}
+                    >
+                      Complete the Look
+                    </p>
+                    <p
+                      style={{
+                        fontFamily: 'var(--font-sans)',
+                        fontSize: '12px',
+                        color: '#8A9BB5',
+                        marginTop: '2px',
+                      }}
+                    >
+                      Accessories matched to your style
+                    </p>
+                  </div>
+
+                  {/* Horizontal scroll of accessory cards */}
+                  <div
+                    className="scrollbar-hide"
+                    style={{
+                      display: 'flex',
+                      gap: '12px',
+                      overflowX: 'auto',
+                      paddingBottom: '4px',
+                    }}
+                  >
+                    {accessories.map((accessory) => (
+                      <ProductCard
+                        key={accessory.id}
+                        product={{
+                          id: accessory.id,
+                          name: accessory.name,
+                          retailer: accessory.retailer,
+                          price: accessory.price,
+                          affiliate_url: accessory.affiliate_url,
+                          image_url: accessory.image_url,
+                          match_score: accessory.match_score,
+                          match_label: accessory.match_label,
+                          is_sale: accessory.is_sale,
+                          rating: accessory.rating,
+                          rating_count: accessory.rating_count,
+                        }}
+                        onBuyClick={() => onBuyClick(accessory)}
+                      />
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           </div>
