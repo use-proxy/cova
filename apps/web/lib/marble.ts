@@ -179,7 +179,6 @@ export async function fetchWorld(
     const spzUrls = data.assets?.splats?.spz_urls ?? {}
 
     if (!panoUrl && i < retries - 1) {
-      console.log(`[marble] pano_url null, retrying in ${retryDelayMs}ms...`)
       await new Promise((resolve) => setTimeout(resolve, retryDelayMs))
       continue
     }
@@ -206,22 +205,10 @@ export async function processVideoToWorld(
   apiKey: string,
   model: 'Marble 0.1-mini' | 'Marble 0.1-plus' = 'Marble 0.1-mini'
 ): Promise<MarbleWorld> {
-  console.log(`[marble] Uploading ${(videoBytes.byteLength / 1e6).toFixed(1)}MB video...`)
   const mediaAssetId = await uploadMediaAsset(videoBytes, 'room.mp4', 'video', 'mp4', apiKey)
-  console.log(`[marble] Media asset: ${mediaAssetId}`)
-
-  console.log(`[marble] Generating world with ${model}...`)
   const operationId = await generateWorld(mediaAssetId, 'video', { model }, apiKey)
-  console.log(`[marble] Operation: ${operationId}`)
-
-  console.log(`[marble] Polling for completion...`)
   const worldId = await pollOperation(operationId, apiKey)
-  console.log(`[marble] World: ${worldId}`)
-
-  console.log(`[marble] Fetching world assets...`)
   const world = await fetchWorld(worldId, apiKey)
-  console.log(`[marble] pano_url: ${world.pano_url ? 'obtained' : 'null'}`)
-
   return world
 }
 
@@ -243,32 +230,18 @@ export async function processRedesignedPanoToWorld(
   redesignedPanoUrl: string,
   apiKey: string
 ): Promise<MarbleWorld> {
-  console.log('[marble] Downloading redesigned panorama...')
   const panoResp = await fetch(redesignedPanoUrl)
   if (!panoResp.ok) {
     throw new Error(`Failed to download redesigned pano: ${panoResp.status}`)
   }
   const panoBuffer = await panoResp.arrayBuffer()
-  console.log(`[marble] Downloaded ${(panoBuffer.byteLength / 1e6).toFixed(1)}MB`)
-
-  console.log('[marble] Uploading to Marble as pano asset...')
   const mediaAssetId = await uploadPanoAsset(panoBuffer, apiKey)
-  console.log(`[marble] Media asset: ${mediaAssetId}`)
-
-  console.log('[marble] Generating Plus world (is_pano=true)...')
   const operationId = await generateWorldFromPano(
     mediaAssetId,
     { model: 'Marble 0.1-plus', displayName: 'Cova Redesigned Room' },
     apiKey
   )
-  console.log(`[marble] Operation: ${operationId}`)
-
-  console.log('[marble] Polling (Plus ~5-6 min)...')
   const worldId = await pollOperation(operationId, apiKey, 600000, 15000)
-  console.log(`[marble] World: ${worldId}`)
-
   const world = await fetchWorld(worldId, apiKey, 8, 10000)
-  console.log(`[marble] SPZ full_res: ${world.spz_urls.full_res ? 'obtained' : 'missing'}`)
-
   return world
 }

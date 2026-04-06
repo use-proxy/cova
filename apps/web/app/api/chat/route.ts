@@ -12,9 +12,6 @@ interface RoomContext {
 }
 
 export async function POST(request: Request) {
-  console.log("Chat API called")
-  console.log("API key exists:", !!process.env.ANTHROPIC_API_KEY)
-
   try {
     const { messages, context, roomId, styleBlend, budget } = (await request.json()) as {
       messages: { role: "user" | "assistant"; content: string }[]
@@ -23,8 +20,6 @@ export async function POST(request: Request) {
       styleBlend?: string
       budget?: string
     }
-
-    console.log("Messages count:", messages.length)
 
     // Fetch real room context from Supabase if roomId provided
     let roomStyleBlend = styleBlend ?? null
@@ -108,8 +103,6 @@ Never mention that you are Claude or made by Anthropic. You are Cova AI.`
 
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-    console.log("Creating stream with model claude-sonnet-4-20250514")
-
     const stream = client.messages.stream({
       model: "claude-sonnet-4-20250514",
       max_tokens: 1024,
@@ -129,7 +122,6 @@ Never mention that you are Claude or made by Anthropic. You are Cova AI.`
               controller.enqueue(encoder.encode(event.delta.text))
             }
           }
-          console.log("Stream completed successfully")
         } catch (err) {
           console.error("Stream iteration error:", err)
           // Send error text so frontend can display it

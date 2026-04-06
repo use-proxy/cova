@@ -210,7 +210,6 @@ async function orchestrateFullPipeline(roomId: string, userId: string) {
     // Wait only for video_ready — user sees video first
     await waitForStatus(roomId, 'video_ready', { timeoutMs: 120000, pollMs: 1000 })
 
-    console.log(`[pipeline] Room ${roomId}: video_ready — user can view flythrough`)
     // Plus and furniture matching continue in background
   } catch (err) {
     console.error('[pipeline] Full pipeline error:', err)
