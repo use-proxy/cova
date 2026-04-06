@@ -91,6 +91,17 @@ const SAM_FURNITURE_PROMPT =
   'tv, television, monitor, plant, artwork, painting, picture frame, wall art, wall decoration, ' +
   'mirror, cabinet, shelf, ottoman, bench, throw pillow, pillow, blanket, vase'
 
+async function toBase64DataUri(url: string): Promise<string> {
+  const response = await fetch(url)
+  if (!response.ok) {
+    throw new Error(`Failed to fetch image: ${response.status} ${url}`)
+  }
+  const contentType = response.headers.get('content-type') ?? 'image/jpeg'
+  const buffer = await response.arrayBuffer()
+  const base64 = Buffer.from(buffer).toString('base64')
+  return `data:${contentType};base64,${base64}`
+}
+
 async function getGroundedSamMaskUrl(photoUrl: string): Promise<string | undefined> {
   try {
     const output = await replicate.run(
@@ -139,12 +150,14 @@ async function getGroundedSamMaskUrl(photoUrl: string): Promise<string | undefin
 
 export async function detectFurniture(photoUrl: string): Promise<Detection[]> {
   try {
+    const imageInput = await toBase64DataUri(photoUrl)
+
     const [output, { width: imgW, height: imgH }] = await Promise.all([
       replicate.run(
         'adirik/grounding-dino:efd10a8ddc57ea28773327e881ce95e20cc1d734c589f7dd01d2036921ed78aa',
         {
           input: {
-            image: photoUrl,
+            image: imageInput,
             query: FURNITURE_PROMPT,
             box_threshold: 0.28,
             text_threshold: 0.22,
@@ -153,7 +166,7 @@ export async function detectFurniture(photoUrl: string): Promise<Detection[]> {
       ) as Promise<{
         detections?: Array<{ label: string; confidence: number; bbox: number[] }>
       }>,
-      getImageDimensions(photoUrl),
+      getImageDimensions(imageInput),
     ])
 
     if (!output.detections) return []
@@ -171,7 +184,7 @@ export async function detectFurniture(photoUrl: string): Promise<Detection[]> {
     // Fire SAM call only if we have detections — it's slow (~71s) and expensive ($0.068)
     if (detections.length === 0) return detections
 
-    const maskUrl = await getGroundedSamMaskUrl(photoUrl)
+    const maskUrl = await getGroundedSamMaskUrl(imageInput)
 
     // Attach the same combined mask URL to every item (shared mask for all furniture)
     if (!maskUrl) return detections
@@ -184,12 +197,14 @@ export async function detectFurniture(photoUrl: string): Promise<Detection[]> {
 
 export async function detectArchitecture(photoUrl: string): Promise<Detection[]> {
   try {
+    const imageInput = await toBase64DataUri(photoUrl)
+
     const [output, { width: imgW, height: imgH }] = await Promise.all([
       replicate.run(
         'adirik/grounding-dino:efd10a8ddc57ea28773327e881ce95e20cc1d734c589f7dd01d2036921ed78aa',
         {
           input: {
-            image: photoUrl,
+            image: imageInput,
             query: ARCHITECTURE_PROMPT,
             box_threshold: 0.28,
             text_threshold: 0.22,
@@ -198,7 +213,7 @@ export async function detectArchitecture(photoUrl: string): Promise<Detection[]>
       ) as Promise<{
         detections?: Array<{ label: string; confidence: number; bbox: number[] }>
       }>,
-      getImageDimensions(photoUrl),
+      getImageDimensions(imageInput),
     ])
 
     if (!output.detections) return []
