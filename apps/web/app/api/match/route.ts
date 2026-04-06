@@ -233,7 +233,7 @@ Example: "low-profile walnut coffee table tapered hairpin legs mid-century"`,
       })
     }
 
-    const CLIP_THRESHOLD = 0.70
+    const CLIP_THRESHOLD = 0.65
 
     const candidatesWithScores: Array<SerperProduct & {
       visualScore: number

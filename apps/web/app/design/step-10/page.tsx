@@ -33,7 +33,7 @@ type Accessory = {
 function toDetectedItems(mask: KeepMaskItem[] | null): DetectedItem[] {
   if (!mask) return []
   return mask
-    .filter((item) => item.confidence >= 0.60 && item.keep !== true)
+    .filter((item) => item.confidence >= 0.30 && item.keep !== true)
     .map((item) => ({
       id: item.label.toLowerCase().replace(/\s+/g, '-'),
       label: item.label,
@@ -59,20 +59,39 @@ export default function Step10Page() {
 
   void setStep // available for future navigation buttons; suppress lint
 
+  const [localKeepMask, setLocalKeepMask] = useState<KeepMaskItem[] | null>(keepMask)
   const [productsByItem, setProductsByItem] = useState<Record<string, MatchedProduct[]>>({})
   const [isLoadingProducts, setIsLoadingProducts] = useState(true)
   const [roomTotal, setRoomTotal] = useState(0)
   const [savings, setSavings] = useState<number | null>(null)
   const [accessories, setAccessories] = useState<Accessory[]>([])
   const hasFiredRef = useRef(false)
+  const lastDetectionCountRef = useRef(0)
 
   // Guard — redirect if no renderUrl
   useEffect(() => {
     if (!renderUrl) router.replace('/design/step-8')
   }, [renderUrl, router])
 
-  // Compute detections from keepMask (stable across renders via useMemo pattern)
-  const detections = toDetectedItems(keepMask)
+  // Fetch fresh keep_mask from DB — render detection may have updated it
+  // after the rendered image was processed (runs async on render completion)
+  useEffect(() => {
+    if (!roomId) return
+    const supabase = createBrowserClient()
+    void supabase
+      .from('rooms')
+      .select('keep_mask')
+      .eq('id', roomId)
+      .single()
+      .then(({ data }) => {
+        if (data?.keep_mask && Array.isArray(data.keep_mask) && (data.keep_mask as unknown[]).length > 0) {
+          setLocalKeepMask(data.keep_mask as KeepMaskItem[])
+        }
+      })
+  }, [roomId])
+
+  // Compute detections from localKeepMask (updated from DB on mount)
+  const detections = toDetectedItems(localKeepMask)
 
   // Synthetic fallback when no items pass the 0.75 threshold
   const displayDetections: DetectedItem[] =
@@ -92,20 +111,27 @@ export default function Step10Page() {
     setSavings(budgetMax > 0 && total > 0 ? budgetMax - total : null)
   }, [productsByItem, budgetRange])
 
-  // Pre-fire all match requests in parallel on mount
+  // Pre-fire all match requests in parallel on mount, and re-fire if
+  // render-based detection provided more items than initial keepMask had
   useEffect(() => {
-    if (hasFiredRef.current || !renderUrl) return
+    const currentCount = detections.length
+    const firedBefore = hasFiredRef.current
+    const countIncreased = currentCount > lastDetectionCountRef.current && firedBefore
+
+    if (firedBefore && !countIncreased) return
+    if (!renderUrl) return
     if (!fingerprint || !budgetRange || !roomType || !roomId) {
       setIsLoadingProducts(false)
       return
     }
     hasFiredRef.current = true
+    lastDetectionCountRef.current = currentCount
 
     async function fireAllMatches() {
       setIsLoadingProducts(true)
 
       // Kept items labels for coherence + accessories context
-      const keptItemLabels = (keepMask ?? [])
+      const keptItemLabels = (localKeepMask ?? [])
         .filter((item) => item.keep === true)
         .map((item) => item.label)
 
@@ -284,7 +310,8 @@ export default function Step10Page() {
     }
 
     void fireAllMatches()
-  }, [detections, renderUrl, fingerprint, budgetRange, roomType, roomId, primaryWallUsableInches]) // eslint-disable-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detections.length, localKeepMask, renderUrl, fingerprint, budgetRange, roomType, roomId, primaryWallUsableInches])
 
   const handleRefreshItem = useCallback(
     async (itemId: string, currentProductName: string) => {

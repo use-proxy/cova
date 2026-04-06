@@ -7,146 +7,146 @@ const replicate = new Replicate({
 export interface Detection {
   type: string
   label: string
-  bbox: [number, number, number, number]
+  bbox: [number, number, number, number]  // [x, y, w, h] normalized 0-1
   confidence: number
   showToUser: boolean
 }
 
-const FURNITURE_LABELS = [
-  'sofa',
-  'couch',
-  'chair',
-  'armchair',
-  'bed',
-  'desk',
-  'table',
-  'coffee table',
-  'dining table',
-  'bookshelf',
-  'wardrobe',
-  'dresser',
-  'nightstand',
-  'lamp',
-  'floor lamp',
-  'table lamp',
-  'ceiling light',
-  'pendant light',
-  'rug',
-  'curtains',
-  'blinds',
-  'tv',
-  'television',
-  'plant',
-  'artwork',
-  'painting',
-  'picture frame',
-  'wall art',
-  'wall decoration',
-  'mirror',
-  'cabinet',
-  'shelf',
-  'ottoman',
-  'bench',
-  'side table',
-  'accent chair',
-  'throw pillow',
-  'blanket',
-  'vase',
-]
+// Fetch image dimensions without downloading the full file (Range request)
+async function getImageDimensions(url: string): Promise<{ width: number; height: number }> {
+  try {
+    const response = await fetch(url, { headers: { Range: 'bytes=0-65535' } })
+    const buffer = await response.arrayBuffer()
+    const bytes = new Uint8Array(buffer)
 
-const ARCHITECTURE_LABELS = [
-  'floor',
-  'wall',
-  'ceiling',
-  'window',
-  'door',
-  'fireplace',
-  'stairs',
-  'column',
-  'arch',
-  'exposed brick',
-  'built-in',
-  'baseboard',
-  'wall color',
-  'window treatment',
-  'curtain',
-  'blind',
-  'ceiling type',
-  'crown molding',
-  'wainscoting',
-]
+    // JPEG: look for SOF0 (0xC0) or SOF2 (0xC2) markers
+    if (bytes[0] === 0xff && bytes[1] === 0xd8) {
+      for (let i = 2; i < bytes.length - 8; i++) {
+        if (bytes[i] === 0xff && (bytes[i + 1] === 0xc0 || bytes[i + 1] === 0xc2)) {
+          const height = ((bytes[i + 5] ?? 0) << 8) | (bytes[i + 6] ?? 0)
+          const width = ((bytes[i + 7] ?? 0) << 8) | (bytes[i + 8] ?? 0)
+          if (width > 0 && height > 0) return { width, height }
+        }
+      }
+    }
+
+    // PNG: dimensions at bytes 16-23
+    if (bytes[0] === 0x89 && bytes[1] === 0x50) {
+      const width =
+        ((bytes[16] ?? 0) << 24) | ((bytes[17] ?? 0) << 16) |
+        ((bytes[18] ?? 0) << 8) | (bytes[19] ?? 0)
+      const height =
+        ((bytes[20] ?? 0) << 24) | ((bytes[21] ?? 0) << 16) |
+        ((bytes[22] ?? 0) << 8) | (bytes[23] ?? 0)
+      if (width > 0 && height > 0) return { width, height }
+    }
+  } catch {
+    // fall through to default
+  }
+  // Default: iPhone portrait (3024×4032) — covers most real room photos
+  return { width: 3024, height: 4032 }
+}
+
+// Convert pixel bbox [x1, y1, x2, y2] to fractional [x, y, w, h] (0–1)
+function normalizeBbox(
+  pixelBbox: number[],
+  imageWidth: number,
+  imageHeight: number,
+): [number, number, number, number] {
+  const [x1 = 0, y1 = 0, x2 = 0, y2 = 0] = pixelBbox
+  return [
+    Math.max(0, Math.min(1, x1 / imageWidth)),
+    Math.max(0, Math.min(1, y1 / imageHeight)),
+    Math.max(0, Math.min(1, (x2 - x1) / imageWidth)),
+    Math.max(0, Math.min(1, (y2 - y1) / imageHeight)),
+  ]
+}
+
+// Comprehensive furniture prompt — covers everything visible in a room
+const FURNITURE_PROMPT = [
+  'sofa', 'couch', 'chair', 'armchair', 'accent chair',
+  'bed', 'desk', 'table', 'coffee table', 'dining table', 'side table',
+  'bookshelf', 'bookcase', 'wardrobe', 'dresser', 'nightstand',
+  'lamp', 'floor lamp', 'table lamp', 'ceiling light', 'pendant light',
+  'rug', 'curtain', 'curtains', 'blind', 'blinds', 'window treatment',
+  'tv', 'television', 'monitor',
+  'plant', 'artwork', 'painting', 'picture frame', 'wall art', 'wall decoration',
+  'mirror', 'cabinet', 'shelf', 'ottoman', 'bench',
+  'throw pillow', 'pillow', 'blanket', 'vase',
+].join(' . ')
+
+// Architecture elements that affect room redesign
+const ARCHITECTURE_PROMPT = [
+  'wall', 'floor', 'ceiling', 'window', 'door', 'fireplace',
+  'exposed brick', 'built-in shelves', 'column', 'arch', 'baseboard',
+  'crown molding', 'wainscoting',
+].join(' . ')
 
 export async function detectFurniture(photoUrl: string): Promise<Detection[]> {
   try {
-    const prompt = FURNITURE_LABELS.join(' . ')
-
-    const output = (await replicate.run(
-      'adirik/grounding-dino:efd10a8ddc57ea28773327e881ce95e20cc1d734c589f7dd01d2036921ed78aa',
-      {
-        input: {
-          image: photoUrl,
-          query: prompt,
-          box_threshold: 0.3,
-          text_threshold: 0.3,
-        },
-      }
-    )) as {
-      detections?: Array<{
-        label: string
-        confidence: number
-        bbox: number[]
-      }>
-    }
+    const [output, { width: imgW, height: imgH }] = await Promise.all([
+      replicate.run(
+        'adirik/grounding-dino:efd10a8ddc57ea28773327e881ce95e20cc1d734c589f7dd01d2036921ed78aa',
+        {
+          input: {
+            image: photoUrl,
+            query: FURNITURE_PROMPT,
+            box_threshold: 0.20,
+            text_threshold: 0.15,
+          },
+        }
+      ) as Promise<{
+        detections?: Array<{ label: string; confidence: number; bbox: number[] }>
+      }>,
+      getImageDimensions(photoUrl),
+    ])
 
     if (!output.detections) return []
 
-    const filtered = output.detections.filter((d) => d.confidence >= 0.50)
-
-    return filtered.map((d) => ({
-      type: 'furniture',
-      label: d.label,
-      bbox: d.bbox as [number, number, number, number],
-      confidence: d.confidence,
-      showToUser: d.confidence >= 0.60,
-    }))
+    return output.detections
+      .filter((d) => d.confidence >= 0.35)
+      .map((d) => ({
+        type: 'furniture',
+        label: d.label,
+        bbox: normalizeBbox(d.bbox, imgW, imgH),
+        confidence: d.confidence,
+        showToUser: d.confidence >= 0.50,
+      }))
   } catch (err) {
-    console.error(`[detect] Furniture detection failed:`, err)
+    console.error('[detect] Furniture detection failed:', err)
     return []
   }
 }
 
 export async function detectArchitecture(photoUrl: string): Promise<Detection[]> {
   try {
-    const prompt = ARCHITECTURE_LABELS.join(' . ')
-
-    const output = (await replicate.run(
-      'adirik/grounding-dino:efd10a8ddc57ea28773327e881ce95e20cc1d734c589f7dd01d2036921ed78aa',
-      {
-        input: {
-          image: photoUrl,
-          query: prompt,
-          box_threshold: 0.3,
-          text_threshold: 0.3,
-        },
-      }
-    )) as {
-      detections?: Array<{
-        label: string
-        confidence: number
-        bbox: number[]
-      }>
-    }
+    const [output, { width: imgW, height: imgH }] = await Promise.all([
+      replicate.run(
+        'adirik/grounding-dino:efd10a8ddc57ea28773327e881ce95e20cc1d734c589f7dd01d2036921ed78aa',
+        {
+          input: {
+            image: photoUrl,
+            query: ARCHITECTURE_PROMPT,
+            box_threshold: 0.20,
+            text_threshold: 0.15,
+          },
+        }
+      ) as Promise<{
+        detections?: Array<{ label: string; confidence: number; bbox: number[] }>
+      }>,
+      getImageDimensions(photoUrl),
+    ])
 
     if (!output.detections) return []
 
     return output.detections
-      .filter((d) => d.confidence >= 0.50)
+      .filter((d) => d.confidence >= 0.35)
       .map((d) => ({
         type: 'architecture',
         label: d.label,
-        bbox: d.bbox as [number, number, number, number],
+        bbox: normalizeBbox(d.bbox, imgW, imgH),
         confidence: d.confidence,
-        showToUser: d.confidence >= 0.60,
+        showToUser: d.confidence >= 0.50,
       }))
   } catch {
     return []

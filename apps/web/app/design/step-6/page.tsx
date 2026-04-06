@@ -530,7 +530,7 @@ export default function Step6Page() {
   }, [keepMask, roomId, setKeepMask])
 
   // Computed
-  const visibleDetections = keepMask?.filter((d) => d.confidence >= 0.60) ?? []
+  const visibleDetections = keepMask?.filter((d) => d.confidence >= 0.35) ?? []
   const furnitureItems = visibleDetections.filter((d) => d.type === 'furniture')
   const architectureItems = visibleDetections.filter((d) => d.type === 'architecture')
   const showFallback = detectionFailed || (keepMask !== null && visibleDetections.length === 0)
@@ -721,14 +721,12 @@ export default function Step6Page() {
 
         {/* Hotspot dots */}
         {imageDimensions &&
-          imageDimensions.natural.w > 0 &&
           imageDimensions.container.w > 0 &&
           visibleDetections.map((item, idx) => {
-            const { natural, container } = imageDimensions
-            const dotLeft =
-              ((item.bbox[0] + item.bbox[2] / 2) / natural.w) * container.w
-            const dotTop =
-              ((item.bbox[1] + item.bbox[3] / 2) / natural.h) * container.h
+            const { container } = imageDimensions
+            // bbox is [x, y, w, h] normalized 0-1 — convert center to container pixels
+            const dotLeft = (item.bbox[0] + item.bbox[2] / 2) * container.w
+            const dotTop = (item.bbox[1] + item.bbox[3] / 2) * container.h
             const id = dotId(item)
 
             return (

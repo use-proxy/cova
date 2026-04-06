@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import Replicate from 'replicate'
 import type { InsertTables } from '@/types/supabase'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN })
 
@@ -14,6 +15,61 @@ async function verifyRenderUrl(url: string): Promise<boolean> {
     return res.ok && contentType.startsWith('image/')
   } catch {
     return false
+  }
+}
+
+// Async re-detection on the rendered image.
+// Rendered images are clean AI images — GroundingDINO gets better results on them.
+// Merges render detections with user's keep=true choices from the original photo.
+async function triggerRenderDetection(
+  renderUrl: string,
+  roomId: string,
+  admin: SupabaseClient,
+): Promise<void> {
+  try {
+    const { detectFurniture } = await import('@/lib/ai/grounding')
+
+    const renderDetections = await detectFurniture(renderUrl)
+    if (renderDetections.length === 0) return
+
+    // Load existing keep_mask to preserve user's keep=true choices
+    const { data: room } = await admin
+      .from('rooms')
+      .select('keep_mask')
+      .eq('id', roomId)
+      .single()
+
+    type MaskItem = {
+      type: string; label: string
+      bbox: [number, number, number, number]
+      confidence: number; keep: boolean | null
+    }
+    const existingMask = (room?.keep_mask ?? []) as MaskItem[]
+    const keptItems = existingMask.filter((m) => m.keep === true)
+
+    // Add render detections that aren't already in the kept set
+    const renderItems = renderDetections
+      .filter((d) => d.confidence >= 0.30)
+      .filter((d) => !keptItems.some((k) => k.label === d.label))
+      .map((d) => ({
+        type: d.type,
+        label: d.label,
+        bbox: d.bbox,
+        confidence: d.confidence,
+        keep: null as null,
+      }))
+
+    const mergedMask = [...keptItems, ...renderItems]
+    if (mergedMask.length === 0) return
+
+    await admin
+      .from('rooms')
+      .update({ keep_mask: mergedMask })
+      .eq('id', roomId)
+
+    console.log(`[render-detect] Wrote ${renderItems.length} render detections for room ${roomId}`)
+  } catch (err) {
+    console.error('[render-detect] Failed:', err)
   }
 }
 
@@ -203,6 +259,9 @@ export async function GET(request: NextRequest) {
 
       await admin.from('rooms').update({ render_url: finalRenderUrl }).eq('id', roomId)
 
+      // Re-detect on the rendered image (async — don't block response)
+      void triggerRenderDetection(finalRenderUrl, roomId!, admin)
+
       return NextResponse.json({
         status: 'complete',
         render_url: finalRenderUrl,
@@ -275,6 +334,10 @@ export async function GET(request: NextRequest) {
     }
 
     await admin.from('rooms').update({ render_url: renderUrl }).eq('id', roomId)
+
+    // Re-detect on the rendered image (async — don't block response)
+    // Rendered images are clean AI images, detection works better on them
+    void triggerRenderDetection(renderUrl, roomId!, admin)
 
     return NextResponse.json({
       status: 'complete',

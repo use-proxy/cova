@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useFingerprintStore, useSessionStore } from "@/lib/store"
 import { StepIndicator } from "@/components/cova/StepIndicator"
@@ -22,7 +22,7 @@ function derivepalette(fp: number[]): string[] {
 // mock data for palette animation (uses derived palette length)
 const mockData = { palette: [1, 2, 3, 4, 5] }
 
-export default function Step3Page() {
+function Step3PageInner() {
   const router = useRouter()
 
   // Read fingerprint from Zustand store (set by Step 2 quiz)
@@ -1002,5 +1002,13 @@ export default function Step3Page() {
         }
       `}</style>
     </div>
+  )
+}
+
+export default function Step3Page() {
+  return (
+    <Suspense>
+      <Step3PageInner />
+    </Suspense>
   )
 }
