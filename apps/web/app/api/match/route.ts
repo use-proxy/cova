@@ -1,12 +1,13 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { checkRateLimit } from '@/lib/rateLimit'
-import { embedImage } from '@/lib/ai/clip'
 import { cropAndUploadRenderRegion } from '@/lib/ai/renderCrop'
 import { searchProducts, buildSearchQuery, isTechItem, type SerperProduct } from '@/lib/ai/serper'
 import Anthropic from '@anthropic-ai/sdk'
+import Replicate from 'replicate'
 import { NextResponse } from 'next/server'
 
 const anthropic = new Anthropic()
+const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN })
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -172,63 +173,81 @@ Example: "low-profile walnut coffee table tapered hairpin legs mid-century"`,
       })
     }
 
-    // Step 4: CLIP embed the crop
-    let cropEmbedding: number[] = []
+    // Step 4+5: Single batched CLIP call — crop at index 0, candidates at 1-N
+    // andreasjansson/clip-features accepts newline-separated URLs in one call
+    const allUrls = [
+      cropUrl,
+      ...candidates.slice(0, 20).map((p) => p.imageUrl),
+    ].join('\n')
+
+    let allEmbeddings: Array<{ input: string; embedding: number[] }> = []
+
     try {
-      cropEmbedding = await embedImage(cropUrl)
+      const batchOutput = await replicate.run(
+        'andreasjansson/clip-features:75b33f253f7714a281ad3e9b28f63e3232d583716ef6718f2e46641077ea040a',
+        { input: { inputs: allUrls } }
+      ) as Array<{ input: string; embedding: number[] }>
+
+      allEmbeddings = batchOutput
     } catch (err) {
-      console.warn('[match] Crop CLIP embed failed:', err)
+      console.error('[match] CLIP batch embedding failed:', err)
+      // Fallback: return top 5 Serper results ranked by budget fit alone
+      const fallbackProducts = candidates.slice(0, 5).map((p) => ({
+        id: crypto.randomUUID(),
+        name: p.title,
+        retailer: p.retailer,
+        price: p.price,
+        affiliate_url: p.productUrl,
+        image_url: p.imageUrl,
+        match_score: 0.70,
+        match_label: 'Inspired By' as const,
+        is_sale: p.isSale,
+        rating: p.rating,
+        rating_count: p.ratingCount,
+      }))
+      return NextResponse.json({
+        products: fallbackProducts,
+        item_description: itemDescription,
+        queries_used: [specificQuery, broaderQuery],
+      })
     }
 
-    // Step 5: CLIP embed product images and re-rank by visual similarity
-    const CLIP_THRESHOLD = 0.70
-    const BATCH_SIZE = 10
+    // Index 0 = crop embedding; indices 1-N = candidate product embeddings
+    const cropEmbedding = allEmbeddings[0]?.embedding
+    if (!cropEmbedding) {
+      return NextResponse.json({
+        products: [],
+        item_description: itemDescription,
+        queries_used: [specificQuery, broaderQuery],
+      })
+    }
 
-    type ScoredProduct = SerperProduct & {
+    const CLIP_THRESHOLD = 0.70
+
+    const candidatesWithScores: Array<SerperProduct & {
       visualScore: number
       budgetScore: number
       finalScore: number
-    }
-    const candidatesWithScores: ScoredProduct[] = []
+    }> = []
 
-    const candidateSlice = candidates.slice(0, 20)  // cap at 20 CLIP calls
+    candidates.slice(0, 20).forEach((product, idx) => {
+      const embeddingResult = allEmbeddings[idx + 1]  // offset by 1 (crop is index 0)
+      if (!embeddingResult?.embedding) return
 
-    for (let i = 0; i < candidateSlice.length; i += BATCH_SIZE) {
-      const batch = candidateSlice.slice(i, i + BATCH_SIZE)
-      const embedResults = await Promise.allSettled(
-        batch.map((product) => embedImage(product.imageUrl))
-      )
+      const visualScore = cosineSimilarity(cropEmbedding, embeddingResult.embedding)
 
-      batch.forEach((product, idx) => {
-        const embResult = embedResults[idx]
-        if (!embResult || embResult.status !== 'fulfilled') return
+      // Hard filter: skip if visual similarity below 0.70
+      if (visualScore < CLIP_THRESHOLD) return
 
-        const productEmbedding = embResult.value
+      const budgetScore = budget_range
+        ? computeBudgetScore(product.price, budget_range)
+        : 0.75
 
-        // If crop embedding failed, skip visual filtering
-        const visualScore =
-          cropEmbedding.length > 0
-            ? cosineSimilarity(cropEmbedding, productEmbedding)
-            : 0.75  // neutral score when crop embed unavailable
+      const qualityScore = product.rating ? product.rating / 5 : 0.70
+      const finalScore = 0.60 * visualScore + 0.30 * budgetScore + 0.10 * qualityScore
 
-        // Hard filter — skip visually dissimilar products
-        if (cropEmbedding.length > 0 && visualScore < CLIP_THRESHOLD) return
-
-        const budgetScore = budget_range
-          ? computeBudgetScore(product.price, budget_range)
-          : 0.75
-
-        const qualityScore = product.rating ? product.rating / 5 : 0.70
-
-        // Final score: 60% visual, 30% budget, 10% quality
-        const finalScore =
-          0.60 * visualScore +
-          0.30 * budgetScore +
-          0.10 * qualityScore
-
-        candidatesWithScores.push({ ...product, visualScore, budgetScore, finalScore })
-      })
-    }
+      candidatesWithScores.push({ ...product, visualScore, budgetScore, finalScore })
+    })
 
     // Sort by finalScore descending, take top 5
     const topProducts = candidatesWithScores
