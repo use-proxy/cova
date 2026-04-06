@@ -28,14 +28,22 @@ function stateToKeep(state: ItemState): boolean | null {
 // ─── Label → emoji ─────────────────────────────────────────────────────────
 
 const EMOJI_MAP: Record<string, string> = {
+  // Furniture
   sofa: '🛋️', couch: '🛋️', chair: '🪑', armchair: '🪑', bed: '🛏️',
   desk: '🪑', table: '🪵', 'coffee table': '🪵', 'dining table': '🍽️',
   bookshelf: '📚', wardrobe: '🚪', dresser: '🪞', nightstand: '🪑',
-  lamp: '💡', rug: '🏠', curtains: '🏠', tv: '📺', television: '📺',
-  plant: '🌿', artwork: '🖼️', mirror: '🪞', cabinet: '🗄️',
-  shelf: '📚', ottoman: '🛋️', bench: '🪑',
+  lamp: '💡', 'floor lamp': '💡', 'table lamp': '💡', 'ceiling light': '💡', 'pendant light': '💡',
+  rug: '🪵', curtains: '🏠', blinds: '🏠', tv: '📺', television: '📺',
+  plant: '🌿', artwork: '🖼️', painting: '🖼️', 'picture frame': '🖼️',
+  'wall art': '🖼️', 'wall decoration': '🖼️', mirror: '🪞', cabinet: '🗄️',
+  shelf: '📚', ottoman: '🛋️', bench: '🪑', 'side table': '🪵',
+  'accent chair': '🪑', 'throw pillow': '🛋️', blanket: '🛋️', vase: '🏺',
+  // Architecture
   floor: '🏠', wall: '🧱', ceiling: '🏠', window: '🪟', door: '🚪',
-  fireplace: '🔥', stairs: '🏠', column: '🏛️',
+  fireplace: '🔥', stairs: '🏠', column: '🏛️', arch: '🏛️',
+  'exposed brick': '🧱', 'built-in': '📚', baseboard: '🏠',
+  'wall color': '🎨', 'window treatment': '🏠', curtain: '🏠', blind: '🏠',
+  'ceiling type': '🏠', 'crown molding': '🏛️', wainscoting: '🏛️',
 }
 
 function getEmoji(label: string): string {
@@ -523,6 +531,8 @@ export default function Step6Page() {
 
   // Computed
   const visibleDetections = keepMask?.filter((d) => d.confidence >= 0.60) ?? []
+  const furnitureItems = visibleDetections.filter((d) => d.type === 'furniture')
+  const architectureItems = visibleDetections.filter((d) => d.type === 'architecture')
   const showFallback = detectionFailed || (keepMask !== null && visibleDetections.length === 0)
   const isPolling = keepMask === null && !detectionFailed
 
@@ -784,41 +794,99 @@ export default function Step6Page() {
           className="overflow-y-auto px-5"
           style={{ flex: 1, paddingBottom: 110 }}
         >
-          {visibleDetections.map((item) => {
-            const id = dotId(item)
-            const isHighlighted = expandedDotId === id
-            const state = keepToState(item.keep)
-
-            return (
-              <div
-                key={id}
-                className="flex items-center justify-between rounded-lg transition-colors duration-150"
+          {/* Section: Furniture */}
+          {furnitureItems.length > 0 && (
+            <>
+              <p
+                className="font-sans"
                 style={{
-                  borderBottom: '1px solid rgba(201,168,76,0.07)',
-                  padding: '13px 4px',
-                  paddingLeft: isHighlighted ? 10 : 4,
-                  background: isHighlighted ? 'rgba(201,168,76,0.06)' : 'transparent',
-                  borderLeft: isHighlighted
-                    ? '2px solid rgba(201,168,76,0.4)'
-                    : '2px solid transparent',
+                  color: 'var(--cova-gold)',
+                  fontSize: 10,
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                  padding: '10px 0 4px',
+                  opacity: 0.7,
                 }}
               >
-                <div className="flex items-center gap-2.5">
-                  <span style={{ fontSize: 20 }}>{getEmoji(item.label)}</span>
-                  <span
-                    className="font-sans"
-                    style={{ color: 'var(--cova-ivory)', fontSize: 14 }}
+                Furniture
+              </p>
+              {furnitureItems.map((item) => {
+                const id = dotId(item)
+                const isHighlighted = expandedDotId === id
+                const state = keepToState(item.keep)
+                return (
+                  <div
+                    key={id}
+                    className="flex items-center justify-between rounded-lg transition-colors duration-150"
+                    style={{
+                      borderBottom: '1px solid rgba(201,168,76,0.07)',
+                      padding: '13px 4px',
+                      paddingLeft: isHighlighted ? 10 : 4,
+                      background: isHighlighted ? 'rgba(201,168,76,0.06)' : 'transparent',
+                      borderLeft: isHighlighted
+                        ? '2px solid rgba(201,168,76,0.4)'
+                        : '2px solid transparent',
+                    }}
                   >
-                    {item.label.charAt(0).toUpperCase() + item.label.slice(1)}
-                  </span>
-                </div>
-                <StateToggle
-                  state={state}
-                  onChange={(next) => handleToggleState(item, next)}
-                />
-              </div>
-            )
-          })}
+                    <div className="flex items-center gap-2.5">
+                      <span style={{ fontSize: 20 }}>{getEmoji(item.label)}</span>
+                      <span className="font-sans" style={{ color: 'var(--cova-ivory)', fontSize: 14 }}>
+                        {item.label.charAt(0).toUpperCase() + item.label.slice(1)}
+                      </span>
+                    </div>
+                    <StateToggle state={state} onChange={(next) => handleToggleState(item, next)} />
+                  </div>
+                )
+              })}
+            </>
+          )}
+
+          {/* Section: Walls & Decor */}
+          {architectureItems.length > 0 && (
+            <>
+              <p
+                className="font-sans"
+                style={{
+                  color: 'var(--cova-gold)',
+                  fontSize: 10,
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                  padding: '14px 0 4px',
+                  opacity: 0.7,
+                }}
+              >
+                Walls & Decor
+              </p>
+              {architectureItems.map((item) => {
+                const id = dotId(item)
+                const isHighlighted = expandedDotId === id
+                const state = keepToState(item.keep)
+                return (
+                  <div
+                    key={id}
+                    className="flex items-center justify-between rounded-lg transition-colors duration-150"
+                    style={{
+                      borderBottom: '1px solid rgba(201,168,76,0.07)',
+                      padding: '13px 4px',
+                      paddingLeft: isHighlighted ? 10 : 4,
+                      background: isHighlighted ? 'rgba(201,168,76,0.06)' : 'transparent',
+                      borderLeft: isHighlighted
+                        ? '2px solid rgba(201,168,76,0.4)'
+                        : '2px solid transparent',
+                    }}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span style={{ fontSize: 20 }}>{getEmoji(item.label)}</span>
+                      <span className="font-sans" style={{ color: 'var(--cova-ivory)', fontSize: 14 }}>
+                        {item.label.charAt(0).toUpperCase() + item.label.slice(1)}
+                      </span>
+                    </div>
+                    <StateToggle state={state} onChange={(next) => handleToggleState(item, next)} />
+                  </div>
+                )
+              })}
+            </>
+          )}
 
           {/* Hint text */}
           <p

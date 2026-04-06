@@ -8,8 +8,8 @@ import sharp from 'sharp'
 async function correctImageOrientation(buffer: Buffer): Promise<Buffer> {
   try {
     return await sharp(buffer)
-      .rotate()  // auto-rotate based on EXIF orientation
-      .jpeg({ quality: 90 })
+      .rotate()  // honors EXIF orientation tag
+      .jpeg({ quality: 90, progressive: true })
       .toBuffer()
   } catch {
     return buffer  // return original if sharp fails

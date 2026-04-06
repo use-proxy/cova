@@ -63,6 +63,7 @@ export default function Step8Page() {
           width: '100%',
           height: '100%',
           objectFit: 'cover',
+          imageOrientation: 'from-image',
           opacity: showingBefore ? 0 : 1,
           transition: 'opacity 400ms ease',
         }}
@@ -79,6 +80,7 @@ export default function Step8Page() {
           width: '100%',
           height: '100%',
           objectFit: 'cover',
+          imageOrientation: 'from-image',
           opacity: showingBefore && canToggle ? 1 : 0,
           transition: 'opacity 400ms ease',
           filter: 'grayscale(1)',
