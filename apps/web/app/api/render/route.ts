@@ -36,6 +36,8 @@ interface RenderRequestBody {
   wall_finish?: string | null
   fixed_elements?: string[]
   wall_layout?: RoomPhysicalContext['wallLayout']
+  showcase_mode?: boolean
+  style_name?: string
 }
 
 export async function POST(request: Request) {
@@ -78,10 +80,35 @@ export async function POST(request: Request) {
       wall_finish,
       fixed_elements,
       wall_layout,
+      showcase_mode,
     } = body
 
-    if (!photo_url || !fingerprint_vector || !room_type || !budget || !room_id) {
+    if (!photo_url || !fingerprint_vector || !room_type || !budget || (!showcase_mode && !room_id)) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+
+    // Showcase mode: skip inpainting mask and DB writes
+    if (showcase_mode) {
+      const { positive } = buildFluxPrompt(
+        fingerprint_vector,
+        room_type,
+        budget ?? 'mid',
+        inclusions ?? [],
+        constraints ?? [],
+        undefined
+      )
+      const prediction = await replicate.predictions.create({
+        model: 'black-forest-labs/flux-kontext-pro',
+        input: {
+          prompt: positive,
+          input_image: photo_url,
+          guidance: (style_strength ?? 0.85) * 10,
+          output_format: 'jpg',
+          output_quality: 90,
+          safety_tolerance: 2,
+        },
+      })
+      return NextResponse.json({ prediction_id: prediction.id })
     }
 
     const roomContext: RoomPhysicalContext | undefined =

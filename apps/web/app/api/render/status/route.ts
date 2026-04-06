@@ -21,8 +21,9 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const predictionId = searchParams.get('prediction_id')
   const roomId = searchParams.get('room_id')
+  const isShowcaseMode = searchParams.get('showcase_mode') === 'true'
 
-  if (!predictionId || !roomId) {
+  if (!predictionId || (!isShowcaseMode && !roomId)) {
     return NextResponse.json({ error: 'Missing prediction_id or room_id' }, { status: 400 })
   }
 
@@ -33,6 +34,31 @@ export async function GET(request: NextRequest) {
 
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // Showcase mode: just check Replicate status, skip all DB operations
+  if (isShowcaseMode) {
+    const prediction = await replicate.predictions.get(predictionId)
+    if (prediction.status === 'starting' || prediction.status === 'processing') {
+      return NextResponse.json({ status: 'processing' })
+    }
+    if (prediction.status === 'failed' || prediction.status === 'canceled') {
+      return NextResponse.json({ status: 'failed', error: prediction.error ?? 'Render failed' })
+    }
+    if (prediction.status === 'succeeded') {
+      const output = prediction.output
+      let renderUrl: string | null = null
+      if (Array.isArray(output) && output.length > 0) {
+        renderUrl = output[0] as string
+      } else if (typeof output === 'string') {
+        renderUrl = output
+      }
+      if (!renderUrl) {
+        return NextResponse.json({ status: 'failed', error: 'No output URL' })
+      }
+      return NextResponse.json({ status: 'complete', render_url: renderUrl })
+    }
+    return NextResponse.json({ status: 'processing' })
   }
 
   const prediction = await replicate.predictions.get(predictionId)
@@ -158,7 +184,7 @@ export async function GET(request: NextRequest) {
       const styleStrength = costLog.style_strength ?? 0.85
 
       const stage2SessionInsert: InsertTables<'render_sessions'> = {
-        room_id: roomId,
+        room_id: roomId!,
         render_url: finalRenderUrl,
         prompt,
         style_strength: styleStrength,
@@ -230,7 +256,7 @@ export async function GET(request: NextRequest) {
     const styleStrength = (input?._style_strength as number | undefined) ?? 0.85
 
     const renderSessionInsert: InsertTables<'render_sessions'> = {
-      room_id: roomId,
+      room_id: roomId!,
       render_url: renderUrl,
       prompt,
       style_strength: styleStrength,

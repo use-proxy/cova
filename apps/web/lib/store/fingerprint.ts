@@ -39,6 +39,8 @@ interface FingerprintState {
   wallFinish: string | null
   hasCloset: boolean
   closetWall: string | null
+  showcasePredictionIds: Array<{ predictionId: string; label: string }> | null
+  setShowcasePredictionIds: (ids: Array<{ predictionId: string; label: string }> | null) => void
   setRoomType: (roomType: string) => void
   setBudget: (tier: BudgetTier, range: [number, number]) => void
   addQuizResponse: (response: QuizResponse) => void
@@ -90,6 +92,7 @@ const INITIAL_STATE = {
   wallFinish: null,
   hasCloset: false,
   closetWall: null,
+  showcasePredictionIds: null,
 }
 
 export const useFingerprintStore = create<FingerprintState>()(
@@ -132,5 +135,6 @@ export const useFingerprintStore = create<FingerprintState>()(
     setConstraints: (constraints) => set({ constraints }),
     setInclusions: (inclusions) => set({ inclusions }),
     resetFingerprint: () => set(INITIAL_STATE),
+    setShowcasePredictionIds: (showcasePredictionIds) => set({ showcasePredictionIds }),
   })
 )

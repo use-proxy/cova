@@ -16,7 +16,7 @@ type Response = {
 
 export default function StyleQuizPage() {
   const router = useRouter();
-  const { roomType, setFingerprint } = useFingerprintStore();
+  const { roomType, budgetTier, setFingerprint, setShowcasePredictionIds } = useFingerprintStore();
   const { setStep } = useSessionStore();
   const pairs = QUIZ_PAIRS[roomType ?? "living-room"] ?? QUIZ_PAIRS["living-room"]!;
 
@@ -60,6 +60,46 @@ export default function StyleQuizPage() {
             style_chips?: string[];
           };
           setFingerprint(data.fingerprint, data.style_name);
+
+          // Fire showcase renders non-blocking — stored in Zustand (Rule 1: no sessionStorage)
+          const SHOWCASE_INPUTS = [
+            { photo_url: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1024', label: 'Living Room' },
+            { photo_url: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=1024', label: 'Bedroom' },
+            { photo_url: 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=1024', label: 'Home Office' },
+          ]
+          void Promise.all(
+            SHOWCASE_INPUTS.map(async (input) => {
+              try {
+                const renderRes = await fetch('/api/render', {
+                  method: 'POST',
+                  credentials: 'include',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    photo_url: input.photo_url,
+                    fingerprint_vector: data.fingerprint,
+                    room_type: roomType ?? 'living_room',
+                    budget: budgetTier ?? 'mid',
+                    inclusions: [],
+                    constraints: [],
+                    showcase_mode: true,
+                    style_name: data.style_name,
+                  }),
+                })
+                if (renderRes.ok) {
+                  const renderData = await renderRes.json() as { prediction_id: string }
+                  return { predictionId: renderData.prediction_id, label: input.label }
+                }
+              } catch {
+                // Non-blocking fallback — step-3 will use anchor_renders
+              }
+              return null
+            })
+          ).then((results) => {
+            const valid = results.filter((r): r is { predictionId: string; label: string } => r !== null)
+            if (valid.length > 0) {
+              setShowcasePredictionIds(valid)
+            }
+          })
         }
       } catch {
         // Non-blocking — store will use defaults on step-3
@@ -68,7 +108,7 @@ export default function StyleQuizPage() {
         router.push("/design/step-3");
       }
     },
-    [roomType, setFingerprint, setStep, router]
+    [roomType, budgetTier, setFingerprint, setShowcasePredictionIds, setStep, router]
   );
 
   const handleSelection = useCallback(

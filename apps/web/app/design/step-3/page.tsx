@@ -26,15 +26,15 @@ export default function Step3Page() {
   const router = useRouter()
 
   // Read fingerprint from Zustand store (set by Step 2 quiz)
-  const { fingerprint: storedFingerprint, styleName: storedStyleName, roomType } = useFingerprintStore()
+  const { fingerprint: storedFingerprint, styleName: storedStyleName, roomType, budgetTier, showcasePredictionIds, setShowcasePredictionIds, setFingerprint: setStoreFingerprint } = useFingerprintStore()
   const { setStep } = useSessionStore()
 
   // Fall back to mock if store empty (direct navigation in dev)
   const [fingerprint, setFingerprint] = useState<number[]>(
     storedFingerprint ?? [0.7, 0.3, 0.8, 0.7, 0.4, 0.6, 0.5, 0.5, 0.5, 0.5]
   )
-  const [styleName, setStyleName] = useState(storedStyleName ?? "Warm Artisan")
-  const [styleChips, setStyleChips] = useState<string[]>([
+  const [styleName] = useState(storedStyleName ?? "Warm Artisan")
+  const [styleChips] = useState<string[]>([
     "organic textures", "warm neutrals", "minimal layers", "natural materials"
   ])
   const palette = derivepalette(fingerprint)
@@ -73,47 +73,71 @@ export default function Step3Page() {
 
   const phase2Ref = useRef<HTMLDivElement>(null)
 
-  // Load showcase images from anchor_renders on mount
+  // Load showcase images: poll predictions from store, fallback to anchor_renders
   useEffect(() => {
-    async function loadShowcaseImages() {
-      try {
-        const supabase = createBrowserClient()
+    const pendingIds = showcasePredictionIds
 
-        // Normalize room type to match anchor_renders format
-        const normalizedRoomType = (roomType ?? 'living_room')
-          .replace(/-/g, '_')
-          .toLowerCase()
-
-        const { data, error } = await supabase
-          .from('anchor_renders')
-          .select('image_url, label')
-          .eq('room_type', normalizedRoomType)
-          .limit(3)
-
-        if (error || !data || data.length === 0) {
-          // Fallback: query without room_type filter
-          const { data: fallback } = await supabase
+    if (!pendingIds || pendingIds.length === 0) {
+      // No predictions fired — load from anchor_renders directly
+      void (async () => {
+        try {
+          const supabase = createBrowserClient()
+          const normalizedRoomType = (roomType ?? 'living_room').replace(/-/g, '_').toLowerCase()
+          const { data, error } = await supabase
             .from('anchor_renders')
             .select('image_url, label')
+            .eq('room_type', normalizedRoomType)
             .limit(3)
-
-          if (fallback && fallback.length > 0) {
-            setShowcaseImages(fallback.map(r => ({ url: r.image_url, label: r.label ?? "Room" })))
-            setCardsLoaded([true, true, true])
+          if (error || !data || data.length === 0) {
+            const { data: fallback } = await supabase
+              .from('anchor_renders')
+              .select('image_url, label')
+              .limit(3)
+            if (fallback && fallback.length > 0) {
+              setShowcaseImages(fallback.map(r => ({ url: r.image_url, label: r.label ?? 'Room' })))
+              setCardsLoaded([true, true, true])
+            }
+            return
           }
-          return
-        }
-
-        setShowcaseImages(data.map(r => ({ url: r.image_url, label: r.label ?? "Room" })))
-        setCardsLoaded([true, true, true])
-      } catch (err) {
-        console.error('Failed to load showcase images:', err)
-        // Leave renderUrls as [null, null, null] — cards will show shimmer
-      }
+          setShowcaseImages(data.map(r => ({ url: r.image_url, label: r.label ?? 'Room' })))
+          setCardsLoaded([true, true, true])
+        } catch { /* shimmer stays */ }
+      })()
+      return
     }
 
-    void loadShowcaseImages()
-  }, [roomType])
+    // Poll each prediction — update card as it resolves
+    const pollOne = async (predictionId: string, index: number, label: string) => {
+      const maxAttempts = 30 // 90s max
+      for (let i = 0; i < maxAttempts; i++) {
+        await new Promise<void>(r => setTimeout(r, 3000))
+        try {
+          const res = await fetch(
+            `/api/render/status?prediction_id=${predictionId}&showcase_mode=true`,
+            { credentials: 'include' }
+          )
+          if (res.ok) {
+            const d = await res.json() as { status: string; render_url?: string }
+            if (d.status === 'complete' && d.render_url) {
+              setShowcaseImages(prev => { const next = [...prev]; next[index] = { url: d.render_url!, label }; return next })
+              setCardsLoaded(prev => { const next = [...prev]; next[index] = true; return next })
+              return
+            }
+            if (d.status === 'failed') break
+          }
+        } catch { /* keep polling */ }
+      }
+      // Timed out or failed — mark card loaded so user isn't stuck
+      setCardsLoaded(prev => { const next = [...prev]; next[index] = true; return next })
+    }
+
+    // Clear stored IDs so a refresh doesn't re-poll stale predictions
+    setShowcasePredictionIds(null)
+
+    pendingIds.forEach((item, i) => {
+      void pollOne(item.predictionId, i, item.label)
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Phase 1 animation sequence
   useEffect(() => {
@@ -270,60 +294,83 @@ export default function Step3Page() {
     setShowcaseImages([null, null, null])
     setFeelRightVisible(false)
 
-    try {
-      // Step 1: Get updated fingerprint from refinement text
-      const fpRes = await fetch("/api/quiz/fingerprint", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          responses: [], // no new quiz responses
-          refinement: adjustText,
-          current_fingerprint: fingerprint,
-          entry_path: "refinement",
-        }),
-      })
-      const fpData = await fpRes.json()
-      const newFingerprint: number[] = fpData.fingerprint ?? fingerprint
-      const newStyleName: string = fpData.style_name ?? styleName
-      const newStyleChips: string[] = fpData.style_tags ?? styleChips
-
-      setFingerprint(newFingerprint)
-      setStyleName(newStyleName)
-      setStyleChips(newStyleChips)
-
-      // Step 2: Reload showcase images from anchor_renders
-      const supabase = createBrowserClient()
-      const normalizedRoomType = (roomType ?? 'living_room')
-        .replace(/-/g, '_')
-        .toLowerCase()
-
-      const { data, error } = await supabase
-        .from('anchor_renders')
-        .select('image_url, label')
-        .eq('room_type', normalizedRoomType)
-        .limit(3)
-
-      if (!error && data && data.length > 0) {
-        setShowcaseImages(data.map(r => ({ url: r.image_url, label: r.label ?? "Room" })))
-      } else {
-        const { data: fallback } = await supabase
-          .from('anchor_renders')
-          .select('image_url, label')
-          .limit(3)
-        if (fallback && fallback.length > 0) {
-          setShowcaseImages(fallback.map(r => ({ url: r.image_url, label: r.label ?? "Room" })))
-        }
-      }
-      setCardsLoaded([true, true, true])
-
-      setAdjustText("")
-      setSelectedChips([])
-    } catch {
-      // On failure, restore loaded state so user isn't stuck
-      setCardsLoaded([true, true, true])
-    } finally {
-      setIsRegenerating(false)
+    // Apply chip adjustments directly to fingerprint dimensions
+    const adjustmentMap: Record<string, Record<number, number>> = {
+      'Warmer':       { 2: Math.min(1, (fingerprint[2] ?? 0.5) + 0.2) },
+      'Cooler':       { 2: Math.max(0, (fingerprint[2] ?? 0.5) - 0.2) },
+      'More minimal': { 1: Math.max(0, (fingerprint[1] ?? 0.5) - 0.2) },
+      'More layered': { 1: Math.min(1, (fingerprint[1] ?? 0.5) + 0.2) },
+      'More modern':  { 4: Math.max(0, (fingerprint[4] ?? 0.5) - 0.2) },
+      'More classic': { 4: Math.min(1, (fingerprint[4] ?? 0.5) + 0.2) },
     }
+    const modifiedFp = [...fingerprint]
+    selectedChips.forEach(chip => {
+      const adj = adjustmentMap[chip]
+      if (adj) {
+        Object.entries(adj).forEach(([dim, val]) => { modifiedFp[parseInt(dim)] = val })
+      }
+    })
+
+    setFingerprint(modifiedFp)
+    setStoreFingerprint(modifiedFp, styleName)
+
+    const SHOWCASE_INPUTS = [
+      { photo_url: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1024', label: 'Living Room' },
+      { photo_url: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=1024', label: 'Bedroom' },
+      { photo_url: 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=1024', label: 'Home Office' },
+    ]
+
+    await Promise.allSettled(
+      SHOWCASE_INPUTS.map(async (input, index) => {
+        try {
+          const renderRes = await fetch('/api/render', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              photo_url: input.photo_url,
+              fingerprint_vector: modifiedFp,
+              room_type: roomType ?? 'living_room',
+              budget: budgetTier ?? 'mid',
+              inclusions: [],
+              constraints: [],
+              showcase_mode: true,
+              style_name: styleName,
+            }),
+          })
+          if (!renderRes.ok) {
+            setCardsLoaded(prev => { const next = [...prev]; next[index] = true; return next })
+            return
+          }
+          const renderData = await renderRes.json() as { prediction_id: string }
+          // Poll until complete
+          for (let i = 0; i < 30; i++) {
+            await new Promise<void>(r => setTimeout(r, 3000))
+            const statusRes = await fetch(
+              `/api/render/status?prediction_id=${renderData.prediction_id}&showcase_mode=true`,
+              { credentials: 'include' }
+            )
+            if (statusRes.ok) {
+              const status = await statusRes.json() as { status: string; render_url?: string }
+              if (status.status === 'complete' && status.render_url) {
+                setShowcaseImages(prev => { const next = [...prev]; next[index] = { url: status.render_url!, label: input.label }; return next })
+                setCardsLoaded(prev => { const next = [...prev]; next[index] = true; return next })
+                return
+              }
+              if (status.status === 'failed') break
+            }
+          }
+          // Timed out
+          setCardsLoaded(prev => { const next = [...prev]; next[index] = true; return next })
+        } catch {
+          setCardsLoaded(prev => { const next = [...prev]; next[index] = true; return next })
+        }
+      })
+    )
+
+    setIsRegenerating(false)
+    setAdjustText('')
+    setSelectedChips([])
   }
 
   // Calculate radar chart points
