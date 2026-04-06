@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useFingerprintStore, useSessionStore } from "@/lib/store"
 import { StepIndicator } from "@/components/cova/StepIndicator"
 import { createBrowserClient } from "@/lib/supabase/client"
@@ -41,6 +41,9 @@ export default function Step3Page() {
 
   // Showcase images — populated from anchor_renders table (url + label)
   const [showcaseImages, setShowcaseImages] = useState<Array<{ url: string; label: string } | null>>([null, null, null])
+
+  const searchParams = useSearchParams()
+  const authRequired = searchParams.get('auth_required') === 'true'
 
   // Email auth form state
   const [showEmailForm, setShowEmailForm] = useState(false)
@@ -623,6 +626,15 @@ export default function Step3Page() {
             transition: "opacity 500ms ease, transform 500ms ease",
           }}
         >
+          {authRequired && (
+            <p
+              className="text-sm font-sans text-center mb-4 px-4 py-2 rounded-lg"
+              style={{ color: '#F5F0E8', background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.3)' }}
+            >
+              Please sign in to continue designing your room
+            </p>
+          )}
+
           <p
             className="text-[10px] font-sans text-[#C9A84C] mb-5"
             style={{ letterSpacing: "0.3em" }}

@@ -1,6 +1,20 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
+import sharp from 'sharp'
+
+// Auto-rotate based on EXIF orientation data.
+// Fixes sideways images from phone cameras before upload to Supabase Storage.
+async function correctImageOrientation(buffer: Buffer): Promise<Buffer> {
+  try {
+    return await sharp(buffer)
+      .rotate()  // auto-rotate based on EXIF orientation
+      .jpeg({ quality: 90 })
+      .toBuffer()
+  } catch {
+    return buffer  // return original if sharp fails
+  }
+}
 
 export async function POST(request: Request) {
   try {
@@ -27,16 +41,17 @@ export async function POST(request: Request) {
 
     const admin = createAdminSupabaseClient()
 
-    const fileExt = photo.name.split('.').pop() ?? 'jpg'
-    const fileName = `${user.id}/${Date.now()}.${fileExt}`
+    // Always output as jpg after EXIF correction
+    const fileName = `${user.id}/${Date.now()}.jpg`
 
     const arrayBuffer = await photo.arrayBuffer()
-    const buffer = new Uint8Array(arrayBuffer)
+    const rawBuffer = Buffer.from(arrayBuffer)
+    const buffer = await correctImageOrientation(rawBuffer)
 
     const { error: uploadError } = await admin.storage
       .from('room-photos')
       .upload(fileName, buffer, {
-        contentType: photo.type,
+        contentType: 'image/jpeg',
         upsert: false,
       })
 

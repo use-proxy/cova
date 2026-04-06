@@ -17,7 +17,10 @@ export async function POST(request: Request) {
     } = await supabase.auth.getUser()
 
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json(
+        { error: 'Authentication required', code: 'UNAUTHENTICATED' },
+        { status: 401 }
+      )
     }
 
     const body = (await request.json()) as DetectRequestBody

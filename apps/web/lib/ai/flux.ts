@@ -47,203 +47,105 @@ export function buildFluxPrompt(
     texture, scale, nature, saturation, materialOrigin
   ] = fingerprint
 
-  // Helper: only apply descriptor if signal is strong
   const hi = (v: number) => (v ?? 0.5) > 0.65
   const lo = (v: number) => (v ?? 0.5) < 0.35
 
-  // ── ATMOSPHERE (luminosity) ────────────────────────────────────────────
-  const atmosphereDesc = hi(luminosity)
-    ? 'Flooded with natural light from large windows. Bright airy atmosphere with soft diffused shadows and sun-warmed surfaces.'
-    : lo(luminosity)
-    ? 'Intimate moody atmosphere. Warm pools of light from accent fixtures. Deep rich shadows. Dramatic chiaroscuro lighting.'
-    : 'Comfortable balanced lighting. Warm ambient glow from a mix of natural and soft artificial sources.'
+  // Build style description — SHORT and specific for Kontext
+  // Max 3-4 style descriptors, each concrete and visual
+  const styleTerms: string[] = []
 
-  // ── MATERIALS & COLOR (temperature + materialOrigin) ──────────────────
-  const materialsDesc = hi(temperature)
-    ? hi(materialOrigin)
-      ? 'Materials: solid walnut wood with visible grain, handthrown terracotta ceramics, woven rattan, aged brass hardware, warm honey-toned oak. Warm amber and terracotta color palette throughout.'
-      : 'Materials: warm oak flooring, brushed brass fixtures, linen upholstery, warm cream and amber tones. Honey-warm color palette.'
-    : lo(temperature)
-    ? hi(materialOrigin)
-      ? 'Materials: raw concrete surfaces, hand-formed grey ceramics, blackened steel, cool slate stone, white oak with pale finish. Cool grey and slate blue color palette.'
-      : 'Materials: polished concrete, brushed chrome fixtures, cool grey stone, crisp white walls, silver-toned metals. Minimal cool palette.'
-    : 'Materials: neutral warm-white walls, natural wood tones in medium warmth, mix of warm and cool-toned materials. Balanced neutral palette.'
+  // Mood/atmosphere (1 term)
+  if (hi(luminosity)) styleTerms.push('bright airy natural light')
+  else if (lo(luminosity)) styleTerms.push('moody intimate warm lighting')
 
-  // ── FURNITURE STYLE (form + era + scale) ──────────────────────────────
-  const furnitureDesc = (() => {
-    const formDesc = hi(form)
-      ? 'Organic curved furniture silhouettes. Rounded edges. Sculptural biomorphic shapes. Flowing natural forms.'
-      : lo(form)
-      ? 'Strict geometric furniture. Sharp clean architectural lines. Angular precise silhouettes. Structured grid-like arrangement.'
-      : 'Transitional furniture forms. Mix of curved and angular elements.'
+  // Material palette (1-2 terms, most important)
+  if (hi(temperature) && hi(texture))
+    styleTerms.push('warm walnut wood, bouclé upholstery, aged brass, terracotta')
+  else if (hi(temperature))
+    styleTerms.push('warm oak, linen, honey tones, brass fixtures')
+  else if (lo(temperature) && lo(texture))
+    styleTerms.push('cool concrete, polished chrome, grey stone, glass')
+  else if (lo(temperature))
+    styleTerms.push('cool greys, brushed steel, white marble')
+  else
+    styleTerms.push('natural wood tones, neutral textiles')
 
-    const eraDesc = hi(era)
-      ? 'Traditional craft details. Antique and vintage furniture with time-worn patina. Heritage materials. Collected-over-decades aesthetic.'
-      : lo(era)
-      ? 'Ultra-contemporary 2025 furniture design. Cutting-edge silhouettes. Designer statement pieces. Current interior design trends.'
-      : 'Transitional style. Mix of timeless and contemporary pieces.'
+  // Furniture character (1 term)
+  if (hi(form) && hi(era))
+    styleTerms.push('organic curved vintage furniture')
+  else if (hi(form))
+    styleTerms.push('curved organic contemporary furniture')
+  else if (lo(form) && lo(era))
+    styleTerms.push('geometric ultra-modern furniture')
+  else if (lo(form))
+    styleTerms.push('clean-lined structured furniture')
 
-    const scaleDesc = hi(scale)
-      ? 'Grand statement furniture pieces. Bold visual weight and oversized proportions. Large-scale art on walls.'
-      : lo(scale)
-      ? 'Delicate furniture with fine legs and intimate proportions. Human-scale cozy feel. Careful small-scale details.'
-      : 'Well-proportioned furniture appropriate to the space.'
+  // Plants/nature (optional, only if strong signal)
+  if (hi(nature)) styleTerms.push('abundant indoor plants')
 
-    return `${formDesc} ${eraDesc} ${scaleDesc}`
-  })()
+  // Color pop (optional, only if strong signal)
+  if (hi(saturation)) styleTerms.push('bold jewel-tone accent colors')
+  else if (lo(saturation)) styleTerms.push('muted monochromatic palette')
 
-  // ── TEXTURE ───────────────────────────────────────────────────────────
-  const textureDesc = hi(texture)
-    ? 'Rich tactile surfaces throughout: chunky bouclé upholstery, rough natural linen textiles, handwoven jute rug, rattan accent pieces, raw wood grain visible, handthrown ceramic vessels with irregular surfaces.'
-    : lo(texture)
-    ? 'Smooth polished surfaces throughout: lacquered furniture, smooth full-grain leather, glossy ceramics, polished stone countertops, pristine glass and chrome.'
-    : 'Mix of smooth and textured surfaces in balance.'
+  // Suppress unused vars (density, scale, materialOrigin used for future expansion)
+  void density; void scale; void materialOrigin
 
-  // ── DENSITY & NATURE ──────────────────────────────────────────────────
-  const densityNatureDesc = (() => {
-    const densityText = hi(density)
-      ? 'Richly layered interior with many carefully curated objects, stacked books, layered textiles, art on every wall, collected objects on shelves.'
-      : lo(density)
-      ? 'Spare minimal interior. Very few objects. Intentional emptiness. Only absolutely essential pieces. Maximum negative space.'
-      : 'Well-furnished with thoughtful negative space between pieces.'
+  const styleDesc = styleTerms.join(', ')
 
-    const natureText = hi(nature)
-      ? 'Abundant biophilic elements: large fiddle leaf fig, trailing pothos, clustered plants in terracotta pots, natural wood with visible grain, stone surfaces, woven natural fiber textiles.'
-      : lo(nature)
-      ? 'Urban interior. No plants. Manufactured materials. Industrial city apartment aesthetic.'
-      : 'Few natural elements. One or two simple plants.'
-
-    return `${densityText} ${natureText}`
-  })()
-
-  // ── COLOR SATURATION ──────────────────────────────────────────────────
-  const saturationDesc = hi(saturation)
-    ? 'Bold confident color choices. Rich jewel-tone accents: deep emerald, ochre, or burnt sienna used as statement color moments.'
-    : lo(saturation)
-    ? 'Restrained monochromatic palette. Quiet tonal variations of a single hue. Muted desaturated tones throughout. Sophisticated color restraint.'
-    : ''
-
-  // ── ROOM PHYSICAL CONTEXT ─────────────────────────────────────────────
-  const roomContextParts: string[] = []
-  if (roomContext) {
-    if (roomContext.roomLength && roomContext.roomWidth) {
-      const sqft = Math.round(roomContext.roomLength * roomContext.roomWidth)
-      roomContextParts.push(`${sqft} square foot room`)
-    }
-    if (roomContext.ceilingHeight) {
-      roomContextParts.push(`${roomContext.ceilingHeight}ft ceiling height`)
-    }
-    if (roomContext.naturalLight) {
-      const lightMap: Record<string, string> = {
-        'No windows': 'no natural light, artificial lighting only',
-        'One small window': 'limited natural light from one small window',
-        'One large window': 'good natural light from one large window',
-        'Multiple windows': 'well-lit with multiple windows',
-        'Floor-to-ceiling windows': 'abundant natural light, floor-to-ceiling windows',
-      }
-      const lightDesc = lightMap[roomContext.naturalLight]
-      if (lightDesc) roomContextParts.push(lightDesc)
-    }
-    if (roomContext.floorType) {
-      const floorMap: Record<string, string> = {
-        'Hardwood': 'existing hardwood floors must be preserved',
-        'Light laminate': 'existing light laminate flooring',
-        'Carpet': 'existing carpet flooring',
-        'Tile': 'existing tile floor',
-        'Concrete': 'existing concrete floor',
-      }
-      const floorDesc = floorMap[roomContext.floorType]
-      if (floorDesc) roomContextParts.push(floorDesc)
-    }
-    if (
-      roomContext.wallFinish &&
-      roomContext.wallFinish !== 'Painted (standard)' &&
-      roomContext.wallFinish !== 'Unsure'
-    ) {
-      const wallMap: Record<string, string> = {
-        'Exposed brick': 'exposed brick walls must be preserved as feature wall',
-        'Wallpaper': 'wallpapered walls',
-        'Wood paneling': 'wood-paneled walls must be preserved',
-        'Concrete': 'raw concrete walls must be preserved',
-      }
-      const wallDesc = wallMap[roomContext.wallFinish]
-      if (wallDesc) roomContextParts.push(wallDesc)
-    }
-    if (roomContext.fixedElements && roomContext.fixedElements.length > 0) {
-      const elementMap: Record<string, string> = {
-        'Fireplace': 'fireplace as focal point on one wall — must be preserved',
-        'Built-in shelves': 'built-in shelving — must be preserved',
-        'Exposed brick': 'exposed brick feature wall — must be preserved',
-        'Open to kitchen': 'open plan connected to kitchen',
-        'Structural column': 'structural column in room — cannot be moved',
-        'Radiator': 'radiator on wall — must be designed around',
-        'Bay window': 'bay window — must be preserved as focal point',
-        'Sloped ceiling': 'sloped ceiling — furniture must accommodate',
-      }
-      const elements = roomContext.fixedElements
-        .map((e) => elementMap[e])
-        .filter(Boolean) as string[]
-      if (elements.length > 0) {
-        roomContextParts.push(`Fixed architectural elements: ${elements.join(', ')}`)
-      }
-    }
-  }
-  const roomContextText = roomContextParts.length > 0
-    ? roomContextParts.join('. ')
-    : ''
-
-  // ── KEPT ITEMS ────────────────────────────────────────────────────────
-  const keptItemsText = keptItems && keptItems.length > 0
-    ? `Existing furniture to preserve exactly as-is: ${keptItems.join(', ')}. These items must appear unchanged in their current positions.`
-    : ''
-
-  // ── BUDGET QUALITY ────────────────────────────────────────────────────
-  const budgetDesc = {
-    budget: 'Accessible affordable furniture from IKEA, Target, Wayfair. Budget-conscious but well-styled.',
-    mid: 'Quality mid-range furniture from Article, CB2, West Elm. Well-made pieces with good design.',
-    premium: 'Premium furniture from Restoration Hardware, Design Within Reach. Investment pieces with exceptional quality.',
-    luxury: 'Luxury designer furniture. Bespoke pieces, rare materials, collector items. No budget constraints.',
+  // Budget qualifier
+  const budgetQualifier = {
+    budget: 'affordable IKEA and Wayfair pieces',
+    mid: 'quality mid-range furniture',
+    premium: 'premium designer furniture',
+    luxury: 'luxury bespoke furniture',
   }[budgetTier]
 
-  // ── INCLUSIONS & CONSTRAINTS ──────────────────────────────────────────
+  // Inclusions (keep short)
   const inclusionText = inclusions.length > 0
-    ? `Must include these specific items in the design: ${inclusions.map(i => `a ${i}`).join(', ')}.`
+    ? `Include: ${inclusions.slice(0, 3).join(', ')}.`
     : ''
 
-  const constraintText = constraints.length > 0
-    ? `Design must respect these constraints: ${constraints.join(', ')}.`
+  // Constraints
+  const constraintText = constraints.includes('I rent')
+    ? 'No wall modifications.'
     : ''
 
-  // ── ASSEMBLE POSITIVE PROMPT ──────────────────────────────────────────
+  // Kept items — critical: tell Kontext exactly what NOT to change
+  const keptText = keptItems && keptItems.length > 0
+    ? `Keep unchanged: ${keptItems.join(', ')}.`
+    : ''
+
+  // Room context — only most important physical facts
+  const contextParts: string[] = []
+  if (roomContext?.floorType && roomContext.floorType !== 'Unsure') {
+    contextParts.push(`${roomContext.floorType.toLowerCase()} floor`)
+  }
+  if (roomContext?.wallFinish && !['Painted (standard)', 'Unsure'].includes(roomContext.wallFinish)) {
+    contextParts.push(roomContext.wallFinish.toLowerCase())
+  }
+  const contextText = contextParts.length > 0
+    ? `Existing: ${contextParts.join(', ')}.`
+    : ''
+
+  // KONTEXT PROMPT: Short editing instruction format
+  // Target: under 80 words total
   const positive = [
-    `Photorealistic interior design photograph of a beautifully redesigned ${roomType.replace(/_/g, ' ')}.`,
-    atmosphereDesc,
-    materialsDesc,
-    furnitureDesc,
-    textureDesc,
-    densityNatureDesc,
-    saturationDesc,
-    roomContextText,
-    keptItemsText,
-    budgetDesc,
+    `Redesign this ${roomType.replace(/_/g, ' ')} interior completely.`,
+    `Style: ${styleDesc}.`,
+    `Use ${budgetQualifier}.`,
+    keptText,
     inclusionText,
     constraintText,
-    'Shot on Hasselblad medium format camera.',
-    'Interior design magazine quality.',
-    'Ultra-high resolution, sharp focus throughout, perfect composition.',
-    'No people, no animals, no text overlays.',
+    contextText,
+    'Photorealistic interior design photo. Magazine quality. No people.',
   ].filter(Boolean).join(' ')
 
-  // ── NEGATIVE PROMPT ───────────────────────────────────────────────────
   const negative = [
-    'distorted perspective, wrong proportions, bent walls,',
-    'AI artifacts, blurry, low resolution, watermark,',
-    'cartoon, illustration, 3D render look, CGI,',
-    'fisheye lens, extreme distortion, multiple rooms visible,',
-    'people, faces, humans, animals, pets,',
-    'text overlays, logos, borders, frames,',
-    'dark vignette, overexposed, underexposed,',
-    'cluttered mess, dirty, unkempt, chaotic,',
+    'text in image, words visible, prompt text rendered,',
+    'blurry, distorted, low quality, watermark,',
+    'cartoon, illustration, 3D render look,',
+    'people, faces, animals,',
+    'rotated, sideways, upside down,',
   ].join(' ')
 
   return { positive, negative }

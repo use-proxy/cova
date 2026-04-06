@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { createBrowserClient } from '@/lib/supabase/client'
 import { useRoomStore } from '@/lib/store/room'
 import { useSessionStore } from '@/lib/store/session'
 import { useFingerprintStore } from '@/lib/store/fingerprint'
@@ -32,6 +33,18 @@ export default function Step5Page() {
     hasLiDAR: false,
     isDesktop: true,
   })
+
+  // Auth guard — step-5 requires auth (step-3 is where auth happens)
+  useEffect(() => {
+    const checkAuth = async () => {
+      const supabase = createBrowserClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/design/step-3?auth_required=true')
+      }
+    }
+    void checkAuth()
+  }, [router])
 
   // Detect device on mount
   useEffect(() => {

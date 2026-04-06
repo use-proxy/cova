@@ -79,6 +79,7 @@ const ARCHITECTURE_LABELS = [
 export async function detectFurniture(photoUrl: string): Promise<Detection[]> {
   try {
     const prompt = FURNITURE_LABELS.join(' . ')
+    console.log(`[detect] Running furniture detection on: ${photoUrl.substring(0, 80)}...`)
 
     const output = (await replicate.run(
       'adirik/grounding-dino:efd10a8ddc57ea28773327e881ce95e20cc1d734419b7d746a3f64db15559728',
@@ -98,18 +99,23 @@ export async function detectFurniture(photoUrl: string): Promise<Detection[]> {
       }>
     }
 
+    console.log(`[detect] Raw detections from Replicate: ${JSON.stringify(output.detections ?? [])}`)
+
     if (!output.detections) return []
 
-    return output.detections
-      .filter((d) => d.confidence >= 0.50)
-      .map((d) => ({
-        type: 'furniture',
-        label: d.label,
-        bbox: d.bbox as [number, number, number, number],
-        confidence: d.confidence,
-        showToUser: d.confidence >= 0.60,
-      }))
-  } catch {
+    const filtered = output.detections.filter((d) => d.confidence >= 0.50)
+    console.log(`[detect] After filtering (>= 0.50): ${filtered.length} items`)
+    console.log(`[detect] Items: ${filtered.map(d => `${d.label}(${d.confidence.toFixed(2)})`).join(', ')}`)
+
+    return filtered.map((d) => ({
+      type: 'furniture',
+      label: d.label,
+      bbox: d.bbox as [number, number, number, number],
+      confidence: d.confidence,
+      showToUser: d.confidence >= 0.60,
+    }))
+  } catch (err) {
+    console.error(`[detect] Furniture detection failed:`, err)
     return []
   }
 }
