@@ -23,6 +23,8 @@ export interface MatchedProduct {
   image_url: string
   match_score: number
   match_label: 'Perfect Match' | 'Very Similar' | 'Inspired By'
+  fit_label?: string
+  fit_reason?: string
   is_sale?: boolean
   rating?: number | null
   rating_count?: number | null
@@ -167,6 +169,46 @@ function ProductCard({
             {product.retailer}
           </span>
         </div>
+
+        {/* Fit indicator */}
+        {product.fit_label && product.fit_label !== 'Dimensions Unconfirmed' && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              marginBottom: '5px',
+            }}
+          >
+            <span
+              style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                flexShrink: 0,
+                backgroundColor:
+                  product.fit_label === 'Perfect Fit'
+                    ? '#1A7A4A'
+                    : product.fit_label === 'Good Fit'
+                    ? '#C9A84C'
+                    : '#D4801A',
+              }}
+            />
+            <span
+              style={{
+                fontSize: '10px',
+                color:
+                  product.fit_label === 'Perfect Fit'
+                    ? '#1A7A4A'
+                    : product.fit_label === 'Good Fit'
+                    ? '#C9A84C'
+                    : '#D4801A',
+              }}
+            >
+              {product.fit_label}
+            </span>
+          </div>
+        )}
 
         {/* Price */}
         <p

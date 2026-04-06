@@ -2,6 +2,8 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { cropAndUploadRenderRegion } from '@/lib/ai/renderCrop'
 import { searchProducts, buildSearchQuery, isTechItem, type SerperProduct } from '@/lib/ai/serper'
+import { getItemBudgetTarget } from '@/lib/ai/budget'
+import { extractDimensionsFromText, getDimensionsForCategory, scoreFit, type FitScore } from '@/lib/ai/fit'
 import Anthropic from '@anthropic-ai/sdk'
 import Replicate from 'replicate'
 import { NextResponse } from 'next/server'
@@ -21,6 +23,7 @@ interface MatchRequestBody {
   budget_range: [number, number] | null
   room_type: string
   room_id: string
+  primary_wall_usable_inches?: number
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -84,7 +87,13 @@ export async function POST(request: Request) {
       budget_range,
       room_type,
       room_id,
+      primary_wall_usable_inches,
     } = body
+
+    // Per-item budget target (designer allocation ratios by room type)
+    const itemBudgetRange: [number, number] | null = budget_range
+      ? getItemBudgetTarget(item_label, room_type, budget_range)
+      : null
 
     if (!render_url || !item_id || !item_label || !item_bbox || !room_id || !room_type) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -142,10 +151,10 @@ Example: "low-profile walnut coffee table tapered hairpin legs mid-century"`,
       console.warn('[match] Claude Vision failed, using item label:', err)
     }
 
-    // Step 3: Serper Shopping — two queries in parallel
+    // Step 3: Serper Shopping — two queries in parallel (use per-item budget range)
     const isTech = isTechItem(item_label)
-    const specificQuery = buildSearchQuery(itemDescription, budget_range, isTech)
-    const broaderQuery = buildSearchQuery(item_label, budget_range, isTech)
+    const specificQuery = buildSearchQuery(itemDescription, itemBudgetRange, isTech)
+    const broaderQuery = buildSearchQuery(item_label, itemBudgetRange, isTech)
 
     const [specificResults, broaderResults] = await Promise.allSettled([
       searchProducts(specificQuery, 10),
@@ -201,6 +210,8 @@ Example: "low-profile walnut coffee table tapered hairpin legs mid-century"`,
         image_url: p.imageUrl,
         match_score: 0.70,
         match_label: 'Inspired By' as const,
+        fit_label: 'Dimensions Unconfirmed' as const,
+        fit_reason: 'Room dimensions not provided',
         is_sale: p.isSale,
         rating: p.rating,
         rating_count: p.ratingCount,
@@ -227,6 +238,7 @@ Example: "low-profile walnut coffee table tapered hairpin legs mid-century"`,
     const candidatesWithScores: Array<SerperProduct & {
       visualScore: number
       budgetScore: number
+      fitResult: FitScore
       finalScore: number
     }> = []
 
@@ -239,20 +251,48 @@ Example: "low-profile walnut coffee table tapered hairpin legs mid-century"`,
       // Hard filter: skip if visual similarity below 0.70
       if (visualScore < CLIP_THRESHOLD) return
 
-      const budgetScore = budget_range
-        ? computeBudgetScore(product.price, budget_range)
+      const budgetScore = itemBudgetRange
+        ? computeBudgetScore(product.price, itemBudgetRange)
         : 0.75
 
-      const qualityScore = product.rating ? product.rating / 5 : 0.70
-      const finalScore = 0.60 * visualScore + 0.30 * budgetScore + 0.10 * qualityScore
+      // Fit scoring — extract dimensions from product title, fall back to category defaults
+      let fitResult: FitScore
+      if (primary_wall_usable_inches) {
+        const dims = extractDimensionsFromText(product.title) ?? getDimensionsForCategory(item_label)
+        fitResult = scoreFit(item_label, dims, primary_wall_usable_inches)
+      } else {
+        fitResult = {
+          label: 'Dimensions Unconfirmed',
+          score: 0.60,
+          passes: true,
+          reason: 'Room dimensions not provided',
+        }
+      }
 
-      candidatesWithScores.push({ ...product, visualScore, budgetScore, finalScore })
+      // Hard reject products that physically don't fit
+      if (!fitResult.passes) return
+
+      const qualityScore = product.rating ? product.rating / 5 : 0.70
+      const finalScore =
+        0.55 * visualScore +
+        0.25 * budgetScore +
+        0.10 * fitResult.score +
+        0.10 * qualityScore
+
+      candidatesWithScores.push({ ...product, visualScore, budgetScore, fitResult, finalScore })
     })
 
     // Sort by finalScore descending, take top 5
     const topProducts = candidatesWithScores
       .sort((a, b) => b.finalScore - a.finalScore)
       .slice(0, 5)
+
+    const unconfirmedFit: FitScore = {
+      label: 'Dimensions Unconfirmed',
+      score: 0.60,
+      passes: true,
+      reason: 'Room dimensions not provided',
+    }
 
     // If CLIP filtering eliminated everything, fall back to top budget-scored candidates
     const finalProducts = topProducts.length > 0
@@ -262,7 +302,8 @@ Example: "low-profile walnut coffee table tapered hairpin legs mid-century"`,
           .map((p) => ({
             ...p,
             visualScore: 0.70,
-            budgetScore: budget_range ? computeBudgetScore(p.price, budget_range) : 0.75,
+            budgetScore: itemBudgetRange ? computeBudgetScore(p.price, itemBudgetRange) : 0.75,
+            fitResult: unconfirmedFit,
             finalScore: 0.70,
           }))
 
@@ -276,6 +317,8 @@ Example: "low-profile walnut coffee table tapered hairpin legs mid-century"`,
         image_url: p.imageUrl,
         match_score: p.finalScore,
         match_label: getMatchLabel(p.visualScore),
+        fit_label: p.fitResult.label,
+        fit_reason: p.fitResult.reason,
         is_sale: p.isSale,
         rating: p.rating,
         rating_count: p.ratingCount,

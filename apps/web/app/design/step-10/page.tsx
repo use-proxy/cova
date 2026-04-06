@@ -49,7 +49,11 @@ export default function Step10Page() {
   const router = useRouter()
 
   const { renderUrl, keepMask, roomId } = useRoomStore()
-  const { fingerprint, budgetRange, roomType, styleName } = useFingerprintStore()
+  const { fingerprint, budgetRange, roomType, styleName, roomLength, roomWidth } = useFingerprintStore()
+
+  // Longest wall in inches — used for fit scoring
+  const primaryWallUsableInches =
+    roomLength && roomWidth ? Math.max(roomLength, roomWidth) * 12 : undefined
   const { setStep } = useSessionStore()
 
   void setStep // available for future navigation buttons; suppress lint
@@ -120,6 +124,7 @@ export default function Step10Page() {
               budget_range: budgetRange,
               room_type: roomType,
               room_id: roomId,
+              primary_wall_usable_inches: primaryWallUsableInches,
             }),
           })
           const data = (await r.json()) as { products: MatchedProduct[] }
@@ -170,6 +175,7 @@ export default function Step10Page() {
               budget_range: budgetRange,
               room_type: roomType,
               room_id: roomId,
+              primary_wall_usable_inches: primaryWallUsableInches,
             }),
           })
           if (!res.ok) throw new Error(`Match failed for ${detection.label}`)
@@ -238,7 +244,7 @@ export default function Step10Page() {
     }
 
     void fireAllMatches()
-  }, [detections, renderUrl, fingerprint, budgetRange, roomType, roomId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [detections, renderUrl, fingerprint, budgetRange, roomType, roomId, primaryWallUsableInches]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleBuyClick = useCallback(
     async (product: MatchedProduct) => {
