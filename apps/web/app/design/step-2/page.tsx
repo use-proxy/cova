@@ -16,7 +16,7 @@ import { analytics } from '@/lib/analytics'
 import { captureError as reportError } from '@/lib/errors'
 
 type CaptureStage = 'initial' | 'previewing' | 'uploading' | 'complete' | 'error'
-type AuthStage = 'idle' | 'showing' | 'loading' | 'done'
+type AuthStage = 'idle' | 'checking' | 'showing' | 'loading' | 'done'
 
 const COLORS = {
   background: '#0A1628',
@@ -35,7 +35,7 @@ export default function Step2Page() {
   const { roomType } = useFingerprintStore()
 
   const [captureStage, setCaptureStage] = useState<CaptureStage>('initial')
-  const [authStage, setAuthStage] = useState<AuthStage>('idle')
+  const [authStage, setAuthStage] = useState<AuthStage>('checking')
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [captureError, setCaptureError] = useState<string | null>(null)
@@ -81,10 +81,13 @@ export default function Step2Page() {
       const supabase = createBrowserClient()
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
-        // Already authenticated — skip auth UI, go straight after capture
+        // Already authenticated — skip auth UI, go straight to capture
         setAuthStage('done')
         // Pre-create room so QR code is ready for authenticated users
         void createRoomRecord()
+      } else {
+        // Not authenticated — show auth UI before capture
+        setAuthStage('showing')
       }
     }
     void checkExistingAuth()
@@ -116,14 +119,9 @@ export default function Step2Page() {
       setPreviewUrl(photoUrl)
       setUploadedPhotoUrl(photoUrl)
       setCaptureStage('complete')
-      // Show auth section if not already authed
-      if (authStage !== 'done') {
-        setAuthStage('showing')
-      } else {
-        void proceedAfterAuth(photoUrl, currentRoomId)
-      }
+      void proceedAfterAuth(photoUrl, currentRoomId)
     },
-    [authStage, currentRoomId, setPhotoUrl]
+    [currentRoomId, setPhotoUrl]
   )
 
   const handleCaptureError = useCallback((message: string) => {
@@ -162,12 +160,7 @@ export default function Step2Page() {
 
       setCaptureStage('complete')
 
-      // Show auth section if not already authed
-      if (authStage !== 'done') {
-        setAuthStage('showing')
-      } else {
-        void proceedAfterAuth(data.photo_url, data.room_id)
-      }
+      void proceedAfterAuth(data.photo_url, data.room_id)
     } catch (err) {
       void reportError(err, {
         type: 'upload_failed',
@@ -176,7 +169,7 @@ export default function Step2Page() {
       setCaptureError('Upload failed. Check your connection and try again.')
       setCaptureStage('error')
     }
-  }, [selectedFile, currentRoomId, roomType, authStage, setRoom, setPhotoUrl])
+  }, [selectedFile, currentRoomId, roomType, setRoom, setPhotoUrl])
 
   const handleRetake = useCallback(() => {
     if (previewUrl?.startsWith('blob:')) {
@@ -186,7 +179,7 @@ export default function Step2Page() {
     setSelectedFile(null)
     setCaptureStage('initial')
     setCaptureError(null)
-    setAuthStage('idle')
+    setAuthStage('done')
     setUploadedPhotoUrl(null)
   }, [previewUrl])
 
@@ -319,8 +312,35 @@ export default function Step2Page() {
           </p>
         </div>
 
-        {/* Capture UI — shown until complete */}
-        {(captureStage === 'initial' || captureStage === 'error') && (
+        {/* Auth checking skeleton — shown briefly while session resolves */}
+        {authStage === 'checking' && (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '16px',
+              paddingTop: '48px',
+            }}
+          >
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                border: `2px solid #C9A84C`,
+                borderTopColor: 'transparent',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite',
+              }}
+            />
+            <p style={{ color: '#8BA3C0', fontSize: '14px', fontFamily: 'Inter, sans-serif' }}>
+              Loading...
+            </p>
+          </div>
+        )}
+
+        {/* Capture UI — only shown after auth is confirmed */}
+        {authStage === 'done' && (captureStage === 'initial' || captureStage === 'error') && (
           <>
             {device.isDesktop && currentRoomId ? (
               <QRCapture
@@ -391,7 +411,7 @@ export default function Step2Page() {
           </>
         )}
 
-        {(captureStage === 'previewing' || captureStage === 'uploading') && previewUrl && (
+        {authStage === 'done' && (captureStage === 'previewing' || captureStage === 'uploading') && previewUrl && (
           <CaptureResult
             photoUrl={previewUrl}
             onConfirm={handleConfirm}
@@ -452,27 +472,30 @@ export default function Step2Page() {
               }}
             />
 
-            <p
+            <h2
               style={{
-                fontSize: 10,
-                letterSpacing: '0.3em',
-                color: COLORS.gold,
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'EB Garamond, Georgia, serif',
+                fontSize: '22px',
+                color: '#F8F6F1',
+                fontWeight: 400,
+                margin: 0,
+                textAlign: 'center',
               }}
             >
-              SAVE YOUR DESIGN
-            </p>
+              First, let&apos;s save your work
+            </h2>
 
             <p
               style={{
                 fontSize: '14px',
-                color: COLORS.muted,
+                color: '#8BA3C0',
                 textAlign: 'center',
                 maxWidth: 320,
                 fontFamily: 'Inter, sans-serif',
+                margin: 0,
               }}
             >
-              Create a free account to save your room and unlock your personalized design.
+              Sign in so we can save your design as you go.
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%', maxWidth: 320 }}>
