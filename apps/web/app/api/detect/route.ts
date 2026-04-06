@@ -16,6 +16,10 @@ export async function POST(request: Request) {
       data: { user },
     } = await supabase.auth.getUser()
 
+    console.log('=== DETECT AUTH ===')
+    console.log('USER:', user ? user.id : 'NULL - UNAUTHORIZED')
+    console.log('=== END AUTH ===')
+
     if (!user) {
       return NextResponse.json(
         { error: 'Authentication required', code: 'UNAUTHENTICATED' },

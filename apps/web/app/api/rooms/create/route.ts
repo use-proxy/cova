@@ -43,7 +43,6 @@ export async function POST(request: Request) {
     .from('rooms')
     .insert({
       user_id: user.id,
-      pipeline_status: 'pending',
       room_type: roomType,
     })
     .select('id')

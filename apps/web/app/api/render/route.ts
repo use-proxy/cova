@@ -97,6 +97,10 @@ export async function POST(request: Request) {
         constraints ?? [],
         undefined
       )
+      console.log('=== FLUX PROMPT (showcase) ===')
+      console.log('LENGTH:', positive.length, 'chars')
+      console.log('PROMPT:', positive)
+      console.log('=== END PROMPT ===')
       const prediction = await replicate.predictions.create({
         model: 'black-forest-labs/flux-kontext-pro',
         input: {
@@ -142,6 +146,11 @@ export async function POST(request: Request) {
       roomContext,
       keptItems,
     )
+
+    console.log('=== FLUX PROMPT ===')
+    console.log('LENGTH:', positiveBase.length, 'chars')
+    console.log('PROMPT:', positiveBase)
+    console.log('=== END PROMPT ===')
 
     let positive = positiveBase
 
