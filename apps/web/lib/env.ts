@@ -23,6 +23,8 @@ const ENV_VARS: EnvVar[] = [
   { name: 'SENTRY_DSN', required: false, serverOnly: true },
   // Affiliates — optional (affiliate URLs degrade gracefully)
   { name: 'AMAZON_AFFILIATE_TAG', required: false, serverOnly: true },
+  // Search — optional (used for product enrichment)
+  { name: 'SERPER_API_KEY', required: false, serverOnly: true },
 ]
 
 interface ValidationResult {

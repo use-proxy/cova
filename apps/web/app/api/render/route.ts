@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { buildFluxPrompt } from '@/lib/ai/flux'
+import { buildFluxPrompt, type RoomPhysicalContext } from '@/lib/ai/flux'
+import { generateInpaintingMask } from '@/lib/ai/inpainting'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { NextResponse } from 'next/server'
 import Replicate from 'replicate'
@@ -15,7 +16,7 @@ interface RenderRequestBody {
     type: string
     bbox: [number, number, number, number]
     confidence: number
-    keep: boolean
+    keep: boolean | null
     label: string
   }> | null
   fingerprint_vector: number[]
@@ -26,6 +27,15 @@ interface RenderRequestBody {
   room_id: string
   style_strength?: number
   refinement_text?: string
+  // Room physical context — collected in step-4
+  room_length?: number | null
+  room_width?: number | null
+  ceiling_height?: number | null
+  natural_light?: string | null
+  floor_type?: string | null
+  wall_finish?: string | null
+  fixed_elements?: string[]
+  wall_layout?: RoomPhysicalContext['wallLayout']
 }
 
 export async function POST(request: Request) {
@@ -51,6 +61,7 @@ export async function POST(request: Request) {
 
     const {
       photo_url,
+      keep_mask,
       fingerprint_vector,
       room_type,
       budget,
@@ -59,18 +70,45 @@ export async function POST(request: Request) {
       room_id,
       style_strength = 0.85,
       refinement_text,
+      room_length,
+      room_width,
+      ceiling_height,
+      natural_light,
+      floor_type,
+      wall_finish,
+      fixed_elements,
+      wall_layout,
     } = body
 
     if (!photo_url || !fingerprint_vector || !room_type || !budget || !room_id) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
+    const roomContext: RoomPhysicalContext | undefined =
+      room_length || room_width || ceiling_height || natural_light || floor_type || wall_finish
+        ? {
+            roomLength: room_length ?? null,
+            roomWidth: room_width ?? null,
+            ceilingHeight: ceiling_height ?? null,
+            naturalLight: natural_light ?? null,
+            floorType: floor_type ?? null,
+            wallFinish: wall_finish ?? null,
+            fixedElements: fixed_elements ?? [],
+            wallLayout: wall_layout ?? null,
+          }
+        : undefined
+
+    const inpaintingMaskUrl = keep_mask
+      ? await generateInpaintingMask(photo_url, keep_mask, room_id)
+      : null
+
     const { positive: positiveBase, negative } = buildFluxPrompt(
       fingerprint_vector,
       room_type,
       budget,
       inclusions ?? [],
-      constraints ?? []
+      constraints ?? [],
+      roomContext
     )
 
     let positive = positiveBase
@@ -105,6 +143,9 @@ Modify the prompt to incorporate the user's instruction while preserving the cor
         output_format: 'jpg',
         output_quality: 90,
         safety_tolerance: 2,
+        // NOTE: flux-kontext-pro mask support pending Replicate schema confirmation.
+        // Stored in input so it's available once the model documents the parameter.
+        ...(inpaintingMaskUrl ? { mask: inpaintingMaskUrl } : {}),
         // metadata carried through for status route DB write
         _room_id: room_id,
         _negative_prompt: negative,

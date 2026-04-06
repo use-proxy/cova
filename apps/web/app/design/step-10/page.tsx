@@ -15,7 +15,7 @@ import type { KeepMaskItem } from '@/lib/store/room'
 function toDetectedItems(mask: KeepMaskItem[] | null): DetectedItem[] {
   if (!mask) return []
   return mask
-    .filter((item) => item.confidence >= 0.75)
+    .filter((item) => item.confidence >= 0.75 && item.keep !== true)
     .map((item) => ({
       id: item.label.toLowerCase().replace(/\s+/g, '-'),
       label: item.label,
