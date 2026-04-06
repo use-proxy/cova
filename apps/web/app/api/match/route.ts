@@ -145,7 +145,8 @@ Example: "low-profile walnut coffee table tapered hairpin legs mid-century"`,
       })
       const first = visionResponse.content[0]
       if (first.type === 'text' && first.text.trim()) {
-        itemDescription = first.text.trim()
+        // Cap at 12 words to keep Serper queries focused
+        itemDescription = first.text.trim().split(/\s+/).slice(0, 12).join(' ')
       }
     } catch (err) {
       console.warn('[match] Claude Vision failed, using item label:', err)
@@ -171,7 +172,19 @@ Example: "low-profile walnut coffee table tapered hairpin legs mid-century"`,
         if (!allProductsMap.has(p.productUrl)) allProductsMap.set(p.productUrl, p)
       })
     }
-    const candidates = Array.from(allProductsMap.values())
+    // Also deduplicate by normalized title (catches same product at different URLs)
+    const seenTitles = new Set<string>()
+    const candidates = Array.from(allProductsMap.values()).filter((p) => {
+      const normalized = p.title
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '')
+        .split(/\s+/)
+        .slice(0, 6)
+        .join(' ')
+      if (seenTitles.has(normalized)) return false
+      seenTitles.add(normalized)
+      return true
+    })
 
     // If Serper returned nothing (no API key, rate limited, etc.) — empty response
     if (candidates.length === 0) {

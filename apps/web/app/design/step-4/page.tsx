@@ -1772,12 +1772,29 @@ export default function Step4Page() {
               (e.currentTarget.style.color = colors.mutedDark)
             }
             onClick={() => {
+              // Save dimensions
               setRoomDimensions({
                 length: length ? parseFloat(length) : null,
                 width: width ? parseFloat(width) : null,
                 ceilingHeight: ceilingHeight ? parseFloat(ceilingHeight) : null,
                 naturalLight: naturalLight || null,
               });
+              // Save wall layout from any symbols placed so far
+              const skipWallLayout: WallLayout = { top: [], bottom: [], left: [], right: [] };
+              placedSymbols.forEach((s) => {
+                skipWallLayout[s.wall].push({ type: s.type, position: s.position });
+              });
+              setWallLayout(skipWallLayout);
+              // Save fixed elements, surfaces, closet
+              setFixedElements(selectedFixed);
+              setSurfaces(floorType, wallFinish);
+              setCloset(hasCloset, closetWall);
+              // Save any constraints entered as raw comma-split array
+              const constraintsArray = constraints.trim()
+                ? constraints.split(',').map((c) => c.trim()).filter(Boolean)
+                : [];
+              saveConstraints(constraintsArray);
+              // Save inclusions
               setInclusions([...selectedMustHaves, ...customItems]);
               setStep(5);
               router.push("/design/step-5");

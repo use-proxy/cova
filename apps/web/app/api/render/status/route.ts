@@ -78,6 +78,7 @@ export async function GET(request: NextRequest) {
   const predictionId = searchParams.get('prediction_id')
   const roomId = searchParams.get('room_id')
   const isShowcaseMode = searchParams.get('showcase_mode') === 'true'
+  const renderIteration = parseInt(searchParams.get('render_iteration') ?? '1', 10)
 
   if (!predictionId || (!isShowcaseMode && !roomId)) {
     return NextResponse.json({ error: 'Missing prediction_id or room_id' }, { status: 400 })
@@ -244,7 +245,7 @@ export async function GET(request: NextRequest) {
         render_url: finalRenderUrl,
         prompt,
         style_strength: styleStrength,
-        iteration: 1,
+        iteration: renderIteration,
       }
 
       const { data: stage2Session, error: stage2SessionError } = await admin

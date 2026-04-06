@@ -439,7 +439,7 @@ function StateToggle({
 
 export default function Step6Page() {
   const router = useRouter()
-  const { roomId, originalPhotoUrl, keepMask, setKeepMask, toggleKeepItem } = useRoomStore()
+  const { roomId, originalPhotoUrl, keepMask, setKeepMask, setDepthMapUrl, toggleKeepItem } = useRoomStore()
   const { roomType: _roomType } = useFingerprintStore()
   const { setStep } = useSessionStore()
 
@@ -522,6 +522,7 @@ export default function Step6Page() {
         if (data.ready) {
           clearInterval(pollRef.current!)
           setKeepMask(data.detections)
+          setDepthMapUrl(data.depth_map_url)
         }
       } catch {
         // transient error — keep polling

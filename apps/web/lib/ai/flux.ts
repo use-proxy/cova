@@ -100,14 +100,28 @@ export function buildFluxPrompt(
     luxury: 'luxury bespoke furniture',
   }[budgetTier]
 
-  // Inclusions (keep short)
+  // Inclusions — all user selections, no arbitrary cap
   const inclusionText = inclusions.length > 0
-    ? `Include: ${inclusions.slice(0, 3).join(', ')}.`
+    ? `Include: ${inclusions.join(', ')}.`
     : ''
 
-  // Constraints
-  const constraintText = constraints.includes('I rent')
-    ? 'No wall modifications.'
+  // Constraints — full map of recognised constraint strings to prompt instructions
+  const constraintPrompts: Record<string, string> = {
+    'I rent': 'No wall modifications, no painting, no permanent fixtures.',
+    "Can't drill walls": 'No wall-mounted items — use freestanding alternatives.',
+    'I have pets': 'Pet-friendly materials — durable fabrics, avoid delicate items.',
+    'Child-safe furniture': 'Child-safe design — rounded corners, stable anchored pieces.',
+    'Very low light': 'Supplement with multiple artificial light sources.',
+    'Tight budget': 'Cost-conscious selections — maximize impact per dollar.',
+    'Sharing the space': 'Dual-use furniture and defined personal zones.',
+    'Working from home': 'Incorporate a dedicated workspace with good ergonomics.',
+    'Frequent guests': 'Include flexible seating and guest accommodation.',
+  }
+  const constraintTexts = (constraints ?? [])
+    .map((c) => constraintPrompts[c])
+    .filter(Boolean)
+  const constraintText = constraintTexts.length > 0
+    ? constraintTexts.join(' ')
     : ''
 
   // Kept items — critical: tell Kontext exactly what NOT to change
@@ -115,17 +129,85 @@ export function buildFluxPrompt(
     ? `Keep unchanged: ${keptItems.join(', ')}.`
     : ''
 
-  // Room context — only most important physical facts
+  // Room context — all collected physical facts
   const contextParts: string[] = []
-  if (roomContext?.floorType && roomContext.floorType !== 'Unsure') {
+
+  // Surfaces
+  if (roomContext?.floorType && roomContext.floorType !== 'Unsure' && roomContext.floorType !== 'Mixed / unsure') {
     contextParts.push(`${roomContext.floorType.toLowerCase()} floor`)
   }
   if (roomContext?.wallFinish && !['Painted (standard)', 'Unsure'].includes(roomContext.wallFinish)) {
     contextParts.push(roomContext.wallFinish.toLowerCase())
   }
+
+  // Room size
+  if (roomContext?.roomLength && roomContext?.roomWidth) {
+    const sqft = Math.round(roomContext.roomLength * roomContext.roomWidth)
+    if (sqft < 150) contextParts.push('small intimate room under 150 sqft')
+    else if (sqft < 300) contextParts.push('medium-sized room 150–300 sqft')
+    else contextParts.push('large spacious room over 300 sqft')
+  }
+
+  // Ceiling height (stored in feet)
+  if (roomContext?.ceilingHeight) {
+    if (roomContext.ceilingHeight >= 10) {
+      contextParts.push('dramatic high ceilings — use tall furniture and vertical art')
+    } else if (roomContext.ceilingHeight <= 7) {
+      contextParts.push('low ceilings — keep furniture low-profile and avoid tall pieces')
+    }
+    // 8–9 ft is standard, no special treatment needed
+  }
+
+  // Fixed architectural elements
+  const fixedElementPrompts: Record<string, string> = {
+    'Fireplace': 'existing fireplace as room focal point — design around it, keep it visible',
+    'Built-in shelves': 'existing built-in shelving — style with books and objects',
+    'Exposed brick': 'existing exposed brick wall — incorporate as textural feature',
+    'Open to kitchen': 'open-plan space connected to kitchen — maintain visual flow',
+    'Structural column': 'structural column — incorporate into design',
+    'Radiator': 'radiator on wall — design around it with nearby furniture',
+    'Bay window': 'bay window — create a reading nook or seating area in the bay',
+    'Sloped ceiling': 'sloped ceiling — use furniture sized to work with angles',
+    'En-suite bathroom': 'attached bathroom — consider sight lines from bed',
+    'Large mirror wall': 'large mirror wall — use to reflect light and depth',
+  }
+  if (roomContext?.fixedElements && roomContext.fixedElements.length > 0) {
+    const elementDescs = roomContext.fixedElements
+      .map((e) => fixedElementPrompts[e])
+      .filter(Boolean)
+    if (elementDescs.length > 0) {
+      contextParts.push('Fixed elements to preserve: ' + elementDescs.join('. '))
+    }
+  }
+
+  // Wall layout — windows and doors
+  if (roomContext?.wallLayout) {
+    const wallNames: Record<string, string> = {
+      top: 'back wall', bottom: 'front wall',
+      left: 'left wall', right: 'right wall',
+    }
+    const wallDesc: string[] = []
+    const layout = roomContext.wallLayout as Record<string, Array<{ type: string }>>
+    Object.entries(layout).forEach(([wall, items]) => {
+      if (!Array.isArray(items) || items.length === 0) return
+      const windows = items.filter((i) => i.type === 'window').length
+      const doors = items.filter((i) => i.type === 'door').length
+      const parts: string[] = []
+      if (windows > 0) parts.push(`${windows} window${windows > 1 ? 's' : ''}`)
+      if (doors > 0) parts.push(`${doors} door${doors > 1 ? 's' : ''}`)
+      if (parts.length > 0) {
+        wallDesc.push(`${wallNames[wall] ?? wall} has ${parts.join(' and ')}`)
+      }
+    })
+    if (wallDesc.length > 0) {
+      contextParts.push('Room layout: ' + wallDesc.join(', '))
+    }
+  }
+
   const contextText = contextParts.length > 0
-    ? `Existing: ${contextParts.join(', ')}.`
+    ? `Existing: ${contextParts.join('. ')}.`
     : ''
+
 
   // KONTEXT PROMPT: Short editing instruction format
   // Target: under 80 words total

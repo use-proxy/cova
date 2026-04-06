@@ -35,7 +35,7 @@ function toDetectedItems(mask: KeepMaskItem[] | null): DetectedItem[] {
   return mask
     .filter((item) => item.confidence >= 0.30 && item.keep !== true)
     .map((item) => ({
-      id: item.label.toLowerCase().replace(/\s+/g, '-'),
+      id: `${item.label.toLowerCase().replace(/\s+/g, '-')}-${Math.round(item.bbox[0] * 100)}-${Math.round(item.bbox[1] * 100)}`,
       label: item.label,
       left: (item.bbox[0] + item.bbox[2] / 2) * 100,  // center X as %
       top: (item.bbox[1] + item.bbox[3] / 2) * 100,   // center Y as %

@@ -243,7 +243,7 @@ function AbstractGrid() {
 export default function Step7Page() {
   const router = useRouter()
 
-  const { roomId, originalPhotoUrl, depthMapUrl, keepMask, setRenderUrl } = useRoomStore()
+  const { roomId, originalPhotoUrl, depthMapUrl, keepMask, setRenderUrl, currentRenderIteration } = useRoomStore()
   const {
     fingerprint,
     roomType,
@@ -335,6 +335,7 @@ export default function Step7Page() {
           wall_layout: wallLayout ?? undefined,
           room_id: roomId,
           style_strength: styleStrength,
+          render_iteration: currentRenderIteration,
           ...(refinementText ? { refinement_text: refinementText } : {}),
         }),
       })
@@ -363,7 +364,7 @@ export default function Step7Page() {
       pollRef.current = setInterval(async () => {
         try {
           const statusRes = await fetch(
-            `/api/render/status?prediction_id=${predictionId}&room_id=${roomId}`
+            `/api/render/status?prediction_id=${predictionId}&room_id=${roomId}&render_iteration=${currentRenderIteration}`
           )
           if (!statusRes.ok) return // transient error — keep polling
 
@@ -428,6 +429,7 @@ export default function Step7Page() {
     roomId,
     refinementText,
     styleStrength,
+    currentRenderIteration,
     clearRefinement,
     setRenderUrl,
     setStep,

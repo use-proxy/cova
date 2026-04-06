@@ -38,6 +38,7 @@ interface RenderRequestBody {
   wall_layout?: RoomPhysicalContext['wallLayout']
   showcase_mode?: boolean
   style_name?: string
+  render_iteration?: number
 }
 
 export async function POST(request: Request) {
