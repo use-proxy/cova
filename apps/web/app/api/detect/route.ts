@@ -4,6 +4,27 @@ import { detectFurniture, detectArchitecture } from '@/lib/ai/grounding'
 import { estimateDepth } from '@/lib/ai/depth'
 import { NextResponse } from 'next/server'
 
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelay: number = 15000  // 15 seconds — Replicate rate limit resets in ~10s
+): Promise<T> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn()
+    } catch (err) {
+      const is429 = err instanceof Error && err.message.includes('429')
+      if (is429 && attempt < maxRetries) {
+        console.log(`[detect] Rate limited, retrying in ${baseDelay / 1000}s (attempt ${attempt + 1}/${maxRetries})`)
+        await new Promise(r => setTimeout(r, baseDelay))
+        continue
+      }
+      throw err
+    }
+  }
+  throw new Error('Max retries exceeded')
+}
+
 interface DetectRequestBody {
   photo_url: string
   room_id?: string
@@ -15,10 +36,6 @@ export async function POST(request: Request) {
     const {
       data: { user },
     } = await supabase.auth.getUser()
-
-    console.log('=== DETECT AUTH ===')
-    console.log('USER:', user ? user.id : 'NULL - UNAUTHORIZED')
-    console.log('=== END AUTH ===')
 
     if (!user) {
       return NextResponse.json(
@@ -35,8 +52,8 @@ export async function POST(request: Request) {
     }
 
     const [furniture, architecture, depthResult] = await Promise.all([
-      detectFurniture(photo_url),
-      detectArchitecture(photo_url),
+      withRetry(() => detectFurniture(photo_url)),
+      withRetry(() => detectArchitecture(photo_url)),
       estimateDepth(photo_url),
     ])
 

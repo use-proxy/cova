@@ -61,16 +61,21 @@ export default function StyleQuizPage() {
           };
           setFingerprint(data.fingerprint, data.style_name);
 
-          // Fire showcase renders non-blocking — stored in Zustand (Rule 1: no sessionStorage)
+          // Fire showcase renders sequentially to avoid rate limits
+          // Each render fires 2 seconds after the previous one starts
+          // Non-blocking — stored in Zustand (Rule 1: no sessionStorage)
           const SHOWCASE_INPUTS = [
             { photo_url: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1024', label: 'Living Room' },
             { photo_url: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=1024', label: 'Bedroom' },
             { photo_url: 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=1024', label: 'Home Office' },
           ]
-          void Promise.all(
-            SHOWCASE_INPUTS.map(async (input) => {
+          void (async () => {
+            const results: Array<{ predictionId: string; label: string }> = []
+            for (let i = 0; i < SHOWCASE_INPUTS.length; i++) {
+              if (i > 0) await new Promise(r => setTimeout(r, 2000))
+              const input = SHOWCASE_INPUTS[i]!
               try {
-                const renderRes = await fetch('/api/render', {
+                const res = await fetch('/api/render', {
                   method: 'POST',
                   credentials: 'include',
                   headers: { 'Content-Type': 'application/json' },
@@ -85,21 +90,18 @@ export default function StyleQuizPage() {
                     style_name: data.style_name,
                   }),
                 })
-                if (renderRes.ok) {
-                  const renderData = await renderRes.json() as { prediction_id: string }
-                  return { predictionId: renderData.prediction_id, label: input.label }
+                if (res.ok) {
+                  const renderData = await res.json() as { prediction_id: string }
+                  results.push({ predictionId: renderData.prediction_id, label: input.label })
                 }
               } catch {
                 // Non-blocking fallback — step-3 will use anchor_renders
               }
-              return null
-            })
-          ).then((results) => {
-            const valid = results.filter((r): r is { predictionId: string; label: string } => r !== null)
-            if (valid.length > 0) {
-              setShowcasePredictionIds(valid)
             }
-          })
+            if (results.length > 0) {
+              setShowcasePredictionIds(results)
+            }
+          })()
         }
       } catch {
         // Non-blocking — store will use defaults on step-3

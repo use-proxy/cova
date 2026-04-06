@@ -79,7 +79,6 @@ const ARCHITECTURE_LABELS = [
 export async function detectFurniture(photoUrl: string): Promise<Detection[]> {
   try {
     const prompt = FURNITURE_LABELS.join(' . ')
-    console.log(`[detect] Running furniture detection on: ${photoUrl.substring(0, 80)}...`)
 
     const output = (await replicate.run(
       'adirik/grounding-dino:efd10a8ddc57ea28773327e881ce95e20cc1d734c589f7dd01d2036921ed78aa',
@@ -99,19 +98,9 @@ export async function detectFurniture(photoUrl: string): Promise<Detection[]> {
       }>
     }
 
-    console.log('=== DETECTION RAW ===')
-    console.log('MODEL OUTPUT:', JSON.stringify(output, null, 2))
-    console.log('=== END RAW ===')
-
     if (!output.detections) return []
 
     const filtered = output.detections.filter((d) => d.confidence >= 0.50)
-    console.log('=== DETECTION FILTERED ===')
-    console.log('COUNT:', filtered.length)
-    console.log('ITEMS:', filtered.map(d =>
-      d.label + '(' + d.confidence.toFixed(2) + ')'
-    ).join(', '))
-    console.log('=== END FILTERED ===')
 
     return filtered.map((d) => ({
       type: 'furniture',
