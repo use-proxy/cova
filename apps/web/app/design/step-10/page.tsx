@@ -33,7 +33,7 @@ type Accessory = {
 function toDetectedItems(mask: KeepMaskItem[] | null): DetectedItem[] {
   if (!mask) return []
   return mask
-    .filter((item) => item.confidence >= 0.60 && item.keep !== true)
+    .filter((item) => item.showToUser === true && item.keep !== true)
     .map((item) => ({
       id: `${item.label.toLowerCase().replace(/\s+/g, '-')}-${Math.round(item.bbox[0] * 100)}-${Math.round(item.bbox[1] * 100)}`,
       label: item.label,

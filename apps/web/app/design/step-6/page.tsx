@@ -531,7 +531,7 @@ export default function Step6Page() {
   }, [keepMask, roomId, setKeepMask])
 
   // Computed
-  const visibleDetections = keepMask?.filter((d) => d.confidence >= 0.60) ?? []
+  const visibleDetections = keepMask?.filter((d) => d.showToUser === true) ?? []
   const furnitureItems = visibleDetections.filter((d) => d.type === 'furniture')
   const architectureItems = visibleDetections.filter((d) => d.type === 'architecture')
   const showFallback = detectionFailed || (keepMask !== null && visibleDetections.length === 0)

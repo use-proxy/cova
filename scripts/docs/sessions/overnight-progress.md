@@ -173,3 +173,144 @@ Embedded: 0
 Failed: 0
 Showcase: 30/144
 ────────────────────────────────────────────────────────────
+[2026-04-05T08:22:43.050Z] [CREDITS] [WARN] Failed to fetch credit status: Request failed with status code 401
+[2026-04-05T08:22:43.051Z] [MAIN] [INFO] Apify credits: $50.00 remaining of $100.00
+[2026-04-05T08:22:43.052Z] [STATE] [INFO] Resuming previous run started at 2026-04-05T08:18:20.773Z
+[2026-04-05T08:22:43.052Z] [STATE] [INFO] Already scraped: 37, embedded: 0, failed: 0
+[2026-04-05T08:22:43.052Z] [DEDUP] [INFO] Initialized in-memory dedup set with 37 known URLs
+[2026-04-05T08:22:43.054Z] [MAIN] [INFO] Launching all jobs concurrently...
+[2026-04-05T08:22:43.054Z] [MAIN] [INFO]   Job A: Scraping (all retailers, async Apify actors)
+[2026-04-05T08:22:43.054Z] [MAIN] [INFO]   Job B: Embedding (watching processed/ for batches)
+[2026-04-05T08:22:43.054Z] [MAIN] [INFO]   Job C: Showcase (144 FLUX renders across 12 styles × 4 rooms)
+[2026-04-05T08:22:43.055Z] [MAIN] [INFO]   Job D: Storage embed (existing images in Supabase Storage)
+[2026-04-05T08:22:43.055Z] [SCRAPE] [INFO] Scraping job starting
+[2026-04-05T08:22:43.055Z] [SCRAPE] [INFO] Total scraper configs: 153 (Tier1: 59, Tier2: 42, Tier3: 52)
+[2026-04-05T08:22:43.056Z] [EMBED] [INFO] Embedding job starting
+[2026-04-05T08:22:43.057Z] [SHOWCASE] [INFO] Showcase generation starting — 12 styles × 4 rooms × 3 renders = 144 total
+[2026-04-05T08:22:43.057Z] [STORAGE-EMBED] [INFO] Starting: embedding existing Supabase Storage images
+[2026-04-05T08:22:43.058Z] [STORAGE-EMBED] [INFO] Waiting 30 minutes before starting (lower priority than product embedding)
+[2026-04-05T08:22:43.059Z] [SCRAPE] [INFO] Skipping already-scraped config: Article 1/14: sofas
+[2026-04-05T08:22:43.059Z] [SCRAPE] [INFO] Skipping already-scraped config: Article 2/14: sectionals
+[2026-04-05T08:22:43.059Z] [SCRAPE] [INFO] Skipping already-scraped config: Article 3/14: accent-chairs
+[2026-04-05T08:22:43.059Z] [SCRAPE] [INFO] Progress: 1/153 configs completed
+[2026-04-05T08:22:43.059Z] [SCRAPE] [INFO] Progress: 2/153 configs completed
+[2026-04-05T08:22:43.060Z] [SCRAPE] [INFO] Progress: 3/153 configs completed
+[2026-04-05T08:22:43.060Z] [SCRAPE] [INFO] Skipping already-scraped config: Article 4/14: lounge-chairs
+[2026-04-05T08:22:43.060Z] [SCRAPE] [INFO] Skipping already-scraped config: Article 5/14: beds
+[2026-04-05T08:22:43.060Z] [SCRAPE] [INFO] Skipping already-scraped config: Article 6/14: dining-tables
+[2026-04-05T08:22:43.060Z] [SCRAPE] [INFO] Progress: 4/153 configs completed
+[2026-04-05T08:22:43.060Z] [SCRAPE] [INFO] Progress: 5/153 configs completed
+[2026-04-05T08:22:43.060Z] [SCRAPE] [INFO] Progress: 6/153 configs completed
+[2026-04-05T08:22:43.060Z] [SCRAPE] [INFO] Skipping already-scraped config: Article 7/14: dining-chairs
+[2026-04-05T08:22:43.060Z] [SCRAPE] [INFO] Skipping already-scraped config: Article 8/14: coffee-tables
+[2026-04-05T08:22:43.060Z] [SCRAPE] [INFO] Skipping already-scraped config: Article 9/14: side-tables
+[2026-04-05T08:22:43.060Z] [SCRAPE] [INFO] Progress: 7/153 configs completed
+[2026-04-05T08:22:43.060Z] [SCRAPE] [INFO] Progress: 8/153 configs completed
+[2026-04-05T08:22:43.060Z] [SCRAPE] [INFO] Progress: 9/153 configs completed
+[2026-04-05T08:22:43.067Z] [SCRAPE] [INFO] Skipping already-scraped config: Article 10/14: outdoor
+[2026-04-05T08:22:43.067Z] [SCRAPE] [INFO] Skipping already-scraped config: Article 11/14: lighting
+[2026-04-05T08:22:43.067Z] [SCRAPE] [INFO] Skipping already-scraped config: Article 12/14: rugs
+[2026-04-05T08:22:43.068Z] [SCRAPE] [INFO] Progress: 10/153 configs completed
+[2026-04-05T08:22:43.068Z] [SCRAPE] [INFO] Progress: 11/153 configs completed
+[2026-04-05T08:22:43.068Z] [SCRAPE] [INFO] Progress: 12/153 configs completed
+[2026-04-05T08:22:43.068Z] [SCRAPE] [INFO] Skipping already-scraped config: Article 13/14: storage
+[2026-04-05T08:22:43.068Z] [SCRAPE] [INFO] Skipping already-scraped config: Article 14/14: desks
+[2026-04-05T08:22:43.068Z] [SCRAPE] [INFO] Skipping already-scraped config: West Elm 1/15: sofas-couches
+[2026-04-05T08:22:43.068Z] [SCRAPE] [INFO] Progress: 13/153 configs completed
+[2026-04-05T08:22:43.068Z] [SCRAPE] [INFO] Progress: 14/153 configs completed
+[2026-04-05T08:22:43.068Z] [SCRAPE] [INFO] Progress: 15/153 configs completed
+[2026-04-05T08:22:43.068Z] [SCRAPE] [INFO] Skipping already-scraped config: West Elm 2/15: chairs
+[2026-04-05T08:22:43.068Z] [SCRAPE] [INFO] Skipping already-scraped config: West Elm 3/15: beds-headboards
+[2026-04-05T08:22:43.068Z] [SCRAPE] [INFO] Skipping already-scraped config: West Elm 4/15: dining-room-furniture
+[2026-04-05T08:22:43.068Z] [SCRAPE] [INFO] Progress: 16/153 configs completed
+[2026-04-05T08:22:43.068Z] [SCRAPE] [INFO] Progress: 17/153 configs completed
+[2026-04-05T08:22:43.068Z] [SCRAPE] [INFO] Progress: 18/153 configs completed
+[2026-04-05T08:22:43.068Z] [SCRAPE] [INFO] Skipping already-scraped config: West Elm 5/15: office-furniture
+[2026-04-05T08:22:43.068Z] [SCRAPE] [INFO] Skipping already-scraped config: West Elm 6/15: coffee-tables
+[2026-04-05T08:22:43.069Z] [SCRAPE] [INFO] Skipping already-scraped config: West Elm 7/15: side-end-tables
+[2026-04-05T08:22:43.069Z] [SCRAPE] [INFO] Progress: 19/153 configs completed
+[2026-04-05T08:22:43.069Z] [SCRAPE] [INFO] Progress: 20/153 configs completed
+[2026-04-05T08:22:43.069Z] [SCRAPE] [INFO] Progress: 21/153 configs completed
+[2026-04-05T08:22:43.069Z] [SCRAPE] [INFO] Skipping already-scraped config: West Elm 8/15: dressers-nightstands
+[2026-04-05T08:22:43.069Z] [SCRAPE] [INFO] Skipping already-scraped config: West Elm 9/15: floor-lamps
+[2026-04-05T08:22:43.069Z] [SCRAPE] [INFO] Skipping already-scraped config: West Elm 10/15: pendant-lights
+[2026-04-05T08:22:43.069Z] [SCRAPE] [INFO] Progress: 22/153 configs completed
+[2026-04-05T08:22:43.069Z] [SCRAPE] [INFO] Progress: 23/153 configs completed
+[2026-04-05T08:22:43.069Z] [SCRAPE] [INFO] Progress: 24/153 configs completed
+[2026-04-05T08:22:43.069Z] [SCRAPE] [INFO] Skipping already-scraped config: West Elm 11/15: table-lamps
+[2026-04-05T08:22:43.069Z] [SCRAPE] [INFO] Skipping already-scraped config: West Elm 12/15: rugs
+[2026-04-05T08:22:43.069Z] [SCRAPE] [INFO] Skipping already-scraped config: West Elm 13/15: outdoor
+[2026-04-05T08:22:43.069Z] [SCRAPE] [INFO] Progress: 25/153 configs completed
+[2026-04-05T08:22:43.069Z] [SCRAPE] [INFO] Progress: 26/153 configs completed
+[2026-04-05T08:22:43.069Z] [SCRAPE] [INFO] Progress: 27/153 configs completed
+[2026-04-05T08:22:43.069Z] [SCRAPE] [INFO] Skipping already-scraped config: West Elm 14/15: wall-art
+[2026-04-05T08:22:43.069Z] [SCRAPE] [INFO] Skipping already-scraped config: West Elm 15/15: mirrors
+[2026-04-05T08:22:43.069Z] [SCRAPE] [INFO] Skipping already-scraped config: DTC burrow 1/8: all
+[2026-04-05T08:22:43.069Z] [SCRAPE] [INFO] Progress: 28/153 configs completed
+[2026-04-05T08:22:43.070Z] [SCRAPE] [INFO] Progress: 29/153 configs completed
+[2026-04-05T08:22:43.070Z] [SCRAPE] [INFO] Progress: 30/153 configs completed
+[2026-04-05T08:22:43.070Z] [SCRAPE] [INFO] Skipping already-scraped config: DTC burrow 2/8: sofas
+[2026-04-05T08:22:43.070Z] [SCRAPE] [INFO] Skipping already-scraped config: DTC burrow 3/8: sectionals
+[2026-04-05T08:22:43.070Z] [SCRAPE] [INFO] Skipping already-scraped config: DTC floyd 4/8: all
+[2026-04-05T08:22:43.070Z] [SCRAPE] [INFO] Progress: 31/153 configs completed
+[2026-04-05T08:22:43.070Z] [SCRAPE] [INFO] Progress: 32/153 configs completed
+[2026-04-05T08:22:43.070Z] [SCRAPE] [INFO] Progress: 33/153 configs completed
+[2026-04-05T08:22:43.070Z] [SCRAPE] [INFO] Skipping already-scraped config: DTC floyd 5/8: beds
+[2026-04-05T08:22:43.070Z] [SCRAPE] [INFO] Skipping already-scraped config: DTC maiden_home 6/8: all
+[2026-04-05T08:22:43.070Z] [SCRAPE] [INFO] Skipping already-scraped config: DTC maiden_home 7/8: sofas
+[2026-04-05T08:22:43.070Z] [SCRAPE] [INFO] Progress: 34/153 configs completed
+[2026-04-05T08:22:43.070Z] [SCRAPE] [INFO] Progress: 35/153 configs completed
+[2026-04-05T08:22:43.070Z] [SCRAPE] [INFO] Progress: 36/153 configs completed
+[2026-04-05T08:22:43.070Z] [SCRAPE] [INFO] Skipping already-scraped config: DTC maiden_home 8/8: chairs
+[2026-04-05T08:22:43.070Z] [SCRAPE] [INFO] Starting actor: Wayfair 1/22: sofas-c413892.html (123webdata/wayfair-scraper)
+[2026-04-05T08:22:43.072Z] [SCRAPE] [INFO] Starting actor: Wayfair 2/22: sectional-sofas-c413893.html (123webdata/wayfair-scraper)
+[2026-04-05T08:22:43.073Z] [SCRAPE] [INFO] Progress: 37/153 configs completed
+[2026-04-05T08:22:43.079Z] [SCRAPE] [INFO] Starting actor: Wayfair 3/22: accent-chairs-c1780251.html (123webdata/wayfair-scraper)
+[2026-04-05T08:22:43.166Z] [CREDITS] [WARN] Failed to fetch credit status: Request failed with status code 401
+[2026-04-05T08:22:43.166Z] [CREDITS] [INFO] Apify credits: $50.00 remaining ($0.00 used of $100.00) — 50% left
+[2026-04-05T08:22:43.166Z] [CREDITS] [WARN] Apify credits at 50% — continuing
+[2026-04-05T08:22:43.344Z] [SHOWCASE] [INFO] Created showcase storage bucket
+[2026-04-05T08:22:43.345Z] [SHOWCASE] [INFO] Skipping already completed: warm-japandi:living_room:0
+[2026-04-05T08:22:43.346Z] [SHOWCASE] [INFO] Skipping already completed: warm-japandi:living_room:1
+[2026-04-05T08:22:43.346Z] [SHOWCASE] [INFO] Skipping already completed: warm-japandi:living_room:2
+[2026-04-05T08:22:43.346Z] [SHOWCASE] [INFO] Skipping already completed: warm-japandi:bedroom:0
+[2026-04-05T08:22:43.347Z] [SHOWCASE] [INFO] Skipping already completed: warm-japandi:bedroom:1
+[2026-04-05T08:22:43.347Z] [SHOWCASE] [INFO] Skipping already completed: warm-japandi:bedroom:2
+[2026-04-05T08:22:43.347Z] [SHOWCASE] [INFO] Skipping already completed: warm-japandi:home_office:0
+[2026-04-05T08:22:43.347Z] [SHOWCASE] [INFO] Skipping already completed: warm-japandi:home_office:1
+[2026-04-05T08:22:43.347Z] [SHOWCASE] [INFO] Skipping already completed: warm-japandi:home_office:2
+[2026-04-05T08:22:43.347Z] [SHOWCASE] [INFO] Skipping already completed: warm-japandi:studio:0
+[2026-04-05T08:22:43.347Z] [SHOWCASE] [INFO] Skipping already completed: warm-japandi:studio:1
+[2026-04-05T08:22:43.347Z] [SHOWCASE] [INFO] Skipping already completed: warm-japandi:studio:2
+[2026-04-05T08:22:43.348Z] [SHOWCASE] [INFO] Skipping already completed: organic-modern:living_room:0
+[2026-04-05T08:22:43.348Z] [SHOWCASE] [INFO] Skipping already completed: organic-modern:living_room:1
+[2026-04-05T08:22:43.348Z] [SHOWCASE] [INFO] Skipping already completed: organic-modern:living_room:2
+[2026-04-05T08:22:54.433Z] [SHOWCASE] [SUCCESS] Generated: Organic Modern × bedroom [3/3] (16/144)
+[2026-04-05T08:22:54.595Z] [SHOWCASE] [SUCCESS] Generated: Organic Modern × bedroom [1/3] (17/144)
+[2026-04-05T08:22:54.602Z] [SHOWCASE] [SUCCESS] Generated: Organic Modern × home_office [1/3] (18/144)
+[2026-04-05T08:22:59.541Z] [SHOWCASE] [SUCCESS] Generated: Organic Modern × bedroom [2/3] (19/144)
+[2026-04-05T08:23:05.603Z] [SHOWCASE] [SUCCESS] Generated: Organic Modern × home_office [3/3] (20/144)
+[2026-04-05T08:23:05.717Z] [SHOWCASE] [SUCCESS] Generated: Organic Modern × studio [1/3] (21/144)
+[2026-04-05T08:23:05.742Z] [SHOWCASE] [SUCCESS] Generated: Organic Modern × home_office [2/3] (22/144)
+[2026-04-05T08:23:16.537Z] [SHOWCASE] [SUCCESS] Generated: Organic Modern × studio [2/3] (23/144)
+[2026-04-05T08:23:16.785Z] [SHOWCASE] [SUCCESS] Generated: Scandi Hygge × living_room [2/3] (24/144)
+[2026-04-05T08:23:17.060Z] [SHOWCASE] [SUCCESS] Generated: Organic Modern × studio [3/3] (25/144)
+[2026-04-05T08:23:17.157Z] [SHOWCASE] [SUCCESS] Generated: Scandi Hygge × living_room [1/3] (26/144)
+[2026-04-05T08:23:27.787Z] [SHOWCASE] [SUCCESS] Generated: Scandi Hygge × living_room [3/3] (27/144)
+[2026-04-05T08:23:27.826Z] [SHOWCASE] [SUCCESS] Generated: Scandi Hygge × bedroom [1/3] (28/144)
+[2026-04-05T08:23:28.110Z] [SHOWCASE] [SUCCESS] Generated: Scandi Hygge × bedroom [3/3] (29/144)
+[2026-04-05T08:23:28.232Z] [SHOWCASE] [SUCCESS] Generated: Scandi Hygge × bedroom [2/3] (30/144)
+[2026-04-05T08:23:29.314Z] [SCRAPE] [INFO] Actor started: Wayfair 3/22: accent-chairs-c1780251.html — runId: XVj0VBTyhfEa3DbSI
+[2026-04-05T08:23:29.503Z] [SCRAPE] [WARN] Empty dataset for: Wayfair 3/22: accent-chairs-c1780251.html
+[2026-04-05T08:23:29.504Z] [SCRAPE] [INFO] Progress: 38/153 configs completed
+[2026-04-05T08:23:29.505Z] [SCRAPE] [INFO] Starting actor: Wayfair 4/22: beds-c1840413.html (123webdata/wayfair-scraper)
+[2026-04-05T08:23:37.226Z] [MAIN] [INFO] Shutdown signal received — saving state and exiting cleanly
+
+────────────────────────────────────────────────────────────
+SUMMARY — 2026-04-05T08:23:37.226Z
+Elapsed: 0m 55s
+Scraped: 0
+Embedded: 0
+Failed: 0
+Showcase: 30/144
+────────────────────────────────────────────────────────────
