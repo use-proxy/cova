@@ -82,7 +82,7 @@ export async function detectFurniture(photoUrl: string): Promise<Detection[]> {
     console.log(`[detect] Running furniture detection on: ${photoUrl.substring(0, 80)}...`)
 
     const output = (await replicate.run(
-      'adirik/grounding-dino:efd10a8ddc57ea28773327e881ce95e20cc1d734419b7d746a3f64db15559728',
+      'adirik/grounding-dino:efd10a8ddc57ea28773327e881ce95e20cc1d734c589f7dd01d2036921ed78aa',
       {
         input: {
           image: photoUrl,
@@ -99,13 +99,19 @@ export async function detectFurniture(photoUrl: string): Promise<Detection[]> {
       }>
     }
 
-    console.log(`[detect] Raw detections from Replicate: ${JSON.stringify(output.detections ?? [])}`)
+    console.log('=== DETECTION RAW ===')
+    console.log('MODEL OUTPUT:', JSON.stringify(output, null, 2))
+    console.log('=== END RAW ===')
 
     if (!output.detections) return []
 
     const filtered = output.detections.filter((d) => d.confidence >= 0.50)
-    console.log(`[detect] After filtering (>= 0.50): ${filtered.length} items`)
-    console.log(`[detect] Items: ${filtered.map(d => `${d.label}(${d.confidence.toFixed(2)})`).join(', ')}`)
+    console.log('=== DETECTION FILTERED ===')
+    console.log('COUNT:', filtered.length)
+    console.log('ITEMS:', filtered.map(d =>
+      d.label + '(' + d.confidence.toFixed(2) + ')'
+    ).join(', '))
+    console.log('=== END FILTERED ===')
 
     return filtered.map((d) => ({
       type: 'furniture',
@@ -125,7 +131,7 @@ export async function detectArchitecture(photoUrl: string): Promise<Detection[]>
     const prompt = ARCHITECTURE_LABELS.join(' . ')
 
     const output = (await replicate.run(
-      'adirik/grounding-dino:efd10a8ddc57ea28773327e881ce95e20cc1d734419b7d746a3f64db15559728',
+      'adirik/grounding-dino:efd10a8ddc57ea28773327e881ce95e20cc1d734c589f7dd01d2036921ed78aa',
       {
         input: {
           image: photoUrl,
