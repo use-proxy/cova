@@ -178,7 +178,7 @@ export async function detectFurniture(photoUrl: string): Promise<Detection[]> {
         label: d.label,
         bbox: normalizeBbox(d.bbox, imgW, imgH),
         confidence: d.confidence,
-        showToUser: d.confidence >= 0.60,
+        showToUser: d.confidence >= 0.35,
       }))
 
     // Fire SAM call only if we have detections — it's slow (~71s) and expensive ($0.068)
@@ -225,7 +225,7 @@ export async function detectArchitecture(photoUrl: string): Promise<Detection[]>
         label: d.label,
         bbox: normalizeBbox(d.bbox, imgW, imgH),
         confidence: d.confidence,
-        showToUser: d.confidence >= 0.60,
+        showToUser: d.confidence >= 0.35,
       }))
   } catch {
     return []
