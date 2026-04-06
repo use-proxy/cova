@@ -40,7 +40,118 @@ export async function GET(request: NextRequest) {
   }
 
   if (status === 'succeeded') {
-    // Extract render URL from prediction output
+    const admin = createAdminSupabaseClient()
+
+    // Check if this is a two-stage render
+    const { data: roomRaw } = await admin
+      .from('rooms')
+      .select('pipeline_cost_log, inpainting_mask_url')
+      .eq('id', roomId)
+      .single()
+
+    type CostLog = {
+      two_stage?: boolean
+      stage1_prediction_id?: string
+      stage2_pending?: boolean
+      stage2_prediction_id?: string
+      positive_prompt?: string
+      style_strength?: number
+    }
+    const roomMeta = roomRaw as { pipeline_cost_log?: unknown; inpainting_mask_url?: string } | null
+    const costLog = roomMeta?.pipeline_cost_log as CostLog | null
+    const maskUrl = roomMeta?.inpainting_mask_url ?? null
+
+    // Stage 2 orchestration: Stage 1 just completed — fire Stage 2
+    if (costLog?.two_stage && costLog?.stage2_pending && !costLog?.stage2_prediction_id) {
+      const stage1Output = prediction.output
+      const stage1OutputUrl = Array.isArray(stage1Output)
+        ? (stage1Output[0] as string)
+        : (stage1Output as string)
+
+      const stage2 = await replicate.predictions.create({
+        model: 'black-forest-labs/flux-fill-pro',
+        input: {
+          image: stage1OutputUrl,
+          mask: maskUrl,
+          prompt: costLog.positive_prompt ?? '',
+          steps: 28,
+          guidance: 30,
+          output_format: 'jpg',
+          output_quality: 90,
+          safety_tolerance: 2,
+        },
+      })
+
+      await admin
+        .from('rooms')
+        .update({
+          pipeline_cost_log: {
+            ...costLog,
+            stage2_pending: false,
+            stage2_prediction_id: stage2.id,
+          },
+        } as Record<string, unknown>)
+        .eq('id', roomId)
+
+      return NextResponse.json({ status: 'processing' })
+    }
+
+    // Stage 2 orchestration: poll Stage 2 prediction
+    if (costLog?.two_stage && costLog?.stage2_prediction_id) {
+      const stage2Prediction = await replicate.predictions.get(costLog.stage2_prediction_id)
+
+      if (stage2Prediction.status === 'failed' || stage2Prediction.status === 'canceled') {
+        return NextResponse.json({ status: 'failed', error: 'Stage 2 render failed' })
+      }
+
+      if (stage2Prediction.status !== 'succeeded') {
+        return NextResponse.json({ status: 'processing' })
+      }
+
+      // Stage 2 succeeded — extract final render URL
+      const stage2Output = stage2Prediction.output
+      let finalRenderUrl: string | null = null
+      if (Array.isArray(stage2Output) && stage2Output.length > 0) {
+        finalRenderUrl = stage2Output[0] as string
+      } else if (typeof stage2Output === 'string') {
+        finalRenderUrl = stage2Output
+      }
+
+      if (!finalRenderUrl) {
+        return NextResponse.json({ status: 'failed', error: 'No output URL from Stage 2 render' })
+      }
+
+      const prompt = costLog.positive_prompt ?? ''
+      const styleStrength = costLog.style_strength ?? 0.85
+
+      const stage2SessionInsert: InsertTables<'render_sessions'> = {
+        room_id: roomId,
+        render_url: finalRenderUrl,
+        prompt,
+        style_strength: styleStrength,
+        iteration: 1,
+      }
+
+      const { data: stage2Session, error: stage2SessionError } = await admin
+        .from('render_sessions')
+        .insert(stage2SessionInsert)
+        .select('id')
+        .single()
+
+      if (stage2SessionError) {
+        console.error('Failed to save render session (stage 2):', stage2SessionError.message)
+      }
+
+      await admin.from('rooms').update({ render_url: finalRenderUrl }).eq('id', roomId)
+
+      return NextResponse.json({
+        status: 'complete',
+        render_url: finalRenderUrl,
+        render_session_id: stage2Session?.id ?? null,
+      })
+    }
+
+    // SINGLE STAGE: extract render URL from prediction output
     const output = prediction.output
     let renderUrl: string | null = null
     if (Array.isArray(output) && output.length > 0) {
@@ -52,9 +163,6 @@ export async function GET(request: NextRequest) {
     if (!renderUrl) {
       return NextResponse.json({ status: 'failed', error: 'No output URL from render' })
     }
-
-    // Persist to DB
-    const admin = createAdminSupabaseClient()
 
     const input = prediction.input as Record<string, unknown> | undefined
     const prompt = (input?.prompt as string | undefined) ?? ''

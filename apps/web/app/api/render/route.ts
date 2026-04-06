@@ -134,24 +134,55 @@ Modify the prompt to incorporate the user's instruction while preserving the cor
       }
     }
 
-    const prediction = await replicate.predictions.create({
-      model: 'black-forest-labs/flux-kontext-pro',
-      input: {
-        prompt: positive,
-        input_image: photo_url,
-        guidance: style_strength * 10,
-        output_format: 'jpg',
-        output_quality: 90,
-        safety_tolerance: 2,
-        // NOTE: flux-kontext-pro mask support pending Replicate schema confirmation.
-        // Stored in input so it's available once the model documents the parameter.
-        ...(inpaintingMaskUrl ? { mask: inpaintingMaskUrl } : {}),
-        // metadata carried through for status route DB write
-        _room_id: room_id,
-        _negative_prompt: negative,
-        _style_strength: style_strength,
-      },
-    })
+    let prediction: { id: string }
+
+    if (inpaintingMaskUrl) {
+      // TWO-STAGE RENDER: kontext generates full redesign, fill-pro preserves kept items via mask
+      const stage1 = await replicate.predictions.create({
+        model: 'black-forest-labs/flux-kontext-pro',
+        input: {
+          prompt: positive,
+          input_image: photo_url,
+          guidance: style_strength * 10,
+          output_format: 'jpg',
+          output_quality: 90,
+          safety_tolerance: 2,
+        },
+      })
+
+      // Store stage info in rooms so status route can orchestrate Stage 2
+      await supabase
+        .from('rooms')
+        .update({
+          inpainting_mask_url: inpaintingMaskUrl,
+          pipeline_cost_log: {
+            two_stage: true,
+            stage1_prediction_id: stage1.id,
+            stage2_pending: true,
+            positive_prompt: positive,
+            style_strength: style_strength ?? 0.85,
+          },
+        } as Record<string, unknown>)
+        .eq('id', room_id)
+
+      prediction = stage1
+    } else {
+      // SINGLE STAGE: no keep mask, regenerate everything
+      prediction = await replicate.predictions.create({
+        model: 'black-forest-labs/flux-kontext-pro',
+        input: {
+          prompt: positive,
+          input_image: photo_url,
+          guidance: style_strength * 10,
+          output_format: 'jpg',
+          output_quality: 90,
+          safety_tolerance: 2,
+          _room_id: room_id,
+          _negative_prompt: negative,
+          _style_strength: style_strength,
+        },
+      })
+    }
 
     return NextResponse.json({ prediction_id: prediction.id })
   } catch (error: unknown) {
