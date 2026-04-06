@@ -1,41 +1,11 @@
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
 import { SignJWT } from 'jose'
 import { NextResponse } from 'next/server'
 
+// Public endpoint — no auth required. Step-5 (capture) is open to all users.
+// The signed JWT itself is the security boundary: it must be validated by
+// /api/capture/validate-token before any upload is accepted (Hard Rule 10).
 export async function POST(request: Request) {
-  const cookieStore = await cookies()
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
-          } catch {
-            // Ignore in route handlers
-          }
-        },
-      },
-    }
-  )
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  const body = await request.json() as { roomId?: string; room_id?: string }
+  const body = (await request.json()) as { roomId?: string; room_id?: string }
   // Accept both snake_case (new) and camelCase (legacy)
   const roomId = body.room_id ?? body.roomId
 
@@ -44,7 +14,7 @@ export async function POST(request: Request) {
   }
 
   const secret = new TextEncoder().encode(process.env.SUPABASE_JWT_SECRET!)
-  const token = await new SignJWT({ roomId, userId: user.id })
+  const token = await new SignJWT({ roomId })
     .setProtectedHeader({ alg: 'HS256' })
     .setExpirationTime('1h')
     .sign(secret)

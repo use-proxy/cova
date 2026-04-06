@@ -27,17 +27,31 @@ const FURNITURE_LABELS = [
   'dresser',
   'nightstand',
   'lamp',
+  'floor lamp',
+  'table lamp',
+  'ceiling light',
+  'pendant light',
   'rug',
   'curtains',
+  'blinds',
   'tv',
   'television',
   'plant',
   'artwork',
+  'painting',
+  'picture frame',
+  'wall art',
+  'wall decoration',
   'mirror',
   'cabinet',
   'shelf',
   'ottoman',
   'bench',
+  'side table',
+  'accent chair',
+  'throw pillow',
+  'blanket',
+  'vase',
 ]
 
 const ARCHITECTURE_LABELS = [
@@ -53,6 +67,13 @@ const ARCHITECTURE_LABELS = [
   'exposed brick',
   'built-in',
   'baseboard',
+  'wall color',
+  'window treatment',
+  'curtain',
+  'blind',
+  'ceiling type',
+  'crown molding',
+  'wainscoting',
 ]
 
 export async function detectFurniture(photoUrl: string): Promise<Detection[]> {
@@ -65,8 +86,8 @@ export async function detectFurniture(photoUrl: string): Promise<Detection[]> {
         input: {
           image: photoUrl,
           query: prompt,
-          box_threshold: 0.7,
-          text_threshold: 0.7,
+          box_threshold: 0.3,
+          text_threshold: 0.3,
         },
       }
     )) as {
@@ -80,13 +101,13 @@ export async function detectFurniture(photoUrl: string): Promise<Detection[]> {
     if (!output.detections) return []
 
     return output.detections
-      .filter((d) => d.confidence >= 0.7)
+      .filter((d) => d.confidence >= 0.50)
       .map((d) => ({
         type: 'furniture',
         label: d.label,
         bbox: d.bbox as [number, number, number, number],
         confidence: d.confidence,
-        showToUser: d.confidence >= 0.85,
+        showToUser: d.confidence >= 0.60,
       }))
   } catch {
     return []
@@ -103,8 +124,8 @@ export async function detectArchitecture(photoUrl: string): Promise<Detection[]>
         input: {
           image: photoUrl,
           query: prompt,
-          box_threshold: 0.7,
-          text_threshold: 0.7,
+          box_threshold: 0.3,
+          text_threshold: 0.3,
         },
       }
     )) as {
@@ -118,13 +139,13 @@ export async function detectArchitecture(photoUrl: string): Promise<Detection[]>
     if (!output.detections) return []
 
     return output.detections
-      .filter((d) => d.confidence >= 0.7)
+      .filter((d) => d.confidence >= 0.50)
       .map((d) => ({
         type: 'architecture',
         label: d.label,
         bbox: d.bbox as [number, number, number, number],
         confidence: d.confidence,
-        showToUser: d.confidence >= 0.85,
+        showToUser: d.confidence >= 0.60,
       }))
   } catch {
     return []

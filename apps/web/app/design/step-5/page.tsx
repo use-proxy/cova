@@ -353,6 +353,7 @@ async function triggerDetection(photoUrl: string, roomId: string): Promise<void>
     await fetch('/api/detect', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ photo_url: photoUrl, room_id: roomId }),
     })
   } catch {

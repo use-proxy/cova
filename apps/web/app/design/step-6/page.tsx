@@ -517,7 +517,7 @@ export default function Step6Page() {
   }, [keepMask, roomId, setKeepMask])
 
   // Computed
-  const visibleDetections = keepMask?.filter((d) => d.confidence >= 0.85) ?? []
+  const visibleDetections = keepMask?.filter((d) => d.confidence >= 0.60) ?? []
   const showFallback = detectionFailed || (keepMask !== null && visibleDetections.length === 0)
   const isPolling = keepMask === null && !detectionFailed
 
