@@ -1,8 +1,11 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-// Steps 1-5 are open (no auth required). Steps 6+ require auth.
+// Steps 1-2 are open (step-2 is where auth happens). Steps 3+ require auth.
 const PROTECTED_ROUTES = [
+  '/design/step-3',
+  '/design/step-4',
+  '/design/step-5',
   '/design/step-6',
   '/design/step-7',
   '/design/step-8',

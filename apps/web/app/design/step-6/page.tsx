@@ -510,7 +510,7 @@ export default function Step6Page() {
         const res = await fetch(`/api/detect/status?room_id=${roomId}`, { credentials: 'include' })
         if (res.status === 401) {
           clearInterval(pollRef.current!)
-          router.push('/design/step-3?auth_required=true')
+          router.push('/design/step-2')
           return
         }
         if (!res.ok) return

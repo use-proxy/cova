@@ -1,562 +1,663 @@
-"use client";
+'use client'
 
-import { useState, useRef, useCallback, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { QUIZ_PAIRS } from "@/lib/ai/quiz-data";
-import { useFingerprintStore, useSessionStore } from "@/lib/store";
-import { StepIndicator } from "@/components/cova/StepIndicator";
+import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
+import { createBrowserClient } from '@/lib/supabase/client'
+import { useRoomStore } from '@/lib/store/room'
+import { useSessionStore } from '@/lib/store/session'
+import { useFingerprintStore } from '@/lib/store/fingerprint'
+import { getDeviceCapabilities } from '@/lib/deviceDetection'
+import { MobileCapture } from '@/components/capture/MobileCapture'
+import { QRCapture } from '@/components/capture/QRCapture'
+import { UploadFallback } from '@/components/capture/UploadFallback'
+import { CaptureResult } from '@/components/capture/CaptureResult'
+import { StepIndicator } from '@/components/cova/StepIndicator'
+import { analytics } from '@/lib/analytics'
+import { captureError as reportError } from '@/lib/errors'
 
-const TOTAL_PAIRS = 19;
+type CaptureStage = 'initial' | 'previewing' | 'uploading' | 'complete' | 'error'
+type AuthStage = 'idle' | 'showing' | 'loading' | 'done'
 
-type Response = {
-  pairId: string;
-  chosen: "A" | "B";
-  superLiked: boolean;
-};
+const COLORS = {
+  background: '#0A1628',
+  surface: '#0F1F3D',
+  gold: '#C9A84C',
+  ivory: '#F8F6F1',
+  muted: '#8BA3C0',
+  border: '#1E3A5F',
+  error: '#C0504A',
+}
 
-export default function StyleQuizPage() {
-  const router = useRouter();
-  const { roomType, budgetTier, setFingerprint, setShowcasePredictionIds } = useFingerprintStore();
-  const { setStep } = useSessionStore();
-  const pairs = QUIZ_PAIRS[roomType ?? "living-room"] ?? QUIZ_PAIRS["living-room"]!;
+export default function Step2Page() {
+  const router = useRouter()
+  const { setRoom, setPhotoUrl, roomId } = useRoomStore()
+  const { setStep, setPendingCapture, clearPendingCapture } = useSessionStore()
+  const { roomType } = useFingerprintStore()
 
-  const [currentPair, setCurrentPair] = useState(0);
-  const [responses, setResponses] = useState<Response[]>([]);
-  const [isAnimating, setIsAnimating] = useState(false);
-  const [lastHovered, setLastHovered] = useState<"left" | "right" | null>(null);
-  const [selectedCard, setSelectedCard] = useState<"left" | "right" | null>(null);
-  const [exitPhase, setExitPhase] = useState(false);
-  const [enterPhase, setEnterPhase] = useState(true);
-  const [showCheckmark, setShowCheckmark] = useState(false);
+  const [captureStage, setCaptureStage] = useState<CaptureStage>('initial')
+  const [authStage, setAuthStage] = useState<AuthStage>('idle')
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [captureError, setCaptureError] = useState<string | null>(null)
+  const [currentRoomId, setCurrentRoomId] = useState<string | null>(roomId)
+  const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState<string | null>(null)
+  const [device, setDevice] = useState({ isMobile: false, hasLiDAR: false, isDesktop: true })
 
-  const pointerStartX = useRef(0);
-  const containerRef = useRef<HTMLDivElement>(null);
+  // Auth state
+  const [showEmailForm, setShowEmailForm] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [authError, setAuthError] = useState<string | null>(null)
+  const [isNewUser, setIsNewUser] = useState(false)
 
-  // Progress width — genuine 0–100% through the quiz
-  const progressWidth = (((currentPair + 1) / TOTAL_PAIRS) * 100).toFixed(1);
-
-  // Call fingerprint API then navigate to step-3
-  const completeQuiz = useCallback(
-    async (finalResponses: Response[]) => {
-      try {
-        const apiResponses = finalResponses.map((r) => ({
-          pair_id: r.pairId,
-          chosen: r.chosen,
-          super_liked: r.superLiked,
-        }));
-        const res = await fetch("/api/quiz/fingerprint", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            responses: apiResponses,
-            entry_path: "pairs",
-            room_type: roomType ?? "living-room",
-          }),
-        });
-        if (res.ok) {
-          const data = (await res.json()) as {
-            fingerprint: number[];
-            style_name: string;
-            style_chips?: string[];
-          };
-          setFingerprint(data.fingerprint, data.style_name);
-
-          // Fire showcase renders sequentially to avoid rate limits
-          // Each render fires 2 seconds after the previous one starts
-          // Non-blocking — stored in Zustand (Rule 1: no sessionStorage)
-          const SHOWCASE_INPUTS = [
-            { photo_url: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1024', label: 'Living Room' },
-            { photo_url: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=1024', label: 'Bedroom' },
-            { photo_url: 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=1024', label: 'Home Office' },
-          ]
-          void (async () => {
-            const results: Array<{ predictionId: string; label: string }> = []
-            for (let i = 0; i < SHOWCASE_INPUTS.length; i++) {
-              if (i > 0) await new Promise(r => setTimeout(r, 2000))
-              const input = SHOWCASE_INPUTS[i]!
-              try {
-                const res = await fetch('/api/render', {
-                  method: 'POST',
-                  credentials: 'include',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    photo_url: input.photo_url,
-                    fingerprint_vector: data.fingerprint,
-                    room_type: roomType ?? 'living_room',
-                    budget: budgetTier ?? 'mid',
-                    inclusions: [],
-                    constraints: [],
-                    showcase_mode: true,
-                    style_name: data.style_name,
-                  }),
-                })
-                if (res.ok) {
-                  const renderData = await res.json() as { prediction_id: string }
-                  results.push({ predictionId: renderData.prediction_id, label: input.label })
-                }
-              } catch {
-                // Non-blocking fallback — step-3 will use anchor_renders
-              }
-            }
-            if (results.length > 0) {
-              setShowcasePredictionIds(results)
-            }
-          })()
+  // Create room record on mount if none exists
+  // Note: /api/rooms/create requires auth — defer this call until after auth
+  const createRoomRecord = useCallback(async () => {
+    if (currentRoomId) return currentRoomId
+    try {
+      const response = await fetch('/api/rooms/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ room_type: roomType ?? 'living_room' }),
+      })
+      if (response.ok) {
+        const data = (await response.json()) as { id?: string; room_id?: string }
+        const id = data.id ?? data.room_id
+        if (id) {
+          setRoom(id)
+          setCurrentRoomId(id)
+          return id
         }
-      } catch {
-        // Non-blocking — store will use defaults on step-3
-      } finally {
-        setStep(3);
-        router.push("/design/step-3");
       }
-    },
-    [roomType, budgetTier, setFingerprint, setShowcasePredictionIds, setStep, router]
-  );
-
-  const handleSelection = useCallback(
-    (side: "left" | "right") => {
-      if (isAnimating) return;
-      setIsAnimating(true);
-      setSelectedCard(side);
-
-      // Show checkmark at 150ms
-      setTimeout(() => setShowCheckmark(true), 150);
-
-      // Exit animation at 600ms
-      setTimeout(() => setExitPhase(true), 600);
-
-      // Next pair at 1000ms
-      setTimeout(() => {
-        const activePair = pairs[currentPair];
-        const newResponse: Response = {
-          pairId: activePair?.id ?? `pair-${String(currentPair + 1).padStart(2, "0")}`,
-          chosen: side === "left" ? "A" : "B",
-          superLiked: false,
-        };
-        const updatedResponses = [...responses, newResponse];
-        setResponses(updatedResponses);
-
-        if (currentPair === TOTAL_PAIRS - 1) {
-          void completeQuiz(updatedResponses);
-        } else {
-          setSelectedCard(null);
-          setExitPhase(false);
-          setShowCheckmark(false);
-          setEnterPhase(true);
-          setCurrentPair((prev) => prev + 1);
-
-          setTimeout(() => {
-            setEnterPhase(false);
-            setIsAnimating(false);
-          }, 460);
-        }
-      }, 1000);
-    },
-    [isAnimating, currentPair, responses, completeQuiz, pairs]
-  );
-
-  const handleBack = useCallback(() => {
-    if (currentPair > 0 && !isAnimating) {
-      setCurrentPair((prev) => prev - 1);
-      setResponses((prev) => prev.slice(0, -1));
+    } catch {
+      // Room will be created during upload if needed
     }
-  }, [currentPair, isAnimating]);
+    return null
+  }, [currentRoomId, roomType, setRoom])
 
-  const handlePointerDown = (e: React.PointerEvent) => {
-    if (isAnimating) return;
-    pointerStartX.current = e.clientX;
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-  };
-
-  const handlePointerUp = (e: React.PointerEvent) => {
-    if (isAnimating) return;
-    const deltaX = e.clientX - pointerStartX.current;
-    if (Math.abs(deltaX) > 40) {
-      handleSelection(deltaX > 0 ? "left" : "right");
-    }
-  };
-
-  // Enter animation on mount
+  // Check if user is already authenticated on mount
   useEffect(() => {
-    const timer = setTimeout(() => setEnterPhase(false), 460);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const activePair = pairs[currentPair];
-  const imgUrlA = activePair?.imageA?.url ?? "";
-  const imgUrlB = activePair?.imageB?.url ?? "";
-  const isWarmup = activePair?.isWarmup ?? (currentPair === 0);
-
-  const getCardStyle = (side: "left" | "right") => {
-    const isSelected = selectedCard === side;
-    const isRejected = selectedCard && selectedCard !== side;
-
-    let transform = "translateX(0) translateY(0)";
-    let opacity = 1;
-
-    if (enterPhase) {
-      transform = "translateX(105%)";
-      opacity = 0;
-    }
-
-    if (exitPhase) {
-      if (isSelected) {
-        transform = "translateX(105%)";
-        opacity = 0;
-      } else if (isRejected) {
-        transform = "translateX(-105%)";
-        opacity = 0;
+    const checkExistingAuth = async () => {
+      const supabase = createBrowserClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        // Already authenticated — skip auth UI, go straight after capture
+        setAuthStage('done')
+        // Pre-create room so QR code is ready for authenticated users
+        void createRoomRecord()
       }
-    } else if (isRejected && !exitPhase) {
-      opacity = 0.35;
+    }
+    void checkExistingAuth()
+  }, [createRoomRecord])
+
+  // Detect device on mount
+  useEffect(() => {
+    const caps = getDeviceCapabilities()
+    setDevice({
+      isMobile: caps.isMobile || caps.isTablet,
+      hasLiDAR: caps.hasLiDAR,
+      isDesktop: caps.isDesktop,
+    })
+  }, [])
+
+
+  const handleFileSelected = useCallback((file: File) => {
+    const url = URL.createObjectURL(file)
+    setPreviewUrl(url)
+    setSelectedFile(file)
+    setCaptureStage('previewing')
+    setCaptureError(null)
+  }, [])
+
+  const handlePhotoReceivedFromQR = useCallback(
+    (photoUrl: string) => {
+      // QR path: photo already uploaded by mobile, URL is the Supabase storage URL
+      setPhotoUrl(photoUrl)
+      setPreviewUrl(photoUrl)
+      setUploadedPhotoUrl(photoUrl)
+      setCaptureStage('complete')
+      // Show auth section if not already authed
+      if (authStage !== 'done') {
+        setAuthStage('showing')
+      } else {
+        void proceedAfterAuth(photoUrl, currentRoomId)
+      }
+    },
+    [authStage, currentRoomId, setPhotoUrl]
+  )
+
+  const handleCaptureError = useCallback((message: string) => {
+    setCaptureError(message)
+    setCaptureStage('error')
+  }, [])
+
+  const handleConfirm = useCallback(async () => {
+    if (!selectedFile) return
+    setCaptureStage('uploading')
+
+    try {
+      const formData = new FormData()
+      formData.append('photo', selectedFile)
+      if (currentRoomId) {
+        formData.append('room_id', currentRoomId)
+      }
+
+      const response = await fetch('/api/rooms/capture', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        throw new Error('Upload failed')
+      }
+
+      const data = (await response.json()) as { room_id: string; photo_url: string }
+
+      setRoom(data.room_id)
+      setPhotoUrl(data.photo_url)
+      setCurrentRoomId(data.room_id)
+      setUploadedPhotoUrl(data.photo_url)
+
+      void analytics.photoUploaded(roomType ?? 'unknown')
+
+      setCaptureStage('complete')
+
+      // Show auth section if not already authed
+      if (authStage !== 'done') {
+        setAuthStage('showing')
+      } else {
+        void proceedAfterAuth(data.photo_url, data.room_id)
+      }
+    } catch (err) {
+      void reportError(err, {
+        type: 'upload_failed',
+        roomId: currentRoomId ?? undefined,
+      })
+      setCaptureError('Upload failed. Check your connection and try again.')
+      setCaptureStage('error')
+    }
+  }, [selectedFile, currentRoomId, roomType, authStage, setRoom, setPhotoUrl])
+
+  const handleRetake = useCallback(() => {
+    if (previewUrl?.startsWith('blob:')) {
+      URL.revokeObjectURL(previewUrl)
+    }
+    setPreviewUrl(null)
+    setSelectedFile(null)
+    setCaptureStage('initial')
+    setCaptureError(null)
+    setAuthStage('idle')
+    setUploadedPhotoUrl(null)
+  }, [previewUrl])
+
+  // Called after successful auth — fires detection async and navigates to step-3
+  const proceedAfterAuth = useCallback(async (photoUrl: string, roomId: string | null) => {
+    setAuthStage('done')
+    clearPendingCapture()
+
+    // Ensure we have a room record (may not exist yet if QR path skipped create)
+    let finalRoomId = roomId
+    if (!finalRoomId) {
+      finalRoomId = await createRoomRecord()
     }
 
-    return { transform, opacity };
-  };
+    // Fire detection and depth estimation — fire-and-forget, do NOT await
+    // Detection takes ~71s; quiz takes ~2-3min; user won't wait at step-6
+    if (finalRoomId && photoUrl) {
+      void triggerDetection(photoUrl, finalRoomId)
+    }
 
-  const getCardTransition = (side: "left" | "right") => {
-    if (enterPhase) {
-      const delay = side === "left" ? "0ms" : "60ms";
-      return `all 400ms cubic-bezier(0.34,1.56,0.64,1) ${delay}`;
+    setStep(3)
+    router.push('/design/step-3')
+  }, [createRoomRecord, setStep, router])
+
+  const handleGoogleSignIn = useCallback(async () => {
+    setAuthError(null)
+    setAuthStage('loading')
+    // Persist photo state across OAuth redirect
+    if (uploadedPhotoUrl && currentRoomId) {
+      setPendingCapture(uploadedPhotoUrl, currentRoomId)
     }
-    if (exitPhase) {
-      const duration = selectedCard === side ? "400ms" : "350ms";
-      return `all ${duration} ease-in`;
+    const supabase = createBrowserClient()
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/design/step-3`,
+      },
+    })
+    if (error) {
+      setAuthError(error.message)
+      setAuthStage('showing')
     }
-    return "all 300ms ease";
-  };
+    // On success, OAuth redirects the page — no further action needed here
+  }, [uploadedPhotoUrl, currentRoomId, setPendingCapture])
+
+  const handleAppleSignIn = useCallback(async () => {
+    setAuthError(null)
+    setAuthStage('loading')
+    // Persist photo state across OAuth redirect
+    if (uploadedPhotoUrl && currentRoomId) {
+      setPendingCapture(uploadedPhotoUrl, currentRoomId)
+    }
+    const supabase = createBrowserClient()
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'apple',
+      options: {
+        redirectTo: `${window.location.origin}/design/step-3`,
+      },
+    })
+    if (error) {
+      setAuthError(error.message)
+      setAuthStage('showing')
+    }
+  }, [uploadedPhotoUrl, currentRoomId, setPendingCapture])
+
+  const handleEmailAuth = useCallback(async () => {
+    setAuthError(null)
+    setAuthStage('loading')
+    const supabase = createBrowserClient()
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+    if (signInError) {
+      // Try sign up
+      const { error: signUpError } = await supabase.auth.signUp({ email, password })
+      if (signUpError) {
+        setAuthError(signUpError.message)
+        setAuthStage('showing')
+        return
+      }
+      setIsNewUser(true)
+    }
+
+    // Auth succeeded — proceed
+    await proceedAfterAuth(uploadedPhotoUrl ?? '', currentRoomId)
+  }, [email, password, uploadedPhotoUrl, currentRoomId, proceedAfterAuth])
+
+  const showAuthSection = authStage === 'showing' || authStage === 'loading'
 
   return (
     <div
-      className="fixed inset-0 flex flex-col overflow-hidden"
-      style={{ backgroundColor: "#091829" }}
+      style={{
+        minHeight: '100vh',
+        background: COLORS.background,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px',
+      }}
     >
       <StepIndicator currentStep={2} totalSteps={10} />
-      {/* TOP ZONE - Progress */}
-      <div className="flex flex-col items-center pt-2 pb-1" style={{ height: "10%" }}>
-        <p
-          className="text-center font-sans mb-2"
-          style={{ fontSize: "13px", color: "#8A9BB5" }}
-        >
-          <span
-            key={currentPair}
-            className="inline-block"
-            style={{ animation: "counterPop 200ms ease" }}
-          >
-            {currentPair + 1}
-          </span>{" "}
-          <span style={{ color: "#4A5E7A" }}>of {TOTAL_PAIRS}</span>
-        </p>
 
-        {/* Progress bar */}
-        <div
-          className="w-full max-w-md mx-auto px-6"
-          style={{ height: "2px", backgroundColor: "rgba(201,168,76,0.15)" }}
-        >
-          <div
+      <div
+        style={{
+          width: '100%',
+          maxWidth: 480,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '32px',
+        }}
+      >
+        {/* Header */}
+        <div style={{ textAlign: 'center' }}>
+          <h1
             style={{
-              width: `${progressWidth}%`,
-              height: "100%",
-              backgroundColor: "#C9A84C",
-              transition: "width 400ms ease",
+              fontFamily: 'EB Garamond, Georgia, serif',
+              fontSize: '28px',
+              color: COLORS.ivory,
+              marginBottom: '8px',
+              fontWeight: 400,
             }}
+          >
+            Show us your space
+          </h1>
+          <p style={{ color: COLORS.muted, fontSize: '14px' }}>
+            {device.isDesktop
+              ? 'Scan the QR code with your phone for the best photo quality'
+              : 'Take a photo from the corner of your room — stand opposite the main wall'}
+          </p>
+        </div>
+
+        {/* Capture UI — shown until complete */}
+        {(captureStage === 'initial' || captureStage === 'error') && (
+          <>
+            {device.isDesktop && currentRoomId ? (
+              <QRCapture
+                roomId={currentRoomId}
+                onPhotoReceived={handlePhotoReceivedFromQR}
+                onError={handleCaptureError}
+              />
+            ) : device.isDesktop && !currentRoomId ? (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '16px',
+                }}
+              >
+                <div
+                  style={{
+                    width: 32,
+                    height: 32,
+                    border: '2px solid #C9A84C',
+                    borderTopColor: 'transparent',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite',
+                  }}
+                />
+                <p style={{ color: COLORS.muted, fontSize: '14px' }}>Preparing capture...</p>
+              </div>
+            ) : (
+              <MobileCapture
+                hasLiDAR={device.hasLiDAR}
+                onFileSelected={handleFileSelected}
+                onError={handleCaptureError}
+              />
+            )}
+
+            {captureError && (
+              <div
+                style={{
+                  background: 'rgba(192,80,74,0.1)',
+                  border: `1px solid ${COLORS.error}`,
+                  borderRadius: '8px',
+                  padding: '12px 16px',
+                  width: '100%',
+                  maxWidth: 340,
+                }}
+              >
+                <p style={{ color: COLORS.error, fontSize: '14px', margin: 0 }}>{captureError}</p>
+                <button
+                  onClick={() => { setCaptureError(null); setCaptureStage('initial') }}
+                  style={{
+                    marginTop: '8px',
+                    background: 'transparent',
+                    border: 'none',
+                    color: COLORS.muted,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    padding: 0,
+                  }}
+                >
+                  Try again
+                </button>
+              </div>
+            )}
+
+            <UploadFallback onFileSelected={handleFileSelected} onError={handleCaptureError} />
+          </>
+        )}
+
+        {(captureStage === 'previewing' || captureStage === 'uploading') && previewUrl && (
+          <CaptureResult
+            photoUrl={previewUrl}
+            onConfirm={handleConfirm}
+            onRetake={handleRetake}
+            isUploading={captureStage === 'uploading'}
           />
-        </div>
+        )}
 
-        {/* Warmup text - only on warmup card */}
-        <p
-          className="mt-1 text-center font-sans italic"
-          style={{
-            fontSize: "11px",
-            color: "#4A5E7A",
-            opacity: isWarmup ? 1 : 0,
-            transition: "opacity 300ms ease",
-            height: 16,
-          }}
-        >
-          Just getting started — no pressure
-        </p>
-      </div>
-
-      {/* MIDDLE ZONE - Cards */}
-      <div
-        ref={containerRef}
-        className="relative flex-1 flex items-center justify-center px-4"
-        style={{ height: "77%" }}
-        onPointerDown={handlePointerDown}
-        onPointerUp={handlePointerUp}
-      >
-        <div
-          className="relative flex w-full h-full max-w-[900px]"
-          style={{ maxHeight: "calc(75vh - 40px)" }}
-        >
-          {/* Left Card */}
-          <div
-            className="relative w-1/2 h-full cursor-pointer overflow-hidden"
-            style={{
-              borderRadius: "16px 0 0 16px",
-              background: "linear-gradient(160deg, #0D2035 0%, #1A2A3A 50%, #0A1828 100%)",
-              ...getCardStyle("left"),
-              transition: getCardTransition("left"),
-              outline: selectedCard === "left" ? "3px solid #C9A84C" : "none",
-              boxShadow:
-                selectedCard === "left"
-                  ? "0 0 0 3px rgba(201,168,76,0.3), 0 0 40px rgba(201,168,76,0.15)"
-                  : "none",
-            }}
-            onClick={() => !isAnimating && handleSelection("left")}
-            onMouseEnter={() => setLastHovered("left")}
-            onMouseLeave={() => setLastHovered(null)}
-          >
-            {/* Real image */}
-            {imgUrlA ? (
-              <img
-                src={imgUrlA}
-                alt={activePair?.imageA?.alt ?? "Style option A"}
-                className="absolute inset-0 w-full h-full object-cover"
-                draggable={false}
-              />
-            ) : (
-              /* Fallback placeholder when images not yet generated */
-              <svg
-                className="absolute inset-0 m-auto"
-                width="60%"
-                height="60%"
-                viewBox="0 0 100 80"
-                fill="none"
-                style={{ opacity: 0.5 }}
-              >
-                <rect x="10" y="10" width="30" height="25" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
-                <line x1="5" y1="70" x2="95" y2="70" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
-                <path d="M20 70 L20 50 Q30 45 40 50 L40 70" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
-                <path d="M60 70 L60 55 L85 55 L85 70" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
-              </svg>
-            )}
-
-            {/* Bottom gradient overlay */}
+        {captureStage === 'complete' && !showAuthSection && authStage === 'done' && (
+          <div style={{ textAlign: 'center' }}>
             <div
-              className="absolute inset-0 pointer-events-none"
               style={{
-                background: "linear-gradient(transparent 80%, rgba(9,24,41,0.15))",
+                width: 64,
+                height: 64,
+                background: COLORS.gold,
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 24px',
+              }}
+            >
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                <polyline
+                  points="6,16 13,23 26,9"
+                  stroke="#0A1628"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+            <p style={{ color: COLORS.gold, fontSize: '18px' }}>
+              Photo received — starting style quiz...
+            </p>
+          </div>
+        )}
+
+        {/* Auth section — appears after photo is uploaded and user is not yet authed */}
+        {showAuthSection && (
+          <div
+            style={{
+              width: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '16px',
+              animation: 'authRise 400ms ease forwards',
+            }}
+          >
+            {/* Gold divider */}
+            <div
+              style={{
+                width: '100%',
+                height: 1,
+                background: 'rgba(201,168,76,0.2)',
+                margin: '8px 0',
               }}
             />
 
-            {/* Checkmark badge */}
-            {selectedCard === "left" && showCheckmark && (
-              <div
-                className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center justify-center"
+            <p
+              style={{
+                fontSize: 10,
+                letterSpacing: '0.3em',
+                color: COLORS.gold,
+                fontFamily: 'Inter, sans-serif',
+              }}
+            >
+              SAVE YOUR DESIGN
+            </p>
+
+            <p
+              style={{
+                fontSize: '14px',
+                color: COLORS.muted,
+                textAlign: 'center',
+                maxWidth: 320,
+                fontFamily: 'Inter, sans-serif',
+              }}
+            >
+              Create a free account to save your room and unlock your personalized design.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%', maxWidth: 320 }}>
+              {/* Google */}
+              <button
+                onClick={handleGoogleSignIn}
+                disabled={authStage === 'loading'}
                 style={{
-                  width: "28px",
-                  height: "28px",
-                  borderRadius: "50%",
-                  backgroundColor: "#C9A84C",
-                  animation: "checkBadge 250ms cubic-bezier(0.34,1.56,0.64,1)",
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '12px',
+                  width: '100%',
+                  height: 48,
+                  background: 'white',
+                  borderRadius: 8,
+                  border: 'none',
+                  cursor: authStage === 'loading' ? 'not-allowed' : 'pointer',
+                  opacity: authStage === 'loading' ? 0.7 : 1,
+                  fontFamily: 'Inter, sans-serif',
                 }}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                  <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                <svg width="18" height="18" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                 </svg>
-              </div>
-            )}
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#1A1A1A' }}>Sign in with Google</span>
+              </button>
 
-            {/* Hover effect */}
-            <div
-              className="absolute inset-0 pointer-events-none transition-opacity duration-200"
-              style={{
-                opacity: lastHovered === "left" && !selectedCard ? 1 : 0,
-                boxShadow: "inset 0 0 60px rgba(201,168,76,0.04)",
-                borderLeft: "2px solid #C9A84C",
-                borderTop: "2px solid #C9A84C",
-                borderBottom: "2px solid #C9A84C",
-                borderRadius: "16px 0 0 16px",
-              }}
-            />
-          </div>
-
-          {/* Gold Divider */}
-          <div
-            className="absolute left-1/2 top-0 bottom-0 -translate-x-1/2 z-10"
-            style={{ width: "2px", backgroundColor: "rgba(201,168,76,0.6)" }}
-          >
-            {/* Diamond */}
-            <div
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20"
-              style={{
-                width: "8px",
-                height: "8px",
-                backgroundColor: "#C9A84C",
-                transform: "translate(-50%, -50%) rotate(45deg)",
-                animation: "diamondPulse 3s ease-in-out infinite",
-              }}
-            />
-          </div>
-
-          {/* Right Card */}
-          <div
-            className="relative w-1/2 h-full cursor-pointer overflow-hidden"
-            style={{
-              borderRadius: "0 16px 16px 0",
-              background: "linear-gradient(160deg, #1A0E08 0%, #2A1A0A 50%, #1A0A04 100%)",
-              ...getCardStyle("right"),
-              transition: getCardTransition("right"),
-              outline: selectedCard === "right" ? "3px solid #C9A84C" : "none",
-              boxShadow:
-                selectedCard === "right"
-                  ? "0 0 0 3px rgba(201,168,76,0.3), 0 0 40px rgba(201,168,76,0.15)"
-                  : "none",
-            }}
-            onClick={() => !isAnimating && handleSelection("right")}
-            onMouseEnter={() => setLastHovered("right")}
-            onMouseLeave={() => setLastHovered(null)}
-          >
-            {/* Real image */}
-            {imgUrlB ? (
-              <img
-                src={imgUrlB}
-                alt={activePair?.imageB?.alt ?? "Style option B"}
-                className="absolute inset-0 w-full h-full object-cover"
-                draggable={false}
-              />
-            ) : (
-              /* Fallback placeholder */
-              <svg
-                className="absolute inset-0 m-auto"
-                width="60%"
-                height="60%"
-                viewBox="0 0 100 80"
-                fill="none"
-                style={{ opacity: 0.5 }}
-              >
-                <rect x="60" y="8" width="35" height="28" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
-                <line x1="5" y1="70" x2="95" y2="70" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
-                <ellipse cx="35" cy="60" rx="25" ry="8" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
-                <path d="M70 70 L70 50 L90 50 L90 70" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
-              </svg>
-            )}
-
-            {/* Bottom gradient overlay */}
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background: "linear-gradient(transparent 80%, rgba(9,24,41,0.15))",
-              }}
-            />
-
-            {/* Checkmark badge */}
-            {selectedCard === "right" && showCheckmark && (
-              <div
-                className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center justify-center"
+              {/* Apple */}
+              <button
+                onClick={handleAppleSignIn}
+                disabled={authStage === 'loading'}
                 style={{
-                  width: "28px",
-                  height: "28px",
-                  borderRadius: "50%",
-                  backgroundColor: "#C9A84C",
-                  animation: "checkBadge 250ms cubic-bezier(0.34,1.56,0.64,1)",
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '12px',
+                  width: '100%',
+                  height: 48,
+                  background: 'black',
+                  borderRadius: 8,
+                  border: 'none',
+                  cursor: authStage === 'loading' ? 'not-allowed' : 'pointer',
+                  opacity: authStage === 'loading' ? 0.7 : 1,
+                  fontFamily: 'Inter, sans-serif',
                 }}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                  <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                <svg width="16" height="20" viewBox="0 0 16 20" fill="white">
+                  <path d="M12.152 0c.09.916-.273 1.823-.774 2.49-.51.676-1.362 1.2-2.175 1.13-.102-.867.319-1.776.793-2.333C10.52.691 11.432.187 12.152 0zM14.957 16.473c-.357.81-.528 1.172-.987 1.884-.64.993-1.543 2.23-2.662 2.242-1-.011-1.259-.639-2.617-.631-1.359.008-1.64.644-2.64.656-1.119.012-1.973-1.126-2.614-2.119C1.7 15.77.794 11.613 2.626 8.803c.656-.995 1.823-1.623 3.066-1.64 1.118-.017 2.174.743 2.86.743.685 0 1.968-.918 3.316-.784.564.023 2.15.224 3.166 1.688-.082.05-1.89 1.087-1.87 3.241.024 2.573 2.296 3.43 2.32 3.442-.018.046-.363 1.23-1.527 2.98z" />
                 </svg>
-              </div>
-            )}
+                <span style={{ fontSize: '14px', fontWeight: 500, color: 'white' }}>Sign in with Apple</span>
+              </button>
 
-            {/* Hover effect */}
-            <div
-              className="absolute inset-0 pointer-events-none transition-opacity duration-200"
-              style={{
-                opacity: lastHovered === "right" && !selectedCard ? 1 : 0,
-                boxShadow: "inset 0 0 60px rgba(201,168,76,0.04)",
-                borderRight: "2px solid #C9A84C",
-                borderTop: "2px solid #C9A84C",
-                borderBottom: "2px solid #C9A84C",
-                borderRadius: "0 16px 16px 0",
-              }}
-            />
+              {/* Email */}
+              {!showEmailForm ? (
+                <button
+                  onClick={() => setShowEmailForm(true)}
+                  disabled={authStage === 'loading'}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#4A5E7A',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    fontFamily: 'Inter, sans-serif',
+                    textAlign: 'center',
+                  }}
+                >
+                  Continue with email →
+                </button>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 16px',
+                      borderRadius: 8,
+                      border: '1px solid rgba(201,168,76,0.3)',
+                      background: COLORS.surface,
+                      color: COLORS.ivory,
+                      fontSize: '14px',
+                      fontFamily: 'Inter, sans-serif',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                  <input
+                    type="password"
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 16px',
+                      borderRadius: 8,
+                      border: '1px solid rgba(201,168,76,0.3)',
+                      background: COLORS.surface,
+                      color: COLORS.ivory,
+                      fontSize: '14px',
+                      fontFamily: 'Inter, sans-serif',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                  {authError && (
+                    <p style={{ color: COLORS.error, fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>
+                      {authError}
+                    </p>
+                  )}
+                  {isNewUser && (
+                    <p style={{ color: '#4A9B7F', fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>
+                      Account created — check your email to verify.
+                    </p>
+                  )}
+                  <button
+                    onClick={handleEmailAuth}
+                    disabled={authStage === 'loading' || !email || !password}
+                    style={{
+                      background: authStage === 'loading' ? 'rgba(201,168,76,0.5)' : COLORS.gold,
+                      color: '#0A1628',
+                      border: 'none',
+                      borderRadius: 8,
+                      padding: '10px 16px',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      cursor: authStage === 'loading' ? 'not-allowed' : 'pointer',
+                      fontFamily: 'Inter, sans-serif',
+                      width: '100%',
+                    }}
+                  >
+                    {authStage === 'loading' ? 'Signing in...' : 'Continue →'}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </div>
+        )}
 
-      {/* BOTTOM ZONE - Skip + Back */}
-      <div
-        className="flex flex-col items-center justify-center pb-6"
-        style={{ height: "13%" }}
-      >
-        {/* Neither / Skip button */}
+        {/* Back navigation */}
         <button
           onClick={() => {
-            if (isAnimating) return;
-            if (currentPair + 1 >= TOTAL_PAIRS) {
-              void completeQuiz(responses);
-            } else {
-              setCurrentPair((prev) => prev + 1);
-            }
+            setStep(1)
+            router.push('/design/step-1')
           }}
-          disabled={isAnimating}
-          className="font-sans transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
           style={{
-            fontSize: "12px",
-            color: "#4A5E7A",
-            background: "transparent",
-            border: "1px solid rgba(74,94,122,0.4)",
-            borderRadius: 20,
-            padding: "6px 20px",
-            cursor: isAnimating ? "not-allowed" : "pointer",
-            letterSpacing: "0.04em",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = "rgba(201,168,76,0.3)";
-            e.currentTarget.style.color = "#8A9BB5";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = "rgba(74,94,122,0.4)";
-            e.currentTarget.style.color = "#4A5E7A";
+            background: 'transparent',
+            border: 'none',
+            color: COLORS.muted,
+            fontSize: '12px',
+            cursor: 'pointer',
+            fontFamily: 'Inter, sans-serif',
           }}
         >
-          Neither — skip
-        </button>
-
-        {/* Back button */}
-        <button
-          onClick={handleBack}
-          disabled={currentPair === 0 || isAnimating}
-          className="mt-3 font-sans transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
-          style={{
-            fontSize: "12px",
-            color: "#4A5E7A",
-            background: "none",
-            border: "none",
-            cursor: currentPair > 0 ? "pointer" : "not-allowed",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "#8A9BB5")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "#4A5E7A")}
-        >
-          ←
+          ← Back
         </button>
       </div>
 
-      {/* Animations */}
-      <style jsx>{`
-        @keyframes counterPop {
-          0% { transform: scale(1); }
-          50% { transform: scale(1.3); }
-          100% { transform: scale(1); }
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
-        @keyframes checkBadge {
-          0% { transform: translateX(-50%) scale(0); }
-          60% { transform: translateX(-50%) scale(1.1); }
-          100% { transform: translateX(-50%) scale(1); }
-        }
-        @keyframes diamondPulse {
-          0%, 100% {
-            transform: translate(-50%, -50%) rotate(45deg) scale(1);
-            opacity: 0.6;
-          }
-          50% {
-            transform: translate(-50%, -50%) rotate(45deg) scale(1.15);
-            opacity: 1;
-          }
+        @keyframes authRise {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
     </div>
-  );
+  )
+}
+
+async function triggerDetection(photoUrl: string, roomId: string): Promise<void> {
+  try {
+    await fetch('/api/detect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ photo_url: photoUrl, room_id: roomId }),
+    })
+  } catch {
+    // Detection failure is non-blocking
+  }
 }

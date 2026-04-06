@@ -1,1857 +1,889 @@
-"use client";
+"use client"
 
-import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { Check, Plus, X } from "lucide-react";
-import { useFingerprintStore, useSessionStore } from "@/lib/store";
-import type { WallLayout } from "@/lib/store/fingerprint";
-import { StepIndicator } from "@/components/cova/StepIndicator";
-import { parseMeasurementParams, isIOS, isAndroid } from "@/lib/measureBridge";
-import dynamic from "next/dynamic";
+import { useState, useEffect, useRef } from "react"
+import { useRouter } from "next/navigation"
+import { useFingerprintStore } from "@/lib/store"
+import { useSessionStore } from "@/lib/store/session"
+import { StepIndicator } from "@/components/cova/StepIndicator"
+import { createBrowserClient } from "@/lib/supabase/client"
 
-const RoomMeasure = dynamic(
-  () => import("@/components/capture/RoomMeasure"),
-  { ssr: false }
-);
+const axisLabels = ["Luminosity", "Temperature", "Form", "Texture", "Nature", "Scale"]
+const adjustChips = ["Warmer", "Cooler", "More minimal", "More layered", "More modern", "More classic"]
 
-// Color constants
-const colors = {
-  navy: "#091829",
-  gold: "#C9A84C",
-  goldHover: "#D4B460",
-  ivory: "#F5F0E8",
-  muted: "#8A9BB5",
-  mutedDark: "#4A5E7A",
-  surface: "#0D2035",
-  surface2: "#112540",
-  goldBorder: "rgba(201,168,76,0.2)",
-  goldBorderFocus: "rgba(201,168,76,0.6)",
-  goldBorderLight: "rgba(201,168,76,0.15)",
-  goldBorderMed: "rgba(201,168,76,0.3)",
-  warning: "#D4801A",
-  warningBg: "rgba(212,128,26,0.15)",
-  remove: "#C0392B",
-};
-
-// Types
-type PlacedSymbol = {
-  id: string;
-  type: "window" | "door";
-  wall: "top" | "bottom" | "left" | "right";
-  position: number; // 0-100% along the wall
-};
-
-// WallLayout is imported from @/lib/store/fingerprint
-
-const naturalLightOptions = [
-  "No windows",
-  "One small window",
-  "One large window",
-  "Multiple windows",
-  "Floor-to-ceiling windows",
-];
-
-const floorOptions = [
-  "Hardwood",
-  "Light laminate",
-  "Carpet",
-  "Tile",
-  "Concrete",
-  "Mixed / unsure",
-];
-
-const wallFinishOptions = [
-  "Painted (standard)",
-  "Exposed brick",
-  "Wallpaper",
-  "Wood paneling",
-  "Concrete",
-  "Unsure",
-];
-
-const fixedElements = [
-  { emoji: "🔥", label: "Fireplace" },
-  { emoji: "📚", label: "Built-in shelves" },
-  { emoji: "🧱", label: "Exposed brick" },
-  { emoji: "🏠", label: "Open to kitchen" },
-  { emoji: "🏛", label: "Structural column" },
-  { emoji: "🌡", label: "Radiator" },
-  { emoji: "🚿", label: "En-suite bathroom" },
-  { emoji: "🪟", label: "Bay window" },
-  { emoji: "📐", label: "Sloped ceiling" },
-  { emoji: "🪞", label: "Large mirror wall" },
-  { emoji: "🛗", label: "Low doorways" },
-  { emoji: "🔌", label: "Limited outlets" },
-];
-
-const starterChips = [
-  "I rent",
-  "I have pets",
-  "Can't drill walls",
-  "Child-safe furniture",
-  "Very low light",
-  "Tight budget",
-  "Sharing the space",
-  "Working from home",
-  "Frequent guests",
-];
-
-const mustHaveItems = [
-  { emoji: "📺", label: "TV" },
-  { emoji: "🔊", label: "Soundbar" },
-  { emoji: "💡", label: "Smart Lighting" },
-  { emoji: "🎮", label: "Gaming Setup" },
-  { emoji: "🛋", label: "Sofa" },
-  { emoji: "🛏", label: "Bed" },
-  { emoji: "💻", label: "Desk" },
-  { emoji: "🍽", label: "Dining Table" },
-  { emoji: "🪴", label: "Plants" },
-  { emoji: "🖼", label: "Art" },
-  { emoji: "🪞", label: "Mirror" },
-  { emoji: "📚", label: "Bookshelf" },
-  { emoji: "🟫", label: "Rug" },
-  { emoji: "🏋", label: "Exercise Equipment" },
-  { emoji: "🎹", label: "Piano / Instrument" },
-];
-
-// Custom Dropdown Component
-interface CustomDropdownProps {
-  label: string;
-  options: string[];
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
+// Fallback palette derived from fingerprint values
+function derivepalette(fp: number[]): string[] {
+  const warm = fp[2] > 0.5 // temperature
+  const bright = fp[0] > 0.5 // luminosity
+  if (warm && bright) return ["#C9A84C", "#D4956A", "#8B6914", "#F5E6C8", "#3D2010"]
+  if (warm && !bright) return ["#8B6914", "#5C3D1A", "#3D2010", "#C9A84C", "#1A0E08"]
+  if (!warm && bright) return ["#8A9BB5", "#6A8AA0", "#4A6E8A", "#F5F0E8", "#1A2A3A"]
+  return ["#4A5E7A", "#2A3A4A", "#1A2A3A", "#8A9BB5", "#091829"]
 }
 
-function CustomDropdown({
-  label,
-  options,
-  value,
-  onChange,
-  placeholder = "Select...",
-}: CustomDropdownProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (!dropdownRef.current?.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  return (
-    <div className="flex flex-col gap-2">
-      <label style={{ color: colors.muted, fontSize: 12 }}>{label}</label>
-      <div className="relative" ref={dropdownRef}>
-        <button
-          type="button"
-          onClick={() => setIsOpen(!isOpen)}
-          className="w-full flex items-center justify-between gap-2 transition-all duration-200 cursor-pointer"
-          style={{
-            background: colors.surface2,
-            border: `1px solid ${isOpen ? colors.goldBorderFocus : colors.goldBorder}`,
-            boxShadow: isOpen ? `0 0 0 3px rgba(201,168,76,0.1)` : "none",
-            borderRadius: 10,
-            padding: "12px 14px",
-            color: value ? colors.ivory : colors.muted,
-            fontSize: 15,
-          }}
-          onMouseEnter={(e) => {
-            if (!isOpen)
-              e.currentTarget.style.borderColor = "rgba(201,168,76,0.5)";
-          }}
-          onMouseLeave={(e) => {
-            if (!isOpen) e.currentTarget.style.borderColor = colors.goldBorder;
-          }}
-        >
-          <span style={{ fontFamily: "Inter, sans-serif" }}>
-            {value || placeholder}
-          </span>
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke={colors.gold}
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{
-              transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
-              transition: "transform 200ms ease",
-            }}
-          >
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        </button>
-        {isOpen && (
-          <div
-            className="absolute z-50"
-            style={{
-              top: "calc(100% + 4px)",
-              left: 0,
-              right: 0,
-              background: colors.surface2,
-              border: `1px solid ${colors.goldBorderMed}`,
-              borderRadius: 10,
-              boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
-              maxHeight: 240,
-              overflowY: "auto",
-              padding: 4,
-            }}
-          >
-            {options.map((opt) => (
-              <button
-                key={opt}
-                type="button"
-                onClick={() => {
-                  onChange(opt);
-                  setIsOpen(false);
-                }}
-                className="w-full text-left flex items-center justify-between transition-colors duration-150 cursor-pointer"
-                style={{
-                  padding: "10px 14px",
-                  color: opt === value ? colors.gold : colors.ivory,
-                  background:
-                    opt === value ? "rgba(201,168,76,0.15)" : "transparent",
-                  borderRadius: 8,
-                  fontSize: 14,
-                  fontFamily: "Inter, sans-serif",
-                }}
-                onMouseEnter={(e) => {
-                  if (opt !== value)
-                    e.currentTarget.style.background = "rgba(201,168,76,0.1)";
-                }}
-                onMouseLeave={(e) => {
-                  if (opt !== value)
-                    e.currentTarget.style.background = "transparent";
-                }}
-              >
-                <span>{opt}</span>
-                {opt === value && (
-                  <Check size={16} style={{ color: colors.gold }} />
-                )}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function NumberInput({
-  label,
-  value,
-  onChange,
-  placeholder,
-  hint,
-  suffix = "ft",
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder: string;
-  hint?: string;
-  suffix?: string;
-}) {
-  const [focused, setFocused] = useState(false);
-
-  return (
-    <div className="flex flex-col gap-2">
-      <label style={{ color: colors.muted, fontSize: 12 }}>{label}</label>
-      <div className="relative">
-        <input
-          type="number"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          placeholder={placeholder}
-          className="w-full transition-all duration-200 outline-none"
-          style={{
-            background: colors.surface2,
-            border: `1px solid ${focused ? colors.goldBorderFocus : colors.goldBorder}`,
-            borderRadius: 10,
-            padding: "12px 14px",
-            paddingRight: 40,
-            color: colors.ivory,
-            fontSize: 15,
-          }}
-        />
-        <span
-          className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none"
-          style={{ color: colors.muted, fontSize: 14 }}
-        >
-          {suffix}
-        </span>
-      </div>
-      {hint && (
-        <span style={{ color: colors.mutedDark, fontSize: 11 }}>{hint}</span>
-      )}
-    </div>
-  );
-}
-
-// Drag-to-place wall schematic
-function WallSchematic({
-  placedSymbols,
-  setPlacedSymbols,
-}: {
-  placedSymbols: PlacedSymbol[];
-  setPlacedSymbols: React.Dispatch<React.SetStateAction<PlacedSymbol[]>>;
-}) {
-  const svgRef = useRef<SVGSVGElement>(null);
-  const [draggedType, setDraggedType] = useState<"window" | "door" | null>(
-    null
-  );
-  const [hoveredWall, setHoveredWall] = useState<
-    "top" | "bottom" | "left" | "right" | null
-  >(null);
-  const [hoveredSymbolId, setHoveredSymbolId] = useState<string | null>(null);
-
-  // Touch drag state
-  const [touchDragType, setTouchDragType] = useState<"window" | "door" | null>(
-    null
-  );
-  const [touchGhostPos, setTouchGhostPos] = useState<{
-    x: number;
-    y: number;
-  } | null>(null);
-  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
-
-  const generateId = () =>
-    Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
-
-  // Determine which wall zone a point is in
-  const getWallFromPoint = (
-    x: number,
-    y: number
-  ): "top" | "bottom" | "left" | "right" | null => {
-    // Wall zones based on 280x280 SVG
-    if (y >= 0 && y <= 48 && x >= 24 && x <= 256) return "top";
-    if (y >= 232 && y <= 280 && x >= 24 && x <= 256) return "bottom";
-    if (x >= 0 && x <= 48 && y >= 24 && y <= 256) return "left";
-    if (x >= 232 && x <= 280 && y >= 24 && y <= 256) return "right";
-    return null;
-  };
-
-  // Calculate position percentage along a wall
-  const getPositionOnWall = (
-    wall: "top" | "bottom" | "left" | "right",
-    x: number,
-    y: number
-  ): number => {
-    if (wall === "top" || wall === "bottom") {
-      return Math.max(10, Math.min(90, ((x - 24) / 232) * 100));
-    } else {
-      return Math.max(10, Math.min(90, ((y - 24) / 232) * 100));
-    }
-  };
-
-  // Desktop drag handlers
-  const handleDragStart = (
-    e: React.DragEvent,
-    type: "window" | "door"
-  ) => {
-    setDraggedType(type);
-    e.dataTransfer.setData("text/plain", type);
-    e.dataTransfer.effectAllowed = "copy";
-  };
-
-  const handleDragEnd = () => {
-    setDraggedType(null);
-    setHoveredWall(null);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    if (!svgRef.current) return;
-    const rect = svgRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 280;
-    const y = ((e.clientY - rect.top) / rect.height) * 280;
-    setHoveredWall(getWallFromPoint(x, y));
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    if (!svgRef.current || !draggedType) return;
-
-    const rect = svgRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 280;
-    const y = ((e.clientY - rect.top) / rect.height) * 280;
-    const wall = getWallFromPoint(x, y);
-
-    if (wall) {
-      const position = getPositionOnWall(wall, x, y);
-      setPlacedSymbols((prev) => [
-        ...prev,
-        { id: generateId(), type: draggedType, wall, position },
-      ]);
-    }
-
-    setDraggedType(null);
-    setHoveredWall(null);
-  };
-
-  // Touch handlers for mobile
-  const handleTouchStart = (
-    e: React.TouchEvent,
-    type: "window" | "door"
-  ) => {
-    const touch = e.touches[0];
-    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
-    setTouchDragType(type);
-    setTouchGhostPos({ x: touch.clientX, y: touch.clientY });
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!touchDragType) return;
-    const touch = e.touches[0];
-    setTouchGhostPos({ x: touch.clientX, y: touch.clientY });
-
-    // Check if over SVG
-    if (svgRef.current) {
-      const rect = svgRef.current.getBoundingClientRect();
-      if (
-        touch.clientX >= rect.left &&
-        touch.clientX <= rect.right &&
-        touch.clientY >= rect.top &&
-        touch.clientY <= rect.bottom
-      ) {
-        const x = ((touch.clientX - rect.left) / rect.width) * 280;
-        const y = ((touch.clientY - rect.top) / rect.height) * 280;
-        setHoveredWall(getWallFromPoint(x, y));
-      } else {
-        setHoveredWall(null);
-      }
-    }
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (!touchDragType || !svgRef.current) {
-      setTouchDragType(null);
-      setTouchGhostPos(null);
-      setHoveredWall(null);
-      return;
-    }
-
-    const touch = e.changedTouches[0];
-    const rect = svgRef.current.getBoundingClientRect();
-    const x = ((touch.clientX - rect.left) / rect.width) * 280;
-    const y = ((touch.clientY - rect.top) / rect.height) * 280;
-    const wall = getWallFromPoint(x, y);
-
-    if (wall) {
-      const position = getPositionOnWall(wall, x, y);
-      setPlacedSymbols((prev) => [
-        ...prev,
-        { id: generateId(), type: touchDragType, wall, position },
-      ]);
-    }
-
-    setTouchDragType(null);
-    setTouchGhostPos(null);
-    setHoveredWall(null);
-  };
-
-  const removeSymbol = (id: string) => {
-    setPlacedSymbols((prev) => prev.filter((s) => s.id !== id));
-  };
-
-  // Render placed symbol SVG
-  const renderSymbol = (symbol: PlacedSymbol) => {
-    let cx: number, cy: number, rotation: number;
-
-    switch (symbol.wall) {
-      case "top":
-        cx = 24 + (symbol.position / 100) * 232;
-        cy = 36;
-        rotation = 0;
-        break;
-      case "bottom":
-        cx = 24 + (symbol.position / 100) * 232;
-        cy = 244;
-        rotation = 180;
-        break;
-      case "left":
-        cx = 36;
-        cy = 24 + (symbol.position / 100) * 232;
-        rotation = 90;
-        break;
-      case "right":
-        cx = 244;
-        cy = 24 + (symbol.position / 100) * 232;
-        rotation = -90;
-        break;
-    }
-
-    const isHovered = hoveredSymbolId === symbol.id;
-
-    return (
-      <g
-        key={symbol.id}
-        transform={`translate(${cx}, ${cy}) rotate(${rotation})`}
-        style={{
-          cursor: "pointer",
-          filter: isHovered
-            ? "drop-shadow(0 0 4px rgba(201,168,76,0.8))"
-            : "none",
-          transition: "filter 150ms ease",
-        }}
-        onMouseEnter={() => setHoveredSymbolId(symbol.id)}
-        onMouseLeave={() => setHoveredSymbolId(null)}
-      >
-        {symbol.type === "window" ? (
-          <>
-            <rect
-              x="-14"
-              y="-10"
-              width="28"
-              height="20"
-              fill={colors.surface}
-              stroke={colors.gold}
-              strokeWidth="1.5"
-              rx="2"
-            />
-            <line
-              x1="0"
-              y1="-10"
-              x2="0"
-              y2="10"
-              stroke={colors.gold}
-              strokeWidth="1"
-            />
-            <line
-              x1="-14"
-              y1="0"
-              x2="14"
-              y2="0"
-              stroke={colors.gold}
-              strokeWidth="1"
-            />
-          </>
-        ) : (
-          <>
-            <rect
-              x="-10"
-              y="-10"
-              width="20"
-              height="20"
-              fill={colors.surface}
-              stroke={colors.gold}
-              strokeWidth="1.5"
-              rx="2"
-            />
-            <path
-              d="M -10 10 Q 10 10 10 -10"
-              fill="none"
-              stroke={colors.gold}
-              strokeWidth="1"
-              strokeDasharray="2 2"
-            />
-          </>
-        )}
-        {/* Remove button - visible on hover */}
-        {isHovered && (
-          <g
-            transform="translate(10, -14)"
-            onClick={(e) => {
-              e.stopPropagation();
-              removeSymbol(symbol.id);
-            }}
-            style={{ cursor: "pointer" }}
-          >
-            <circle r="6" fill={colors.remove} />
-            <line
-              x1="-2.5"
-              y1="-2.5"
-              x2="2.5"
-              y2="2.5"
-              stroke="white"
-              strokeWidth="1.5"
-            />
-            <line
-              x1="2.5"
-              y1="-2.5"
-              x2="-2.5"
-              y2="2.5"
-              stroke="white"
-              strokeWidth="1.5"
-            />
-          </g>
-        )}
-      </g>
-    );
-  };
-
-  // Generate summary text
-  const getSummary = () => {
-    if (placedSymbols.length === 0) {
-      return "Tap and drag windows or doors onto your room";
-    }
-
-    const wallLabels: Record<string, string> = {
-      top: "Back wall",
-      bottom: "Front wall",
-      left: "Left wall",
-      right: "Right wall",
-    };
-
-    const summary: Record<string, { windows: number; doors: number }> = {};
-
-    placedSymbols.forEach((s) => {
-      if (!summary[s.wall]) summary[s.wall] = { windows: 0, doors: 0 };
-      if (s.type === "window") summary[s.wall].windows++;
-      else summary[s.wall].doors++;
-    });
-
-    return Object.entries(summary)
-      .map(([wall, counts]) => {
-        const parts: string[] = [];
-        if (counts.windows > 0)
-          parts.push(`${counts.windows} window${counts.windows > 1 ? "s" : ""}`);
-        if (counts.doors > 0)
-          parts.push(`${counts.doors} door${counts.doors > 1 ? "s" : ""}`);
-        return `${wallLabels[wall]}: ${parts.join(", ")}`;
-      })
-      .join(" · ");
-  };
-
-  return (
-    <div className="flex flex-col items-center gap-4">
-      {/* Symbol palette */}
-      <div
-        className="flex items-center justify-center gap-4"
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
-        {/* Window symbol */}
-        <div
-          draggable
-          onDragStart={(e) => handleDragStart(e, "window")}
-          onDragEnd={handleDragEnd}
-          onTouchStart={(e) => handleTouchStart(e, "window")}
-          className="flex flex-col items-center gap-2 cursor-grab active:cursor-grabbing transition-all duration-150"
-          style={{
-            background: colors.surface2,
-            border: `1px solid rgba(201,168,76,0.3)`,
-            borderRadius: 8,
-            padding: "10px 16px",
-            opacity: draggedType === "window" || touchDragType === "window" ? 0.7 : 1,
-            transform:
-              draggedType === "window" || touchDragType === "window"
-                ? "scale(0.95)"
-                : "scale(1)",
-          }}
-        >
-          <svg width="32" height="24" viewBox="0 0 32 24">
-            <rect
-              x="2"
-              y="2"
-              width="28"
-              height="20"
-              fill="none"
-              stroke={colors.gold}
-              strokeWidth="1.5"
-              rx="2"
-            />
-            <line
-              x1="9"
-              y1="2"
-              x2="9"
-              y2="22"
-              stroke={colors.gold}
-              strokeWidth="1"
-            />
-            <line
-              x1="16"
-              y1="2"
-              x2="16"
-              y2="22"
-              stroke={colors.gold}
-              strokeWidth="1"
-            />
-            <line
-              x1="23"
-              y1="2"
-              x2="23"
-              y2="22"
-              stroke={colors.gold}
-              strokeWidth="1"
-            />
-          </svg>
-          <span style={{ color: colors.muted, fontSize: 11 }}>Window</span>
-        </div>
-
-        {/* Door symbol */}
-        <div
-          draggable
-          onDragStart={(e) => handleDragStart(e, "door")}
-          onDragEnd={handleDragEnd}
-          onTouchStart={(e) => handleTouchStart(e, "door")}
-          className="flex flex-col items-center gap-2 cursor-grab active:cursor-grabbing transition-all duration-150"
-          style={{
-            background: colors.surface2,
-            border: `1px solid rgba(201,168,76,0.3)`,
-            borderRadius: 8,
-            padding: "10px 16px",
-            opacity: draggedType === "door" || touchDragType === "door" ? 0.7 : 1,
-            transform:
-              draggedType === "door" || touchDragType === "door"
-                ? "scale(0.95)"
-                : "scale(1)",
-          }}
-        >
-          <svg width="32" height="24" viewBox="0 0 32 24">
-            <rect
-              x="6"
-              y="2"
-              width="16"
-              height="20"
-              fill="none"
-              stroke={colors.gold}
-              strokeWidth="1.5"
-              rx="2"
-            />
-            <path
-              d="M 6 22 Q 6 6 22 2"
-              fill="none"
-              stroke={colors.gold}
-              strokeWidth="1"
-              strokeDasharray="2 2"
-            />
-          </svg>
-          <span style={{ color: colors.muted, fontSize: 11 }}>Door</span>
-        </div>
-      </div>
-
-      {/* Back label */}
-      <span style={{ color: colors.muted, fontSize: 11 }}>Back</span>
-
-      <div className="relative flex items-center gap-4">
-        {/* Left label */}
-        <span
-          style={{
-            color: colors.muted,
-            fontSize: 11,
-            writingMode: "vertical-rl",
-            transform: "rotate(180deg)",
-          }}
-        >
-          Left
-        </span>
-
-        {/* Room SVG */}
-        <svg
-          ref={svgRef}
-          width="280"
-          height="280"
-          viewBox="0 0 280 280"
-          onDragOver={handleDragOver}
-          onDrop={handleDrop}
-          onDragLeave={() => setHoveredWall(null)}
-        >
-          {/* Room background */}
-          <rect
-            x="24"
-            y="24"
-            width="232"
-            height="232"
-            rx="4"
-            fill={colors.surface2}
-            stroke={colors.goldBorderMed}
-            strokeWidth="2"
-            style={{ filter: "drop-shadow(0 4px 24px rgba(0,0,0,0.4))" }}
-          />
-
-          {/* Wall drop zones with highlight */}
-          {/* Top wall zone */}
-          <rect
-            x="24"
-            y="24"
-            width="232"
-            height="24"
-            rx="4"
-            fill={
-              hoveredWall === "top"
-                ? "rgba(201,168,76,0.15)"
-                : "rgba(201,168,76,0.05)"
-            }
-            style={{ transition: "fill 150ms ease" }}
-          />
-          {hoveredWall === "top" && (
-            <line
-              x1="24"
-              y1="24"
-              x2="256"
-              y2="24"
-              stroke="rgba(201,168,76,0.6)"
-              strokeWidth="2"
-            />
-          )}
-
-          {/* Bottom wall zone */}
-          <rect
-            x="24"
-            y="232"
-            width="232"
-            height="24"
-            rx="4"
-            fill={
-              hoveredWall === "bottom"
-                ? "rgba(201,168,76,0.15)"
-                : "rgba(201,168,76,0.05)"
-            }
-            style={{ transition: "fill 150ms ease" }}
-          />
-          {hoveredWall === "bottom" && (
-            <line
-              x1="24"
-              y1="256"
-              x2="256"
-              y2="256"
-              stroke="rgba(201,168,76,0.6)"
-              strokeWidth="2"
-            />
-          )}
-
-          {/* Left wall zone */}
-          <rect
-            x="24"
-            y="24"
-            width="24"
-            height="232"
-            rx="4"
-            fill={
-              hoveredWall === "left"
-                ? "rgba(201,168,76,0.15)"
-                : "rgba(201,168,76,0.05)"
-            }
-            style={{ transition: "fill 150ms ease" }}
-          />
-          {hoveredWall === "left" && (
-            <line
-              x1="24"
-              y1="24"
-              x2="24"
-              y2="256"
-              stroke="rgba(201,168,76,0.6)"
-              strokeWidth="2"
-            />
-          )}
-
-          {/* Right wall zone */}
-          <rect
-            x="232"
-            y="24"
-            width="24"
-            height="232"
-            rx="4"
-            fill={
-              hoveredWall === "right"
-                ? "rgba(201,168,76,0.15)"
-                : "rgba(201,168,76,0.05)"
-            }
-            style={{ transition: "fill 150ms ease" }}
-          />
-          {hoveredWall === "right" && (
-            <line
-              x1="256"
-              y1="24"
-              x2="256"
-              y2="256"
-              stroke="rgba(201,168,76,0.6)"
-              strokeWidth="2"
-            />
-          )}
-
-          {/* Center compass dot */}
-          <circle cx="140" cy="140" r="3" fill={colors.gold} />
-
-          {/* Room label */}
-          <text
-            x="140"
-            y="160"
-            textAnchor="middle"
-            fill={colors.mutedDark}
-            fontSize="10"
-            fontFamily="Inter, sans-serif"
-          >
-            Room
-          </text>
-
-          {/* Render placed symbols */}
-          {placedSymbols.map(renderSymbol)}
-        </svg>
-
-        {/* Right label */}
-        <span
-          style={{
-            color: colors.muted,
-            fontSize: 11,
-            writingMode: "vertical-rl",
-          }}
-        >
-          Right
-        </span>
-      </div>
-
-      {/* Front label */}
-      <span style={{ color: colors.muted, fontSize: 11 }}>Front</span>
-
-      {/* Summary text */}
-      <p
-        className="text-center mt-2"
-        style={{
-          color: placedSymbols.length === 0 ? colors.mutedDark : colors.muted,
-          fontSize: 12,
-        }}
-      >
-        {getSummary()}
-      </p>
-
-      {/* Touch ghost element */}
-      {touchGhostPos && touchDragType && (
-        <div
-          className="fixed pointer-events-none z-50"
-          style={{
-            left: touchGhostPos.x - 20,
-            top: touchGhostPos.y - 15,
-            opacity: 0.8,
-          }}
-        >
-          <svg width="40" height="30" viewBox="0 0 40 30">
-            {touchDragType === "window" ? (
-              <>
-                <rect
-                  x="2"
-                  y="2"
-                  width="36"
-                  height="26"
-                  fill={colors.surface}
-                  stroke={colors.gold}
-                  strokeWidth="2"
-                  rx="2"
-                />
-                <line
-                  x1="14"
-                  y1="2"
-                  x2="14"
-                  y2="28"
-                  stroke={colors.gold}
-                  strokeWidth="1"
-                />
-                <line
-                  x1="26"
-                  y1="2"
-                  x2="26"
-                  y2="28"
-                  stroke={colors.gold}
-                  strokeWidth="1"
-                />
-              </>
-            ) : (
-              <>
-                <rect
-                  x="6"
-                  y="2"
-                  width="28"
-                  height="26"
-                  fill={colors.surface}
-                  stroke={colors.gold}
-                  strokeWidth="2"
-                  rx="2"
-                />
-                <path
-                  d="M 6 28 Q 6 6 34 2"
-                  fill="none"
-                  stroke={colors.gold}
-                  strokeWidth="1.5"
-                  strokeDasharray="3 3"
-                />
-              </>
-            )}
-          </svg>
-        </div>
-      )}
-    </div>
-  );
-}
+// mock data for palette animation (uses derived palette length)
+const mockData = { palette: [1, 2, 3, 4, 5] }
 
 export default function Step4Page() {
-  const router = useRouter();
-  const {
-    setRoomDimensions,
-    setWallLayout,
-    setFixedElements,
-    setSurfaces,
-    setCloset,
-    setConstraints: saveConstraints,
-    setInclusions,
-  } = useFingerprintStore();
-  const { setStep } = useSessionStore();
+  const router = useRouter()
+  const { setStep } = useSessionStore()
 
-  const [mounted, setMounted] = useState(false);
-  const [showWarning, setShowWarning] = useState(false);
+  // Read fingerprint from Zustand store (set by Step 3 quiz)
+  const { fingerprint: storedFingerprint, styleName: storedStyleName, roomType, budgetTier, showcasePredictionIds, setShowcasePredictionIds, setFingerprint: setStoreFingerprint } = useFingerprintStore()
 
-  // Form state
-  const [length, setLength] = useState("");
-  const [width, setWidth] = useState("");
-  const [ceilingHeight, setCeilingHeight] = useState("");
-  const [naturalLight, setNaturalLight] = useState("");
-  const [placedSymbols, setPlacedSymbols] = useState<PlacedSymbol[]>([]);
-  const [selectedFixed, setSelectedFixed] = useState<string[]>([]);
-  const [floorType, setFloorType] = useState("");
-  const [wallFinish, setWallFinish] = useState("");
-  const [hasCloset, setHasCloset] = useState(false);
-  const [closetWall, setClosetWall] = useState<string | null>(null);
-  const [constraints, setConstraints] = useState("");
-  const [selectedMustHaves, setSelectedMustHaves] = useState<string[]>([]);
-  const [customInclusion, setCustomInclusion] = useState("");
-  const [customItems, setCustomItems] = useState<string[]>([]);
-  const [pulsedChip, setPulsedChip] = useState<string | null>(null);
-  const [measurementSource, setMeasurementSource] = useState<'shortcut' | null>(null);
-  const [deviceType, setDeviceType] = useState<'ios' | 'android' | 'desktop'>('desktop');
-  const [showWebXR, setShowWebXR] = useState(false);
-  const [webXRSupported, setWebXRSupported] = useState(false);
+  // Fall back to mock if store empty (direct navigation in dev)
+  const [fingerprint, setFingerprint] = useState<number[]>(
+    storedFingerprint ?? [0.7, 0.3, 0.8, 0.7, 0.4, 0.6, 0.5, 0.5, 0.5, 0.5]
+  )
+  const [styleName] = useState(storedStyleName ?? "Warm Artisan")
+  const [styleChips] = useState<string[]>([
+    "organic textures", "warm neutrals", "minimal layers", "natural materials"
+  ])
+  const palette = derivepalette(fingerprint)
 
-  // Pre-fill from Siri Shortcut URL params on mount (window.location avoids Suspense requirement)
+  // Showcase images — populated from anchor_renders table (url + label)
+  const [showcaseImages, setShowcaseImages] = useState<Array<{ url: string; label: string } | null>>([null, null, null])
+
+  const [phase, setPhase] = useState<1 | 2>(1)
+  const [irisOpen, setIrisOpen] = useState(false)
+  const [gridVisible, setGridVisible] = useState(false)
+  const [axesDrawn, setAxesDrawn] = useState<boolean[]>([false, false, false, false, false, false])
+  const [shapeDrawn, setShapeDrawn] = useState(false)
+  const [verticesVisible, setVerticesVisible] = useState<boolean[]>([false, false, false, false, false, false])
+  const [labelsVisible, setLabelsVisible] = useState(false)
+  const [typedName, setTypedName] = useState("")
+  const [showCursor, setShowCursor] = useState(false)
+  const [paletteVisible, setPaletteVisible] = useState<boolean[]>([false, false, false, false, false])
+  const [chipsVisible, setChipsVisible] = useState<boolean[]>([false, false, false, false])
+  const [showAdjustPanel, setShowAdjustPanel] = useState(false)
+  const [adjustText, setAdjustText] = useState("")
+  const [selectedChips, setSelectedChips] = useState<string[]>([])
+  const [isRegenerating, setIsRegenerating] = useState(false)
+  const [cardsLoaded, setCardsLoaded] = useState([false, false, false])
+  const [dividerDrawn, setDividerDrawn] = useState(false)
+  const [phase2ContentVisible, setPhase2ContentVisible] = useState(false)
+  const [cardsVisible, setCardsVisible] = useState([false, false, false])
+  const [feelRightVisible, setFeelRightVisible] = useState(false)
+
+  const phase2Ref = useRef<HTMLDivElement>(null)
+
+  // Load showcase images: poll predictions from store, fallback to anchor_renders
   useEffect(() => {
-    const params = parseMeasurementParams(new URLSearchParams(window.location.search));
-    if (params.source === 'shortcut') {
-      if (params.length) setLength(String(params.length));
-      if (params.width) setWidth(String(params.width));
-      if (params.ceiling) setCeilingHeight(String(params.ceiling));
-      setMeasurementSource('shortcut');
+    const pendingIds = showcasePredictionIds
+
+    if (!pendingIds || pendingIds.length === 0) {
+      // No predictions fired — load from anchor_renders directly
+      void (async () => {
+        try {
+          const supabase = createBrowserClient()
+          const normalizedRoomType = (roomType ?? 'living_room').replace(/-/g, '_').toLowerCase()
+          const { data, error } = await supabase
+            .from('anchor_renders')
+            .select('image_url, label')
+            .eq('room_type', normalizedRoomType)
+            .limit(3)
+          if (error || !data || data.length === 0) {
+            const { data: fallback } = await supabase
+              .from('anchor_renders')
+              .select('image_url, label')
+              .limit(3)
+            if (fallback && fallback.length > 0) {
+              setShowcaseImages(fallback.map((r: { image_url: string; label: string | null }) => ({ url: r.image_url, label: r.label ?? 'Room' })))
+              setCardsLoaded([true, true, true])
+            }
+            return
+          }
+          setShowcaseImages(data.map((r: { image_url: string; label: string | null }) => ({ url: r.image_url, label: r.label ?? 'Room' })))
+          setCardsLoaded([true, true, true])
+        } catch { /* shimmer stays */ }
+      })()
+      return
     }
-  }, []);
 
-  // Detect device type client-side
-  useEffect(() => {
-    if (isIOS()) setDeviceType('ios');
-    else if (isAndroid()) setDeviceType('android');
-    else setDeviceType('desktop');
-  }, []);
-
-  // Check WebXR support on Android
-  useEffect(() => {
-    import('@/lib/measureBridge').then(({ supportsWebXRMeasurement }) => {
-      void supportsWebXRMeasurement().then(setWebXRSupported);
-    });
-  }, []);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const sqft = length && width ? parseInt(length) * parseInt(width) : null;
-  const sizeLabel = sqft
-    ? sqft < 150
-      ? "Small"
-      : sqft <= 300
-        ? "Medium"
-        : "Large"
-    : null;
-
-  const toggleFixed = (label: string) => {
-    setSelectedFixed((prev) =>
-      prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]
-    );
-  };
-
-  const toggleMustHave = (label: string) => {
-    setSelectedMustHaves((prev) =>
-      prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]
-    );
-  };
-
-  const handleStarterChip = (chip: string) => {
-    setPulsedChip(chip);
-    setTimeout(() => setPulsedChip(null), 300);
-    setConstraints((prev) => (prev ? `${prev}, ${chip}` : chip));
-  };
-
-  const addCustomItem = () => {
-    if (customInclusion.trim()) {
-      setCustomItems((prev) => [...prev, customInclusion.trim()]);
-      setSelectedMustHaves((prev) => [...prev, customInclusion.trim()]);
-      setCustomInclusion("");
+    // Poll each prediction — update card as it resolves
+    const pollOne = async (predictionId: string, index: number, label: string) => {
+      const maxAttempts = 30 // 90s max
+      for (let i = 0; i < maxAttempts; i++) {
+        await new Promise<void>(r => setTimeout(r, 3000))
+        try {
+          const res = await fetch(
+            `/api/render/status?prediction_id=${predictionId}&showcase_mode=true`,
+            { credentials: 'include' }
+          )
+          if (res.ok) {
+            const d = await res.json() as { status: string; render_url?: string }
+            if (d.status === 'complete' && d.render_url) {
+              setShowcaseImages(prev => { const next = [...prev]; next[index] = { url: d.render_url!, label }; return next })
+              setCardsLoaded(prev => { const next = [...prev]; next[index] = true; return next })
+              return
+            }
+            if (d.status === 'failed') break
+          }
+        } catch { /* keep polling */ }
+      }
+      // Timed out or failed — mark card loaded so user isn't stuck
+      setCardsLoaded(prev => { const next = [...prev]; next[index] = true; return next })
     }
-  };
 
-  const removeCustomItem = (item: string) => {
-    setCustomItems((prev) => prev.filter((i) => i !== item));
-    setSelectedMustHaves((prev) => prev.filter((i) => i !== item));
-  };
+    // Clear stored IDs so a refresh doesn't re-poll stale predictions
+    setShowcasePredictionIds(null)
 
-  const navigateForward = () => {
-    // 1. Save dimensions
-    setRoomDimensions({
-      length: length ? parseFloat(length) : null,
-      width: width ? parseFloat(width) : null,
-      ceilingHeight: ceilingHeight ? parseFloat(ceilingHeight) : null,
-      naturalLight: naturalLight || null,
-    });
+    pendingIds.forEach((item, i) => {
+      void pollOne(item.predictionId, i, item.label)
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-    // 2. Save wall layout
-    const wallLayoutData: WallLayout = {
-      top: [], bottom: [], left: [], right: [],
-    };
-    placedSymbols.forEach((s) => {
-      wallLayoutData[s.wall].push({ type: s.type, position: s.position });
-    });
-    setWallLayout(wallLayoutData);
-
-    // 3. Save fixed elements
-    setFixedElements(selectedFixed);
-
-    // 4. Save surfaces
-    setSurfaces(floorType, wallFinish);
-
-    // 5. Save closet
-    setCloset(hasCloset, closetWall);
-
-    // 6. Parse and save constraints — fire and forget
-    if (constraints.trim()) {
-      fetch("/api/parse-constraints", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: constraints }),
+  // Phase 1 animation sequence
+  useEffect(() => {
+    // t=200ms: Iris opens
+    const t1 = setTimeout(() => setIrisOpen(true), 200)
+    // t=400ms: Grid fades in
+    const t2 = setTimeout(() => setGridVisible(true), 400)
+    // t=600ms: Axes extend one by one
+    const t3 = setTimeout(() => {
+      axisLabels.forEach((_, i) => {
+        setTimeout(() => {
+          setAxesDrawn((prev) => {
+            const next = [...prev]
+            next[i] = true
+            return next
+          })
+        }, i * 80)
       })
-        .then((r) => r.json())
-        .then((data: { constraints: string[]; inclusions: string[] }) => {
-          saveConstraints(data.constraints ?? []);
-        })
-        .catch(() => {
-          // Silently fail — raw text stored in local state
-        });
+    }, 600)
+    // t=1100ms: Shape traces
+    const t4 = setTimeout(() => setShapeDrawn(true), 1100)
+    // t=1900ms: Vertices appear
+    const t5 = setTimeout(() => {
+      axisLabels.forEach((_, i) => {
+        setTimeout(() => {
+          setVerticesVisible((prev) => {
+            const next = [...prev]
+            next[i] = true
+            return next
+          })
+        }, i * 60)
+      })
+    }, 1900)
+    // t=2300ms: Labels fade in
+    const t6 = setTimeout(() => setLabelsVisible(true), 2300)
+    // t=2800ms: "Your Design DNA" types in (style name never shown per Rule 8)
+    const TYPING_TEXT = "Your Design DNA"
+    const t7 = setTimeout(() => {
+      setShowCursor(true)
+      let i = 0
+      const typeInterval = setInterval(() => {
+        if (i < TYPING_TEXT.length) {
+          setTypedName(TYPING_TEXT.slice(0, i + 1))
+          i++
+        } else {
+          clearInterval(typeInterval)
+          setTimeout(() => setShowCursor(false), 500)
+        }
+      }, 60)
+    }, 2800)
+    // t=3800ms: Palette slides in
+    const t8 = setTimeout(() => {
+      mockData.palette.forEach((_, i) => {
+        setTimeout(() => {
+          setPaletteVisible((prev) => {
+            const next = [...prev]
+            next[i] = true
+            return next
+          })
+        }, i * 80)
+      })
+    }, 3800)
+    // t=4400ms: Chips fade in
+    const t9 = setTimeout(() => {
+      styleChips.forEach((_, i) => {
+        setTimeout(() => {
+          setChipsVisible((prev) => {
+            const next = [...prev]
+            next[i] = true
+            return next
+          })
+        }, i * 100)
+      })
+    }, 4400)
+    // t=5200ms: Auto-proceed to phase 2 (user is already authenticated)
+    const t10 = setTimeout(() => proceedToPhase2(), 5200)
+
+    return () => {
+      ;[t1, t2, t3, t4, t5, t6, t7, t8, t9, t10].forEach(clearTimeout)
     }
+  }, [styleName, styleChips]) // eslint-disable-line react-hooks/exhaustive-deps
 
-    // 7. Save inclusions
-    const allInclusions = [...selectedMustHaves, ...customItems];
-    setInclusions(allInclusions);
-
-    // 8. Navigate to step 5
-    setStep(5);
-    router.push("/design/step-5");
-  };
-
-  const handleContinue = () => {
-    const hasDimensions = length && width;
-    if (!hasDimensions) {
-      setShowWarning(true);
-      setTimeout(() => setShowWarning(false), 4000);
-      setTimeout(() => navigateForward(), 1000);
-      return;
+  // "Feel right" text shows after all 3 cards have real renders
+  useEffect(() => {
+    if (cardsLoaded.every((c) => c)) {
+      setTimeout(() => setFeelRightVisible(true), 500)
     }
-    navigateForward();
-  };
+  }, [cardsLoaded])
 
-  if (!mounted) return null;
+  const handleShare = async () => {
+    const shareData = { title: "My Design DNA", text: "Check out my personalized design style from Cova!", url: window.location.href }
+    if (navigator.share) {
+      try { await navigator.share(shareData) } catch { /* user cancelled */ }
+    } else {
+      try { await navigator.clipboard.writeText(window.location.href) } catch { /* ignore */ }
+    }
+  }
 
-  if (showWebXR) {
-    return (
-      <RoomMeasure
-        onMeasurementComplete={(measuredLength, measuredWidth) => {
-          setLength(String(measuredLength));
-          setWidth(String(measuredWidth));
-          setShowWebXR(false);
-          setMeasurementSource('shortcut'); // reuse shortcut confirmation UI
-        }}
-        onCancel={() => setShowWebXR(false)}
-      />
-    );
+  const proceedToPhase2 = () => {
+    setPhase(2)
+    // Draw divider
+    setTimeout(() => setDividerDrawn(true), 100)
+    // Show phase 2 content
+    setTimeout(() => setPhase2ContentVisible(true), 500)
+    // Show cards with stagger
+    setTimeout(() => {
+      ;[0, 1, 2].forEach((i) => {
+        setTimeout(() => {
+          setCardsVisible((prev) => {
+            const next = [...prev]
+            next[i] = true
+            return next
+          })
+        }, i * 150)
+      })
+    }, 600)
+    // Scroll to phase 2
+    setTimeout(() => {
+      phase2Ref.current?.scrollIntoView({ behavior: "smooth" })
+    }, 300)
+  }
+
+  const handleChipToggle = (chip: string) => {
+    setSelectedChips((prev) => {
+      const isSelected = prev.includes(chip)
+      const newChips = isSelected ? prev.filter((c) => c !== chip) : [...prev, chip]
+      setAdjustText(newChips.join(", "))
+      return newChips
+    })
+  }
+
+  const handleRegenerate = async () => {
+    if (!adjustText.trim() && selectedChips.length === 0) return
+    setIsRegenerating(true)
+    setShowAdjustPanel(false)
+    setCardsLoaded([false, false, false])
+    setShowcaseImages([null, null, null])
+    setFeelRightVisible(false)
+
+    // Apply chip adjustments directly to fingerprint dimensions
+    const adjustmentMap: Record<string, Record<number, number>> = {
+      'Warmer':       { 2: Math.min(1, (fingerprint[2] ?? 0.5) + 0.2) },
+      'Cooler':       { 2: Math.max(0, (fingerprint[2] ?? 0.5) - 0.2) },
+      'More minimal': { 1: Math.max(0, (fingerprint[1] ?? 0.5) - 0.2) },
+      'More layered': { 1: Math.min(1, (fingerprint[1] ?? 0.5) + 0.2) },
+      'More modern':  { 4: Math.max(0, (fingerprint[4] ?? 0.5) - 0.2) },
+      'More classic': { 4: Math.min(1, (fingerprint[4] ?? 0.5) + 0.2) },
+    }
+    const modifiedFp = [...fingerprint]
+    selectedChips.forEach(chip => {
+      const adj = adjustmentMap[chip]
+      if (adj) {
+        Object.entries(adj).forEach(([dim, val]) => { modifiedFp[parseInt(dim)] = val })
+      }
+    })
+
+    setFingerprint(modifiedFp)
+    setStoreFingerprint(modifiedFp, styleName)
+
+    const SHOWCASE_INPUTS = [
+      { photo_url: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1024', label: 'Living Room' },
+      { photo_url: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=1024', label: 'Bedroom' },
+      { photo_url: 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=1024', label: 'Home Office' },
+    ]
+
+    await Promise.allSettled(
+      SHOWCASE_INPUTS.map(async (input, index) => {
+        try {
+          const renderRes = await fetch('/api/render', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              photo_url: input.photo_url,
+              fingerprint_vector: modifiedFp,
+              room_type: roomType ?? 'living_room',
+              budget: budgetTier ?? 'mid',
+              inclusions: [],
+              constraints: [],
+              showcase_mode: true,
+              style_name: styleName,
+            }),
+          })
+          if (!renderRes.ok) {
+            setCardsLoaded(prev => { const next = [...prev]; next[index] = true; return next })
+            return
+          }
+          const renderData = await renderRes.json() as { prediction_id: string }
+          // Poll until complete
+          for (let i = 0; i < 30; i++) {
+            await new Promise<void>(r => setTimeout(r, 3000))
+            const statusRes = await fetch(
+              `/api/render/status?prediction_id=${renderData.prediction_id}&showcase_mode=true`,
+              { credentials: 'include' }
+            )
+            if (statusRes.ok) {
+              const status = await statusRes.json() as { status: string; render_url?: string }
+              if (status.status === 'complete' && status.render_url) {
+                setShowcaseImages(prev => { const next = [...prev]; next[index] = { url: status.render_url!, label: input.label }; return next })
+                setCardsLoaded(prev => { const next = [...prev]; next[index] = true; return next })
+                return
+              }
+              if (status.status === 'failed') break
+            }
+          }
+          // Timed out
+          setCardsLoaded(prev => { const next = [...prev]; next[index] = true; return next })
+        } catch {
+          setCardsLoaded(prev => { const next = [...prev]; next[index] = true; return next })
+        }
+      })
+    )
+
+    setIsRegenerating(false)
+    setAdjustText('')
+    setSelectedChips([])
+  }
+
+  // Calculate radar chart points
+  const chartSize = 320
+  const chartCenter = chartSize / 2
+  const maxRadius = chartSize / 2 - 40
+
+  const getPoint = (index: number, value: number) => {
+    const angle = (index * 60 - 90) * (Math.PI / 180)
+    const radius = value * maxRadius
+    return {
+      x: chartCenter + radius * Math.cos(angle),
+      y: chartCenter + radius * Math.sin(angle),
+    }
+  }
+
+  const getAxisEndpoint = (index: number) => {
+    const angle = (index * 60 - 90) * (Math.PI / 180)
+    return {
+      x: chartCenter + maxRadius * Math.cos(angle),
+      y: chartCenter + maxRadius * Math.sin(angle),
+    }
+  }
+
+  const getLabelPosition = (index: number) => {
+    const angle = (index * 60 - 90) * (Math.PI / 180)
+    const radius = maxRadius + 24
+    return {
+      x: chartCenter + radius * Math.cos(angle),
+      y: chartCenter + radius * Math.sin(angle),
+    }
+  }
+
+  // Use only 6 specific dims for 6-axis chart: luminosity[0], temperature[2], form[3], texture[5], nature[7], scale[9]
+  const chartFingerprint = [fingerprint[0] ?? 0.5, fingerprint[2] ?? 0.5, fingerprint[3] ?? 0.5, fingerprint[5] ?? 0.5, fingerprint[7] ?? 0.5, fingerprint[9] ?? 0.5]
+
+  const shapePath = chartFingerprint.map((v, i) => {
+    const point = getPoint(i, v)
+    return `${i === 0 ? "M" : "L"} ${point.x} ${point.y}`
+  }).join(" ") + " Z"
+
+  const shapePathLength = 800
+
+  // Hexagon grid paths
+  const getHexagonPath = (scale: number) => {
+    const points = [0, 1, 2, 3, 4, 5].map((i) => {
+      const angle = (i * 60 - 90) * (Math.PI / 180)
+      const radius = maxRadius * scale
+      return `${chartCenter + radius * Math.cos(angle)},${chartCenter + radius * Math.sin(angle)}`
+    })
+    return `M ${points.join(" L ")} Z`
   }
 
   return (
-    <div
-      className="min-h-screen flex flex-col"
-      style={{ background: colors.navy }}
-    >
+    <div className="min-h-screen bg-[#091829] relative overflow-x-hidden">
+      {/* Iris overlay - black covers content, then shrinks to reveal */}
+      <div
+        className="fixed inset-0 bg-black z-50 pointer-events-none"
+        style={{
+          clipPath: irisOpen ? "circle(0% at 50% 50%)" : "circle(150% at 50% 50%)",
+          transition: "clip-path 800ms cubic-bezier(0.4,0,0.2,1)",
+        }}
+      />
+
       <StepIndicator currentStep={4} totalSteps={10} />
 
-      {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto pb-40">
-        <div className="max-w-2xl mx-auto px-6 py-8">
-          {/* Header */}
-          <div
-            className="mb-8"
-            style={{
-              animation: mounted ? "sectionIn 400ms ease forwards" : undefined,
-              opacity: 0,
-            }}
-          >
-            <h1
-              className="font-serif mb-3"
+      {/* Share button */}
+      <button
+        onClick={handleShare}
+        className="fixed top-6 right-6 z-40 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 group"
+        style={{
+          background: "rgba(13,32,53,0.8)",
+          border: "1px solid rgba(201,168,76,0.3)",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = "#C9A84C"
+          e.currentTarget.style.boxShadow = "0 0 16px rgba(201,168,76,0.2)"
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = "rgba(201,168,76,0.3)"
+          e.currentTarget.style.boxShadow = "none"
+        }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" strokeWidth="2">
+          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+          <polyline points="16 6 12 2 8 6" />
+          <line x1="12" y1="2" x2="12" y2="15" />
+        </svg>
+        <span className="absolute top-full mt-2 text-[11px] text-[#8A9BB5] font-sans whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+          Share your Design DNA
+        </span>
+      </button>
+
+      {/* Phase 1 Content */}
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 pt-16 pb-8 relative">
+        {/* Animated background orbs */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none" style={{ zIndex: 0 }}>
+          <div style={{ position: "absolute", top: "15%", left: "10%", width: 320, height: 320, borderRadius: "50%", background: "radial-gradient(circle, rgba(201,168,76,0.08) 0%, transparent 70%)", animation: "floatOrb1 8s ease-in-out infinite" }} />
+          <div style={{ position: "absolute", bottom: "20%", right: "8%", width: 240, height: 240, borderRadius: "50%", background: "radial-gradient(circle, rgba(138,155,181,0.06) 0%, transparent 70%)", animation: "floatOrb2 10s ease-in-out infinite" }} />
+        </div>
+        {/* Style name with typing effect */}
+        <div className="h-16 mb-4 flex items-center justify-center">
+          <h1 className="font-serif text-4xl md:text-[52px] text-[#C9A84C] tracking-wide">
+            {typedName}
+            {showCursor && <span className="animate-pulse">|</span>}
+          </h1>
+        </div>
+
+        {/* Radar Chart */}
+        <div className="relative" style={{ width: chartSize, height: chartSize }}>
+          <svg width={chartSize} height={chartSize} className="md:w-80 md:h-80 w-[260px] h-[260px]">
+            {/* Grid hexagons */}
+            {[0.25, 0.5, 0.75, 1].map((scale, i) => (
+              <path
+                key={i}
+                d={getHexagonPath(scale)}
+                fill="none"
+                stroke="rgba(26,42,74,1)"
+                strokeWidth="1"
+                style={{
+                  opacity: gridVisible ? 1 : 0,
+                  transition: `opacity 400ms ease ${i * 100}ms`,
+                }}
+              />
+            ))}
+
+            {/* Axis lines */}
+            {axisLabels.map((_, i) => {
+              const end = getAxisEndpoint(i)
+              const lineLength = Math.sqrt(
+                Math.pow(end.x - chartCenter, 2) + Math.pow(end.y - chartCenter, 2)
+              )
+              return (
+                <line
+                  key={i}
+                  x1={chartCenter}
+                  y1={chartCenter}
+                  x2={end.x}
+                  y2={end.y}
+                  stroke="rgba(26,42,74,1)"
+                  strokeWidth="1"
+                  strokeDasharray={lineLength}
+                  strokeDashoffset={axesDrawn[i] ? 0 : lineLength}
+                  style={{
+                    transition: "stroke-dashoffset 300ms ease-out",
+                  }}
+                />
+              )
+            })}
+
+            {/* Fingerprint shape */}
+            <path
+              d={shapePath}
+              fill="rgba(201,168,76,0.12)"
+              stroke="#C9A84C"
+              strokeWidth="2"
+              strokeDasharray={shapePathLength}
+              strokeDashoffset={shapeDrawn ? 0 : shapePathLength}
               style={{
-                color: colors.ivory,
-                fontSize: 36,
-                letterSpacing: "0.02em",
+                transition: "stroke-dashoffset 800ms ease-in-out, fill-opacity 800ms ease-in-out",
+                fillOpacity: shapeDrawn ? 1 : 0,
+              }}
+            />
+
+            {/* Vertex dots */}
+            {chartFingerprint.map((v, i) => {
+              const point = getPoint(i, v)
+              return (
+                <circle
+                  key={i}
+                  cx={point.x}
+                  cy={point.y}
+                  r="8"
+                  fill="#C9A84C"
+                  style={{
+                    filter: "drop-shadow(0 0 8px rgba(201,168,76,0.8))",
+                    transform: verticesVisible[i] ? "scale(1)" : "scale(0)",
+                    transformOrigin: `${point.x}px ${point.y}px`,
+                    transition: "transform 200ms cubic-bezier(0.34,1.56,0.64,1)",
+                  }}
+                />
+              )
+            })}
+
+            {/* Axis labels */}
+            {axisLabels.map((label, i) => {
+              const pos = getLabelPosition(i)
+              return (
+                <text
+                  key={i}
+                  x={pos.x}
+                  y={pos.y}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fill="#8A9BB5"
+                  fontSize="11"
+                  fontFamily="var(--font-inter), Inter, sans-serif"
+                  style={{
+                    opacity: labelsVisible ? 1 : 0,
+                    transition: "opacity 300ms ease",
+                  }}
+                >
+                  {label}
+                </text>
+              )
+            })}
+          </svg>
+        </div>
+
+        {/* Color palette */}
+        <div className="flex gap-2.5 mt-8 mb-6">
+          {palette.map((color, i) => (
+            <div
+              key={i}
+              className="w-10 h-10 rounded-md"
+              style={{
+                backgroundColor: color,
+                opacity: paletteVisible[i] ? 1 : 0,
+                transform: paletteVisible[i] ? "translateX(0)" : "translateX(-20px)",
+                transition: "opacity 300ms ease, transform 300ms ease",
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Descriptor chips */}
+        <div className="flex flex-wrap justify-center gap-2.5 mb-10">
+          {styleChips.map((chip, i) => (
+            <span
+              key={i}
+              className="px-3.5 py-1.5 rounded-full text-xs font-sans text-[#F5F0E8]"
+              style={{
+                background: "#0D2035",
+                border: "1px solid rgba(201,168,76,0.3)",
+                opacity: chipsVisible[i] ? 1 : 0,
+                transition: "opacity 300ms ease",
               }}
             >
-              Tell us about your space
-            </h1>
-            <p style={{ color: colors.muted, fontSize: 14 }}>
-              The more detail you share, the more accurate your render.
+              {chip}
+            </span>
+          ))}
+        </div>
+
+      </div>
+
+      {/* Phase 2 Content */}
+      {phase === 2 && (
+        <div ref={phase2Ref} className="px-6 pb-16">
+          {/* Gold divider */}
+          <div className="max-w-[600px] mx-auto mb-12">
+            <div
+              className="h-px bg-[#C9A84C]"
+              style={{
+                width: dividerDrawn ? "100%" : "0%",
+                transition: "width 400ms ease-out",
+              }}
+            />
+          </div>
+
+          {/* Phase 2 heading */}
+          <div
+            style={{
+              opacity: phase2ContentVisible ? 1 : 0,
+              transform: phase2ContentVisible ? "translateY(0)" : "translateY(16px)",
+              transition: "opacity 400ms ease, transform 400ms ease",
+            }}
+          >
+            <h2 className="font-serif text-4xl text-[#F5F0E8] text-center mb-2">
+              Your style in action.
+            </h2>
+            <p className="text-sm font-sans text-[#8A9BB5] text-center mb-10">
+              Three rooms redesigned to your exact taste.
             </p>
           </div>
 
-          {/* Section 1: Room Dimensions */}
-          <section
-            style={{
-              animation: mounted
-                ? "sectionIn 400ms ease 80ms forwards"
-                : undefined,
-              opacity: 0,
-            }}
-          >
-            {/* Section label with tooltip */}
-            <div className="flex items-center justify-between mb-4">
-              <span
-                className="uppercase tracking-widest"
-                style={{ color: colors.gold, fontSize: 11 }}
-              >
-                Room dimensions
-              </span>
-              <div className="relative group">
-                <span
-                  className="cursor-help"
-                  style={{ color: colors.gold, fontSize: 14 }}
-                >
-                  *
-                </span>
-                <div
-                  className="absolute right-0 top-6 w-64 p-3 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-30"
-                  style={{
-                    background: colors.surface,
-                    border: `1px solid ${colors.gold}`,
-                  }}
-                >
-                  <p
-                    style={{ color: colors.ivory, fontSize: 12, lineHeight: 1.5 }}
-                  >
-                    Highly recommended — without dimensions we cannot guarantee
-                    furniture will be correctly scaled or products accurately
-                    sized for your space.
-                  </p>
-                  <div
-                    className="absolute -top-2 right-3 w-3 h-3 rotate-45"
-                    style={{
-                      background: colors.surface,
-                      borderLeft: `1px solid ${colors.gold}`,
-                      borderTop: `1px solid ${colors.gold}`,
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Measurement helper */}
-            <div
-              style={{
-                marginBottom: '16px',
-                padding: '12px 16px',
-                borderRadius: '12px',
-                background: colors.surface2,
-                border: `1px solid ${colors.goldBorder}`,
-              }}
-            >
-              {measurementSource === 'shortcut' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ color: '#4A9B7F', fontSize: '14px' }}>✓</span>
-                  <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: colors.ivory }}>
-                    Dimensions imported from Apple Measure
-                  </span>
-                </div>
-              )}
-
-              {deviceType === 'ios' && measurementSource !== 'shortcut' && (
-                <>
-                  <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: colors.ivory, marginBottom: '8px' }}>
-                    Get exact measurements with Apple Measure
-                  </p>
-                  <a
-                    href="https://www.icloud.com/shortcuts/placeholder"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      display: 'inline-block',
-                      padding: '8px 16px',
-                      borderRadius: '8px',
-                      background: colors.gold,
-                      color: colors.navy,
-                      fontFamily: 'Inter, sans-serif',
-                      fontSize: '13px',
-                      fontWeight: 500,
-                      textDecoration: 'none',
-                    }}
-                  >
-                    Get Measure Shortcut
-                  </a>
-                </>
-              )}
-
-              {deviceType === 'android' && measurementSource !== 'shortcut' && (
-                <>
-                  {webXRSupported ? (
-                    <button
-                      onClick={() => setShowWebXR(true)}
-                      style={{
-                        display: 'inline-block',
-                        padding: '8px 16px',
-                        borderRadius: '8px',
-                        background: colors.gold,
-                        color: colors.navy,
-                        fontFamily: 'Inter, sans-serif',
-                        fontSize: '13px',
-                        fontWeight: 500,
-                        border: 'none',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Measure with Camera
-                    </button>
-                  ) : (
-                    <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: colors.muted }}>
-                      💡 Use Google Measure app or a tape measure for accurate dimensions
-                    </p>
-                  )}
-                </>
-              )}
-
-              {deviceType === 'desktop' && measurementSource !== 'shortcut' && (
-                <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: colors.muted }}>
-                  💡 Tip: Use the Apple Measure app on your iPhone to get exact dimensions
-                </p>
-              )}
-            </div>
-
-            {/* 2x2 grid */}
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <NumberInput
-                label="Length"
-                value={length}
-                onChange={setLength}
-                placeholder="e.g. 15"
-              />
-              <NumberInput
-                label="Width"
-                value={width}
-                onChange={setWidth}
-                placeholder="e.g. 12"
-              />
-              <NumberInput
-                label="Ceiling height"
-                value={ceilingHeight}
-                onChange={setCeilingHeight}
-                placeholder="8"
-                hint="Standard is 8–9 ft"
-              />
-              <CustomDropdown
-                label="Natural light"
-                value={naturalLight}
-                onChange={setNaturalLight}
-                options={naturalLightOptions}
-                placeholder="Select..."
-              />
-            </div>
-
-            {/* Sqft calculator */}
-            {sqft && (
+          {/* Style cards */}
+          <div className="max-w-[600px] mx-auto space-y-6">
+            {showcaseImages.map((img, i) => (
               <div
-                className="text-center py-3"
+                key={i}
+                className="relative w-full rounded-2xl overflow-hidden cursor-pointer"
                 style={{
-                  color: colors.gold,
-                  fontSize: 13,
-                  animation: "fadeIn 200ms ease",
+                  aspectRatio: "16/9",
+                  background: "#0D2035",
+                  opacity: cardsVisible[i] ? 1 : 0,
+                  transform: cardsVisible[i] ? "translateY(0)" : "translateY(24px)",
+                  transition: "opacity 500ms ease, transform 500ms ease",
+                  filter: isRegenerating ? "blur(4px)" : "blur(0)",
                 }}
               >
-                ≈ {sqft} sqft · {sizeLabel} room
-              </div>
-            )}
-
-            {/* Wall layout */}
-            <div className="mt-6">
-              <span
-                className="uppercase tracking-widest block mb-1"
-                style={{ color: colors.gold, fontSize: 11 }}
-              >
-                Wall layout
-              </span>
-              <p className="mb-4" style={{ color: colors.muted, fontSize: 12 }}>
-                Drag windows and doors onto your room layout
-              </p>
-              <WallSchematic
-                placedSymbols={placedSymbols}
-                setPlacedSymbols={setPlacedSymbols}
-              />
-            </div>
-
-            {/* Fixed elements */}
-            <div className="mt-6">
-              <span
-                className="uppercase tracking-widest block mb-1"
-                style={{ color: colors.gold, fontSize: 11 }}
-              >
-                Fixed elements
-              </span>
-              <p className="mb-3" style={{ color: colors.muted, fontSize: 12 }}>
-                What&apos;s already there that can&apos;t move?
-              </p>
-              <div className="flex gap-2 overflow-x-auto pb-2 -mx-6 px-6 scrollbar-hide">
-                {fixedElements.map((el) => {
-                  const selected = selectedFixed.includes(el.label);
-                  return (
-                    <button
-                      key={el.label}
-                      type="button"
-                      onClick={() => toggleFixed(el.label)}
-                      className="flex items-center gap-2 px-3 py-2 rounded-full whitespace-nowrap transition-all duration-200 shrink-0"
-                      style={{
-                        background: selected
-                          ? "rgba(201,168,76,0.15)"
-                          : colors.surface2,
-                        border: `1px solid ${selected ? colors.gold : colors.goldBorder}`,
-                        color: selected ? colors.ivory : colors.muted,
-                      }}
-                    >
-                      {selected && (
-                        <Check size={14} style={{ color: colors.gold }} />
-                      )}
-                      <span>{el.emoji}</span>
-                      <span style={{ fontSize: 13 }}>{el.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Surfaces */}
-            <div className="mt-6">
-              <span
-                className="uppercase tracking-widest block mb-3"
-                style={{ color: colors.gold, fontSize: 11 }}
-              >
-                Existing surfaces
-              </span>
-              <div className="grid grid-cols-2 gap-3">
-                <CustomDropdown
-                  label="Floor"
-                  value={floorType}
-                  onChange={setFloorType}
-                  options={floorOptions}
-                  placeholder="Select..."
-                />
-                <CustomDropdown
-                  label="Walls"
-                  value={wallFinish}
-                  onChange={setWallFinish}
-                  options={wallFinishOptions}
-                  placeholder="Select..."
-                />
-              </div>
-            </div>
-
-            {/* Closet */}
-            <div className="mt-6">
-              <span
-                className="uppercase tracking-widest block mb-3"
-                style={{ color: colors.gold, fontSize: 11 }}
-              >
-                Closet
-              </span>
-              <div className="flex items-center justify-between">
-                <span style={{ color: colors.ivory, fontSize: 14 }}>
-                  Does this room have a closet?
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setHasCloset(!hasCloset)}
-                  className="relative w-12 h-6 rounded-full transition-all duration-250"
-                  style={{
-                    background: hasCloset ? colors.gold : colors.surface2,
-                  }}
-                >
+                {!cardsLoaded[i] ? (
+                  // Loading state — shimmer + spinner
                   <div
-                    className="absolute top-1 w-4 h-4 rounded-full transition-all duration-250"
+                    className="absolute inset-0 flex flex-col items-center justify-center"
                     style={{
-                      background: hasCloset ? colors.navy : colors.mutedDark,
-                      left: hasCloset ? 28 : 4,
-                    }}
-                  />
-                </button>
-              </div>
-              <div
-                className="overflow-hidden transition-all duration-200"
-                style={{
-                  maxHeight: hasCloset ? 80 : 0,
-                  opacity: hasCloset ? 1 : 0,
-                }}
-              >
-                <p
-                  className="mt-3 mb-2"
-                  style={{ color: colors.muted, fontSize: 12 }}
-                >
-                  Which wall?
-                </p>
-                <div className="flex gap-2">
-                  {["Front", "Back", "Left", "Right"].map((wall) => (
-                    <button
-                      key={wall}
-                      type="button"
-                      onClick={() => setClosetWall(wall)}
-                      className="px-4 py-2 rounded-lg transition-all duration-200"
-                      style={{
-                        background:
-                          closetWall === wall ? colors.gold : "transparent",
-                        border: `1px solid ${colors.gold}`,
-                        color: closetWall === wall ? colors.navy : colors.gold,
-                        fontSize: 13,
-                      }}
-                    >
-                      {wall}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Divider */}
-          <div
-            className="my-8"
-            style={{ height: 1, background: colors.goldBorderLight }}
-          />
-
-          {/* Section 2: Constraints */}
-          <section
-            style={{
-              animation: mounted
-                ? "sectionIn 400ms ease 160ms forwards"
-                : undefined,
-              opacity: 0,
-            }}
-          >
-            <span
-              className="uppercase tracking-widest block mb-1"
-              style={{ color: colors.gold, fontSize: 11 }}
-            >
-              Anything we should know?
-            </span>
-            <p className="mb-4" style={{ color: colors.muted, fontSize: 12 }}>
-              Rental rules, lifestyle, budget limits...
-            </p>
-
-            {/* Starter chips */}
-            <div className="flex gap-2 overflow-x-auto pb-3 -mx-6 px-6 scrollbar-hide">
-              {starterChips.map((chip) => (
-                <button
-                  key={chip}
-                  type="button"
-                  onClick={() => handleStarterChip(chip)}
-                  className="px-3 py-1.5 rounded-full whitespace-nowrap transition-all duration-200 shrink-0"
-                  style={{
-                    background: colors.surface2,
-                    border: `1px solid ${colors.goldBorderMed}`,
-                    color: colors.gold,
-                    fontSize: 10,
-                    transform: pulsedChip === chip ? "scale(1.05)" : "scale(1)",
-                    boxShadow:
-                      pulsedChip === chip ? `0 0 12px ${colors.gold}` : "none",
-                  }}
-                >
-                  {chip}
-                </button>
-              ))}
-            </div>
-
-            {/* Text area */}
-            <textarea
-              value={constraints}
-              onChange={(e) => setConstraints(e.target.value)}
-              placeholder="Anything else about your space or situation..."
-              className="w-full resize-none outline-none transition-all duration-200"
-              style={{
-                background: colors.surface2,
-                border: `1px solid ${colors.goldBorder}`,
-                borderRadius: 12,
-                padding: "14px 16px",
-                color: colors.ivory,
-                fontSize: 15,
-                minHeight: 80,
-              }}
-              onFocus={(e) =>
-                (e.target.style.borderColor = colors.goldBorderFocus)
-              }
-              onBlur={(e) => (e.target.style.borderColor = colors.goldBorder)}
-            />
-          </section>
-
-          {/* Divider */}
-          <div
-            className="my-8"
-            style={{ height: 1, background: colors.goldBorderLight }}
-          />
-
-          {/* Section 3: Must-haves */}
-          <section
-            style={{
-              animation: mounted
-                ? "sectionIn 400ms ease 240ms forwards"
-                : undefined,
-              opacity: 0,
-            }}
-          >
-            <span
-              className="uppercase tracking-widest block mb-1"
-              style={{ color: colors.gold, fontSize: 11 }}
-            >
-              Must-haves
-            </span>
-            <p className="mb-4" style={{ color: colors.muted, fontSize: 12 }}>
-              Items that must appear in your design
-            </p>
-
-            {/* Chip grid */}
-            <div className="flex flex-wrap gap-2 mb-4">
-              {mustHaveItems.map((item) => {
-                const selected = selectedMustHaves.includes(item.label);
-                return (
-                  <button
-                    key={item.label}
-                    type="button"
-                    onClick={() => toggleMustHave(item.label)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-full transition-all duration-200"
-                    style={{
-                      background: selected
-                        ? "rgba(201,168,76,0.15)"
-                        : colors.surface2,
-                      border: `1px solid ${selected ? colors.gold : colors.goldBorder}`,
-                      color: selected ? colors.ivory : colors.muted,
+                      background: "linear-gradient(90deg, #0D2035 0%, #112540 50%, #0D2035 100%)",
+                      backgroundSize: "200% 100%",
+                      animation: "shimmer 1.5s ease infinite",
                     }}
                   >
-                    {selected && (
-                      <Check size={14} style={{ color: colors.gold }} />
-                    )}
-                    <span>{item.emoji}</span>
-                    <span style={{ fontSize: 13 }}>{item.label}</span>
-                  </button>
-                );
-              })}
-              {/* Custom items */}
-              {customItems.map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  className="flex items-center gap-2 px-3 py-2 rounded-full transition-all duration-200"
-                  style={{
-                    background: "rgba(201,168,76,0.15)",
-                    border: `1px solid ${colors.gold}`,
-                    color: colors.ivory,
-                    animation: "chipIn 200ms ease",
-                  }}
-                >
-                  <Check size={14} style={{ color: colors.gold }} />
-                  <span>💬</span>
-                  <span style={{ fontSize: 13 }}>{item}</span>
-                  <X
-                    size={14}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeCustomItem(item);
-                    }}
-                    className="ml-1 cursor-pointer hover:opacity-70"
-                    style={{ color: colors.muted }}
-                  />
-                </button>
-              ))}
-            </div>
-
-            {/* Custom input */}
-            <div>
-              <p className="mb-2" style={{ color: colors.muted, fontSize: 12 }}>
-                Something else?
-              </p>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={customInclusion}
-                  onChange={(e) => setCustomInclusion(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && addCustomItem()}
-                  placeholder="e.g. standing desk, murphy bed, wine rack..."
-                  className="w-full outline-none transition-all duration-200"
-                  style={{
-                    background: colors.surface2,
-                    border: `1px solid ${colors.goldBorder}`,
-                    borderRadius: 10,
-                    padding: "10px 14px",
-                    paddingRight: 70,
-                    color: colors.ivory,
-                    fontSize: 14,
-                  }}
-                  onFocus={(e) =>
-                    (e.target.style.borderColor = colors.goldBorderFocus)
-                  }
-                  onBlur={(e) =>
-                    (e.target.style.borderColor = colors.goldBorder)
-                  }
-                />
-                <button
-                  type="button"
-                  onClick={addCustomItem}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 px-2 py-1 rounded transition-opacity duration-200"
-                  style={{
-                    color: colors.gold,
-                    fontSize: 12,
-                    opacity: customInclusion ? 1 : 0.5,
-                  }}
-                >
-                  Add <Plus size={14} />
-                </button>
+                    <div
+                      className="w-6 h-6 rounded-full mb-3"
+                      style={{
+                        border: "2px solid rgba(201,168,76,0.2)",
+                        borderTopColor: "#C9A84C",
+                        animation: "spin 800ms linear infinite",
+                      }}
+                    />
+                    <span className="text-xs font-sans text-[#4A5E7A]">
+                      {isRegenerating ? "Redesigning..." : "Designing your room..."}
+                    </span>
+                  </div>
+                ) : img ? (
+                  // Anchor render image
+                  <>
+                    <img
+                      src={img.url}
+                      alt={`${img.label} redesigned to your style`}
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                    <div
+                      className="absolute inset-0"
+                      style={{ background: "linear-gradient(transparent 55%, rgba(9,24,41,0.85))" }}
+                    />
+                    <div className="absolute bottom-4 left-4 flex items-center gap-3">
+                      <span className="text-[13px] font-sans text-[#8A9BB5]">{img.label}</span>
+                      <span
+                        className="px-2.5 py-1 rounded-full text-[11px] font-sans text-[#091829]"
+                        style={{ background: "#C9A84C" }}
+                      >
+                        Your style
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  // Fallback: render failed, show styled placeholder
+                  <>
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        background: `linear-gradient(160deg, ${palette[0]}22 0%, ${palette[2]}44 50%, ${palette[4]}22 100%)`,
+                      }}
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-xs font-sans text-[#4A5E7A]">Preview unavailable</span>
+                    </div>
+                    <div
+                      className="absolute inset-0"
+                      style={{ background: "linear-gradient(transparent 55%, rgba(9,24,41,0.85))" }}
+                    />
+                  </>
+                )}
               </div>
-            </div>
-          </section>
+            ))}
+          </div>
+
+          {/* Feel right text and CTAs */}
+          <div
+            className="max-w-[480px] mx-auto mt-10"
+            style={{
+              opacity: feelRightVisible ? 1 : 0,
+              transition: "opacity 400ms ease",
+            }}
+          >
+            <p className="text-sm font-sans italic text-[#8A9BB5] text-center mb-6">
+              Does this feel right?
+            </p>
+
+            <button
+              onClick={() => { setStep(5); router.push("/design/step-5"); }}
+              className="w-full py-[18px] px-10 rounded-xl text-[15px] font-semibold font-sans transition-all duration-200"
+              style={{
+                background: "#C9A84C",
+                color: "#091829",
+                letterSpacing: "0.03em",
+                boxShadow: "0 0 40px rgba(201,168,76,0.25)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#D4B460"
+                e.currentTarget.style.boxShadow = "0 0 60px rgba(201,168,76,0.4)"
+                e.currentTarget.style.transform = "translateY(-2px)"
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "#C9A84C"
+                e.currentTarget.style.boxShadow = "0 0 40px rgba(201,168,76,0.25)"
+                e.currentTarget.style.transform = "translateY(0)"
+              }}
+            >
+              Yes, design my room &rarr;
+            </button>
+
+            <button
+              onClick={() => setShowAdjustPanel(true)}
+              className="w-full mt-3 py-3.5 px-10 rounded-xl text-sm font-sans transition-all duration-200"
+              style={{
+                background: "transparent",
+                border: "1px solid rgba(201,168,76,0.3)",
+                color: "#8A9BB5",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "#C9A84C"
+                e.currentTarget.style.color = "#F5F0E8"
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "rgba(201,168,76,0.3)"
+                e.currentTarget.style.color = "#8A9BB5"
+              }}
+            >
+              Adjust my style
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Fixed footer */}
+      {/* Adjust Panel Overlay */}
+      {showAdjustPanel && (
+        <div
+          className="fixed inset-0 z-50"
+          style={{ background: "rgba(0,0,0,0.5)" }}
+          onClick={() => setShowAdjustPanel(false)}
+        />
+      )}
+
+      {/* Adjust Panel */}
       <div
-        className="fixed bottom-0 left-0 right-0 px-6 py-4"
+        className="fixed bottom-0 left-0 right-0 z-50 max-h-[60vh] md:max-h-[60vh] overflow-y-auto"
         style={{
-          background: colors.surface,
-          borderTop: `1px solid rgba(201,168,76,0.1)`,
+          background: "#0D2035",
+          borderTopLeftRadius: "20px",
+          borderTopRightRadius: "20px",
+          borderTop: "1px solid rgba(201,168,76,0.2)",
+          boxShadow: "0 -20px 60px rgba(0,0,0,0.5)",
+          padding: "32px 24px 48px",
+          transform: showAdjustPanel ? "translateY(0)" : "translateY(100%)",
+          transition: "transform 400ms cubic-bezier(0.34,1.56,0.64,1)",
         }}
       >
-        <div className="max-w-2xl mx-auto">
-          {/* Warning toast */}
-          {showWarning && (
-            <div
-              className="mb-3 px-4 py-3 rounded-lg flex items-center gap-2"
+        {/* Handle bar */}
+        <div
+          className="w-8 h-1 rounded-sm mx-auto mb-6 cursor-grab"
+          style={{ background: "rgba(201,168,76,0.3)" }}
+          onClick={() => setShowAdjustPanel(false)}
+        />
+
+        <h3 className="font-serif text-2xl text-[#F5F0E8] mb-1.5">
+          Describe what feels off
+        </h3>
+        <p className="text-[13px] font-sans text-[#8A9BB5] mb-6">
+          Or tap a quick adjustment below
+        </p>
+
+        {/* Quick chips */}
+        <div className="flex flex-wrap gap-2.5 mb-5">
+          {adjustChips.map((chip) => (
+            <button
+              key={chip}
+              onClick={() => handleChipToggle(chip)}
+              className="px-4 py-2 rounded-full text-xs font-sans transition-all duration-200"
               style={{
-                background: colors.warningBg,
-                border: `1px solid ${colors.warning}`,
-                animation: "slideUp 200ms ease",
+                background: selectedChips.includes(chip) ? "rgba(201,168,76,0.08)" : "#112540",
+                border: selectedChips.includes(chip)
+                  ? "1px solid #C9A84C"
+                  : "1px solid rgba(201,168,76,0.2)",
+                color: selectedChips.includes(chip) ? "#F5F0E8" : "#8A9BB5",
               }}
             >
-              <span style={{ fontSize: 14 }}>⚠</span>
-              <span style={{ color: colors.warning, fontSize: 13 }}>
-                Adding room dimensions improves render accuracy significantly
-              </span>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={handleContinue}
-            className="w-full py-4 rounded-xl font-semibold transition-all duration-200 hover:-translate-y-0.5"
-            style={{
-              background: colors.gold,
-              color: colors.navy,
-              fontSize: 16,
-            }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.background = colors.goldHover)
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.background = colors.gold)
-            }
-          >
-            Continue →
-          </button>
-          <button
-            type="button"
-            className="w-full mt-3 py-2 text-center transition-colors duration-200 hover:underline"
-            style={{ color: colors.mutedDark, fontSize: 12 }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = colors.muted)}
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.color = colors.mutedDark)
-            }
-            onClick={() => {
-              // Save dimensions
-              setRoomDimensions({
-                length: length ? parseFloat(length) : null,
-                width: width ? parseFloat(width) : null,
-                ceilingHeight: ceilingHeight ? parseFloat(ceilingHeight) : null,
-                naturalLight: naturalLight || null,
-              });
-              // Save wall layout from any symbols placed so far
-              const skipWallLayout: WallLayout = { top: [], bottom: [], left: [], right: [] };
-              placedSymbols.forEach((s) => {
-                skipWallLayout[s.wall].push({ type: s.type, position: s.position });
-              });
-              setWallLayout(skipWallLayout);
-              // Save fixed elements, surfaces, closet
-              setFixedElements(selectedFixed);
-              setSurfaces(floorType, wallFinish);
-              setCloset(hasCloset, closetWall);
-              // Save any constraints entered as raw comma-split array
-              const constraintsArray = constraints.trim()
-                ? constraints.split(',').map((c) => c.trim()).filter(Boolean)
-                : [];
-              saveConstraints(constraintsArray);
-              // Save inclusions
-              setInclusions([...selectedMustHaves, ...customItems]);
-              setStep(5);
-              router.push("/design/step-5");
-            }}
-          >
-            Skip for now
-          </button>
+              {chip}
+            </button>
+          ))}
         </div>
+
+        {/* Text input */}
+        <textarea
+          value={adjustText}
+          onChange={(e) => setAdjustText(e.target.value)}
+          placeholder="e.g. warmer tones, less cluttered, more modern..."
+          className="w-full min-h-[80px] p-4 rounded-xl text-sm font-sans resize-none transition-all duration-200 focus:outline-none"
+          style={{
+            background: "#091829",
+            border: "1px solid rgba(201,168,76,0.2)",
+            color: "#F5F0E8",
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.borderColor = "rgba(201,168,76,0.6)"
+            e.currentTarget.style.boxShadow = "0 0 0 3px rgba(201,168,76,0.08)"
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.borderColor = "rgba(201,168,76,0.2)"
+            e.currentTarget.style.boxShadow = "none"
+          }}
+        />
+
+        {/* Regenerate button */}
+        <button
+          onClick={handleRegenerate}
+          disabled={isRegenerating}
+          className="w-full mt-5 py-4 rounded-xl text-sm font-semibold font-sans flex items-center justify-center gap-2"
+          style={{
+            background: "#C9A84C",
+            color: "#091829",
+            opacity: isRegenerating ? 0.7 : 1,
+          }}
+        >
+          {isRegenerating && (
+            <div
+              className="w-4 h-4 rounded-full"
+              style={{
+                border: "2px solid rgba(9,24,41,0.2)",
+                borderTopColor: "#091829",
+                animation: "spin 800ms linear infinite",
+              }}
+            />
+          )}
+          {isRegenerating ? "Regenerating..." : "Regenerate my style"}
+        </button>
       </div>
 
       <style jsx>{`
-        @keyframes sectionIn {
-          from {
-            opacity: 0;
-            transform: translateY(16px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
         }
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
         }
-        @keyframes chipIn {
-          from {
-            transform: scale(0.8);
-            opacity: 0;
-          }
-          to {
-            transform: scale(1);
-            opacity: 1;
-          }
+        @keyframes floatOrb1 {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          33% { transform: translate(30px, -20px) scale(1.05); }
+          66% { transform: translate(-20px, 15px) scale(0.95); }
         }
-        @keyframes slideUp {
-          from {
-            opacity: 0;
-            transform: translateY(8px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
+        @keyframes floatOrb2 {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          40% { transform: translate(-25px, 20px) scale(1.08); }
+          70% { transform: translate(15px, -10px) scale(0.92); }
         }
       `}</style>
     </div>
-  );
+  )
 }
+

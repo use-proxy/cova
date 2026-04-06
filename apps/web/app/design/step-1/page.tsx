@@ -430,7 +430,7 @@ export default function CovaDesignStep1() {
           className="font-sans text-center mt-3"
           style={{ fontSize: 11, color: COLORS.subtle }}
         >
-          No account needed to start
+          Create your free account after capturing your room
         </p>
       </section>
     </div>

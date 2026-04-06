@@ -1,1014 +1,588 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useRef, Suspense } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import { useFingerprintStore, useSessionStore } from "@/lib/store"
-import { StepIndicator } from "@/components/cova/StepIndicator"
-import { createBrowserClient } from "@/lib/supabase/client"
+import { useState, useRef, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { QUIZ_PAIRS } from "@/lib/ai/quiz-data";
+import { useFingerprintStore, useSessionStore } from "@/lib/store";
+import { useRoomStore } from "@/lib/store/room";
+import { StepIndicator } from "@/components/cova/StepIndicator";
 
-const axisLabels = ["Luminosity", "Temperature", "Form", "Texture", "Nature", "Scale"]
-const adjustChips = ["Warmer", "Cooler", "More minimal", "More layered", "More modern", "More classic"]
+const TOTAL_PAIRS = 19;
 
-// Fallback palette derived from fingerprint values
-function derivepalette(fp: number[]): string[] {
-  const warm = fp[2] > 0.5 // temperature
-  const bright = fp[0] > 0.5 // luminosity
-  if (warm && bright) return ["#C9A84C", "#D4956A", "#8B6914", "#F5E6C8", "#3D2010"]
-  if (warm && !bright) return ["#8B6914", "#5C3D1A", "#3D2010", "#C9A84C", "#1A0E08"]
-  if (!warm && bright) return ["#8A9BB5", "#6A8AA0", "#4A6E8A", "#F5F0E8", "#1A2A3A"]
-  return ["#4A5E7A", "#2A3A4A", "#1A2A3A", "#8A9BB5", "#091829"]
-}
+type Response = {
+  pairId: string;
+  chosen: "A" | "B";
+  superLiked: boolean;
+};
 
-// mock data for palette animation (uses derived palette length)
-const mockData = { palette: [1, 2, 3, 4, 5] }
+export default function StyleQuizPage() {
+  const router = useRouter();
+  const { roomType, budgetTier, setFingerprint, setShowcasePredictionIds } = useFingerprintStore();
+  const { setStep, pendingPhotoUrl, pendingRoomId, clearPendingCapture } = useSessionStore();
+  const { setRoom, setPhotoUrl } = useRoomStore();
+  const pairs = QUIZ_PAIRS[roomType ?? "living-room"] ?? QUIZ_PAIRS["living-room"]!;
 
-function Step3PageInner() {
-  const router = useRouter()
+  const [currentPair, setCurrentPair] = useState(0);
+  const [responses, setResponses] = useState<Response[]>([]);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [lastHovered, setLastHovered] = useState<"left" | "right" | null>(null);
+  const [selectedCard, setSelectedCard] = useState<"left" | "right" | null>(null);
+  const [exitPhase, setExitPhase] = useState(false);
+  const [enterPhase, setEnterPhase] = useState(true);
+  const [showCheckmark, setShowCheckmark] = useState(false);
 
-  // Read fingerprint from Zustand store (set by Step 2 quiz)
-  const { fingerprint: storedFingerprint, styleName: storedStyleName, roomType, budgetTier, showcasePredictionIds, setShowcasePredictionIds, setFingerprint: setStoreFingerprint } = useFingerprintStore()
-  const { setStep } = useSessionStore()
+  const pointerStartX = useRef(0);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Fall back to mock if store empty (direct navigation in dev)
-  const [fingerprint, setFingerprint] = useState<number[]>(
-    storedFingerprint ?? [0.7, 0.3, 0.8, 0.7, 0.4, 0.6, 0.5, 0.5, 0.5, 0.5]
-  )
-  const [styleName] = useState(storedStyleName ?? "Warm Artisan")
-  const [styleChips] = useState<string[]>([
-    "organic textures", "warm neutrals", "minimal layers", "natural materials"
-  ])
-  const palette = derivepalette(fingerprint)
+  // Progress width — genuine 0–100% through the quiz
+  const progressWidth = (((currentPair + 1) / TOTAL_PAIRS) * 100).toFixed(1);
 
-  // Showcase images — populated from anchor_renders table (url + label)
-  const [showcaseImages, setShowcaseImages] = useState<Array<{ url: string; label: string } | null>>([null, null, null])
+  // Call fingerprint API then navigate to step-3
+  const completeQuiz = useCallback(
+    async (finalResponses: Response[]) => {
+      try {
+        const apiResponses = finalResponses.map((r) => ({
+          pair_id: r.pairId,
+          chosen: r.chosen,
+          super_liked: r.superLiked,
+        }));
+        const res = await fetch("/api/quiz/fingerprint", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            responses: apiResponses,
+            entry_path: "pairs",
+            room_type: roomType ?? "living-room",
+          }),
+        });
+        if (res.ok) {
+          const data = (await res.json()) as {
+            fingerprint: number[];
+            style_name: string;
+            style_chips?: string[];
+          };
+          setFingerprint(data.fingerprint, data.style_name);
 
-  const searchParams = useSearchParams()
-  const authRequired = searchParams.get('auth_required') === 'true'
-
-  // Email auth form state
-  const [showEmailForm, setShowEmailForm] = useState(false)
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [isNewUser, setIsNewUser] = useState(false)
-  const [authError, setAuthError] = useState<string | null>(null)
-
-  const [phase, setPhase] = useState<1 | 2>(1)
-  const [irisOpen, setIrisOpen] = useState(false)
-  const [gridVisible, setGridVisible] = useState(false)
-  const [axesDrawn, setAxesDrawn] = useState<boolean[]>([false, false, false, false, false, false])
-  const [shapeDrawn, setShapeDrawn] = useState(false)
-  const [verticesVisible, setVerticesVisible] = useState<boolean[]>([false, false, false, false, false, false])
-  const [labelsVisible, setLabelsVisible] = useState(false)
-  const [typedName, setTypedName] = useState("")
-  const [showCursor, setShowCursor] = useState(false)
-  const [paletteVisible, setPaletteVisible] = useState<boolean[]>([false, false, false, false, false])
-  const [chipsVisible, setChipsVisible] = useState<boolean[]>([false, false, false, false])
-  const [authVisible, setAuthVisible] = useState(false)
-  const [showAdjustPanel, setShowAdjustPanel] = useState(false)
-  const [adjustText, setAdjustText] = useState("")
-  const [selectedChips, setSelectedChips] = useState<string[]>([])
-  const [isRegenerating, setIsRegenerating] = useState(false)
-  const [cardsLoaded, setCardsLoaded] = useState([false, false, false])
-  const [dividerDrawn, setDividerDrawn] = useState(false)
-  const [phase2ContentVisible, setPhase2ContentVisible] = useState(false)
-  const [cardsVisible, setCardsVisible] = useState([false, false, false])
-  const [feelRightVisible, setFeelRightVisible] = useState(false)
-
-  const phase2Ref = useRef<HTMLDivElement>(null)
-
-  // Load showcase images: poll predictions from store, fallback to anchor_renders
-  useEffect(() => {
-    const pendingIds = showcasePredictionIds
-
-    if (!pendingIds || pendingIds.length === 0) {
-      // No predictions fired — load from anchor_renders directly
-      void (async () => {
-        try {
-          const supabase = createBrowserClient()
-          const normalizedRoomType = (roomType ?? 'living_room').replace(/-/g, '_').toLowerCase()
-          const { data, error } = await supabase
-            .from('anchor_renders')
-            .select('image_url, label')
-            .eq('room_type', normalizedRoomType)
-            .limit(3)
-          if (error || !data || data.length === 0) {
-            const { data: fallback } = await supabase
-              .from('anchor_renders')
-              .select('image_url, label')
-              .limit(3)
-            if (fallback && fallback.length > 0) {
-              setShowcaseImages(fallback.map(r => ({ url: r.image_url, label: r.label ?? 'Room' })))
-              setCardsLoaded([true, true, true])
+          // Fire showcase renders sequentially to avoid rate limits
+          // Each render fires 2 seconds after the previous one starts
+          // Non-blocking — stored in Zustand (Rule 1: no sessionStorage)
+          const SHOWCASE_INPUTS = [
+            { photo_url: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1024', label: 'Living Room' },
+            { photo_url: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=1024', label: 'Bedroom' },
+            { photo_url: 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=1024', label: 'Home Office' },
+          ]
+          void (async () => {
+            const results: Array<{ predictionId: string; label: string }> = []
+            for (let i = 0; i < SHOWCASE_INPUTS.length; i++) {
+              if (i > 0) await new Promise(r => setTimeout(r, 2000))
+              const input = SHOWCASE_INPUTS[i]!
+              try {
+                const res = await fetch('/api/render', {
+                  method: 'POST',
+                  credentials: 'include',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    photo_url: input.photo_url,
+                    fingerprint_vector: data.fingerprint,
+                    room_type: roomType ?? 'living_room',
+                    budget: budgetTier ?? 'mid',
+                    inclusions: [],
+                    constraints: [],
+                    showcase_mode: true,
+                    style_name: data.style_name,
+                  }),
+                })
+                if (res.ok) {
+                  const renderData = await res.json() as { prediction_id: string }
+                  results.push({ predictionId: renderData.prediction_id, label: input.label })
+                }
+              } catch {
+                // Non-blocking fallback — step-3 will use anchor_renders
+              }
             }
-            return
-          }
-          setShowcaseImages(data.map(r => ({ url: r.image_url, label: r.label ?? 'Room' })))
-          setCardsLoaded([true, true, true])
-        } catch { /* shimmer stays */ }
-      })()
-      return
-    }
-
-    // Poll each prediction — update card as it resolves
-    const pollOne = async (predictionId: string, index: number, label: string) => {
-      const maxAttempts = 30 // 90s max
-      for (let i = 0; i < maxAttempts; i++) {
-        await new Promise<void>(r => setTimeout(r, 3000))
-        try {
-          const res = await fetch(
-            `/api/render/status?prediction_id=${predictionId}&showcase_mode=true`,
-            { credentials: 'include' }
-          )
-          if (res.ok) {
-            const d = await res.json() as { status: string; render_url?: string }
-            if (d.status === 'complete' && d.render_url) {
-              setShowcaseImages(prev => { const next = [...prev]; next[index] = { url: d.render_url!, label }; return next })
-              setCardsLoaded(prev => { const next = [...prev]; next[index] = true; return next })
-              return
+            if (results.length > 0) {
+              setShowcasePredictionIds(results)
             }
-            if (d.status === 'failed') break
-          }
-        } catch { /* keep polling */ }
+          })()
+        }
+      } catch {
+        // Non-blocking — store will use defaults on step-3
+      } finally {
+        setStep(4);
+        router.push("/design/step-4");
       }
-      // Timed out or failed — mark card loaded so user isn't stuck
-      setCardsLoaded(prev => { const next = [...prev]; next[index] = true; return next })
+    },
+    [roomType, budgetTier, setFingerprint, setShowcasePredictionIds, setStep, router]
+  );
+
+  const handleSelection = useCallback(
+    (side: "left" | "right") => {
+      if (isAnimating) return;
+      setIsAnimating(true);
+      setSelectedCard(side);
+
+      // Show checkmark at 150ms
+      setTimeout(() => setShowCheckmark(true), 150);
+
+      // Exit animation at 600ms
+      setTimeout(() => setExitPhase(true), 600);
+
+      // Next pair at 1000ms
+      setTimeout(() => {
+        const activePair = pairs[currentPair];
+        const newResponse: Response = {
+          pairId: activePair?.id ?? `pair-${String(currentPair + 1).padStart(2, "0")}`,
+          chosen: side === "left" ? "A" : "B",
+          superLiked: false,
+        };
+        const updatedResponses = [...responses, newResponse];
+        setResponses(updatedResponses);
+
+        if (currentPair === TOTAL_PAIRS - 1) {
+          void completeQuiz(updatedResponses);
+        } else {
+          setSelectedCard(null);
+          setExitPhase(false);
+          setShowCheckmark(false);
+          setEnterPhase(true);
+          setCurrentPair((prev) => prev + 1);
+
+          setTimeout(() => {
+            setEnterPhase(false);
+            setIsAnimating(false);
+          }, 460);
+        }
+      }, 1000);
+    },
+    [isAnimating, currentPair, responses, completeQuiz, pairs]
+  );
+
+  const handleBack = useCallback(() => {
+    if (currentPair > 0 && !isAnimating) {
+      setCurrentPair((prev) => prev - 1);
+      setResponses((prev) => prev.slice(0, -1));
     }
+  }, [currentPair, isAnimating]);
 
-    // Clear stored IDs so a refresh doesn't re-poll stale predictions
-    setShowcasePredictionIds(null)
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (isAnimating) return;
+    pointerStartX.current = e.clientX;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  };
 
-    pendingIds.forEach((item, i) => {
-      void pollOne(item.predictionId, i, item.label)
-    })
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (isAnimating) return;
+    const deltaX = e.clientX - pointerStartX.current;
+    if (Math.abs(deltaX) > 40) {
+      handleSelection(deltaX > 0 ? "left" : "right");
+    }
+  };
+
+  // Enter animation on mount
+  useEffect(() => {
+    const timer = setTimeout(() => setEnterPhase(false), 460);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // On mount: check if user just returned from OAuth with pending capture
+  // Fire detection using the persisted photo URL and room ID
+  useEffect(() => {
+    if (pendingPhotoUrl && pendingRoomId) {
+      setRoom(pendingRoomId)
+      setPhotoUrl(pendingPhotoUrl)
+      void triggerDetection(pendingPhotoUrl, pendingRoomId)
+      clearPendingCapture()
+    }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Phase 1 animation sequence
-  useEffect(() => {
-    // t=200ms: Iris opens
-    const t1 = setTimeout(() => setIrisOpen(true), 200)
-    // t=400ms: Grid fades in
-    const t2 = setTimeout(() => setGridVisible(true), 400)
-    // t=600ms: Axes extend one by one
-    const t3 = setTimeout(() => {
-      axisLabels.forEach((_, i) => {
-        setTimeout(() => {
-          setAxesDrawn((prev) => {
-            const next = [...prev]
-            next[i] = true
-            return next
-          })
-        }, i * 80)
-      })
-    }, 600)
-    // t=1100ms: Shape traces
-    const t4 = setTimeout(() => setShapeDrawn(true), 1100)
-    // t=1900ms: Vertices appear
-    const t5 = setTimeout(() => {
-      axisLabels.forEach((_, i) => {
-        setTimeout(() => {
-          setVerticesVisible((prev) => {
-            const next = [...prev]
-            next[i] = true
-            return next
-          })
-        }, i * 60)
-      })
-    }, 1900)
-    // t=2300ms: Labels fade in
-    const t6 = setTimeout(() => setLabelsVisible(true), 2300)
-    // t=2800ms: "Your Design DNA" types in (style name never shown per Rule 8)
-    const TYPING_TEXT = "Your Design DNA"
-    const t7 = setTimeout(() => {
-      setShowCursor(true)
-      let i = 0
-      const typeInterval = setInterval(() => {
-        if (i < TYPING_TEXT.length) {
-          setTypedName(TYPING_TEXT.slice(0, i + 1))
-          i++
-        } else {
-          clearInterval(typeInterval)
-          setTimeout(() => setShowCursor(false), 500)
-        }
-      }, 60)
-    }, 2800)
-    // t=3800ms: Palette slides in
-    const t8 = setTimeout(() => {
-      mockData.palette.forEach((_, i) => {
-        setTimeout(() => {
-          setPaletteVisible((prev) => {
-            const next = [...prev]
-            next[i] = true
-            return next
-          })
-        }, i * 80)
-      })
-    }, 3800)
-    // t=4400ms: Chips fade in
-    const t9 = setTimeout(() => {
-      styleChips.forEach((_, i) => {
-        setTimeout(() => {
-          setChipsVisible((prev) => {
-            const next = [...prev]
-            next[i] = true
-            return next
-          })
-        }, i * 100)
-      })
-    }, 4400)
-    // t=5200ms: Auth section rises
-    const t10 = setTimeout(() => setAuthVisible(true), 5200)
+  const activePair = pairs[currentPair];
+  const imgUrlA = activePair?.imageA?.url ?? "";
+  const imgUrlB = activePair?.imageB?.url ?? "";
+  const isWarmup = activePair?.isWarmup ?? (currentPair === 0);
 
-    return () => {
-      ;[t1, t2, t3, t4, t5, t6, t7, t8, t9, t10].forEach(clearTimeout)
+  const getCardStyle = (side: "left" | "right") => {
+    const isSelected = selectedCard === side;
+    const isRejected = selectedCard && selectedCard !== side;
+
+    let transform = "translateX(0) translateY(0)";
+    let opacity = 1;
+
+    if (enterPhase) {
+      transform = "translateX(105%)";
+      opacity = 0;
     }
-  }, [styleName, styleChips])
 
-  // "Feel right" text shows after all 3 cards have real renders
-  useEffect(() => {
-    if (cardsLoaded.every((c) => c)) {
-      setTimeout(() => setFeelRightVisible(true), 500)
-    }
-  }, [cardsLoaded])
-
-  const handleEmailAuth = async () => {
-    setAuthError(null)
-    const supabase = createBrowserClient()
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
-    if (signInError) {
-      // Try sign up as new user
-      const { error: signUpError } = await supabase.auth.signUp({ email, password })
-      if (signUpError) {
-        setAuthError(signUpError.message)
-        return
+    if (exitPhase) {
+      if (isSelected) {
+        transform = "translateX(105%)";
+        opacity = 0;
+      } else if (isRejected) {
+        transform = "translateX(-105%)";
+        opacity = 0;
       }
-      setIsNewUser(true)
+    } else if (isRejected && !exitPhase) {
+      opacity = 0.35;
     }
-    setStep(4)
-    proceedToPhase2()
-  }
 
-  const handleShare = async () => {
-    const shareData = { title: "My Design DNA", text: "Check out my personalized design style from Cova!", url: window.location.href }
-    if (navigator.share) {
-      try { await navigator.share(shareData) } catch { /* user cancelled */ }
-    } else {
-      try { await navigator.clipboard.writeText(window.location.href) } catch { /* ignore */ }
+    return { transform, opacity };
+  };
+
+  const getCardTransition = (side: "left" | "right") => {
+    if (enterPhase) {
+      const delay = side === "left" ? "0ms" : "60ms";
+      return `all 400ms cubic-bezier(0.34,1.56,0.64,1) ${delay}`;
     }
-  }
-
-  const proceedToPhase2 = () => {
-    setPhase(2)
-    // Draw divider
-    setTimeout(() => setDividerDrawn(true), 100)
-    // Show phase 2 content
-    setTimeout(() => setPhase2ContentVisible(true), 500)
-    // Show cards with stagger
-    setTimeout(() => {
-      ;[0, 1, 2].forEach((i) => {
-        setTimeout(() => {
-          setCardsVisible((prev) => {
-            const next = [...prev]
-            next[i] = true
-            return next
-          })
-        }, i * 150)
-      })
-    }, 600)
-    // Scroll to phase 2
-    setTimeout(() => {
-      phase2Ref.current?.scrollIntoView({ behavior: "smooth" })
-    }, 300)
-  }
-
-  const handleChipToggle = (chip: string) => {
-    setSelectedChips((prev) => {
-      const isSelected = prev.includes(chip)
-      const newChips = isSelected ? prev.filter((c) => c !== chip) : [...prev, chip]
-      setAdjustText(newChips.join(", "))
-      return newChips
-    })
-  }
-
-  const handleRegenerate = async () => {
-    if (!adjustText.trim() && selectedChips.length === 0) return
-    setIsRegenerating(true)
-    setShowAdjustPanel(false)
-    setCardsLoaded([false, false, false])
-    setShowcaseImages([null, null, null])
-    setFeelRightVisible(false)
-
-    // Apply chip adjustments directly to fingerprint dimensions
-    const adjustmentMap: Record<string, Record<number, number>> = {
-      'Warmer':       { 2: Math.min(1, (fingerprint[2] ?? 0.5) + 0.2) },
-      'Cooler':       { 2: Math.max(0, (fingerprint[2] ?? 0.5) - 0.2) },
-      'More minimal': { 1: Math.max(0, (fingerprint[1] ?? 0.5) - 0.2) },
-      'More layered': { 1: Math.min(1, (fingerprint[1] ?? 0.5) + 0.2) },
-      'More modern':  { 4: Math.max(0, (fingerprint[4] ?? 0.5) - 0.2) },
-      'More classic': { 4: Math.min(1, (fingerprint[4] ?? 0.5) + 0.2) },
+    if (exitPhase) {
+      const duration = selectedCard === side ? "400ms" : "350ms";
+      return `all ${duration} ease-in`;
     }
-    const modifiedFp = [...fingerprint]
-    selectedChips.forEach(chip => {
-      const adj = adjustmentMap[chip]
-      if (adj) {
-        Object.entries(adj).forEach(([dim, val]) => { modifiedFp[parseInt(dim)] = val })
-      }
-    })
-
-    setFingerprint(modifiedFp)
-    setStoreFingerprint(modifiedFp, styleName)
-
-    const SHOWCASE_INPUTS = [
-      { photo_url: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1024', label: 'Living Room' },
-      { photo_url: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=1024', label: 'Bedroom' },
-      { photo_url: 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=1024', label: 'Home Office' },
-    ]
-
-    await Promise.allSettled(
-      SHOWCASE_INPUTS.map(async (input, index) => {
-        try {
-          const renderRes = await fetch('/api/render', {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              photo_url: input.photo_url,
-              fingerprint_vector: modifiedFp,
-              room_type: roomType ?? 'living_room',
-              budget: budgetTier ?? 'mid',
-              inclusions: [],
-              constraints: [],
-              showcase_mode: true,
-              style_name: styleName,
-            }),
-          })
-          if (!renderRes.ok) {
-            setCardsLoaded(prev => { const next = [...prev]; next[index] = true; return next })
-            return
-          }
-          const renderData = await renderRes.json() as { prediction_id: string }
-          // Poll until complete
-          for (let i = 0; i < 30; i++) {
-            await new Promise<void>(r => setTimeout(r, 3000))
-            const statusRes = await fetch(
-              `/api/render/status?prediction_id=${renderData.prediction_id}&showcase_mode=true`,
-              { credentials: 'include' }
-            )
-            if (statusRes.ok) {
-              const status = await statusRes.json() as { status: string; render_url?: string }
-              if (status.status === 'complete' && status.render_url) {
-                setShowcaseImages(prev => { const next = [...prev]; next[index] = { url: status.render_url!, label: input.label }; return next })
-                setCardsLoaded(prev => { const next = [...prev]; next[index] = true; return next })
-                return
-              }
-              if (status.status === 'failed') break
-            }
-          }
-          // Timed out
-          setCardsLoaded(prev => { const next = [...prev]; next[index] = true; return next })
-        } catch {
-          setCardsLoaded(prev => { const next = [...prev]; next[index] = true; return next })
-        }
-      })
-    )
-
-    setIsRegenerating(false)
-    setAdjustText('')
-    setSelectedChips([])
-  }
-
-  // Calculate radar chart points
-  const chartSize = 320
-  const chartCenter = chartSize / 2
-  const maxRadius = chartSize / 2 - 40
-
-  const getPoint = (index: number, value: number) => {
-    const angle = (index * 60 - 90) * (Math.PI / 180)
-    const radius = value * maxRadius
-    return {
-      x: chartCenter + radius * Math.cos(angle),
-      y: chartCenter + radius * Math.sin(angle),
-    }
-  }
-
-  const getAxisEndpoint = (index: number) => {
-    const angle = (index * 60 - 90) * (Math.PI / 180)
-    return {
-      x: chartCenter + maxRadius * Math.cos(angle),
-      y: chartCenter + maxRadius * Math.sin(angle),
-    }
-  }
-
-  const getLabelPosition = (index: number) => {
-    const angle = (index * 60 - 90) * (Math.PI / 180)
-    const radius = maxRadius + 24
-    return {
-      x: chartCenter + radius * Math.cos(angle),
-      y: chartCenter + radius * Math.sin(angle),
-    }
-  }
-
-  // Use only 6 specific dims for 6-axis chart: luminosity[0], temperature[2], form[3], texture[5], nature[7], scale[9]
-  const chartFingerprint = [fingerprint[0] ?? 0.5, fingerprint[2] ?? 0.5, fingerprint[3] ?? 0.5, fingerprint[5] ?? 0.5, fingerprint[7] ?? 0.5, fingerprint[9] ?? 0.5]
-
-  const shapePath = chartFingerprint.map((v, i) => {
-    const point = getPoint(i, v)
-    return `${i === 0 ? "M" : "L"} ${point.x} ${point.y}`
-  }).join(" ") + " Z"
-
-  const shapePathLength = 800
-
-  // Hexagon grid paths
-  const getHexagonPath = (scale: number) => {
-    const points = [0, 1, 2, 3, 4, 5].map((i) => {
-      const angle = (i * 60 - 90) * (Math.PI / 180)
-      const radius = maxRadius * scale
-      return `${chartCenter + radius * Math.cos(angle)},${chartCenter + radius * Math.sin(angle)}`
-    })
-    return `M ${points.join(" L ")} Z`
-  }
+    return "all 300ms ease";
+  };
 
   return (
-    <div className="min-h-screen bg-[#091829] relative overflow-x-hidden">
-      {/* Iris overlay - black covers content, then shrinks to reveal */}
-      <div
-        className="fixed inset-0 bg-black z-50 pointer-events-none"
-        style={{
-          clipPath: irisOpen ? "circle(0% at 50% 50%)" : "circle(150% at 50% 50%)",
-          transition: "clip-path 800ms cubic-bezier(0.4,0,0.2,1)",
-        }}
-      />
-
+    <div
+      className="fixed inset-0 flex flex-col overflow-hidden"
+      style={{ backgroundColor: "#091829" }}
+    >
       <StepIndicator currentStep={3} totalSteps={10} />
+      {/* TOP ZONE - Progress */}
+      <div className="flex flex-col items-center pt-2 pb-1" style={{ height: "10%" }}>
+        <p
+          className="text-center font-sans mb-2"
+          style={{ fontSize: "13px", color: "#8A9BB5" }}
+        >
+          <span
+            key={currentPair}
+            className="inline-block"
+            style={{ animation: "counterPop 200ms ease" }}
+          >
+            {currentPair + 1}
+          </span>{" "}
+          <span style={{ color: "#4A5E7A" }}>of {TOTAL_PAIRS}</span>
+        </p>
 
-      {/* Share button */}
-      <button
-        onClick={handleShare}
-        className="fixed top-6 right-6 z-40 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 group"
-        style={{
-          background: "rgba(13,32,53,0.8)",
-          border: "1px solid rgba(201,168,76,0.3)",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.borderColor = "#C9A84C"
-          e.currentTarget.style.boxShadow = "0 0 16px rgba(201,168,76,0.2)"
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.borderColor = "rgba(201,168,76,0.3)"
-          e.currentTarget.style.boxShadow = "none"
-        }}
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" strokeWidth="2">
-          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-          <polyline points="16 6 12 2 8 6" />
-          <line x1="12" y1="2" x2="12" y2="15" />
-        </svg>
-        <span className="absolute top-full mt-2 text-[11px] text-[#8A9BB5] font-sans whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-          Share your Design DNA
-        </span>
-      </button>
-
-      {/* Phase 1 Content */}
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 pt-16 pb-8 relative">
-        {/* Animated background orbs */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none" style={{ zIndex: 0 }}>
-          <div style={{ position: "absolute", top: "15%", left: "10%", width: 320, height: 320, borderRadius: "50%", background: "radial-gradient(circle, rgba(201,168,76,0.08) 0%, transparent 70%)", animation: "floatOrb1 8s ease-in-out infinite" }} />
-          <div style={{ position: "absolute", bottom: "20%", right: "8%", width: 240, height: 240, borderRadius: "50%", background: "radial-gradient(circle, rgba(138,155,181,0.06) 0%, transparent 70%)", animation: "floatOrb2 10s ease-in-out infinite" }} />
-        </div>
-        {/* Style name with typing effect */}
-        <div className="h-16 mb-4 flex items-center justify-center">
-          <h1 className="font-serif text-4xl md:text-[52px] text-[#C9A84C] tracking-wide">
-            {typedName}
-            {showCursor && <span className="animate-pulse">|</span>}
-          </h1>
-        </div>
-
-        {/* Radar Chart */}
-        <div className="relative" style={{ width: chartSize, height: chartSize }}>
-          <svg width={chartSize} height={chartSize} className="md:w-80 md:h-80 w-[260px] h-[260px]">
-            {/* Grid hexagons */}
-            {[0.25, 0.5, 0.75, 1].map((scale, i) => (
-              <path
-                key={i}
-                d={getHexagonPath(scale)}
-                fill="none"
-                stroke="rgba(26,42,74,1)"
-                strokeWidth="1"
-                style={{
-                  opacity: gridVisible ? 1 : 0,
-                  transition: `opacity 400ms ease ${i * 100}ms`,
-                }}
-              />
-            ))}
-
-            {/* Axis lines */}
-            {axisLabels.map((_, i) => {
-              const end = getAxisEndpoint(i)
-              const lineLength = Math.sqrt(
-                Math.pow(end.x - chartCenter, 2) + Math.pow(end.y - chartCenter, 2)
-              )
-              return (
-                <line
-                  key={i}
-                  x1={chartCenter}
-                  y1={chartCenter}
-                  x2={end.x}
-                  y2={end.y}
-                  stroke="rgba(26,42,74,1)"
-                  strokeWidth="1"
-                  strokeDasharray={lineLength}
-                  strokeDashoffset={axesDrawn[i] ? 0 : lineLength}
-                  style={{
-                    transition: "stroke-dashoffset 300ms ease-out",
-                  }}
-                />
-              )
-            })}
-
-            {/* Fingerprint shape */}
-            <path
-              d={shapePath}
-              fill="rgba(201,168,76,0.12)"
-              stroke="#C9A84C"
-              strokeWidth="2"
-              strokeDasharray={shapePathLength}
-              strokeDashoffset={shapeDrawn ? 0 : shapePathLength}
-              style={{
-                transition: "stroke-dashoffset 800ms ease-in-out, fill-opacity 800ms ease-in-out",
-                fillOpacity: shapeDrawn ? 1 : 0,
-              }}
-            />
-
-            {/* Vertex dots */}
-            {chartFingerprint.map((v, i) => {
-              const point = getPoint(i, v)
-              return (
-                <circle
-                  key={i}
-                  cx={point.x}
-                  cy={point.y}
-                  r="8"
-                  fill="#C9A84C"
-                  style={{
-                    filter: "drop-shadow(0 0 8px rgba(201,168,76,0.8))",
-                    transform: verticesVisible[i] ? "scale(1)" : "scale(0)",
-                    transformOrigin: `${point.x}px ${point.y}px`,
-                    transition: "transform 200ms cubic-bezier(0.34,1.56,0.64,1)",
-                  }}
-                />
-              )
-            })}
-
-            {/* Axis labels */}
-            {axisLabels.map((label, i) => {
-              const pos = getLabelPosition(i)
-              return (
-                <text
-                  key={i}
-                  x={pos.x}
-                  y={pos.y}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  fill="#8A9BB5"
-                  fontSize="11"
-                  fontFamily="var(--font-inter), Inter, sans-serif"
-                  style={{
-                    opacity: labelsVisible ? 1 : 0,
-                    transition: "opacity 300ms ease",
-                  }}
-                >
-                  {label}
-                </text>
-              )
-            })}
-          </svg>
-        </div>
-
-        {/* Color palette */}
-        <div className="flex gap-2.5 mt-8 mb-6">
-          {palette.map((color, i) => (
-            <div
-              key={i}
-              className="w-10 h-10 rounded-md"
-              style={{
-                backgroundColor: color,
-                opacity: paletteVisible[i] ? 1 : 0,
-                transform: paletteVisible[i] ? "translateX(0)" : "translateX(-20px)",
-                transition: "opacity 300ms ease, transform 300ms ease",
-              }}
-            />
-          ))}
-        </div>
-
-        {/* Descriptor chips */}
-        <div className="flex flex-wrap justify-center gap-2.5 mb-10">
-          {styleChips.map((chip, i) => (
-            <span
-              key={i}
-              className="px-3.5 py-1.5 rounded-full text-xs font-sans text-[#F5F0E8]"
-              style={{
-                background: "#0D2035",
-                border: "1px solid rgba(201,168,76,0.3)",
-                opacity: chipsVisible[i] ? 1 : 0,
-                transition: "opacity 300ms ease",
-              }}
-            >
-              {chip}
-            </span>
-          ))}
-        </div>
-
-        {/* Auth section */}
+        {/* Progress bar */}
         <div
-          className="flex flex-col items-center"
+          className="w-full max-w-md mx-auto px-6"
+          style={{ height: "2px", backgroundColor: "rgba(201,168,76,0.15)" }}
+        >
+          <div
+            style={{
+              width: `${progressWidth}%`,
+              height: "100%",
+              backgroundColor: "#C9A84C",
+              transition: "width 400ms ease",
+            }}
+          />
+        </div>
+
+        {/* Warmup text - only on warmup card */}
+        <p
+          className="mt-1 text-center font-sans italic"
           style={{
-            opacity: authVisible ? 1 : 0,
-            transform: authVisible ? "translateY(0)" : "translateY(30px)",
-            transition: "opacity 500ms ease, transform 500ms ease",
+            fontSize: "11px",
+            color: "#4A5E7A",
+            opacity: isWarmup ? 1 : 0,
+            transition: "opacity 300ms ease",
+            height: 16,
           }}
         >
-          {authRequired && (
-            <p
-              className="text-sm font-sans text-center mb-4 px-4 py-2 rounded-lg"
-              style={{ color: '#F5F0E8', background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.3)' }}
-            >
-              Please sign in to continue designing your room
-            </p>
-          )}
+          Just getting started — no pressure
+        </p>
+      </div>
 
-          <p
-            className="text-[10px] font-sans text-[#C9A84C] mb-5"
-            style={{ letterSpacing: "0.3em" }}
+      {/* MIDDLE ZONE - Cards */}
+      <div
+        ref={containerRef}
+        className="relative flex-1 flex items-center justify-center px-4"
+        style={{ height: "77%" }}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+      >
+        <div
+          className="relative flex w-full h-full max-w-[900px]"
+          style={{ maxHeight: "calc(75vh - 40px)" }}
+        >
+          {/* Left Card */}
+          <div
+            className="relative w-1/2 h-full cursor-pointer overflow-hidden"
+            style={{
+              borderRadius: "16px 0 0 16px",
+              background: "linear-gradient(160deg, #0D2035 0%, #1A2A3A 50%, #0A1828 100%)",
+              ...getCardStyle("left"),
+              transition: getCardTransition("left"),
+              outline: selectedCard === "left" ? "3px solid #C9A84C" : "none",
+              boxShadow:
+                selectedCard === "left"
+                  ? "0 0 0 3px rgba(201,168,76,0.3), 0 0 40px rgba(201,168,76,0.15)"
+                  : "none",
+            }}
+            onClick={() => !isAnimating && handleSelection("left")}
+            onMouseEnter={() => setLastHovered("left")}
+            onMouseLeave={() => setLastHovered(null)}
           >
-            SAVE YOUR DESIGN DNA
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-3">
-            <button
-              onClick={proceedToPhase2}
-              className="flex items-center justify-center gap-3 w-[200px] h-12 bg-white rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+            {/* Real image */}
+            {imgUrlA ? (
+              <img
+                src={imgUrlA}
+                alt={activePair?.imageA?.alt ?? "Style option A"}
+                className="absolute inset-0 w-full h-full object-cover"
+                draggable={false}
+              />
+            ) : (
+              /* Fallback placeholder when images not yet generated */
+              <svg
+                className="absolute inset-0 m-auto"
+                width="60%"
+                height="60%"
+                viewBox="0 0 100 80"
+                fill="none"
+                style={{ opacity: 0.5 }}
+              >
+                <rect x="10" y="10" width="30" height="25" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
+                <line x1="5" y1="70" x2="95" y2="70" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
+                <path d="M20 70 L20 50 Q30 45 40 50 L40 70" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
+                <path d="M60 70 L60 55 L85 55 L85 70" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
               </svg>
-              <span className="text-sm font-medium text-[#1A1A1A]">Sign in with Google</span>
-            </button>
+            )}
 
-            <button
-              onClick={proceedToPhase2}
-              className="flex items-center justify-center gap-3 w-[200px] h-12 bg-black rounded-lg hover:bg-gray-900 transition-colors"
-            >
-              <svg width="16" height="20" viewBox="0 0 16 20" fill="white">
-                <path d="M12.152 0c.09.916-.273 1.823-.774 2.49-.51.676-1.362 1.2-2.175 1.13-.102-.867.319-1.776.793-2.333C10.52.691 11.432.187 12.152 0zM14.957 16.473c-.357.81-.528 1.172-.987 1.884-.64.993-1.543 2.23-2.662 2.242-1-.011-1.259-.639-2.617-.631-1.359.008-1.64.644-2.64.656-1.119.012-1.973-1.126-2.614-2.119C1.7 15.77.794 11.613 2.626 8.803c.656-.995 1.823-1.623 3.066-1.64 1.118-.017 2.174.743 2.86.743.685 0 1.968-.918 3.316-.784.564.023 2.15.224 3.166 1.688-.082.05-1.89 1.087-1.87 3.241.024 2.573 2.296 3.43 2.32 3.442-.018.046-.363 1.23-1.527 2.98z" />
-              </svg>
-              <span className="text-sm font-medium text-white">Sign in with Apple</span>
-            </button>
+            {/* Bottom gradient overlay */}
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background: "linear-gradient(transparent 80%, rgba(9,24,41,0.15))",
+              }}
+            />
+
+            {/* Checkmark badge */}
+            {selectedCard === "left" && showCheckmark && (
+              <div
+                className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center justify-center"
+                style={{
+                  width: "28px",
+                  height: "28px",
+                  borderRadius: "50%",
+                  backgroundColor: "#C9A84C",
+                  animation: "checkBadge 250ms cubic-bezier(0.34,1.56,0.64,1)",
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+            )}
+
+            {/* Hover effect */}
+            <div
+              className="absolute inset-0 pointer-events-none transition-opacity duration-200"
+              style={{
+                opacity: lastHovered === "left" && !selectedCard ? 1 : 0,
+                boxShadow: "inset 0 0 60px rgba(201,168,76,0.04)",
+                borderLeft: "2px solid #C9A84C",
+                borderTop: "2px solid #C9A84C",
+                borderBottom: "2px solid #C9A84C",
+                borderRadius: "16px 0 0 16px",
+              }}
+            />
           </div>
 
-          {/* Email auth toggle */}
-          {!showEmailForm ? (
-            <button
-              onClick={() => setShowEmailForm(true)}
-              className="mt-4 text-xs font-sans transition-colors"
-              style={{ color: "#4A5E7A", background: "none", border: "none", cursor: "pointer" }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = "#8A9BB5" }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = "#4A5E7A" }}
-            >
-              Continue with email →
-            </button>
-          ) : (
-            <div className="mt-4 w-full max-w-[280px] flex flex-col gap-2">
-              <input
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-lg text-sm font-sans focus:outline-none"
-                style={{ background: "#0D2035", border: "1px solid rgba(201,168,76,0.3)", color: "#F5F0E8" }}
+          {/* Gold Divider */}
+          <div
+            className="absolute left-1/2 top-0 bottom-0 -translate-x-1/2 z-10"
+            style={{ width: "2px", backgroundColor: "rgba(201,168,76,0.6)" }}
+          >
+            {/* Diamond */}
+            <div
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20"
+              style={{
+                width: "8px",
+                height: "8px",
+                backgroundColor: "#C9A84C",
+                transform: "translate(-50%, -50%) rotate(45deg)",
+                animation: "diamondPulse 3s ease-in-out infinite",
+              }}
+            />
+          </div>
+
+          {/* Right Card */}
+          <div
+            className="relative w-1/2 h-full cursor-pointer overflow-hidden"
+            style={{
+              borderRadius: "0 16px 16px 0",
+              background: "linear-gradient(160deg, #1A0E08 0%, #2A1A0A 50%, #1A0A04 100%)",
+              ...getCardStyle("right"),
+              transition: getCardTransition("right"),
+              outline: selectedCard === "right" ? "3px solid #C9A84C" : "none",
+              boxShadow:
+                selectedCard === "right"
+                  ? "0 0 0 3px rgba(201,168,76,0.3), 0 0 40px rgba(201,168,76,0.15)"
+                  : "none",
+            }}
+            onClick={() => !isAnimating && handleSelection("right")}
+            onMouseEnter={() => setLastHovered("right")}
+            onMouseLeave={() => setLastHovered(null)}
+          >
+            {/* Real image */}
+            {imgUrlB ? (
+              <img
+                src={imgUrlB}
+                alt={activePair?.imageB?.alt ?? "Style option B"}
+                className="absolute inset-0 w-full h-full object-cover"
+                draggable={false}
               />
-              <input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-lg text-sm font-sans focus:outline-none"
-                style={{ background: "#0D2035", border: "1px solid rgba(201,168,76,0.3)", color: "#F5F0E8" }}
-              />
-              {authError && <p className="text-xs font-sans" style={{ color: "#C0504A" }}>{authError}</p>}
-              {isNewUser && <p className="text-xs font-sans" style={{ color: "#4A9B7F" }}>Account created — check your email to verify.</p>}
-              <button
-                onClick={handleEmailAuth}
-                className="w-full py-2.5 rounded-lg text-sm font-semibold font-sans transition-all duration-200"
-                style={{ background: "#C9A84C", color: "#091829", border: "none", cursor: "pointer" }}
+            ) : (
+              /* Fallback placeholder */
+              <svg
+                className="absolute inset-0 m-auto"
+                width="60%"
+                height="60%"
+                viewBox="0 0 100 80"
+                fill="none"
+                style={{ opacity: 0.5 }}
               >
-                Continue →
-              </button>
-            </div>
-          )}
+                <rect x="60" y="8" width="35" height="28" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
+                <line x1="5" y1="70" x2="95" y2="70" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
+                <ellipse cx="35" cy="60" rx="25" ry="8" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
+                <path d="M70 70 L70 50 L90 50 L90 70" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
+              </svg>
+            )}
+
+            {/* Bottom gradient overlay */}
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background: "linear-gradient(transparent 80%, rgba(9,24,41,0.15))",
+              }}
+            />
+
+            {/* Checkmark badge */}
+            {selectedCard === "right" && showCheckmark && (
+              <div
+                className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center justify-center"
+                style={{
+                  width: "28px",
+                  height: "28px",
+                  borderRadius: "50%",
+                  backgroundColor: "#C9A84C",
+                  animation: "checkBadge 250ms cubic-bezier(0.34,1.56,0.64,1)",
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+            )}
+
+            {/* Hover effect */}
+            <div
+              className="absolute inset-0 pointer-events-none transition-opacity duration-200"
+              style={{
+                opacity: lastHovered === "right" && !selectedCard ? 1 : 0,
+                boxShadow: "inset 0 0 60px rgba(201,168,76,0.04)",
+                borderRight: "2px solid #C9A84C",
+                borderTop: "2px solid #C9A84C",
+                borderBottom: "2px solid #C9A84C",
+                borderRadius: "0 16px 16px 0",
+              }}
+            />
+          </div>
         </div>
       </div>
 
-      {/* Phase 2 Content */}
-      {phase === 2 && (
-        <div ref={phase2Ref} className="px-6 pb-16">
-          {/* Gold divider */}
-          <div className="max-w-[600px] mx-auto mb-12">
-            <div
-              className="h-px bg-[#C9A84C]"
-              style={{
-                width: dividerDrawn ? "100%" : "0%",
-                transition: "width 400ms ease-out",
-              }}
-            />
-          </div>
-
-          {/* Phase 2 heading */}
-          <div
-            style={{
-              opacity: phase2ContentVisible ? 1 : 0,
-              transform: phase2ContentVisible ? "translateY(0)" : "translateY(16px)",
-              transition: "opacity 400ms ease, transform 400ms ease",
-            }}
-          >
-            <h2 className="font-serif text-4xl text-[#F5F0E8] text-center mb-2">
-              Your style in action.
-            </h2>
-            <p className="text-sm font-sans text-[#8A9BB5] text-center mb-10">
-              Three rooms redesigned to your exact taste.
-            </p>
-          </div>
-
-          {/* Style cards */}
-          <div className="max-w-[600px] mx-auto space-y-6">
-            {showcaseImages.map((img, i) => (
-              <div
-                key={i}
-                className="relative w-full rounded-2xl overflow-hidden cursor-pointer"
-                style={{
-                  aspectRatio: "16/9",
-                  background: "#0D2035",
-                  opacity: cardsVisible[i] ? 1 : 0,
-                  transform: cardsVisible[i] ? "translateY(0)" : "translateY(24px)",
-                  transition: "opacity 500ms ease, transform 500ms ease",
-                  filter: isRegenerating ? "blur(4px)" : "blur(0)",
-                }}
-              >
-                {!cardsLoaded[i] ? (
-                  // Loading state — shimmer + spinner
-                  <div
-                    className="absolute inset-0 flex flex-col items-center justify-center"
-                    style={{
-                      background: "linear-gradient(90deg, #0D2035 0%, #112540 50%, #0D2035 100%)",
-                      backgroundSize: "200% 100%",
-                      animation: "shimmer 1.5s ease infinite",
-                    }}
-                  >
-                    <div
-                      className="w-6 h-6 rounded-full mb-3"
-                      style={{
-                        border: "2px solid rgba(201,168,76,0.2)",
-                        borderTopColor: "#C9A84C",
-                        animation: "spin 800ms linear infinite",
-                      }}
-                    />
-                    <span className="text-xs font-sans text-[#4A5E7A]">
-                      {isRegenerating ? "Redesigning..." : "Designing your room..."}
-                    </span>
-                  </div>
-                ) : img ? (
-                  // Anchor render image
-                  <>
-                    <img
-                      src={img.url}
-                      alt={`${img.label} redesigned to your style`}
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-                    <div
-                      className="absolute inset-0"
-                      style={{ background: "linear-gradient(transparent 55%, rgba(9,24,41,0.85))" }}
-                    />
-                    <div className="absolute bottom-4 left-4 flex items-center gap-3">
-                      <span className="text-[13px] font-sans text-[#8A9BB5]">{img.label}</span>
-                      <span
-                        className="px-2.5 py-1 rounded-full text-[11px] font-sans text-[#091829]"
-                        style={{ background: "#C9A84C" }}
-                      >
-                        Your style
-                      </span>
-                    </div>
-                  </>
-                ) : (
-                  // Fallback: render failed, show styled placeholder
-                  <>
-                    <div
-                      className="absolute inset-0"
-                      style={{
-                        background: `linear-gradient(160deg, ${palette[0]}22 0%, ${palette[2]}44 50%, ${palette[4]}22 100%)`,
-                      }}
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-xs font-sans text-[#4A5E7A]">Preview unavailable</span>
-                    </div>
-                    <div
-                      className="absolute inset-0"
-                      style={{ background: "linear-gradient(transparent 55%, rgba(9,24,41,0.85))" }}
-                    />
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Feel right text and CTAs */}
-          <div
-            className="max-w-[480px] mx-auto mt-10"
-            style={{
-              opacity: feelRightVisible ? 1 : 0,
-              transition: "opacity 400ms ease",
-            }}
-          >
-            <p className="text-sm font-sans italic text-[#8A9BB5] text-center mb-6">
-              Does this feel right?
-            </p>
-
-            <button
-              onClick={() => router.push("/design/step-4")}
-              className="w-full py-[18px] px-10 rounded-xl text-[15px] font-semibold font-sans transition-all duration-200"
-              style={{
-                background: "#C9A84C",
-                color: "#091829",
-                letterSpacing: "0.03em",
-                boxShadow: "0 0 40px rgba(201,168,76,0.25)",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#D4B460"
-                e.currentTarget.style.boxShadow = "0 0 60px rgba(201,168,76,0.4)"
-                e.currentTarget.style.transform = "translateY(-2px)"
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#C9A84C"
-                e.currentTarget.style.boxShadow = "0 0 40px rgba(201,168,76,0.25)"
-                e.currentTarget.style.transform = "translateY(0)"
-              }}
-            >
-              Yes, design my room &rarr;
-            </button>
-
-            <button
-              onClick={() => setShowAdjustPanel(true)}
-              className="w-full mt-3 py-3.5 px-10 rounded-xl text-sm font-sans transition-all duration-200"
-              style={{
-                background: "transparent",
-                border: "1px solid rgba(201,168,76,0.3)",
-                color: "#8A9BB5",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "#C9A84C"
-                e.currentTarget.style.color = "#F5F0E8"
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "rgba(201,168,76,0.3)"
-                e.currentTarget.style.color = "#8A9BB5"
-              }}
-            >
-              Adjust my style
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Adjust Panel Overlay */}
-      {showAdjustPanel && (
-        <div
-          className="fixed inset-0 z-50"
-          style={{ background: "rgba(0,0,0,0.5)" }}
-          onClick={() => setShowAdjustPanel(false)}
-        />
-      )}
-
-      {/* Adjust Panel */}
+      {/* BOTTOM ZONE - Skip + Back */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-50 max-h-[60vh] md:max-h-[60vh] overflow-y-auto"
-        style={{
-          background: "#0D2035",
-          borderTopLeftRadius: "20px",
-          borderTopRightRadius: "20px",
-          borderTop: "1px solid rgba(201,168,76,0.2)",
-          boxShadow: "0 -20px 60px rgba(0,0,0,0.5)",
-          padding: "32px 24px 48px",
-          transform: showAdjustPanel ? "translateY(0)" : "translateY(100%)",
-          transition: "transform 400ms cubic-bezier(0.34,1.56,0.64,1)",
-        }}
+        className="flex flex-col items-center justify-center pb-6"
+        style={{ height: "13%" }}
       >
-        {/* Handle bar */}
-        <div
-          className="w-8 h-1 rounded-sm mx-auto mb-6 cursor-grab"
-          style={{ background: "rgba(201,168,76,0.3)" }}
-          onClick={() => setShowAdjustPanel(false)}
-        />
-
-        <h3 className="font-serif text-2xl text-[#F5F0E8] mb-1.5">
-          Describe what feels off
-        </h3>
-        <p className="text-[13px] font-sans text-[#8A9BB5] mb-6">
-          Or tap a quick adjustment below
-        </p>
-
-        {/* Quick chips */}
-        <div className="flex flex-wrap gap-2.5 mb-5">
-          {adjustChips.map((chip) => (
-            <button
-              key={chip}
-              onClick={() => handleChipToggle(chip)}
-              className="px-4 py-2 rounded-full text-xs font-sans transition-all duration-200"
-              style={{
-                background: selectedChips.includes(chip) ? "rgba(201,168,76,0.08)" : "#112540",
-                border: selectedChips.includes(chip)
-                  ? "1px solid #C9A84C"
-                  : "1px solid rgba(201,168,76,0.2)",
-                color: selectedChips.includes(chip) ? "#F5F0E8" : "#8A9BB5",
-              }}
-            >
-              {chip}
-            </button>
-          ))}
-        </div>
-
-        {/* Text input */}
-        <textarea
-          value={adjustText}
-          onChange={(e) => setAdjustText(e.target.value)}
-          placeholder="e.g. warmer tones, less cluttered, more modern..."
-          className="w-full min-h-[80px] p-4 rounded-xl text-sm font-sans resize-none transition-all duration-200 focus:outline-none"
-          style={{
-            background: "#091829",
-            border: "1px solid rgba(201,168,76,0.2)",
-            color: "#F5F0E8",
-          }}
-          onFocus={(e) => {
-            e.currentTarget.style.borderColor = "rgba(201,168,76,0.6)"
-            e.currentTarget.style.boxShadow = "0 0 0 3px rgba(201,168,76,0.08)"
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.borderColor = "rgba(201,168,76,0.2)"
-            e.currentTarget.style.boxShadow = "none"
-          }}
-        />
-
-        {/* Regenerate button */}
+        {/* Neither / Skip button */}
         <button
-          onClick={handleRegenerate}
-          disabled={isRegenerating}
-          className="w-full mt-5 py-4 rounded-xl text-sm font-semibold font-sans flex items-center justify-center gap-2"
+          onClick={() => {
+            if (isAnimating) return;
+            if (currentPair + 1 >= TOTAL_PAIRS) {
+              void completeQuiz(responses);
+            } else {
+              setCurrentPair((prev) => prev + 1);
+            }
+          }}
+          disabled={isAnimating}
+          className="font-sans transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
           style={{
-            background: "#C9A84C",
-            color: "#091829",
-            opacity: isRegenerating ? 0.7 : 1,
+            fontSize: "12px",
+            color: "#4A5E7A",
+            background: "transparent",
+            border: "1px solid rgba(74,94,122,0.4)",
+            borderRadius: 20,
+            padding: "6px 20px",
+            cursor: isAnimating ? "not-allowed" : "pointer",
+            letterSpacing: "0.04em",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = "rgba(201,168,76,0.3)";
+            e.currentTarget.style.color = "#8A9BB5";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = "rgba(74,94,122,0.4)";
+            e.currentTarget.style.color = "#4A5E7A";
           }}
         >
-          {isRegenerating && (
-            <div
-              className="w-4 h-4 rounded-full"
-              style={{
-                border: "2px solid rgba(9,24,41,0.2)",
-                borderTopColor: "#091829",
-                animation: "spin 800ms linear infinite",
-              }}
-            />
-          )}
-          {isRegenerating ? "Regenerating..." : "Regenerate my style"}
+          Neither — skip
+        </button>
+
+        {/* Back button */}
+        <button
+          onClick={handleBack}
+          disabled={currentPair === 0 || isAnimating}
+          className="mt-3 font-sans transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+          style={{
+            fontSize: "12px",
+            color: "#4A5E7A",
+            background: "none",
+            border: "none",
+            cursor: currentPair > 0 ? "pointer" : "not-allowed",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "#8A9BB5")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "#4A5E7A")}
+        >
+          ←
         </button>
       </div>
 
+      {/* Animations */}
       <style jsx>{`
-        @keyframes shimmer {
-          0% { background-position: -200% 0; }
-          100% { background-position: 200% 0; }
+        @keyframes counterPop {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.3); }
+          100% { transform: scale(1); }
         }
-        @keyframes spin {
-          to { transform: rotate(360deg); }
+        @keyframes checkBadge {
+          0% { transform: translateX(-50%) scale(0); }
+          60% { transform: translateX(-50%) scale(1.1); }
+          100% { transform: translateX(-50%) scale(1); }
         }
-        @keyframes floatOrb1 {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          33% { transform: translate(30px, -20px) scale(1.05); }
-          66% { transform: translate(-20px, 15px) scale(0.95); }
-        }
-        @keyframes floatOrb2 {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          40% { transform: translate(-25px, 20px) scale(1.08); }
-          70% { transform: translate(15px, -10px) scale(0.92); }
+        @keyframes diamondPulse {
+          0%, 100% {
+            transform: translate(-50%, -50%) rotate(45deg) scale(1);
+            opacity: 0.6;
+          }
+          50% {
+            transform: translate(-50%, -50%) rotate(45deg) scale(1.15);
+            opacity: 1;
+          }
         }
       `}</style>
     </div>
-  )
+  );
 }
 
-export default function Step3Page() {
-  return (
-    <Suspense>
-      <Step3PageInner />
-    </Suspense>
-  )
+async function triggerDetection(photoUrl: string, roomId: string): Promise<void> {
+  try {
+    await fetch('/api/detect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ photo_url: photoUrl, room_id: roomId }),
+    })
+  } catch {
+    // Detection failure is non-blocking
+  }
 }
