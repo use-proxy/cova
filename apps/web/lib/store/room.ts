@@ -6,6 +6,7 @@ export interface KeepMaskItem {
   confidence: number
   keep: boolean | null
   label: string
+  mask_url?: string
 }
 
 interface RenderSession {

@@ -1,3 +1,5 @@
+export const maxDuration = 300
+
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { detectFurniture, detectArchitecture } from '@/lib/ai/grounding'
@@ -68,6 +70,7 @@ export async function POST(request: Request) {
         bbox: d.bbox,
         confidence: d.confidence,
         keep: null as boolean | null,
+        ...(d.mask_url !== undefined && { mask_url: d.mask_url }),
       }))
       await admin
         .from('rooms')
