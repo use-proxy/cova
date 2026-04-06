@@ -10,16 +10,25 @@ export interface DepthResult {
 }
 
 export async function estimateDepth(photoUrl: string): Promise<DepthResult> {
-  const output = await replicate.run('depth-anything/depth-anything-v2-large', {
+  const output = await replicate.run('chenxwh/depth-anything-v2:b239ea33cff32bb7abb5db39ffe9a09c14cbc2894331d1ef66fe096eed88ebd4', {
     input: {
       image: photoUrl,
-      encoder: 'vitl',
+      model_size: 'Large',
     },
   })
 
   let depthMapUrl: string
 
-  if (Array.isArray(output) && output.length > 0) {
+  // chenxwh/depth-anything-v2 returns FileOutput objects with .url() method
+  // color_depth is the colorized version (better for visualization)
+  // grey_depth is the grayscale version (better for ControlNet)
+  const out = output as Record<string, { url?: () => URL } | string>
+
+  if (out.grey_depth && typeof (out.grey_depth as { url?: () => URL }).url === 'function') {
+    depthMapUrl = (out.grey_depth as { url: () => URL }).url().href
+  } else if (out.color_depth && typeof (out.color_depth as { url?: () => URL }).url === 'function') {
+    depthMapUrl = (out.color_depth as { url: () => URL }).url().href
+  } else if (Array.isArray(output) && output.length > 0) {
     depthMapUrl = output[0] as string
   } else if (typeof output === 'string') {
     depthMapUrl = output
