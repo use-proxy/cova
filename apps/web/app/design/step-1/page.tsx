@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check } from "lucide-react";
 import { StepIndicator } from "@/components/cova/StepIndicator";
 import { useFingerprintStore, useSessionStore } from "@/lib/store";
 
@@ -245,253 +245,6 @@ function RoomCard({
   );
 }
 
-// Budget tier card
-function TierCard({
-  tier,
-  isSelected,
-  position,
-  onClick,
-}: {
-  tier: (typeof TIERS)[0];
-  isSelected: boolean;
-  position: number; // -2, -1, 0, 1, 2 (0 = center)
-  onClick: () => void;
-}) {
-  const getTransform = () => {
-    const absPos = Math.abs(position);
-    const scale = 1 - absPos * 0.12;
-    const translateX = position * 120;
-    const translateZ = -absPos * 100;
-    const rotateY = position * -8;
-    return `translateX(${translateX}px) translateZ(${translateZ}px) rotateY(${rotateY}deg) scale(${scale})`;
-  };
-
-  const getOpacity = () => {
-    const absPos = Math.abs(position);
-    if (absPos === 0) return 1;
-    if (absPos === 1) return 0.7;
-    return 0.4;
-  };
-
-  return (
-    <button
-      onClick={onClick}
-      className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-300 ease-out focus:outline-none"
-      style={{
-        width: "clamp(260px, 32vw, 300px)",
-        height: 220,
-        transform: getTransform(),
-        opacity: getOpacity(),
-        zIndex: 10 - Math.abs(position),
-        pointerEvents: Math.abs(position) > 1 ? "none" : "auto",
-      }}
-    >
-      <div
-        className="w-full h-full rounded-xl flex flex-col transition-all duration-300"
-        style={{
-          padding: "20px 24px",
-          background: isSelected
-            ? `linear-gradient(135deg, ${COLORS.surface}, rgba(201,168,76,0.08))`
-            : COLORS.surface,
-          border: isSelected
-            ? `2px solid ${COLORS.gold}`
-            : `1px solid ${COLORS.borderLight}`,
-          boxShadow: isSelected
-            ? `0 0 40px rgba(201,168,76,0.2), 0 20px 60px rgba(0,0,0,0.4)`
-            : `0 10px 40px rgba(0,0,0,0.3)`,
-          gap: 10,
-        }}
-      >
-        {/* Top row: icon + checkmark */}
-        <div className="flex items-center justify-between flex-shrink-0">
-          <span style={{ fontSize: 22 }}>{tier.icon}</span>
-          {isSelected && (
-            <div
-              className="flex items-center justify-center flex-shrink-0"
-              style={{
-                width: 20,
-                height: 20,
-                borderRadius: "50%",
-                background: COLORS.gold,
-              }}
-            >
-              <Check size={11} color={COLORS.background} strokeWidth={3} />
-            </div>
-          )}
-        </div>
-        {/* Label */}
-        <h3
-          className="font-serif flex-shrink-0"
-          style={{
-            fontSize: 18,
-            lineHeight: 1.2,
-            color: isSelected ? COLORS.gold : COLORS.ivory,
-            margin: 0,
-          }}
-        >
-          {tier.label}
-        </h3>
-        {/* Range */}
-        <p
-          className="font-sans font-semibold flex-shrink-0"
-          style={{ fontSize: 14, color: COLORS.ivory, margin: 0 }}
-        >
-          {tier.range}
-        </p>
-        {/* Divider */}
-        <div style={{ height: 1, background: "rgba(201,168,76,0.12)", flexShrink: 0 }} />
-        {/* Description */}
-        <p
-          className="font-sans leading-relaxed"
-          style={{
-            fontSize: 11,
-            color: COLORS.muted,
-            margin: 0,
-            flex: 1,
-            overflow: "hidden",
-          }}
-        >
-          {tier.description}
-        </p>
-      </div>
-    </button>
-  );
-}
-
-// Budget carousel component
-function BudgetCarousel({
-  selectedTier,
-  onSelectTier,
-}: {
-  selectedTier: number;
-  onSelectTier: (tier: number) => void;
-}) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [dragOffset, setDragOffset] = useState(0);
-
-  const handlePrev = useCallback(() => {
-    if (selectedTier > 0) {
-      onSelectTier(selectedTier - 1);
-    }
-  }, [selectedTier, onSelectTier]);
-
-  const handleNext = useCallback(() => {
-    if (selectedTier < TIERS.length - 1) {
-      onSelectTier(selectedTier + 1);
-    }
-  }, [selectedTier, onSelectTier]);
-
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft") handlePrev();
-      if (e.key === "ArrowRight") handleNext();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handlePrev, handleNext]);
-
-  // Touch/mouse drag support
-  const handleDragStart = (clientX: number) => {
-    setIsDragging(true);
-    setStartX(clientX);
-    setDragOffset(0);
-  };
-
-  const handleDragMove = (clientX: number) => {
-    if (!isDragging) return;
-    setDragOffset(clientX - startX);
-  };
-
-  const handleDragEnd = () => {
-    if (!isDragging) return;
-    setIsDragging(false);
-    if (dragOffset > 50) handlePrev();
-    else if (dragOffset < -50) handleNext();
-    setDragOffset(0);
-  };
-
-  return (
-    <div className="relative" style={{ perspective: "1000px" }}>
-      {/* Navigation arrows */}
-      <button
-        onClick={handlePrev}
-        disabled={selectedTier === 0}
-        className="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full transition-all duration-200 focus:outline-none"
-        style={{
-          background: selectedTier === 0 ? "transparent" : COLORS.surface,
-          border: `1px solid ${selectedTier === 0 ? "transparent" : COLORS.borderLight}`,
-          opacity: selectedTier === 0 ? 0.3 : 1,
-          cursor: selectedTier === 0 ? "not-allowed" : "pointer",
-        }}
-      >
-        <ChevronLeft size={24} style={{ color: COLORS.ivory }} />
-      </button>
-      <button
-        onClick={handleNext}
-        disabled={selectedTier === TIERS.length - 1}
-        className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full transition-all duration-200 focus:outline-none"
-        style={{
-          background: selectedTier === TIERS.length - 1 ? "transparent" : COLORS.surface,
-          border: `1px solid ${selectedTier === TIERS.length - 1 ? "transparent" : COLORS.borderLight}`,
-          opacity: selectedTier === TIERS.length - 1 ? 0.3 : 1,
-          cursor: selectedTier === TIERS.length - 1 ? "not-allowed" : "pointer",
-        }}
-      >
-        <ChevronRight size={24} style={{ color: COLORS.ivory }} />
-      </button>
-
-      {/* Carousel container */}
-      <div
-        ref={containerRef}
-        className="relative mx-auto overflow-visible"
-        style={{
-          height: 260,
-          maxWidth: 600,
-          transformStyle: "preserve-3d",
-        }}
-        onMouseDown={(e) => handleDragStart(e.clientX)}
-        onMouseMove={(e) => handleDragMove(e.clientX)}
-        onMouseUp={handleDragEnd}
-        onMouseLeave={handleDragEnd}
-        onTouchStart={(e) => handleDragStart(e.touches[0].clientX)}
-        onTouchMove={(e) => handleDragMove(e.touches[0].clientX)}
-        onTouchEnd={handleDragEnd}
-      >
-        {TIERS.map((tier, index) => {
-          const position = index - selectedTier;
-          if (Math.abs(position) > 2) return null;
-          return (
-            <TierCard
-              key={tier.id}
-              tier={tier}
-              isSelected={index === selectedTier}
-              position={position}
-              onClick={() => onSelectTier(index)}
-            />
-          );
-        })}
-      </div>
-
-      {/* Tier indicators */}
-      <div className="flex justify-center gap-2 mt-6">
-        {TIERS.map((tier, index) => (
-          <button
-            key={tier.id}
-            onClick={() => onSelectTier(index)}
-            className="w-2 h-2 rounded-full transition-all duration-200 focus:outline-none"
-            style={{
-              background: index === selectedTier ? COLORS.gold : COLORS.subtle,
-              transform: index === selectedTier ? "scale(1.3)" : "scale(1)",
-            }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
 
 // Map carousel tier index (0-4) to store BudgetTier + range
 const TIER_INDEX_TO_STORE: Array<{
@@ -542,18 +295,6 @@ export default function CovaDesignStep1() {
     >
       <StepIndicator currentStep={1} totalSteps={10} />
 
-      {/* Step indicator */}
-      <div
-        className="font-sans text-center uppercase"
-        style={{
-          paddingTop: 28,
-          fontSize: 11,
-          color: COLORS.subtle,
-          letterSpacing: "0.15em",
-        }}
-      >
-        Step 1 of 10
-      </div>
 
       {/* Section 1: Room Type Selection */}
       <section className="px-4" style={{ maxWidth: 900, margin: "0 auto" }}>
@@ -605,11 +346,39 @@ export default function CovaDesignStep1() {
       </div>
 
       {/* Section 2: Budget Selector */}
-      <section style={{ paddingTop: 32, paddingBottom: 48 }}>
-        <BudgetCarousel
-          selectedTier={selectedTier}
-          onSelectTier={setSelectedTier}
-        />
+      <section className="px-4" style={{ maxWidth: 900, margin: "0 auto", paddingTop: 32, paddingBottom: 48 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {TIERS.map((tier, index) => {
+            const isSelected = selectedTier === index;
+            return (
+              <button
+                key={tier.id}
+                onClick={() => setSelectedTier(index)}
+                className="text-left focus:outline-none transition-all duration-200"
+                style={{
+                  minHeight: 80,
+                  padding: "20px 24px",
+                  borderRadius: 12,
+                  border: isSelected ? `2px solid ${COLORS.gold}` : `1px solid rgba(201,168,76,0.2)`,
+                  background: isSelected ? "rgba(201,168,76,0.1)" : COLORS.surface,
+                  cursor: "pointer",
+                }}
+              >
+                <div className="flex items-center gap-3 mb-1">
+                  <span style={{ fontSize: 18 }}>{tier.icon}</span>
+                  <span className="font-serif text-base" style={{ color: isSelected ? COLORS.gold : COLORS.ivory }}>{tier.label}</span>
+                  <span className="font-sans text-sm font-semibold ml-auto" style={{ color: COLORS.ivory }}>{tier.range}</span>
+                  {isSelected && (
+                    <div className="flex items-center justify-center flex-shrink-0" style={{ width: 20, height: 20, borderRadius: "50%", background: COLORS.gold }}>
+                      <Check size={11} color={COLORS.background} strokeWidth={3} />
+                    </div>
+                  )}
+                </div>
+                <p className="font-sans text-xs" style={{ color: COLORS.muted, marginTop: 4 }}>{tier.description}</p>
+              </button>
+            );
+          })}
+        </div>
       </section>
 
       {/* Unified CTA */}

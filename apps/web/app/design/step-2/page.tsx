@@ -32,8 +32,8 @@ export default function StyleQuizPage() {
   const pointerStartX = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Progress width based on cards answered
-  const progressWidth = ((currentPair / TOTAL_PAIRS) * 9 + 9).toFixed(1);
+  // Progress width — genuine 0–100% through the quiz
+  const progressWidth = (((currentPair + 1) / TOTAL_PAIRS) * 100).toFixed(1);
 
   // Call fingerprint API then navigate to step-3
   const completeQuiz = useCallback(
@@ -191,9 +191,9 @@ export default function StyleQuizPage() {
     >
       <StepIndicator currentStep={2} totalSteps={10} />
       {/* TOP ZONE - Progress */}
-      <div className="flex flex-col items-center pt-4 pb-2" style={{ height: "12%" }}>
+      <div className="flex flex-col items-center pt-2 pb-1" style={{ height: "10%" }}>
         <p
-          className="text-center font-sans mb-3"
+          className="text-center font-sans mb-2"
           style={{ fontSize: "13px", color: "#8A9BB5" }}
         >
           <span
@@ -221,14 +221,6 @@ export default function StyleQuizPage() {
           />
         </div>
 
-        {/* Step indicator */}
-        <p
-          className="mt-2 text-center font-sans"
-          style={{ fontSize: "11px", color: "#4A5E7A", letterSpacing: "0.15em", textTransform: "uppercase" }}
-        >
-          Step 2 of 10
-        </p>
-
         {/* Warmup text - only on warmup card */}
         <p
           className="mt-1 text-center font-sans italic"
@@ -248,7 +240,7 @@ export default function StyleQuizPage() {
       <div
         ref={containerRef}
         className="relative flex-1 flex items-center justify-center px-4"
-        style={{ height: "75%" }}
+        style={{ height: "77%" }}
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
       >
@@ -303,7 +295,7 @@ export default function StyleQuizPage() {
             <div
               className="absolute inset-0 pointer-events-none"
               style={{
-                background: "linear-gradient(transparent 60%, rgba(9,24,41,0.4))",
+                background: "linear-gradient(transparent 80%, rgba(9,24,41,0.15))",
               }}
             />
 
@@ -404,7 +396,7 @@ export default function StyleQuizPage() {
             <div
               className="absolute inset-0 pointer-events-none"
               style={{
-                background: "linear-gradient(transparent 60%, rgba(9,24,41,0.4))",
+                background: "linear-gradient(transparent 80%, rgba(9,24,41,0.15))",
               }}
             />
 
@@ -451,16 +443,8 @@ export default function StyleQuizPage() {
         <button
           onClick={() => {
             if (isAnimating) return;
-            const activePair = pairs[currentPair];
-            const newResponse: Response = {
-              pairId: activePair?.id ?? `pair-${String(currentPair + 1).padStart(2, "0")}`,
-              chosen: "B",
-              superLiked: false,
-            };
-            const updatedResponses = [...responses, newResponse];
-            setResponses(updatedResponses);
-            if (currentPair === TOTAL_PAIRS - 1) {
-              void completeQuiz(updatedResponses);
+            if (currentPair + 1 >= TOTAL_PAIRS) {
+              void completeQuiz(responses);
             } else {
               setCurrentPair((prev) => prev + 1);
             }

@@ -2,12 +2,11 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { useFingerprintStore } from "@/lib/store"
-import { STOCK_PHOTOS as QUIZ_STOCK_PHOTOS } from "@/lib/ai/quiz-data"
+import { useFingerprintStore, useSessionStore } from "@/lib/store"
 import { StepIndicator } from "@/components/cova/StepIndicator"
 import { createBrowserClient } from "@/lib/supabase/client"
 
-const axisLabels = ["Luminosity", "Density", "Temperature", "Form", "Era", "Texture"]
+const axisLabels = ["Luminosity", "Temperature", "Form", "Texture", "Nature", "Scale"]
 const adjustChips = ["Warmer", "Cooler", "More minimal", "More layered", "More modern", "More classic"]
 
 // Fallback palette derived from fingerprint values
@@ -28,26 +27,27 @@ export default function Step3Page() {
 
   // Read fingerprint from Zustand store (set by Step 2 quiz)
   const { fingerprint: storedFingerprint, styleName: storedStyleName, roomType } = useFingerprintStore()
-
-  // Resolve stock photos for the current room type
-  const stockPhotosForRoom = QUIZ_STOCK_PHOTOS[roomType ?? "living-room"] ?? QUIZ_STOCK_PHOTOS["living-room"] ?? []
-  const STOCK_PHOTOS = stockPhotosForRoom.map((p, i) => ({
-    url: p.url,
-    name: (roomType ?? "living-room").replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase()) + ` ${i + 1}`,
-  }))
+  const { setStep } = useSessionStore()
 
   // Fall back to mock if store empty (direct navigation in dev)
   const [fingerprint, setFingerprint] = useState<number[]>(
     storedFingerprint ?? [0.7, 0.3, 0.8, 0.7, 0.4, 0.6, 0.5, 0.5, 0.5, 0.5]
   )
-  const [styleName, setStyleName] = useState(storedStyleName ?? "Warm Japandi")
+  const [styleName, setStyleName] = useState(storedStyleName ?? "Warm Artisan")
   const [styleChips, setStyleChips] = useState<string[]>([
     "organic textures", "warm neutrals", "minimal layers", "natural materials"
   ])
   const palette = derivepalette(fingerprint)
 
-  // Render URLs — populated from anchor_renders table
-  const [renderUrls, setRenderUrls] = useState<(string | null)[]>([null, null, null])
+  // Showcase images — populated from anchor_renders table (url + label)
+  const [showcaseImages, setShowcaseImages] = useState<Array<{ url: string; label: string } | null>>([null, null, null])
+
+  // Email auth form state
+  const [showEmailForm, setShowEmailForm] = useState(false)
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [isNewUser, setIsNewUser] = useState(false)
+  const [authError, setAuthError] = useState<string | null>(null)
 
   const [phase, setPhase] = useState<1 | 2>(1)
   const [irisOpen, setIrisOpen] = useState(false)
@@ -98,13 +98,13 @@ export default function Step3Page() {
             .limit(3)
 
           if (fallback && fallback.length > 0) {
-            setRenderUrls(fallback.map(r => r.image_url))
+            setShowcaseImages(fallback.map(r => ({ url: r.image_url, label: r.label ?? "Room" })))
             setCardsLoaded([true, true, true])
           }
           return
         }
 
-        setRenderUrls(data.map(r => r.image_url))
+        setShowcaseImages(data.map(r => ({ url: r.image_url, label: r.label ?? "Room" })))
         setCardsLoaded([true, true, true])
       } catch (err) {
         console.error('Failed to load showcase images:', err)
@@ -203,6 +203,32 @@ export default function Step3Page() {
     }
   }, [cardsLoaded])
 
+  const handleEmailAuth = async () => {
+    setAuthError(null)
+    const supabase = createBrowserClient()
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+    if (signInError) {
+      // Try sign up as new user
+      const { error: signUpError } = await supabase.auth.signUp({ email, password })
+      if (signUpError) {
+        setAuthError(signUpError.message)
+        return
+      }
+      setIsNewUser(true)
+    }
+    setStep(4)
+    proceedToPhase2()
+  }
+
+  const handleShare = async () => {
+    const shareData = { title: "My Design DNA", text: "Check out my personalized design style from Cova!", url: window.location.href }
+    if (navigator.share) {
+      try { await navigator.share(shareData) } catch { /* user cancelled */ }
+    } else {
+      try { await navigator.clipboard.writeText(window.location.href) } catch { /* ignore */ }
+    }
+  }
+
   const proceedToPhase2 = () => {
     setPhase(2)
     // Draw divider
@@ -241,7 +267,7 @@ export default function Step3Page() {
     setIsRegenerating(true)
     setShowAdjustPanel(false)
     setCardsLoaded([false, false, false])
-    setRenderUrls([null, null, null])
+    setShowcaseImages([null, null, null])
     setFeelRightVisible(false)
 
     try {
@@ -278,14 +304,14 @@ export default function Step3Page() {
         .limit(3)
 
       if (!error && data && data.length > 0) {
-        setRenderUrls(data.map(r => r.image_url))
+        setShowcaseImages(data.map(r => ({ url: r.image_url, label: r.label ?? "Room" })))
       } else {
         const { data: fallback } = await supabase
           .from('anchor_renders')
           .select('image_url, label')
           .limit(3)
         if (fallback && fallback.length > 0) {
-          setRenderUrls(fallback.map(r => r.image_url))
+          setShowcaseImages(fallback.map(r => ({ url: r.image_url, label: r.label ?? "Room" })))
         }
       }
       setCardsLoaded([true, true, true])
@@ -331,7 +357,10 @@ export default function Step3Page() {
     }
   }
 
-  const shapePath = fingerprint.map((v, i) => {
+  // Use only 6 specific dims for 6-axis chart: luminosity[0], temperature[2], form[3], texture[5], nature[7], scale[9]
+  const chartFingerprint = [fingerprint[0] ?? 0.5, fingerprint[2] ?? 0.5, fingerprint[3] ?? 0.5, fingerprint[5] ?? 0.5, fingerprint[7] ?? 0.5, fingerprint[9] ?? 0.5]
+
+  const shapePath = chartFingerprint.map((v, i) => {
     const point = getPoint(i, v)
     return `${i === 0 ? "M" : "L"} ${point.x} ${point.y}`
   }).join(" ") + " Z"
@@ -363,6 +392,7 @@ export default function Step3Page() {
 
       {/* Share button */}
       <button
+        onClick={handleShare}
         className="fixed top-6 right-6 z-40 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 group"
         style={{
           background: "rgba(13,32,53,0.8)",
@@ -388,7 +418,12 @@ export default function Step3Page() {
       </button>
 
       {/* Phase 1 Content */}
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 pt-16 pb-8">
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 pt-16 pb-8 relative">
+        {/* Animated background orbs */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none" style={{ zIndex: 0 }}>
+          <div style={{ position: "absolute", top: "15%", left: "10%", width: 320, height: 320, borderRadius: "50%", background: "radial-gradient(circle, rgba(201,168,76,0.08) 0%, transparent 70%)", animation: "floatOrb1 8s ease-in-out infinite" }} />
+          <div style={{ position: "absolute", bottom: "20%", right: "8%", width: 240, height: 240, borderRadius: "50%", background: "radial-gradient(circle, rgba(138,155,181,0.06) 0%, transparent 70%)", animation: "floatOrb2 10s ease-in-out infinite" }} />
+        </div>
         {/* Style name with typing effect */}
         <div className="h-16 mb-4 flex items-center justify-center">
           <h1 className="font-serif text-4xl md:text-[52px] text-[#C9A84C] tracking-wide">
@@ -454,7 +489,7 @@ export default function Step3Page() {
             />
 
             {/* Vertex dots */}
-            {fingerprint.map((v, i) => {
+            {chartFingerprint.map((v, i) => {
               const point = getPoint(i, v)
               return (
                 <circle
@@ -554,22 +589,10 @@ export default function Step3Page() {
               className="flex items-center justify-center gap-3 w-[200px] h-12 bg-white rounded-lg hover:bg-gray-50 transition-colors"
             >
               <svg width="18" height="18" viewBox="0 0 24 24">
-                <path
-                  fill="#4285F4"
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                />
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
               </svg>
               <span className="text-sm font-medium text-[#1A1A1A]">Sign in with Google</span>
             </button>
@@ -585,12 +608,46 @@ export default function Step3Page() {
             </button>
           </div>
 
-          <button
-            onClick={proceedToPhase2}
-            className="mt-4 text-xs font-sans text-[#4A5E7A] hover:text-[#8A9BB5] transition-colors cursor-pointer"
-          >
-            or continue as guest &rarr;
-          </button>
+          {/* Email auth toggle */}
+          {!showEmailForm ? (
+            <button
+              onClick={() => setShowEmailForm(true)}
+              className="mt-4 text-xs font-sans transition-colors"
+              style={{ color: "#4A5E7A", background: "none", border: "none", cursor: "pointer" }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = "#8A9BB5" }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = "#4A5E7A" }}
+            >
+              Continue with email →
+            </button>
+          ) : (
+            <div className="mt-4 w-full max-w-[280px] flex flex-col gap-2">
+              <input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-lg text-sm font-sans focus:outline-none"
+                style={{ background: "#0D2035", border: "1px solid rgba(201,168,76,0.3)", color: "#F5F0E8" }}
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-lg text-sm font-sans focus:outline-none"
+                style={{ background: "#0D2035", border: "1px solid rgba(201,168,76,0.3)", color: "#F5F0E8" }}
+              />
+              {authError && <p className="text-xs font-sans" style={{ color: "#C0504A" }}>{authError}</p>}
+              {isNewUser && <p className="text-xs font-sans" style={{ color: "#4A9B7F" }}>Account created — check your email to verify.</p>}
+              <button
+                onClick={handleEmailAuth}
+                className="w-full py-2.5 rounded-lg text-sm font-semibold font-sans transition-all duration-200"
+                style={{ background: "#C9A84C", color: "#091829", border: "none", cursor: "pointer" }}
+              >
+                Continue →
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -626,7 +683,7 @@ export default function Step3Page() {
 
           {/* Style cards */}
           <div className="max-w-[600px] mx-auto space-y-6">
-            {STOCK_PHOTOS.map((photo, i) => (
+            {showcaseImages.map((img, i) => (
               <div
                 key={i}
                 className="relative w-full rounded-2xl overflow-hidden cursor-pointer"
@@ -661,12 +718,12 @@ export default function Step3Page() {
                       {isRegenerating ? "Redesigning..." : "Designing your room..."}
                     </span>
                   </div>
-                ) : renderUrls[i] ? (
-                  // Real FLUX render
+                ) : img ? (
+                  // Anchor render image
                   <>
                     <img
-                      src={renderUrls[i]!}
-                      alt={`${photo.name} redesigned to your style`}
+                      src={img.url}
+                      alt={`${img.label} redesigned to your style`}
                       className="absolute inset-0 w-full h-full object-cover"
                     />
                     <div
@@ -674,7 +731,7 @@ export default function Step3Page() {
                       style={{ background: "linear-gradient(transparent 55%, rgba(9,24,41,0.85))" }}
                     />
                     <div className="absolute bottom-4 left-4 flex items-center gap-3">
-                      <span className="text-[13px] font-sans text-[#8A9BB5]">{photo.name}</span>
+                      <span className="text-[13px] font-sans text-[#8A9BB5]">{img.label}</span>
                       <span
                         className="px-2.5 py-1 rounded-full text-[11px] font-sans text-[#091829]"
                         style={{ background: "#C9A84C" }}
@@ -699,15 +756,6 @@ export default function Step3Page() {
                       className="absolute inset-0"
                       style={{ background: "linear-gradient(transparent 55%, rgba(9,24,41,0.85))" }}
                     />
-                    <div className="absolute bottom-4 left-4 flex items-center gap-3">
-                      <span className="text-[13px] font-sans text-[#8A9BB5]">{photo.name}</span>
-                      <span
-                        className="px-2.5 py-1 rounded-full text-[11px] font-sans text-[#091829]"
-                        style={{ background: "#C9A84C" }}
-                      >
-                        Your style
-                      </span>
-                    </div>
                   </>
                 )}
               </div>
@@ -882,6 +930,16 @@ export default function Step3Page() {
         }
         @keyframes spin {
           to { transform: rotate(360deg); }
+        }
+        @keyframes floatOrb1 {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          33% { transform: translate(30px, -20px) scale(1.05); }
+          66% { transform: translate(-20px, 15px) scale(0.95); }
+        }
+        @keyframes floatOrb2 {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          40% { transform: translate(-25px, 20px) scale(1.08); }
+          70% { transform: translate(15px, -10px) scale(0.92); }
         }
       `}</style>
     </div>

@@ -4,18 +4,14 @@ import { useEffect, useRef, useState } from "react"
 
 export default function CovaLandingPage() {
   const [introPhase, setIntroPhase] = useState(0)
-  const [hasSeenIntro, setHasSeenIntro] = useState(false)
   const [dividerPosition, setDividerPosition] = useState(50)
   const [isDragging, setIsDragging] = useState(false)
   const [currentRoom, setCurrentRoom] = useState(0)
-  const [scrolled, setScrolled] = useState(false)
   const [currentFingerprint, setCurrentFingerprint] = useState(0)
   const [typedText, setTypedText] = useState("")
   const [activeAxis, setActiveAxis] = useState<number | null>(null)
   const [customFingerprint, setCustomFingerprint] = useState<number[] | null>(null)
   const [activeChip, setActiveChip] = useState<number | null>(null)
-  const [activeCard, setActiveCard] = useState(0)
-  const [cardDragStart, setCardDragStart] = useState<number | null>(null)
   const [activeHotspot, setActiveHotspot] = useState<number | null>(null)
   const [showSheet, setShowSheet] = useState(false)
   const [activeProduct, setActiveProduct] = useState<number | null>(null)
@@ -33,7 +29,7 @@ export default function CovaLandingPage() {
       afterUrl: "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/landing-assets/hero/after-nordic-minimal.jpg",
     },
     {
-      name: "WARM JAPANDI",
+      name: "WARM ARTISAN",
       type: "Living Room",
       beforeUrl: "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/landing-assets/hero/before-neutral.jpg",
       afterUrl: "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/landing-assets/hero/after-warm-japandi.jpg",
@@ -47,8 +43,8 @@ export default function CovaLandingPage() {
   ]
 
   const fingerprints = [
-    { name: "Warm Japandi", values: [0.7, 0.3, 0.8, 0.7, 0.4, 0.6], chips: ["organic textures", "warm neutrals", "minimal layers", "natural materials"] },
-    { name: "Cool Minimalist", values: [0.8, 0.1, 0.2, 0.3, 0.2, 0.2], chips: ["clean lines", "negative space", "monochrome", "precision"] },
+    { name: "Warm Artisan", values: [0.7, 0.3, 0.8, 0.7, 0.4, 0.6], chips: ["organic textures", "warm neutrals", "minimal layers", "natural materials"] },
+    { name: "Cool Refined", values: [0.8, 0.1, 0.2, 0.3, 0.2, 0.2], chips: ["clean lines", "negative space", "monochrome", "precision"] },
     { name: "Heritage Maximalist", values: [0.5, 0.9, 0.7, 0.4, 0.9, 0.8], chips: ["rich layers", "antique detail", "warm palette", "collected"] },
     { name: "Organic Modern", values: [0.7, 0.4, 0.6, 0.9, 0.3, 0.7], chips: ["curved forms", "natural wood", "earthy tones", "artisan craft"] },
   ]
@@ -70,17 +66,15 @@ export default function CovaLandingPage() {
   const getStyleName = (values: number[]) => {
     const key = values.map(v => v >= 0.5 ? "1" : "0").join("")
     const styleMap: Record<string, string> = {
-      "110100": "Warm Japandi", "010110": "Warm Japandi", "110110": "Warm Japandi",
-      "100000": "Cool Minimalist", "000000": "Pure Minimalist",
-      "101010": "Transitional", "001010": "Japandi",
-      "111111": "Warm Maximalist Heritage",
+      "110100": "Warm Artisan", "010110": "Warm Artisan", "110110": "Warm Artisan",
+      "100000": "Cool Refined", "000000": "Pure Refined",
+      "101010": "Transitional", "001010": "Natural Organic",
+      "111111": "Heritage Maximalist",
     }
     return styleMap[key] ?? fingerprints[currentFingerprint].name
   }
 
   useEffect(() => {
-    const seen = sessionStorage.getItem("seen_intro")
-    if (seen) { setHasSeenIntro(true); setIntroPhase(3); return }
     let charIndex = 0
     const typeInterval = setInterval(() => {
       if (charIndex <= introText.length) { setTypedText(introText.slice(0, charIndex)); charIndex++ }
@@ -91,14 +85,9 @@ export default function CovaLandingPage() {
   }, [])
 
   useEffect(() => {
-    if (introPhase === 2) { setTimeout(() => { setIntroPhase(3); sessionStorage.setItem("seen_intro", "true") }, 600) }
+    if (introPhase === 2) { setTimeout(() => setIntroPhase(3), 600) }
   }, [introPhase])
 
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 100)
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [])
 
   useEffect(() => {
     const interval = setInterval(() => setCurrentRoom((prev) => (prev + 1) % rooms.length), 8000)
@@ -325,19 +314,19 @@ export default function CovaLandingPage() {
       `}</style>
 
       {/* Intro */}
-      {introPhase < 3 && !hasSeenIntro && (
+      {introPhase < 3 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center" style={{ background: "#000" }}>
           <p className="font-serif italic text-2xl" style={{ color: "var(--cova-gold)" }}>{typedText}</p>
         </div>
       )}
 
       {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-50 transition-all duration-300" style={{ background: scrolled ? "rgba(13,32,53,0.85)" : "transparent", backdropFilter: scrolled ? "blur(20px)" : "none" }}>
+      <nav className="fixed top-0 left-0 right-0 z-50" style={{ background: "#0D2035", borderBottom: "1px solid rgba(201,168,76,0.15)" }}>
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <span className="font-sans text-sm font-light tracking-[0.25em]" style={{ color: "var(--cova-ivory)" }}>COVA</span>
+          <span className="font-sans text-sm font-light tracking-[0.25em]" style={{ color: "#F5F0E8" }}>COVA</span>
           <div className="hidden md:flex items-center gap-6">
-            <a href="#how-it-works" className="text-sm transition-colors duration-200" style={{ color: "var(--cova-muted)" }}>How it works</a>
-            <button className="px-5 py-2 text-sm rounded-lg transition-all duration-200" style={{ background: "transparent", border: "1px solid rgba(201,168,76,0.35)", color: "var(--cova-ivory)" }}>Sign In</button>
+            <a href="#how-it-works" className="text-sm transition-colors duration-200 hover:text-white" style={{ color: "#F5F0E8" }}>How it works</a>
+            <button className="text-sm font-semibold rounded-lg transition-all duration-200 hover:opacity-90" style={{ background: "#C9A84C", color: "#091829", padding: "8px 18px", borderRadius: 8, border: "none" }}>Sign In</button>
             <button onClick={handleCTAClick} className="px-5 py-2 text-sm font-semibold rounded-lg transition-all duration-200 hover:bg-[#D4B460] hover:-translate-y-0.5" style={{ background: "#C9A84C", color: "#091829", border: "none", boxShadow: "0 0 40px rgba(201,168,76,0.25)" }}>Start Designing</button>
           </div>
           <button onClick={handleCTAClick} className="md:hidden px-4 py-2 text-sm font-semibold rounded-lg" style={{ background: "#C9A84C", color: "#091829", border: "none" }}>Start</button>
@@ -370,13 +359,21 @@ export default function CovaLandingPage() {
         >
           {currentRoomSVGs.after}
         </div>
+        {/* Before/After pill labels */}
+        <div className="absolute top-24 left-6 z-30 pointer-events-none" style={{ opacity: introPhase >= 2 ? 1 : 0, transition: "opacity 700ms" }}>
+          <span className="px-3 py-1.5 rounded-full text-xs font-sans tracking-[0.15em]" style={{ background: "rgba(9,24,41,0.75)", color: "rgba(200,192,176,0.9)", border: "1px solid rgba(200,192,176,0.25)", backdropFilter: "blur(8px)" }}>BEFORE</span>
+        </div>
+        <div className="absolute top-24 right-6 z-30 pointer-events-none" style={{ opacity: introPhase >= 2 ? 1 : 0, transition: "opacity 700ms" }}>
+          <span className="px-3 py-1.5 rounded-full text-xs font-sans tracking-[0.15em]" style={{ background: "rgba(201,168,76,0.85)", color: "#091829", backdropFilter: "blur(8px)" }}>AFTER</span>
+        </div>
         {/* Divider — full height draggable bar */}
         <div
           className="absolute top-0 bottom-0 z-20 select-none"
           style={{
             left: `${dividerPosition}%`,
-            width: "2px",
+            width: "3px",
             background: "var(--cova-gold)",
+            boxShadow: "0 0 12px rgba(201,168,76,0.5)",
             opacity: introPhase >= 2 ? 1 : 0,
             cursor: "ew-resize",
             touchAction: "none",
@@ -408,8 +405,8 @@ export default function CovaLandingPage() {
             style={{
               top: "50%",
               transform: "translate(-50%, -50%)",
-              width: "52px",
-              height: "52px",
+              width: "64px",
+              height: "64px",
               background: "var(--cova-gold)",
               boxShadow: "0 0 24px rgba(201,168,76,0.6)",
               cursor: "ew-resize",
@@ -459,8 +456,8 @@ export default function CovaLandingPage() {
       <div className="w-full h-px" style={{ background: "linear-gradient(to right, transparent, rgba(201,168,76,0.2) 20%, rgba(201,168,76,0.2) 80%, transparent)" }} />
 
       {/* ── THREE STEPS — DIAGONAL MINIMAL ── */}
-      <section id="how-it-works" className="py-[120px] px-6 overflow-hidden" style={{ background: "var(--cova-bg)" }}>
-        <div className="max-w-6xl mx-auto">
+      <section id="how-it-works" className="py-[120px] overflow-hidden" style={{ background: "var(--cova-bg)" }}>
+        <div className="w-full px-6">
           <div className="text-center mb-[100px]">
             <span className="font-sans text-xs tracking-[0.3em] mb-4 block" style={{ color: "var(--cova-gold)" }}>THE PROCESS</span>
             <h2 className="font-serif text-4xl md:text-6xl" style={{ color: "var(--cova-ivory)" }}>Three steps. One transformation.</h2>
@@ -684,7 +681,7 @@ export default function CovaLandingPage() {
                   <span className="font-sans text-xs tracking-[0.25em] mb-3 block" style={{ color: "var(--cova-gold)" }}>TRANSFORM</span>
                   <h3 className="font-serif text-3xl mb-4" style={{ color: "var(--cova-ivory)" }}>Shop every item in your render.</h3>
                   <p className="font-sans text-base leading-relaxed max-w-[280px]" style={{ color: "var(--cova-muted)" }}>
-                    Your redesigned room arrives in 45 seconds. Tap any piece of furniture to find it in our catalog of 5,000+ products from 11 premium retailers.
+                    Your redesigned room arrives in 45 seconds. Tap any piece of furniture to find it in our catalog of 18,000+ products from 12 premium retailers.
                   </p>
                 </div>
               </div>
@@ -697,15 +694,15 @@ export default function CovaLandingPage() {
 
       {/* ── STYLE INTELLIGENCE — INTERACTIVE ── */}
       <section className="py-[120px] px-6" style={{ background: "var(--cova-surface)" }}>
-        <div className="max-w-4xl mx-auto text-center mb-16">
+        <div className="text-center mb-16">
           <span className="font-sans text-xs tracking-[0.3em] mb-4 block" style={{ color: "var(--cova-gold)" }}>STYLE INTELLIGENCE</span>
-          <h2 className="font-serif text-4xl md:text-6xl mb-4" style={{ color: "var(--cova-ivory)" }}>Your taste. Precisely mapped.</h2>
-          <p className="font-sans text-sm" style={{ color: "var(--cova-muted)" }}>
+          <h2 className="font-serif text-4xl md:text-7xl mb-4" style={{ color: "var(--cova-ivory)" }}>Your taste. Precisely mapped.</h2>
+          <p className="font-sans text-base" style={{ color: "var(--cova-muted)" }}>
             Click any axis label to explore what each dimension means — then drag to adjust it.
           </p>
         </div>
 
-        <div className="max-w-[1000px] mx-auto flex flex-col md:flex-row items-center gap-12 md:gap-20">
+        <div className="max-w-[1100px] mx-auto flex flex-col md:flex-row items-center gap-12 md:gap-20">
           {/* Interactive radar */}
           <div className="w-[300px] md:w-[380px] flex-shrink-0">
             <svg viewBox="0 0 400 400" className="w-full" style={{ overflow: "visible" }}>
@@ -808,10 +805,10 @@ export default function CovaLandingPage() {
                   </filter>
                 </defs>
                 {[
-                  { id: 0, cx: 50, cy: 35, rx: (180/1344)*100, ry: (90/768)*56.25 },
-                  { id: 1, cx: 50, cy: 52, rx: (140/1344)*100, ry: (20/768)*56.25 },
-                  { id: 2, cx: 50, cy: 8,  rx: (300/1344)*100, ry: (30/768)*56.25 },
-                  { id: 3, cx: 80, cy: 68, rx: (120/1344)*100, ry: (80/768)*56.25 },
+                  { id: 0, cx: 72, cy: 35, rx: (180/1344)*100, ry: (90/768)*56.25 },
+                  { id: 1, cx: 72, cy: 52, rx: (140/1344)*100, ry: (20/768)*56.25 },
+                  { id: 2, cx: 25, cy: 15, rx: (300/1344)*100, ry: (30/768)*56.25 },
+                  { id: 3, cx: 15, cy: 60, rx: (120/1344)*100, ry: (80/768)*56.25 },
                 ].map((zone) => (
                   <ellipse key={zone.id} cx={zone.cx} cy={zone.cy} rx={zone.rx} ry={zone.ry}
                     fill={activeChip === zone.id ? "rgba(201,168,76,0.2)" : "transparent"}
@@ -822,10 +819,10 @@ export default function CovaLandingPage() {
                 ))}
                 {activeChip !== null && (() => {
                   const zones = [
-                    { cx: 50, cy: 35, rx: (180/1344)*100, ry: (90/768)*56.25 },
-                    { cx: 50, cy: 52, rx: (140/1344)*100, ry: (20/768)*56.25 },
-                    { cx: 50, cy: 8,  rx: (300/1344)*100, ry: (30/768)*56.25 },
-                    { cx: 80, cy: 68, rx: (120/1344)*100, ry: (80/768)*56.25 },
+                    { cx: 72, cy: 35, rx: (180/1344)*100, ry: (90/768)*56.25 },
+                    { cx: 72, cy: 52, rx: (140/1344)*100, ry: (20/768)*56.25 },
+                    { cx: 25, cy: 15, rx: (300/1344)*100, ry: (30/768)*56.25 },
+                    { cx: 15, cy: 60, rx: (120/1344)*100, ry: (80/768)*56.25 },
                   ]
                   const zone = zones[activeChip]
                   if (!zone) return null
@@ -843,8 +840,8 @@ export default function CovaLandingPage() {
               {activeChip !== null && (
                 <div className="absolute pointer-events-none"
                   style={{
-                    left: ["50%","50%","50%","80%"][activeChip],
-                    top: ["35%","52%","8%","68%"][activeChip],
+                    left: ["72%","72%","25%","15%"][activeChip],
+                    top: ["35%","52%","15%","60%"][activeChip],
                     transform: "translate(-50%, -140%)",
                     animation: "fadeIn 150ms ease",
                   }}>
@@ -887,207 +884,41 @@ export default function CovaLandingPage() {
 
       <div className="w-full h-px" style={{ background: "linear-gradient(to right, transparent, rgba(201,168,76,0.2) 20%, rgba(201,168,76,0.2) 80%, transparent)" }} />
 
-      {/* ── TRANSFORMATION GALLERY — SWIPEABLE CAROUSEL ── */}
-      <section className="py-[100px]" style={{ background: "var(--cova-bg)" }}>
-        <div className="text-center mb-16 px-6">
+      {/* ── TRANSFORMATION GALLERY — 3-COLUMN GRID ── */}
+      <section className="py-[100px] px-6" style={{ background: "var(--cova-bg)" }}>
+        <div className="text-center mb-16">
           <span className="font-sans text-xs tracking-[0.3em] mb-4 block" style={{ color: "var(--cova-gold)" }}>REAL TRANSFORMATIONS</span>
           <h2 className="font-serif text-4xl md:text-6xl" style={{ color: "var(--cova-ivory)" }}>Every room. Every style.</h2>
         </div>
-
-        {(() => {
-          const cards = [
-            { room: "Living Room", style: "Warm Japandi", beforeBg: "#0A1520", afterBg: "#1A0E08", beforeAccent: "#1A2A3A", afterAccent: "#3D2010", afterAccent2: "#C9A84C" },
-            { room: "Bedroom", style: "Organic Modern", beforeBg: "#0D1A28", afterBg: "#180E08", beforeAccent: "#1E3040", afterAccent: "#4A2A15", afterAccent2: "#C9A84C" },
-            { room: "Home Office", style: "Nordic Minimal", beforeBg: "#0A1828", afterBg: "#0E1A10", beforeAccent: "#1A2A3A", afterAccent: "#1A3A20", afterAccent2: "#8BA870" },
-            { room: "Dining Room", style: "Heritage Classic", beforeBg: "#0D1520", afterBg: "#1A100A", beforeAccent: "#1E2A3A", afterAccent: "#3A2010", afterAccent2: "#C9A84C" },
-            { room: "Studio", style: "Cool Industrial", beforeBg: "#0A1018", afterBg: "#101820", beforeAccent: "#1A2030", afterAccent: "#2A3A50", afterAccent2: "#6496AA" },
-            { room: "Living Room", style: "Coastal Luxe", beforeBg: "#0A1520", afterBg: "#0A1820", beforeAccent: "#1A2A3A", afterAccent: "#1A3A4A", afterAccent2: "#6AACCA" },
-          ]
-
-          const goTo = (idx: number) => setActiveCard(Math.max(0, Math.min(cards.length - 1, idx)))
-
-          const renderCard = (card: typeof cards[0], i: number) => (
-            <div key={i} className="w-full h-full rounded-2xl overflow-hidden relative" style={{ boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}>
-              <div className="absolute inset-0 flex">
-                {/* Before — grayscale */}
-                <div className="w-1/2 h-full relative" style={{ background: card.beforeBg, filter: "grayscale(90%) brightness(0.75)" }}>
-                  <svg viewBox="0 0 200 280" className="w-full h-full" preserveAspectRatio="xMidYMid slice">
-                    <polygon points="0,180 200,180 180,280 20,280" fill={card.beforeAccent} opacity="0.6" />
-                    <rect x="0" y="0" width="200" height="180" fill={card.beforeBg} />
-                    <rect x="20" y="130" width="130" height="45" fill={card.beforeAccent} />
-                    <rect x="25" y="124" width="35" height="10" fill={card.beforeAccent} opacity="0.8" />
-                    <rect x="68" y="124" width="35" height="10" fill={card.beforeAccent} opacity="0.8" />
-                    <rect x="111" y="124" width="35" height="10" fill={card.beforeAccent} opacity="0.8" />
-                    <rect x="50" y="190" width="80" height="20" fill={card.beforeAccent} opacity="0.7" />
-                    <rect x="120" y="30" width="60" height="70" fill="none" stroke={card.beforeAccent} strokeWidth="1" opacity="0.6" />
-                    <line x1="150" y1="30" x2="150" y2="100" stroke={card.beforeAccent} strokeWidth="1" opacity="0.4" />
-                    <line x1="120" y1="65" x2="180" y2="65" stroke={card.beforeAccent} strokeWidth="1" opacity="0.4" />
-                    <circle cx="100" cy="20" r="8" fill={card.beforeAccent} opacity="0.5" />
-                  </svg>
-                  {/* Before label */}
+        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[
+            { room: "Living Room", style: "Nordic Minimal", before: rooms[0].beforeUrl, after: rooms[0].afterUrl },
+            { room: "Living Room", style: "Warm Artisan", before: rooms[1].beforeUrl, after: rooms[1].afterUrl },
+            { room: "Living Room", style: "Organic Modern", before: rooms[2].beforeUrl, after: rooms[2].afterUrl },
+          ].map((pair, i) => (
+            <div key={i} className="rounded-2xl overflow-hidden relative" style={{ boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}>
+              <div className="flex" style={{ height: "320px" }}>
+                <div className="w-1/2 h-full relative" style={{ filter: "grayscale(100%) brightness(0.65)" }}>
+                  <img src={pair.before} alt={`Before — ${pair.room}`} className="w-full h-full object-cover" draggable={false} />
                   <div className="absolute top-3 left-3">
-                    <span className="font-sans text-[9px] tracking-[0.2em]" style={{ color: "rgba(200,192,176,0.6)" }}>BEFORE</span>
+                    <span className="px-2 py-0.5 rounded text-[9px] font-sans tracking-[0.15em]" style={{ background: "rgba(9,24,41,0.75)", color: "rgba(200,192,176,0.9)", border: "1px solid rgba(200,192,176,0.25)" }}>BEFORE</span>
                   </div>
                 </div>
-                {/* Gold divider */}
-                <div className="w-px h-full flex-shrink-0" style={{ background: "var(--cova-gold)" }} />
-                {/* After — warm color */}
-                <div className="w-1/2 h-full relative" style={{ background: card.afterBg }}>
-                  <svg viewBox="0 0 200 280" className="w-full h-full" preserveAspectRatio="xMidYMid slice">
-                    <defs>
-                      <radialGradient id={`cg${i}`} cx="50%" cy="30%" r="60%">
-                        <stop offset="0%" stopColor={`${card.afterAccent2}44`} />
-                        <stop offset="100%" stopColor={`${card.afterAccent2}00`} />
-                      </radialGradient>
-                    </defs>
-                    <polygon points="0,180 200,180 180,280 20,280" fill={card.afterAccent} opacity="0.5" />
-                    <rect x="0" y="0" width="200" height="180" fill={card.afterBg} />
-                    <circle cx="100" cy="30" r="80" fill={`url(#cg${i})`} />
-                    <ellipse cx="100" cy="22" rx="6" ry="9" fill={card.afterAccent2} opacity="0.9" />
-                    <path d="M20 130 Q20 124 28 120 L158 120 Q166 124 166 130 L166 175 L20 175 Z" fill={card.afterAccent} />
-                    <line x1="60" y1="124" x2="60" y2="172" stroke={card.afterBg} strokeWidth="1" opacity="0.4" />
-                    <line x1="100" y1="124" x2="100" y2="172" stroke={card.afterBg} strokeWidth="1" opacity="0.4" />
-                    <line x1="138" y1="124" x2="138" y2="172" stroke={card.afterBg} strokeWidth="1" opacity="0.4" />
-                    <rect x="155" y="140" width="12" height="30" fill={card.afterAccent2} rx="2" opacity="0.8" />
-                    <polygon points="10,185 190,185 175,275 25,275" fill={card.afterAccent} opacity="0.3" />
-                    <rect x="50" y="190" width="80" height="18" fill={card.afterAccent} rx="2" opacity="0.8" />
-                    <rect x="120" y="30" width="60" height="70" fill={`${card.afterAccent2}15`} />
-                    <rect x="120" y="30" width="60" height="70" fill="none" stroke={card.afterAccent} strokeWidth="1" opacity="0.5" />
-                    <ellipse cx="178" cy="118" rx="12" ry="18" fill="#1A3010" opacity="0.8" />
-                    <rect x="20" y="40" width="45" height="32" fill={card.afterAccent} stroke={card.afterAccent2} strokeWidth="1" opacity="0.7" />
-                  </svg>
-                  {/* After label */}
+                <div className="w-px h-full flex-shrink-0" style={{ background: "#C9A84C" }} />
+                <div className="w-1/2 h-full relative">
+                  <img src={pair.after} alt={`After — ${pair.style}`} className="w-full h-full object-cover" draggable={false} />
                   <div className="absolute top-3 right-3">
-                    <span className="font-sans text-[9px] tracking-[0.2em]" style={{ color: card.afterAccent2, opacity: 0.8 }}>AFTER</span>
+                    <span className="px-2 py-0.5 rounded text-[9px] font-sans tracking-[0.15em]" style={{ background: "rgba(201,168,76,0.9)", color: "#091829" }}>AFTER</span>
                   </div>
                 </div>
               </div>
-              {/* Bottom gradient + labels */}
-              <div className="absolute inset-0" style={{ background: "linear-gradient(transparent 50%, rgba(9,24,41,0.96))" }} />
-              <div className="absolute bottom-6 left-6 right-6 flex items-end justify-between">
-                <div>
-                  <span className="inline-block px-3 py-1 rounded text-[10px] font-sans font-semibold mb-2" style={{ background: "var(--cova-gold)", color: "var(--cova-bg)" }}>{card.style}</span>
-                  <p className="text-sm font-sans" style={{ color: "var(--cova-muted)" }}>{card.room}</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-sans text-xs" style={{ color: "var(--cova-subtle)" }}>{i + 1} / {cards.length}</p>
-                </div>
+              <div className="absolute bottom-0 left-0 right-0" style={{ background: "linear-gradient(transparent, rgba(9,24,41,0.92))", padding: "24px 16px 16px" }}>
+                <span className="inline-block px-3 py-1 rounded text-[10px] font-sans font-semibold mb-1" style={{ background: "var(--cova-gold)", color: "var(--cova-bg)" }}>{pair.style}</span>
+                <p className="text-xs font-sans" style={{ color: "var(--cova-muted)" }}>{pair.room}</p>
               </div>
             </div>
-          )
-
-          return (
-            <div className="max-w-5xl mx-auto px-6">
-              {/* Thumbnail strip — ABOVE the main card */}
-              <div className="flex gap-3 mb-6 justify-center overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-                {cards.map((card, i) => (
-                  <button
-                    key={i}
-                    onClick={() => goTo(i)}
-                    className="flex-shrink-0 transition-all duration-200"
-                    style={{
-                      width: "88px",
-                      height: "60px",
-                      borderRadius: "8px",
-                      overflow: "hidden",
-                      border: `2px solid ${i === activeCard ? "#C9A84C" : "rgba(201,168,76,0.12)"}`,
-                      opacity: i === activeCard ? 1 : 0.45,
-                      cursor: "pointer",
-                      background: card.afterBg,
-                      padding: 0,
-                      transform: i === activeCard ? "scale(1.08)" : "scale(1)",
-                      boxShadow: i === activeCard ? "0 0 16px rgba(201,168,76,0.3)" : "none",
-                    }}
-                  >
-                    <div className="w-full h-full flex">
-                      <div className="w-1/2 h-full" style={{ background: card.beforeBg, filter: "grayscale(90%) brightness(0.7)" }} />
-                      <div className="w-px h-full flex-shrink-0" style={{ background: "#C9A84C", opacity: 0.7 }} />
-                      <div className="w-1/2 h-full" style={{ background: card.afterBg }} />
-                    </div>
-                  </button>
-                ))}
-              </div>
-
-              {/* Main card — taller */}
-              <div
-                className="relative select-none"
-                onMouseDown={(e) => setCardDragStart(e.clientX)}
-                onMouseUp={(e) => {
-                  if (cardDragStart === null) return
-                  const diff = e.clientX - cardDragStart
-                  if (diff < -40) goTo(activeCard + 1)
-                  else if (diff > 40) goTo(activeCard - 1)
-                  setCardDragStart(null)
-                }}
-                onTouchStart={(e) => setCardDragStart(e.touches[0].clientX)}
-                onTouchEnd={(e) => {
-                  if (cardDragStart === null) return
-                  const diff = e.changedTouches[0].clientX - cardDragStart
-                  if (diff < -40) goTo(activeCard + 1)
-                  else if (diff > 40) goTo(activeCard - 1)
-                  setCardDragStart(null)
-                }}
-                style={{ height: "560px", cursor: "grab", userSelect: "none" }}
-              >
-                <div
-                  className="absolute inset-0"
-                  style={{ transition: "opacity 300ms ease" }}
-                >
-                  {renderCard(cards[activeCard], activeCard)}
-                </div>
-
-                {/* Left arrow */}
-                <button
-                  onClick={() => goTo(activeCard - 1)}
-                  disabled={activeCard === 0}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 z-10"
-                  style={{
-                    background: "rgba(9,24,41,0.7)",
-                    border: `1px solid ${activeCard === 0 ? "rgba(201,168,76,0.1)" : "rgba(201,168,76,0.5)"}`,
-                    color: activeCard === 0 ? "var(--cova-subtle)" : "var(--cova-gold)",
-                    cursor: activeCard === 0 ? "not-allowed" : "pointer",
-                    backdropFilter: "blur(8px)",
-                  }}
-                >←</button>
-
-                {/* Right arrow */}
-                <button
-                  onClick={() => goTo(activeCard + 1)}
-                  disabled={activeCard === cards.length - 1}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 z-10"
-                  style={{
-                    background: "rgba(9,24,41,0.7)",
-                    border: `1px solid ${activeCard === cards.length - 1 ? "rgba(201,168,76,0.1)" : "rgba(201,168,76,0.5)"}`,
-                    color: activeCard === cards.length - 1 ? "var(--cova-subtle)" : "var(--cova-gold)",
-                    cursor: activeCard === cards.length - 1 ? "not-allowed" : "pointer",
-                    backdropFilter: "blur(8px)",
-                  }}
-                >→</button>
-              </div>
-
-              {/* Dot indicators — BELOW the main card */}
-              <div className="flex justify-center gap-2 mt-6">
-                {cards.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => goTo(i)}
-                    style={{
-                      width: i === activeCard ? "28px" : "8px",
-                      height: "8px",
-                      borderRadius: "4px",
-                      background: i === activeCard ? "var(--cova-gold)" : "rgba(201,168,76,0.2)",
-                      border: "none",
-                      cursor: "pointer",
-                      padding: 0,
-                      transition: "all 300ms ease",
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-          )
-
-        })()}
+          ))}
+        </div>
       </section>
 
       <div className="w-full h-px" style={{ background: "linear-gradient(to right, transparent, rgba(201,168,76,0.2) 20%, rgba(201,168,76,0.2) 80%, transparent)" }} />
@@ -1114,7 +945,7 @@ export default function CovaLandingPage() {
           <div className="flex items-center gap-2">
             <span className="font-sans text-sm tracking-[0.15em] font-light" style={{ color: "#F5F0E8" }}>COVA</span>
             <span style={{ color: "#4A5E7A" }}>·</span>
-            <span className="font-sans text-xs" style={{ color: "#8A9BB5" }}>© 2025 Cova. All rights reserved.</span>
+            <span className="font-sans text-xs" style={{ color: "#8A9BB5" }}>© 2026 Cova. All rights reserved.</span>
           </div>
           <div className="flex gap-6">
             <a href="#" className="font-sans text-xs transition-colors duration-200 hover:text-[#F5F0E8]" style={{ color: "#4A5E7A" }}>Privacy</a>
