@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useFingerprintStore } from "@/lib/store"
 import { STOCK_PHOTOS as QUIZ_STOCK_PHOTOS } from "@/lib/ai/quiz-data"
 import { StepIndicator } from "@/components/cova/StepIndicator"
+import { createBrowserClient } from "@/lib/supabase/client"
 
 const axisLabels = ["Luminosity", "Density", "Temperature", "Form", "Era", "Texture"]
 const adjustChips = ["Warmer", "Cooler", "More minimal", "More layered", "More modern", "More classic"]
@@ -45,10 +46,8 @@ export default function Step3Page() {
   ])
   const palette = derivepalette(fingerprint)
 
-  // Render URLs — populated by real FLUX renders
+  // Render URLs — populated from anchor_renders table
   const [renderUrls, setRenderUrls] = useState<(string | null)[]>([null, null, null])
-  const [renderJobIds, setRenderJobIds] = useState<(string | null)[]>([null, null, null])
-  const renderPollRef = useRef<NodeJS.Timeout[]>([])
 
   const [phase, setPhase] = useState<1 | 2>(1)
   const [irisOpen, setIrisOpen] = useState(false)
@@ -74,80 +73,47 @@ export default function Step3Page() {
 
   const phase2Ref = useRef<HTMLDivElement>(null)
 
-  // Fire 3 FLUX renders in parallel as soon as the page mounts.
-  // This runs during Phase 1 animation (~8s) so renders are ready
-  // or nearly ready when the user reaches Phase 2.
+  // Load showcase images from anchor_renders on mount
   useEffect(() => {
-    const fireRenders = async () => {
-      // Skip if stock photo URLs not configured (dev without env vars)
-      if (!STOCK_PHOTOS[0].url) return
+    async function loadShowcaseImages() {
+      try {
+        const supabase = createBrowserClient()
 
-      const jobs = await Promise.all(
-        STOCK_PHOTOS.map(async (photo) => {
-          try {
-            const res = await fetch("/api/render", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                photo_url: photo.url,
-                fingerprint_vector: fingerprint,
-                room_type: photo.name.toLowerCase().replace(" ", "_"),
-                budget: [500, 5000], // will be overridden by store later
-                inclusions: [],
-                style_card_mode: true, // flag so API skips keep_mask/detect
-              }),
-            })
-            const data = await res.json()
-            return data.render_session_id as string | null
-          } catch {
-            return null
+        // Normalize room type to match anchor_renders format
+        const normalizedRoomType = (roomType ?? 'living_room')
+          .replace(/-/g, '_')
+          .toLowerCase()
+
+        const { data, error } = await supabase
+          .from('anchor_renders')
+          .select('image_url, label')
+          .eq('room_type', normalizedRoomType)
+          .limit(3)
+
+        if (error || !data || data.length === 0) {
+          // Fallback: query without room_type filter
+          const { data: fallback } = await supabase
+            .from('anchor_renders')
+            .select('image_url, label')
+            .limit(3)
+
+          if (fallback && fallback.length > 0) {
+            setRenderUrls(fallback.map(r => r.image_url))
+            setCardsLoaded([true, true, true])
           }
-        })
-      )
-      setRenderJobIds(jobs)
-    }
-    fireRenders()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Poll render jobs until all complete
-  useEffect(() => {
-    renderJobIds.forEach((jobId, i) => {
-      if (!jobId || renderUrls[i]) return
-
-      const poll = async () => {
-        try {
-          const res = await fetch(`/api/render/status?session_id=${jobId}`)
-          const data = await res.json()
-          if (data.render_url) {
-            setRenderUrls((prev) => {
-              const next = [...prev]
-              next[i] = data.render_url
-              return next
-            })
-            setCardsLoaded((prev) => {
-              const next = [...prev]
-              next[i] = true
-              return next
-            })
-          } else {
-            // Still processing — poll again in 3s
-            const timer = setTimeout(poll, 3000)
-            renderPollRef.current.push(timer)
-          }
-        } catch {
-          // Retry on error
-          const timer = setTimeout(poll, 5000)
-          renderPollRef.current.push(timer)
+          return
         }
-      }
-      poll()
-    })
 
-    return () => {
-      renderPollRef.current.forEach(clearTimeout)
-      renderPollRef.current = []
+        setRenderUrls(data.map(r => r.image_url))
+        setCardsLoaded([true, true, true])
+      } catch (err) {
+        console.error('Failed to load showcase images:', err)
+        // Leave renderUrls as [null, null, null] — cards will show shimmer
+      }
     }
-  }, [renderJobIds]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    void loadShowcaseImages()
+  }, [roomType])
 
   // Phase 1 animation sequence
   useEffect(() => {
@@ -299,32 +265,31 @@ export default function Step3Page() {
       setStyleName(newStyleName)
       setStyleChips(newStyleChips)
 
-      // Step 2: Fire 3 new renders with updated fingerprint
-      const newJobs = await Promise.all(
-        STOCK_PHOTOS.map(async (photo) => {
-          if (!photo.url) return null
-          try {
-            const res = await fetch("/api/render", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                photo_url: photo.url,
-                fingerprint_vector: newFingerprint,
-                room_type: photo.name.toLowerCase().replace(" ", "_"),
-                budget: [500, 5000],
-                inclusions: [],
-                style_card_mode: true,
-              }),
-            })
-            const data = await res.json()
-            return data.render_session_id as string | null
-          } catch {
-            return null
-          }
-        })
-      )
+      // Step 2: Reload showcase images from anchor_renders
+      const supabase = createBrowserClient()
+      const normalizedRoomType = (roomType ?? 'living_room')
+        .replace(/-/g, '_')
+        .toLowerCase()
 
-      setRenderJobIds(newJobs)
+      const { data, error } = await supabase
+        .from('anchor_renders')
+        .select('image_url, label')
+        .eq('room_type', normalizedRoomType)
+        .limit(3)
+
+      if (!error && data && data.length > 0) {
+        setRenderUrls(data.map(r => r.image_url))
+      } else {
+        const { data: fallback } = await supabase
+          .from('anchor_renders')
+          .select('image_url, label')
+          .limit(3)
+        if (fallback && fallback.length > 0) {
+          setRenderUrls(fallback.map(r => r.image_url))
+        }
+      }
+      setCardsLoaded([true, true, true])
+
       setAdjustText("")
       setSelectedChips([])
     } catch {
