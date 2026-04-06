@@ -38,6 +38,7 @@ interface ShopRoomProps {
   productsByItem: Record<string, MatchedProduct[]>
   isLoadingProducts: boolean
   onBuyClick: (product: MatchedProduct) => void
+  onRefreshItem?: (itemId: string, currentProductName: string) => void
   roomTotal?: number
   savings?: number | null
   accessories?: AccessoryProduct[]
@@ -258,6 +259,7 @@ export default function ShopRoom({
   productsByItem,
   isLoadingProducts,
   onBuyClick,
+  onRefreshItem,
   roomTotal = 0,
   savings = null,
   accessories = [],
@@ -687,6 +689,27 @@ export default function ShopRoom({
                   </p>
                 )}
               </div>
+
+              {/* Show me something different */}
+              {onRefreshItem && (
+                <button
+                  onClick={() => onRefreshItem(activeTab, currentProducts[0]?.name ?? '')}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontFamily: 'var(--font-sans)',
+                    fontSize: '12px',
+                    color: '#8A9BB5',
+                    padding: '8px 0',
+                    display: 'block',
+                    width: '100%',
+                    textAlign: 'left',
+                  }}
+                >
+                  ↻ Show me something different
+                </button>
+              )}
 
               {/* Complete the Look — accessory recommendations */}
               {accessories.length > 0 && (

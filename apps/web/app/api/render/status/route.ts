@@ -6,6 +6,17 @@ import type { InsertTables } from '@/types/supabase'
 
 const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN })
 
+// Quality gate: verify render URL is accessible and returns an image
+async function verifyRenderUrl(url: string): Promise<boolean> {
+  try {
+    const res = await fetch(url, { method: 'HEAD' })
+    const contentType = res.headers.get('content-type') ?? ''
+    return res.ok && contentType.startsWith('image/')
+  } catch {
+    return false
+  }
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const predictionId = searchParams.get('prediction_id')
@@ -56,6 +67,7 @@ export async function GET(request: NextRequest) {
       stage2_prediction_id?: string
       positive_prompt?: string
       style_strength?: number
+      quality_check_attempts?: number
     }
     const roomMeta = roomRaw as { pipeline_cost_log?: unknown; inpainting_mask_url?: string } | null
     const costLog = roomMeta?.pipeline_cost_log as CostLog | null
@@ -121,6 +133,27 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ status: 'failed', error: 'No output URL from Stage 2 render' })
       }
 
+      // Quality gate — verify Stage 2 render URL
+      const stage2QAAttempts = costLog.quality_check_attempts ?? 0
+      const stage2Valid = await verifyRenderUrl(finalRenderUrl)
+
+      if (!stage2Valid && stage2QAAttempts < 2) {
+        await admin
+          .from('rooms')
+          .update({
+            pipeline_cost_log: { ...costLog, quality_check_attempts: stage2QAAttempts + 1 },
+          } as Record<string, unknown>)
+          .eq('id', roomId)
+        return NextResponse.json({ status: 'processing' })
+      }
+
+      if (!stage2Valid && stage2QAAttempts >= 2) {
+        return NextResponse.json({
+          status: 'failed',
+          error: 'Render quality check failed after retries',
+        })
+      }
+
       const prompt = costLog.positive_prompt ?? ''
       const styleStrength = costLog.style_strength ?? 0.85
 
@@ -162,6 +195,34 @@ export async function GET(request: NextRequest) {
 
     if (!renderUrl) {
       return NextResponse.json({ status: 'failed', error: 'No output URL from render' })
+    }
+
+    // Quality gate — verify single-stage render URL
+    const { data: roomQA } = await admin
+      .from('rooms')
+      .select('pipeline_cost_log')
+      .eq('id', roomId)
+      .single()
+
+    const qaCostLog = (roomQA?.pipeline_cost_log ?? {}) as Record<string, unknown>
+    const qaAttempts = (qaCostLog.quality_check_attempts as number) ?? 0
+    const singleStageValid = await verifyRenderUrl(renderUrl)
+
+    if (!singleStageValid && qaAttempts < 2) {
+      await admin
+        .from('rooms')
+        .update({
+          pipeline_cost_log: { ...qaCostLog, quality_check_attempts: qaAttempts + 1 },
+        } as Record<string, unknown>)
+        .eq('id', roomId)
+      return NextResponse.json({ status: 'processing' })
+    }
+
+    if (!singleStageValid && qaAttempts >= 2) {
+      return NextResponse.json({
+        status: 'failed',
+        error: 'Render quality check failed after retries',
+      })
     }
 
     const input = prediction.input as Record<string, unknown> | undefined

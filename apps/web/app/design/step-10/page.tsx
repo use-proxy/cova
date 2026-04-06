@@ -8,6 +8,7 @@ import { useSessionStore } from '@/lib/store/session'
 import { createBrowserClient } from '@/lib/supabase/client'
 import ShopRoom, { type DetectedItem, type MatchedProduct } from '@/components/cova/ShopRoom'
 import { StepIndicator } from '@/components/cova/StepIndicator'
+import { optimizeRoomSelection } from '@/lib/ai/budget'
 import type { KeepMaskItem } from '@/lib/store/room'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -217,7 +218,46 @@ export default function Step10Page() {
         // Coherence check is non-critical — continue without it
       }
 
-      setProductsByItem(byItem)
+      // Run room-level budget optimizer
+      if (budgetRange) {
+        const optimizerInput: Record<string, Array<{ id: string; price: number }>> = {}
+        Object.entries(byItem).forEach(([itemId, products]) => {
+          optimizerInput[itemId] = products.map(p => ({ id: p.id, price: p.price }))
+        })
+
+        const { selectedIndices, totalCost, wasOptimized } =
+          optimizeRoomSelection(optimizerInput, budgetRange)
+
+        void wasOptimized // suppress lint
+
+        // Reorder products so the optimizer's selection is at index 0
+        const optimizedByItem: typeof byItem = {}
+        Object.entries(byItem).forEach(([itemId, products]) => {
+          const selectedIdx = selectedIndices[itemId] ?? 0
+          if (selectedIdx === 0) {
+            optimizedByItem[itemId] = products
+          } else {
+            optimizedByItem[itemId] = [
+              products[selectedIdx],
+              ...products.slice(0, selectedIdx),
+              ...products.slice(selectedIdx + 1),
+            ].filter(Boolean) as MatchedProduct[]
+          }
+        })
+
+        setProductsByItem(optimizedByItem)
+        setRoomTotal(totalCost)
+
+        const budgetMax = budgetRange[1]
+        setSavings(budgetMax > totalCost ? budgetMax - totalCost : null)
+      } else {
+        // No budget range — compute total from top products only
+        const total = Object.values(byItem)
+          .reduce((sum, products) => sum + (products[0]?.price ?? 0), 0)
+        setRoomTotal(Math.round(total))
+        setProductsByItem(byItem)
+      }
+
       setIsLoadingProducts(false)
 
       // Accessories pass — runs after products are shown
@@ -245,6 +285,50 @@ export default function Step10Page() {
 
     void fireAllMatches()
   }, [detections, renderUrl, fingerprint, budgetRange, roomType, roomId, primaryWallUsableInches]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleRefreshItem = useCallback(
+    async (itemId: string, currentProductName: string) => {
+      const detection = displayDetections.find(d => d.id === itemId)
+      if (!detection || !renderUrl || !roomId) return
+
+      // Mark this item as loading (empty array triggers skeleton cards)
+      setProductsByItem(prev => ({ ...prev, [itemId]: [] }))
+
+      try {
+        const exclusionHint = currentProductName
+          ? `NOT "${currentProductName}" style — show different aesthetic`
+          : 'different style alternative'
+
+        const res = await fetch('/api/match', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            render_url: renderUrl,
+            item_id: detection.id,
+            item_label: `${detection.label} ${exclusionHint}`,
+            item_bbox: detection.bbox ?? [0, 0, 1, 1],
+            item_keep: detection.keep ?? null,
+            fingerprint_vector: fingerprint,
+            budget_range: budgetRange,
+            room_type: roomType,
+            room_id: roomId,
+            primary_wall_usable_inches:
+              roomLength && roomWidth
+                ? Math.max(roomLength, roomWidth) * 12
+                : undefined,
+          }),
+        })
+
+        if (res.ok) {
+          const data = await res.json() as { products: MatchedProduct[] }
+          setProductsByItem(prev => ({ ...prev, [itemId]: data.products }))
+        }
+      } catch {
+        // On error, restore empty state — user can tap again
+      }
+    },
+    [displayDetections, renderUrl, roomId, fingerprint, budgetRange, roomType, roomLength, roomWidth]
+  )
 
   const handleBuyClick = useCallback(
     async (product: MatchedProduct) => {
@@ -282,6 +366,7 @@ export default function Step10Page() {
         productsByItem={productsByItem}
         isLoadingProducts={isLoadingProducts}
         onBuyClick={handleBuyClick}
+        onRefreshItem={handleRefreshItem}
         roomTotal={roomTotal}
         savings={savings}
         accessories={accessories}
