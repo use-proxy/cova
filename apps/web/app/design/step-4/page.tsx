@@ -6,6 +6,7 @@ import { Check, Plus, X } from "lucide-react";
 import { useFingerprintStore, useSessionStore } from "@/lib/store";
 import type { WallLayout } from "@/lib/store/fingerprint";
 import { StepIndicator } from "@/components/cova/StepIndicator";
+import { parseMeasurementParams, isIOS, isAndroid } from "@/lib/measureBridge";
 
 // Color constants
 const colors = {
@@ -1008,6 +1009,26 @@ export default function Step4Page() {
   const [customInclusion, setCustomInclusion] = useState("");
   const [customItems, setCustomItems] = useState<string[]>([]);
   const [pulsedChip, setPulsedChip] = useState<string | null>(null);
+  const [measurementSource, setMeasurementSource] = useState<'shortcut' | null>(null);
+  const [deviceType, setDeviceType] = useState<'ios' | 'android' | 'desktop'>('desktop');
+
+  // Pre-fill from Siri Shortcut URL params on mount (window.location avoids Suspense requirement)
+  useEffect(() => {
+    const params = parseMeasurementParams(new URLSearchParams(window.location.search));
+    if (params.source === 'shortcut') {
+      if (params.length) setLength(String(params.length));
+      if (params.width) setWidth(String(params.width));
+      if (params.ceiling) setCeilingHeight(String(params.ceiling));
+      setMeasurementSource('shortcut');
+    }
+  }, []);
+
+  // Detect device type client-side
+  useEffect(() => {
+    if (isIOS()) setDeviceType('ios');
+    else if (isAndroid()) setDeviceType('android');
+    else setDeviceType('desktop');
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -1199,6 +1220,64 @@ export default function Step4Page() {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Measurement helper */}
+            <div
+              style={{
+                marginBottom: '16px',
+                padding: '12px 16px',
+                borderRadius: '12px',
+                background: colors.surface2,
+                border: `1px solid ${colors.goldBorder}`,
+              }}
+            >
+              {measurementSource === 'shortcut' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ color: '#4A9B7F', fontSize: '14px' }}>✓</span>
+                  <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: colors.ivory }}>
+                    Dimensions imported from Apple Measure
+                  </span>
+                </div>
+              )}
+
+              {deviceType === 'ios' && measurementSource !== 'shortcut' && (
+                <>
+                  <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: colors.ivory, marginBottom: '8px' }}>
+                    Get exact measurements with Apple Measure
+                  </p>
+                  <a
+                    href="https://www.icloud.com/shortcuts/placeholder"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'inline-block',
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      background: colors.gold,
+                      color: colors.navy,
+                      fontFamily: 'Inter, sans-serif',
+                      fontSize: '13px',
+                      fontWeight: 500,
+                      textDecoration: 'none',
+                    }}
+                  >
+                    Get Measure Shortcut
+                  </a>
+                </>
+              )}
+
+              {deviceType === 'android' && measurementSource !== 'shortcut' && (
+                <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: colors.muted }}>
+                  💡 Use Google Measure app or a tape measure for accurate dimensions
+                </p>
+              )}
+
+              {deviceType === 'desktop' && measurementSource !== 'shortcut' && (
+                <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: colors.muted }}>
+                  💡 Tip: Use the Apple Measure app on your iPhone to get exact dimensions
+                </p>
+              )}
             </div>
 
             {/* 2x2 grid */}
