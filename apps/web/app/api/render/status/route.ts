@@ -7,16 +7,6 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN })
 
-// Quality gate: verify render URL is accessible and returns an image
-async function verifyRenderUrl(url: string): Promise<boolean> {
-  try {
-    const res = await fetch(url, { method: 'HEAD' })
-    return res.ok
-  } catch {
-    return false
-  }
-}
-
 // Async re-detection on the rendered image.
 // Rendered images are clean AI images — GroundingDINO gets better results on them.
 // Merges render detections with user's keep=true choices from the original photo.
@@ -215,25 +205,10 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ status: 'failed', error: 'No output URL from Stage 2 render' })
       }
 
-      // Quality gate — verify Stage 2 render URL
-      const stage2QAAttempts = costLog.quality_check_attempts ?? 0
-      const stage2Valid = await verifyRenderUrl(finalRenderUrl)
-
-      if (!stage2Valid && stage2QAAttempts < 2) {
-        await admin
-          .from('rooms')
-          .update({
-            pipeline_cost_log: { ...costLog, quality_check_attempts: stage2QAAttempts + 1 },
-          } as Record<string, unknown>)
-          .eq('id', roomId)
-        return NextResponse.json({ status: 'processing' })
-      }
-
-      if (!stage2Valid && stage2QAAttempts >= 2) {
-        return NextResponse.json({
-          status: 'failed',
-          error: 'Render quality check failed after retries',
-        })
+      // Quality gate — URL existence check (CDN HEAD requests are not reliably requestable from server)
+      const stage2Valid = typeof finalRenderUrl === 'string' && finalRenderUrl.startsWith('http')
+      if (!stage2Valid) {
+        return NextResponse.json({ status: 'failed', error: 'No valid output URL from Stage 2 render' })
       }
 
       const prompt = costLog.positive_prompt ?? ''
@@ -282,32 +257,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ status: 'failed', error: 'No output URL from render' })
     }
 
-    // Quality gate — verify single-stage render URL
-    const { data: roomQA } = await admin
-      .from('rooms')
-      .select('pipeline_cost_log')
-      .eq('id', roomId)
-      .single()
-
-    const qaCostLog = (roomQA?.pipeline_cost_log ?? {}) as Record<string, unknown>
-    const qaAttempts = (qaCostLog.quality_check_attempts as number) ?? 0
-    const singleStageValid = await verifyRenderUrl(renderUrl)
-
-    if (!singleStageValid && qaAttempts < 2) {
-      await admin
-        .from('rooms')
-        .update({
-          pipeline_cost_log: { ...qaCostLog, quality_check_attempts: qaAttempts + 1 },
-        } as Record<string, unknown>)
-        .eq('id', roomId)
-      return NextResponse.json({ status: 'processing' })
-    }
-
-    if (!singleStageValid && qaAttempts >= 2) {
-      return NextResponse.json({
-        status: 'failed',
-        error: 'Render quality check failed after retries',
-      })
+    // Quality gate — URL existence check (CDN HEAD requests are not reliably requestable from server)
+    const singleStageValid = typeof renderUrl === 'string' && renderUrl.startsWith('http')
+    if (!singleStageValid) {
+      return NextResponse.json({ status: 'failed', error: 'No valid output URL from render' })
     }
 
     const input = prediction.input as Record<string, unknown> | undefined
