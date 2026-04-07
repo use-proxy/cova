@@ -37,10 +37,13 @@ export default function StyleQuizPage() {
   // Progress width — genuine 0–100% through the quiz
   const progressWidth = (((currentPair + 1) / TOTAL_PAIRS) * 100).toFixed(1);
 
-  // Call fingerprint API then navigate to step-3
+  // Call fingerprint API then navigate to step-4
   const completeQuiz = useCallback(
     async (finalResponses: Response[]) => {
       try {
+        // Guard: no responses means all pairs were skipped — skip API call
+        if (finalResponses.length === 0) return
+
         const apiResponses = finalResponses.map((r) => ({
           pair_id: r.pairId,
           chosen: r.chosen,

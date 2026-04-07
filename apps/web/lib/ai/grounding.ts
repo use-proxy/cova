@@ -91,6 +91,53 @@ const SAM_FURNITURE_PROMPT =
   'tv, television, monitor, plant, artwork, painting, picture frame, wall art, wall decoration, ' +
   'mirror, cabinet, shelf, ottoman, bench, throw pillow, pillow, blanket, vase'
 
+// Remove repeated words in GroundingDINO labels ("pillow pillow" → "Pillow",
+// "curtain curtains blinds" → "Curtain blinds")
+function cleanLabel(raw: string): string {
+  const words = raw.toLowerCase().split(/\s+/).filter(Boolean)
+  const seen = new Set<string>()
+  const unique: string[] = []
+  for (const w of words) {
+    if (!seen.has(w)) {
+      seen.add(w)
+      unique.push(w)
+    }
+  }
+  if (unique.length === 0) return raw
+  unique[0] = unique[0]!.charAt(0).toUpperCase() + unique[0]!.slice(1)
+  return unique.join(' ')
+}
+
+// IoU between two [x, y, w, h] normalized bboxes
+function computeIoU(
+  a: [number, number, number, number],
+  b: [number, number, number, number],
+): number {
+  const ax2 = a[0] + a[2], ay2 = a[1] + a[3]
+  const bx2 = b[0] + b[2], by2 = b[1] + b[3]
+  const ix1 = Math.max(a[0], b[0]), iy1 = Math.max(a[1], b[1])
+  const ix2 = Math.min(ax2, bx2), iy2 = Math.min(ay2, by2)
+  const iw = Math.max(0, ix2 - ix1), ih = Math.max(0, iy2 - iy1)
+  const inter = iw * ih
+  const union = a[2] * a[3] + b[2] * b[3] - inter
+  return union > 0 ? inter / union : 0
+}
+
+// Keep highest-confidence detection when two boxes overlap heavily (IoU > threshold)
+function deduplicateByIoU<T extends { bbox: [number, number, number, number]; confidence: number }>(
+  items: T[],
+  threshold = 0.85,
+): T[] {
+  const sorted = [...items].sort((a, b) => b.confidence - a.confidence)
+  const kept: T[] = []
+  for (const item of sorted) {
+    if (!kept.some((k) => computeIoU(k.bbox, item.bbox) > threshold)) {
+      kept.push(item)
+    }
+  }
+  return kept
+}
+
 async function toBase64DataUri(url: string): Promise<string> {
   const response = await fetch(url)
   if (!response.ok) {
@@ -171,15 +218,17 @@ export async function detectFurniture(photoUrl: string): Promise<Detection[]> {
 
     if (!output.detections) return []
 
-    const detections = output.detections
-      .filter((d) => d.confidence >= 0.35)
-      .map((d) => ({
-        type: 'furniture',
-        label: d.label,
-        bbox: normalizeBbox(d.bbox, imgW, imgH),
-        confidence: d.confidence,
-        showToUser: d.confidence >= 0.35,
-      }))
+    const detections = deduplicateByIoU(
+      output.detections
+        .filter((d) => d.confidence >= 0.35)
+        .map((d) => ({
+          type: 'furniture',
+          label: cleanLabel(d.label),
+          bbox: normalizeBbox(d.bbox, imgW, imgH),
+          confidence: d.confidence,
+          showToUser: d.confidence >= 0.35,
+        }))
+    )
 
     // Fire SAM call only if we have detections — it's slow (~71s) and expensive ($0.068)
     if (detections.length === 0) return detections
@@ -218,15 +267,17 @@ export async function detectArchitecture(photoUrl: string): Promise<Detection[]>
 
     if (!output.detections) return []
 
-    return output.detections
-      .filter((d) => d.confidence >= 0.35)
-      .map((d) => ({
-        type: 'architecture',
-        label: d.label,
-        bbox: normalizeBbox(d.bbox, imgW, imgH),
-        confidence: d.confidence,
-        showToUser: d.confidence >= 0.35,
-      }))
+    return deduplicateByIoU(
+      output.detections
+        .filter((d) => d.confidence >= 0.35)
+        .map((d) => ({
+          type: 'architecture',
+          label: cleanLabel(d.label),
+          bbox: normalizeBbox(d.bbox, imgW, imgH),
+          confidence: d.confidence,
+          showToUser: d.confidence >= 0.35,
+        }))
+    )
   } catch {
     return []
   }

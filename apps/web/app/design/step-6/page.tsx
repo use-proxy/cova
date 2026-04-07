@@ -48,7 +48,7 @@ function getEmoji(label: string): string {
 // ─── Stable dot ID ─────────────────────────────────────────────────────────
 
 function dotId(item: KeepMaskItem): string {
-  return `${item.label}-${item.bbox[0].toFixed(0)}-${item.bbox[1].toFixed(0)}`
+  return `${item.label}-${item.bbox[0].toFixed(4)}-${item.bbox[1].toFixed(4)}-${item.bbox[2].toFixed(4)}-${item.bbox[3].toFixed(4)}`
 }
 
 // ─── Loading Screen ─────────────────────────────────────────────────────────
@@ -488,7 +488,7 @@ export default function Step6Page() {
 
           return (
             <button
-              key={id}
+              key={`${id}-${idx}`}
               aria-label={`${item.label} — ${state}`}
               onClick={(e) => {
                 e.stopPropagation()
@@ -544,7 +544,7 @@ export default function Step6Page() {
           className="overflow-y-auto px-5"
           style={{ flex: 1, paddingBottom: 80 }}
         >
-          {visibleDetections.map((item) => {
+          {visibleDetections.map((item, idx) => {
             const id = dotId(item)
             const isHighlighted = selectedId === id
             const state = keepToState(item.keep)
@@ -561,7 +561,7 @@ export default function Step6Page() {
 
             return (
               <div
-                key={id}
+                key={`${id}-${idx}`}
                 ref={(el) => { itemRefs.current[id] = el }}
                 onClick={() => setSelectedId((prev) => (prev === id ? null : id))}
                 className="flex items-center justify-between rounded-lg transition-colors duration-150"

@@ -14,7 +14,7 @@
  * rectangle approach is used.
  */
 
-import { deflateSync, inflateSync } from 'zlib'
+import { deflateSync } from 'zlib'
 import sharp from 'sharp'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import type { KeepMaskItem } from '@/lib/store/room'
@@ -108,7 +108,9 @@ function encodePng(
 
 // ── SAM mask post-processing ──────────────────────────────────────────────────
 
-async function downloadAndDecodeMaskPng(
+// Decode the SAM mask using sharp — handles PNG, JPEG, WebP, and any other
+// format that Replicate's CDN might serve, regardless of Content-Type.
+async function downloadAndDecodeMask(
   maskUrl: string,
   targetWidth: number,
   targetHeight: number,
@@ -116,67 +118,15 @@ async function downloadAndDecodeMaskPng(
   try {
     const res = await fetch(maskUrl)
     if (!res.ok) return null
-    const buffer = await res.arrayBuffer()
-    const bytes = new Uint8Array(buffer)
+    const buffer = Buffer.from(await res.arrayBuffer())
 
-    const PNG_SIG = [137, 80, 78, 71, 13, 10, 26, 10]
-    const isPng = PNG_SIG.every((b, i) => bytes[i] === b)
-    if (!isPng) {
-      console.warn('[inpainting] SAM mask is not PNG — falling back to bbox')
-      return null
-    }
+    const { data } = await sharp(buffer)
+      .resize(targetWidth, targetHeight, { kernel: 'nearest' })
+      .grayscale()
+      .raw()
+      .toBuffer({ resolveWithObject: true })
 
-    const srcWidth =
-      ((bytes[16] ?? 0) << 24) | ((bytes[17] ?? 0) << 16) |
-      ((bytes[18] ?? 0) << 8) | (bytes[19] ?? 0)
-    const srcHeight =
-      ((bytes[20] ?? 0) << 24) | ((bytes[21] ?? 0) << 16) |
-      ((bytes[22] ?? 0) << 8) | (bytes[23] ?? 0)
-
-    if (srcWidth <= 0 || srcHeight <= 0) return null
-
-    const idatChunks: Uint8Array[] = []
-    let pos = 8
-    while (pos + 12 <= bytes.length) {
-      const chunkLen =
-        ((bytes[pos] ?? 0) << 24) | ((bytes[pos + 1] ?? 0) << 16) |
-        ((bytes[pos + 2] ?? 0) << 8) | (bytes[pos + 3] ?? 0)
-      const chunkType = String.fromCharCode(
-        bytes[pos + 4] ?? 0, bytes[pos + 5] ?? 0,
-        bytes[pos + 6] ?? 0, bytes[pos + 7] ?? 0,
-      )
-      if (chunkType === 'IDAT') {
-        idatChunks.push(bytes.slice(pos + 8, pos + 8 + chunkLen))
-      }
-      pos += 12 + chunkLen
-    }
-    if (idatChunks.length === 0) return null
-
-    const combined = concat(...idatChunks)
-    const rawData = inflateSync(Buffer.from(combined))
-
-    const colorType = bytes[25] ?? 0
-    const channels = colorType === 2 ? 3 : colorType === 6 ? 4 : 1
-    const rowStride = 1 + srcWidth * channels
-
-    const srcPixels = new Uint8Array(srcWidth * srcHeight)
-    for (let y = 0; y < srcHeight; y++) {
-      const rowStart = y * rowStride + 1
-      for (let x = 0; x < srcWidth; x++) {
-        srcPixels[y * srcWidth + x] = rawData[rowStart + x * channels] ?? 0
-      }
-    }
-
-    const scaled = new Uint8Array(targetWidth * targetHeight)
-    for (let y = 0; y < targetHeight; y++) {
-      for (let x = 0; x < targetWidth; x++) {
-        const srcX = Math.min(srcWidth - 1, Math.round(x * srcWidth / targetWidth))
-        const srcY = Math.min(srcHeight - 1, Math.round(y * srcHeight / targetHeight))
-        scaled[y * targetWidth + x] = srcPixels[srcY * srcWidth + srcX] ?? 0
-      }
-    }
-
-    return scaled
+    return new Uint8Array(data)
   } catch (err) {
     console.error('[inpainting] mask decode error:', err)
     return null
@@ -316,7 +266,7 @@ export async function generateInpaintingMask(
   let pngData: Uint8Array
 
   if (samMaskUrl) {
-    const rawPixels = await downloadAndDecodeMaskPng(samMaskUrl, maskWidth, maskHeight)
+    const rawPixels = await downloadAndDecodeMask(samMaskUrl, maskWidth, maskHeight)
 
     if (rawPixels) {
       const processed = postProcessMask(rawPixels, maskWidth, maskHeight)
