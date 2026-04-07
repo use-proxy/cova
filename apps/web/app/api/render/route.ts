@@ -1,12 +1,11 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { buildFluxPrompt, type RoomPhysicalContext } from '@/lib/ai/flux'
+import { buildFluxPrompt, submitRender, type RoomPhysicalContext } from '@/lib/ai/flux'
 import { generateInpaintingMask } from '@/lib/ai/inpainting'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { NextResponse } from 'next/server'
-import Replicate from 'replicate'
 import Anthropic from '@anthropic-ai/sdk'
+import type { StyleFingerprint } from '@/types/fingerprint'
 
-const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN })
 const anthropic = new Anthropic()
 
 interface RenderRequestBody {
@@ -19,11 +18,12 @@ interface RenderRequestBody {
     keep: boolean | null
     label: string
   }> | null
-  fingerprint_vector: number[]
+  fingerprint_vector: StyleFingerprint
   room_type: string
   budget: 'budget' | 'mid' | 'premium' | 'luxury'
   inclusions: string[]
   constraints: string[]
+  reference_image_urls?: string[]
   room_id: string
   style_strength?: number
   refinement_text?: string
@@ -69,18 +69,10 @@ export async function POST(request: Request) {
       room_type,
       budget,
       inclusions,
-      constraints,
+      reference_image_urls,
       room_id,
       style_strength = 0.85,
       refinement_text,
-      room_length,
-      room_width,
-      ceiling_height,
-      natural_light,
-      floor_type,
-      wall_finish,
-      fixed_elements,
-      wall_layout,
       showcase_mode,
     } = body
 
@@ -90,41 +82,15 @@ export async function POST(request: Request) {
 
     // Showcase mode: skip inpainting mask and DB writes
     if (showcase_mode) {
-      const { positive } = buildFluxPrompt(
+      const prompt = buildFluxPrompt(
         fingerprint_vector,
         room_type,
         budget ?? 'mid',
         inclusions ?? [],
-        constraints ?? [],
-        undefined
       )
-      const prediction = await replicate.predictions.create({
-        model: 'black-forest-labs/flux-kontext-pro',
-        input: {
-          prompt: positive,
-          input_image: photo_url,
-          guidance: (style_strength ?? 0.85) * 10,
-          output_format: 'jpg',
-          output_quality: 90,
-          safety_tolerance: 2,
-        },
-      })
-      return NextResponse.json({ prediction_id: prediction.id })
+      const predictionId = await submitRender(photo_url, reference_image_urls ?? [], prompt)
+      return NextResponse.json({ prediction_id: predictionId })
     }
-
-    const roomContext: RoomPhysicalContext | undefined =
-      room_length || room_width || ceiling_height || natural_light || floor_type || wall_finish
-        ? {
-            roomLength: room_length ?? null,
-            roomWidth: room_width ?? null,
-            ceilingHeight: ceiling_height ?? null,
-            naturalLight: natural_light ?? null,
-            floorType: floor_type ?? null,
-            wallFinish: wall_finish ?? null,
-            fixedElements: fixed_elements ?? [],
-            wallLayout: wall_layout ?? null,
-          }
-        : undefined
 
     const keptItems = keep_mask?.filter(m => m.keep === true) ?? []
 
@@ -132,13 +98,11 @@ export async function POST(request: Request) {
       ? await generateInpaintingMask(photo_url, keep_mask!, room_id)
       : null
 
-    const { positive: positiveBase, negative } = buildFluxPrompt(
+    const positiveBase = buildFluxPrompt(
       fingerprint_vector,
       room_type,
       budget,
       inclusions ?? [],
-      constraints ?? [],
-      roomContext,
       keptItems.map(m => m.label),
     )
 
@@ -165,21 +129,11 @@ Modify the prompt to incorporate the user's instruction while preserving the cor
       }
     }
 
-    let prediction: { id: string }
+    let predictionId: string
 
     if (inpaintingMaskUrl) {
-      // TWO-STAGE RENDER: kontext generates full redesign, fill-pro preserves kept items via mask
-      const stage1 = await replicate.predictions.create({
-        model: 'black-forest-labs/flux-kontext-pro',
-        input: {
-          prompt: positive,
-          input_image: photo_url,
-          guidance: style_strength * 10,
-          output_format: 'jpg',
-          output_quality: 90,
-          safety_tolerance: 2,
-        },
-      })
+      // TWO-STAGE RENDER: FLUX.2 [pro] generates full redesign, fill-pro preserves kept items via mask
+      predictionId = await submitRender(photo_url, reference_image_urls ?? [], positive)
 
       // Store stage info in rooms so status route can orchestrate Stage 2
       await supabase
@@ -188,34 +142,19 @@ Modify the prompt to incorporate the user's instruction while preserving the cor
           inpainting_mask_url: inpaintingMaskUrl,
           pipeline_cost_log: {
             two_stage: true,
-            stage1_prediction_id: stage1.id,
+            stage1_prediction_id: predictionId,
             stage2_pending: true,
             positive_prompt: positive,
             style_strength: style_strength ?? 0.85,
           },
         } as Record<string, unknown>)
         .eq('id', room_id)
-
-      prediction = stage1
     } else {
       // SINGLE STAGE: no keep mask, regenerate everything
-      prediction = await replicate.predictions.create({
-        model: 'black-forest-labs/flux-kontext-pro',
-        input: {
-          prompt: positive,
-          input_image: photo_url,
-          guidance: style_strength * 10,
-          output_format: 'jpg',
-          output_quality: 90,
-          safety_tolerance: 2,
-          _room_id: room_id,
-          _negative_prompt: negative,
-          _style_strength: style_strength,
-        },
-      })
+      predictionId = await submitRender(photo_url, reference_image_urls ?? [], positive)
     }
 
-    return NextResponse.json({ prediction_id: prediction.id })
+    return NextResponse.json({ prediction_id: predictionId })
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Internal server error'
     return NextResponse.json({ error: message }, { status: 500 })

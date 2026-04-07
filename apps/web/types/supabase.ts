@@ -36,7 +36,9 @@ export interface Database {
         Row: {
           id: string
           user_id: string
-          vector_data: Json
+          dimensions: Json
+          covariance: Json
+          confidence: number
           style_name: string | null
           room_type: string | null
           budget_tier: string | null
@@ -47,7 +49,9 @@ export interface Database {
         Insert: {
           id?: string
           user_id: string
-          vector_data?: Json
+          dimensions?: Json
+          covariance?: Json
+          confidence?: number
           style_name?: string | null
           room_type?: string | null
           budget_tier?: string | null
@@ -58,7 +62,9 @@ export interface Database {
         Update: {
           id?: string
           user_id?: string
-          vector_data?: Json
+          dimensions?: Json
+          covariance?: Json
+          confidence?: number
           style_name?: string | null
           room_type?: string | null
           budget_tier?: string | null

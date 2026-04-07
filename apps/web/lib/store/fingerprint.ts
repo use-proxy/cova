@@ -1,5 +1,8 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
+import type { StyleFingerprint } from '@/types/fingerprint'
+
+export type { StyleFingerprint }
 
 type BudgetTier = 'budget' | 'mid' | 'premium' | 'luxury'
 type EntryPath = 'pairs' | 'natural_language' | 'inspo_photo'
@@ -23,7 +26,7 @@ interface FingerprintState {
   budgetTier: BudgetTier | null
   budgetRange: [number, number] | null
   quizResponses: QuizResponse[]
-  fingerprint: number[] | null
+  fingerprint: StyleFingerprint | null
   styleName: string | null
   entryPath: EntryPath | null
   dimensions: Dimensions | null
@@ -44,7 +47,7 @@ interface FingerprintState {
   setRoomType: (roomType: string) => void
   setBudget: (tier: BudgetTier, range: [number, number]) => void
   addQuizResponse: (response: QuizResponse) => void
-  setFingerprint: (fingerprint: number[], styleName: string) => void
+  setFingerprint: (fingerprint: StyleFingerprint, styleName: string) => void
   setEntryPath: (path: EntryPath) => void
   setDimensions: (dimensions: Dimensions) => void
   toggleConstraint: (constraint: string) => void

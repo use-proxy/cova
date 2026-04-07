@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import type { StyleFingerprint } from '@/types/fingerprint'
 
 interface MatchedProductSummary {
   id: string
@@ -19,7 +20,7 @@ interface MatchedProductSummary {
 interface CoherenceRequestBody {
   productsByItem: Record<string, MatchedProductSummary[]>
   styleName: string
-  fingerprint: number[]
+  fingerprint: StyleFingerprint
   roomType: string
   keptItemLabels: string[]
 }

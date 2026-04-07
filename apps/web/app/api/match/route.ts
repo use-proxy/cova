@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { checkRateLimit } from '@/lib/rateLimit'
+import type { StyleFingerprint } from '@/types/fingerprint'
 import { cropAndUploadRenderRegion } from '@/lib/ai/renderCrop'
 import { searchProducts, buildSearchQuery, isTechItem, type SerperProduct } from '@/lib/ai/serper'
 import { getItemBudgetTarget } from '@/lib/ai/budget'
@@ -19,7 +20,7 @@ interface MatchRequestBody {
   item_label: string
   item_bbox: [number, number, number, number]  // [x,y,w,h] fractions
   item_keep: boolean | null
-  fingerprint_vector: number[]
+  fingerprint_vector: StyleFingerprint
   budget_range: [number, number] | null
   room_type: string
   room_id: string

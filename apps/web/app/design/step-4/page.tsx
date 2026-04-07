@@ -6,18 +6,28 @@ import { useFingerprintStore } from "@/lib/store"
 import { useSessionStore } from "@/lib/store/session"
 import { StepIndicator } from "@/components/cova/StepIndicator"
 import { createBrowserClient } from "@/lib/supabase/client"
+import type { StyleFingerprint } from "@/types/fingerprint"
 
 const axisLabels = ["Luminosity", "Temperature", "Form", "Texture", "Nature", "Scale"]
 const adjustChips = ["Warmer", "Cooler", "More minimal", "More layered", "More modern", "More classic"]
 
 // Fallback palette derived from fingerprint values
-function derivepalette(fp: number[]): string[] {
-  const warm = fp[2] > 0.5 // temperature
-  const bright = fp[0] > 0.5 // luminosity
+function derivepalette(fp: StyleFingerprint): string[] {
+  const warm = fp.dimensions.temperature > 0
+  const bright = fp.dimensions.luminosity > 0
   if (warm && bright) return ["#C9A84C", "#D4956A", "#8B6914", "#F5E6C8", "#3D2010"]
   if (warm && !bright) return ["#8B6914", "#5C3D1A", "#3D2010", "#C9A84C", "#1A0E08"]
   if (!warm && bright) return ["#8A9BB5", "#6A8AA0", "#4A6E8A", "#F5F0E8", "#1A2A3A"]
   return ["#4A5E7A", "#2A3A4A", "#1A2A3A", "#8A9BB5", "#091829"]
+}
+
+const DEFAULT_FINGERPRINT: StyleFingerprint = {
+  dimensions: {
+    luminosity: 0.4, density: -0.4, temperature: 0.6, form: 0.4,
+    era: -0.2, texture: 0.2, scale: 0.0, nature: 0.0, saturation: 0.0, materialOrigin: 0.0,
+  },
+  covariance: Array(10).fill(Array(10).fill(0)) as number[][],
+  confidence: 0.8,
 }
 
 // mock data for palette animation (uses derived palette length)
@@ -31,8 +41,8 @@ export default function Step4Page() {
   const { fingerprint: storedFingerprint, styleName: storedStyleName, roomType, budgetTier, showcasePredictionIds, setShowcasePredictionIds, setFingerprint: setStoreFingerprint } = useFingerprintStore()
 
   // Fall back to mock if store empty (direct navigation in dev)
-  const [fingerprint, setFingerprint] = useState<number[]>(
-    storedFingerprint ?? [0.7, 0.3, 0.8, 0.7, 0.4, 0.6, 0.5, 0.5, 0.5, 0.5]
+  const [fingerprint, setFingerprint] = useState<StyleFingerprint>(
+    storedFingerprint ?? DEFAULT_FINGERPRINT
   )
   const [styleName] = useState(storedStyleName ?? "Warm Artisan")
   const [styleChips] = useState<string[]>([
@@ -270,20 +280,24 @@ export default function Step4Page() {
     setShowcaseImages([null, null, null])
     setFeelRightVisible(false)
 
-    // Apply chip adjustments directly to fingerprint dimensions
-    const adjustmentMap: Record<string, Record<number, number>> = {
-      'Warmer':       { 2: Math.min(1, (fingerprint[2] ?? 0.5) + 0.2) },
-      'Cooler':       { 2: Math.max(0, (fingerprint[2] ?? 0.5) - 0.2) },
-      'More minimal': { 1: Math.max(0, (fingerprint[1] ?? 0.5) - 0.2) },
-      'More layered': { 1: Math.min(1, (fingerprint[1] ?? 0.5) + 0.2) },
-      'More modern':  { 4: Math.max(0, (fingerprint[4] ?? 0.5) - 0.2) },
-      'More classic': { 4: Math.min(1, (fingerprint[4] ?? 0.5) + 0.2) },
+    // Apply chip adjustments directly to fingerprint dimensions ([-1,1] range, ±0.4 steps)
+    const d = fingerprint.dimensions
+    const adjustmentMap: Record<string, Partial<StyleFingerprint['dimensions']>> = {
+      'Warmer':       { temperature: Math.min(1, d.temperature + 0.4) },
+      'Cooler':       { temperature: Math.max(-1, d.temperature - 0.4) },
+      'More minimal': { density: Math.max(-1, d.density - 0.4) },
+      'More layered': { density: Math.min(1, d.density + 0.4) },
+      'More modern':  { era: Math.max(-1, d.era - 0.4) },
+      'More classic': { era: Math.min(1, d.era + 0.4) },
     }
-    const modifiedFp = [...fingerprint]
+    const modifiedFp: StyleFingerprint = {
+      ...fingerprint,
+      dimensions: { ...fingerprint.dimensions },
+    }
     selectedChips.forEach(chip => {
       const adj = adjustmentMap[chip]
       if (adj) {
-        Object.entries(adj).forEach(([dim, val]) => { modifiedFp[parseInt(dim)] = val })
+        Object.assign(modifiedFp.dimensions, adj)
       }
     })
 
@@ -380,8 +394,16 @@ export default function Step4Page() {
     }
   }
 
-  // Use only 6 specific dims for 6-axis chart: luminosity[0], temperature[2], form[3], texture[5], nature[7], scale[9]
-  const chartFingerprint = [fingerprint[0] ?? 0.5, fingerprint[2] ?? 0.5, fingerprint[3] ?? 0.5, fingerprint[5] ?? 0.5, fingerprint[7] ?? 0.5, fingerprint[9] ?? 0.5]
+  // Use 6 specific dims for 6-axis chart; map [-1,1] to [0,1] for radius
+  const toChartVal = (v: number) => (v + 1) / 2
+  const chartFingerprint = [
+    toChartVal(fingerprint.dimensions.luminosity),
+    toChartVal(fingerprint.dimensions.temperature),
+    toChartVal(fingerprint.dimensions.form),
+    toChartVal(fingerprint.dimensions.texture),
+    toChartVal(fingerprint.dimensions.nature),
+    toChartVal(fingerprint.dimensions.materialOrigin),
+  ]
 
   const shapePath = chartFingerprint.map((v, i) => {
     const point = getPoint(i, v)

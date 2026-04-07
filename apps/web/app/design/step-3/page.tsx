@@ -6,6 +6,7 @@ import { QUIZ_PAIRS } from "@/lib/ai/quiz-data";
 import { useFingerprintStore, useSessionStore } from "@/lib/store";
 import { useRoomStore } from "@/lib/store/room";
 import { StepIndicator } from "@/components/cova/StepIndicator";
+import type { StyleFingerprint } from "@/types/fingerprint";
 
 const TOTAL_PAIRS = 19;
 
@@ -60,7 +61,7 @@ export default function StyleQuizPage() {
         });
         if (res.ok) {
           const data = (await res.json()) as {
-            fingerprint: number[];
+            fingerprint: StyleFingerprint;
             style_name: string;
             style_chips?: string[];
           };

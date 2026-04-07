@@ -1,4 +1,5 @@
 import Replicate from 'replicate'
+import type { StyleFingerprint } from '@/types/fingerprint'
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
@@ -48,26 +49,26 @@ export function cosineSimilarity(a: number[], b: number[]): number {
 
 // Maps fingerprint dimensions to style descriptor terms
 // used to align with product style_tags
-export function fingerprintToStyleTags(fingerprint: number[]): string[] {
-  const [luminosity, density, temperature, form, era, texture] = fingerprint
+export function fingerprintToStyleTags(fingerprint: StyleFingerprint): string[] {
+  const d = fingerprint.dimensions
   const tags: string[] = []
 
-  if ((luminosity ?? 0.5) >= 0.5) tags.push('bright', 'airy', 'light')
+  if (d.luminosity >= 0) tags.push('bright', 'airy', 'light')
   else tags.push('moody', 'dark', 'dramatic')
 
-  if ((density ?? 0.5) >= 0.5) tags.push('maximalist', 'layered', 'rich')
+  if (d.density >= 0) tags.push('maximalist', 'layered', 'rich')
   else tags.push('minimal', 'clean', 'simple')
 
-  if ((temperature ?? 0.5) >= 0.5) tags.push('warm', 'amber', 'wood', 'terracotta')
+  if (d.temperature >= 0) tags.push('warm', 'amber', 'wood', 'terracotta')
   else tags.push('cool', 'slate', 'concrete', 'grey')
 
-  if ((form ?? 0.5) >= 0.5) tags.push('organic', 'curved', 'natural', 'rattan')
+  if (d.form >= 0) tags.push('organic', 'curved', 'natural', 'rattan')
   else tags.push('geometric', 'structured', 'angular')
 
-  if ((era ?? 0.5) >= 0.5) tags.push('traditional', 'heritage', 'classic', 'antique')
+  if (d.era >= 0) tags.push('traditional', 'heritage', 'classic', 'antique')
   else tags.push('modern', 'contemporary', 'minimal')
 
-  if ((texture ?? 0.5) >= 0.5) tags.push('textured', 'tactile', 'linen', 'stone')
+  if (d.texture >= 0) tags.push('textured', 'tactile', 'linen', 'stone')
   else tags.push('smooth', 'polished', 'sleek', 'lacquered')
 
   return tags

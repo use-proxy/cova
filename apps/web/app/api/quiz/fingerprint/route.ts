@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
+import type { StyleFingerprint } from '@/types/fingerprint'
 
 interface QuizResponse {
   pair_id: string
@@ -151,7 +152,8 @@ const DIMENSION_MATCH_WEIGHTS = [
 
 // ── Fingerprint computation ───────────────────────────────────────────────────
 
-function computeFingerprint(responses: QuizResponse[]): number[] {
+// Computes raw [0,1] values per dimension (used internally for style matching)
+function computeRawVector(responses: QuizResponse[]): number[] {
   // Per-dimension: accumulate weighted votes
   const dimVoteSum: Record<string, number> = {}
   const dimWeightSum: Record<string, number> = {}
@@ -196,6 +198,27 @@ function computeFingerprint(responses: QuizResponse[]): number[] {
   })
 }
 
+// Convert raw [0,1] vector to StyleFingerprint with [-1,1] dimensions
+function toStyleFingerprint(raw: number[]): StyleFingerprint {
+  const toUnit = (v: number) => Math.max(-1, Math.min(1, (v - 0.5) * 2))
+  return {
+    dimensions: {
+      luminosity:     toUnit(raw[0] ?? 0.5),
+      density:        toUnit(raw[1] ?? 0.5),
+      temperature:    toUnit(raw[2] ?? 0.5),
+      form:           toUnit(raw[3] ?? 0.5),
+      era:            toUnit(raw[4] ?? 0.5),
+      texture:        toUnit(raw[5] ?? 0.5),
+      scale:          toUnit(raw[6] ?? 0.5),
+      nature:         toUnit(raw[7] ?? 0.5),
+      saturation:     toUnit(raw[8] ?? 0.5),
+      materialOrigin: toUnit(raw[9] ?? 0.5),
+    },
+    covariance: Array(10).fill(null).map(() => Array(10).fill(0)) as number[][],
+    confidence: 0.8,
+  }
+}
+
 // ── Style matching ────────────────────────────────────────────────────────────
 
 function matchStyle(fp: number[]): StyleDefinition {
@@ -220,18 +243,19 @@ function matchStyle(fp: number[]): StyleDefinition {
 
 // ── Style tags (10-dim) ───────────────────────────────────────────────────────
 
-function fingerprintToStyleTags(fp: number[]): string[] {
+function fingerprintToStyleTags(fp: StyleFingerprint): string[] {
+  const d = fp.dimensions
   return [
-    (fp[0] ?? 0.5) >= 0.5 ? 'bright' : 'moody',
-    (fp[1] ?? 0.5) >= 0.5 ? 'layered' : 'minimal',
-    (fp[2] ?? 0.5) >= 0.5 ? 'warm' : 'cool',
-    (fp[3] ?? 0.5) >= 0.5 ? 'organic' : 'geometric',
-    (fp[4] ?? 0.5) >= 0.5 ? 'traditional' : 'modern',
-    (fp[5] ?? 0.5) >= 0.5 ? 'textured' : 'smooth',
-    (fp[6] ?? 0.5) >= 0.5 ? 'grand' : 'intimate',
-    (fp[7] ?? 0.5) >= 0.5 ? 'biophilic' : 'urban',
-    (fp[8] ?? 0.5) >= 0.5 ? 'colorful' : 'muted',
-    (fp[9] ?? 0.5) >= 0.5 ? 'artisanal' : 'manufactured',
+    d.luminosity >= 0 ? 'bright' : 'moody',
+    d.density >= 0 ? 'layered' : 'minimal',
+    d.temperature >= 0 ? 'warm' : 'cool',
+    d.form >= 0 ? 'organic' : 'geometric',
+    d.era >= 0 ? 'traditional' : 'modern',
+    d.texture >= 0 ? 'textured' : 'smooth',
+    d.scale >= 0 ? 'grand' : 'intimate',
+    d.nature >= 0 ? 'biophilic' : 'urban',
+    d.saturation >= 0 ? 'colorful' : 'muted',
+    d.materialOrigin >= 0 ? 'artisanal' : 'manufactured',
   ]
 }
 
@@ -251,17 +275,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'responses are required' }, { status: 400 })
     }
 
-    const fingerprint = computeFingerprint(responses)
-    const matchedStyle = matchStyle(fingerprint)
+    const rawVector = computeRawVector(responses)
+    const matchedStyle = matchStyle(rawVector)
     const styleName = matchedStyle.name
     const styleChips = matchedStyle.chips
+    const fingerprint = toStyleFingerprint(rawVector)
 
     // Save fingerprint if user is authenticated
     if (user) {
       const admin = createAdminSupabaseClient()
-      await admin.from('style_fingerprints').insert({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (admin.from('style_fingerprints') as any).insert({
         user_id: user.id,
-        vector_data: fingerprint,
+        vector_data: rawVector,  // DB column still uses vector_data
         style_name: styleName,
         room_type,
         entry_path,

@@ -21,7 +21,15 @@ const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 const TEST_ROOM_PHOTO =
   'https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/sign/room-uploads/IMG_2093.jpeg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84ODk1MjRhNy1iZmE1LTQzYzctYjVlNy0wN2RjMDBkMzIzMTUiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJyb29tLXVwbG9hZHMvSU1HXzIwOTMuanBlZyIsImlhdCI6MTc3NTQ0OTQwNCwiZXhwIjoxNzc2MDU0MjA0fQ.NIHpii_0BvmGKEMzzyUT7pmQKQmUSzWBUzEq7giHWIg'
 
-const TEST_FINGERPRINT = [0.7, 0.3, 0.8, 0.4, 0.2, 0.7, 0.5, 0.6, 0.4, 0.3]
+const TEST_FINGERPRINT = {
+  dimensions: {
+    luminosity: 0.4, density: -0.4, temperature: 0.6, form: -0.2,
+    era: -0.6, texture: 0.4, scale: 0.0, nature: 0.2,
+    saturation: -0.2, materialOrigin: -0.4,
+  },
+  covariance: Array(10).fill(Array(10).fill(0)),
+  confidence: 0.8,
+}
 
 // Shared auth state — set in beforeAll
 let testUserId = ''

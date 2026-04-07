@@ -1,5 +1,15 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useFingerprintStore } from '@/lib/store/fingerprint'
+import type { StyleFingerprint } from '@/types/fingerprint'
+
+const mockFingerprint: StyleFingerprint = {
+  dimensions: {
+    luminosity: 0.4, density: -0.4, temperature: 0.6, form: 0.2,
+    era: -0.2, texture: 0.4, scale: 0.0, nature: 0.0, saturation: 0.0, materialOrigin: 0.0,
+  },
+  covariance: Array(10).fill(Array(10).fill(0)) as number[][],
+  confidence: 0.8,
+}
 
 // Test using zustand store API directly — avoids React dual-instance issues
 describe('useFingerprintStore', () => {
@@ -70,10 +80,9 @@ describe('useFingerprintStore', () => {
     expect(useFingerprintStore.getState().quizResponses[0]?.superLiked).toBe(true)
   })
 
-  it('setFingerprint stores 6-dimensional vector', () => {
-    const fp = [0.7, 0.3, 0.8, 0.6, 0.4, 0.7]
-    useFingerprintStore.getState().setFingerprint(fp, 'Warm Japandi')
-    expect(useFingerprintStore.getState().fingerprint).toEqual(fp)
+  it('setFingerprint stores StyleFingerprint object', () => {
+    useFingerprintStore.getState().setFingerprint(mockFingerprint, 'Warm Japandi')
+    expect(useFingerprintStore.getState().fingerprint).toEqual(mockFingerprint)
     expect(useFingerprintStore.getState().styleName).toBe('Warm Japandi')
   })
 
@@ -109,7 +118,7 @@ describe('useFingerprintStore', () => {
   it('resetFingerprint clears all state', () => {
     useFingerprintStore.getState().setRoomType('bedroom')
     useFingerprintStore.getState().setBudget('luxury', [5000, 25000])
-    useFingerprintStore.getState().setFingerprint([0.7, 0.3, 0.8, 0.6, 0.4, 0.7], 'Warm Japandi')
+    useFingerprintStore.getState().setFingerprint(mockFingerprint, 'Warm Japandi')
     useFingerprintStore.getState().resetFingerprint()
     expect(useFingerprintStore.getState().roomType).toBeNull()
     expect(useFingerprintStore.getState().budgetTier).toBeNull()

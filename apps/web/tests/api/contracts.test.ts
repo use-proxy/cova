@@ -189,7 +189,7 @@ describe('API Route Contract Verification', () => {
           photo_url: 'https://example.com/photo.jpg',
           depth_map_url: 'https://example.com/depth.jpg',
           keep_mask: null,
-          fingerprint_vector: [0.7, 0.3, 0.8, 0.6, 0.4, 0.7],
+          fingerprint_vector: { dimensions: { luminosity: 0.4, density: -0.4, temperature: 0.6, form: 0.2, era: -0.2, texture: 0.4, scale: 0.0, nature: 0.0, saturation: 0.0, materialOrigin: 0.0 }, covariance: [], confidence: 0.8 },
           room_type: 'living_room',
           budget: 'mid',
           inclusions: [],
@@ -233,7 +233,7 @@ describe('API Route Contract Verification', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           render_crop_url: 'https://example.com/crop.jpg',
-          fingerprint_vector: [0.7, 0.3, 0.8, 0.6, 0.4, 0.7],
+          fingerprint_vector: { dimensions: { luminosity: 0.4, density: -0.4, temperature: 0.6, form: 0.2, era: -0.2, texture: 0.4, scale: 0.0, nature: 0.0, saturation: 0.0, materialOrigin: 0.0 }, covariance: [], confidence: 0.8 },
           budget_range: [500, 2000],
           room_type: 'living_room',
         }),

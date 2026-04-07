@@ -5,6 +5,19 @@ import {
   computeFingerprintAlignment,
   computeBudgetFit,
 } from '@/lib/ai/clip'
+import type { StyleFingerprint } from '@/types/fingerprint'
+
+function makeFingerprint(overrides: Partial<StyleFingerprint['dimensions']> = {}): StyleFingerprint {
+  const defaults: StyleFingerprint['dimensions'] = {
+    luminosity: 0.4, density: -0.4, temperature: 0.6, form: 0.2,
+    era: -0.2, texture: 0.4, scale: 0.0, nature: 0.0, saturation: 0.0, materialOrigin: 0.0,
+  }
+  return {
+    dimensions: { ...defaults, ...overrides },
+    covariance: Array(10).fill(Array(10).fill(0)) as number[][],
+    confidence: 0.8,
+  }
+}
 
 describe('cosineSimilarity', () => {
   it('returns 1.0 for identical vectors', () => {
@@ -45,29 +58,28 @@ describe('cosineSimilarity', () => {
 
 describe('fingerprintToStyleTags', () => {
   it('returns array of style tags', () => {
-    const fp = [0.7, 0.3, 0.8, 0.6, 0.4, 0.7]
+    const fp = makeFingerprint()
     const tags = fingerprintToStyleTags(fp)
     expect(Array.isArray(tags)).toBe(true)
     expect(tags.length).toBeGreaterThan(0)
   })
 
-  it('high luminosity maps to bright/airy tags', () => {
-    const fp = [0.9, 0.5, 0.5, 0.5, 0.5, 0.5]
+  it('high luminosity (>0) maps to bright/airy tags', () => {
+    const fp = makeFingerprint({ luminosity: 0.8 })
     const tags = fingerprintToStyleTags(fp)
     expect(tags.some((t) => ['bright', 'airy', 'light'].includes(t))).toBe(true)
   })
 
-  it('low luminosity maps to moody/dark tags', () => {
-    const fp = [0.1, 0.5, 0.5, 0.5, 0.5, 0.5]
+  it('low luminosity (<0) maps to moody/dark tags', () => {
+    const fp = makeFingerprint({ luminosity: -0.8 })
     const tags = fingerprintToStyleTags(fp)
     expect(tags.some((t) => ['moody', 'dark', 'dramatic'].includes(t))).toBe(true)
   })
 
-  it('returns multiple tags covering all 6 dimensions', () => {
-    const fp = [0.7, 0.3, 0.8, 0.6, 0.4, 0.7]
+  it('returns one tag per dimension (10 total)', () => {
+    const fp = makeFingerprint()
     const tags = fingerprintToStyleTags(fp)
-    // At minimum one tag per dimension (each dimension adds 3-4 tags)
-    expect(tags.length).toBeGreaterThanOrEqual(6)
+    expect(tags.length).toBe(10)
   })
 })
 

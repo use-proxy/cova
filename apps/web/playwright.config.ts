@@ -25,10 +25,6 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
-  webServer: {
-    command: `npm run dev -- -p ${PORT}`,
-    url: BASE_URL,
-    reuseExistingServer: true, // always reuse — run dev server separately
-    timeout: 120_000,
-  },
+  // No webServer block — run `npm run dev -- -p 3001` in a separate terminal
+  // before executing tests. Playwright will connect to the existing server.
 })

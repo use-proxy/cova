@@ -42,7 +42,9 @@ describe('Supabase Type Definitions', () => {
       const mockFingerprint: FingerprintRow = {
         id: 'uuid-here',
         user_id: 'user-uuid',
-        vector_data: [0.7, 0.3, 0.8, 0.6, 0.4, 0.7],
+        dimensions: { luminosity: 0.4, density: -0.4, temperature: 0.6, form: 0.2, era: -0.2, texture: 0.4, scale: 0.0, nature: 0.0, saturation: 0.0, materialOrigin: 0.0 },
+        covariance: Array(10).fill(Array(10).fill(0)),
+        confidence: 0.8,
         style_name: 'Warm Japandi',
         room_type: 'living_room',
         budget_tier: 'mid',
@@ -50,7 +52,7 @@ describe('Supabase Type Definitions', () => {
         entry_path: 'pairs',
         created_at: new Date().toISOString(),
       }
-      expect(mockFingerprint.vector_data).toBeDefined()
+      expect(mockFingerprint.dimensions).toBeDefined()
       expect(mockFingerprint.style_name).toBeDefined()
     })
 

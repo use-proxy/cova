@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { searchProducts, buildSearchQuery } from '@/lib/ai/serper'
+import type { StyleFingerprint } from '@/types/fingerprint'
 
 interface AccessoriesRequestBody {
   styleName: string
-  fingerprint: number[]
+  fingerprint: StyleFingerprint
   roomType: string
   budgetRange: [number, number] | null
   primaryItemLabels: string[]   // items already matched e.g. ["sofa", "coffee table"]
@@ -16,29 +17,25 @@ const ACCESSORY_BUDGET_RATIO = 0.10
 const ACCESSORY_COUNT = 3
 
 // Map fingerprint dimensions to accessory style terms
-// Only dimensions with strong signal (>0.65 or <0.35) contribute
-function getFingerprintAccessoryTerms(fingerprint: number[]): string {
+// Only dimensions with strong signal (> 0.3 or < -0.3) contribute
+function getFingerprintAccessoryTerms(fingerprint: StyleFingerprint): string {
+  const d = fingerprint.dimensions
   const terms: string[] = []
 
-  // Index 2: Temperature
-  if ((fingerprint[2] ?? 0.5) > 0.65) terms.push('warm tones brass terracotta')
-  if ((fingerprint[2] ?? 0.5) < 0.35) terms.push('cool grey silver minimal')
+  if (d.temperature > 0.3) terms.push('warm tones brass terracotta')
+  if (d.temperature < -0.3) terms.push('cool grey silver minimal')
 
-  // Index 5: Texture
-  if ((fingerprint[5] ?? 0.5) > 0.65) terms.push('textured woven natural fiber')
-  if ((fingerprint[5] ?? 0.5) < 0.35) terms.push('smooth polished clean')
+  if (d.texture > 0.3) terms.push('textured woven natural fiber')
+  if (d.texture < -0.3) terms.push('smooth polished clean')
 
-  // Index 7: Nature
-  if ((fingerprint[7] ?? 0.5) > 0.65) terms.push('natural organic botanical')
-  if ((fingerprint[7] ?? 0.5) < 0.35) terms.push('urban industrial geometric')
+  if (d.nature > 0.3) terms.push('natural organic botanical')
+  if (d.nature < -0.3) terms.push('urban industrial geometric')
 
-  // Index 4: Era
-  if ((fingerprint[4] ?? 0.5) > 0.65) terms.push('vintage antique heritage')
-  if ((fingerprint[4] ?? 0.5) < 0.35) terms.push('contemporary modern current')
+  if (d.era > 0.3) terms.push('vintage antique heritage')
+  if (d.era < -0.3) terms.push('contemporary modern current')
 
-  // Index 8: Saturation (0=Muted/Mono, 1=Bold/Colorful)
-  if ((fingerprint[8] ?? 0.5) > 0.65) terms.push('vibrant rich colorful bold palette')
-  if ((fingerprint[8] ?? 0.5) < 0.35) terms.push('muted tonal desaturated earthy neutral')
+  if (d.saturation > 0.3) terms.push('vibrant rich colorful bold palette')
+  if (d.saturation < -0.3) terms.push('muted tonal desaturated earthy neutral')
 
   return terms.join(' ')
 }

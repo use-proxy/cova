@@ -94,7 +94,15 @@ test.describe('Render Pipeline', () => {
     const renderRes = await context.request.post(`${BASE_URL}/api/render`, {
       data: {
         photo_url: photoUrl,
-        fingerprint_vector: [0.7, 0.3, 0.8, 0.4, 0.2, 0.7, 0.5, 0.6, 0.4, 0.3],
+        fingerprint_vector: {
+          dimensions: {
+            luminosity: 0.4, density: -0.4, temperature: 0.6, form: -0.2,
+            era: -0.6, texture: 0.4, scale: 0.0, nature: 0.2,
+            saturation: -0.2, materialOrigin: -0.4,
+          },
+          covariance: Array(10).fill(Array(10).fill(0)),
+          confidence: 0.8,
+        },
         room_type: 'bedroom',
         budget: 'mid',
         budget_tier: 'mid',
@@ -215,7 +223,15 @@ test.describe('Render Pipeline', () => {
     const renderRes = await context.request.post(`${BASE_URL}/api/render`, {
       data: {
         photo_url: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1024',
-        fingerprint_vector: [0.7, 0.3, 0.8, 0.4, 0.2, 0.7, 0.5, 0.6, 0.4, 0.3],
+        fingerprint_vector: {
+          dimensions: {
+            luminosity: 0.4, density: -0.4, temperature: 0.6, form: -0.2,
+            era: -0.6, texture: 0.4, scale: 0.0, nature: 0.2,
+            saturation: -0.2, materialOrigin: -0.4,
+          },
+          covariance: Array(10).fill(Array(10).fill(0)),
+          confidence: 0.8,
+        },
         room_type: 'bedroom',
         budget: 'mid',
         inclusions: [],
