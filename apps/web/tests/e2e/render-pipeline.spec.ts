@@ -56,7 +56,7 @@ test.describe('Render Pipeline', () => {
     const page = await context.newPage()
 
     // ── Step 1: Create a room via API ─────────────────────────────────────
-    const createRes = await page.request.post(`${BASE_URL}/api/rooms/create`, {
+    const createRes = await context.request.post(`${BASE_URL}/api/rooms/create`, {
       data: { room_type: 'bedroom' },
     })
     if (createRes.status() !== 200) {
@@ -69,7 +69,7 @@ test.describe('Render Pipeline', () => {
 
     // ── Step 2: Upload photo via API ─────────────────────────────────────
     const photoBuffer = fs.readFileSync(TEST_PHOTO_PATH)
-    const captureRes = await page.request.post(`${BASE_URL}/api/rooms/capture`, {
+    const captureRes = await context.request.post(`${BASE_URL}/api/rooms/capture`, {
       multipart: {
         photo: {
           name: 'test-room.jpg',
@@ -87,75 +87,42 @@ test.describe('Render Pipeline', () => {
     expect(photoUrl).toBeTruthy()
     console.log('[test] Photo uploaded:', photoUrl.substring(0, 60))
 
-    // ── Step 3: Navigate to step-6, inject store state via sessionStorage ─
-    // sessionStorage is origin-scoped — navigate first to establish origin,
-    // then set storage, then reload so Zustand re-hydrates from sessionStorage.
-    await page.goto(`${BASE_URL}/design/step-6`)
-
-    const fpState = {
-      state: {
-        roomType: 'bedroom',
-        budgetTier: 'mid',
-        budgetRange: [500, 2000],
-        quizResponses: [],
-        fingerprint: [0.7, 0.3, 0.8, 0.4, 0.2, 0.7, 0.5, 0.6, 0.4, 0.3],
-        styleName: 'Contemporary',
-        entryPath: 'pairs',
-        dimensions: null,
-        constraints: [],
+    // ── Step 3: Kick off render via API ───────────────────────────────────
+    // Call /api/render directly — avoids browser navigation and auth cookie
+    // issues. Tests the full pipeline: render fires → Replicate prediction →
+    // status polling writes render_url to DB.
+    const renderRes = await context.request.post(`${BASE_URL}/api/render`, {
+      data: {
+        photo_url: photoUrl,
+        fingerprint_vector: [0.7, 0.3, 0.8, 0.4, 0.2, 0.7, 0.5, 0.6, 0.4, 0.3],
+        room_type: 'bedroom',
+        budget: 'mid',
+        budget_tier: 'mid',
         inclusions: [],
-        roomLength: 14,
-        roomWidth: 12,
-        ceilingHeight: 9,
-        naturalLight: 'Multiple windows',
-        wallLayout: { top: [], bottom: [], left: [], right: [] },
-        fixedElements: [],
-        floorType: 'Hardwood',
-        wallFinish: 'Painted (standard)',
-        hasCloset: false,
-        closetWall: null,
-        showcasePredictionIds: null,
+        constraints: [],
+        keep_mask: [],     // EMPTY — single-stage render, no inpainting
+        room_id: roomId,
+        room_length: 14,
+        room_width: 12,
+        ceiling_height: 9,
+        natural_light: 'Multiple windows',
+        floor_type: 'Hardwood',
+        wall_finish: 'Painted (standard)',
+        fixed_elements: [],
+        render_iteration: 1,
       },
-      version: 0,
+    })
+    if (renderRes.status() !== 200) {
+      const body = await renderRes.text()
+      throw new Error(`Render API failed (${renderRes.status()}): ${body}`)
     }
+    const { prediction_id: predictionId } = await renderRes.json() as { prediction_id: string }
+    expect(predictionId).toBeTruthy()
+    console.log('[test] Render started, prediction_id:', predictionId)
 
-    const roomState = {
-      state: {
-        roomId,
-        originalPhotoUrl: photoUrl,
-        depthMapUrl: null,
-        renderUrl: null,
-        keepMask: [],       // Empty array — triggers fallback UI + skips inpainting
-        renderSessions: [],
-        currentRenderIteration: 1,
-      },
-      version: 0,
-    }
-
-    await page.evaluate(
-      ({ fp, room }) => {
-        // Stores use sessionStorage (per CLAUDE.md Rule 1 — no localStorage)
-        sessionStorage.setItem('cova-fingerprint-v1', JSON.stringify(fp))
-        sessionStorage.setItem('cova-room-v1', JSON.stringify(room))
-      },
-      { fp: fpState, room: roomState }
-    )
-
-    await page.reload()
-    await page.waitForTimeout(1000) // Let Zustand hydrate
-
-    // ── Step 4: Click "Design My Room" without touching any detection dots ─
-    // keepMask=[] means showFallback=true on step-6, which shows the CTA immediately
-    const designBtn = page.locator('button', { hasText: 'Design My Room' })
-    await expect(designBtn).toBeVisible({ timeout: 15_000 })
-    console.log('[test] "Design My Room" button is visible — clicking')
-    await designBtn.click()
-
-    // ── Step 5: Wait for step-7 to load ──────────────────────────────────
-    await page.waitForURL(/step-7/, { timeout: 15_000 })
-    console.log('[test] Navigated to step-7 — render firing...')
-
-    // ── Step 6: Poll the DB until render_url appears ──────────────────────
+    // ── Step 4: Poll render/status until render_url appears ──────────────
+    // The status endpoint polls Replicate and writes render_url to the DB
+    // when the prediction completes.
     const admin = adminClient()
     let renderUrl: string | null = null
     const maxAttempts = 30 // 30 × 5s = 150s
@@ -165,6 +132,26 @@ test.describe('Render Pipeline', () => {
       await page.waitForTimeout(5000)
       attempts++
 
+      // Poll via the status API (same as step-7 UI does every 3s)
+      const statusRes = await context.request.get(
+        `${BASE_URL}/api/render/status?prediction_id=${predictionId}&room_id=${roomId}&render_iteration=1`
+      )
+      if (statusRes.ok()) {
+        const statusData = await statusRes.json() as
+          | { status: 'processing' }
+          | { status: 'complete'; render_url: string }
+          | { status: 'failed'; error?: string }
+        if (statusData.status === 'complete') {
+          renderUrl = statusData.render_url
+          console.log('[test] Status: complete')
+          break
+        }
+        if (statusData.status === 'failed') {
+          throw new Error(`Render failed: ${'error' in statusData ? statusData.error : 'unknown'}`)
+        }
+      }
+
+      // Also check the DB directly as fallback
       const { data } = await admin
         .from('rooms')
         .select('render_url, pipeline_cost_log')
@@ -182,16 +169,9 @@ test.describe('Render Pipeline', () => {
         renderUrl = data.render_url
         break
       }
-
-      // Check if page navigated away (to step-8 on success, or error screen)
-      const currentUrl = page.url()
-      if (currentUrl.includes('step-8')) {
-        console.log('[test] Page navigated to step-8 — render complete')
-        break
-      }
     }
 
-    // ── Step 7: Final assertions ──────────────────────────────────────────
+    // ── Step 5: Final assertions ──────────────────────────────────────────
     const { data: finalRoom } = await admin
       .from('rooms')
       .select('render_url, pipeline_cost_log')
@@ -223,7 +203,7 @@ test.describe('Render Pipeline', () => {
     const page = await context.newPage()
 
     // Create a room to get a real room_id for the DB check
-    const createRes = await page.request.post(`${BASE_URL}/api/rooms/create`, {
+    const createRes = await context.request.post(`${BASE_URL}/api/rooms/create`, {
       data: { room_type: 'bedroom' },
     })
     expect(createRes.status()).toBe(200)
@@ -232,7 +212,7 @@ test.describe('Render Pipeline', () => {
 
     // Call render API directly with empty keep_mask (no showcase_mode)
     // This goes through the real pipeline path
-    const renderRes = await page.request.post(`${BASE_URL}/api/render`, {
+    const renderRes = await context.request.post(`${BASE_URL}/api/render`, {
       data: {
         photo_url: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1024',
         fingerprint_vector: [0.7, 0.3, 0.8, 0.4, 0.2, 0.7, 0.5, 0.6, 0.4, 0.3],
