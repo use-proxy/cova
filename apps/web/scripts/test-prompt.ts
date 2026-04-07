@@ -76,12 +76,13 @@ async function main() {
   // ─── Validate ───────────────────────────────────────────────
   const checks: Array<{ name: string; pass: boolean; detail: string }> = []
 
-  // Check prompt length is reasonable (under 500 chars is good)
-  const reasonableLength = positive.length < 500
+  // Check prompt word count is in target range (120-150 words)
+  const wordCount = positive.trim().split(/\s+/).length
+  const reasonableLength = wordCount >= 100 && wordCount <= 200
   checks.push({
     name: 'Prompt length',
     pass: reasonableLength,
-    detail: `${positive.length} characters (target: < 500)`,
+    detail: `${wordCount} words / ${positive.length} characters (target: 120-150 words)`,
   })
 
   // Check contains room type

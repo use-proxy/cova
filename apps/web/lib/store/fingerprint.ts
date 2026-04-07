@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist, createJSONStorage } from 'zustand/middleware'
 
 type BudgetTier = 'budget' | 'mid' | 'premium' | 'luxury'
 type EntryPath = 'pairs' | 'natural_language' | 'inspo_photo'
@@ -28,7 +29,6 @@ interface FingerprintState {
   dimensions: Dimensions | null
   constraints: string[]
   inclusions: string[]
-  // Room physical details (step 4)
   roomLength: number | null
   roomWidth: number | null
   ceilingHeight: number | null
@@ -96,45 +96,76 @@ const INITIAL_STATE = {
 }
 
 export const useFingerprintStore = create<FingerprintState>()(
-  (set) => ({
-    ...INITIAL_STATE,
-    setRoomType: (roomType) => set({ roomType }),
-    setBudget: (budgetTier) => set({
-      budgetTier,
-      budgetRange: BUDGET_RANGES[budgetTier],
+  persist(
+    (set) => ({
+      ...INITIAL_STATE,
+      setRoomType: (roomType) => set({ roomType }),
+      setBudget: (budgetTier) =>
+        set({
+          budgetTier,
+          budgetRange: BUDGET_RANGES[budgetTier],
+        }),
+      addQuizResponse: (response) =>
+        set((state) => ({
+          quizResponses: [...state.quizResponses, response],
+        })),
+      setFingerprint: (fingerprint, styleName) => set({ fingerprint, styleName }),
+      setEntryPath: (entryPath) => set({ entryPath }),
+      setDimensions: (dimensions) => set({ dimensions }),
+      toggleConstraint: (constraint) =>
+        set((state) => ({
+          constraints: state.constraints.includes(constraint)
+            ? state.constraints.filter((c) => c !== constraint)
+            : [...state.constraints, constraint],
+        })),
+      toggleInclusion: (inclusion) =>
+        set((state) => ({
+          inclusions: state.inclusions.includes(inclusion)
+            ? state.inclusions.filter((i) => i !== inclusion)
+            : [...state.inclusions, inclusion],
+        })),
+      setRoomDimensions: (dims) =>
+        set({
+          roomLength: dims.length,
+          roomWidth: dims.width,
+          ceilingHeight: dims.ceilingHeight,
+          naturalLight: dims.naturalLight,
+        }),
+      setWallLayout: (layout) => set({ wallLayout: layout }),
+      setFixedElements: (elements) => set({ fixedElements: elements }),
+      setSurfaces: (floor, wall) => set({ floorType: floor, wallFinish: wall }),
+      setCloset: (hasCloset, wall) => set({ hasCloset, closetWall: wall }),
+      setConstraints: (constraints) => set({ constraints }),
+      setInclusions: (inclusions) => set({ inclusions }),
+      resetFingerprint: () => set(INITIAL_STATE),
+      setShowcasePredictionIds: (showcasePredictionIds) => set({ showcasePredictionIds }),
     }),
-    addQuizResponse: (response) => set((state) => ({
-      quizResponses: [...state.quizResponses, response],
-    })),
-    setFingerprint: (fingerprint, styleName) => set({
-      fingerprint,
-      styleName,
-    }),
-    setEntryPath: (entryPath) => set({ entryPath }),
-    setDimensions: (dimensions) => set({ dimensions }),
-    toggleConstraint: (constraint) => set((state) => ({
-      constraints: state.constraints.includes(constraint)
-        ? state.constraints.filter((c) => c !== constraint)
-        : [...state.constraints, constraint],
-    })),
-    toggleInclusion: (inclusion) => set((state) => ({
-      inclusions: state.inclusions.includes(inclusion)
-        ? state.inclusions.filter((i) => i !== inclusion)
-        : [...state.inclusions, inclusion],
-    })),
-    setRoomDimensions: (dims) => set({
-      roomLength: dims.length,
-      roomWidth: dims.width,
-      ceilingHeight: dims.ceilingHeight,
-      naturalLight: dims.naturalLight,
-    }),
-    setWallLayout: (layout) => set({ wallLayout: layout }),
-    setFixedElements: (elements) => set({ fixedElements: elements }),
-    setSurfaces: (floor, wall) => set({ floorType: floor, wallFinish: wall }),
-    setCloset: (hasCloset, wall) => set({ hasCloset, closetWall: wall }),
-    setConstraints: (constraints) => set({ constraints }),
-    setInclusions: (inclusions) => set({ inclusions }),
-    resetFingerprint: () => set(INITIAL_STATE),
-    setShowcasePredictionIds: (showcasePredictionIds) => set({ showcasePredictionIds }),
-  })
+    {
+      name: 'cova-fingerprint-v1',
+      storage: createJSONStorage(() => sessionStorage),
+      partialize: (state) => ({
+        roomType: state.roomType,
+        budgetTier: state.budgetTier,
+        budgetRange: state.budgetRange,
+        fingerprint: state.fingerprint,
+        styleName: state.styleName,
+        entryPath: state.entryPath,
+        dimensions: state.dimensions,
+        constraints: state.constraints,
+        inclusions: state.inclusions,
+        roomLength: state.roomLength,
+        roomWidth: state.roomWidth,
+        ceilingHeight: state.ceilingHeight,
+        naturalLight: state.naturalLight,
+        wallLayout: state.wallLayout,
+        fixedElements: state.fixedElements,
+        floorType: state.floorType,
+        wallFinish: state.wallFinish,
+        hasCloset: state.hasCloset,
+        closetWall: state.closetWall,
+        quizResponses: state.quizResponses,
+        showcasePredictionIds: state.showcasePredictionIds,
+      }),
+    }
+  )
 )

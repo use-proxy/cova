@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist, createJSONStorage } from 'zustand/middleware'
 
 export interface KeepMaskItem {
   type: string
@@ -45,40 +46,57 @@ const INITIAL_STATE = {
   currentRenderIteration: 1,
 }
 
-export const useRoomStore = create<RoomState>()((set) => ({
-  ...INITIAL_STATE,
-  setRoom: (roomId) => set({ roomId }),
-  setPhotoUrl: (originalPhotoUrl) => set({ originalPhotoUrl }),
-  setDepthMapUrl: (depthMapUrl) => set({ depthMapUrl }),
-  setRenderUrl: (renderUrl) => set({ renderUrl }),
-  setKeepMask: (keepMask) => set({ keepMask }),
-  toggleKeepItem: (item) =>
-    set((state) => {
-      const existing = state.keepMask?.find(
-        (m) =>
-          m.type === item.type &&
-          m.bbox[0] === item.bbox[0] &&
-          m.bbox[1] === item.bbox[1]
-      )
-      if (existing) {
-        return {
-          keepMask: state.keepMask!.map((m) =>
-            m.type === item.type &&
-            m.bbox[0] === item.bbox[0] &&
-            m.bbox[1] === item.bbox[1]
-              ? { ...m, keep: item.keep }
-              : m
-          ),
-        }
-      }
-      return {
-        keepMask: [...(state.keepMask ?? []), item],
-      }
+export const useRoomStore = create<RoomState>()(
+  persist(
+    (set) => ({
+      ...INITIAL_STATE,
+      setRoom: (roomId) => set({ roomId }),
+      setPhotoUrl: (originalPhotoUrl) => set({ originalPhotoUrl }),
+      setDepthMapUrl: (depthMapUrl) => set({ depthMapUrl }),
+      setRenderUrl: (renderUrl) => set({ renderUrl }),
+      setKeepMask: (keepMask) => set({ keepMask }),
+      toggleKeepItem: (item) =>
+        set((state) => {
+          const existing = state.keepMask?.find(
+            (m) =>
+              m.type === item.type &&
+              m.bbox[0] === item.bbox[0] &&
+              m.bbox[1] === item.bbox[1]
+          )
+          if (existing) {
+            return {
+              keepMask: state.keepMask!.map((m) =>
+                m.type === item.type &&
+                m.bbox[0] === item.bbox[0] &&
+                m.bbox[1] === item.bbox[1]
+                  ? { ...m, keep: item.keep }
+                  : m
+              ),
+            }
+          }
+          return {
+            keepMask: [...(state.keepMask ?? []), item],
+          }
+        }),
+      addRenderSession: (session) =>
+        set((state) => ({
+          renderSessions: [...state.renderSessions, session],
+          currentRenderIteration: session.iteration + 1,
+        })),
+      clearRoom: () => set(INITIAL_STATE),
     }),
-  addRenderSession: (session) =>
-    set((state) => ({
-      renderSessions: [...state.renderSessions, session],
-      currentRenderIteration: session.iteration + 1,
-    })),
-  clearRoom: () => set(INITIAL_STATE),
-}))
+    {
+      name: 'cova-room-v1',
+      storage: createJSONStorage(() => sessionStorage),
+      partialize: (state) => ({
+        roomId: state.roomId,
+        originalPhotoUrl: state.originalPhotoUrl,
+        depthMapUrl: state.depthMapUrl,
+        renderUrl: state.renderUrl,
+        keepMask: state.keepMask,
+        renderSessions: state.renderSessions,
+        currentRenderIteration: state.currentRenderIteration,
+      }),
+    }
+  )
+)
