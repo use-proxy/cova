@@ -682,6 +682,54 @@
 
 ---
 
+### Session April 7, 2026 — M8 Session 3: Supabase Foundation + E2E Suite
+**Milestone:** M8 IN PROGRESS
+**Goal:** Schema gaps, TypeScript types, auth callback, middleware, 72/72 Playwright tests
+
+**Completed:**
+- Schema: 7 tables complete via migration 20260407000000_session3_schema_gaps.sql
+  - style_fingerprints: dimensions/covariance/confidence columns added
+  - rooms: room_analysis column added
+  - render_sessions: parallax_video_url/preview_url columns added
+  - interactions: check constraint on action column
+  - style_references: new 7th table with RLS + select-all policy
+- Types: types/supabase.ts updated with StyleFingerprint types, 7th table
+- Auth: callback default redirect changed to /design/step-1
+- Middleware rewritten: steps 4-10 protected, step-3 public, API routes return 401 JSON
+- E2E suite: 72/72 passing (was 68/72 failing due to server issues)
+- Server: switched from broken dev-mode server to production (next build + next start)
+  - Root cause: .next had mixed dev/prod artifacts, dev chunks always returned 404
+  - Fix: cleared .next, ran npm run build, switched playwright to use next start
+- playwright.config.ts: webServer command changed to `npm run start`
+- global-setup.ts: simplified (no browser warming needed with production server)
+
+**Key decision:**
+- Use `next start` (production build) for E2E tests, not `next dev`
+- `npm run build && npm run start -- -p 3001` before running tests
+- Production mode: pre-compiled chunks, no MIME errors, React hydrates reliably
+
+**Left for M8 Session 4:**
+- Front-end: 10-step design flow pages (Steps 1-10 UI)
+- Step-1: room type + budget selection
+- Step-2: style quiz
+- Step-3: fingerprint reveal
+- etc.
+
+**Files modified:**
+- supabase/migrations/20260407000000_session3_schema_gaps.sql (new)
+- lib/supabase/migrations/001_initial.sql (new reference schema)
+- types/supabase.ts (7 tables, StyleFingerprint types)
+- tests/types/supabase.test.ts (mock updates)
+- middleware.ts (rewritten — steps 4-10 protected, step-3 public)
+- app/api/auth/callback/route.ts (redirect to /design/step-1)
+- tests/e2e/global-setup.ts (simplified)
+- tests/e2e/visual-checks.spec.ts (BASE_URL, IGNORE_PATTERNS)
+- tests/e2e/user-workflows.spec.ts (BASE_URL)
+- playwright.config.ts (next start)
+- docs/sessions/session-3-progress.md (new)
+
+---
+
 ## Session Template (copy for each new session)
 
 ```
