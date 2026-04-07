@@ -11,8 +11,7 @@ const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN })
 async function verifyRenderUrl(url: string): Promise<boolean> {
   try {
     const res = await fetch(url, { method: 'HEAD' })
-    const contentType = res.headers.get('content-type') ?? ''
-    return res.ok && contentType.startsWith('image/')
+    return res.ok
   } catch {
     return false
   }
