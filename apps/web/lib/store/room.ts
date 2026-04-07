@@ -7,6 +7,7 @@ export interface KeepMaskItem {
   keep: boolean | null
   label: string
   mask_url?: string
+  showToUser?: boolean
 }
 
 interface RenderSession {

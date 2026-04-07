@@ -493,7 +493,14 @@ export default function Step6Page() {
 
   // Poll /api/detect/status — skip if keepMask already populated (back navigation)
   useEffect(() => {
-    if (keepMask !== null) return // already have data
+    if (keepMask !== null) {
+      // Re-apply current showToUser threshold in case stored data is stale
+      const remapped = keepMask.map((d) => ({ ...d, showToUser: d.confidence >= 0.35 }))
+      if (JSON.stringify(remapped) !== JSON.stringify(keepMask)) {
+        setKeepMask(remapped)
+      }
+      return
+    }
     if (!roomId) return
 
     pollStartRef.current = Date.now()

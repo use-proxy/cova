@@ -7,6 +7,8 @@ interface KeepMaskItem {
   bbox: [number, number, number, number]
   confidence: number
   keep: boolean | null
+  showToUser?: boolean
+  mask_url?: string
 }
 
 type StatusNotReady = { ready: false }
@@ -49,9 +51,11 @@ export async function GET(request: NextRequest): Promise<NextResponse<StatusResp
   }
 
   if (depth_map_url && keep_mask) {
+    // Re-apply current showToUser threshold — stored data may predate threshold changes
+    const detections = keep_mask.map((d) => ({ ...d, showToUser: d.confidence >= 0.35 }))
     return NextResponse.json({
       ready: true,
-      detections: keep_mask,
+      detections,
       depth_map_url,
     })
   }
