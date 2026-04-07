@@ -3,6 +3,7 @@ import { EB_Garamond, Inter } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 import { AnalyticsProvider } from "@/components/providers/AnalyticsProvider";
+import { Toaster } from "sonner";
 
 const ebGaramond = EB_Garamond({
   subsets: ["latin"],
@@ -39,6 +40,7 @@ export default function RootLayout({
         className={`${ebGaramond.variable} ${inter.variable} ${geistMono.variable} antialiased`}
       >
         <AnalyticsProvider>{children}</AnalyticsProvider>
+        <Toaster position="top-center" richColors />
       </body>
     </html>
   );
