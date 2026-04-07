@@ -26,9 +26,18 @@ test('SCHEMA: rooms table has required columns', async () => {
   const admin = adminClient()
 
   // Query information_schema to get column names
-  const { data, error } = await admin.rpc('exec_sql', {
-    sql: `SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'rooms'`,
-  }).catch(() => ({ data: null, error: new Error('rpc not available') }))
+  let data: Array<{ column_name: string }> | null = null
+  let error: Error | null = null
+  try {
+    const result = await admin.rpc('exec_sql', {
+      sql: `SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'rooms'`,
+    })
+    data = result.data as Array<{ column_name: string }> | null
+    error = result.error
+  } catch {
+    data = null
+    error = new Error('rpc not available')
+  }
 
   if (error || !data) {
     // Fallback: try a direct query to verify the table is accessible
@@ -46,7 +55,7 @@ test('SCHEMA: rooms table has required columns', async () => {
     return
   }
 
-  const colNames = (data as Array<{ column_name: string }>).map(c => c.column_name)
+  const colNames = (data ?? []).map(c => c.column_name)
   const required = ['original_photo_url', 'render_url', 'keep_mask', 'pipeline_cost_log', 'inpainting_mask_url']
   for (const col of required) {
     const hasCol = colNames.includes(col)

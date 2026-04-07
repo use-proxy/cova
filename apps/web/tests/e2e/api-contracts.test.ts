@@ -12,6 +12,7 @@ import { test, expect } from '@playwright/test'
 import { createClient } from '@supabase/supabase-js'
 import { getItemBudgetTarget, optimizeRoomSelection } from '@/lib/ai/budget'
 import { scoreFit, extractDimensionsFromText, getDimensionsForCategory } from '@/lib/ai/fit'
+import { injectTestAuth } from './helpers/auth'
 
 const BASE_URL = 'http://localhost:3000'
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -151,22 +152,20 @@ test('QUIZ: POST /api/quiz/fingerprint with 15 responses returns 10-dim fingerpr
   expect(res.status).toBe(200)
 
   const data = (await res.json()) as {
-    fingerprint: number[]
+    fingerprint: { dimensions: Record<string, number>; covariance: number[][]; confidence: number }
     style_name: string
     style_tags: string[]
   }
-  expect(Array.isArray(data.fingerprint)).toBe(true)
-  expect(data.fingerprint).toHaveLength(10)
-  data.fingerprint.forEach((v) => {
-    expect(v).toBeGreaterThanOrEqual(0)
-    expect(v).toBeLessThanOrEqual(1)
-  })
+  expect(data.fingerprint).toHaveProperty('dimensions')
+  expect(Object.keys(data.fingerprint.dimensions)).toHaveLength(10)
+  expect(data.fingerprint.confidence).toBeGreaterThanOrEqual(0)
+  expect(data.fingerprint.covariance).toHaveLength(10)
   expect(typeof data.style_name).toBe('string')
   expect(data.style_name.length).toBeGreaterThan(0)
   expect(Array.isArray(data.style_tags)).toBe(true)
   expect(data.style_tags.length).toBeGreaterThan(0)
   console.log(`Quiz fingerprint style: ${data.style_name}`)
-  console.log(`Fingerprint: [${data.fingerprint.map((v) => v.toFixed(2)).join(', ')}]`)
+  console.log(`Fingerprint dimensions: ${JSON.stringify(data.fingerprint.dimensions)}`)
 })
 
 test('QUIZ: POST /api/quiz/fingerprint with fewer than 15 responses still returns fingerprint', async () => {
@@ -182,8 +181,13 @@ test('QUIZ: POST /api/quiz/fingerprint with fewer than 15 responses still return
     body: JSON.stringify({ responses, entry_path: 'pairs', room_type: 'bedroom' }),
   })
   expect(res.status).toBe(200)
-  const data = (await res.json()) as { fingerprint: number[] }
-  expect(data.fingerprint).toHaveLength(10)
+  const data = (await res.json()) as {
+    fingerprint: { dimensions: Record<string, number>; covariance: number[][]; confidence: number }
+  }
+  expect(data.fingerprint).toHaveProperty('dimensions')
+  expect(Object.keys(data.fingerprint.dimensions)).toHaveLength(10)
+  expect(data.fingerprint.confidence).toBeGreaterThanOrEqual(0)
+  expect(data.fingerprint.covariance).toHaveLength(10)
 })
 
 test('QUIZ: POST /api/quiz/fingerprint with empty responses returns 400', async () => {
@@ -214,23 +218,23 @@ test('RENDER: POST /api/render returns 401 when no auth', async () => {
   expect(res.status).toBe(401)
 })
 
-test('RENDER: POST /api/render missing required fields returns 400', async () => {
-  if (!testAuthToken) {
-    console.log('SKIP: no auth token available')
-    return
-  }
+test('RENDER: POST /api/render missing required fields returns 400', async ({ browser }) => {
+  const context = await browser.newContext()
+  await injectTestAuth(context)
+  const page = await context.newPage()
+  await page.goto(BASE_URL)
+
   // Missing fingerprint_vector
-  const res = await fetch(`${BASE_URL}/api/render`, {
-    method: 'POST',
-    headers: authHeaders(),
-    body: JSON.stringify({
+  const res = await page.request.post(`${BASE_URL}/api/render`, {
+    data: {
       photo_url: TEST_ROOM_PHOTO,
       room_type: 'living-room',
       budget: 'mid',
-      room_id: testRoomId,
-    }),
+      room_id: testRoomId || 'test-room',
+    },
   })
-  expect(res.status).toBe(400)
+  expect(res.status()).toBe(400)
+  await context.close()
 })
 
 test('RENDER: POST /api/render with valid data returns prediction_id', async () => {
@@ -287,15 +291,14 @@ test('MATCH: POST /api/match returns 401 when unauthenticated', async () => {
   expect(res.status).toBe(401)
 })
 
-test('MATCH: POST /api/match with item_keep: true returns 400', async () => {
-  if (!testAuthToken) {
-    console.log('SKIP: no auth token')
-    return
-  }
-  const res = await fetch(`${BASE_URL}/api/match`, {
-    method: 'POST',
-    headers: authHeaders(),
-    body: JSON.stringify({
+test('MATCH: POST /api/match with item_keep: true returns 400', async ({ browser }) => {
+  const context = await browser.newContext()
+  await injectTestAuth(context)
+  const page = await context.newPage()
+  await page.goto(BASE_URL)
+
+  const res = await page.request.post(`${BASE_URL}/api/match`, {
+    data: {
       render_url: TEST_ROOM_PHOTO,
       item_id: 'sofa',
       item_label: 'Sofa',
@@ -305,25 +308,26 @@ test('MATCH: POST /api/match with item_keep: true returns 400', async () => {
       budget_range: [1000, 3000],
       room_type: 'living_room',
       room_id: testRoomId || 'test',
-    }),
+    },
   })
-  expect(res.status).toBe(400)
+  expect(res.status()).toBe(400)
+  await context.close()
 })
 
-test('MATCH: POST /api/match missing required fields returns 400', async () => {
-  if (!testAuthToken) {
-    console.log('SKIP: no auth token')
-    return
-  }
-  const res = await fetch(`${BASE_URL}/api/match`, {
-    method: 'POST',
-    headers: authHeaders(),
-    body: JSON.stringify({
+test('MATCH: POST /api/match missing required fields returns 400', async ({ browser }) => {
+  const context = await browser.newContext()
+  await injectTestAuth(context)
+  const page = await context.newPage()
+  await page.goto(BASE_URL)
+
+  const res = await page.request.post(`${BASE_URL}/api/match`, {
+    data: {
       // missing render_url, item_id, etc.
       fingerprint_vector: TEST_FINGERPRINT,
-    }),
+    },
   })
-  expect(res.status).toBe(400)
+  expect(res.status()).toBe(400)
+  await context.close()
 })
 
 // ── GROUP 5: Coherence API ────────────────────────────────────────────────────
@@ -337,15 +341,14 @@ test('COHERENCE: POST /api/match/coherence returns 401 when unauthenticated', as
   expect(res.status).toBe(401)
 })
 
-test('COHERENCE: POST /api/match/coherence with single item skips coherence (passthrough)', async () => {
-  if (!testAuthToken) {
-    console.log('SKIP: no auth token')
-    return
-  }
-  const res = await fetch(`${BASE_URL}/api/match/coherence`, {
-    method: 'POST',
-    headers: authHeaders(),
-    body: JSON.stringify({
+test('COHERENCE: POST /api/match/coherence with single item skips coherence (passthrough)', async ({ browser }) => {
+  const context = await browser.newContext()
+  await injectTestAuth(context)
+  const page = await context.newPage()
+  await page.goto(BASE_URL)
+
+  const res = await page.request.post(`${BASE_URL}/api/match/coherence`, {
+    data: {
       productsByItem: {
         sofa: [{ id: 'p1', name: 'Modern Sofa', retailer: 'amazon', price: 799, affiliate_url: 'https://amazon.com', image_url: 'https://example.com/img.jpg', match_score: 0.82, match_label: 'Very Similar' }],
       },
@@ -353,13 +356,14 @@ test('COHERENCE: POST /api/match/coherence with single item skips coherence (pas
       fingerprint: TEST_FINGERPRINT,
       roomType: 'living_room',
       keptItemLabels: [],
-    }),
+    },
   })
   // Single item — should passthrough without calling Claude (coherenceScore: 8)
   const data = (await res.json()) as { coherenceScore: number; wasAdjusted: boolean }
-  expect(res.status).toBe(200)
+  expect(res.status()).toBe(200)
   expect(data.coherenceScore).toBe(8)
   expect(data.wasAdjusted).toBe(false)
+  await context.close()
 })
 
 // ── GROUP 6: Accessories API ──────────────────────────────────────────────────
