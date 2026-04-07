@@ -16,7 +16,7 @@ import { createClient } from '@supabase/supabase-js'
 import * as fs from 'fs'
 import * as path from 'path'
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3001'
+const BASE_URL = `http://localhost:${process.env.E2E_PORT ?? '3001'}`
 const TEST_PHOTO_PATH = path.join(__dirname, '../../fixtures/test-room.jpg')
 
 // ── Shared admin client ──────────────────────────────────────────────────────
@@ -29,9 +29,29 @@ function adminClient() {
   )
 }
 
-// ── Download test fixture if missing ─────────────────────────────────────────
+// ── Pre-flight: server readiness + fixture download ──────────────────────────
 
 test.beforeAll(async () => {
+  // Wait for dev server to be fully compiled and serving 200 before any API calls.
+  // This guards against hitting the server mid-recompile (which returns 500).
+  const maxAttempts = 30
+  let ready = false
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const res = await fetch(BASE_URL)
+      if (res.ok) {
+        ready = true
+        // Extra 2s buffer after first 200 to let webpack finish any pending chunks
+        await new Promise(r => setTimeout(r, 2000))
+        break
+      }
+    } catch {
+      // server not accepting connections yet
+    }
+    await new Promise(r => setTimeout(r, 1000))
+  }
+  if (!ready) throw new Error(`Dev server at ${BASE_URL} not ready after ${maxAttempts}s`)
+
   if (!fs.existsSync(TEST_PHOTO_PATH)) {
     console.log('[fixture] Downloading test room photo...')
     const res = await fetch(
@@ -54,9 +74,10 @@ test.describe('Render Pipeline', () => {
     const context = await browser.newContext()
     await injectTestAuth(context)
     const page = await context.newPage()
+    await page.goto(BASE_URL)
 
     // ── Step 1: Create a room via API ─────────────────────────────────────
-    const createRes = await context.request.post(`${BASE_URL}/api/rooms/create`, {
+    const createRes = await page.request.post(`${BASE_URL}/api/rooms/create`, {
       data: { room_type: 'bedroom' },
     })
     if (createRes.status() !== 200) {
@@ -69,7 +90,7 @@ test.describe('Render Pipeline', () => {
 
     // ── Step 2: Upload photo via API ─────────────────────────────────────
     const photoBuffer = fs.readFileSync(TEST_PHOTO_PATH)
-    const captureRes = await context.request.post(`${BASE_URL}/api/rooms/capture`, {
+    const captureRes = await page.request.post(`${BASE_URL}/api/rooms/capture`, {
       multipart: {
         photo: {
           name: 'test-room.jpg',
@@ -91,7 +112,7 @@ test.describe('Render Pipeline', () => {
     // Call /api/render directly — avoids browser navigation and auth cookie
     // issues. Tests the full pipeline: render fires → Replicate prediction →
     // status polling writes render_url to DB.
-    const renderRes = await context.request.post(`${BASE_URL}/api/render`, {
+    const renderRes = await page.request.post(`${BASE_URL}/api/render`, {
       data: {
         photo_url: photoUrl,
         fingerprint_vector: {
@@ -141,7 +162,7 @@ test.describe('Render Pipeline', () => {
       attempts++
 
       // Poll via the status API (same as step-7 UI does every 3s)
-      const statusRes = await context.request.get(
+      const statusRes = await page.request.get(
         `${BASE_URL}/api/render/status?prediction_id=${predictionId}&room_id=${roomId}&render_iteration=1`
       )
       if (statusRes.ok()) {
@@ -209,9 +230,10 @@ test.describe('Render Pipeline', () => {
     const context = await browser.newContext()
     await injectTestAuth(context)
     const page = await context.newPage()
+    await page.goto(BASE_URL)
 
     // Create a room to get a real room_id for the DB check
-    const createRes = await context.request.post(`${BASE_URL}/api/rooms/create`, {
+    const createRes = await page.request.post(`${BASE_URL}/api/rooms/create`, {
       data: { room_type: 'bedroom' },
     })
     expect(createRes.status()).toBe(200)
@@ -220,7 +242,7 @@ test.describe('Render Pipeline', () => {
 
     // Call render API directly with empty keep_mask (no showcase_mode)
     // This goes through the real pipeline path
-    const renderRes = await context.request.post(`${BASE_URL}/api/render`, {
+    const renderRes = await page.request.post(`${BASE_URL}/api/render`, {
       data: {
         photo_url: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1024',
         fingerprint_vector: {

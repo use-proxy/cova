@@ -25,6 +25,17 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
-  // No webServer block — run `npm run dev -- -p 3001` in a separate terminal
-  // before executing tests. Playwright will connect to the existing server.
+  // globalSetup polls /api/quiz/fingerprint until the server is responsive.
+  globalSetup: './tests/e2e/global-setup.ts',
+  // Uses next start (production build) so all chunks are pre-compiled.
+  // Run `npm run build` then `npm run start -- -p 3001` before running tests.
+  // reuseExistingServer: true reuses an already-running server on port 3001.
+  webServer: {
+    command: `npm run start -- -p ${PORT}`,
+    url: BASE_URL,
+    reuseExistingServer: true,
+    timeout: 120_000,
+    stdout: 'ignore',
+    stderr: 'ignore',
+  },
 })

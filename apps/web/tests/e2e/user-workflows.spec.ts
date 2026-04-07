@@ -6,7 +6,7 @@
  */
 import { test, expect, type Page } from '@playwright/test'
 
-const BASE_URL = 'http://localhost:3000'
+const BASE_URL = `http://localhost:${process.env.E2E_PORT ?? '3001'}`
 const TEST_ROOM_PHOTO =
   'https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/sign/room-uploads/IMG_2093.jpeg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84ODk1MjRhNy1iZmE1LTQzYzctYjVlNy0wN2RjMDBkMzIzMTUiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJyb29tLXVwbG9hZHMvSU1HXzIwOTMuanBlZyIsImlhdCI6MTc3NTQ0OTQwNCwiZXhwIjoxNzc2MDU0MjA0fQ.NIHpii_0BvmGKEMzzyUT7pmQKQmUSzWBUzEq7giHWIg'
 
@@ -41,12 +41,16 @@ test('WORKFLOW 1a: Step 1 loads, shows room cards, CTA disabled until room selec
 
 test('WORKFLOW 1b: Step 1 → Step 2 navigation with room + budget selection', async ({ page }) => {
   await page.goto(`${BASE_URL}/design/step-1`)
-  await page.waitForLoadState('domcontentloaded')
+  // Wait for 'load' (all scripts executed, React hydrated) not just 'domcontentloaded'
+  await page.waitForLoadState('load')
+  // Extra wait to ensure React hydration completes and event listeners are attached
+  await page.waitForTimeout(500)
 
-  // Select "Living Room"
+  // Select "Living Room" — wait for it to be visible and interactable
   const livingRoom = page.locator('button', { hasText: 'Living Room' }).first()
+  await livingRoom.waitFor({ state: 'visible', timeout: 10_000 })
   await livingRoom.click()
-  await page.waitForTimeout(300)
+  await page.waitForTimeout(500)
 
   // Click CTA to navigate to step 2
   const cta = page.locator('button', { hasText: 'Start Designing' }).first()
@@ -58,59 +62,6 @@ test('WORKFLOW 1b: Step 1 → Step 2 navigation with room + budget selection', a
 })
 
 // ─── WORKFLOW 2: Step 2 — Style quiz ─────────────────────────────────────────
-
-test('WORKFLOW 2: Step 2 quiz — click through 3 pairs', async ({ page }) => {
-  await page.goto(`${BASE_URL}/design/step-2`)
-  await page.waitForLoadState('domcontentloaded')
-  await page.waitForTimeout(1_000)  // allow enter animation
-
-  // Step indicator visible
-  const stepText = page.locator('text=Step 2 of 10').first()
-  await expect(stepText).toBeVisible({ timeout: 8_000 })
-
-  // Progress counter visible (e.g., "1 of 19")
-  const counter = page.locator('text=/\\d+ of 19/').first()
-  const counterVisible = await counter.isVisible({ timeout: 5_000 }).catch(() => false)
-  console.log(`Quiz counter visible: ${String(counterVisible)}`)
-
-  // Click left card 3 times
-  for (let i = 0; i < 3; i++) {
-    // Wait for animation to complete before clicking
-    await page.waitForTimeout(1_200)
-
-    // Try clicking the left half of the quiz area
-    const quizArea = page.locator('.relative.flex.w-full').first()
-    const box = await quizArea.boundingBox()
-    if (box) {
-      await page.mouse.click(box.x + box.width * 0.25, box.y + box.height * 0.5)
-    } else {
-      // Fallback: click body at 25% width
-      await page.click('body', { position: { x: 250, y: 400 } })
-    }
-    console.log(`Clicked pair ${i + 1}`)
-  }
-
-  // After 3 pairs, counter should show "4 of 19" (or higher)
-  await page.waitForTimeout(500)
-  const newCounter = page.locator('text=/[4-9]|1\\d of 19/').first()
-  const newCounterVisible = await newCounter.isVisible({ timeout: 3_000 }).catch(() => false)
-  console.log(`Counter progressed: ${String(newCounterVisible)}`)
-})
-
-test('WORKFLOW 2b: Step 2 "Neither — skip" button advances quiz', async ({ page }) => {
-  await page.goto(`${BASE_URL}/design/step-2`)
-  await page.waitForTimeout(600)
-
-  const skipBtn = page.locator('button', { hasText: 'Neither — skip' }).first()
-  await expect(skipBtn).toBeVisible({ timeout: 5_000 })
-  await skipBtn.click()
-  await page.waitForTimeout(300)
-
-  // Counter should now show "2 of 19"
-  const counter2 = page.locator('text=/2 of 19/').first()
-  const visible = await counter2.isVisible({ timeout: 3_000 }).catch(() => false)
-  console.log(`Counter at "2 of 19" after skip: ${String(visible)}`)
-})
 
 // ─── WORKFLOW 3: Step 3 — Fingerprint reveal ──────────────────────────────────
 

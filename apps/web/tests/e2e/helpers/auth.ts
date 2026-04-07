@@ -1,7 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
+import type { Session } from '@supabase/supabase-js'
 import type { BrowserContext } from '@playwright/test'
 
 const MAX_CHUNK_SIZE = 3180
+
+// Session cache — reuse for up to 50 minutes to avoid expiry during long suites
+let cachedSession: { session: Session; fetchedAt: number } | null = null
 
 function encodeSession(value: string): Array<{ name: string; value: string }> {
   const cookieKey = sessionCookieName()
@@ -52,17 +56,22 @@ export async function injectTestAuth(context: BrowserContext): Promise<void> {
     throw new Error('E2E_TEST_PASSWORD is not set in .env.local')
   }
 
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
+  const now = Date.now()
+  if (!cachedSession || now - cachedSession.fetchedAt > 50 * 60 * 1000) {
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    })
 
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
-  if (error || !data.session) {
-    throw new Error(`Test auth failed: ${error?.message ?? 'No session returned'}`)
+    if (error || !data.session) {
+      throw new Error(`Test auth failed: ${error?.message ?? 'No session returned'}`)
+    }
+
+    cachedSession = { session: data.session, fetchedAt: now }
   }
 
-  const sessionJson = JSON.stringify(data.session)
+  const sessionJson = JSON.stringify(cachedSession.session)
   const cookies = encodeSession(sessionJson)
 
   await context.addCookies(

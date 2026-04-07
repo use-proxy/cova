@@ -1,3 +1,5 @@
+import type { StyleFingerprint } from './fingerprint'
+
 export type Json =
   | string
   | number
@@ -36,8 +38,8 @@ export interface Database {
         Row: {
           id: string
           user_id: string
-          dimensions: Json
-          covariance: Json
+          dimensions: StyleFingerprint['dimensions']
+          covariance: number[][]
           confidence: number
           style_name: string | null
           room_type: string | null
@@ -49,8 +51,8 @@ export interface Database {
         Insert: {
           id?: string
           user_id: string
-          dimensions?: Json
-          covariance?: Json
+          dimensions?: StyleFingerprint['dimensions']
+          covariance?: number[][]
           confidence?: number
           style_name?: string | null
           room_type?: string | null
@@ -62,8 +64,8 @@ export interface Database {
         Update: {
           id?: string
           user_id?: string
-          dimensions?: Json
-          covariance?: Json
+          dimensions?: StyleFingerprint['dimensions']
+          covariance?: number[][]
           confidence?: number
           style_name?: string | null
           room_type?: string | null
@@ -82,10 +84,12 @@ export interface Database {
           depth_map_url: string | null
           render_url: string | null
           keep_mask: Json | null
+          room_analysis: Json | null
           room_type: string | null
           dimensions: string | null
           constraints: string[] | null
           inclusions: string[] | null
+          pipeline_cost_log: Json | null
           created_at: string
         }
         Insert: {
@@ -96,10 +100,12 @@ export interface Database {
           depth_map_url?: string | null
           render_url?: string | null
           keep_mask?: Json | null
+          room_analysis?: Json | null
           room_type?: string | null
           dimensions?: string | null
           constraints?: string[] | null
           inclusions?: string[] | null
+          pipeline_cost_log?: Json | null
           created_at?: string
         }
         Update: {
@@ -110,10 +116,12 @@ export interface Database {
           depth_map_url?: string | null
           render_url?: string | null
           keep_mask?: Json | null
+          room_analysis?: Json | null
           room_type?: string | null
           dimensions?: string | null
           constraints?: string[] | null
           inclusions?: string[] | null
+          pipeline_cost_log?: Json | null
           created_at?: string
         }
       }
@@ -122,6 +130,8 @@ export interface Database {
           id: string
           room_id: string
           render_url: string | null
+          parallax_video_url: string | null
+          preview_url: string | null
           prompt: string | null
           style_strength: number | null
           iteration: number
@@ -131,6 +141,8 @@ export interface Database {
           id?: string
           room_id: string
           render_url?: string | null
+          parallax_video_url?: string | null
+          preview_url?: string | null
           prompt?: string | null
           style_strength?: number | null
           iteration?: number
@@ -140,6 +152,8 @@ export interface Database {
           id?: string
           room_id?: string
           render_url?: string | null
+          parallax_video_url?: string | null
+          preview_url?: string | null
           prompt?: string | null
           style_strength?: number | null
           iteration?: number
@@ -252,6 +266,35 @@ export interface Database {
           created_at?: string
         }
       }
+      style_references: {
+        Row: {
+          id: string
+          image_url: string
+          room_type: string
+          dimension_labels: StyleFingerprint['dimensions'] | null
+          style_name: string | null
+          source: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          image_url: string
+          room_type: string
+          dimension_labels?: StyleFingerprint['dimensions'] | null
+          style_name?: string | null
+          source?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          image_url?: string
+          room_type?: string
+          dimension_labels?: StyleFingerprint['dimensions'] | null
+          style_name?: string | null
+          source?: string | null
+          created_at?: string
+        }
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -310,6 +353,7 @@ export interface Database {
         | 'regenerate'
         | 'refine'
         | 'add_item'
+        | 'quiz_response'
       room_dimensions: 'small' | 'medium' | 'large'
     }
   }

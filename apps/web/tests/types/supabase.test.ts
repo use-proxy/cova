@@ -8,7 +8,7 @@ import type {
 
 describe('Supabase Type Definitions', () => {
   describe('Database type structure', () => {
-    it('defines all 6 required COVA V1 tables', () => {
+    it('defines all 7 required COVA V1 tables', () => {
       type TableNames = keyof Database['public']['Tables']
       const requiredTables: TableNames[] = [
         'users',
@@ -17,8 +17,9 @@ describe('Supabase Type Definitions', () => {
         'render_sessions',
         'products',
         'interactions',
+        'style_references',
       ]
-      expect(requiredTables).toHaveLength(6)
+      expect(requiredTables).toHaveLength(7)
     })
 
     it('users table has all required columns', () => {
@@ -66,10 +67,12 @@ describe('Supabase Type Definitions', () => {
         depth_map_url: null,
         render_url: null,
         keep_mask: null,
+        room_analysis: null,
         room_type: 'living_room',
         dimensions: 'medium',
         constraints: null,
         inclusions: null,
+        pipeline_cost_log: null,
         created_at: new Date().toISOString(),
       }
       expect(mockRoom.keep_mask).toBeNull()
@@ -83,6 +86,8 @@ describe('Supabase Type Definitions', () => {
         id: 'uuid-here',
         room_id: 'room-uuid',
         render_url: 'https://example.com/render.jpg',
+        parallax_video_url: null,
+        preview_url: null,
         prompt: 'test prompt',
         style_strength: 0.85,
         iteration: 1,
