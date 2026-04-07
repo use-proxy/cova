@@ -57,7 +57,7 @@ export function NewRoomCTA() {
       >
         <path
           d="M2 18Q16 2 30 18"
-          stroke="#C9A84C"
+          stroke="var(--cova-gold)"
           strokeWidth="2"
           strokeLinecap="round"
           fill="none"
@@ -81,7 +81,7 @@ export function NewRoomCTA() {
           style={{ fontFamily: "Playfair Display, Georgia, serif" }}
         >
           Design a new{" "}
-          <em style={{ fontStyle: "italic", color: "#C9A84C" }}>space.</em>
+          <em style={{ fontStyle: "italic", color: "var(--cova-gold)" }}>space.</em>
         </h2>
         <p
           className="text-xs mt-1"
@@ -90,11 +90,11 @@ export function NewRoomCTA() {
           Ready when you are.
         </p>
         <button
-          className="mt-4 flex items-center gap-2 px-4 rounded-xl text-xs uppercase tracking-wider font-medium w-fit cursor-pointer hover:opacity-90 transition-opacity duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A84C]"
+          className="mt-4 flex items-center gap-2 px-4 rounded-xl text-xs uppercase tracking-wider font-medium w-fit cursor-pointer hover:opacity-90 transition-opacity duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-cova-gold"
           style={{
             height: 44,
-            background: "#C9A84C",
-            color: "#0a1628",
+            background: "var(--cova-gold)",
+            color: "var(--cova-bg)",
             fontFamily: "Inter, sans-serif",
           }}
           onClick={(e) => {

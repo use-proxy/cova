@@ -1,292 +1,157 @@
-"use client"
+'use client'
 
-import { useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
-
-export interface Room {
-  id: string
-  name: string
-  date: string
-  styleBlend: string
-  totalCost: number
-  thumbnail: string
-  sessionId: string
-}
+import { useState } from 'react'
+import Image from 'next/image'
+import { useRouter } from 'next/navigation'
+import { Home, MoreHorizontal } from 'lucide-react'
+import { CovaCard } from '@/components/cova/CovaCard'
+import { CovaButton } from '@/components/cova/CovaButton'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
+import type { DashboardRoom } from '@/lib/dashboard/queries'
 
 interface RoomCardProps {
-  rooms: Room[]
+  room: DashboardRoom
+  onDelete: (roomId: string) => void
 }
 
-export function RoomCard({ rooms }: RoomCardProps) {
+export function RoomCard({ room, onDelete }: RoomCardProps) {
   const router = useRouter()
-  const featuredCardRef = useRef<HTMLDivElement>(null)
-  const featuredImgRef = useRef<HTMLImageElement>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
-  // Subtle parallax on desktop
-  useEffect(() => {
-    const isMobile = window.matchMedia("(max-width: 768px)").matches
-    const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    if (isMobile || prefersReduced) return
+  const imageUrl = room.latest_render_url ?? room.render_url ?? room.original_photo_url
 
-    let rafId: number
-    const handleScroll = () => {
-      cancelAnimationFrame(rafId)
-      rafId = requestAnimationFrame(() => {
-        if (!featuredCardRef.current || !featuredImgRef.current) return
-        const rect = featuredCardRef.current.getBoundingClientRect()
-        const offset = rect.top * 0.12
-        featuredImgRef.current.style.transform = `scale(1.1) translateY(${offset}px)`
-      })
+  const formattedDate = new Intl.DateTimeFormat('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(new Date(room.created_at))
+
+  async function handleDelete() {
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/rooms/${room.id}`, { method: 'DELETE' })
+      if (res.ok) {
+        onDelete(room.id)
+      }
+    } finally {
+      setDeleting(false)
     }
-
-    window.addEventListener("scroll", handleScroll, { passive: true })
-    return () => {
-      window.removeEventListener("scroll", handleScroll)
-      cancelAnimationFrame(rafId)
-    }
-  }, [])
-
-  // Empty state
-  if (rooms.length === 0) {
-    return (
-      <section className="px-6 mt-8" aria-label="Room history">
-        <div className="flex items-center justify-between mb-4">
-          <h2
-            className="text-xl text-white"
-            style={{ fontFamily: "Playfair Display, Georgia, serif" }}
-          >
-            Your Rooms
-          </h2>
-        </div>
-        <div
-          className="flex flex-col items-center justify-center py-16 gap-4"
-          style={{ opacity: 0, animation: "slideUp 400ms ease-out 400ms forwards" }}
-        >
-          <svg
-            width="40"
-            height="28"
-            viewBox="0 0 32 20"
-            fill="none"
-            aria-hidden="true"
-            style={{ animation: "archBreathe 3s ease-in-out infinite" }}
-          >
-            <path
-              d="M2 18Q16 2 30 18"
-              stroke="#C9A84C"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              fill="none"
-            />
-          </svg>
-          <p
-            className="text-lg text-white italic text-center"
-            style={{ fontFamily: "Playfair Display, Georgia, serif" }}
-          >
-            Your first room is waiting.
-          </p>
-          <p
-            className="text-sm text-center"
-            style={{ color: "rgba(255,255,255,0.5)", fontFamily: "Inter, sans-serif" }}
-          >
-            Start by capturing your space.
-          </p>
-        </div>
-      </section>
-    )
   }
 
-  const [featured, ...secondary] = rooms
-
   return (
-    <section aria-label="Room history">
-      {/* Section header */}
-      <div className="flex items-center justify-between px-6 mt-8 mb-4">
-        <h2
-          className="text-xl text-white"
-          style={{ fontFamily: "Playfair Display, Georgia, serif" }}
-        >
-          Your Rooms
-        </h2>
-        <button
-          className="text-xs cursor-pointer opacity-70 hover:opacity-100 transition-opacity duration-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#C9A84C] rounded"
-          style={{ color: "#C9A84C", fontFamily: "Inter, sans-serif", minHeight: 44, minWidth: 44, display: "flex", alignItems: "center", justifyContent: "center" }}
-          aria-label="See all rooms"
-        >
-          See all
-        </button>
-      </div>
-
-      {/* Featured card */}
-      <div
-        ref={featuredCardRef}
-        className="mx-6 rounded-3xl overflow-hidden relative cursor-pointer group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A84C]"
-        style={{
-          height: 260,
-          border: "1px solid rgba(201,168,76,0.2)",
-          opacity: 0,
-          animation: "dashCardIn 500ms ease-out 400ms forwards",
-        }}
-        onClick={() => router.push(`/room/${featured.id}`)}
-        role="link"
-        tabIndex={0}
-        aria-label={`View ${featured.name} room, designed ${featured.date}`}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") router.push(`/room/${featured.id}`)
-        }}
-      >
-        {/* Parallax image */}
-        <div className="absolute inset-0 overflow-hidden">
-          <img
-            ref={featuredImgRef}
-            src={featured.thumbnail}
-            alt={`${featured.name} — ${featured.styleBlend} design`}
-            className="w-full h-full object-cover group-hover:scale-[1.02]"
-            style={{
-              transform: "scale(1.1)",
-              transition: "transform 400ms ease",
-              willChange: "transform",
-            }}
-            loading="lazy"
+    <CovaCard variant="interactive" className="overflow-hidden p-0">
+      {/* Image area */}
+      <div className="relative aspect-[4/3] bg-cova-surface-2">
+        {imageUrl ? (
+          <Image
+            src={imageUrl}
+            alt={`${room.room_type} design`}
+            fill
+            className="object-cover"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           />
+        ) : (
+          <div className="flex h-full items-center justify-center">
+            <Home size={40} className="text-cova-subtle" />
+          </div>
+        )}
+
+        {/* Room type badge */}
+        <div className="absolute right-2 top-2 rounded-full bg-cova-bg/80 px-2 py-1 backdrop-blur-sm">
+          <span className="text-xs capitalize text-cova-ivory-dim">
+            {room.room_type.replace(/_/g, ' ')}
+          </span>
         </div>
 
-        {/* Bottom gradient overlay */}
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background:
-              "linear-gradient(to top, rgba(10,22,40,0.95) 0%, rgba(10,22,40,0.2) 60%, transparent 100%)",
-          }}
-        />
-
-        {/* LATEST badge */}
-        <div
-          className="absolute top-4 right-4 px-3 py-1.5 rounded-full text-[10px] uppercase tracking-[0.1em] font-medium"
-          style={{
-            background: "#C9A84C",
-            color: "#0a1628",
-            fontFamily: "Inter, sans-serif",
-          }}
-          aria-label="Most recent room"
-        >
-          Latest
-        </div>
-
-        {/* Bottom content */}
-        <div className="absolute bottom-0 left-0 right-0 p-5">
-          <p
-            className="text-lg text-white leading-snug"
-            style={{ fontFamily: "Playfair Display, Georgia, serif" }}
-          >
-            {featured.name} · {featured.date}
-          </p>
-          <p
-            className="text-[10px] uppercase tracking-[0.12em] mt-1"
-            style={{ color: "#C9A84C", fontFamily: "Inter, sans-serif" }}
-          >
-            {featured.styleBlend}
-          </p>
-          <div className="flex items-center justify-between mt-3">
-            <span
-              className="text-sm"
-              style={{ color: "rgba(255,255,255,0.7)", fontFamily: "Inter, sans-serif" }}
-            >
-              ${featured.totalCost.toLocaleString()}
-            </span>
-            <div className="flex gap-2">
+        {/* Three-dot menu */}
+        <div className="absolute left-2 top-2">
+          <AlertDialog>
+            <div className="relative">
               <button
-                className="px-3 rounded-full text-[10px] uppercase tracking-wide font-medium cursor-pointer hover:opacity-90 transition-opacity duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
-                style={{
-                  height: 32,
-                  background: "#C9A84C",
-                  color: "#0a1628",
-                  fontFamily: "Inter, sans-serif",
-                }}
                 onClick={(e) => {
                   e.stopPropagation()
-                  router.push(`/room/${featured.id}`)
+                  setMenuOpen(!menuOpen)
                 }}
-                aria-label={`View ${featured.name} room`}
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-cova-bg/80 text-cova-ivory-dim backdrop-blur-sm transition-colors hover:text-cova-ivory"
+                aria-label="Room options"
               >
-                View Room
+                <MoreHorizontal size={14} />
               </button>
-              <button
-                className="px-3 rounded-full text-[10px] uppercase tracking-wide font-medium cursor-pointer hover:bg-[rgba(201,168,76,0.1)] transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A84C]"
-                style={{
-                  height: 32,
-                  border: "1px solid rgba(201,168,76,0.55)",
-                  color: "#C9A84C",
-                  fontFamily: "Inter, sans-serif",
-                }}
-                onClick={(e) => { e.stopPropagation(); router.push(`/room/${featured.id}?shop=true`) }}
-                aria-label={`Shop ${featured.name} furniture`}
-              >
-                Shop
-              </button>
+
+              {menuOpen && (
+                <div
+                  className="absolute left-0 top-8 z-10 rounded-lg border border-cova-border bg-cova-surface py-1 shadow-lg"
+                  onMouseLeave={() => setMenuOpen(false)}
+                >
+                  <AlertDialogTrigger asChild>
+                    <button
+                      className="flex w-full px-4 py-2 text-left text-sm text-cova-error transition-colors hover:bg-cova-surface-3"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      Delete
+                    </button>
+                  </AlertDialogTrigger>
+                </div>
+              )}
             </div>
-          </div>
+
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this room?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete your room and all its renders. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} disabled={deleting}>
+                  {deleting ? 'Deleting…' : 'Delete'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
 
-      {/* Secondary room cards — horizontal scroll */}
-      {secondary.length > 0 && (
-        <div
-          className="flex gap-4 px-6 mt-4 overflow-x-auto scrollbar-hide pb-1"
-          role="list"
-          aria-label="Previous rooms"
-        >
-          {secondary.map((room, i) => (
-            <div
-              key={room.id}
-              role="listitem"
-              className="flex-shrink-0 rounded-2xl overflow-hidden relative cursor-pointer group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A84C]"
-              style={{
-                width: 180,
-                aspectRatio: "3 / 2",
-                border: "1px solid rgba(201,168,76,0.2)",
-                opacity: 0,
-                animation: `slideUp 400ms ease-out ${600 + i * 100}ms forwards`,
-              }}
-              onClick={() => router.push(`/room/${room.id}`)}
-              tabIndex={0}
-              aria-label={`View ${room.name} room, designed ${room.date}`}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") router.push(`/room/${room.id}`)
-              }}
-            >
-              <img
-                src={room.thumbnail}
-                alt={`${room.name} — ${room.styleBlend} design`}
-                className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-[400ms]"
-                loading="lazy"
-              />
-              <div
-                aria-hidden="true"
-                className="absolute inset-0 pointer-events-none"
-                style={{
-                  background:
-                    "linear-gradient(to top, rgba(10,22,40,0.9) 0%, transparent 55%)",
-                }}
-              />
-              <div className="absolute bottom-0 left-0 right-0 p-3">
-                <p
-                  className="text-sm text-white leading-tight"
-                  style={{ fontFamily: "Playfair Display, Georgia, serif" }}
-                >
-                  {room.name}
-                </p>
-                <p
-                  className="text-[9px] uppercase tracking-wide mt-0.5"
-                  style={{ color: "rgba(201,168,76,0.8)", fontFamily: "Inter, sans-serif" }}
-                >
-                  {room.styleBlend}
-                </p>
-              </div>
-            </div>
-          ))}
+      {/* Content */}
+      <div className="p-4">
+        <p className="text-xs text-cova-muted">{formattedDate}</p>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          <CovaButton
+            variant="primary"
+            size="sm"
+            onClick={() => router.push(`/design/step-9?roomId=${room.id}`)}
+          >
+            Shop This Look
+          </CovaButton>
+          <CovaButton
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push(`/design/step-6?roomId=${room.id}`)}
+          >
+            Redesign
+          </CovaButton>
+          <CovaButton
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push(`/design/step-8?roomId=${room.id}`)}
+          >
+            Edit Style
+          </CovaButton>
         </div>
-      )}
-    </section>
+      </div>
+    </CovaCard>
   )
 }

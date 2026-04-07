@@ -49,7 +49,7 @@ export function StyleProfile({ styles, adjectives }: StyleProfileProps) {
       <div
         className="rounded-2xl p-5"
         style={{
-          background: "#0d1f3c",
+          background: "var(--cova-surface)",
           border: "1px solid rgba(201,168,76,0.15)",
         }}
       >
@@ -65,7 +65,7 @@ export function StyleProfile({ styles, adjectives }: StyleProfileProps) {
                 </span>
                 <span
                   className="text-xs tabular-nums"
-                  style={{ color: "#C9A84C", fontFamily: "Inter, sans-serif" }}
+                  style={{ color: "var(--cova-gold)", fontFamily: "Inter, sans-serif" }}
                 >
                   {style.percentage}%
                 </span>
@@ -84,7 +84,7 @@ export function StyleProfile({ styles, adjectives }: StyleProfileProps) {
                   className="h-full rounded-full"
                   style={{
                     width: 0,
-                    background: "linear-gradient(90deg, rgba(201,168,76,0.5) 0%, #C9A84C 100%)",
+                    background: "linear-gradient(90deg, rgba(201,168,76,0.5) 0%, var(--cova-gold) 100%)",
                     willChange: "width",
                   }}
                 />

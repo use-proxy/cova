@@ -55,6 +55,13 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname
 
+  // Authenticated user hitting exactly / → redirect to /dashboard
+  if (user && pathname === '/') {
+    const redirectUrl = request.nextUrl.clone()
+    redirectUrl.pathname = '/dashboard'
+    return NextResponse.redirect(redirectUrl)
+  }
+
   // Protected page routes → redirect unauthenticated users to /
   const isProtectedPage = PROTECTED_PAGE_ROUTES.some(route =>
     pathname.startsWith(route)
