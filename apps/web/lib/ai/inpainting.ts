@@ -15,6 +15,7 @@
  */
 
 import { deflateSync, inflateSync } from 'zlib'
+import sharp from 'sharp'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import type { KeepMaskItem } from '@/lib/store/room'
 
@@ -294,13 +295,17 @@ function encodePixelsToPng(pixels: Uint8Array, width: number, height: number): U
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-const MASK_SIZE = 1024
-
 export async function generateInpaintingMask(
-  _photoUrl: string,
+  photoUrl: string,
   keepMask: KeepMaskItem[],
   roomId: string,
 ): Promise<string | null> {
+  // Get actual image dimensions — FLUX Fill requires mask to match input exactly
+  const imageBuffer = await fetch(photoUrl).then(r => r.arrayBuffer())
+  const { width: imgW, height: imgH } = await sharp(Buffer.from(imageBuffer)).metadata()
+  const maskWidth = imgW ?? 1024
+  const maskHeight = imgH ?? 1024
+
   const keptItems = keepMask.filter((item) => item.keep === true)
   const removeItems = keepMask.filter(
     (item) => item.keep !== true && item.type === 'furniture'
@@ -311,40 +316,40 @@ export async function generateInpaintingMask(
   let pngData: Uint8Array
 
   if (samMaskUrl) {
-    const rawPixels = await downloadAndDecodeMaskPng(samMaskUrl, MASK_SIZE, MASK_SIZE)
+    const rawPixels = await downloadAndDecodeMaskPng(samMaskUrl, maskWidth, maskHeight)
 
     if (rawPixels) {
-      const processed = postProcessMask(rawPixels, MASK_SIZE, MASK_SIZE)
+      const processed = postProcessMask(rawPixels, maskWidth, maskHeight)
 
       const keepRects = keptItems.map((item) => ({
-        x: item.bbox[0] * MASK_SIZE,
-        y: item.bbox[1] * MASK_SIZE,
-        w: item.bbox[2] * MASK_SIZE,
-        h: item.bbox[3] * MASK_SIZE,
+        x: item.bbox[0] * maskWidth,
+        y: item.bbox[1] * maskHeight,
+        w: item.bbox[2] * maskWidth,
+        h: item.bbox[3] * maskHeight,
       }))
-      applyKeepRects(processed, MASK_SIZE, MASK_SIZE, keepRects)
+      applyKeepRects(processed, maskWidth, maskHeight, keepRects)
 
-      pngData = encodePixelsToPng(processed, MASK_SIZE, MASK_SIZE)
+      pngData = encodePixelsToPng(processed, maskWidth, maskHeight)
     } else {
       console.warn('[inpainting] SAM decode failed, falling back to bbox mask')
       if (keptItems.length === 0) return null
       const blackRects = keptItems.map((item) => ({
-        x: item.bbox[0] * MASK_SIZE,
-        y: item.bbox[1] * MASK_SIZE,
-        w: item.bbox[2] * MASK_SIZE,
-        h: item.bbox[3] * MASK_SIZE,
+        x: item.bbox[0] * maskWidth,
+        y: item.bbox[1] * maskHeight,
+        w: item.bbox[2] * maskWidth,
+        h: item.bbox[3] * maskHeight,
       }))
-      pngData = encodePng(MASK_SIZE, MASK_SIZE, blackRects)
+      pngData = encodePng(maskWidth, maskHeight, blackRects)
     }
   } else {
     if (keptItems.length === 0) return null
     const blackRects = keptItems.map((item) => ({
-      x: item.bbox[0] * MASK_SIZE,
-      y: item.bbox[1] * MASK_SIZE,
-      w: item.bbox[2] * MASK_SIZE,
-      h: item.bbox[3] * MASK_SIZE,
+      x: item.bbox[0] * maskWidth,
+      y: item.bbox[1] * maskHeight,
+      w: item.bbox[2] * maskWidth,
+      h: item.bbox[3] * maskHeight,
     }))
-    pngData = encodePng(MASK_SIZE, MASK_SIZE, blackRects)
+    pngData = encodePng(maskWidth, maskHeight, blackRects)
   }
 
   try {

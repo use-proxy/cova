@@ -126,13 +126,11 @@ export async function POST(request: Request) {
           }
         : undefined
 
-    const inpaintingMaskUrl = keep_mask
-      ? await generateInpaintingMask(photo_url, keep_mask, room_id)
-      : null
+    const keptItems = keep_mask?.filter(m => m.keep === true) ?? []
 
-    const keptItems = keep_mask
-      ?.filter(m => m.keep === true)
-      .map(m => m.label) ?? []
+    const inpaintingMaskUrl = keptItems.length > 0
+      ? await generateInpaintingMask(photo_url, keep_mask!, room_id)
+      : null
 
     const { positive: positiveBase, negative } = buildFluxPrompt(
       fingerprint_vector,
@@ -141,7 +139,7 @@ export async function POST(request: Request) {
       inclusions ?? [],
       constraints ?? [],
       roomContext,
-      keptItems,
+      keptItems.map(m => m.label),
     )
 
     let positive = positiveBase
