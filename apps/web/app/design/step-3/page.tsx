@@ -1,592 +1,829 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { QUIZ_PAIRS } from "@/lib/ai/quiz-data";
+import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
+import { Check } from "lucide-react";
 import { useFingerprintStore, useSessionStore } from "@/lib/store";
-import { useRoomStore } from "@/lib/store/room";
 import { StepIndicator } from "@/components/cova/StepIndicator";
 import type { StyleFingerprint } from "@/types/fingerprint";
 
-const TOTAL_PAIRS = 19;
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-type Response = {
-  pairId: string;
-  chosen: "A" | "B";
-  superLiked: boolean;
+type QuizPhase = "A" | "transitioning" | "B" | "C";
+
+type DimKey =
+  | "luminosity" | "density" | "temperature" | "form" | "era"
+  | "texture" | "scale" | "nature" | "saturation" | "materialOrigin";
+
+interface CardData {
+  id: string;
+  imageUrl: string;
+  alt: string;
+  styleName: string;
+  dimensionLabels: Record<DimKey, number>;
+  pair_id?: string;
+}
+
+interface PairData {
+  imageA: CardData;
+  imageB: CardData;
+}
+
+const DIM_KEYS: DimKey[] = [
+  "luminosity", "density", "temperature", "form", "era",
+  "texture", "scale", "nature", "saturation", "materialOrigin",
+];
+
+const TOTAL_PAIRS = 12;
+
+type BudgetTier = "budget" | "mid" | "premium" | "luxury";
+
+const BUDGET_LABELS: Record<BudgetTier, string> = {
+  budget: "Under $500",
+  mid: "$500–$2,000",
+  premium: "$2,000–$5,000",
+  luxury: "$5,000+",
 };
 
-export default function StyleQuizPage() {
-  const router = useRouter();
-  const { roomType, budgetTier, setFingerprint, setShowcasePredictionIds } = useFingerprintStore();
-  const { setStep, pendingPhotoUrl, pendingRoomId, clearPendingCapture } = useSessionStore();
-  const { setRoom, setPhotoUrl } = useRoomStore();
-  const pairs = QUIZ_PAIRS[roomType ?? "living-room"] ?? QUIZ_PAIRS["living-room"]!;
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-  const [currentPair, setCurrentPair] = useState(0);
-  const [responses, setResponses] = useState<Response[]>([]);
-  const [isAnimating, setIsAnimating] = useState(false);
-  const [lastHovered, setLastHovered] = useState<"left" | "right" | null>(null);
-  const [selectedCard, setSelectedCard] = useState<"left" | "right" | null>(null);
-  const [exitPhase, setExitPhase] = useState(false);
-  const [enterPhase, setEnterPhase] = useState(true);
-  const [showCheckmark, setShowCheckmark] = useState(false);
-
-  const pointerStartX = useRef(0);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  // Progress width — genuine 0–100% through the quiz
-  const progressWidth = (((currentPair + 1) / TOTAL_PAIRS) * 100).toFixed(1);
-
-  // Call fingerprint API then navigate to step-4
-  const completeQuiz = useCallback(
-    async (finalResponses: Response[]) => {
-      try {
-        // Guard: no responses means all pairs were skipped — skip API call
-        if (finalResponses.length === 0) return
-
-        const apiResponses = finalResponses.map((r) => ({
-          pair_id: r.pairId,
-          chosen: r.chosen,
-          super_liked: r.superLiked,
-        }));
-        const res = await fetch("/api/quiz/fingerprint", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            responses: apiResponses,
-            entry_path: "pairs",
-            room_type: roomType ?? "living-room",
-          }),
-        });
-        if (res.ok) {
-          const data = (await res.json()) as {
-            fingerprint: StyleFingerprint;
-            style_name: string;
-            style_chips?: string[];
-          };
-          setFingerprint(data.fingerprint, data.style_name, data.style_chips ?? []);
-
-          // Fire showcase renders sequentially to avoid rate limits
-          // Each render fires 2 seconds after the previous one starts
-          // Non-blocking — stored in Zustand (Rule 1: no sessionStorage)
-          const SHOWCASE_INPUTS = [
-            { photo_url: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1024', label: 'Living Room' },
-            { photo_url: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=1024', label: 'Bedroom' },
-            { photo_url: 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=1024', label: 'Home Office' },
-          ]
-          void (async () => {
-            const results: Array<{ predictionId: string; label: string }> = []
-            for (let i = 0; i < SHOWCASE_INPUTS.length; i++) {
-              if (i > 0) await new Promise(r => setTimeout(r, 2000))
-              const input = SHOWCASE_INPUTS[i]!
-              try {
-                const res = await fetch('/api/render', {
-                  method: 'POST',
-                  credentials: 'include',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    photo_url: input.photo_url,
-                    fingerprint_vector: data.fingerprint,
-                    room_type: roomType ?? 'living_room',
-                    budget: budgetTier ?? 'mid',
-                    inclusions: [],
-                    constraints: [],
-                    showcase_mode: true,
-                    style_name: data.style_name,
-                  }),
-                })
-                if (res.ok) {
-                  const renderData = await res.json() as { prediction_id: string }
-                  results.push({ predictionId: renderData.prediction_id, label: input.label })
-                }
-              } catch {
-                // Non-blocking fallback — step-3 will use anchor_renders
-              }
-            }
-            if (results.length > 0) {
-              setShowcasePredictionIds(results)
-            }
-          })()
-        }
-      } catch {
-        // Non-blocking — store will use defaults on step-3
-      } finally {
-        setStep(4);
-        router.push("/design/step-4");
-      }
-    },
-    [roomType, budgetTier, setFingerprint, setShowcasePredictionIds, setStep, router]
+function makeIdentityCov(scale: number): number[][] {
+  return Array.from({ length: 10 }, (_, i) =>
+    Array.from({ length: 10 }, (__, j) => (i === j ? scale : 0))
   );
+}
 
-  const handleSelection = useCallback(
-    (side: "left" | "right") => {
-      if (isAnimating) return;
-      setIsAnimating(true);
-      setSelectedCard(side);
+function makeZeroDims(): Record<DimKey, number> {
+  const d = {} as Record<DimKey, number>;
+  for (const k of DIM_KEYS) d[k] = 0;
+  return d;
+}
 
-      // Show checkmark at 150ms
-      setTimeout(() => setShowCheckmark(true), 150);
+function clamp(v: number, lo: number, hi: number) {
+  return Math.max(lo, Math.min(hi, v));
+}
 
-      // Exit animation at 600ms
-      setTimeout(() => setExitPhase(true), 600);
-
-      // Next pair at 1000ms
-      setTimeout(() => {
-        const activePair = pairs[currentPair];
-        const newResponse: Response = {
-          pairId: activePair?.id ?? `pair-${String(currentPair + 1).padStart(2, "0")}`,
-          chosen: side === "left" ? "A" : "B",
-          superLiked: false,
-        };
-        const updatedResponses = [...responses, newResponse];
-        setResponses(updatedResponses);
-
-        if (currentPair === TOTAL_PAIRS - 1) {
-          void completeQuiz(updatedResponses);
-        } else {
-          setSelectedCard(null);
-          setExitPhase(false);
-          setShowCheckmark(false);
-          setEnterPhase(true);
-          setCurrentPair((prev) => prev + 1);
-
-          setTimeout(() => {
-            setEnterPhase(false);
-            setIsAnimating(false);
-          }, 460);
-        }
-      }, 1000);
-    },
-    [isAnimating, currentPair, responses, completeQuiz, pairs]
-  );
-
-  const handleBack = useCallback(() => {
-    if (currentPair > 0 && !isAnimating) {
-      setCurrentPair((prev) => prev - 1);
-      setResponses((prev) => prev.slice(0, -1));
+function buildWarmStart(phaseADims: Array<Record<DimKey, number>>): StyleFingerprint {
+  const mean = makeZeroDims();
+  if (phaseADims.length > 0) {
+    for (const dims of phaseADims) {
+      for (const k of DIM_KEYS) mean[k] += dims[k]! / phaseADims.length;
     }
-  }, [currentPair, isAnimating]);
-
-  const handlePointerDown = (e: React.PointerEvent) => {
-    if (isAnimating) return;
-    pointerStartX.current = e.clientX;
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  }
+  return {
+    dimensions: mean as StyleFingerprint["dimensions"],
+    covariance: makeIdentityCov(0.5),
+    confidence: 0.3,
   };
+}
 
-  const handlePointerUp = (e: React.PointerEvent) => {
-    if (isAnimating) return;
-    const deltaX = e.clientX - pointerStartX.current;
-    if (Math.abs(deltaX) > 40) {
-      handleSelection(deltaX > 0 ? "left" : "right");
+// ── Phase A Component ─────────────────────────────────────────────────────────
+
+interface PhaseAProps {
+  roomType: string;
+  onComplete: (phaseADims: Array<Record<DimKey, number>>) => void;
+  onBack: () => void;
+}
+
+function PhaseA({ roomType, onComplete, onBack }: PhaseAProps) {
+  const { addPhaseASelection } = useFingerprintStore();
+  const [currentRound, setCurrentRound] = useState<1 | 2 | 3>(1);
+  const [roundImages, setRoundImages] = useState<CardData[]>([]);
+  const [selections, setSelections] = useState<CardData[]>([]);
+  const [shownIds, setShownIds] = useState<string[]>([]);
+  const [isLoadingImages, setIsLoadingImages] = useState(true);
+  const [accumulatedDims, setAccumulatedDims] = useState<Array<Record<DimKey, number>>>([]);
+  const loadedRef = useRef(false);
+
+  const loadCards = useCallback(async (round: number, shown: string[]) => {
+    setIsLoadingImages(true);
+    try {
+      const res = await fetch("/api/quiz/next-card", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ round, room_type: roomType, shown_ids: shown }),
+      });
+      if (!res.ok) throw new Error("Failed to load cards");
+      const data = await res.json() as { cards: CardData[] };
+      setRoundImages(data.cards ?? []);
+      setShownIds((prev) => [...prev, ...(data.cards ?? []).map((c) => c.id)]);
+    } catch {
+      setRoundImages([]);
+    } finally {
+      setIsLoadingImages(false);
     }
-  };
+  }, [roomType]);
 
-  // Enter animation on mount
   useEffect(() => {
-    const timer = setTimeout(() => setEnterPhase(false), 460);
-    return () => clearTimeout(timer);
-  }, []);
+    if (loadedRef.current) return;
+    loadedRef.current = true;
+    void loadCards(1, []);
+  }, [loadCards]);
 
-  // On mount: check if user just returned from OAuth with pending capture
-  // Fire detection using the persisted photo URL and room ID
-  useEffect(() => {
-    if (pendingPhotoUrl && pendingRoomId) {
-      setRoom(pendingRoomId)
-      setPhotoUrl(pendingPhotoUrl)
-      void triggerDetection(pendingPhotoUrl, pendingRoomId)
-      clearPendingCapture()
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  function toggleCard(card: CardData) {
+    setSelections((prev) => {
+      const exists = prev.find((c) => c.id === card.id);
+      if (exists) return prev.filter((c) => c.id !== card.id);
+      if (prev.length >= 3) return [...prev.slice(1), card];
+      return [...prev, card];
+    });
+  }
 
-  const activePair = pairs[currentPair];
-  const imgUrlA = activePair?.imageA?.url ?? "";
-  const imgUrlB = activePair?.imageB?.url ?? "";
-  const isWarmup = activePair?.isWarmup ?? (currentPair === 0);
-
-  const getCardStyle = (side: "left" | "right") => {
-    const isSelected = selectedCard === side;
-    const isRejected = selectedCard && selectedCard !== side;
-
-    let transform = "translateX(0) translateY(0)";
-    let opacity = 1;
-
-    if (enterPhase) {
-      transform = "translateX(105%)";
-      opacity = 0;
-    }
-
-    if (exitPhase) {
-      if (isSelected) {
-        transform = "translateX(105%)";
-        opacity = 0;
-      } else if (isRejected) {
-        transform = "translateX(-105%)";
-        opacity = 0;
-      }
-    } else if (isRejected && !exitPhase) {
-      opacity = 0.35;
-    }
-
-    return { transform, opacity };
+  const headings: Record<number, string> = {
+    1: "Which rooms speak to you?",
+    2: "Pick the spaces that feel right",
+    3: "Almost there",
   };
 
-  const getCardTransition = (side: "left" | "right") => {
-    if (enterPhase) {
-      const delay = side === "left" ? "0ms" : "60ms";
-      return `all 400ms cubic-bezier(0.34,1.56,0.64,1) ${delay}`;
+  function handleNext() {
+    const newDims = selections.map((c) => c.dimensionLabels);
+    const allDims = [...accumulatedDims, ...newDims];
+
+    for (const card of selections) {
+      addPhaseASelection(card.id);
     }
-    if (exitPhase) {
-      const duration = selectedCard === side ? "400ms" : "350ms";
-      return `all ${duration} ease-in`;
+
+    setAccumulatedDims(allDims);
+    setSelections([]);
+
+    if (currentRound < 3) {
+      const nextRound = (currentRound + 1) as 1 | 2 | 3;
+      setCurrentRound(nextRound);
+      void loadCards(nextRound, shownIds);
+    } else {
+      onComplete(allDims);
     }
-    return "all 300ms ease";
-  };
+  }
+
+  const isDisabled = selections.length < 2;
 
   return (
-    <div
-      className="fixed inset-0 flex flex-col overflow-hidden"
-      style={{ backgroundColor: "#091829" }}
-    >
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--cova-bg, #0A1628)" }}>
       <StepIndicator currentStep={3} totalSteps={9} />
-      {/* TOP ZONE - Progress */}
-      <div className="flex flex-col items-center pt-2 pb-1" style={{ height: "10%" }}>
-        <p
-          className="text-center font-sans mb-2"
-          style={{ fontSize: "13px", color: "#8A9BB5" }}
+
+      <button
+        onClick={onBack}
+        className="absolute top-4 left-4 text-sm transition-colors"
+        style={{ color: "var(--cova-muted, #8BA3C0)" }}
+        onMouseEnter={(e) => (e.currentTarget.style.color = "var(--cova-ivory, #F8F6F1)")}
+        onMouseLeave={(e) => (e.currentTarget.style.color = "var(--cova-muted, #8BA3C0)")}
+      >
+        ← Back
+      </button>
+
+      <div className="flex-1 flex flex-col items-center px-4 pb-8">
+        <h1
+          className="font-serif text-3xl text-center mt-8 mb-1"
+          style={{ color: "var(--cova-ivory, #F8F6F1)", fontFamily: "'EB Garamond', serif" }}
         >
-          <span
-            key={currentPair}
-            className="inline-block"
-            style={{ animation: "counterPop 200ms ease" }}
-          >
-            {currentPair + 1}
-          </span>{" "}
-          <span style={{ color: "#4A5E7A" }}>of {TOTAL_PAIRS}</span>
+          {headings[currentRound]}
+        </h1>
+        <p className="text-sm text-center mb-5" style={{ color: "var(--cova-muted, #8BA3C0)" }}>
+          Choose 2 or 3 that resonate
         </p>
 
-        {/* Progress bar */}
-        <div
-          className="w-full max-w-md mx-auto px-6"
-          style={{ height: "2px", backgroundColor: "rgba(201,168,76,0.15)" }}
-        >
-          <div
-            style={{
-              width: `${progressWidth}%`,
-              height: "100%",
-              backgroundColor: "#C9A84C",
-              transition: "width 400ms ease",
-            }}
-          />
+        {/* Round progress dots */}
+        <div className="flex gap-2 justify-center mb-6">
+          {[1, 2, 3].map((r) => (
+            <div
+              key={r}
+              className="rounded-full"
+              style={{
+                width: r === currentRound ? 10 : 8,
+                height: r === currentRound ? 10 : 8,
+                backgroundColor: r <= currentRound ? "var(--cova-gold, #C9A84C)" : "transparent",
+                border: r > currentRound ? "1px solid var(--cova-border, #1E3A5F)" : "none",
+                transition: "all 200ms ease-out",
+              }}
+            />
+          ))}
         </div>
 
-        {/* Warmup text - only on warmup card */}
-        <p
-          className="mt-1 text-center font-sans italic"
-          style={{
-            fontSize: "11px",
-            color: "#4A5E7A",
-            opacity: isWarmup ? 1 : 0,
-            transition: "opacity 300ms ease",
-            height: 16,
-          }}
-        >
-          Just getting started — no pressure
+        {/* Image grid */}
+        <div className="grid grid-cols-3 gap-2 w-full max-w-md mx-auto">
+          {isLoadingImages
+            ? Array.from({ length: 9 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="animate-pulse rounded-xl"
+                  style={{ aspectRatio: "1/1", backgroundColor: "var(--cova-surface, #0F1F3D)" }}
+                />
+              ))
+            : roundImages.map((card, idx) => {
+                const isSelected = selections.some((c) => c.id === card.id);
+                return (
+                  <motion.div
+                    key={card.id}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.25, delay: idx * 0.035 }}
+                    onClick={() => toggleCard(card)}
+                    className="relative cursor-pointer rounded-xl overflow-hidden"
+                    style={{
+                      aspectRatio: "1/1",
+                      boxShadow: isSelected
+                        ? "0 0 0 2px var(--cova-gold, #C9A84C), 0 0 0 3px var(--cova-bg, #0A1628)"
+                        : "none",
+                    }}
+                  >
+                    <Image
+                      src={card.imageUrl}
+                      alt={card.alt}
+                      fill
+                      className="object-cover"
+                      loading="eager"
+                      sizes="(max-width: 448px) 33vw, 149px"
+                    />
+                    {isSelected && (
+                      <div
+                        className="absolute inset-0"
+                        style={{ backgroundColor: "rgba(201,168,76,0.15)" }}
+                      />
+                    )}
+                    {isSelected && (
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                        className="absolute top-1.5 right-1.5 flex items-center justify-center rounded-full"
+                        style={{ width: 20, height: 20, backgroundColor: "var(--cova-gold, #C9A84C)" }}
+                      >
+                        <Check size={12} style={{ color: "var(--cova-bg, #0A1628)" }} />
+                      </motion.div>
+                    )}
+                  </motion.div>
+                );
+              })}
+        </div>
+
+        <p className="text-xs text-center mt-3" style={{ color: "var(--cova-muted, #8BA3C0)" }}>
+          {selections.length} selected
         </p>
-      </div>
 
-      {/* MIDDLE ZONE - Cards */}
-      <div
-        ref={containerRef}
-        className="relative flex-1 flex items-center justify-center px-4"
-        style={{ height: "77%" }}
-        onPointerDown={handlePointerDown}
-        onPointerUp={handlePointerUp}
-      >
-        <div
-          className="relative flex w-full h-full max-w-[900px]"
-          style={{ maxHeight: "calc(75vh - 40px)" }}
-        >
-          {/* Left Card */}
-          <div
-            className="relative w-1/2 h-full cursor-pointer overflow-hidden"
-            style={{
-              borderRadius: "16px 0 0 16px",
-              background: "linear-gradient(160deg, #0D2035 0%, #1A2A3A 50%, #0A1828 100%)",
-              ...getCardStyle("left"),
-              transition: getCardTransition("left"),
-              outline: selectedCard === "left" ? "3px solid #C9A84C" : "none",
-              boxShadow:
-                selectedCard === "left"
-                  ? "0 0 0 3px rgba(201,168,76,0.3), 0 0 40px rgba(201,168,76,0.15)"
-                  : "none",
-            }}
-            onClick={() => !isAnimating && handleSelection("left")}
-            onMouseEnter={() => setLastHovered("left")}
-            onMouseLeave={() => setLastHovered(null)}
-          >
-            {/* Real image */}
-            {imgUrlA ? (
-              <img
-                src={imgUrlA}
-                alt={activePair?.imageA?.alt ?? "Style option A"}
-                className="absolute inset-0 w-full h-full object-cover"
-                draggable={false}
-              />
-            ) : (
-              /* Fallback placeholder when images not yet generated */
-              <svg
-                className="absolute inset-0 m-auto"
-                width="60%"
-                height="60%"
-                viewBox="0 0 100 80"
-                fill="none"
-                style={{ opacity: 0.5 }}
-              >
-                <rect x="10" y="10" width="30" height="25" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
-                <line x1="5" y1="70" x2="95" y2="70" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
-                <path d="M20 70 L20 50 Q30 45 40 50 L40 70" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
-                <path d="M60 70 L60 55 L85 55 L85 70" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
-              </svg>
-            )}
-
-            {/* Bottom gradient overlay */}
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background: "linear-gradient(transparent 80%, rgba(9,24,41,0.15))",
-              }}
-            />
-
-            {/* Checkmark badge */}
-            {selectedCard === "left" && showCheckmark && (
-              <div
-                className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center justify-center"
-                style={{
-                  width: "28px",
-                  height: "28px",
-                  borderRadius: "50%",
-                  backgroundColor: "#C9A84C",
-                  animation: "checkBadge 250ms cubic-bezier(0.34,1.56,0.64,1)",
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                  <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-            )}
-
-            {/* Hover effect */}
-            <div
-              className="absolute inset-0 pointer-events-none transition-opacity duration-200"
-              style={{
-                opacity: lastHovered === "left" && !selectedCard ? 1 : 0,
-                boxShadow: "inset 0 0 60px rgba(201,168,76,0.04)",
-                borderLeft: "2px solid #C9A84C",
-                borderTop: "2px solid #C9A84C",
-                borderBottom: "2px solid #C9A84C",
-                borderRadius: "16px 0 0 16px",
-              }}
-            />
-          </div>
-
-          {/* Gold Divider */}
-          <div
-            className="absolute left-1/2 top-0 bottom-0 -translate-x-1/2 z-10"
-            style={{ width: "2px", backgroundColor: "rgba(201,168,76,0.6)" }}
-          >
-            {/* Diamond */}
-            <div
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20"
-              style={{
-                width: "8px",
-                height: "8px",
-                backgroundColor: "#C9A84C",
-                transform: "translate(-50%, -50%) rotate(45deg)",
-                animation: "diamondPulse 3s ease-in-out infinite",
-              }}
-            />
-          </div>
-
-          {/* Right Card */}
-          <div
-            className="relative w-1/2 h-full cursor-pointer overflow-hidden"
-            style={{
-              borderRadius: "0 16px 16px 0",
-              background: "linear-gradient(160deg, #1A0E08 0%, #2A1A0A 50%, #1A0A04 100%)",
-              ...getCardStyle("right"),
-              transition: getCardTransition("right"),
-              outline: selectedCard === "right" ? "3px solid #C9A84C" : "none",
-              boxShadow:
-                selectedCard === "right"
-                  ? "0 0 0 3px rgba(201,168,76,0.3), 0 0 40px rgba(201,168,76,0.15)"
-                  : "none",
-            }}
-            onClick={() => !isAnimating && handleSelection("right")}
-            onMouseEnter={() => setLastHovered("right")}
-            onMouseLeave={() => setLastHovered(null)}
-          >
-            {/* Real image */}
-            {imgUrlB ? (
-              <img
-                src={imgUrlB}
-                alt={activePair?.imageB?.alt ?? "Style option B"}
-                className="absolute inset-0 w-full h-full object-cover"
-                draggable={false}
-              />
-            ) : (
-              /* Fallback placeholder */
-              <svg
-                className="absolute inset-0 m-auto"
-                width="60%"
-                height="60%"
-                viewBox="0 0 100 80"
-                fill="none"
-                style={{ opacity: 0.5 }}
-              >
-                <rect x="60" y="8" width="35" height="28" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
-                <line x1="5" y1="70" x2="95" y2="70" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
-                <ellipse cx="35" cy="60" rx="25" ry="8" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
-                <path d="M70 70 L70 50 L90 50 L90 70" stroke="rgba(201,168,76,0.08)" strokeWidth="0.5" />
-              </svg>
-            )}
-
-            {/* Bottom gradient overlay */}
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background: "linear-gradient(transparent 80%, rgba(9,24,41,0.15))",
-              }}
-            />
-
-            {/* Checkmark badge */}
-            {selectedCard === "right" && showCheckmark && (
-              <div
-                className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center justify-center"
-                style={{
-                  width: "28px",
-                  height: "28px",
-                  borderRadius: "50%",
-                  backgroundColor: "#C9A84C",
-                  animation: "checkBadge 250ms cubic-bezier(0.34,1.56,0.64,1)",
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                  <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-            )}
-
-            {/* Hover effect */}
-            <div
-              className="absolute inset-0 pointer-events-none transition-opacity duration-200"
-              style={{
-                opacity: lastHovered === "right" && !selectedCard ? 1 : 0,
-                boxShadow: "inset 0 0 60px rgba(201,168,76,0.04)",
-                borderRight: "2px solid #C9A84C",
-                borderTop: "2px solid #C9A84C",
-                borderBottom: "2px solid #C9A84C",
-                borderRadius: "0 16px 16px 0",
-              }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* BOTTOM ZONE - Skip + Back */}
-      <div
-        className="flex flex-col items-center justify-center pb-6"
-        style={{ height: "13%" }}
-      >
-        {/* Neither / Skip button */}
         <button
-          onClick={() => {
-            if (isAnimating) return;
-            if (currentPair + 1 >= TOTAL_PAIRS) {
-              void completeQuiz(responses);
-            } else {
-              setCurrentPair((prev) => prev + 1);
-            }
-          }}
-          disabled={isAnimating}
-          className="font-sans transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+          onClick={handleNext}
+          disabled={isDisabled}
+          className="w-full max-w-md mt-4 py-3 rounded-xl font-medium transition-all duration-200"
           style={{
-            fontSize: "12px",
-            color: "#4A5E7A",
-            background: "transparent",
-            border: "1px solid rgba(74,94,122,0.4)",
-            borderRadius: 20,
-            padding: "6px 20px",
-            cursor: isAnimating ? "not-allowed" : "pointer",
-            letterSpacing: "0.04em",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = "rgba(201,168,76,0.3)";
-            e.currentTarget.style.color = "#8A9BB5";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = "rgba(74,94,122,0.4)";
-            e.currentTarget.style.color = "#4A5E7A";
+            backgroundColor: isDisabled ? "rgba(201,168,76,0.3)" : "var(--cova-gold, #C9A84C)",
+            color: isDisabled ? "rgba(201,168,76,0.5)" : "var(--cova-bg, #0A1628)",
+            cursor: isDisabled ? "not-allowed" : "pointer",
           }}
         >
-          Neither — skip
-        </button>
-
-        {/* Back button */}
-        <button
-          onClick={handleBack}
-          disabled={currentPair === 0 || isAnimating}
-          className="mt-3 font-sans transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
-          style={{
-            fontSize: "12px",
-            color: "#4A5E7A",
-            background: "none",
-            border: "none",
-            cursor: currentPair > 0 ? "pointer" : "not-allowed",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "#8A9BB5")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "#4A5E7A")}
-        >
-          ←
+          {isDisabled
+            ? "Select at least 2 to continue"
+            : currentRound < 3
+            ? "Next Round →"
+            : "Continue →"}
         </button>
       </div>
-
-      {/* Animations */}
-      <style jsx>{`
-        @keyframes counterPop {
-          0% { transform: scale(1); }
-          50% { transform: scale(1.3); }
-          100% { transform: scale(1); }
-        }
-        @keyframes checkBadge {
-          0% { transform: translateX(-50%) scale(0); }
-          60% { transform: translateX(-50%) scale(1.1); }
-          100% { transform: translateX(-50%) scale(1); }
-        }
-        @keyframes diamondPulse {
-          0%, 100% {
-            transform: translate(-50%, -50%) rotate(45deg) scale(1);
-            opacity: 0.6;
-          }
-          50% {
-            transform: translate(-50%, -50%) rotate(45deg) scale(1.15);
-            opacity: 1;
-          }
-        }
-      `}</style>
     </div>
   );
 }
 
-async function triggerDetection(photoUrl: string, roomId: string): Promise<void> {
-  try {
-    await fetch('/api/detect', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ photo_url: photoUrl, room_id: roomId }),
-    })
-  } catch {
-    // Detection failure is non-blocking
+// ── Transition Screen ─────────────────────────────────────────────────────────
+
+function TransitionScreen() {
+  return (
+    <div
+      className="min-h-screen flex flex-col items-center justify-center gap-4"
+      style={{ backgroundColor: "var(--cova-bg, #0A1628)" }}
+    >
+      <div
+        className="w-10 h-10 rounded-full animate-spin"
+        style={{ border: "2px solid var(--cova-gold, #C9A84C)", borderTopColor: "transparent" }}
+      />
+      <p
+        className="font-serif text-xl"
+        style={{ color: "var(--cova-ivory, #F8F6F1)", fontFamily: "'EB Garamond', serif" }}
+      >
+        Refining your style profile...
+      </p>
+      <p className="text-sm" style={{ color: "var(--cova-muted, #8BA3C0)" }}>
+        A few more questions to personalize
+      </p>
+    </div>
+  );
+}
+
+// ── Phase B Component ─────────────────────────────────────────────────────────
+
+interface PhaseBProps {
+  roomType: string;
+  warmStart: StyleFingerprint;
+  onComplete: (finalFP: StyleFingerprint) => void;
+}
+
+function PhaseB({ roomType, warmStart, onComplete }: PhaseBProps) {
+  const { addPhaseBResponse } = useFingerprintStore();
+  const [pairNumber, setPairNumber] = useState(1);
+  const [currentPair, setCurrentPair] = useState<PairData | null>(null);
+  const [answeredPairs, setAnsweredPairs] = useState<string[]>([]);
+  const [localFingerprint, setLocalFingerprint] = useState<StyleFingerprint>(warmStart);
+  const [pairShownAt, setPairShownAt] = useState(Date.now());
+  const [isLoadingPair, setIsLoadingPair] = useState(true);
+  const [chosenId, setChosenId] = useState<string | null>(null);
+  const loadedRef = useRef(false);
+
+  const loadNextPair = useCallback(
+    async (fp: StyleFingerprint, answered: string[]) => {
+      setIsLoadingPair(true);
+      try {
+        const res = await fetch("/api/quiz/next-pair", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fingerprint: fp, answered_pairs: answered, room_type: roomType }),
+        });
+        if (!res.ok) throw new Error("No pairs");
+        const data = await res.json() as { pair: PairData };
+        setCurrentPair(data.pair);
+        setPairShownAt(Date.now());
+      } catch {
+        setCurrentPair(null);
+      } finally {
+        setIsLoadingPair(false);
+      }
+    },
+    [roomType]
+  );
+
+  useEffect(() => {
+    if (loadedRef.current) return;
+    loadedRef.current = true;
+    void loadNextPair(warmStart, []);
+  }, [loadNextPair, warmStart]);
+
+  function handlePairResponse(chosenCard: CardData) {
+    if (!currentPair || chosenId) return;
+    const responseTimeMs = Date.now() - pairShownAt;
+    const rejectedCard =
+      chosenCard.id === currentPair.imageA.id ? currentPair.imageB : currentPair.imageA;
+
+    const lambda = Math.min(3, 1 + 500 / Math.max(responseTimeMs, 100));
+    const newDims = { ...localFingerprint.dimensions } as Record<DimKey, number>;
+    const newCov = localFingerprint.covariance.map((row) => [...row]);
+
+    DIM_KEYS.forEach((dim, i) => {
+      const delta =
+        ((chosenCard.dimensionLabels[dim] ?? 0) - (rejectedCard.dimensionLabels[dim] ?? 0)) *
+        0.15 * lambda;
+      newDims[dim] = clamp((newDims[dim] ?? 0) + delta, -1, 1);
+      newCov[i]![i] = (newCov[i]![i] ?? 0.5) * 0.85;
+    });
+
+    const diagSum = newCov.reduce((s, row, i) => s + (row[i] ?? 0), 0);
+    const confidence = Math.min(1, Math.max(0, 1 - (diagSum / 10) / 0.5));
+
+    const updatedFP: StyleFingerprint = {
+      dimensions: newDims as StyleFingerprint["dimensions"],
+      covariance: newCov,
+      confidence,
+    };
+    setLocalFingerprint(updatedFP);
+
+    addPhaseBResponse({
+      pairId: currentPair.imageA.id + "_" + currentPair.imageB.id,
+      chosenId: chosenCard.id,
+      responseTimeMs,
+    });
+
+    const newAnswered = [
+      ...answeredPairs,
+      currentPair.imageA.pair_id ?? currentPair.imageA.id,
+    ];
+    setAnsweredPairs(newAnswered);
+    setChosenId(chosenCard.id);
+
+    setTimeout(() => {
+      setChosenId(null);
+      if (pairNumber >= TOTAL_PAIRS) {
+        onComplete(updatedFP);
+      } else {
+        setPairNumber((p) => p + 1);
+        void loadNextPair(updatedFP, newAnswered);
+      }
+    }, 650);
   }
+
+  function handleSkip() {
+    if (!currentPair || chosenId) return;
+    const newAnswered = [...answeredPairs, currentPair.imageA.pair_id ?? currentPair.imageA.id];
+    setAnsweredPairs(newAnswered);
+    if (pairNumber >= TOTAL_PAIRS) {
+      onComplete(localFingerprint);
+    } else {
+      setPairNumber((p) => p + 1);
+      void loadNextPair(localFingerprint, newAnswered);
+    }
+  }
+
+  const progressPct = ((pairNumber / TOTAL_PAIRS) * 100).toFixed(1);
+
+  return (
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--cova-bg, #0A1628)" }}>
+      <StepIndicator currentStep={3} totalSteps={9} />
+
+      <div className="h-0.5" style={{ backgroundColor: "var(--cova-surface, #0F1F3D)" }}>
+        <div
+          className="h-full transition-all duration-500"
+          style={{ width: `${progressPct}%`, backgroundColor: "var(--cova-gold, #C9A84C)" }}
+        />
+      </div>
+      <p className="text-xs text-center mt-1" style={{ color: "var(--cova-muted, #8BA3C0)" }}>
+        Pair {pairNumber} of {TOTAL_PAIRS}
+      </p>
+
+      <div className="flex-1 flex flex-col items-center px-4 pb-8">
+        <h1
+          className="font-serif text-2xl text-center mt-6"
+          style={{
+            color: "var(--cova-ivory, #F8F6F1)",
+            fontFamily: "'EB Garamond', serif",
+            marginBottom: pairNumber === 1 ? 4 : 32,
+          }}
+        >
+          Which feels more like you?
+        </h1>
+
+        {pairNumber === 1 && (
+          <p className="text-xs text-center mb-6" style={{ color: "var(--cova-muted, #8BA3C0)" }}>
+            Just get started — no pressure
+          </p>
+        )}
+
+        <div className="flex gap-3 w-full max-w-lg mx-auto">
+          {isLoadingPair || !currentPair ? (
+            <>
+              {[0, 1].map((i) => (
+                <div
+                  key={i}
+                  className="flex-1 rounded-2xl animate-pulse"
+                  style={{ aspectRatio: "3/4", backgroundColor: "var(--cova-surface, #0F1F3D)" }}
+                />
+              ))}
+            </>
+          ) : (
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={pairNumber}
+                className="flex gap-3 w-full"
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -40 }}
+                transition={{ duration: 0.3 }}
+              >
+                {([currentPair.imageA, currentPair.imageB] as CardData[]).map((card) => (
+                  <div
+                    key={card.id}
+                    className="flex-1 relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-150"
+                    style={{
+                      aspectRatio: "3/4",
+                      boxShadow:
+                        chosenId === card.id
+                          ? "0 0 0 2px var(--cova-gold, #C9A84C)"
+                          : "none",
+                      transform: chosenId === card.id ? "scale(1.02)" : "scale(1)",
+                    }}
+                    onClick={() => handlePairResponse(card)}
+                    onMouseEnter={(e) => {
+                      if (!chosenId) {
+                        e.currentTarget.style.boxShadow = "0 0 0 2px rgba(201,168,76,0.5)";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (chosenId !== card.id) {
+                        e.currentTarget.style.boxShadow = "none";
+                      }
+                    }}
+                  >
+                    <Image
+                      src={card.imageUrl}
+                      alt={card.alt}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 512px) 45vw, 230px"
+                    />
+                  </div>
+                ))}
+              </motion.div>
+            </AnimatePresence>
+          )}
+        </div>
+
+        <button
+          onClick={handleSkip}
+          disabled={!!chosenId}
+          className="text-xs text-center mt-4 transition-colors duration-200 bg-transparent border-none cursor-pointer"
+          style={{ color: "var(--cova-muted, #8BA3C0)" }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "var(--cova-ivory, #F8F6F1)")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "var(--cova-muted, #8BA3C0)")}
+        >
+          Skip this one
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Phase C Component ─────────────────────────────────────────────────────────
+
+function PhaseC({ onBack }: { onBack: () => void }) {
+  const router = useRouter();
+  const fingerprintStore = useFingerprintStore();
+  const sessionStore = useSessionStore();
+
+  const [householdComposition, setHouseholdComposition] = useState("");
+  const [localBudgetTier, setLocalBudgetTier] = useState<BudgetTier>(
+    (fingerprintStore.budgetTier as BudgetTier | null) ?? "mid"
+  );
+  const [freeText, setFreeText] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  async function handleFinishQuiz() {
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      const res = await fetch("/api/quiz/fingerprint", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phase_a_selections: fingerprintStore.phaseASelections,
+          phase_b_responses: fingerprintStore.phaseBResponses,
+          room_type: fingerprintStore.roomType ?? "bedroom",
+          household_composition: householdComposition,
+          free_text: freeText || undefined,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Request failed");
+
+      const data = await res.json() as {
+        fingerprint: StyleFingerprint;
+        style_name: string;
+        style_tags: string[];
+      };
+
+      fingerprintStore.setFingerprint(data.fingerprint, data.style_name, data.style_tags);
+
+      if (localBudgetTier !== fingerprintStore.budgetTier) {
+        const ranges: Record<BudgetTier, [number, number]> = {
+          budget: [200, 500],
+          mid: [500, 2000],
+          premium: [2000, 5000],
+          luxury: [5000, 25000],
+        };
+        fingerprintStore.setBudget(localBudgetTier, ranges[localBudgetTier]);
+      }
+
+      sessionStore.setStep(4);
+      router.push("/design/step-4");
+    } catch {
+      setSubmitError("Something went wrong — tap to retry");
+      setIsSubmitting(false);
+    }
+  }
+
+  const HOUSEHOLD_OPTIONS = ["Solo", "Couple", "Family", "Roommates"];
+  const BUDGET_TIERS: BudgetTier[] = ["budget", "mid", "premium", "luxury"];
+
+  return (
+    <div
+      className="min-h-screen flex flex-col items-center px-6 pt-8"
+      style={{ backgroundColor: "var(--cova-bg, #0A1628)" }}
+    >
+      <div className="w-full max-w-sm mx-auto">
+        <StepIndicator currentStep={3} totalSteps={9} />
+
+        <h1
+          className="font-serif text-3xl text-center mt-10 mb-1"
+          style={{ color: "var(--cova-ivory, #F8F6F1)", fontFamily: "'EB Garamond', serif" }}
+        >
+          Almost done
+        </h1>
+        <p className="text-sm text-center mb-10" style={{ color: "var(--cova-muted, #8BA3C0)" }}>
+          Three quick questions
+        </p>
+
+        <p className="text-sm mb-3" style={{ color: "var(--cova-ivory, #F8F6F1)" }}>
+          Who uses this space?
+        </p>
+        <div className="flex flex-wrap gap-2 mb-8">
+          {HOUSEHOLD_OPTIONS.map((opt) => (
+            <button
+              key={opt}
+              onClick={() => setHouseholdComposition(opt)}
+              className="px-4 py-2 rounded-full text-sm transition-all duration-200"
+              style={{
+                backgroundColor:
+                  householdComposition === opt
+                    ? "var(--cova-gold, #C9A84C)"
+                    : "var(--cova-surface, #0F1F3D)",
+                color:
+                  householdComposition === opt
+                    ? "var(--cova-bg, #0A1628)"
+                    : "var(--cova-ivory, #F8F6F1)",
+                border: householdComposition === opt
+                  ? "none"
+                  : "1px solid var(--cova-border, #1E3A5F)",
+                fontWeight: householdComposition === opt ? 500 : 400,
+              }}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+
+        <p className="text-sm mb-3" style={{ color: "var(--cova-ivory, #F8F6F1)" }}>
+          Confirm your budget
+        </p>
+        <div className="flex flex-wrap gap-2 mb-8">
+          {BUDGET_TIERS.map((tier) => (
+            <button
+              key={tier}
+              onClick={() => setLocalBudgetTier(tier)}
+              className="px-4 py-2 rounded-full text-sm transition-all duration-200"
+              style={{
+                backgroundColor:
+                  localBudgetTier === tier
+                    ? "var(--cova-gold, #C9A84C)"
+                    : "var(--cova-surface, #0F1F3D)",
+                color:
+                  localBudgetTier === tier
+                    ? "var(--cova-bg, #0A1628)"
+                    : "var(--cova-ivory, #F8F6F1)",
+                border: localBudgetTier === tier
+                  ? "none"
+                  : "1px solid var(--cova-border, #1E3A5F)",
+                fontWeight: localBudgetTier === tier ? 500 : 400,
+              }}
+            >
+              {BUDGET_LABELS[tier]}
+            </button>
+          ))}
+        </div>
+
+        <p className="text-sm mb-3" style={{ color: "var(--cova-ivory, #F8F6F1)" }}>
+          Anything we should know?{" "}
+          <span style={{ color: "var(--cova-muted, #8BA3C0)" }}>(optional)</span>
+        </p>
+        <textarea
+          value={freeText}
+          onChange={(e) => setFreeText(e.target.value)}
+          placeholder="e.g. I rent, I have a dog, limited natural light"
+          rows={3}
+          className="w-full rounded-lg px-4 py-3 text-sm resize-none outline-none transition-all duration-200 mb-8"
+          style={{
+            backgroundColor: "var(--cova-surface, #0F1F3D)",
+            color: "var(--cova-ivory, #F8F6F1)",
+            border: "1px solid var(--cova-border, #1E3A5F)",
+          }}
+          onFocus={(e) => (e.target.style.borderColor = "var(--cova-gold, #C9A84C)")}
+          onBlur={(e) => (e.target.style.borderColor = "var(--cova-border, #1E3A5F)")}
+        />
+
+        <div className="h-px mb-8" style={{ backgroundColor: "var(--cova-border, #1E3A5F)" }} />
+
+        {submitError && (
+          <p className="text-sm text-center mb-4" style={{ color: "var(--cova-error, #C0504A)" }}>
+            {submitError}
+          </p>
+        )}
+
+        <button
+          onClick={handleFinishQuiz}
+          disabled={!householdComposition || isSubmitting}
+          className="w-full py-4 rounded-xl text-base font-medium transition-all duration-200 mb-4"
+          style={{
+            backgroundColor:
+              !householdComposition || isSubmitting
+                ? "rgba(201,168,76,0.3)"
+                : "var(--cova-gold, #C9A84C)",
+            color:
+              !householdComposition || isSubmitting
+                ? "rgba(201,168,76,0.5)"
+                : "var(--cova-bg, #0A1628)",
+            cursor: !householdComposition || isSubmitting ? "not-allowed" : "pointer",
+          }}
+        >
+          {isSubmitting ? (
+            <span className="flex items-center justify-center gap-2">
+              <span
+                className="w-4 h-4 rounded-full animate-spin inline-block"
+                style={{
+                  border: "2px solid rgba(201,168,76,0.5)",
+                  borderTopColor: "rgba(201,168,76,0.8)",
+                }}
+              />
+              Building your profile...
+            </span>
+          ) : (
+            "See My Style →"
+          )}
+        </button>
+
+        <button
+          onClick={onBack}
+          className="w-full text-sm text-center bg-transparent border-none cursor-pointer transition-colors duration-200"
+          style={{ color: "var(--cova-muted, #8BA3C0)" }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "var(--cova-ivory, #F8F6F1)")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "var(--cova-muted, #8BA3C0)")}
+        >
+          ← Back
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Root Page ─────────────────────────────────────────────────────────────────
+
+export default function StyleQuizPage() {
+  const router = useRouter();
+  const { roomType } = useFingerprintStore();
+
+  const [phase, setPhase] = useState<QuizPhase>("A");
+  const [warmStart, setWarmStart] = useState<StyleFingerprint | null>(null);
+
+  useEffect(() => {
+    if (!roomType) {
+      router.push("/design/step-1");
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handlePhaseAComplete(phaseADims: Array<Record<DimKey, number>>) {
+    const ws = buildWarmStart(phaseADims);
+    setWarmStart(ws);
+    setPhase("transitioning");
+    setTimeout(() => setPhase("B"), 1400);
+  }
+
+  function handlePhaseBComplete(finalFP: StyleFingerprint) {
+    setWarmStart(finalFP);
+    setPhase("C");
+  }
+
+  const roomTypeNorm = roomType ?? "bedroom";
+
+  return (
+    <AnimatePresence mode="wait">
+      {phase === "A" && (
+        <motion.div
+          key="phase-a"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <PhaseA
+            roomType={roomTypeNorm}
+            onComplete={handlePhaseAComplete}
+            onBack={() => router.push("/design/step-2")}
+          />
+        </motion.div>
+      )}
+
+      {phase === "transitioning" && (
+        <motion.div
+          key="transition"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <TransitionScreen />
+        </motion.div>
+      )}
+
+      {phase === "B" && warmStart && (
+        <motion.div
+          key="phase-b"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <PhaseB
+            roomType={roomTypeNorm}
+            warmStart={warmStart}
+            onComplete={handlePhaseBComplete}
+          />
+        </motion.div>
+      )}
+
+      {phase === "C" && (
+        <motion.div
+          key="phase-c"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <PhaseC onBack={() => setPhase("B")} />
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 }

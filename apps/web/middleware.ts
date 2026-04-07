@@ -25,6 +25,7 @@ const PUBLIC_API_ROUTES = [
   '/api/auth/callback',
   '/api/quiz/fingerprint',
   '/api/quiz/next-pair',
+  '/api/quiz/next-card',
 ]
 
 export async function middleware(request: NextRequest) {
