@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Check } from 'lucide-react'
+
 import { useRoomStore, type KeepMaskItem } from '@/lib/store/room'
 import { useFingerprintStore } from '@/lib/store/fingerprint'
 import { useSessionStore } from '@/lib/store/session'
@@ -19,11 +19,6 @@ function keepToState(keep: boolean | null): ItemState {
   return 'undecided'
 }
 
-function stateToKeep(state: ItemState): boolean | null {
-  if (state === 'keep') return true
-  if (state === 'remove') return false
-  return null
-}
 
 // ─── Label → emoji ─────────────────────────────────────────────────────────
 
@@ -162,279 +157,6 @@ function LoadingScreen({ photoUrl }: { photoUrl: string | null }) {
   )
 }
 
-// ─── Hotspot Dot ────────────────────────────────────────────────────────────
-
-function HotspotDot({
-  item,
-  dotLeft,
-  dotTop,
-  containerH,
-  isOpen,
-  onDotClick,
-  onKeep,
-  onRemove,
-  entranceIndex,
-  isReady,
-}: {
-  item: KeepMaskItem
-  dotLeft: number
-  dotTop: number
-  containerH: number
-  isOpen: boolean
-  onDotClick: () => void
-  onKeep: () => void
-  onRemove: () => void
-  entranceIndex: number
-  isReady: boolean
-}) {
-  const [isVisible, setIsVisible] = useState(false)
-  const state = keepToState(item.keep)
-
-  useEffect(() => {
-    if (!isReady) return
-    const t = setTimeout(() => setIsVisible(true), entranceIndex * 120)
-    return () => clearTimeout(t)
-  }, [isReady, entranceIndex])
-
-  const dotStyles: React.CSSProperties = {
-    width: 22,
-    height: 22,
-    borderRadius: '50%',
-    cursor: 'pointer',
-    transition: 'all 250ms cubic-bezier(0.34,1.56,0.64,1)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    transform: isVisible ? 'scale(1)' : 'scale(0)',
-    opacity: isVisible ? (state === 'remove' ? 0.6 : 1) : 0,
-    ...(state === 'keep' && {
-      backgroundColor: 'var(--cova-keep)',
-      boxShadow: '0 0 0 4px rgba(26,122,74,0.3), 0 0 16px rgba(26,122,74,0.4)',
-    }),
-    ...(state === 'remove' && {
-      backgroundColor: 'rgba(74,94,122,0.5)',
-      border: '1.5px solid var(--cova-dim)',
-    }),
-    ...(state === 'undecided' && {
-      backgroundColor: 'var(--cova-gold)',
-      boxShadow: '0 0 0 4px rgba(201,168,76,0.25)',
-      animation: isVisible ? 'dotPulse 2.2s ease-out infinite' : 'none',
-    }),
-  }
-
-  // Popup position: above by default, below if dot is in top 20% of container
-  const showBelow = containerH > 0 && dotTop / containerH < 0.20
-
-  return (
-    <div
-      className="absolute z-10"
-      style={{
-        left: dotLeft,
-        top: dotTop,
-        transform: 'translate(-50%, -50%)',
-      }}
-    >
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
-          onDotClick()
-        }}
-        style={dotStyles}
-        aria-label={`${item.label} — ${state}`}
-      >
-        {state === 'keep' && (
-          <svg width="12" height="12" viewBox="-5 -5 10 10" fill="none">
-            <path d="M-4 0 L-1 3 L4 -3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        )}
-        {state === 'remove' && <Check size={10} color="white" strokeWidth={2.5} />}
-        {state === 'undecided' && (
-          <div style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: 'white' }} />
-        )}
-      </button>
-
-      {/* Popup */}
-      {isOpen && (
-        <div
-          className="absolute z-30"
-          style={{
-            ...(showBelow
-              ? { top: 'calc(100% + 14px)' }
-              : { bottom: 'calc(100% + 14px)' }),
-            left: '50%',
-            transform: 'translateX(-50%)',
-            animation: 'popupEnter 250ms cubic-bezier(0.34,1.56,0.64,1)',
-            transformOrigin: showBelow ? 'top center' : 'bottom center',
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div
-            style={{
-              background: 'rgba(9,24,41,0.97)',
-              border: '1px solid rgba(201,168,76,0.5)',
-              borderRadius: 14,
-              padding: '14px 16px',
-              backdropFilter: 'blur(16px)',
-              boxShadow: 'var(--shadow-lg), 0 0 0 1px rgba(201,168,76,0.1)',
-              minWidth: 170,
-              whiteSpace: 'nowrap',
-              position: 'relative',
-            }}
-          >
-            <span
-              className="font-serif block mb-3"
-              style={{ color: 'var(--cova-ivory)', fontSize: 16 }}
-            >
-              {item.label.charAt(0).toUpperCase() + item.label.slice(1)}
-            </span>
-
-            <div className="flex gap-2">
-              <button
-                onClick={onKeep}
-                className="flex-1 flex items-center justify-center gap-1.5 font-sans transition-all duration-150"
-                style={{
-                  backgroundColor: 'var(--cova-keep-bg)',
-                  border: '1.5px solid var(--cova-keep)',
-                  color: 'var(--cova-keep-bright)',
-                  padding: '8px 16px',
-                  borderRadius: 8,
-                  fontSize: 13,
-                  fontWeight: 600,
-                }}
-              >
-                <Check size={16} strokeWidth={2.5} />
-                Keep
-              </button>
-              <button
-                onClick={onRemove}
-                className="flex-1 flex items-center justify-center gap-1.5 font-sans transition-all duration-150"
-                style={{
-                  backgroundColor: 'var(--cova-remove-bg)',
-                  border: '1.5px solid rgba(192,57,43,0.5)',
-                  color: 'var(--cova-remove)',
-                  padding: '8px 16px',
-                  borderRadius: 8,
-                  fontSize: 13,
-                  fontWeight: 600,
-                }}
-              >
-                Remove
-              </button>
-            </div>
-
-            {/* Arrow */}
-            {!showBelow && (
-              <div
-                className="absolute left-1/2 -translate-x-1/2"
-                style={{
-                  bottom: -7,
-                  width: 14,
-                  height: 7,
-                  backgroundColor: 'rgba(9,24,41,0.97)',
-                  clipPath: 'polygon(0 0, 100% 0, 50% 100%)',
-                }}
-              />
-            )}
-            {showBelow && (
-              <div
-                className="absolute left-1/2 -translate-x-1/2"
-                style={{
-                  top: -7,
-                  width: 14,
-                  height: 7,
-                  backgroundColor: 'rgba(9,24,41,0.97)',
-                  clipPath: 'polygon(50% 0, 0 100%, 100% 100%)',
-                }}
-              />
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ─── Three-state toggle ─────────────────────────────────────────────────────
-
-function StateToggle({
-  state,
-  onChange,
-}: {
-  state: ItemState
-  onChange: (next: ItemState) => void
-}) {
-  const pills: { key: ItemState; label: string }[] = [
-    { key: 'keep', label: 'Keep' },
-    { key: 'undecided', label: '—' },
-    { key: 'remove', label: 'Remove' },
-  ]
-
-  return (
-    <div className="flex gap-1">
-      {pills.map(({ key, label }) => {
-        const isActive = state === key
-        let activeStyle: React.CSSProperties = {}
-        const inactiveStyle: React.CSSProperties = {
-          backgroundColor: 'transparent',
-          border: '1px solid rgba(74,94,122,0.3)',
-          color: 'var(--cova-dim)',
-        }
-
-        if (isActive) {
-          if (key === 'keep') {
-            activeStyle = {
-              backgroundColor: 'var(--cova-keep-bg)',
-              border: '1.5px solid var(--cova-keep)',
-              color: 'var(--cova-keep-bright)',
-            }
-          } else if (key === 'remove') {
-            activeStyle = {
-              backgroundColor: 'var(--cova-remove-bg)',
-              border: '1.5px solid rgba(192,57,43,0.6)',
-              color: 'var(--cova-remove)',
-            }
-          } else {
-            activeStyle = {
-              backgroundColor: 'rgba(201,168,76,0.1)',
-              border: '1.5px solid rgba(201,168,76,0.4)',
-              color: 'var(--cova-gold)',
-            }
-          }
-        }
-
-        const handleClick = () => {
-          // Toggle off if already active (revert to undecided), else set
-          if (key === 'undecided') {
-            onChange('undecided')
-          } else {
-            onChange(isActive ? 'undecided' : key)
-          }
-        }
-
-        return (
-          <button
-            key={key}
-            onClick={handleClick}
-            className="font-sans"
-            style={{
-              padding: '5px 11px',
-              borderRadius: 20,
-              fontSize: 11,
-              fontWeight: 500,
-              transition: 'all 150ms ease',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              ...(isActive ? activeStyle : inactiveStyle),
-            }}
-          >
-            {label}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
 // ─── Main page ──────────────────────────────────────────────────────────────
 
 export default function Step6Page() {
@@ -443,11 +165,7 @@ export default function Step6Page() {
   const { roomType: _roomType } = useFingerprintStore()
   const { setStep } = useSessionStore()
 
-  const [expandedDotId, setExpandedDotId] = useState<string | null>(null)
-  const [imageDimensions, setImageDimensions] = useState<{
-    natural: { w: number; h: number }
-    container: { w: number; h: number }
-  } | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [detectionFailed, setDetectionFailed] = useState(false)
   const [isDotsReady, setIsDotsReady] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
@@ -456,6 +174,8 @@ export default function Step6Page() {
   const photoContainerRef = useRef<HTMLDivElement>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const pollStartRef = useRef<number>(0)
+  const itemRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const listScrollRef = useRef<HTMLDivElement>(null)
 
   // Clear interval on unmount
   useEffect(() => {
@@ -471,25 +191,6 @@ export default function Step6Page() {
       return () => clearTimeout(t)
     }
   }, [keepMask])
-
-  // ResizeObserver for container dimensions
-  useEffect(() => {
-    const container = photoContainerRef.current
-    if (!container) return
-
-    const obs = new ResizeObserver((entries) => {
-      const entry = entries[0]
-      if (!entry) return
-      const { width, height } = entry.contentRect
-      setImageDimensions((prev) =>
-        prev
-          ? { ...prev, container: { w: width, h: height } }
-          : { natural: { w: 0, h: 0 }, container: { w: width, h: height } }
-      )
-    })
-    obs.observe(container)
-    return () => obs.disconnect()
-  }, [])
 
   // Poll /api/detect/status — skip if keepMask already populated (back navigation)
   useEffect(() => {
@@ -539,34 +240,27 @@ export default function Step6Page() {
 
   // Computed
   const visibleDetections = keepMask?.filter((d) => d.showToUser === true) ?? []
-  const furnitureItems = visibleDetections.filter((d) => d.type === 'furniture')
-  const architectureItems = visibleDetections.filter((d) => d.type === 'architecture')
   const showFallback = detectionFailed || (keepMask !== null && visibleDetections.length === 0)
   const isPolling = keepMask === null && !detectionFailed
 
-  // Handle image natural dimensions
-  const handleImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
-    const img = e.currentTarget
-    setImageDimensions((prev) => ({
-      natural: { w: img.naturalWidth, h: img.naturalHeight },
-      container: prev?.container ?? { w: 0, h: 0 },
-    }))
-  }, [])
+  const selectedItem = selectedId ? visibleDetections.find((d) => dotId(d) === selectedId) ?? null : null
 
-  // Dot click / close
+  // Dot click — select and scroll list to row
   const handleDotClick = useCallback((id: string) => {
-    setExpandedDotId((prev) => (prev === id ? null : id))
+    setSelectedId((prev) => (prev === id ? null : id))
+    setTimeout(() => {
+      itemRefs.current[id]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }, 50)
   }, [])
 
   const handleOutsideClick = useCallback(() => {
-    setExpandedDotId(null)
+    setSelectedId(null)
   }, [])
 
   // Keep / remove actions
   const handleKeep = useCallback(
     (item: KeepMaskItem) => {
       toggleKeepItem({ ...item, keep: true })
-      setExpandedDotId(null)
     },
     [toggleKeepItem]
   )
@@ -574,14 +268,6 @@ export default function Step6Page() {
   const handleRemove = useCallback(
     (item: KeepMaskItem) => {
       toggleKeepItem({ ...item, keep: false })
-      setExpandedDotId(null)
-    },
-    [toggleKeepItem]
-  )
-
-  const handleToggleState = useCallback(
-    (item: KeepMaskItem, next: ItemState) => {
-      toggleKeepItem({ ...item, keep: stateToKeep(next) })
     },
     [toggleKeepItem]
   )
@@ -693,17 +379,16 @@ export default function Step6Page() {
     >
       <StepIndicator currentStep={6} totalSteps={10} />
 
-      {/* ── Photo panel (58vh) ── */}
+      {/* ── Photo panel (55vh) ── */}
       <div
         ref={photoContainerRef}
-        style={{ height: '58vh', position: 'relative', overflow: 'hidden' }}
+        style={{ height: '55vh', position: 'relative', overflow: 'hidden', flexShrink: 0 }}
         onClick={handleOutsideClick}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={originalPhotoUrl ?? ''}
           alt="Your room"
-          onLoad={handleImageLoad}
           style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
         />
 
@@ -727,35 +412,102 @@ export default function Step6Page() {
           </span>
         </div>
 
-        {/* Hotspot dots */}
-        {imageDimensions &&
-          imageDimensions.container.w > 0 &&
-          visibleDetections.map((item, idx) => {
-            const { container } = imageDimensions
-            // bbox is [x, y, w, h] normalized 0-1 — convert center to container pixels
-            const dotLeft = (item.bbox[0] + item.bbox[2] / 2) * container.w
-            const dotTop = (item.bbox[1] + item.bbox[3] / 2) * container.h
-            const id = dotId(item)
+        {/* Item count badge */}
+        <div
+          style={{
+            position: 'absolute', top: 8, right: 8, zIndex: 20,
+            background: 'rgba(10,22,40,0.75)', backdropFilter: 'blur(4px)',
+            borderRadius: 20, padding: '3px 10px',
+            color: '#F8F6F1', fontSize: 12, fontFamily: 'Inter, sans-serif',
+          }}
+        >
+          {visibleDetections.length} items
+        </div>
 
-            return (
-              <HotspotDot
-                key={id}
-                item={item}
-                dotLeft={dotLeft}
-                dotTop={dotTop}
-                containerH={container.h}
-                isOpen={expandedDotId === id}
-                onDotClick={() => handleDotClick(id)}
-                onKeep={() => handleKeep(item)}
-                onRemove={() => handleRemove(item)}
-                entranceIndex={idx}
-                isReady={isDotsReady}
-              />
-            )
-          })}
+        {/* Bounding box overlay for selected item */}
+        {selectedItem && (
+          <div
+            style={{
+              position: 'absolute',
+              left: `${selectedItem.bbox[0] * 100}%`,
+              top: `${selectedItem.bbox[1] * 100}%`,
+              width: `${selectedItem.bbox[2] * 100}%`,
+              height: `${selectedItem.bbox[3] * 100}%`,
+              border: '2px solid #C9A84C',
+              background: 'rgba(201,168,76,0.15)',
+              zIndex: 9,
+              pointerEvents: 'none',
+              borderRadius: 4,
+            }}
+          />
+        )}
+
+        {/* Hotspot dots — percentage-based positioning */}
+        {visibleDetections.map((item, idx) => {
+          const id = dotId(item)
+          const isSelected = selectedId === id
+          const state = keepToState(item.keep)
+
+          const dotTransitionDelay = `${idx * 80}ms`
+          const dotVisible = isDotsReady
+
+          const dotStyle: React.CSSProperties = {
+            position: 'absolute',
+            left: `${(item.bbox[0] + item.bbox[2] / 2) * 100}%`,
+            top: `${(item.bbox[1] + item.bbox[3] / 2) * 100}%`,
+            transform: dotVisible ? 'translate(-50%, -50%) scale(1)' : 'translate(-50%, -50%) scale(0)',
+            zIndex: 10,
+            width: 28,
+            height: 28,
+            borderRadius: '50%',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: `all 250ms cubic-bezier(0.34,1.56,0.64,1) ${dotTransitionDelay}`,
+            opacity: dotVisible ? 1 : 0,
+            ...(state === 'keep' && {
+              background: '#C9A84C',
+              border: '2px solid #C9A84C',
+              boxShadow: isSelected ? '0 0 0 4px rgba(201,168,76,0.5)' : '0 0 0 1px white',
+            }),
+            ...(state === 'remove' && {
+              background: 'rgba(192,80,74,0.6)',
+              border: '2px solid #C0504A',
+              boxShadow: isSelected ? '0 0 0 4px rgba(192,80,74,0.4)' : '0 0 0 1px white',
+            }),
+            ...(state === 'undecided' && {
+              background: 'rgba(201,168,76,0.3)',
+              border: '2px solid #C9A84C',
+              boxShadow: isSelected
+                ? '0 0 0 4px rgba(201,168,76,0.5)'
+                : '0 0 0 1px white',
+              animation: isSelected ? 'dotPulse 1.4s ease-out infinite' : undefined,
+            }),
+          }
+
+          return (
+            <button
+              key={id}
+              aria-label={`${item.label} — ${state}`}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleDotClick(id)
+              }}
+              style={dotStyle}
+            >
+              {state === 'keep' && (
+                <span style={{ color: 'white', fontSize: 14, fontWeight: 700, lineHeight: 1 }}>✓</span>
+              )}
+              {state === 'remove' && (
+                <span style={{ color: 'white', fontSize: 14, fontWeight: 700, lineHeight: 1 }}>✕</span>
+              )}
+            </button>
+          )
+        })}
       </div>
 
-      {/* ── Bottom panel (42vh) ── */}
+      {/* ── Bottom panel (45vh) ── */}
       <div
         style={{
           flex: 1,
@@ -764,11 +516,10 @@ export default function Step6Page() {
           background: 'var(--cova-surface)',
           borderTop: '2px solid rgba(201,168,76,0.4)',
           borderRadius: '16px 16px 0 0',
-          height: '42vh',
           overflow: 'hidden',
         }}
       >
-        {/* Sticky header */}
+        {/* Panel header */}
         <div
           className="px-5 pt-[18px] pb-3"
           style={{
@@ -776,123 +527,106 @@ export default function Step6Page() {
             flexShrink: 0,
           }}
         >
-          <div className="flex items-baseline justify-between">
-            <h1
-              className="font-serif"
-              style={{ color: 'var(--cova-ivory)', fontSize: 26, letterSpacing: '0.01em' }}
-            >
-              What stays?
-            </h1>
-            <span
-              className="font-sans"
-              style={{ color: 'var(--cova-muted)', fontSize: 12 }}
-            >
-              {visibleDetections.length} items detected
-            </span>
-          </div>
+          <h1
+            className="font-serif"
+            style={{ color: 'var(--cova-ivory)', fontSize: 26, letterSpacing: '0.01em' }}
+          >
+            What&apos;s in your room?
+          </h1>
           <p className="font-sans mt-1" style={{ color: 'var(--cova-muted)', fontSize: 13 }}>
             Tap items in your room · the rest gets redesigned
           </p>
         </div>
 
-        {/* Scrollable list */}
+        {/* Scrollable flat list */}
         <div
+          ref={listScrollRef}
           className="overflow-y-auto px-5"
-          style={{ flex: 1, paddingBottom: 110 }}
+          style={{ flex: 1, paddingBottom: 80 }}
         >
-          {/* Section: Furniture */}
-          {furnitureItems.length > 0 && (
-            <>
-              <p
-                className="font-sans"
-                style={{
-                  color: 'var(--cova-gold)',
-                  fontSize: 10,
-                  letterSpacing: '0.1em',
-                  textTransform: 'uppercase',
-                  padding: '10px 0 4px',
-                  opacity: 0.7,
-                }}
-              >
-                Furniture
-              </p>
-              {furnitureItems.map((item) => {
-                const id = dotId(item)
-                const isHighlighted = expandedDotId === id
-                const state = keepToState(item.keep)
-                return (
-                  <div
-                    key={id}
-                    className="flex items-center justify-between rounded-lg transition-colors duration-150"
-                    style={{
-                      borderBottom: '1px solid rgba(201,168,76,0.07)',
-                      padding: '13px 4px',
-                      paddingLeft: isHighlighted ? 10 : 4,
-                      background: isHighlighted ? 'rgba(201,168,76,0.06)' : 'transparent',
-                      borderLeft: isHighlighted
-                        ? '2px solid rgba(201,168,76,0.4)'
-                        : '2px solid transparent',
-                    }}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <span style={{ fontSize: 20 }}>{getEmoji(item.label)}</span>
-                      <span className="font-sans" style={{ color: 'var(--cova-ivory)', fontSize: 14 }}>
-                        {item.label.charAt(0).toUpperCase() + item.label.slice(1)}
-                      </span>
-                    </div>
-                    <StateToggle state={state} onChange={(next) => handleToggleState(item, next)} />
-                  </div>
-                )
-              })}
-            </>
-          )}
+          {visibleDetections.map((item) => {
+            const id = dotId(item)
+            const isHighlighted = selectedId === id
+            const state = keepToState(item.keep)
 
-          {/* Section: Walls & Decor */}
-          {architectureItems.length > 0 && (
-            <>
-              <p
-                className="font-sans"
+            let rowBg = 'transparent'
+            let rowBorderLeft = '3px solid transparent'
+            if (state === 'keep') {
+              rowBg = 'rgba(74,155,127,0.12)'
+              rowBorderLeft = '3px solid #4A9B7F'
+            } else if (state === 'remove') {
+              rowBg = 'rgba(192,80,74,0.12)'
+              rowBorderLeft = '3px solid #C0504A'
+            }
+
+            return (
+              <div
+                key={id}
+                ref={(el) => { itemRefs.current[id] = el }}
+                onClick={() => setSelectedId((prev) => (prev === id ? null : id))}
+                className="flex items-center justify-between rounded-lg transition-colors duration-150"
                 style={{
-                  color: 'var(--cova-gold)',
-                  fontSize: 10,
-                  letterSpacing: '0.1em',
-                  textTransform: 'uppercase',
-                  padding: '14px 0 4px',
-                  opacity: 0.7,
+                  minHeight: 52,
+                  borderBottom: '1px solid rgba(201,168,76,0.07)',
+                  padding: '10px 4px 10px 10px',
+                  background: isHighlighted ? (rowBg !== 'transparent' ? rowBg : 'rgba(201,168,76,0.06)') : rowBg,
+                  borderLeft: isHighlighted && state === 'undecided'
+                    ? '3px solid rgba(201,168,76,0.5)'
+                    : rowBorderLeft,
+                  cursor: 'pointer',
+                  outline: isHighlighted ? '1px solid #C9A84C' : '1px solid transparent',
+                  borderRadius: 8,
                 }}
               >
-                Walls & Decor
-              </p>
-              {architectureItems.map((item) => {
-                const id = dotId(item)
-                const isHighlighted = expandedDotId === id
-                const state = keepToState(item.keep)
-                return (
-                  <div
-                    key={id}
-                    className="flex items-center justify-between rounded-lg transition-colors duration-150"
+                <div className="flex items-center gap-2.5">
+                  <span style={{ fontSize: 20 }}>{getEmoji(item.label)}</span>
+                  <span className="font-sans" style={{ color: 'var(--cova-ivory)', fontSize: 14 }}>
+                    {item.label.charAt(0).toUpperCase() + item.label.slice(1)}
+                  </span>
+                </div>
+
+                {/* Keep / Remove buttons */}
+                <div className="flex gap-1.5 ml-2" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => handleKeep(item)}
+                    className="font-sans"
                     style={{
-                      borderBottom: '1px solid rgba(201,168,76,0.07)',
-                      padding: '13px 4px',
-                      paddingLeft: isHighlighted ? 10 : 4,
-                      background: isHighlighted ? 'rgba(201,168,76,0.06)' : 'transparent',
-                      borderLeft: isHighlighted
-                        ? '2px solid rgba(201,168,76,0.4)'
-                        : '2px solid transparent',
+                      padding: '5px 12px',
+                      borderRadius: 20,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      transition: 'all 150ms ease',
+                      background: state === 'keep' ? '#4A9B7F' : 'transparent',
+                      color: state === 'keep' ? 'white' : 'var(--cova-dim)',
+                      border: state === 'keep' ? '1.5px solid #4A9B7F' : '1px solid rgba(74,94,122,0.3)',
                     }}
                   >
-                    <div className="flex items-center gap-2.5">
-                      <span style={{ fontSize: 20 }}>{getEmoji(item.label)}</span>
-                      <span className="font-sans" style={{ color: 'var(--cova-ivory)', fontSize: 14 }}>
-                        {item.label.charAt(0).toUpperCase() + item.label.slice(1)}
-                      </span>
-                    </div>
-                    <StateToggle state={state} onChange={(next) => handleToggleState(item, next)} />
-                  </div>
-                )
-              })}
-            </>
-          )}
+                    Keep
+                  </button>
+                  <button
+                    onClick={() => handleRemove(item)}
+                    className="font-sans"
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: 20,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      transition: 'all 150ms ease',
+                      background: state === 'remove' ? '#C0504A' : 'transparent',
+                      color: state === 'remove' ? 'white' : 'var(--cova-dim)',
+                      border: state === 'remove' ? '1.5px solid #C0504A' : '1px solid rgba(74,94,122,0.3)',
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            )
+          })}
 
           {/* Hint text */}
           <p
@@ -902,37 +636,40 @@ export default function Step6Page() {
             Leave items neutral — we&apos;ll redesign them all
           </p>
         </div>
-      </div>
 
-      {/* ── Fixed CTA ── */}
-      <div
-        className="fixed bottom-0 left-0 right-0 z-40"
-        style={{
-          background: `linear-gradient(to top, var(--cova-surface) 0%, var(--cova-surface) 70%, rgba(15,31,61,0) 100%)`,
-          padding: '24px 20px 32px 20px',
-        }}
-      >
-        <button
-          onClick={() => void handleDesignRoom()}
-          disabled={isNavigating}
-          className="w-full font-sans block mx-auto transition-all duration-200 hover:-translate-y-0.5"
+        {/* Sticky CTA inside panel */}
+        <div
           style={{
-            maxWidth: 640,
-            background: 'var(--cova-gold)',
-            color: 'var(--cova-bg)',
-            fontSize: 'var(--text-base)',
-            fontWeight: 600,
-            letterSpacing: '0.01em',
-            border: 'none',
-            borderRadius: 14,
-            padding: '17px 24px',
-            cursor: isNavigating ? 'not-allowed' : 'pointer',
-            boxShadow: '0 0 40px rgba(201,168,76,0.25)',
-            opacity: isNavigating ? 0.7 : 1,
+            position: 'sticky',
+            bottom: 0,
+            background: '#0A1628',
+            padding: '12px 16px',
+            borderTop: '1px solid #1E3A5F',
+            flexShrink: 0,
           }}
         >
-          {isNavigating ? 'Working...' : 'Design My Room →'}
-        </button>
+          <button
+            onClick={() => void handleDesignRoom()}
+            disabled={isNavigating}
+            className="w-full font-sans block mx-auto transition-all duration-200 hover:-translate-y-0.5"
+            style={{
+              maxWidth: 640,
+              background: 'var(--cova-gold)',
+              color: 'var(--cova-bg)',
+              fontSize: 'var(--text-base)',
+              fontWeight: 600,
+              letterSpacing: '0.01em',
+              border: 'none',
+              borderRadius: 14,
+              padding: '15px 24px',
+              cursor: isNavigating ? 'not-allowed' : 'pointer',
+              boxShadow: '0 0 40px rgba(201,168,76,0.25)',
+              opacity: isNavigating ? 0.7 : 1,
+            }}
+          >
+            {isNavigating ? 'Working...' : 'Design My Room →'}
+          </button>
+        </div>
       </div>
 
       {/* ── Toast ── */}
@@ -958,6 +695,11 @@ export default function Step6Page() {
 
       {/* Keyframes */}
       <style>{`
+        @keyframes dotPulse {
+          0%   { box-shadow: 0 0 0 0 rgba(201,168,76,0.6); }
+          70%  { box-shadow: 0 0 0 8px rgba(201,168,76,0); }
+          100% { box-shadow: 0 0 0 0 rgba(201,168,76,0); }
+        }
         @keyframes popupEnter {
           from { transform: translateX(-50%) scale(0.85); opacity: 0; }
           to   { transform: translateX(-50%) scale(1);    opacity: 1; }
