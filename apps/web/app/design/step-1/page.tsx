@@ -77,7 +77,7 @@ export default function Step1Page() {
   return (
     <div className="bg-cova-bg min-h-screen flex flex-col items-center px-6 py-8 font-sans pb-32">
       <div className="max-w-2xl w-full mx-auto">
-        <StepIndicator currentStep={1} totalSteps={10} />
+        <StepIndicator currentStep={1} totalSteps={9} />
 
         {/* Heading */}
         <h1 className="font-serif text-3xl text-cova-ivory mt-8 mb-2">

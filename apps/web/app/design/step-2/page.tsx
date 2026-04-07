@@ -280,7 +280,7 @@ export default function Step2Page() {
         padding: '24px',
       }}
     >
-      <StepIndicator currentStep={2} totalSteps={10} />
+      <StepIndicator currentStep={2} totalSteps={9} />
 
       <div
         style={{

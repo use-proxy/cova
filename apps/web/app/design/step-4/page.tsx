@@ -433,7 +433,7 @@ export default function Step4Page() {
         }}
       />
 
-      <StepIndicator currentStep={4} totalSteps={10} />
+      <StepIndicator currentStep={4} totalSteps={9} />
 
       {/* Share button */}
       <button

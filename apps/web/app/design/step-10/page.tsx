@@ -380,7 +380,7 @@ export default function Step10Page() {
 
   return (
     <>
-      <StepIndicator currentStep={10} totalSteps={10} />
+      <StepIndicator currentStep={10} totalSteps={9} />
       <ShopRoom
         renderUrl={renderUrl}
         detections={displayDetections}

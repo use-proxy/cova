@@ -51,7 +51,7 @@ export default function Step8Page() {
         background: 'var(--cova-bg)',
       }}
     >
-      <StepIndicator currentStep={8} totalSteps={10} />
+      <StepIndicator currentStep={8} totalSteps={9} />
       {/* ── After image (AI render) ──────────────────────────────────────────── */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img

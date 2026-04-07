@@ -444,7 +444,7 @@ export default function Step7Page() {
         padding: '0 24px',
       }}
     >
-      <StepIndicator currentStep={7} totalSteps={10} />
+      <StepIndicator currentStep={7} totalSteps={9} />
       {/* Heading */}
       <h1
         style={{

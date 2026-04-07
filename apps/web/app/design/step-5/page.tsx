@@ -1116,7 +1116,7 @@ export default function Step4Page() {
       className="min-h-screen flex flex-col"
       style={{ background: colors.navy }}
     >
-      <StepIndicator currentStep={5} totalSteps={10} />
+      <StepIndicator currentStep={5} totalSteps={9} />
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto pb-40">

@@ -135,7 +135,7 @@ export default function Step9Page() {
       className="fixed inset-0 flex flex-col overflow-hidden"
       style={{ backgroundColor: '#091829' }}
     >
-      <StepIndicator currentStep={9} totalSteps={10} />
+      <StepIndicator currentStep={9} totalSteps={9} />
       {/* ── Zone 1: Render image ──────────────────────────────────────────── */}
       <div className="relative flex-1 min-h-0 overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -149,7 +149,7 @@ export default function Step9Page() {
         <div className="absolute top-5 left-5 right-5">
           <div className="flex items-center justify-between mb-2">
             <span className="font-sans text-[11px]" style={{ color: '#8A9BB5' }}>
-              9 of 10
+              9 of 9
             </span>
           </div>
           <div

@@ -292,7 +292,7 @@ export default function Step6Page() {
   if (isPolling) {
     return (
       <>
-        <StepIndicator currentStep={6} totalSteps={10} />
+        <StepIndicator currentStep={6} totalSteps={9} />
         <LoadingScreen photoUrl={originalPhotoUrl} />
       </>
     )
@@ -305,7 +305,7 @@ export default function Step6Page() {
         className="fixed inset-0 flex flex-col"
         style={{ background: 'var(--cova-bg)' }}
       >
-        <StepIndicator currentStep={6} totalSteps={10} />
+        <StepIndicator currentStep={6} totalSteps={9} />
 
         {/* Photo panel (no dots) */}
         {originalPhotoUrl && (
@@ -370,7 +370,7 @@ export default function Step6Page() {
       className="fixed inset-0 flex flex-col overflow-hidden"
       style={{ background: 'var(--cova-bg)' }}
     >
-      <StepIndicator currentStep={6} totalSteps={10} />
+      <StepIndicator currentStep={6} totalSteps={9} />
 
       {/* ── Photo panel (55vh) ── */}
       <div

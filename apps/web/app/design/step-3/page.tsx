@@ -248,7 +248,7 @@ export default function StyleQuizPage() {
       className="fixed inset-0 flex flex-col overflow-hidden"
       style={{ backgroundColor: "#091829" }}
     >
-      <StepIndicator currentStep={3} totalSteps={10} />
+      <StepIndicator currentStep={3} totalSteps={9} />
       {/* TOP ZONE - Progress */}
       <div className="flex flex-col items-center pt-2 pb-1" style={{ height: "10%" }}>
         <p

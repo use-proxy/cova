@@ -17,7 +17,7 @@ test('WORKFLOW 1a: Step 1 loads, shows room cards, CTA disabled until room selec
   await page.waitForLoadState('domcontentloaded')
 
   // Page should show the step indicator
-  const stepText = page.locator('text=Step 1 of 10').first()
+  const stepText = page.locator('text=Step 1 of 9').first()
   await expect(stepText).toBeVisible({ timeout: 10_000 })
 
   // CTA should be disabled before selecting a room
@@ -85,7 +85,7 @@ test('WORKFLOW 4a: Step 4 loads dimension inputs', async ({ page }) => {
   await page.goto(`${BASE_URL}/design/step-4`)
   await page.waitForTimeout(1_500)
 
-  const stepText = page.locator('text=Step 4 of 10').first()
+  const stepText = page.locator('text=Step 4 of 9').first()
   const visible = await stepText.isVisible({ timeout: 5_000 }).catch(() => false)
   console.log(`Step 4 indicator visible: ${String(visible)}`)
 
@@ -121,7 +121,7 @@ test('WORKFLOW 5: Step 5 shows QR code on desktop or upload fallback', async ({ 
   await page.goto(`${BASE_URL}/design/step-5`)
   await page.waitForTimeout(2_000)
 
-  const stepText = page.locator('text=Step 5 of 10').first()
+  const stepText = page.locator('text=Step 5 of 9').first()
   const visible = await stepText.isVisible({ timeout: 5_000 }).catch(() => false)
   console.log(`Step 5 indicator visible: ${String(visible)}`)
 
@@ -298,11 +298,11 @@ test('WORKFLOW 11: All 10 steps show correct step numbers in indicator', async (
     await page.goto(`${BASE_URL}/design/step-${step}`)
     await page.waitForTimeout(1_000)
 
-    // Look for "Step N of 10" text
-    const indicator = page.locator(`text=Step ${step} of 10`).first()
+    // Look for "Step N of 9" text
+    const indicator = page.locator(`text=Step ${step} of 9`).first()
     const visible = await indicator.isVisible({ timeout: 5_000 }).catch(() => false)
     results.push({ step, visible })
-    console.log(`Step ${step} indicator "Step ${step} of 10": ${String(visible)}`)
+    console.log(`Step ${step} indicator "Step ${step} of 9": ${String(visible)}`)
   }
 
   // At minimum, steps 1, 2, and 9 should show their indicators
