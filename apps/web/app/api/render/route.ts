@@ -94,8 +94,10 @@ export async function POST(request: Request) {
 
     const keptItems = keep_mask?.filter(m => m.keep === true) ?? []
 
+    const normalizedMask = keep_mask?.map(m => ({ ...m, keep: m.keep ?? false })) ?? []
+
     const inpaintingMaskUrl = keptItems.length > 0
-      ? await generateInpaintingMask(photo_url, keep_mask!, room_id)
+      ? await generateInpaintingMask(photo_url, normalizedMask, room_id)
       : null
 
     const positiveBase = buildFluxPrompt(

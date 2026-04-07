@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useFingerprintStore } from '@/lib/store/fingerprint'
+import type { PairwiseResponse } from '@/lib/store/fingerprint'
 import type { StyleFingerprint } from '@/types/fingerprint'
 
 const mockFingerprint: StyleFingerprint = {
@@ -18,13 +19,13 @@ describe('useFingerprintStore', () => {
       roomType: null,
       budgetTier: null,
       budgetRange: null,
-      quizResponses: [],
+      isGiftMode: false,
+      phaseASelections: [],
+      phaseBResponses: [],
       fingerprint: null,
       styleName: null,
-      entryPath: null,
-      dimensions: null,
-      constraints: [],
-      inclusions: [],
+      styleTags: [],
+      showcasePredictionIds: [],
     })
   })
 
@@ -61,68 +62,65 @@ describe('useFingerprintStore', () => {
     expect(useFingerprintStore.getState().budgetRange).toEqual([5000, 25000])
   })
 
-  it('addQuizResponse appends to responses array', () => {
-    useFingerprintStore.getState().addQuizResponse({
-      pairId: '1',
-      chosen: 'A',
-      superLiked: false,
-    })
-    expect(useFingerprintStore.getState().quizResponses).toHaveLength(1)
-    expect(useFingerprintStore.getState().quizResponses[0]?.chosen).toBe('A')
+  it('setGiftMode toggles gift mode', () => {
+    useFingerprintStore.getState().setGiftMode(true)
+    expect(useFingerprintStore.getState().isGiftMode).toBe(true)
+    useFingerprintStore.getState().setGiftMode(false)
+    expect(useFingerprintStore.getState().isGiftMode).toBe(false)
   })
 
-  it('addQuizResponse supports super liked responses', () => {
-    useFingerprintStore.getState().addQuizResponse({
-      pairId: '1',
-      chosen: 'B',
-      superLiked: true,
-    })
-    expect(useFingerprintStore.getState().quizResponses[0]?.superLiked).toBe(true)
+  it('addPhaseASelection appends image id', () => {
+    useFingerprintStore.getState().addPhaseASelection('img-1')
+    expect(useFingerprintStore.getState().phaseASelections).toContain('img-1')
   })
 
-  it('setFingerprint stores StyleFingerprint object', () => {
-    useFingerprintStore.getState().setFingerprint(mockFingerprint, 'Warm Japandi')
+  it('removePhaseASelection removes image id', () => {
+    useFingerprintStore.getState().addPhaseASelection('img-1')
+    useFingerprintStore.getState().addPhaseASelection('img-2')
+    useFingerprintStore.getState().removePhaseASelection('img-1')
+    expect(useFingerprintStore.getState().phaseASelections).not.toContain('img-1')
+    expect(useFingerprintStore.getState().phaseASelections).toContain('img-2')
+  })
+
+  it('addPhaseBResponse appends to responses array', () => {
+    const response: PairwiseResponse = { pairId: 'pair-1', chosenId: 'img-A', responseTimeMs: 1200 }
+    useFingerprintStore.getState().addPhaseBResponse(response)
+    expect(useFingerprintStore.getState().phaseBResponses).toHaveLength(1)
+    expect(useFingerprintStore.getState().phaseBResponses[0]?.chosenId).toBe('img-A')
+  })
+
+  it('addPhaseBResponse accumulates multiple responses', () => {
+    useFingerprintStore.getState().addPhaseBResponse({ pairId: '1', chosenId: 'A', responseTimeMs: 800 })
+    useFingerprintStore.getState().addPhaseBResponse({ pairId: '2', chosenId: 'B', responseTimeMs: 1100 })
+    expect(useFingerprintStore.getState().phaseBResponses).toHaveLength(2)
+  })
+
+  it('setFingerprint stores StyleFingerprint object with styleTags', () => {
+    useFingerprintStore.getState().setFingerprint(mockFingerprint, 'Warm Japandi', ['cozy', 'minimal'])
     expect(useFingerprintStore.getState().fingerprint).toEqual(mockFingerprint)
     expect(useFingerprintStore.getState().styleName).toBe('Warm Japandi')
+    expect(useFingerprintStore.getState().styleTags).toEqual(['cozy', 'minimal'])
   })
 
-  it('toggleConstraint adds constraint when not present', () => {
-    useFingerprintStore.getState().toggleConstraint('I rent')
-    expect(useFingerprintStore.getState().constraints).toContain('I rent')
-  })
-
-  it('toggleConstraint removes constraint when already present', () => {
-    useFingerprintStore.getState().toggleConstraint('I rent')
-    useFingerprintStore.getState().toggleConstraint('I rent')
-    expect(useFingerprintStore.getState().constraints).not.toContain('I rent')
-  })
-
-  it('toggleInclusion adds inclusion when not present', () => {
-    useFingerprintStore.getState().toggleInclusion('TV')
-    expect(useFingerprintStore.getState().inclusions).toContain('TV')
-  })
-
-  it('toggleInclusion removes inclusion when already present', () => {
-    useFingerprintStore.getState().toggleInclusion('TV')
-    useFingerprintStore.getState().toggleInclusion('TV')
-    expect(useFingerprintStore.getState().inclusions).not.toContain('TV')
-  })
-
-  it('supports multiple constraints simultaneously', () => {
-    useFingerprintStore.getState().toggleConstraint('I rent')
-    useFingerprintStore.getState().toggleConstraint('I have pets')
-    useFingerprintStore.getState().toggleConstraint("Can't drill into walls")
-    expect(useFingerprintStore.getState().constraints).toHaveLength(3)
+  it('setShowcasePredictionIds stores prediction list', () => {
+    useFingerprintStore.getState().setShowcasePredictionIds([
+      { predictionId: 'pred-1', label: 'Japandi' },
+    ])
+    expect(useFingerprintStore.getState().showcasePredictionIds).toHaveLength(1)
+    expect(useFingerprintStore.getState().showcasePredictionIds[0]?.predictionId).toBe('pred-1')
   })
 
   it('resetFingerprint clears all state', () => {
     useFingerprintStore.getState().setRoomType('bedroom')
     useFingerprintStore.getState().setBudget('luxury', [5000, 25000])
-    useFingerprintStore.getState().setFingerprint(mockFingerprint, 'Warm Japandi')
+    useFingerprintStore.getState().setFingerprint(mockFingerprint, 'Warm Japandi', ['cozy'])
+    useFingerprintStore.getState().setGiftMode(true)
     useFingerprintStore.getState().resetFingerprint()
     expect(useFingerprintStore.getState().roomType).toBeNull()
     expect(useFingerprintStore.getState().budgetTier).toBeNull()
     expect(useFingerprintStore.getState().fingerprint).toBeNull()
-    expect(useFingerprintStore.getState().quizResponses).toHaveLength(0)
+    expect(useFingerprintStore.getState().isGiftMode).toBe(false)
+    expect(useFingerprintStore.getState().phaseBResponses).toHaveLength(0)
+    expect(useFingerprintStore.getState().styleTags).toHaveLength(0)
   })
 })

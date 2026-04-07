@@ -135,7 +135,7 @@ export default function Step4Page() {
     }
 
     // Clear stored IDs so a refresh doesn't re-poll stale predictions
-    setShowcasePredictionIds(null)
+    setShowcasePredictionIds([])
 
     pendingIds.forEach((item, i) => {
       void pollOne(item.predictionId, i, item.label)
@@ -302,7 +302,7 @@ export default function Step4Page() {
     })
 
     setFingerprint(modifiedFp)
-    setStoreFingerprint(modifiedFp, styleName)
+    setStoreFingerprint(modifiedFp, styleName, [])
 
     const SHOWCASE_INPUTS = [
       { photo_url: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1024', label: 'Living Room' },

@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Plus, X } from "lucide-react";
 import { useFingerprintStore, useSessionStore } from "@/lib/store";
-import type { WallLayout } from "@/lib/store/fingerprint";
 import { StepIndicator } from "@/components/cova/StepIndicator";
 import { parseMeasurementParams, isIOS, isAndroid } from "@/lib/measureBridge";
 import dynamic from "next/dynamic";
@@ -40,8 +39,6 @@ type PlacedSymbol = {
   wall: "top" | "bottom" | "left" | "right";
   position: number; // 0-100% along the wall
 };
-
-// WallLayout is imported from @/lib/store/fingerprint
 
 const naturalLightOptions = [
   "No windows",
@@ -985,15 +982,7 @@ function WallSchematic({
 
 export default function Step4Page() {
   const router = useRouter();
-  const {
-    setRoomDimensions,
-    setWallLayout,
-    setFixedElements,
-    setSurfaces,
-    setCloset,
-    setConstraints: saveConstraints,
-    setInclusions,
-  } = useFingerprintStore();
+  useFingerprintStore(); // store available for future extension
   const { setStep } = useSessionStore();
 
   const [mounted, setMounted] = useState(false);
@@ -1090,53 +1079,7 @@ export default function Step4Page() {
   };
 
   const navigateForward = () => {
-    // 1. Save dimensions
-    setRoomDimensions({
-      length: length ? parseFloat(length) : null,
-      width: width ? parseFloat(width) : null,
-      ceilingHeight: ceilingHeight ? parseFloat(ceilingHeight) : null,
-      naturalLight: naturalLight || null,
-    });
-
-    // 2. Save wall layout
-    const wallLayoutData: WallLayout = {
-      top: [], bottom: [], left: [], right: [],
-    };
-    placedSymbols.forEach((s) => {
-      wallLayoutData[s.wall].push({ type: s.type, position: s.position });
-    });
-    setWallLayout(wallLayoutData);
-
-    // 3. Save fixed elements
-    setFixedElements(selectedFixed);
-
-    // 4. Save surfaces
-    setSurfaces(floorType, wallFinish);
-
-    // 5. Save closet
-    setCloset(hasCloset, closetWall);
-
-    // 6. Parse and save constraints — fire and forget
-    if (constraints.trim()) {
-      fetch("/api/parse-constraints", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: constraints }),
-      })
-        .then((r) => r.json())
-        .then((data: { constraints: string[]; inclusions: string[] }) => {
-          saveConstraints(data.constraints ?? []);
-        })
-        .catch(() => {
-          // Silently fail — raw text stored in local state
-        });
-    }
-
-    // 7. Save inclusions
-    const allInclusions = [...selectedMustHaves, ...customItems];
-    setInclusions(allInclusions);
-
-    // 8. Navigate to step 6
+    // Navigate to step 6 — room dimension data collected in local state only
     setStep(6);
     router.push("/design/step-6");
   };
@@ -1772,30 +1715,6 @@ export default function Step4Page() {
               (e.currentTarget.style.color = colors.mutedDark)
             }
             onClick={() => {
-              // Save dimensions
-              setRoomDimensions({
-                length: length ? parseFloat(length) : null,
-                width: width ? parseFloat(width) : null,
-                ceilingHeight: ceilingHeight ? parseFloat(ceilingHeight) : null,
-                naturalLight: naturalLight || null,
-              });
-              // Save wall layout from any symbols placed so far
-              const skipWallLayout: WallLayout = { top: [], bottom: [], left: [], right: [] };
-              placedSymbols.forEach((s) => {
-                skipWallLayout[s.wall].push({ type: s.type, position: s.position });
-              });
-              setWallLayout(skipWallLayout);
-              // Save fixed elements, surfaces, closet
-              setFixedElements(selectedFixed);
-              setSurfaces(floorType, wallFinish);
-              setCloset(hasCloset, closetWall);
-              // Save any constraints entered as raw comma-split array
-              const constraintsArray = constraints.trim()
-                ? constraints.split(',').map((c) => c.trim()).filter(Boolean)
-                : [];
-              saveConstraints(constraintsArray);
-              // Save inclusions
-              setInclusions([...selectedMustHaves, ...customItems]);
               setStep(6);
               router.push("/design/step-6");
             }}

@@ -33,7 +33,7 @@ type Accessory = {
 function toDetectedItems(mask: KeepMaskItem[] | null): DetectedItem[] {
   if (!mask) return []
   return mask
-    .filter((item) => item.showToUser === true && item.keep !== true)
+    .filter((item) => item.keep !== true)
     .map((item) => ({
       id: `${item.label.toLowerCase().replace(/\s+/g, '-')}-${Math.round(item.bbox[0] * 100)}-${Math.round(item.bbox[1] * 100)}`,
       label: item.label,
@@ -50,11 +50,8 @@ export default function Step10Page() {
   const router = useRouter()
 
   const { renderUrl, keepMask, roomId } = useRoomStore()
-  const { fingerprint, budgetRange, roomType, styleName, roomLength, roomWidth } = useFingerprintStore()
+  const { fingerprint, budgetRange, roomType, styleName } = useFingerprintStore()
 
-  // Longest wall in inches — used for fit scoring
-  const primaryWallUsableInches =
-    roomLength && roomWidth ? Math.max(roomLength, roomWidth) * 12 : undefined
   const { setStep } = useSessionStore()
 
   void setStep // available for future navigation buttons; suppress lint
@@ -151,7 +148,7 @@ export default function Step10Page() {
               budget_range: budgetRange,
               room_type: roomType,
               room_id: roomId,
-              primary_wall_usable_inches: primaryWallUsableInches,
+              primary_wall_usable_inches: undefined,
             }),
           })
           const data = (await r.json()) as { products: MatchedProduct[] }
@@ -202,7 +199,7 @@ export default function Step10Page() {
               budget_range: budgetRange,
               room_type: roomType,
               room_id: roomId,
-              primary_wall_usable_inches: primaryWallUsableInches,
+              primary_wall_usable_inches: undefined,
             }),
           })
           if (!res.ok) throw new Error(`Match failed for ${detection.label}`)
@@ -311,7 +308,7 @@ export default function Step10Page() {
 
     void fireAllMatches()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [detections.length, localKeepMask, renderUrl, fingerprint, budgetRange, roomType, roomId, primaryWallUsableInches])
+  }, [detections.length, localKeepMask, renderUrl, fingerprint, budgetRange, roomType, roomId])
 
   const handleRefreshItem = useCallback(
     async (itemId: string, currentProductName: string) => {
@@ -339,10 +336,7 @@ export default function Step10Page() {
             budget_range: budgetRange,
             room_type: roomType,
             room_id: roomId,
-            primary_wall_usable_inches:
-              roomLength && roomWidth
-                ? Math.max(roomLength, roomWidth) * 12
-                : undefined,
+            primary_wall_usable_inches: undefined,
           }),
         })
 
@@ -354,7 +348,7 @@ export default function Step10Page() {
         // On error, restore empty state — user can tap again
       }
     },
-    [displayDetections, renderUrl, roomId, fingerprint, budgetRange, roomType, roomLength, roomWidth]
+    [displayDetections, renderUrl, roomId, fingerprint, budgetRange, roomType]
   )
 
   const handleBuyClick = useCallback(

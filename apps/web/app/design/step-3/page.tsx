@@ -65,7 +65,7 @@ export default function StyleQuizPage() {
             style_name: string;
             style_chips?: string[];
           };
-          setFingerprint(data.fingerprint, data.style_name);
+          setFingerprint(data.fingerprint, data.style_name, data.style_chips ?? []);
 
           // Fire showcase renders sequentially to avoid rate limits
           // Each render fires 2 seconds after the previous one starts

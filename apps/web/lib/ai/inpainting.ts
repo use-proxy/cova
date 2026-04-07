@@ -261,7 +261,7 @@ export async function generateInpaintingMask(
     (item) => item.keep !== true && item.type === 'furniture'
   )
 
-  const samMaskUrl = removeItems.find((item) => item.mask_url)?.mask_url
+  const samMaskUrl = removeItems.find((item) => item.maskUrl)?.maskUrl
 
   let pngData: Uint8Array
 

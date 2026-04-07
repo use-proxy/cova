@@ -85,6 +85,8 @@ export default function Step9Page() {
     addRenderSession({
       id: crypto.randomUUID(),
       renderUrl: renderUrl!,
+      previewUrl: null,
+      parallaxVideoUrl: null,
       iteration: renderSessions.length + 1,
       createdAt: new Date().toISOString(),
     })

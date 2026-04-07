@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 
-import { useRoomStore, type KeepMaskItem } from '@/lib/store/room'
+import { useRoomStore, type Detection } from '@/lib/store/room'
 import { useFingerprintStore } from '@/lib/store/fingerprint'
 import { useSessionStore } from '@/lib/store/session'
 import { StepIndicator } from '@/components/cova/StepIndicator'
@@ -47,7 +47,7 @@ function getEmoji(label: string): string {
 
 // ─── Stable dot ID ─────────────────────────────────────────────────────────
 
-function dotId(item: KeepMaskItem): string {
+function dotId(item: Detection): string {
   return `${item.label}-${item.bbox[0].toFixed(4)}-${item.bbox[1].toFixed(4)}-${item.bbox[2].toFixed(4)}-${item.bbox[3].toFixed(4)}`
 }
 
@@ -161,7 +161,7 @@ function LoadingScreen({ photoUrl }: { photoUrl: string | null }) {
 
 export default function Step6Page() {
   const router = useRouter()
-  const { roomId, originalPhotoUrl, keepMask, setKeepMask, setDepthMapUrl, toggleKeepItem } = useRoomStore()
+  const { roomId, originalPhotoUrl, detections, setDetections, keepMask, setDepthMap, toggleKeepItem } = useRoomStore()
   const { roomType: _roomType } = useFingerprintStore()
   const { setStep } = useSessionStore()
 
@@ -184,24 +184,17 @@ export default function Step6Page() {
     }
   }, [])
 
-  // Trigger dots entrance animation once keepMask is loaded
+  // Trigger dots entrance animation once detections are loaded
   useEffect(() => {
-    if (keepMask !== null) {
+    if (detections !== null) {
       const t = setTimeout(() => setIsDotsReady(true), 100)
       return () => clearTimeout(t)
     }
-  }, [keepMask])
+  }, [detections])
 
-  // Poll /api/detect/status — skip if keepMask already populated (back navigation)
+  // Poll /api/detect/status — skip if detections already populated (back navigation)
   useEffect(() => {
-    if (keepMask !== null) {
-      // Re-apply current showToUser threshold in case stored data is stale
-      const remapped = keepMask.map((d) => ({ ...d, showToUser: d.confidence >= 0.35 }))
-      if (JSON.stringify(remapped) !== JSON.stringify(keepMask)) {
-        setKeepMask(remapped)
-      }
-      return
-    }
+    if (detections !== null) return
     if (!roomId) return
 
     pollStartRef.current = Date.now()
@@ -225,23 +218,23 @@ export default function Step6Page() {
 
         const data = (await res.json()) as
           | { ready: false }
-          | { ready: true; detections: KeepMaskItem[]; depth_map_url: string }
+          | { ready: true; detections: import('@/lib/store/room').Detection[]; depth_map_url: string }
 
         if (data.ready) {
           clearInterval(pollRef.current!)
-          setKeepMask(data.detections)
-          setDepthMapUrl(data.depth_map_url)
+          setDetections(data.detections)
+          setDepthMap(data.depth_map_url, 1.0)
         }
       } catch {
         // transient error — keep polling
       }
     }, 2500)
-  }, [keepMask, roomId, setKeepMask])
+  }, [detections, roomId, setDetections])
 
   // Computed
-  const visibleDetections = keepMask?.filter((d) => d.showToUser === true) ?? []
-  const showFallback = detectionFailed || (keepMask !== null && visibleDetections.length === 0)
-  const isPolling = keepMask === null && !detectionFailed
+  const visibleDetections = detections?.filter((d) => d.showToUser === true) ?? []
+  const showFallback = detectionFailed || (detections !== null && visibleDetections.length === 0)
+  const isPolling = detections === null && !detectionFailed
 
   const selectedItem = selectedId ? visibleDetections.find((d) => dotId(d) === selectedId) ?? null : null
 
@@ -259,15 +252,15 @@ export default function Step6Page() {
 
   // Keep / remove actions
   const handleKeep = useCallback(
-    (item: KeepMaskItem) => {
-      toggleKeepItem({ ...item, keep: true })
+    (item: Detection) => {
+      toggleKeepItem(item.label, true)
     },
     [toggleKeepItem]
   )
 
   const handleRemove = useCallback(
-    (item: KeepMaskItem) => {
-      toggleKeepItem({ ...item, keep: false })
+    (item: Detection) => {
+      toggleKeepItem(item.label, false)
     },
     [toggleKeepItem]
   )
