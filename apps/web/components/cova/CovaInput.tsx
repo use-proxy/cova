@@ -24,15 +24,7 @@ export function CovaInput({
   return (
     <div className={['flex flex-col w-full', className].filter(Boolean).join(' ')}>
       {label && (
-        <label
-          style={{
-            fontFamily: 'var(--font-sans)',
-            fontSize: 'var(--text-sm)',
-            color: 'var(--cova-ivory-dim)',
-            marginBottom: 6,
-            display: 'block',
-          }}
-        >
+        <label className="text-sm text-cova-muted mb-1.5 block">
           {label}
         </label>
       )}
@@ -44,26 +36,20 @@ export function CovaInput({
         placeholder={placeholder}
         disabled={disabled}
         className={[
-          'font-sans text-base rounded-lg px-4 py-2.5 outline-none transition-all duration-200',
-          'bg-cova-surface border text-cova-ivory placeholder:text-cova-subtle',
+          'w-full bg-cova-surface border rounded-lg px-4 py-2.5',
+          'text-cova-ivory placeholder:text-cova-muted',
+          'font-sans text-base outline-none transition-all duration-150',
           error
-            ? 'border-cova-error ring-2 ring-cova-error'
-            : 'border-cova-border focus:ring-2 focus:ring-cova-gold focus:border-cova-border-gold',
-          disabled ? 'opacity-50 cursor-not-allowed' : '',
+            ? 'border-cova-error focus:border-cova-error focus:ring-1 focus:ring-cova-error'
+            : 'border-cova-border focus:border-cova-border-gold focus:ring-1 focus:ring-[var(--cova-border-gold)]',
+          disabled ? 'opacity-40 cursor-not-allowed' : '',
         ]
           .filter(Boolean)
           .join(' ')}
       />
 
       {error && (
-        <span
-          style={{
-            fontFamily: 'var(--font-sans)',
-            fontSize: 'var(--text-xs)',
-            color: 'var(--cova-error)',
-            marginTop: 4,
-          }}
-        >
+        <span className="text-xs text-cova-error mt-1.5">
           {error}
         </span>
       )}

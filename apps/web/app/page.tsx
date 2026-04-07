@@ -74,7 +74,7 @@ export default function DesignSystemShowcase() {
       }}
     >
       {/* Step indicator at top */}
-      <StepIndicator currentStep={step} totalSteps={10} />
+      <StepIndicator currentStep={step} totalSteps={9} />
 
       {/* Page header */}
       <h1
@@ -121,7 +121,7 @@ export default function DesignSystemShowcase() {
             <Label>disabled</Label>
           </div>
           <div>
-            <CovaButton variant="primary" size="md" loading>Loading</CovaButton>
+            <CovaButton variant="primary" size="md" isLoading>Loading</CovaButton>
             <Label>loading</Label>
           </div>
         </Row>
@@ -202,16 +202,16 @@ export default function DesignSystemShowcase() {
       {/* ── StepIndicator ──────────────────────────────────── */}
       <Section title="StepIndicator">
         <p style={{ fontFamily: 'var(--font-sans)', fontSize: 'var(--text-sm)', color: 'var(--cova-muted)', marginBottom: 16 }}>
-          The gold progress bar is fixed to the top of this page (showing Step {step} of 10).
+          The StepIndicator (above) shows Step {step} of 9.
         </p>
         <Row>
           <CovaButton variant="ghost" size="sm" onClick={() => setStep(Math.max(1, step - 1))}>
             ← Prev
           </CovaButton>
           <span style={{ fontFamily: 'var(--font-sans)', color: 'var(--cova-ivory)' }}>
-            Step {step} / 10
+            Step {step} / 9
           </span>
-          <CovaButton variant="ghost" size="sm" onClick={() => setStep(Math.min(10, step + 1))}>
+          <CovaButton variant="ghost" size="sm" onClick={() => setStep(Math.min(9, step + 1))}>
             Next →
           </CovaButton>
         </Row>

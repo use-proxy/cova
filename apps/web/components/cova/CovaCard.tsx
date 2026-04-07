@@ -13,7 +13,7 @@ const VARIANT_CLASSES: Record<NonNullable<CovaCardProps['variant']>, string> = {
   elevated:
     'bg-cova-surface border border-cova-border rounded-xl p-6 shadow-[var(--shadow-gold)]',
   interactive:
-    'bg-cova-surface border border-cova-border rounded-xl p-6 cursor-pointer transition-all duration-200 hover:border-cova-border-gold hover:bg-cova-surface-3',
+    'bg-cova-surface border border-cova-border rounded-xl p-6 cursor-pointer transition-all duration-150 hover:border-cova-border-gold hover:bg-cova-surface-3',
 }
 
 export function CovaCard({
