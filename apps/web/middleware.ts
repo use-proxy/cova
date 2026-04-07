@@ -17,12 +17,14 @@ const PROTECTED_PAGE_ROUTES = [
   '/design/step-8',
   '/design/step-9',
   '/design/step-10',
+  '/dashboard',
 ]
 
 // API routes that are public (no auth check)
 const PUBLIC_API_ROUTES = [
   '/api/auth/callback',
   '/api/quiz/fingerprint',
+  '/api/quiz/next-pair',
 ]
 
 export async function middleware(request: NextRequest) {

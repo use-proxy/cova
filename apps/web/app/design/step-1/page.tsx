@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { StepIndicator } from '@/components/cova/StepIndicator'
 import { CovaButton } from '@/components/cova/CovaButton'
+import { Switch } from '@/components/ui/switch'
 import { useFingerprintStore, useSessionStore } from '@/lib/store'
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
@@ -43,29 +44,6 @@ const ROOMS: Array<{ id: string; name: string; emoji: string; preset?: boolean }
   { id: 'dorm-room',        name: 'Dorm Room',        emoji: '📚', preset: true },
   { id: 'first-apartment',  name: 'First Apartment',  emoji: '🔑', preset: true },
 ]
-
-// ─── Simple toggle ─────────────────────────────────────────────────────────────
-
-function GiftToggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
-  return (
-    <button
-      role="switch"
-      aria-checked={on}
-      onClick={onToggle}
-      className={[
-        'relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none',
-        on ? 'bg-cova-gold' : 'bg-cova-surface-2',
-      ].join(' ')}
-    >
-      <span
-        className={[
-          'inline-block h-4 w-4 transform rounded-full bg-cova-ivory shadow transition-transform duration-200',
-          on ? 'translate-x-6' : 'translate-x-1',
-        ].join(' ')}
-      />
-    </button>
-  )
-}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -190,7 +168,11 @@ export default function Step1Page() {
           <span className={`text-sm ${isGiftMode ? 'text-cova-ivory' : 'text-cova-muted'}`}>
             {isGiftMode ? 'Gift mode on' : 'Designing for someone else?'}
           </span>
-          <GiftToggle on={isGiftMode} onToggle={() => setIsGiftMode((v) => !v)} />
+          <Switch
+            checked={isGiftMode}
+            onCheckedChange={(checked) => setIsGiftMode(checked)}
+            aria-label="Gift mode"
+          />
         </div>
       </div>
 

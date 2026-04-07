@@ -90,6 +90,9 @@ export interface Database {
           constraints: string[] | null
           inclusions: string[] | null
           pipeline_cost_log: Json | null
+          /** Future columns — not yet in DB. Pending migration 002_v2_columns.sql */
+          preview_url: string | null
+          parallax_video_url: string | null
           created_at: string
         }
         Insert: {
@@ -106,6 +109,8 @@ export interface Database {
           constraints?: string[] | null
           inclusions?: string[] | null
           pipeline_cost_log?: Json | null
+          preview_url?: string | null
+          parallax_video_url?: string | null
           created_at?: string
         }
         Update: {
@@ -122,6 +127,8 @@ export interface Database {
           constraints?: string[] | null
           inclusions?: string[] | null
           pipeline_cost_log?: Json | null
+          preview_url?: string | null
+          parallax_video_url?: string | null
           created_at?: string
         }
       }
@@ -173,8 +180,10 @@ export interface Database {
           image_url: string
           affiliate_url_base: string
           affiliate_url: string | null
-          clip_embedding: number[] | null
-          clip_fusion_embedding: number[] | null
+          clip_embedding_data: number[] | null
+          /** Future columns — not yet in DB. Pending migration 002_v2_columns.sql */
+          dinov3_embedding: number[] | null
+          siglip2_embedding: number[] | null
           style_tags: string[] | null
           room_types: string[]
           price_tier: string | null
@@ -198,8 +207,9 @@ export interface Database {
           image_url: string
           affiliate_url_base: string
           affiliate_url?: string | null
-          clip_embedding?: number[] | null
-          clip_fusion_embedding?: number[] | null
+          clip_embedding_data?: number[] | null
+          dinov3_embedding?: number[] | null
+          siglip2_embedding?: number[] | null
           style_tags?: string[] | null
           room_types?: string[]
           price_tier?: string | null
@@ -223,8 +233,9 @@ export interface Database {
           image_url?: string
           affiliate_url_base?: string
           affiliate_url?: string | null
-          clip_embedding?: number[] | null
-          clip_fusion_embedding?: number[] | null
+          clip_embedding_data?: number[] | null
+          dinov3_embedding?: number[] | null
+          siglip2_embedding?: number[] | null
           style_tags?: string[] | null
           room_types?: string[]
           price_tier?: string | null
@@ -354,6 +365,8 @@ export interface Database {
         | 'refine'
         | 'add_item'
         | 'quiz_response'
+        | 'shelf_tap'
+        | 'mask_viewed'
       room_dimensions: 'small' | 'medium' | 'large'
     }
   }

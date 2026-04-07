@@ -73,6 +73,8 @@ describe('Supabase Type Definitions', () => {
         constraints: null,
         inclusions: null,
         pipeline_cost_log: null,
+        preview_url: null,
+        parallax_video_url: null,
         created_at: new Date().toISOString(),
       }
       expect(mockRoom.keep_mask).toBeNull()
@@ -111,8 +113,9 @@ describe('Supabase Type Definitions', () => {
         affiliate_url_base: 'https://article.com/sofa',
         affiliate_url: 'https://article.com/sofa?ref=cova',
         image_url: 'https://example.com/sofa.jpg',
-        clip_embedding: null,
-        clip_fusion_embedding: null,
+        clip_embedding_data: null,
+        dinov3_embedding: null,
+        siglip2_embedding: null,
         style_tags: ['modern', 'minimal'],
         room_types: ['living_room'],
         price_tier: 'mid',
@@ -126,7 +129,7 @@ describe('Supabase Type Definitions', () => {
       }
       expect(mockProduct.in_stock).toBe(true)
       expect(mockProduct.active).toBe(true)
-      expect(mockProduct.clip_embedding).toBeNull()
+      expect(mockProduct.clip_embedding_data).toBeNull()
     })
 
     it('interactions table has all required columns', () => {
