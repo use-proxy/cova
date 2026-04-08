@@ -22,6 +22,12 @@ const replicate = new Replicate({
 // Pro runs.
 const KONTEXT_MODEL = 'black-forest-labs/flux-kontext-pro'
 const SCHNELL_MODEL = 'black-forest-labs/flux-schnell'
+// Multi-image Kontext takes two input images (input_image_1 = style reference,
+// input_image_2 = user's room photo). Verified 2026-04-08 end-to-end: the
+// output adopts the interior-design style of image 1 while preserving the
+// layout, architecture and camera angle of image 2. This is the highest-impact
+// upgrade for style accuracy over the single-image Kontext endpoint.
+const MULTI_KONTEXT_MODEL = 'flux-kontext-apps/multi-image-kontext-pro'
 
 // ── Descriptor table — authoritative, do not modify ───────────────────────────
 
@@ -121,89 +127,138 @@ export interface BuildFluxPromptParams {
   preservationInstructions?: string
 }
 
+// Material palette derived from fingerprint dimensions. Stating materials up
+// front gives Kontext a concrete target to latch onto (research finding: the
+// model responds better to material names than abstract style adjectives).
+// Keep tight — at most 3 comma-separated items so the full prompt stays
+// inside Kontext's 80-word sweet spot.
+function getMaterialPalette(d: StyleFingerprint['dimensions']): string {
+  const items: string[] = []
+  if (d.nature > 0.3) items.push('rattan', 'linen', 'live plants')
+  if (d.texture > 0.3) items.push('rough linen', 'woven cotton')
+  if (d.texture < -0.3) items.push('polished marble', 'glass')
+  if (d.temperature > 0.3) items.push('warm oak', 'aged brass')
+  if (d.temperature < -0.3) items.push('concrete', 'brushed steel')
+  if (d.materialOrigin > 0.3) items.push('hand-thrown ceramics')
+  if (d.era > 0.3) items.push('heirloom textiles')
+  if (d.era < -0.3) items.push('brushed nickel')
+  const deduped = Array.from(new Set(items)).slice(0, 3)
+  if (deduped.length === 0) return ''
+  return 'Materials: ' + deduped.join(', ')
+}
+
+function getLightingInstruction(d: StyleFingerprint['dimensions']): string {
+  if (d.luminosity > 0.3) return 'Bright natural daylight, airy atmosphere'
+  if (d.luminosity < -0.3) return 'Warm intimate lamp light, cozy shadows'
+  return 'Balanced natural ambient light'
+}
+
+// Select the top-K dominant descriptors (by absolute dimension value).
+function dominantDescriptors(
+  d: StyleFingerprint['dimensions'],
+  k: number,
+): string[] {
+  const entries = (Object.keys(DESCRIPTORS) as DimKey[])
+    .map((key) => ({ key, v: d[key] }))
+    .filter((e) => Math.abs(e.v) > NEUTRAL_BAND)
+    .sort((a, b) => Math.abs(b.v) - Math.abs(a.v))
+    .slice(0, k)
+  return entries.map((e) =>
+    e.v > 0 ? DESCRIPTORS[e.key].hi : DESCRIPTORS[e.key].lo,
+  )
+}
+
 export function buildFluxPrompt(params: BuildFluxPromptParams): string {
   const { fingerprint, roomType, budgetTier, inclusions, keptItemLabels, preservationInstructions } = params
   const d = fingerprint.dimensions
-
-  const parts: string[] = []
   const roomTypeStr = roomType.replace(/_/g, ' ')
 
-  // 1. Transformation intent — transformation-first framing (live-tested
-  //    winner against PRESERVE-first, which produced color-filter outputs).
-  parts.push(
-    `Interior design makeover: this ${roomTypeStr} needs a complete redesign`
-  )
+  // Research findings incorporated here (2026-04-08):
+  //   • Declare material palette before abstract style words.
+  //   • Lead with transformation intent.
+  //   • State lighting explicitly (derived from luminosity dimension).
+  //   • Include one "lived-in" realism cue.
+  //   • End with camera/lens language — Kontext uses the closer as a strong
+  //     rendering style hint.
+  //   • Target <80 words; trim descriptors to top-4 dominant dimensions.
 
-  // 2. REPLACE section — tell Kontext explicitly to swap out old furniture.
-  //    Without this, Kontext hedges and keeps the original items.
-  parts.push(
-    `REPLACE all existing furniture, bedding, soft furnishings, rugs, ` +
-    `artwork, lamps and decor with new pieces in this style`
-  )
+  // Per-part word budget accounting — the goal is ≤80 words for the
+  // "core" prompt (intent + descriptors + REPLACE/ADD + lighting + camera),
+  // and the Gemini preservation line + kept items are appended on top since
+  // they're hard constraints the model must honor regardless of length.
+  const buildAt = (descriptorCount: number): { prompt: string; coreWords: number } => {
+    const core: string[] = []
 
-  // 3. Style descriptors — active dimensions only (outside neutral band)
-  const descriptorParts: string[] = []
-  for (const [key, { lo, hi }] of Object.entries(DESCRIPTORS) as [DimKey, { lo: string; hi: string }][]) {
-    const v = d[key]
-    if (v < -NEUTRAL_BAND) descriptorParts.push(lo)
-    else if (v > NEUTRAL_BAND) descriptorParts.push(hi)
-  }
-  if (descriptorParts.length > 0) {
-    parts.push(descriptorParts.join(', '))
-  }
+    // 1. Transformation intent (lean)
+    core.push(`Redesign this ${roomTypeStr}`)
 
-  // 4. ADD section — new decor items from the quiz
-  if (inclusions.length > 0) {
-    parts.push('ADD: ' + inclusions.slice(0, 4).join(', '))
-  }
+    // 2. Material palette (concrete names beat abstract style words)
+    const palette = getMaterialPalette(d)
+    if (palette) core.push(palette)
 
-  // 5. Remove clutter instruction — critical for turning lived-in rooms
-  //    into staged design shots
-  parts.push(
-    `Remove all clutter, personal items, backpacks, cords, laundry and ` +
-    `mess so the room looks professionally staged`
-  )
+    // 3. Top-N dominant style descriptors
+    const descriptors = dominantDescriptors(d, descriptorCount)
+    if (descriptors.length > 0) core.push(descriptors.join(', '))
 
-  // 6. PRESERVE section — Gemini-derived architectural description.
-  //    Leads with literal "PRESERVE exactly:" so Kontext recognizes the
-  //    keep-list as a hard constraint.
-  if (preservationInstructions && preservationInstructions.trim()) {
-    parts.push(preservationInstructions.trim())
-  } else {
-    parts.push(
-      'PRESERVE exactly: wall color, ceiling and any ceiling fixtures, ' +
-      'floor material, windows and window coverings, all wall decor ' +
-      'including any letters, photos, art or signage, the existing bed ' +
-      'frame if visible, camera angle, room layout and proportions'
+    // 4. REPLACE clause (tight)
+    core.push('Replace all furniture, bedding, rugs, art and decor')
+
+    // 5. ADD clause — user's inclusion list
+    if (inclusions.length > 0) {
+      core.push('Add: ' + inclusions.slice(0, 3).join(', '))
+    }
+
+    // 6. Lived-in realism cue (single short phrase)
+    core.push('One lived-in detail: a book on a nightstand or throw on an armrest')
+
+    // 7. Lighting (derived from luminosity)
+    core.push(getLightingInstruction(d))
+
+    // 8. Budget tier
+    core.push(BUDGET_MODIFIERS[budgetTier] ?? BUDGET_MODIFIERS.mid)
+
+    // 9. Camera closer — strong rendering hint (final position)
+    core.push(
+      'Shot on Canon R5 24mm f/8, soft window light with warm 2700K lamps, photorealistic, Architectural Digest',
     )
+
+    const coreStr = core.join('. ')
+    const coreWords = coreStr.split(/\s+/).length
+
+    // Append preserve clauses as hard constraints — excluded from the 80-word
+    // core budget because Gemini output is variable-length and non-negotiable.
+    const tail: string[] = []
+    if (preservationInstructions && preservationInstructions.trim()) {
+      tail.push(preservationInstructions.trim())
+    } else {
+      tail.push(
+        'PRESERVE exactly: wall color, ceiling, floor, windows, wall decor, camera angle, room layout',
+      )
+    }
+    if (keptItemLabels.length > 0) {
+      tail.push('Keep unchanged: ' + keptItemLabels.join(', '))
+    }
+
+    const prompt = [coreStr, ...tail].join('. ')
+    return { prompt, coreWords }
   }
 
-  // 7. Kept items — user's explicit keep-selections from step-5
-  if (keptItemLabels.length > 0) {
-    parts.push('Keep these existing items unchanged: ' + keptItemLabels.join(', '))
-  }
+  // Try with 4 descriptors, fall back to fewer if core exceeds 80-word budget.
+  let result = buildAt(4)
+  if (result.coreWords > 80) result = buildAt(3)
+  if (result.coreWords > 80) result = buildAt(2)
+  if (result.coreWords > 80) result = buildAt(1)
+  if (result.coreWords > 80) result = buildAt(0)
 
-  // 8. Budget tier
-  parts.push(BUDGET_MODIFIERS[budgetTier] ?? BUDGET_MODIFIERS.mid)
-
-  // 9. Quality closer
-  parts.push(
-    'Result: the same physical room, transformed into a beautifully staged ' +
-    'space. Photorealistic interior design photography, professional staging, ' +
-    'same lighting as the original photo'
-  )
-
-  const prompt = parts.join('. ')
-
-  // 400-word hard limit (same as before — Kontext has similar context budget)
-  const wordCount = prompt.split(/\s+/).length
-  if (wordCount > 400) {
+  // 400-word absolute cap (safety net — long preservationInstructions can blow past 80)
+  const totalWords = result.prompt.split(/\s+/).length
+  if (totalWords > 400) {
     throw new Error(
-      `buildFluxPrompt: prompt exceeds 400 words (${wordCount} words). Trim inclusions or keptItems.`
+      `buildFluxPrompt: prompt exceeds 400 words (${totalWords} words). Trim inclusions or keptItems.`,
     )
   }
 
-  return prompt
+  return result.prompt
 }
 
 // ── submitSchnellRender — text-to-image preview, no input_image ───────────────
@@ -218,8 +273,29 @@ export async function submitSchnellRender(prompt: string): Promise<string> {
       prompt,
       num_outputs: 1,
       aspect_ratio: '4:3',
-      output_format: 'jpg',
-      output_quality: 80,
+      output_format: 'png',
+    },
+  })
+  return prediction.id
+}
+
+// Multi-image Kontext Pro — accepts a style reference image + the user's room
+// photo and produces a redesign that adopts the style of image 1 while
+// preserving the layout of image 2. Field names verified from the endpoint
+// schema on 2026-04-08: input_image_1 and input_image_2 (not image_1/image_2).
+export async function submitMultiImageRender(
+  photoUrl: string,
+  styleReferenceUrl: string,
+  prompt: string,
+): Promise<string> {
+  const prediction = await replicate.predictions.create({
+    model: MULTI_KONTEXT_MODEL,
+    input: {
+      input_image_1: styleReferenceUrl, // image 1 drives style
+      input_image_2: photoUrl,          // image 2 = room to transform
+      prompt,
+      output_format: 'png',
+      safety_tolerance: 2,
     },
   })
   return prediction.id
@@ -240,8 +316,7 @@ export async function submitRender(
     input: {
       input_image: photoUrl,
       prompt,
-      output_format: 'jpg',
-      output_quality: 90,
+      output_format: 'png',
       safety_tolerance: 2,
     },
   })
@@ -279,8 +354,7 @@ export async function submitArchitectureCorrection(
     input: {
       input_image: pass1OutputUrl,
       prompt: correctionPrompt,
-      output_format: 'jpg',
-      output_quality: 92,
+      output_format: 'png',
       safety_tolerance: 2,
     },
   })
@@ -301,8 +375,7 @@ export async function runFluxRender(
     input: {
       input_image: photoUrl,
       prompt,
-      output_format: 'jpg',
-      output_quality: 90,
+      output_format: 'png',
       safety_tolerance: 2,
     },
   })

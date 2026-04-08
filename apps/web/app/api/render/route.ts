@@ -1,5 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { buildFluxPrompt, submitRender, submitSchnellRender, type RoomPhysicalContext } from '@/lib/ai/flux'
+import { buildFluxPrompt, submitRender, submitMultiImageRender, submitSchnellRender, type RoomPhysicalContext } from '@/lib/ai/flux'
+import { analyzeRoomArchitecture, buildPreservationInstructions } from '@/lib/ai/room-analyzer'
+import { fetchTopStyleReference } from '@/lib/ai/style-references'
 import type { RoomAnalysis } from '@/lib/store/room'
 import { generateInpaintingMask } from '@/lib/ai/inpainting'
 import { checkRateLimit } from '@/lib/rateLimit'
@@ -87,6 +89,10 @@ export async function POST(request: Request) {
 
     // Showcase mode: skip inpainting mask and DB writes
     if (showcase_mode) {
+      const [arch, topRef] = await Promise.all([
+        analyzeRoomArchitecture(photo_url),
+        fetchTopStyleReference(fingerprint_vector, room_type),
+      ])
       const prompt = buildFluxPrompt({
         fingerprint: fingerprint_vector,
         roomType: room_type,
@@ -95,8 +101,11 @@ export async function POST(request: Request) {
         constraints: constraints ?? [],
         keptItemLabels: [],
         roomAnalysis: null,
+        preservationInstructions: buildPreservationInstructions(arch),
       })
-      const predictionId = await submitRender(photo_url, reference_image_urls ?? [], prompt)
+      const predictionId = topRef?.image_url
+        ? await submitMultiImageRender(photo_url, topRef.image_url, prompt)
+        : await submitRender(photo_url, reference_image_urls ?? [], prompt)
       return NextResponse.json({ prediction_id: predictionId })
     }
 
@@ -104,9 +113,19 @@ export async function POST(request: Request) {
 
     const normalizedMask = keep_mask?.map(m => ({ ...m, keep: m.keep ?? false })) ?? []
 
-    const inpaintingMaskUrl = keptItems.length > 0
-      ? await generateInpaintingMask(photo_url, normalizedMask, room_id)
-      : null
+    // Analyze the real room's architecture in parallel with the inpainting
+    // mask generation and the top style reference lookup. Gemini output drives
+    // the preservation clause; the style reference (if any) drives multi-image
+    // Kontext.
+    const [arch, inpaintingMaskUrl, topStyleRef] = await Promise.all([
+      analyzeRoomArchitecture(photo_url),
+      keptItems.length > 0
+        ? generateInpaintingMask(photo_url, normalizedMask, room_id)
+        : Promise.resolve(null),
+      fetchTopStyleReference(fingerprint_vector, room_type),
+    ])
+
+    const preservationInstructions = buildPreservationInstructions(arch)
 
     const positiveBase = buildFluxPrompt({
       fingerprint: fingerprint_vector,
@@ -116,6 +135,7 @@ export async function POST(request: Request) {
       constraints: constraints ?? [],
       keptItemLabels: keptItems.map(m => m.label),
       roomAnalysis: room_analysis ?? null,
+      preservationInstructions,
     })
 
     let positive = positiveBase
@@ -151,9 +171,13 @@ Modify the prompt to incorporate the user's instruction while preserving the cor
       // Schnell is optional — continue without it
     }
 
+    const styleReferenceUrl = topStyleRef?.image_url ?? null
+
     if (inpaintingMaskUrl) {
       // TWO-STAGE RENDER: FLUX.2 [pro] generates full redesign, fill-pro preserves kept items via mask
-      predictionId = await submitRender(photo_url, reference_image_urls ?? [], positive)
+      predictionId = styleReferenceUrl
+        ? await submitMultiImageRender(photo_url, styleReferenceUrl, positive)
+        : await submitRender(photo_url, reference_image_urls ?? [], positive)
 
       // Store stage info + schnell ID in rooms so status route can orchestrate Stage 2 + preview
       await supabase
@@ -171,21 +195,26 @@ Modify the prompt to incorporate the user's instruction while preserving the cor
         } as Record<string, unknown>)
         .eq('id', room_id)
     } else {
-      // SINGLE STAGE: no keep mask, regenerate everything
-      predictionId = await submitRender(photo_url, reference_image_urls ?? [], positive)
+      // TWO-PASS KONTEXT PRO: pass 1 = style transform (submitted now),
+      // pass 2 = architecture correction (submitted by status route when
+      // pass 1 completes). Schnell runs in parallel as the fast preview.
+      predictionId = styleReferenceUrl
+        ? await submitMultiImageRender(photo_url, styleReferenceUrl, positive)
+        : await submitRender(photo_url, reference_image_urls ?? [], positive)
 
-      // Store schnell ID so status route can return preview_url
-      if (schnellPredictionId) {
-        await supabase
-          .from('rooms')
-          .update({
-            pipeline_cost_log: {
-              schnell_prediction_id: schnellPredictionId,
-              positive_prompt: positive,
-            },
-          } as Record<string, unknown>)
-          .eq('id', room_id)
-      }
+      await supabase
+        .from('rooms')
+        .update({
+          pipeline_cost_log: {
+            two_pass: true,
+            pass1_prediction_id: predictionId,
+            pass2_prediction_id: null,
+            arch_analysis: arch,
+            positive_prompt: positive,
+            schnell_prediction_id: schnellPredictionId,
+          },
+        } as Record<string, unknown>)
+        .eq('id', room_id)
     }
 
     return NextResponse.json({
