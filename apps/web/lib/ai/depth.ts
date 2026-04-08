@@ -19,15 +19,30 @@ export async function estimateDepth(photoUrl: string): Promise<DepthResult> {
 
   let depthMapUrl: string
 
-  // chenxwh/depth-anything-v2 returns FileOutput objects with .url() method
-  // color_depth is the colorized version (better for visualization)
-  // grey_depth is the grayscale version (better for ControlNet)
-  const out = output as Record<string, { url?: () => URL } | string>
+  // chenxwh/depth-anything-v2 returns FileOutput objects.
+  // .toString() is the most reliable extraction method (verified via live test April 2026).
+  // .url()?.href also works as a fallback.
+  const out = output as Record<string, { toString: () => string; url?: () => URL } | string>
 
-  if (out.grey_depth && typeof (out.grey_depth as { url?: () => URL }).url === 'function') {
-    depthMapUrl = (out.grey_depth as { url: () => URL }).url().href
-  } else if (out.color_depth && typeof (out.color_depth as { url?: () => URL }).url === 'function') {
-    depthMapUrl = (out.color_depth as { url: () => URL }).url().href
+  if (out.grey_depth) {
+    // Primary: toString() returns the CDN URL directly
+    const asStr = String(out.grey_depth)
+    if (asStr.startsWith('http')) {
+      depthMapUrl = asStr
+    } else if (typeof (out.grey_depth as { url?: () => URL }).url === 'function') {
+      depthMapUrl = (out.grey_depth as { url: () => URL }).url().href
+    } else {
+      depthMapUrl = asStr
+    }
+  } else if (out.color_depth) {
+    const asStr = String(out.color_depth)
+    if (asStr.startsWith('http')) {
+      depthMapUrl = asStr
+    } else if (typeof (out.color_depth as { url?: () => URL }).url === 'function') {
+      depthMapUrl = (out.color_depth as { url: () => URL }).url().href
+    } else {
+      depthMapUrl = asStr
+    }
   } else if (Array.isArray(output) && output.length > 0) {
     depthMapUrl = output[0] as string
   } else if (typeof output === 'string') {

@@ -54,14 +54,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const rateLimit = checkRateLimit(user.id, 'render')
-    if (!rateLimit.allowed) {
-      return NextResponse.json(
-        { error: 'Rate limit exceeded', retry_after: rateLimit.retryAfterSeconds },
-        { status: 429 }
-      )
-    }
-
     const body = (await request.json()) as RenderRequestBody
 
     const {
@@ -80,8 +72,17 @@ export async function POST(request: Request) {
       showcase_mode,
     } = body
 
+    // Validate required fields BEFORE rate limit — returns 400 without consuming a rate limit slot
     if (!photo_url || !fingerprint_vector || !room_type || !budget || (!showcase_mode && !room_id)) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+
+    const rateLimit = checkRateLimit(user.id, 'render')
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded', retry_after: rateLimit.retryAfterSeconds },
+        { status: 429 }
+      )
     }
 
     // Showcase mode: skip inpainting mask and DB writes

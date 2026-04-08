@@ -5,6 +5,7 @@ const replicate = new Replicate({
 })
 
 const DINO_MODEL = 'adirik/grounding-dino:efd10a8ddc57ea28773327e881ce95e20cc1d734c589f7dd01d2036921ed78aa'
+const GROUNDED_SAM_MODEL = 'schananas/grounded_sam:ee871c19efb1941f55f66a3d7d960428c8a5afcb77449547fe8e5a3ab9ebc21c'
 
 export interface Detection {
   type: string
@@ -141,6 +142,60 @@ async function toBase64DataUri(url: string): Promise<string> {
 
 type DinoOutput = { detections?: Array<{ label: string; confidence: number; bbox: number[] }> }
 
+type SamOutput = string | { url?: () => URL } | string[]
+
+/**
+ * Get a combined SAM mask for all detected furniture items.
+ * Uses schananas/grounded_sam which takes text prompts and returns a segmentation mask.
+ * Returns the mask URL, or null if SAM fails (non-fatal).
+ */
+async function getSamCombinedMask(
+  photoUrl: string,
+  detections: Detection[],
+): Promise<string | null> {
+  if (detections.length === 0) return null
+
+  // Build comma-separated list of unique furniture labels for mask_prompt
+  const labelSet = new Set(detections.map((d) => d.label.toLowerCase()))
+  const uniqueLabels = Array.from(labelSet)
+  const maskPrompt = uniqueLabels.join(', ')
+
+  try {
+    const output = await replicate.run(GROUNDED_SAM_MODEL, {
+      input: {
+        image: photoUrl,
+        mask_prompt: maskPrompt,
+        negative_mask_prompt: 'wall, floor, ceiling, window, door',
+        adjustment_factor: 1.0,
+      },
+    }) as SamOutput
+
+    // Extract URL from various output formats
+    if (typeof output === 'string' && output.startsWith('http')) {
+      return output
+    }
+    if (Array.isArray(output) && output.length > 0) {
+      const first = output[0]
+      if (typeof first === 'string' && first.startsWith('http')) return first
+      const firstStr = String(first)
+      if (firstStr.startsWith('http')) return firstStr
+    }
+    if (output && typeof output === 'object' && !Array.isArray(output)) {
+      const asStr = String(output)
+      if (asStr.startsWith('http')) return asStr
+      if (typeof (output as { url?: () => URL }).url === 'function') {
+        return (output as { url: () => URL }).url().href
+      }
+    }
+
+    console.warn('[grounding] SAM output format unexpected:', typeof output)
+    return null
+  } catch (err) {
+    console.warn('[grounding] SAM mask generation failed (non-fatal):', err instanceof Error ? err.message : String(err))
+    return null
+  }
+}
+
 export async function detectFurniture(photoUrl: string): Promise<Detection[]> {
   try {
     // Fetch base64 for DINO (requires data URI) and actual dimensions from original URL in parallel
@@ -168,7 +223,7 @@ export async function detectFurniture(photoUrl: string): Promise<Detection[]> {
       ...(tech.detections ?? []),
     ]
 
-    return deduplicateByIoU(
+    const deduplicated = deduplicateByIoU(
       allRaw
         .filter((d) => d.confidence >= 0.28)
         .map((d) => ({
@@ -179,6 +234,19 @@ export async function detectFurniture(photoUrl: string): Promise<Detection[]> {
           showToUser: d.confidence >= 0.50,
         }))
     )
+
+    // Get SAM combined mask for all detected furniture (non-fatal if fails)
+    // The mask_url is stored on the first high-confidence detection and shared via inpainting.ts
+    if (deduplicated.length > 0) {
+      const samMaskUrl = await getSamCombinedMask(photoUrl, deduplicated)
+      if (samMaskUrl) {
+        // Assign the combined mask URL to all furniture detections
+        // inpainting.ts picks up samMaskUrl from the first REMOVE item
+        return deduplicated.map((d) => ({ ...d, mask_url: samMaskUrl }))
+      }
+    }
+
+    return deduplicated
   } catch (err) {
     console.error('[detect] Furniture detection failed:', err)
     return []

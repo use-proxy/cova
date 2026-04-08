@@ -75,13 +75,18 @@ export async function POST(request: Request) {
         keep: null as boolean | null,
         ...(d.mask_url !== undefined && { mask_url: d.mask_url }),
       }))
-      await admin
+      const updateResult = await admin
         .from('rooms')
         .update({
           depth_map_url: depthResult.depth_map_url,
           keep_mask: keepMask,
         })
         .eq('id', room_id)
+      if (updateResult.error) {
+        console.error('[detect] Failed to update room:', updateResult.error.message)
+      } else {
+        console.log('[detect] Updated room', room_id, 'depth_map_url:', depthResult.depth_map_url, 'detections:', keepMask.length)
+      }
     }
 
     return NextResponse.json({

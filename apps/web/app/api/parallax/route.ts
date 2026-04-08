@@ -1,13 +1,8 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
 
-// TODO: Deploy modal_functions/depthflow_render.py to Modal, then replace
-// this stub with a real call to the deployed function URL.
-//
-// The Modal function generates a parallax MP4 from a render image + depth map.
-// Until deployed, this returns { video_url: null } — the step-7 UI handles
-// null gracefully by skipping the video phase and showing the before/after
-// comparison directly.
+const DEPTHFLOW_WEBHOOK_URL = process.env.DEPTHFLOW_WEBHOOK_URL
 
 export async function POST(req: NextRequest) {
   // Auth check — protected route
@@ -40,9 +35,50 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Stub: Modal depthflow_render function not yet deployed.
-  // When ready, call the Modal HTTP endpoint with render_url + depth_map_url,
-  // then store the resulting video in room-videos/{room_id}/parallax.mp4
-  // and return { video_url: <public_url> }.
-  return NextResponse.json({ video_url: null })
+  // If Modal DepthFlow endpoint is not configured, skip gracefully
+  // step-7 UI handles null video_url by showing before/after comparison directly
+  if (!DEPTHFLOW_WEBHOOK_URL) {
+    console.warn('[parallax] DEPTHFLOW_WEBHOOK_URL not set — skipping parallax generation')
+    return NextResponse.json({ video_url: null })
+  }
+
+  try {
+    const response = await fetch(DEPTHFLOW_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ render_url, depth_map_url, room_id }),
+      signal: AbortSignal.timeout(170_000),  // 170s — Modal function timeout is 180s
+    })
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => response.statusText)
+      console.error('[parallax] Modal function returned error:', response.status, text)
+      return NextResponse.json({ video_url: null })
+    }
+
+    const result = await response.json() as { video_url?: string | null; error?: string }
+
+    if (result.error) {
+      console.error('[parallax] DepthFlow error:', result.error)
+      return NextResponse.json({ video_url: null })
+    }
+
+    const videoUrl = result.video_url ?? null
+
+    // Store in rooms table if we got a video URL
+    if (videoUrl && room_id) {
+      const admin = createAdminSupabaseClient()
+      await admin
+        .from('rooms')
+        .update({ parallax_video_url: videoUrl } as Record<string, unknown>)
+        .eq('id', room_id)
+    }
+
+    return NextResponse.json({ video_url: videoUrl })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('[parallax] Unexpected error:', message)
+    // Non-fatal: step-7 skips to comparison mode
+    return NextResponse.json({ video_url: null })
+  }
 }
