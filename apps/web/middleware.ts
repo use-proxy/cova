@@ -26,6 +26,8 @@ const PUBLIC_API_ROUTES = [
   '/api/quiz/fingerprint',
   '/api/quiz/next-pair',
   '/api/quiz/next-card',
+  '/api/quiz/mood-strip',
+  '/api/quiz/mood-board',
 ]
 
 export async function middleware(request: NextRequest) {

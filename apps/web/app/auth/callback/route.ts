@@ -28,23 +28,7 @@ export async function GET(request: Request) {
     const { data: sessionData, error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error && sessionData.user) {
-      // Check if the user has any rooms
-      const { data: rooms, error: roomsError } = await supabase
-        .from('rooms')
-        .select('id')
-        .eq('user_id', sessionData.user.id)
-        .limit(1)
-
-      if (roomsError) {
-        console.error('Rooms check error:', roomsError)
-        return NextResponse.redirect(`${origin}/capture/new`)
-      }
-
-      if (rooms && rooms.length > 0) {
-        return NextResponse.redirect(`${origin}/dashboard`)
-      }
-
-      return NextResponse.redirect(`${origin}/capture/new`)
+      return NextResponse.redirect(`${origin}/design/step-4`)
     }
 
     console.error('Auth callback error:', error)
