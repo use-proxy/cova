@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { buildFluxPrompt, submitRender, type RoomPhysicalContext } from '@/lib/ai/flux'
+import { buildFluxPrompt, submitRender, submitSchnellRender, type RoomPhysicalContext } from '@/lib/ai/flux'
+import type { RoomAnalysis } from '@/lib/store/room'
 import { generateInpaintingMask } from '@/lib/ai/inpainting'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { NextResponse } from 'next/server'
@@ -39,6 +40,7 @@ interface RenderRequestBody {
   showcase_mode?: boolean
   style_name?: string
   render_iteration?: number
+  room_analysis?: RoomAnalysis | null
 }
 
 export async function POST(request: Request) {
@@ -69,8 +71,10 @@ export async function POST(request: Request) {
       room_type,
       budget,
       inclusions,
+      constraints,
       reference_image_urls,
       room_id,
+      room_analysis,
       style_strength = 0.85,
       refinement_text,
       showcase_mode,
@@ -82,12 +86,15 @@ export async function POST(request: Request) {
 
     // Showcase mode: skip inpainting mask and DB writes
     if (showcase_mode) {
-      const prompt = buildFluxPrompt(
-        fingerprint_vector,
-        room_type,
-        budget ?? 'mid',
-        inclusions ?? [],
-      )
+      const prompt = buildFluxPrompt({
+        fingerprint: fingerprint_vector,
+        roomType: room_type,
+        budgetTier: budget ?? 'mid',
+        inclusions: inclusions ?? [],
+        constraints: constraints ?? [],
+        keptItemLabels: [],
+        roomAnalysis: null,
+      })
       const predictionId = await submitRender(photo_url, reference_image_urls ?? [], prompt)
       return NextResponse.json({ prediction_id: predictionId })
     }
@@ -100,13 +107,15 @@ export async function POST(request: Request) {
       ? await generateInpaintingMask(photo_url, normalizedMask, room_id)
       : null
 
-    const positiveBase = buildFluxPrompt(
-      fingerprint_vector,
-      room_type,
-      budget,
-      inclusions ?? [],
-      keptItems.map(m => m.label),
-    )
+    const positiveBase = buildFluxPrompt({
+      fingerprint: fingerprint_vector,
+      roomType: room_type,
+      budgetTier: budget,
+      inclusions: inclusions ?? [],
+      constraints: constraints ?? [],
+      keptItemLabels: keptItems.map(m => m.label),
+      roomAnalysis: room_analysis ?? null,
+    })
 
     let positive = positiveBase
 
@@ -133,11 +142,19 @@ Modify the prompt to incorporate the user's instruction while preserving the cor
 
     let predictionId: string
 
+    // Fire Schnell preview in parallel (non-fatal — best-effort quick preview)
+    let schnellPredictionId: string | null = null
+    try {
+      schnellPredictionId = await submitSchnellRender(positiveBase)
+    } catch {
+      // Schnell is optional — continue without it
+    }
+
     if (inpaintingMaskUrl) {
       // TWO-STAGE RENDER: FLUX.2 [pro] generates full redesign, fill-pro preserves kept items via mask
       predictionId = await submitRender(photo_url, reference_image_urls ?? [], positive)
 
-      // Store stage info in rooms so status route can orchestrate Stage 2
+      // Store stage info + schnell ID in rooms so status route can orchestrate Stage 2 + preview
       await supabase
         .from('rooms')
         .update({
@@ -148,15 +165,32 @@ Modify the prompt to incorporate the user's instruction while preserving the cor
             stage2_pending: true,
             positive_prompt: positive,
             style_strength: style_strength ?? 0.85,
+            schnell_prediction_id: schnellPredictionId,
           },
         } as Record<string, unknown>)
         .eq('id', room_id)
     } else {
       // SINGLE STAGE: no keep mask, regenerate everything
       predictionId = await submitRender(photo_url, reference_image_urls ?? [], positive)
+
+      // Store schnell ID so status route can return preview_url
+      if (schnellPredictionId) {
+        await supabase
+          .from('rooms')
+          .update({
+            pipeline_cost_log: {
+              schnell_prediction_id: schnellPredictionId,
+              positive_prompt: positive,
+            },
+          } as Record<string, unknown>)
+          .eq('id', room_id)
+      }
     }
 
-    return NextResponse.json({ prediction_id: predictionId })
+    return NextResponse.json({
+      prediction_id: predictionId,
+      ...(schnellPredictionId ? { schnell_prediction_id: schnellPredictionId } : {}),
+    })
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Internal server error'
     return NextResponse.json({ error: message }, { status: 500 })

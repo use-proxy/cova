@@ -66,6 +66,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const predictionId = searchParams.get('prediction_id')
   const roomId = searchParams.get('room_id')
+  const schnellPredictionId = searchParams.get('schnell_prediction_id')
   const isShowcaseMode = searchParams.get('showcase_mode') === 'true'
   const renderIteration = parseInt(searchParams.get('render_iteration') ?? '1', 10)
 
@@ -112,6 +113,26 @@ export async function GET(request: NextRequest) {
   const status = prediction.status
 
   if (status === 'starting' || status === 'processing') {
+    // Check Schnell preview (non-blocking — if it fails, just return processing)
+    if (schnellPredictionId) {
+      try {
+        const schnell = await replicate.predictions.get(schnellPredictionId)
+        if (schnell.status === 'succeeded') {
+          const schnellOutput = schnell.output
+          let previewUrl: string | null = null
+          if (Array.isArray(schnellOutput) && schnellOutput.length > 0) {
+            previewUrl = schnellOutput[0] as string
+          } else if (typeof schnellOutput === 'string') {
+            previewUrl = schnellOutput
+          }
+          if (previewUrl) {
+            return NextResponse.json({ status: 'processing', preview_url: previewUrl })
+          }
+        }
+      } catch {
+        // Non-fatal — return processing without preview
+      }
+    }
     return NextResponse.json({ status: 'processing' })
   }
 

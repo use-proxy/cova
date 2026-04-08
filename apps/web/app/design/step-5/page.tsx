@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useRoomStore, useSessionStore } from '@/lib/store'
 import type { Detection } from '@/lib/store'
+import { useFingerprintStore } from '@/lib/store/fingerprint'
 import { StepIndicator } from '@/components/cova/StepIndicator'
 import { GoldDivider } from '@/components/cova/GoldDivider'
 import { CovaButton } from '@/components/cova/CovaButton'
@@ -56,6 +57,7 @@ export default function Step5Page() {
   const router = useRouter()
   const roomStore = useRoomStore()
   const { setStep } = useSessionStore()
+  const fingerprintStore = useFingerprintStore()
 
   // Detection
   const [detectionState, setDetectionState] = useState<DetectionState>('loading')
@@ -311,6 +313,13 @@ export default function Step5Page() {
       })
 
       if (!res.ok) throw new Error('save failed')
+
+      // Persist space details to fingerprint store so step-6 render route receives them
+      fingerprintStore.setInclusions(selectedInclusions)
+      fingerprintStore.setConstraints(selectedConstraints)
+      if (selectedDimension) {
+        fingerprintStore.setRoomDimension(selectedDimension.toLowerCase() as 'small' | 'medium' | 'large')
+      }
 
       setStep(6)
       router.push('/design/step-6')

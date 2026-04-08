@@ -28,6 +28,10 @@ interface FingerprintState {
   styleName: string | null
   styleTags: string[]
   showcasePredictionIds: ShowcasePrediction[]
+  // Step-5 space details — persisted so render route receives them
+  inclusions: string[]
+  constraints: string[]
+  roomDimension: 'small' | 'medium' | 'large' | null
 
   setRoomType: (roomType: string) => void
   setBudget: (tier: BudgetTier, range: [number, number]) => void
@@ -37,6 +41,9 @@ interface FingerprintState {
   addPhaseBResponse: (response: PairwiseResponse) => void
   setFingerprint: (fingerprint: StyleFingerprint, styleName: string, styleTags: string[]) => void
   setShowcasePredictionIds: (ids: ShowcasePrediction[]) => void
+  setInclusions: (inclusions: string[]) => void
+  setConstraints: (constraints: string[]) => void
+  setRoomDimension: (dimension: 'small' | 'medium' | 'large') => void
   resetFingerprint: () => void
 }
 
@@ -51,6 +58,9 @@ const INITIAL_STATE = {
   styleName: null,
   styleTags: [],
   showcasePredictionIds: [],
+  inclusions: [] as string[],
+  constraints: [] as string[],
+  roomDimension: null as 'small' | 'medium' | 'large' | null,
 }
 
 export const useFingerprintStore = create<FingerprintState>()(
@@ -76,6 +86,9 @@ export const useFingerprintStore = create<FingerprintState>()(
         set({ fingerprint, styleName, styleTags }),
       setShowcasePredictionIds: (showcasePredictionIds) =>
         set({ showcasePredictionIds }),
+      setInclusions: (inclusions) => set({ inclusions }),
+      setConstraints: (constraints) => set({ constraints }),
+      setRoomDimension: (roomDimension) => set({ roomDimension }),
       resetFingerprint: () => set(INITIAL_STATE),
     }),
     {
@@ -92,6 +105,9 @@ export const useFingerprintStore = create<FingerprintState>()(
         styleName: state.styleName,
         styleTags: state.styleTags,
         showcasePredictionIds: state.showcasePredictionIds,
+        inclusions: state.inclusions,
+        constraints: state.constraints,
+        roomDimension: state.roomDimension,
       }),
     }
   )

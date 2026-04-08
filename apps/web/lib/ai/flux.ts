@@ -1,5 +1,6 @@
 import Replicate from 'replicate'
 import type { StyleFingerprint } from '@/types/fingerprint'
+import type { RoomAnalysis } from '@/lib/store/room'
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
@@ -68,13 +69,18 @@ const NEGATIVE_SUFFIX =
 
 // ── buildFluxPrompt ───────────────────────────────────────────────────────────
 
-export function buildFluxPrompt(
-  fingerprint: StyleFingerprint,
-  roomType: string,
-  budgetTier: 'budget' | 'mid' | 'premium' | 'luxury',
-  inclusions: string[],
-  keptItems?: string[],
-): string {
+export interface BuildFluxPromptParams {
+  fingerprint: StyleFingerprint
+  roomType: string
+  budgetTier: 'budget' | 'mid' | 'premium' | 'luxury'
+  inclusions: string[]
+  constraints: string[]
+  keptItemLabels: string[]
+  roomAnalysis: RoomAnalysis | null
+}
+
+export function buildFluxPrompt(params: BuildFluxPromptParams): string {
+  const { fingerprint, roomType, budgetTier, inclusions, constraints, keptItemLabels, roomAnalysis } = params
   const d = fingerprint.dimensions
 
   // 1. Room type opener
@@ -93,17 +99,33 @@ export function buildFluxPrompt(
   // 3. Budget modifier
   parts.push(BUDGET_MODIFIERS[budgetTier] ?? BUDGET_MODIFIERS.mid)
 
-  // 4. Inclusions
+  // 4. Inclusions (must-haves from user)
   if (inclusions.length > 0) {
     parts.push(`including ${inclusions.slice(0, 4).join(', ')}`)
   }
 
-  // 5. Kept items
-  if (keptItems && keptItems.length > 0) {
-    parts.push(`preserving existing ${keptItems.join(', ')}`)
+  // 5. Constraints (e.g. "I rent", "I have pets")
+  if (constraints.length > 0) {
+    parts.push(`constraints: ${constraints.slice(0, 3).join(', ')}`)
   }
 
-  // 6. Fixed negative suffix
+  // 6. Room analysis context (floor type, architectural features)
+  if (roomAnalysis) {
+    const feats = roomAnalysis.architectural_features?.slice(0, 2) ?? []
+    if (feats.length > 0 || roomAnalysis.floor_type) {
+      const contextParts: string[] = []
+      if (roomAnalysis.floor_type) contextParts.push(`${roomAnalysis.floor_type} floors`)
+      if (feats.length > 0) contextParts.push(feats.join(', '))
+      parts.push(`existing: ${contextParts.join(', ')}`)
+    }
+  }
+
+  // 7. Kept items
+  if (keptItemLabels.length > 0) {
+    parts.push(`preserving existing ${keptItemLabels.join(', ')}`)
+  }
+
+  // 8. Fixed negative suffix
   parts.push(NEGATIVE_SUFFIX)
 
   const prompt = parts.join('. ')
@@ -117,6 +139,22 @@ export function buildFluxPrompt(
   }
 
   return prompt
+}
+
+// ── submitSchnellRender — fast Schnell preview, no input images ───────────────
+
+export async function submitSchnellRender(prompt: string): Promise<string> {
+  const prediction = await replicate.predictions.create({
+    model: 'black-forest-labs/flux-schnell',
+    input: {
+      prompt,
+      num_outputs: 1,
+      aspect_ratio: '4:3',
+      output_format: 'jpg',
+      output_quality: 80,
+    },
+  })
+  return prediction.id
 }
 
 // ── submitRender — async, returns prediction_id immediately ───────────────────

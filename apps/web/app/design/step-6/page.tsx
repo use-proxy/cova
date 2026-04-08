@@ -91,9 +91,9 @@ export default function Step6Page() {
       reference_image_urls: referenceImageUrls ?? [],
       room_type: roomType ?? 'bedroom',
       budget: budgetTier ?? 'mid',
-      inclusions: [] as string[],
-      constraints: [] as string[],
-      room_analysis: null,
+      inclusions: fingerprintStore.inclusions ?? [],
+      constraints: fingerprintStore.constraints ?? [],
+      room_analysis: roomStore.roomAnalysis ?? null,
     }
 
     fetch('/api/render', {
@@ -123,7 +123,7 @@ export default function Step6Page() {
   // ─── Polling ──────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    const { predictionId, roomId } = roomStore
+    const { predictionId, schnellPredictionId, roomId } = roomStore
     if (!predictionId || !roomId) return
     if (stage === 'complete' || stage === 'error') return
 
@@ -138,8 +138,9 @@ export default function Step6Page() {
       }
 
       try {
+        const schnellParam = schnellPredictionId ? `&schnell_prediction_id=${schnellPredictionId}` : ''
         const res = await fetch(
-          `/api/render/status?prediction_id=${predictionId}&room_id=${roomId}`,
+          `/api/render/status?prediction_id=${predictionId}&room_id=${roomId}${schnellParam}`,
           { credentials: 'include' },
         )
         if (res.status === 401) {
