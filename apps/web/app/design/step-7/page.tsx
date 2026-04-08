@@ -2,543 +2,455 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
-import { AlertTriangle } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import Image from 'next/image'
+import { ChevronLeft, ChevronRight, Share2 } from 'lucide-react'
 import { useRoomStore } from '@/lib/store/room'
-import { useFingerprintStore } from '@/lib/store/fingerprint'
 import { useSessionStore } from '@/lib/store/session'
-import { useRefineStore } from '@/lib/store/refine'
-import { StepIndicator } from '@/components/cova/StepIndicator'
-
-// ─── Types ──────────────────────────────────────────────────────────────────
-
-type RenderState = 'idle' | 'pending' | 'complete' | 'failed' | 'timeout' | 'invalid'
-
-interface RenderErrorInfo {
-  variant: 'failed' | 'timeout'
-  message: string
-}
-
-// ─── Button helpers ──────────────────────────────────────────────────────────
-
-function PrimaryButton({
-  onClick,
-  children,
-  disabled,
-}: {
-  onClick: () => void
-  children: React.ReactNode
-  disabled?: boolean
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      style={{
-        background: disabled ? 'var(--cova-subtle)' : 'var(--cova-gold)',
-        color: 'var(--cova-bg)',
-        border: 'none',
-        borderRadius: 12,
-        padding: '14px 28px',
-        fontSize: 15,
-        fontWeight: 600,
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        fontFamily: 'var(--font-sans)',
-        width: '100%',
-        maxWidth: 280,
-        transition: 'opacity var(--transition-base)',
-        opacity: disabled ? 0.6 : 1,
-      }}
-    >
-      {children}
-    </button>
-  )
-}
-
-function GhostButton({
-  onClick,
-  children,
-}: {
-  onClick: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        background: 'transparent',
-        color: 'var(--cova-muted)',
-        border: '1px solid var(--cova-border)',
-        borderRadius: 12,
-        padding: '14px 28px',
-        fontSize: 15,
-        fontWeight: 500,
-        cursor: 'pointer',
-        fontFamily: 'var(--font-sans)',
-        width: '100%',
-        maxWidth: 280,
-        transition: 'border-color var(--transition-base)',
-      }}
-    >
-      {children}
-    </button>
-  )
-}
-
-// ─── Error screen ────────────────────────────────────────────────────────────
-
-function ErrorScreen({
-  info,
-  onRetry,
-  onBack,
-}: {
-  info: RenderErrorInfo
-  onRetry: () => void
-  onBack: () => void
-}) {
-  return (
-    <div
-      style={{
-        height: '100svh',
-        background: 'var(--cova-bg)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '0 24px',
-      }}
-    >
-      <AlertTriangle size={32} color="var(--cova-warning)" />
-      <h2
-        style={{
-          fontFamily: 'var(--font-serif)',
-          fontSize: 'var(--text-2xl)',
-          color: 'var(--cova-ivory)',
-          marginTop: 16,
-          textAlign: 'center',
-        }}
-      >
-        Something went wrong
-      </h2>
-      <p
-        style={{
-          fontFamily: 'var(--font-sans)',
-          fontSize: 'var(--text-sm)',
-          color: 'var(--cova-muted)',
-          marginTop: 8,
-          textAlign: 'center',
-          maxWidth: 280,
-        }}
-      >
-        {info.message}
-      </p>
-      <div
-        style={{
-          marginTop: 24,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 12,
-          width: '100%',
-          alignItems: 'center',
-        }}
-      >
-        <PrimaryButton onClick={onRetry}>Try Again</PrimaryButton>
-        <GhostButton onClick={onBack}>Go Back</GhostButton>
-      </div>
-    </div>
-  )
-}
-
-// ─── Invalid session screen ──────────────────────────────────────────────────
-
-function InvalidScreen({ onBack }: { onBack: () => void }) {
-  return (
-    <div
-      style={{
-        height: '100svh',
-        background: 'var(--cova-bg)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '0 24px',
-      }}
-    >
-      <AlertTriangle size={32} color="var(--cova-warning)" />
-      <h2
-        style={{
-          fontFamily: 'var(--font-serif)',
-          fontSize: 'var(--text-2xl)',
-          color: 'var(--cova-ivory)',
-          marginTop: 16,
-          textAlign: 'center',
-        }}
-      >
-        Something went wrong
-      </h2>
-      <p
-        style={{
-          fontFamily: 'var(--font-sans)',
-          fontSize: 'var(--text-sm)',
-          color: 'var(--cova-muted)',
-          marginTop: 8,
-          textAlign: 'center',
-          maxWidth: 280,
-        }}
-      >
-        We lost some of your session data. Please go back and try again.
-      </p>
-      <div style={{ marginTop: 24 }}>
-        <GhostButton onClick={onBack}>Go Back</GhostButton>
-      </div>
-    </div>
-  )
-}
-
-// ─── Abstract grid SVG (depth map fallback) ──────────────────────────────────
-
-function AbstractGrid() {
-  const lines: React.ReactNode[] = []
-  for (let x = 0; x <= 380; x += 20) {
-    lines.push(
-      <line
-        key={`v${x}`}
-        x1={x}
-        y1={0}
-        x2={x}
-        y2={285}
-        stroke="var(--cova-subtle)"
-        strokeWidth={0.5}
-        opacity={0.4}
-      />
-    )
-  }
-  for (let y = 0; y <= 285; y += 20) {
-    lines.push(
-      <line
-        key={`h${y}`}
-        x1={0}
-        y1={y}
-        x2={380}
-        y2={y}
-        stroke="var(--cova-subtle)"
-        strokeWidth={0.5}
-        opacity={0.4}
-      />
-    )
-  }
-  return (
-    <svg
-      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-      viewBox="0 0 380 285"
-      preserveAspectRatio="xMidYMid slice"
-    >
-      {lines}
-    </svg>
-  )
-}
-
-// ─── Main page ───────────────────────────────────────────────────────────────
+import { CovaButton } from '@/components/cova/CovaButton'
+import { createBrowserClient } from '@supabase/ssr'
 
 export default function Step7Page() {
   const router = useRouter()
-
-  const { roomId, originalPhotoUrl, depthMapUrl, keepMask, setRenderUrl, currentRenderIteration } = useRoomStore()
-  const {
-    fingerprint,
-    roomType,
-    budgetRange,
-    budgetTier,
-    styleName,
-  } = useFingerprintStore()
+  const roomStore = useRoomStore()
   const { setStep } = useSessionStore()
-  const { refinementText, styleStrength, clearRefinement } = useRefineStore()
 
-  const [renderState, setRenderState] = useState<RenderState>('idle')
-  const [renderError, setRenderError] = useState<RenderErrorInfo | null>(null)
+  const [showVideo, setShowVideo] = useState(false)
+  const [videoEnded, setVideoEnded] = useState(false)
+  const [dragPosition, setDragPosition] = useState(0.5)
+  const [isDragging, setIsDragging] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [mouseOffset, setMouseOffset] = useState({ x: 0, y: 0 })
 
-  const firedRef = useRef(false)
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const isDraggingRef = useRef(false)
 
-  // Clear intervals on unmount
+  // Keep ref in sync with state (used inside passive-false touch listener)
   useEffect(() => {
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current)
-      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    isDraggingRef.current = isDragging
+  }, [isDragging])
+
+  // Guards + init on mount
+  useEffect(() => {
+    if (!roomStore.renderUrl) {
+      router.push('/design/step-6')
+      return
     }
-  }, [])
-
-  // Validate session data
-  const isValid =
-    originalPhotoUrl !== null &&
-    fingerprint !== null &&
-    roomType !== null &&
-    budgetRange !== null &&
-    roomId !== null
-
-  // Fire render — POSTs to start prediction, then polls status every 3s
-  const fireRender = useCallback(async () => {
-    if (!isValid) {
-      setRenderState('invalid')
+    if (!roomStore.originalPhotoUrl) {
+      router.push('/design/step-2')
       return
     }
 
-    setRenderState('pending')
-    setRenderError(null)
+    // Video phase
+    if (roomStore.parallaxVideoUrl) {
+      setShowVideo(true)
+    } else {
+      setVideoEnded(true)
+    }
 
-    // 90s hard timeout
-    timeoutRef.current = setTimeout(() => {
-      if (pollRef.current) clearInterval(pollRef.current)
-      setRenderState('timeout')
-      setRenderError({
-        variant: 'timeout',
-        message: "This is taking longer than usual. Your room is saved — tap to try again.",
-      })
-    }, 90_000)
-
-    try {
-      // Step 1: kick off prediction
-      const res = await fetch('/api/render', {
+    // Fire parallax generation (fire-and-forget, non-fatal)
+    if (!roomStore.parallaxVideoUrl && roomStore.depthMapUrl && roomStore.renderUrl) {
+      fetch('/api/parallax', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          photo_url: originalPhotoUrl,
-          depth_map_url: depthMapUrl ?? undefined,
-          keep_mask: keepMask ?? null,
-          fingerprint_vector: fingerprint,
-          room_type: roomType,
-          budget: budgetTier,
-          budget_tier: budgetTier,
-          style_name: styleName ?? undefined,
-          room_id: roomId,
-          style_strength: styleStrength,
-          render_iteration: currentRenderIteration,
-          ...(refinementText ? { refinement_text: refinementText } : {}),
+          render_url: roomStore.renderUrl,
+          depth_map_url: roomStore.depthMapUrl,
+          room_id: roomStore.roomId,
         }),
       })
-
-      if (res.status === 401) {
-        clearTimeout(timeoutRef.current!)
-        setRenderState('failed')
-        setRenderError({
-          variant: 'failed',
-          message: 'Please sign in to generate renders.',
+        .then((r) => r.json())
+        .then((d: { video_url?: string | null }) => {
+          if (d.video_url) roomStore.setParallaxVideoUrl(d.video_url)
         })
-        return
-      }
-
-      if (!res.ok) {
-        const errData = (await res.json().catch(() => ({}))) as { error?: string }
-        throw new Error(errData.error ?? `HTTP ${res.status}`)
-      }
-
-      const startData = (await res.json()) as { prediction_id: string } | { error: string }
-      if ('error' in startData) throw new Error(startData.error)
-
-      const { prediction_id: predictionId } = startData
-
-      // Step 2: poll status every 3s
-      pollRef.current = setInterval(async () => {
-        try {
-          const statusRes = await fetch(
-            `/api/render/status?prediction_id=${predictionId}&room_id=${roomId}&render_iteration=${currentRenderIteration}`
-          )
-          if (!statusRes.ok) return // transient error — keep polling
-
-          const statusData = (await statusRes.json()) as
-            | { status: 'processing' }
-            | { status: 'complete'; render_url: string }
-            | { status: 'failed'; error?: string }
-
-          if (statusData.status === 'complete') {
-            clearInterval(pollRef.current!)
-            clearTimeout(timeoutRef.current!)
-            clearRefinement()
-            setRenderUrl(statusData.render_url)
-            setRenderState('complete')
-            setStep(8)
-            router.push('/design/step-8')
-          } else if (statusData.status === 'failed') {
-            clearInterval(pollRef.current!)
-            clearTimeout(timeoutRef.current!)
-            setRenderState('failed')
-            setRenderError({
-              variant: 'failed',
-              message: "The render didn't complete. Your room is saved — tap to try again.",
-            })
-          }
-          // status === 'processing': do nothing, keep polling
-        } catch {
-          // transient poll error — keep polling
-        }
-      }, 3000)
-    } catch (err) {
-      clearTimeout(timeoutRef.current!)
-      setRenderState('failed')
-      setRenderError({
-        variant: 'failed',
-        message:
-          err instanceof Error
-            ? err.message
-            : "The render didn't complete. Your room is saved — tap to try again.",
-      })
+        .catch((err) => console.error('Parallax generation failed (non-fatal):', err))
     }
-  }, [
-    isValid,
-    originalPhotoUrl,
-    depthMapUrl,
-    keepMask,
-    fingerprint,
-    roomType,
-    budgetTier,
-    styleName,
-    roomId,
-    refinementText,
-    styleStrength,
-    currentRenderIteration,
-    clearRefinement,
-    setRenderUrl,
-    setStep,
-    router,
-  ])
 
-  // Fire once on mount — guard against StrictMode double-invocation
-  useEffect(() => {
-    if (firedRef.current) return
-    firedRef.current = true
-    void fireRender()
+    // Auth check (async, non-blocking)
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsAuthenticated(!!session)
+    })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleRetry = useCallback(() => {
-    firedRef.current = false
-    void fireRender()
-  }, [fireRender])
+  // Touch drag — passive: false to allow preventDefault
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
 
-  const handleBack = useCallback(() => {
-    router.back()
-  }, [router])
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!isDraggingRef.current) return
+      e.preventDefault()
+      const touch = e.touches[0]
+      const rect = container.getBoundingClientRect()
+      const x = (touch.clientX - rect.left) / rect.width
+      setDragPosition(Math.max(0.05, Math.min(0.95, x)))
+    }
 
-  // ── Invalid session ──────────────────────────────────────────────────────
-  if (renderState === 'invalid') {
-    return <InvalidScreen onBack={handleBack} />
-  }
+    container.addEventListener('touchmove', handleTouchMove, { passive: false })
+    return () => container.removeEventListener('touchmove', handleTouchMove)
+  }, [])
 
-  // ── Error / timeout ──────────────────────────────────────────────────────
-  if ((renderState === 'failed' || renderState === 'timeout') && renderError) {
-    return (
-      <ErrorScreen info={renderError} onRetry={handleRetry} onBack={handleBack} />
-    )
-  }
+  // Subtle mouse parallax (depth simulation)
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const x = (e.clientX / window.innerWidth - 0.5) * 2
+      const y = (e.clientY / window.innerHeight - 0.5) * 2
+      setMouseOffset({ x, y })
+    }
+    window.addEventListener('mousemove', handleMouseMove)
+    return () => window.removeEventListener('mousemove', handleMouseMove)
+  }, [])
 
-  // ── Loading ──────────────────────────────────────────────────────────────
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!isDragging) return
+      const rect = e.currentTarget.getBoundingClientRect()
+      const x = (e.clientX - rect.left) / rect.width
+      setDragPosition(Math.max(0.05, Math.min(0.95, x)))
+    },
+    [isDragging]
+  )
+
+  const handleContainerClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    // Ignore clicks in bottom-bar area (~160px from bottom)
+    const rect = e.currentTarget.getBoundingClientRect()
+    if (e.clientY - rect.top > rect.height - 160) return
+    const x = (e.clientX - rect.left) / rect.width
+    setDragPosition(Math.max(0.05, Math.min(0.95, x)))
+  }, [])
+
+  const handleShare = useCallback(async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'My AI-designed room by Cova',
+          url: window.location.origin,
+        })
+      } else {
+        await navigator.clipboard.writeText(window.location.origin)
+      }
+    } catch {
+      // user cancelled or API unavailable
+    }
+  }, [])
+
+  // Don't render until guard check resolves
+  if (!roomStore.renderUrl || !roomStore.originalPhotoUrl) return null
+
+  const depthOffsetX = roomStore.depthMapUrl ? mouseOffset.x * 8 : 0
+  const depthOffsetY = roomStore.depthMapUrl ? mouseOffset.y * 8 : 0
+
   return (
     <div
       style={{
+        position: 'relative',
+        width: '100vw',
         height: '100svh',
-        background: 'var(--cova-bg)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '0 24px',
+        overflow: 'hidden',
+        background: '#000',
       }}
     >
-      <StepIndicator currentStep={7} totalSteps={9} />
-      {/* Heading */}
-      <h1
-        style={{
-          fontFamily: 'var(--font-serif)',
-          fontSize: 'var(--text-3xl)',
-          color: 'var(--cova-gold)',
-          textAlign: 'center',
-          marginBottom: 12,
-        }}
-      >
-        Designing your room.
-      </h1>
-
-      {/* Subtext */}
-      <p
-        style={{
-          fontFamily: 'var(--font-sans)',
-          fontSize: 'var(--text-sm)',
-          color: 'var(--cova-muted)',
-          textAlign: 'center',
-          marginBottom: 40,
-        }}
-      >
-        This usually takes 30–45 seconds.
-      </p>
-
-      {/* Depth map visual */}
-      <div
-        style={{
-          position: 'relative',
-          width: '100%',
-          maxWidth: 380,
-          borderRadius: 12,
-          overflow: 'hidden',
-          aspectRatio: '4 / 3',
-          background: 'var(--cova-surface-2)',
-        }}
-      >
-        {depthMapUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={depthMapUrl}
-            alt="Room structure"
+      {/* ── Phase 1: Parallax video ─────────────────────────────────────────── */}
+      <AnimatePresence>
+        {showVideo && !videoEnded && (
+          <motion.div
+            key="video"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.8 }}
             style={{
               position: 'absolute',
               inset: 0,
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              opacity: 0.75,
+              background: '#000',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 50,
             }}
-          />
-        ) : (
-          <AbstractGrid />
+          >
+            <video
+              src={roomStore.parallaxVideoUrl!}
+              autoPlay
+              muted
+              playsInline
+              onEnded={() => setVideoEnded(true)}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+            <button
+              onClick={() => setVideoEnded(true)}
+              style={{
+                position: 'absolute',
+                bottom: 32,
+                right: 24,
+                background: 'transparent',
+                border: 'none',
+                color: 'rgba(255,255,255,0.6)',
+                fontSize: 14,
+                cursor: 'pointer',
+                fontFamily: 'var(--font-sans)',
+              }}
+            >
+              Skip →
+            </button>
+          </motion.div>
         )}
+      </AnimatePresence>
 
-        {/* Scanline */}
-        <motion.div
-          animate={{ top: ['0%', '100%'] }}
-          transition={{ repeat: Infinity, duration: 2.5, ease: 'linear' }}
-          style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            height: 2,
-            background: 'var(--cova-gold)',
-            opacity: 0.6,
-          }}
-        />
-      </div>
+      {/* ── Phase 2: Before/after comparison ───────────────────────────────── */}
+      <AnimatePresence>
+        {(videoEnded || !showVideo) && (
+          <motion.div
+            key="comparison"
+            initial={{ opacity: showVideo ? 0 : 1 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8 }}
+            ref={containerRef}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              cursor: isDragging ? 'ew-resize' : 'col-resize',
+            }}
+            onMouseMove={handleMouseMove}
+            onMouseUp={() => setIsDragging(false)}
+            onMouseLeave={() => setIsDragging(false)}
+            onClick={handleContainerClick}
+            onTouchStart={() => setIsDragging(true)}
+            onTouchEnd={() => setIsDragging(false)}
+          >
+            {/* AFTER image — bottom layer, full screen, subtle parallax */}
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                transform: `translate(${depthOffsetX}px, ${depthOffsetY}px)`,
+                transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+              }}
+            >
+              <Image
+                src={roomStore.renderUrl!}
+                alt="Redesigned room"
+                fill
+                style={{ objectFit: 'cover' }}
+                priority
+              />
+            </div>
 
-      {/* Shimmer progress bar */}
+            {/* After label */}
+            <div
+              style={{
+                position: 'absolute',
+                top: 16,
+                right: 16,
+                zIndex: 10,
+                fontSize: 12,
+                color: 'rgba(255,255,255,0.6)',
+                background: 'rgba(0,0,0,0.3)',
+                padding: '4px 8px',
+                borderRadius: 9999,
+                fontFamily: 'var(--font-sans)',
+                userSelect: 'none',
+              }}
+            >
+              After
+            </div>
+
+            {/* BEFORE image — top layer, clipped to left of drag handle */}
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                clipPath: `inset(0 ${(1 - dragPosition) * 100}% 0 0)`,
+              }}
+            >
+              <Image
+                src={roomStore.originalPhotoUrl!}
+                alt="Original room"
+                fill
+                style={{ objectFit: 'cover' }}
+              />
+            </div>
+
+            {/* Before label */}
+            <div
+              style={{
+                position: 'absolute',
+                top: 16,
+                left: 16,
+                zIndex: 10,
+                fontSize: 12,
+                color: 'rgba(255,255,255,0.6)',
+                background: 'rgba(0,0,0,0.3)',
+                padding: '4px 8px',
+                borderRadius: 9999,
+                fontFamily: 'var(--font-sans)',
+                userSelect: 'none',
+              }}
+            >
+              Before
+            </div>
+
+            {/* ── Drag handle ──────────────────────────────────────────────── */}
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                left: `${dragPosition * 100}%`,
+                transform: 'translateX(-50%)',
+                zIndex: 20,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+              }}
+              onMouseDown={(e) => {
+                e.stopPropagation()
+                setIsDragging(true)
+              }}
+              onTouchStart={(e) => {
+                e.stopPropagation()
+                setIsDragging(true)
+              }}
+            >
+              {/* Vertical line */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  bottom: 0,
+                  left: '50%',
+                  width: 2,
+                  background: 'rgba(255,255,255,0.8)',
+                  transform: 'translateX(-50%)',
+                }}
+              />
+              {/* Handle circle */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: 40,
+                  height: 40,
+                  borderRadius: '50%',
+                  background: '#fff',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'ew-resize',
+                  color: 'var(--cova-surface)',
+                }}
+              >
+                <ChevronLeft size={14} />
+                <ChevronRight size={14} />
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Bottom bar — always visible ─────────────────────────────────────── */}
       <div
         style={{
-          marginTop: 40,
-          width: '100%',
-          maxWidth: 380,
-          height: 3,
-          background: 'var(--cova-subtle)',
-          borderRadius: 9999,
-          overflow: 'hidden',
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)',
+          paddingTop: 48,
+          paddingLeft: 16,
+          paddingRight: 16,
+          paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
+          zIndex: 40,
         }}
       >
-        <motion.div
-          animate={{ x: ['-100%', '250%'] }}
-          transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut' }}
+        {/* Share button */}
+        <button
+          onClick={handleShare}
           style={{
-            width: '40%',
-            height: '100%',
-            borderRadius: 9999,
-            background:
-              'linear-gradient(90deg, transparent, var(--cova-gold), transparent)',
+            position: 'absolute',
+            top: 16,
+            right: 16,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            background: 'transparent',
+            border: '1px solid rgba(255,255,255,0.3)',
+            borderRadius: 8,
+            padding: '8px 12px',
+            color: 'rgba(255,255,255,0.8)',
+            fontSize: 14,
+            cursor: 'pointer',
+            fontFamily: 'var(--font-sans)',
           }}
-        />
+        >
+          <Share2 size={14} />
+          Share
+        </button>
+
+        {/* CTAs */}
+        <div
+          style={{
+            display: 'flex',
+            gap: 12,
+            maxWidth: 384,
+            margin: '0 auto',
+          }}
+        >
+          <CovaButton
+            variant="primary"
+            size="lg"
+            className="flex-1"
+            onClick={() => {
+              setStep(9)
+              router.push('/design/step-9')
+            }}
+          >
+            Shop This Look →
+          </CovaButton>
+          <CovaButton
+            variant="ghost"
+            size="lg"
+            className="flex-1"
+            onClick={() => {
+              setStep(8)
+              router.push('/design/step-8')
+            }}
+          >
+            Refine →
+          </CovaButton>
+        </div>
+
+        {/* Dashboard link — only when authenticated */}
+        {isAuthenticated && (
+          <p
+            onClick={() => router.push('/dashboard')}
+            style={{
+              textAlign: 'center',
+              fontSize: 12,
+              color: 'rgba(255,255,255,0.5)',
+              marginTop: 12,
+              cursor: 'pointer',
+              fontFamily: 'var(--font-sans)',
+              transition: 'color 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              ;(e.currentTarget as HTMLParagraphElement).style.color =
+                'rgba(255,255,255,0.8)'
+            }}
+            onMouseLeave={(e) => {
+              ;(e.currentTarget as HTMLParagraphElement).style.color =
+                'rgba(255,255,255,0.5)'
+            }}
+          >
+            View in Dashboard
+          </p>
+        )}
       </div>
     </div>
   )
