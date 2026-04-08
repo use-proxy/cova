@@ -2,704 +2,417 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
+import { AlertCircle } from 'lucide-react'
+import Image from 'next/image'
 
-import { useRoomStore, type Detection } from '@/lib/store/room'
+import { useRoomStore } from '@/lib/store/room'
 import { useFingerprintStore } from '@/lib/store/fingerprint'
-import { useSessionStore } from '@/lib/store/session'
-import { StepIndicator } from '@/components/cova/StepIndicator'
+import { CovaButton } from '@/components/cova/CovaButton'
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
-type ItemState = 'keep' | 'remove' | 'undecided'
+type RenderStage = 'firing' | 'preview' | 'complete' | 'error'
 
-function keepToState(keep: boolean | null): ItemState {
-  if (keep === true) return 'keep'
-  if (keep === false) return 'remove'
-  return 'undecided'
-}
+// ─── Constants ─────────────────────────────────────────────────────────────
 
+const POLL_INTERVAL_MS = 3000
+const MAX_POLLS = 30 // 90 seconds total
 
-// ─── Label → emoji ─────────────────────────────────────────────────────────
+// ─── Stage indicator text ───────────────────────────────────────────────────
 
-const EMOJI_MAP: Record<string, string> = {
-  // Furniture
-  sofa: '🛋️', couch: '🛋️', chair: '🪑', armchair: '🪑', bed: '🛏️',
-  desk: '🪑', table: '🪵', 'coffee table': '🪵', 'dining table': '🍽️',
-  bookshelf: '📚', wardrobe: '🚪', dresser: '🪞', nightstand: '🪑',
-  lamp: '💡', 'floor lamp': '💡', 'table lamp': '💡', 'ceiling light': '💡', 'pendant light': '💡',
-  rug: '🪵', curtains: '🏠', blinds: '🏠', tv: '📺', television: '📺',
-  plant: '🌿', artwork: '🖼️', painting: '🖼️', 'picture frame': '🖼️',
-  'wall art': '🖼️', 'wall decoration': '🖼️', mirror: '🪞', cabinet: '🗄️',
-  shelf: '📚', ottoman: '🛋️', bench: '🪑', 'side table': '🪵',
-  'accent chair': '🪑', 'throw pillow': '🛋️', blanket: '🛋️', vase: '🏺',
-  // Architecture
-  floor: '🏠', wall: '🧱', ceiling: '🏠', window: '🪟', door: '🚪',
-  fireplace: '🔥', stairs: '🏠', column: '🏛️', arch: '🏛️',
-  'exposed brick': '🧱', 'built-in': '📚', baseboard: '🏠',
-  'wall color': '🎨', 'window treatment': '🏠', curtain: '🏠', blind: '🏠',
-  'ceiling type': '🏠', 'crown molding': '🏛️', wainscoting: '🏛️',
-}
-
-function getEmoji(label: string): string {
-  return EMOJI_MAP[label.toLowerCase()] ?? '📦'
-}
-
-// ─── Stable dot ID ─────────────────────────────────────────────────────────
-
-function dotId(item: Detection): string {
-  return `${item.label}-${item.bbox[0].toFixed(4)}-${item.bbox[1].toFixed(4)}-${item.bbox[2].toFixed(4)}-${item.bbox[3].toFixed(4)}`
-}
-
-// ─── Loading Screen ─────────────────────────────────────────────────────────
-
-const LOADING_PHRASES = [
-  'Mapping depth structure',
-  'Detecting furniture',
-  'Identifying fixed elements',
-  'Almost ready...',
-]
-
-function LoadingScreen({ photoUrl }: { photoUrl: string | null }) {
-  const [phraseIndex, setPhraseIndex] = useState(0)
-  const [phraseVisible, setPhraseVisible] = useState(true)
-  const [activeDot, setActiveDot] = useState(0)
-
-  useEffect(() => {
-    const phraseInterval = setInterval(() => {
-      setPhraseVisible(false)
-      setTimeout(() => {
-        setPhraseIndex((p) => (p + 1) % LOADING_PHRASES.length)
-        setPhraseVisible(true)
-      }, 300)
-    }, 3000)
-    const dotInterval = setInterval(() => {
-      setActiveDot((d) => (d + 1) % 3)
-    }, 1000)
-    return () => {
-      clearInterval(phraseInterval)
-      clearInterval(dotInterval)
-    }
-  }, [])
-
-  return (
-    <div className="fixed inset-0" style={{ background: 'var(--cova-bg)' }}>
-      {/* Blurred room photo as background if available */}
-      {photoUrl && (
-        <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={photoUrl}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover object-center"
-            aria-hidden
-          />
-          <div className="absolute inset-0" style={{ backdropFilter: 'blur(12px)' }} />
-          <div className="absolute inset-0" style={{ background: 'rgba(9,24,41,0.75)' }} />
-        </>
-      )}
-
-      {/* Content */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-0">
-        {/* Framer Motion spinner */}
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }}
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: '50%',
-            border: '3px solid rgba(201,168,76,0.15)',
-            borderTopColor: 'var(--cova-gold)',
-          }}
-        />
-
-        <h2
-          className="font-serif mt-7"
-          style={{
-            color: 'var(--cova-ivory)',
-            fontSize: 'var(--text-2xl)',
-            letterSpacing: '0.02em',
-          }}
-        >
-          Analyzing your room...
-        </h2>
-
-        <p
-          className="font-sans mt-2.5 transition-opacity duration-300"
-          style={{
-            color: 'var(--cova-muted)',
-            fontSize: 'var(--text-sm)',
-            minHeight: 24,
-            opacity: phraseVisible ? 1 : 0,
-          }}
-        >
-          {LOADING_PHRASES[phraseIndex]}
-        </p>
-
-        {/* Progress dots */}
-        <div className="flex gap-1.5 mt-4">
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className="rounded-full transition-all duration-200"
-              style={{
-                width: 6,
-                height: 6,
-                backgroundColor: activeDot === i ? 'var(--cova-gold)' : 'var(--cova-dim)',
-                transform: activeDot === i ? 'scale(1.4)' : 'scale(1)',
-              }}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  )
+const STAGE_TEXT: Record<RenderStage, string> = {
+  firing: 'Applying your style...',
+  preview: 'Refining details...',
+  complete: 'Your room is ready',
+  error: '',
 }
 
 // ─── Main page ──────────────────────────────────────────────────────────────
 
 export default function Step6Page() {
   const router = useRouter()
-  const { roomId, originalPhotoUrl, detections, setDetections, keepMask, setDepthMap, toggleKeepItem } = useRoomStore()
-  const { roomType: _roomType } = useFingerprintStore()
-  const { setStep } = useSessionStore()
 
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [detectionFailed, setDetectionFailed] = useState(false)
-  const [isDotsReady, setIsDotsReady] = useState(false)
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
-  const [isNavigating, setIsNavigating] = useState(false)
+  const roomStore = useRoomStore()
+  const fingerprintStore = useFingerprintStore()
 
-  const photoContainerRef = useRef<HTMLDivElement>(null)
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const pollStartRef = useRef<number>(0)
-  const itemRefs = useRef<Record<string, HTMLDivElement | null>>({})
-  const listScrollRef = useRef<HTMLDivElement>(null)
+  const [stage, setStage] = useState<RenderStage>('firing')
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [, setPollCount] = useState(0)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [fireCount, setFireCount] = useState(0) // incremented to re-trigger render fire
 
-  // Clear interval on unmount
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (pollRef.current) clearInterval(pollRef.current)
+      if (intervalRef.current) clearInterval(intervalRef.current)
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
     }
   }, [])
 
-  // Trigger dots entrance animation once detections are loaded
+  // ─── Fire render on mount ─────────────────────────────────────────────────
+
   useEffect(() => {
-    if (detections !== null) {
-      const t = setTimeout(() => setIsDotsReady(true), 100)
-      return () => clearTimeout(t)
+    const { roomId, originalPhotoUrl, depthMapUrl, keepMask, referenceImageUrls, renderUrl, predictionId } = roomStore
+    const { fingerprint, roomType, budgetTier } = fingerprintStore
+
+    // Guard: missing room
+    if (!roomId || !originalPhotoUrl) {
+      router.push('/design/step-2')
+      return
     }
-  }, [detections])
 
-  // Poll /api/detect/status — skip if detections already populated (back navigation)
+    // Guard: missing fingerprint
+    if (!fingerprint) {
+      router.push('/design/step-3')
+      return
+    }
+
+    // Guard: render already complete (back navigation)
+    if (renderUrl) {
+      router.push('/design/step-7')
+      return
+    }
+
+    // Guard: prediction already in flight (e.g. React strict mode double-invoke)
+    if (predictionId) {
+      return
+    }
+
+    const payload = {
+      room_id: roomId,
+      photo_url: originalPhotoUrl,
+      depth_map_url: depthMapUrl ?? null,
+      keep_mask: keepMask ?? [],
+      fingerprint_vector: fingerprint,
+      reference_image_urls: referenceImageUrls ?? [],
+      room_type: roomType ?? 'bedroom',
+      budget: budgetTier ?? 'mid',
+      inclusions: [] as string[],
+      constraints: [] as string[],
+      room_analysis: null,
+    }
+
+    fetch('/api/render', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error((data as { error?: string }).error ?? `Render failed (${res.status})`)
+        }
+        return res.json() as Promise<{ prediction_id: string; schnell_prediction_id?: string }>
+      })
+      .then((data) => {
+        roomStore.setPredictionIds(data.prediction_id, data.schnell_prediction_id)
+      })
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : 'Render failed — please try again'
+        setStage('error')
+        setErrorMessage(msg)
+      })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fireCount])
+
+  // ─── Polling ──────────────────────────────────────────────────────────────
+
   useEffect(() => {
-    if (detections !== null) return
-    if (!roomId) return
+    const { predictionId, roomId } = roomStore
+    if (!predictionId || !roomId) return
+    if (stage === 'complete' || stage === 'error') return
 
-    pollStartRef.current = Date.now()
+    let localPollCount = 0
 
-    pollRef.current = setInterval(async () => {
-      const elapsed = Date.now() - pollStartRef.current
-      if (elapsed > 30_000) {
-        clearInterval(pollRef.current!)
-        setDetectionFailed(true)
+    intervalRef.current = setInterval(async () => {
+      if (localPollCount >= MAX_POLLS) {
+        clearInterval(intervalRef.current!)
+        setStage('error')
+        setErrorMessage('Render timed out — please try again')
         return
       }
 
       try {
-        const res = await fetch(`/api/detect/status?room_id=${roomId}`, { credentials: 'include' })
+        const res = await fetch(
+          `/api/render/status?prediction_id=${predictionId}&room_id=${roomId}`,
+          { credentials: 'include' },
+        )
         if (res.status === 401) {
-          clearInterval(pollRef.current!)
+          clearInterval(intervalRef.current!)
           router.push('/design/step-2')
           return
         }
-        if (!res.ok) return
 
-        const data = (await res.json()) as
-          | { ready: false }
-          | { ready: true; detections: import('@/lib/store/room').Detection[]; depth_map_url: string }
+        const data = (await res.json()) as {
+          status?: string
+          render_url?: string
+          preview_url?: string
+          render_session_id?: string | null
+          error?: string
+        }
 
-        if (data.ready) {
-          clearInterval(pollRef.current!)
-          setDetections(data.detections)
-          setDepthMap(data.depth_map_url, 1.0)
+        localPollCount += 1
+        setPollCount(localPollCount)
+
+        // Preview URL (optional — API may not return this)
+        if (data.preview_url && !previewUrl) {
+          setPreviewUrl(data.preview_url)
+          roomStore.setPreviewUrl(data.preview_url)
+          setStage('preview')
+        }
+
+        // Full render complete
+        if (data.render_url) {
+          clearInterval(intervalRef.current!)
+          roomStore.setRenderUrl(data.render_url)
+          roomStore.addRenderSession({
+            id: data.render_session_id ?? crypto.randomUUID(),
+            renderUrl: data.render_url,
+            previewUrl: data.preview_url ?? null,
+            parallaxVideoUrl: null,
+            iteration: roomStore.currentRenderIteration,
+            createdAt: new Date().toISOString(),
+          })
+          setStage('complete')
+          timeoutRef.current = setTimeout(() => router.push('/design/step-7'), 800)
+          return
+        }
+
+        // Error from API
+        if (data.status === 'failed' || data.error) {
+          clearInterval(intervalRef.current!)
+          setStage('error')
+          setErrorMessage(data.error ?? 'Render failed — please try again')
         }
       } catch {
-        // transient error — keep polling
+        // transient network error — keep polling
       }
-    }, 2500)
-  }, [detections, roomId, setDetections])
+    }, POLL_INTERVAL_MS)
 
-  // Computed
-  const visibleDetections = detections?.filter((d) => d.showToUser === true) ?? []
-  const showFallback = detectionFailed || (detections !== null && visibleDetections.length === 0)
-  const isPolling = detections === null && !detectionFailed
-
-  const selectedItem = selectedId ? visibleDetections.find((d) => dotId(d) === selectedId) ?? null : null
-
-  // Dot click — select and scroll list to row
-  const handleDotClick = useCallback((id: string) => {
-    setSelectedId((prev) => (prev === id ? null : id))
-    setTimeout(() => {
-      itemRefs.current[id]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-    }, 50)
-  }, [])
-
-  const handleOutsideClick = useCallback(() => {
-    setSelectedId(null)
-  }, [])
-
-  // Keep / remove actions
-  const handleKeep = useCallback(
-    (item: Detection) => {
-      toggleKeepItem(item.label, true)
-    },
-    [toggleKeepItem]
-  )
-
-  const handleRemove = useCallback(
-    (item: Detection) => {
-      toggleKeepItem(item.label, false)
-    },
-    [toggleKeepItem]
-  )
-
-  // CTA — PATCH keep_mask then navigate
-  const handleDesignRoom = useCallback(async () => {
-    if (isNavigating) return
-    setIsNavigating(true)
-    setToastMessage(null)
-
-    try {
-      if (roomId) {
-        const res = await fetch(`/api/rooms/${roomId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ keep_mask: keepMask ?? [] }),
-        })
-        if (!res.ok) throw new Error('PATCH failed')
-      }
-      setStep(7)
-      router.push('/design/step-7')
-    } catch {
-      setToastMessage("Couldn't save your selections — tap to retry")
-      setIsNavigating(false)
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
     }
-  }, [isNavigating, roomId, keepMask, setStep, router])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomStore.predictionId])
 
-  // ── Loading state ────────────────────────────────────────────────────────
-  if (isPolling) {
-    return (
-      <>
-        <StepIndicator currentStep={6} totalSteps={9} />
-        <LoadingScreen photoUrl={originalPhotoUrl} />
-      </>
-    )
-  }
+  // ─── Retry handler ────────────────────────────────────────────────────────
 
-  // ── Fallback state ───────────────────────────────────────────────────────
-  if (showFallback) {
+  const handleRetry = useCallback(() => {
+    // Clear existing prediction so fire guard doesn't skip
+    roomStore.setPredictionIds('', undefined)
+    if (intervalRef.current) clearInterval(intervalRef.current)
+    if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    setStage('firing')
+    setPreviewUrl(null)
+    setPollCount(0)
+    setErrorMessage(null)
+    setFireCount((c) => c + 1)
+  }, [roomStore])
+
+  // ─── Derived values ───────────────────────────────────────────────────────
+
+  const { originalPhotoUrl } = roomStore
+  const isShimmering = stage === 'firing' || stage === 'preview'
+  const progressWidth = stage === 'complete' ? '100%' : '40%'
+
+  // ─── Error state ──────────────────────────────────────────────────────────
+
+  if (stage === 'error') {
     return (
       <div
-        className="fixed inset-0 flex flex-col"
+        className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden font-sans"
         style={{ background: 'var(--cova-bg)' }}
       >
-        <StepIndicator currentStep={6} totalSteps={9} />
-
-        {/* Photo panel (no dots) */}
+        {/* Blurred background */}
         {originalPhotoUrl && (
-          <div style={{ height: '58vh', position: 'relative', overflow: 'hidden' }}>
+          <div className="absolute inset-0 pointer-events-none" aria-hidden>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={originalPhotoUrl}
-              alt="Your room"
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover"
+              style={{ filter: 'blur(24px) brightness(0.3)', transform: 'scale(1.1)' }}
             />
-            <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.2)' }} />
           </div>
         )}
 
-        {/* Bottom panel — fallback */}
-        <div
-          className="flex-1 flex flex-col justify-between px-5 pt-5 pb-8"
-          style={{
-            background: 'var(--cova-surface)',
-            borderTop: '2px solid rgba(201,168,76,0.4)',
-            borderRadius: '16px 16px 0 0',
-          }}
-        >
-          <div>
-            <h1 className="font-serif mb-2" style={{ color: 'var(--cova-ivory)', fontSize: 'var(--text-xl)' }}>
-              What stays?
-            </h1>
-            <p className="font-sans" style={{ color: 'var(--cova-muted)', fontSize: 'var(--text-sm)' }}>
-              {detectionFailed
-                ? "We couldn't detect individual items — we'll redesign everything."
-                : "No individual items detected — we'll redesign everything."}
-            </p>
-          </div>
-
-          <button
-            onClick={() => void handleDesignRoom()}
-            disabled={isNavigating}
-            className="w-full font-sans transition-all duration-200"
-            style={{
-              maxWidth: 640,
-              background: 'var(--cova-gold)',
-              color: 'var(--cova-bg)',
-              fontSize: 'var(--text-base)',
-              fontWeight: 600,
-              border: 'none',
-              borderRadius: 14,
-              padding: '17px 24px',
-              cursor: isNavigating ? 'not-allowed' : 'pointer',
-              opacity: isNavigating ? 0.7 : 1,
-            }}
+        <div className="relative z-10 flex flex-col items-center gap-2 px-8 max-w-sm text-center">
+          <AlertCircle size={48} style={{ color: 'var(--cova-error)' }} />
+          <h2
+            className="font-serif mt-4"
+            style={{ color: 'var(--cova-ivory)', fontSize: 'var(--text-2xl)' }}
           >
-            {isNavigating ? 'Working...' : 'Design My Room →'}
-          </button>
+            Render failed
+          </h2>
+          <p
+            className="font-sans mt-2 max-w-xs"
+            style={{ color: 'var(--cova-muted)', fontSize: 'var(--text-sm)' }}
+          >
+            {errorMessage}
+          </p>
+          <div className="mt-8 flex gap-3">
+            <CovaButton variant="primary" onClick={handleRetry}>
+              Try Again
+            </CovaButton>
+            <CovaButton variant="ghost" onClick={() => router.push('/design/step-5')}>
+              Go Back
+            </CovaButton>
+          </div>
         </div>
       </div>
     )
   }
 
-  // ── Ready state ──────────────────────────────────────────────────────────
+  // ─── Normal state (firing / preview / complete) ───────────────────────────
+
   return (
     <div
-      className="fixed inset-0 flex flex-col overflow-hidden"
+      className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden font-sans"
       style={{ background: 'var(--cova-bg)' }}
     >
-      <StepIndicator currentStep={6} totalSteps={9} />
-
-      {/* ── Photo panel (55vh) ── */}
-      <div
-        ref={photoContainerRef}
-        style={{ height: '55vh', position: 'relative', overflow: 'hidden', flexShrink: 0 }}
-        onClick={handleOutsideClick}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={originalPhotoUrl ?? ''}
-          alt="Your room"
-          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
-        />
-
-        {/* Subtle dark overlay */}
-        <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.2)' }} />
-
-        {/* Instruction banner */}
-        <div
-          className="absolute top-0 left-0 right-0 flex items-center justify-center gap-2"
-          style={{
-            background: 'linear-gradient(to bottom, rgba(9,24,41,0.85) 0%, rgba(9,24,41,0) 100%)',
-            height: 60,
-            padding: '14px 20px',
-          }}
-        >
-          <span
-            className="font-sans"
-            style={{ color: 'var(--cova-gold)', fontSize: 13, letterSpacing: '0.03em' }}
-          >
-            Tap any item to decide what to keep
-          </span>
-        </div>
-
-        {/* Item count badge */}
-        <div
-          style={{
-            position: 'absolute', top: 8, right: 8, zIndex: 20,
-            background: 'rgba(10,22,40,0.75)', backdropFilter: 'blur(4px)',
-            borderRadius: 20, padding: '3px 10px',
-            color: '#F8F6F1', fontSize: 12, fontFamily: 'Inter, sans-serif',
-          }}
-        >
-          {visibleDetections.length} items
-        </div>
-
-        {/* Bounding box overlay for selected item */}
-        {selectedItem && (
-          <div
+      {/* ── Background Layer ── */}
+      <div className="absolute inset-0 pointer-events-none" aria-hidden>
+        {/* Base: blurred original photo */}
+        {originalPhotoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={originalPhotoUrl}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
             style={{
-              position: 'absolute',
-              left: `${selectedItem.bbox[0] * 100}%`,
-              top: `${selectedItem.bbox[1] * 100}%`,
-              width: `${selectedItem.bbox[2] * 100}%`,
-              height: `${selectedItem.bbox[3] * 100}%`,
-              border: '2px solid #C9A84C',
-              background: 'rgba(201,168,76,0.15)',
-              zIndex: 9,
-              pointerEvents: 'none',
-              borderRadius: 4,
+              filter: 'blur(24px) brightness(0.4)',
+              transform: 'scale(1.1)',
             }}
           />
         )}
 
-        {/* Hotspot dots — percentage-based positioning */}
-        {visibleDetections.map((item, idx) => {
-          const id = dotId(item)
-          const isSelected = selectedId === id
-          const state = keepToState(item.keep)
-
-          const dotTransitionDelay = `${idx * 80}ms`
-          const dotVisible = isDotsReady
-
-          const dotStyle: React.CSSProperties = {
-            position: 'absolute',
-            left: `${(item.bbox[0] + item.bbox[2] / 2) * 100}%`,
-            top: `${(item.bbox[1] + item.bbox[3] / 2) * 100}%`,
-            transform: dotVisible ? 'translate(-50%, -50%) scale(1)' : 'translate(-50%, -50%) scale(0)',
-            zIndex: 10,
-            width: 28,
-            height: 28,
-            borderRadius: '50%',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: `all 250ms cubic-bezier(0.34,1.56,0.64,1) ${dotTransitionDelay}`,
-            opacity: dotVisible ? 1 : 0,
-            ...(state === 'keep' && {
-              background: '#C9A84C',
-              border: '2px solid #C9A84C',
-              boxShadow: isSelected ? '0 0 0 4px rgba(201,168,76,0.5)' : '0 0 0 1px white',
-            }),
-            ...(state === 'remove' && {
-              background: 'rgba(192,80,74,0.6)',
-              border: '2px solid #C0504A',
-              boxShadow: isSelected ? '0 0 0 4px rgba(192,80,74,0.4)' : '0 0 0 1px white',
-            }),
-            ...(state === 'undecided' && {
-              background: 'rgba(201,168,76,0.3)',
-              border: '2px solid #C9A84C',
-              boxShadow: isSelected
-                ? '0 0 0 4px rgba(201,168,76,0.5)'
-                : '0 0 0 1px white',
-              animation: isSelected ? 'dotPulse 1.4s ease-out infinite' : undefined,
-            }),
-          }
-
-          return (
-            <button
-              key={`${id}-${idx}`}
-              aria-label={`${item.label} — ${state}`}
-              onClick={(e) => {
-                e.stopPropagation()
-                handleDotClick(id)
-              }}
-              style={dotStyle}
+        {/* Top layer: Schnell preview crossfade (if present) */}
+        <AnimatePresence>
+          {previewUrl && (
+            <motion.div
+              key="preview-bg"
+              className="absolute inset-0"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: stage === 'complete' ? 1 : 0.85 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1.2, ease: 'easeInOut' }}
             >
-              {state === 'keep' && (
-                <span style={{ color: 'white', fontSize: 14, fontWeight: 700, lineHeight: 1 }}>✓</span>
-              )}
-              {state === 'remove' && (
-                <span style={{ color: 'white', fontSize: 14, fontWeight: 700, lineHeight: 1 }}>✕</span>
-              )}
-            </button>
-          )
-        })}
+              <Image
+                src={previewUrl}
+                alt=""
+                fill
+                className="object-cover"
+                style={{
+                  filter: stage === 'complete' ? 'none' : 'brightness(0.7)',
+                }}
+                priority
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* ── Bottom panel (45vh) ── */}
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          background: 'var(--cova-surface)',
-          borderTop: '2px solid rgba(201,168,76,0.4)',
-          borderRadius: '16px 16px 0 0',
-          overflow: 'hidden',
-        }}
-      >
-        {/* Panel header */}
-        <div
-          className="px-5 pt-[18px] pb-3"
+      {/* ── Foreground content ── */}
+      <div className="relative z-10 flex flex-col items-center gap-6 px-8 max-w-sm text-center">
+        {/* Heading */}
+        <h2
+          className="font-serif"
           style={{
-            background: 'var(--cova-surface)',
-            flexShrink: 0,
+            color: 'var(--cova-ivory)',
+            fontSize: 'var(--text-3xl)',
+            textShadow: '0 2px 20px rgba(0,0,0,0.8)',
           }}
         >
-          <h1
-            className="font-serif"
-            style={{ color: 'var(--cova-ivory)', fontSize: 26, letterSpacing: '0.01em' }}
-          >
-            What&apos;s in your room?
-          </h1>
-          <p className="font-sans mt-1" style={{ color: 'var(--cova-muted)', fontSize: 13 }}>
-            Tap items in your room · the rest gets redesigned
-          </p>
-        </div>
+          Designing your room...
+        </h2>
 
-        {/* Scrollable flat list */}
-        <div
-          ref={listScrollRef}
-          className="overflow-y-auto px-5"
-          style={{ flex: 1, paddingBottom: 80 }}
-        >
-          {visibleDetections.map((item, idx) => {
-            const id = dotId(item)
-            const isHighlighted = selectedId === id
-            const state = keepToState(item.keep)
-
-            let rowBg = 'transparent'
-            let rowBorderLeft = '3px solid transparent'
-            if (state === 'keep') {
-              rowBg = 'rgba(74,155,127,0.12)'
-              rowBorderLeft = '3px solid #4A9B7F'
-            } else if (state === 'remove') {
-              rowBg = 'rgba(192,80,74,0.12)'
-              rowBorderLeft = '3px solid #C0504A'
-            }
-
-            return (
-              <div
-                key={`${id}-${idx}`}
-                ref={(el) => { itemRefs.current[id] = el }}
-                onClick={() => setSelectedId((prev) => (prev === id ? null : id))}
-                className="flex items-center justify-between rounded-lg transition-colors duration-150"
-                style={{
-                  minHeight: 52,
-                  borderBottom: '1px solid rgba(201,168,76,0.07)',
-                  padding: '10px 4px 10px 10px',
-                  background: isHighlighted ? (rowBg !== 'transparent' ? rowBg : 'rgba(201,168,76,0.06)') : rowBg,
-                  borderLeft: isHighlighted && state === 'undecided'
-                    ? '3px solid rgba(201,168,76,0.5)'
-                    : rowBorderLeft,
-                  cursor: 'pointer',
-                  outline: isHighlighted ? '1px solid #C9A84C' : '1px solid transparent',
-                  borderRadius: 8,
-                }}
-              >
-                <div className="flex items-center gap-2.5">
-                  <span style={{ fontSize: 20 }}>{getEmoji(item.label)}</span>
-                  <span className="font-sans" style={{ color: 'var(--cova-ivory)', fontSize: 14 }}>
-                    {item.label.charAt(0).toUpperCase() + item.label.slice(1)}
-                  </span>
-                </div>
-
-                {/* Keep / Remove buttons */}
-                <div className="flex gap-1.5 ml-2" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    onClick={() => handleKeep(item)}
-                    className="font-sans"
-                    style={{
-                      padding: '5px 12px',
-                      borderRadius: 20,
-                      fontSize: 11,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap',
-                      transition: 'all 150ms ease',
-                      background: state === 'keep' ? '#4A9B7F' : 'transparent',
-                      color: state === 'keep' ? 'white' : 'var(--cova-dim)',
-                      border: state === 'keep' ? '1.5px solid #4A9B7F' : '1px solid rgba(74,94,122,0.3)',
-                    }}
-                  >
-                    Keep
-                  </button>
-                  <button
-                    onClick={() => handleRemove(item)}
-                    className="font-sans"
-                    style={{
-                      padding: '5px 12px',
-                      borderRadius: 20,
-                      fontSize: 11,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap',
-                      transition: 'all 150ms ease',
-                      background: state === 'remove' ? '#C0504A' : 'transparent',
-                      color: state === 'remove' ? 'white' : 'var(--cova-dim)',
-                      border: state === 'remove' ? '1.5px solid #C0504A' : '1px solid rgba(74,94,122,0.3)',
-                    }}
-                  >
-                    Remove
-                  </button>
-                </div>
-              </div>
-            )
-          })}
-
-          {/* Hint text */}
-          <p
-            className="font-sans text-center mt-4 px-5"
-            style={{ color: 'var(--cova-dim)', fontSize: 12 }}
-          >
-            Leave items neutral — we&apos;ll redesign them all
-          </p>
-        </div>
-
-        {/* Sticky CTA inside panel */}
-        <div
-          style={{
-            position: 'sticky',
-            bottom: 0,
-            background: '#0A1628',
-            padding: '12px 16px',
-            borderTop: '1px solid #1E3A5F',
-            flexShrink: 0,
-          }}
-        >
-          <button
-            onClick={() => void handleDesignRoom()}
-            disabled={isNavigating}
-            className="w-full font-sans block mx-auto transition-all duration-200 hover:-translate-y-0.5"
+        {/* Progress bar */}
+        <div className="flex flex-col items-center gap-2 w-full">
+          <div
+            className="overflow-hidden rounded-full"
             style={{
-              maxWidth: 640,
-              background: 'var(--cova-gold)',
-              color: 'var(--cova-bg)',
-              fontSize: 'var(--text-base)',
-              fontWeight: 600,
-              letterSpacing: '0.01em',
-              border: 'none',
-              borderRadius: 14,
-              padding: '15px 24px',
-              cursor: isNavigating ? 'not-allowed' : 'pointer',
-              boxShadow: '0 0 40px rgba(201,168,76,0.25)',
-              opacity: isNavigating ? 0.7 : 1,
+              width: 256,
+              height: 2,
+              background: 'rgba(255,255,255,0.2)',
             }}
           >
-            {isNavigating ? 'Working...' : 'Design My Room →'}
-          </button>
-        </div>
-      </div>
+            <div
+              style={{
+                height: '100%',
+                width: progressWidth,
+                background: 'var(--cova-gold)',
+                borderRadius: 9999,
+                transition: stage === 'complete' ? 'width 500ms ease' : undefined,
+                animation: isShimmering ? 'shimmer 1.8s ease-in-out infinite' : undefined,
+              }}
+            />
+          </div>
 
-      {/* ── Toast ── */}
-      {toastMessage && (
-        <div
-          className="fixed bottom-28 left-4 right-4 z-50 text-center"
-          style={{
-            background: 'var(--cova-error-bg)',
-            border: '1px solid var(--cova-error)',
-            borderRadius: 10,
-            padding: '12px 16px',
-          }}
-        >
-          <button
-            onClick={() => void handleDesignRoom()}
-            className="font-sans w-full"
-            style={{ color: 'var(--cova-error)', fontSize: 'var(--text-sm)', background: 'none', border: 'none', cursor: 'pointer' }}
-          >
-            {toastMessage}
-          </button>
+          {/* Stage text */}
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={stage}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="font-sans"
+              style={{ color: 'rgba(255,255,255,0.6)', fontSize: 'var(--text-xs)' }}
+            >
+              {STAGE_TEXT[stage]}
+            </motion.p>
+          </AnimatePresence>
         </div>
-      )}
+
+        {/* Preview thumbnail (only when preview URL available) */}
+        <AnimatePresence>
+          {previewUrl && (
+            <motion.div
+              key="preview-thumb"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.6 }}
+              className="flex flex-col items-center gap-1"
+            >
+              <div
+                className="relative overflow-hidden"
+                style={{
+                  width: 128,
+                  height: 96,
+                  borderRadius: 12,
+                  border: '1px solid rgba(255,255,255,0.2)',
+                }}
+              >
+                <Image
+                  src={previewUrl}
+                  alt="Preview"
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              <p
+                className="font-sans"
+                style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'var(--text-xs)' }}
+              >
+                Preview
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       {/* Keyframes */}
       <style>{`
-        @keyframes dotPulse {
-          0%   { box-shadow: 0 0 0 0 rgba(201,168,76,0.6); }
-          70%  { box-shadow: 0 0 0 8px rgba(201,168,76,0); }
-          100% { box-shadow: 0 0 0 0 rgba(201,168,76,0); }
+        @keyframes shimmer {
+          0%   { transform: translateX(-100%); }
+          100% { transform: translateX(200%); }
         }
-        @keyframes popupEnter {
-          from { transform: translateX(-50%) scale(0.85); opacity: 0; }
-          to   { transform: translateX(-50%) scale(1);    opacity: 1; }
-        }
-        .overflow-y-auto::-webkit-scrollbar { width: 4px; }
-        .overflow-y-auto::-webkit-scrollbar-track { background: transparent; }
-        .overflow-y-auto::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.2); border-radius: 2px; }
       `}</style>
     </div>
   )
