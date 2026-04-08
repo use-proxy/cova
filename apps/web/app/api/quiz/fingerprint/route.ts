@@ -3,9 +3,12 @@ import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import type { StyleFingerprint } from '@/types/fingerprint'
 
-// ── 10-dimension system ───────────────────────────────────────────────────────
-// Indices: 0=luminosity, 1=density, 2=temperature, 3=form, 4=era,
-//          5=texture, 6=scale, 7=nature, 8=saturation, 9=materialOrigin
+// ── 12-dimension system ───────────────────────────────────────────────────────
+// All dimensions are in [0, 1] with 0.5 as the neutral midpoint.
+// Indices:
+//   0=colorTemperature  1=colorSaturation  2=density          3=formality
+//   4=era               5=material         6=texture          7=pattern
+//   8=lineQuality       9=lightPreference  10=nature          11=culturalInfluence
 
 interface QuizResponse {
   pair_id: string
@@ -36,34 +39,47 @@ interface LegacyFingerprintRequest {
 }
 
 interface PairDefinition {
-  primaryDimension: string | null
-  secondaryDimension: string | null
+  primaryDimension: DimKey | null
+  secondaryDimension: DimKey | null
   contrastLevel: 'extreme' | 'mid' | 'fine' | null
   aIntensity: number
   bIntensity: number
   isWarmup: boolean
 }
 
+const DIMENSION_ORDER = [
+  'colorTemperature', 'colorSaturation', 'density', 'formality',
+  'era', 'material', 'texture', 'pattern',
+  'lineQuality', 'lightPreference', 'nature', 'culturalInfluence',
+] as const
+
+type DimKey = typeof DIMENSION_ORDER[number]
+
+const DIM_COUNT = DIMENSION_ORDER.length // 12
+
+const NEUTRAL_MIDPOINT = 0.5
+const STRONG_BAND = 0.2 // |v - 0.5| > 0.2 → directional
+
 const PAIR_DEFINITIONS: Record<string, PairDefinition> = {
-  'pair-01': { primaryDimension: 'luminosity',     secondaryDimension: 'temperature',   contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
-  'pair-02': { primaryDimension: 'density',        secondaryDimension: null,            contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
-  'pair-03': { primaryDimension: 'temperature',    secondaryDimension: null,            contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
-  'pair-04': { primaryDimension: 'nature',         secondaryDimension: 'materialOrigin',contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
-  'pair-05': { primaryDimension: 'saturation',     secondaryDimension: null,            contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
-  'pair-06': { primaryDimension: 'luminosity',     secondaryDimension: null,            contrastLevel: 'mid',     aIntensity: 0.25,bIntensity: 0.75,isWarmup: false },
-  'pair-07': { primaryDimension: 'temperature',    secondaryDimension: null,            contrastLevel: 'mid',     aIntensity: 0.25,bIntensity: 0.75,isWarmup: false },
-  'pair-08': { primaryDimension: 'density',        secondaryDimension: null,            contrastLevel: 'mid',     aIntensity: 0.25,bIntensity: 0.75,isWarmup: false },
-  'pair-09': { primaryDimension: 'form',           secondaryDimension: 'scale',         contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
-  'pair-10': { primaryDimension: 'era',            secondaryDimension: null,            contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
-  'pair-11': { primaryDimension: 'texture',        secondaryDimension: 'materialOrigin',contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
-  'pair-12': { primaryDimension: 'nature',         secondaryDimension: null,            contrastLevel: 'mid',     aIntensity: 0.25,bIntensity: 0.75,isWarmup: false },
-  'pair-13': { primaryDimension: 'saturation',     secondaryDimension: null,            contrastLevel: 'mid',     aIntensity: 0.25,bIntensity: 0.75,isWarmup: false },
-  'pair-14': { primaryDimension: 'scale',          secondaryDimension: null,            contrastLevel: 'mid',     aIntensity: 0.25,bIntensity: 0.75,isWarmup: false },
-  'pair-15': { primaryDimension: 'luminosity',     secondaryDimension: null,            contrastLevel: 'fine',    aIntensity: 0.35,bIntensity: 0.65,isWarmup: false },
-  'pair-16': { primaryDimension: 'temperature',    secondaryDimension: null,            contrastLevel: 'fine',    aIntensity: 0.35,bIntensity: 0.65,isWarmup: false },
-  'pair-17': { primaryDimension: 'materialOrigin', secondaryDimension: null,            contrastLevel: 'fine',    aIntensity: 0.35,bIntensity: 0.65,isWarmup: false },
-  'pair-18': { primaryDimension: 'form',           secondaryDimension: null,            contrastLevel: 'mid',     aIntensity: 0.25,bIntensity: 0.75,isWarmup: false },
-  'pair-19': { primaryDimension: null,             secondaryDimension: null,            contrastLevel: null,      aIntensity: 0.0, bIntensity: 1.0, isWarmup: true  },
+  'pair-01': { primaryDimension: 'lightPreference',   secondaryDimension: 'colorTemperature',   contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
+  'pair-02': { primaryDimension: 'density',           secondaryDimension: null,                 contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
+  'pair-03': { primaryDimension: 'colorTemperature',  secondaryDimension: null,                 contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
+  'pair-04': { primaryDimension: 'nature',            secondaryDimension: 'material',           contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
+  'pair-05': { primaryDimension: 'colorSaturation',   secondaryDimension: null,                 contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
+  'pair-06': { primaryDimension: 'lightPreference',   secondaryDimension: null,                 contrastLevel: 'mid',     aIntensity: 0.25,bIntensity: 0.75,isWarmup: false },
+  'pair-07': { primaryDimension: 'colorTemperature',  secondaryDimension: null,                 contrastLevel: 'mid',     aIntensity: 0.25,bIntensity: 0.75,isWarmup: false },
+  'pair-08': { primaryDimension: 'density',           secondaryDimension: null,                 contrastLevel: 'mid',     aIntensity: 0.25,bIntensity: 0.75,isWarmup: false },
+  'pair-09': { primaryDimension: 'lineQuality',       secondaryDimension: 'pattern',            contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
+  'pair-10': { primaryDimension: 'era',               secondaryDimension: null,                 contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
+  'pair-11': { primaryDimension: 'texture',           secondaryDimension: 'material',           contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
+  'pair-12': { primaryDimension: 'nature',            secondaryDimension: null,                 contrastLevel: 'mid',     aIntensity: 0.25,bIntensity: 0.75,isWarmup: false },
+  'pair-13': { primaryDimension: 'colorSaturation',   secondaryDimension: null,                 contrastLevel: 'mid',     aIntensity: 0.25,bIntensity: 0.75,isWarmup: false },
+  'pair-14': { primaryDimension: 'formality',         secondaryDimension: null,                 contrastLevel: 'mid',     aIntensity: 0.25,bIntensity: 0.75,isWarmup: false },
+  'pair-15': { primaryDimension: 'lightPreference',   secondaryDimension: null,                 contrastLevel: 'fine',    aIntensity: 0.35,bIntensity: 0.65,isWarmup: false },
+  'pair-16': { primaryDimension: 'colorTemperature',  secondaryDimension: null,                 contrastLevel: 'fine',    aIntensity: 0.35,bIntensity: 0.65,isWarmup: false },
+  'pair-17': { primaryDimension: 'material',          secondaryDimension: null,                 contrastLevel: 'fine',    aIntensity: 0.35,bIntensity: 0.65,isWarmup: false },
+  'pair-18': { primaryDimension: 'lineQuality',       secondaryDimension: null,                 contrastLevel: 'mid',     aIntensity: 0.25,bIntensity: 0.75,isWarmup: false },
+  'pair-19': { primaryDimension: null,                secondaryDimension: null,                 contrastLevel: null,      aIntensity: 0.0, bIntensity: 1.0, isWarmup: true  },
 }
 
 const CONTRAST_WEIGHTS: Record<string, number> = {
@@ -72,12 +88,11 @@ const CONTRAST_WEIGHTS: Record<string, number> = {
   fine:    0.40,
 }
 
-const DIMENSION_ORDER = [
-  'luminosity', 'density', 'temperature', 'form', 'era',
-  'texture', 'scale', 'nature', 'saturation', 'materialOrigin',
-] as const
-
-// ── 12 named styles ───────────────────────────────────────────────────────────
+// ── 9 named anchor styles ─────────────────────────────────────────────────────
+// Vectors in DIMENSION_ORDER. Sourced from the quiz library spec — these are
+// the same vectors used to generate the quiz_anchor_images library. Style
+// names are INTERNAL ONLY and never surfaced to user-facing UI strings
+// (CLAUDE.md hard rule #8).
 
 interface StyleDefinition {
   name: string
@@ -89,67 +104,55 @@ const STYLES: StyleDefinition[] = [
   {
     name: 'Warm Japandi',
     chips: ['warm neutrals', 'organic textures', 'natural materials', 'minimal layers'],
-    center: [0.75, 0.2, 0.8, 0.75, 0.45, 0.7, 0.35, 0.7, 0.35, 0.65],
+    center: [0.80, 0.25, 0.30, 0.40, 0.45, 0.85, 0.55, 0.10, 0.75, 0.65, 0.60, 0.25],
   },
   {
-    name: 'Organic Modern',
-    chips: ['curved forms', 'natural wood', 'earthy tones', 'artisan craft'],
-    center: [0.7, 0.45, 0.75, 0.8, 0.25, 0.7, 0.5, 0.75, 0.5, 0.7],
+    name: 'Dark Moody Glam',
+    chips: ['dramatic depth', 'velvet richness', 'brass accents', 'jewel tones'],
+    center: [0.25, 0.80, 0.65, 0.85, 0.35, 0.25, 0.80, 0.55, 0.20, 0.10, 0.05, 0.30],
   },
   {
-    name: 'Scandi Hygge',
-    chips: ['cozy textures', 'cool palette', 'soft lighting', 'lived-in warmth'],
-    center: [0.6, 0.5, 0.3, 0.5, 0.25, 0.65, 0.35, 0.5, 0.35, 0.55],
+    name: 'Coastal Bright',
+    chips: ['airy whites', 'natural rattan', 'sea breeze palette', 'sun-filled'],
+    center: [0.50, 0.20, 0.35, 0.25, 0.40, 0.70, 0.30, 0.20, 0.60, 0.95, 0.75, 0.20],
   },
   {
-    name: 'Coastal Light',
-    chips: ['natural light', 'relaxed elegance', 'soft whites', 'organic flow'],
-    center: [0.85, 0.3, 0.5, 0.65, 0.2, 0.45, 0.5, 0.6, 0.3, 0.45],
+    name: 'Industrial Loft',
+    chips: ['raw concrete', 'aged leather', 'matte black steel', 'urban grit'],
+    center: [0.15, 0.30, 0.55, 0.50, 0.30, 0.05, 0.45, 0.05, 0.05, 0.50, 0.05, 0.15],
   },
   {
-    name: 'Bohemian Layered',
-    chips: ['rich layers', 'global influences', 'curated chaos', 'living textures'],
-    center: [0.5, 0.8, 0.7, 0.7, 0.5, 0.8, 0.45, 0.85, 0.65, 0.8],
+    name: 'Maximalist Eclectic',
+    chips: ['bold pattern', 'layered color', 'global influences', 'curated chaos'],
+    center: [0.60, 0.90, 0.95, 0.30, 0.50, 0.60, 0.85, 0.95, 0.70, 0.60, 0.65, 0.90],
   },
   {
-    name: 'Dark Luxe',
-    chips: ['dramatic depth', 'velvet richness', 'brass accents', 'intimate scale'],
-    center: [0.2, 0.5, 0.65, 0.45, 0.65, 0.75, 0.25, 0.35, 0.45, 0.55],
+    name: 'Heritage Traditional',
+    chips: ['mahogany panel', 'tufted leather', 'ornate detail', 'old library'],
+    center: [0.55, 0.45, 0.70, 0.95, 0.95, 0.80, 0.80, 0.85, 0.25, 0.45, 0.20, 0.35],
   },
   {
-    name: 'Heritage Maximalist',
-    chips: ['antique detail', 'collected over time', 'warm richness', 'storied pieces'],
-    center: [0.45, 0.85, 0.65, 0.4, 0.85, 0.75, 0.55, 0.5, 0.55, 0.7],
+    name: 'Pure Minimal White',
+    chips: ['architectural calm', 'pristine white', 'zero clutter', 'silent space'],
+    center: [0.30, 0.05, 0.05, 0.55, 0.10, 0.20, 0.05, 0.00, 0.10, 0.90, 0.15, 0.10],
   },
   {
-    name: 'Zen Sanctuary',
-    chips: ['intentional emptiness', 'pure light', 'silent spaces', 'mindful living'],
-    center: [0.8, 0.1, 0.5, 0.65, 0.2, 0.2, 0.3, 0.5, 0.15, 0.35],
+    name: 'Biophilic Jungle',
+    chips: ['floor-to-ceiling plants', 'natural stone', 'wood beams', 'living walls'],
+    center: [0.65, 0.55, 0.75, 0.20, 0.25, 0.95, 0.70, 0.30, 0.80, 0.70, 1.00, 0.50],
   },
   {
-    name: 'Industrial Edge',
-    chips: ['raw materials', 'urban grit', 'structural beauty', 'matte finishes'],
-    center: [0.3, 0.45, 0.2, 0.15, 0.2, 0.3, 0.5, 0.1, 0.3, 0.2],
-  },
-  {
-    name: 'Moody Eclectic',
-    chips: ['dramatic layers', 'bold color', 'collected character', 'rich darkness'],
-    center: [0.15, 0.8, 0.6, 0.5, 0.7, 0.75, 0.4, 0.55, 0.7, 0.65],
-  },
-  {
-    name: 'Parisian Chic',
-    chips: ['effortless elegance', 'muted sophistication', 'ornate restraint', 'timeless charm'],
-    center: [0.55, 0.5, 0.5, 0.45, 0.65, 0.5, 0.5, 0.4, 0.3, 0.5],
-  },
-  {
-    name: 'Desert Modern',
-    chips: ['earthy architecture', 'warm terracotta', 'angular forms', 'sun-baked palette'],
-    center: [0.75, 0.25, 0.8, 0.2, 0.2, 0.7, 0.45, 0.45, 0.55, 0.6],
+    name: 'Retro Mid-Century',
+    chips: ['walnut tapered legs', 'avocado and ochre', 'sunburst motif', '1960s vibe'],
+    center: [0.70, 0.65, 0.45, 0.60, 0.75, 0.65, 0.40, 0.70, 0.35, 0.65, 0.35, 0.30],
   },
 ]
 
-const DIMENSION_MATCH_WEIGHTS = [
-  1.5, 1.2, 1.5, 1.0, 0.6, 0.8, 0.9, 1.1, 1.0, 0.8,
+// Per-dimension weights for weighted Euclidean style matching. Tuned so that
+// the most discriminative anchor dimensions (color, light, material, era)
+// dominate the distance metric.
+const DIMENSION_MATCH_WEIGHTS: number[] = [
+  1.5, 1.2, 1.1, 0.9, 1.0, 1.3, 0.9, 1.0, 0.9, 1.4, 1.2, 0.8,
 ]
 
 // ── Legacy fingerprint computation (pair-based) ───────────────────────────────
@@ -182,47 +185,47 @@ function computeRawVector(responses: QuizResponse[]): number[] {
   }
   return DIMENSION_ORDER.map((dim) => {
     const wSum = dimWeightSum[dim] ?? 0
-    if (wSum === 0) return 0.5
+    if (wSum === 0) return NEUTRAL_MIDPOINT
     const val = (dimVoteSum[dim] ?? 0) / wSum
     return Math.max(0, Math.min(1, val))
   })
 }
 
 function toStyleFingerprint(raw: number[]): StyleFingerprint {
-  const toUnit = (v: number) => Math.max(-1, Math.min(1, (v - 0.5) * 2))
+  const clamp01 = (v: number) => Math.max(0, Math.min(1, v))
   return {
     dimensions: {
-      luminosity:     toUnit(raw[0] ?? 0.5),
-      density:        toUnit(raw[1] ?? 0.5),
-      temperature:    toUnit(raw[2] ?? 0.5),
-      form:           toUnit(raw[3] ?? 0.5),
-      era:            toUnit(raw[4] ?? 0.5),
-      texture:        toUnit(raw[5] ?? 0.5),
-      scale:          toUnit(raw[6] ?? 0.5),
-      nature:         toUnit(raw[7] ?? 0.5),
-      saturation:     toUnit(raw[8] ?? 0.5),
-      materialOrigin: toUnit(raw[9] ?? 0.5),
+      colorTemperature:  clamp01(raw[0]  ?? NEUTRAL_MIDPOINT),
+      colorSaturation:   clamp01(raw[1]  ?? NEUTRAL_MIDPOINT),
+      density:           clamp01(raw[2]  ?? NEUTRAL_MIDPOINT),
+      formality:         clamp01(raw[3]  ?? NEUTRAL_MIDPOINT),
+      era:               clamp01(raw[4]  ?? NEUTRAL_MIDPOINT),
+      material:          clamp01(raw[5]  ?? NEUTRAL_MIDPOINT),
+      texture:           clamp01(raw[6]  ?? NEUTRAL_MIDPOINT),
+      pattern:           clamp01(raw[7]  ?? NEUTRAL_MIDPOINT),
+      lineQuality:       clamp01(raw[8]  ?? NEUTRAL_MIDPOINT),
+      lightPreference:   clamp01(raw[9]  ?? NEUTRAL_MIDPOINT),
+      nature:            clamp01(raw[10] ?? NEUTRAL_MIDPOINT),
+      culturalInfluence: clamp01(raw[11] ?? NEUTRAL_MIDPOINT),
     },
-    covariance: Array(10).fill(null).map(() => Array(10).fill(0)) as number[][],
+    covariance: identityCov(0),
     confidence: 0.8,
   }
 }
 
 // ── New 3-phase fingerprint computation ───────────────────────────────────────
 
-type DimKey = typeof DIMENSION_ORDER[number]
-
 function clamp(v: number, lo: number, hi: number) { return Math.max(lo, Math.min(hi, v)) }
 
-function zeroDims(): Record<DimKey, number> {
+function neutralDims(): Record<DimKey, number> {
   const d = {} as Record<DimKey, number>
-  for (const k of DIMENSION_ORDER) d[k] = 0
+  for (const k of DIMENSION_ORDER) d[k] = NEUTRAL_MIDPOINT
   return d
 }
 
 function identityCov(scale: number): number[][] {
-  return Array.from({ length: 10 }, (_, i) =>
-    Array.from({ length: 10 }, (__, j) => (i === j ? scale : 0))
+  return Array.from({ length: DIM_COUNT }, (_, i) =>
+    Array.from({ length: DIM_COUNT }, (__, j) => (i === j ? scale : 0))
   )
 }
 
@@ -232,7 +235,7 @@ async function computeNewFingerprint(
   const { phase_a_selections, phase_b_responses } = body
 
   // ── Step 1 — Phase A warm start ───────────────────────────────────────────
-  const meanDims = zeroDims()
+  const meanDims = neutralDims()
   const covariance = identityCov(0.5)
   let confidence = 0.3
 
@@ -245,10 +248,12 @@ async function computeNewFingerprint(
       .not('dimension_labels', 'is', null)
 
     if (selectedCards && selectedCards.length > 0) {
+      // Reset to 0 before averaging actual labels
+      for (const k of DIMENSION_ORDER) meanDims[k] = 0
       for (const card of selectedCards) {
         const dl = card.dimension_labels as Record<string, number>
         for (const k of DIMENSION_ORDER) {
-          meanDims[k] += (dl[k] ?? 0) / selectedCards.length
+          meanDims[k] += (dl[k] ?? NEUTRAL_MIDPOINT) / selectedCards.length
         }
       }
     }
@@ -279,13 +284,13 @@ async function computeNewFingerprint(
 
       for (let i = 0; i < DIMENSION_ORDER.length; i++) {
         const k = DIMENSION_ORDER[i]!
-        const delta = ((chosenDims[k] ?? 0) - (rejectedDims[k] ?? 0)) * 0.15 * lambda
-        meanDims[k] = clamp(meanDims[k] + delta, -1, 1)
+        const delta = ((chosenDims[k] ?? NEUTRAL_MIDPOINT) - (rejectedDims[k] ?? NEUTRAL_MIDPOINT)) * 0.15 * lambda
+        meanDims[k] = clamp(meanDims[k] + delta, 0, 1)
         covariance[i]![i] = (covariance[i]![i] ?? 0.5) * 0.85
       }
     }
     const diagSum = covariance.reduce((s, row, i) => s + (row[i] ?? 0), 0)
-    confidence = Math.min(1, Math.max(0, 1 - (diagSum / 10) / 0.5))
+    confidence = Math.min(1, Math.max(0, 1 - (diagSum / DIM_COUNT) / 0.5))
   }
 
   const fingerprint: StyleFingerprint = {
@@ -294,45 +299,37 @@ async function computeNewFingerprint(
     confidence,
   }
 
-  // ── Step 3 — Style name from dominant dimensions ──────────────────────────
-  // A dimension must exceed |0.3| to count as "strong". If nothing is strong,
-  // the quiz hasn't learned enough to commit to a named style — return a
-  // truly neutral label rather than a specific-sounding fallback.
+  // ── Step 3 — Style name from weighted distance to anchors ─────────────────
+  // Match against the 9 named anchors. If the fingerprint is too neutral
+  // (no dimension exceeds the strong band), return a placeholder.
   const d = fingerprint.dimensions
-  const strongDims = DIMENSION_ORDER.filter(k => Math.abs(d[k as DimKey]) > 0.3)
+  const strongDims = DIMENSION_ORDER.filter(k => Math.abs(d[k] - NEUTRAL_MIDPOINT) > STRONG_BAND)
 
   let styleName: string
   if (strongDims.length === 0) {
     styleName = 'Your Unique Style'
   } else {
-    styleName = 'Contemporary Eclectic'
-    if      (d.temperature > 0.3 && d.nature > 0.3 && d.form > 0.3)             styleName = 'Warm Japandi'
-    else if (d.temperature > 0.3 && d.texture > 0.3 && d.era > 0.3)             styleName = 'Cozy Heritage'
-    else if (d.luminosity > 0.3 && d.density < -0.3 && d.form < -0.3)           styleName = 'Nordic Minimal'
-    else if (d.luminosity < -0.3 && d.saturation > 0.3 && d.era < -0.3)         styleName = 'Dark Contemporary'
-    else if (d.temperature > 0.3 && d.density > 0.3 && d.materialOrigin > 0.3)  styleName = 'Artisanal Maximalist'
-    else if (d.luminosity > 0.3 && d.nature > 0.3 && d.saturation < -0.3)       styleName = 'Coastal Organic'
-    else if (d.form < -0.3 && d.materialOrigin < -0.3 && d.luminosity < -0.3)   styleName = 'Industrial Modern'
-    else if (d.era > 0.3 && d.temperature > 0.3 && d.texture > 0.3)             styleName = 'Traditional Warmth'
-    else if (d.density > 0.3 && d.saturation > 0.3)                             styleName = 'Eclectic Maximalist'
+    const fpVec = DIMENSION_ORDER.map((k) => d[k])
+    styleName = matchStyle(fpVec).name
   }
 
-  // ── Step 4 — Style tags (only strong dimensions) ─────────────────────────
-  // Tags only come from dimensions with |value| > 0.3 — never emit a
-  // directional label for a neutral (near-zero) dimension. If fewer than 4
-  // strong dimensions exist, fill with neutral/positive tags so the user
-  // never sees "Moody & Dark" or "Cool Palette" for a zero fingerprint.
-  const DIM_LABELS: Record<string, [string, string]> = {
-    luminosity:     ['Sun-Drenched', 'Moody & Dark'],
-    density:        ['Richly Layered', 'Clean & Spare'],
-    temperature:    ['Warm Tones', 'Cool Palette'],
-    form:           ['Organic Forms', 'Geometric Lines'],
-    era:            ['Heritage Craft', 'Ultra-Modern'],
-    texture:        ['Tactile Rich', 'Sleek Surfaces'],
-    scale:          ['Grand Scale', 'Delicate Scale'],
-    nature:         ['Natural Warmth', 'Industrial Edge'],
-    saturation:     ['Bold Color', 'Neutral Palette'],
-    materialOrigin: ['Handcrafted', 'Precision Made'],
+  // ── Step 4 — Style tags (only directional dimensions) ─────────────────────
+  // A dimension is "directional" when it deviates from 0.5 by more than the
+  // strong band. Tags are drawn from those, ranked by deviation. If fewer
+  // than 4 strong dimensions exist, fill with neutral fillers.
+  const DIM_LABELS: Record<DimKey, [string, string]> = {
+    colorTemperature:  ['Cool Palette',     'Warm Tones'],
+    colorSaturation:   ['Neutral Palette',  'Bold Color'],
+    density:           ['Clean & Spare',    'Richly Layered'],
+    formality:         ['Casual & Relaxed', 'Formal & Structured'],
+    era:               ['Ultra-Modern',     'Heritage Craft'],
+    material:          ['Manufactured',     'Natural & Organic'],
+    texture:           ['Sleek Surfaces',   'Tactile Rich'],
+    pattern:           ['Pattern-Free',     'Pattern-Rich'],
+    lineQuality:       ['Geometric Lines',  'Organic Forms'],
+    lightPreference:   ['Cozy & Intimate',  'Sun-Drenched'],
+    nature:            ['Urban Edge',       'Biophilic Warmth'],
+    culturalInfluence: ['Western Modern',   'Globally Eclectic'],
   }
 
   const NEUTRAL_FILLERS = [
@@ -342,15 +339,14 @@ async function computeNewFingerprint(
     'Your Taste',
   ]
 
-  const THRESHOLD = 0.3
   const strong = DIMENSION_ORDER
-    .map((k) => ({ key: k, value: d[k as DimKey], mag: Math.abs(d[k as DimKey]) }))
-    .filter((x) => x.mag > THRESHOLD)
+    .map((k) => ({ key: k, dev: d[k] - NEUTRAL_MIDPOINT, mag: Math.abs(d[k] - NEUTRAL_MIDPOINT) }))
+    .filter((x) => x.mag > STRONG_BAND)
     .sort((a, b) => b.mag - a.mag)
 
-  const styleTags: string[] = strong.slice(0, 4).map(({ key, value }) => {
-    const labels = DIM_LABELS[key]!
-    return value > 0 ? labels[0] : labels[1]
+  const styleTags: string[] = strong.slice(0, 4).map(({ key, dev }) => {
+    const labels = DIM_LABELS[key]
+    return dev > 0 ? labels[1] : labels[0]
   })
 
   // Fill remaining slots with neutral tags
@@ -363,7 +359,7 @@ async function computeNewFingerprint(
   return { fingerprint, styleName, styleTags }
 }
 
-// ── Style matching (legacy) ───────────────────────────────────────────────────
+// ── Style matching ────────────────────────────────────────────────────────────
 
 function matchStyle(fp: number[]): StyleDefinition {
   let bestStyle = STYLES[0]!
@@ -371,7 +367,7 @@ function matchStyle(fp: number[]): StyleDefinition {
   for (const style of STYLES) {
     const dist = Math.sqrt(
       fp.reduce((sum, val, i) => {
-        const diff = val - (style.center[i] ?? 0.5)
+        const diff = val - (style.center[i] ?? NEUTRAL_MIDPOINT)
         return sum + diff * diff * (DIMENSION_MATCH_WEIGHTS[i] ?? 1.0)
       }, 0)
     )
@@ -383,16 +379,18 @@ function matchStyle(fp: number[]): StyleDefinition {
 function fingerprintToStyleTags(fp: StyleFingerprint): string[] {
   const d = fp.dimensions
   return [
-    d.luminosity >= 0 ? 'bright' : 'moody',
-    d.density >= 0 ? 'layered' : 'minimal',
-    d.temperature >= 0 ? 'warm' : 'cool',
-    d.form >= 0 ? 'organic' : 'geometric',
-    d.era >= 0 ? 'traditional' : 'modern',
-    d.texture >= 0 ? 'textured' : 'smooth',
-    d.scale >= 0 ? 'grand' : 'intimate',
-    d.nature >= 0 ? 'biophilic' : 'urban',
-    d.saturation >= 0 ? 'colorful' : 'muted',
-    d.materialOrigin >= 0 ? 'artisanal' : 'manufactured',
+    d.colorTemperature  >= NEUTRAL_MIDPOINT ? 'warm'        : 'cool',
+    d.colorSaturation   >= NEUTRAL_MIDPOINT ? 'colorful'    : 'muted',
+    d.density           >= NEUTRAL_MIDPOINT ? 'layered'     : 'minimal',
+    d.formality         >= NEUTRAL_MIDPOINT ? 'formal'      : 'casual',
+    d.era               >= NEUTRAL_MIDPOINT ? 'traditional' : 'modern',
+    d.material          >= NEUTRAL_MIDPOINT ? 'natural'     : 'manufactured',
+    d.texture           >= NEUTRAL_MIDPOINT ? 'textured'    : 'smooth',
+    d.pattern           >= NEUTRAL_MIDPOINT ? 'patterned'   : 'plain',
+    d.lineQuality       >= NEUTRAL_MIDPOINT ? 'organic'     : 'geometric',
+    d.lightPreference   >= NEUTRAL_MIDPOINT ? 'bright'      : 'moody',
+    d.nature            >= NEUTRAL_MIDPOINT ? 'biophilic'   : 'urban',
+    d.culturalInfluence >= NEUTRAL_MIDPOINT ? 'global'      : 'western',
   ]
 }
 

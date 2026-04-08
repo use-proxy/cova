@@ -6,9 +6,9 @@ export function generateSwatchesFromFingerprint(
   dimensions: Record<string, number>
 ): string[] {
   // Extract relevant dimensions (0–1 scale)
-  const temp = clamp(dimensions.temperature ?? 0.5, 0, 1)
-  const sat = clamp(dimensions.saturation ?? 0.5, 0, 1)
-  const lum = clamp(dimensions.luminosity ?? 0.5, 0, 1)
+  const temp = clamp(dimensions.colorTemperature ?? 0.5, 0, 1)
+  const sat = clamp(dimensions.colorSaturation ?? 0.5, 0, 1)
+  const lum = clamp(dimensions.lightPreference ?? 0.5, 0, 1)
 
   // Map temperature to hue: warm (0) = amber ~35°, cool (1) = blue ~210°
   const baseHue = lerp(35, 210, temp)

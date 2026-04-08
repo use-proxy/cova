@@ -16,26 +16,28 @@ interface AccessoriesRequestBody {
 const ACCESSORY_BUDGET_RATIO = 0.10
 const ACCESSORY_COUNT = 3
 
-// Map fingerprint dimensions to accessory style terms
-// Only dimensions with strong signal (> 0.3 or < -0.3) contribute
+// Map fingerprint dimensions to accessory style terms.
+// All dimensions are in [0, 1] with 0.5 as the neutral midpoint. Only
+// dimensions that deviate from 0.5 by more than 0.2 (i.e. v > 0.7 or v < 0.3)
+// contribute search terms — neutral values produce nothing.
 function getFingerprintAccessoryTerms(fingerprint: StyleFingerprint): string {
   const d = fingerprint.dimensions
   const terms: string[] = []
 
-  if (d.temperature > 0.3) terms.push('warm tones brass terracotta')
-  if (d.temperature < -0.3) terms.push('cool grey silver minimal')
+  if (d.colorTemperature > 0.7) terms.push('warm tones brass terracotta')
+  if (d.colorTemperature < 0.3) terms.push('cool grey silver minimal')
 
-  if (d.texture > 0.3) terms.push('textured woven natural fiber')
-  if (d.texture < -0.3) terms.push('smooth polished clean')
+  if (d.texture > 0.7) terms.push('textured woven natural fiber')
+  if (d.texture < 0.3) terms.push('smooth polished clean')
 
-  if (d.nature > 0.3) terms.push('natural organic botanical')
-  if (d.nature < -0.3) terms.push('urban industrial geometric')
+  if (d.nature > 0.7) terms.push('natural organic botanical')
+  if (d.nature < 0.3) terms.push('urban industrial geometric')
 
-  if (d.era > 0.3) terms.push('vintage antique heritage')
-  if (d.era < -0.3) terms.push('contemporary modern current')
+  if (d.era > 0.7) terms.push('vintage antique heritage')
+  if (d.era < 0.3) terms.push('contemporary modern current')
 
-  if (d.saturation > 0.3) terms.push('vibrant rich colorful bold palette')
-  if (d.saturation < -0.3) terms.push('muted tonal desaturated earthy neutral')
+  if (d.colorSaturation > 0.7) terms.push('vibrant rich colorful bold palette')
+  if (d.colorSaturation < 0.3) terms.push('muted tonal desaturated earthy neutral')
 
   return terms.join(' ')
 }

@@ -18,8 +18,9 @@ interface CardRow {
 }
 
 const DIM_KEYS = [
-  'luminosity', 'density', 'temperature', 'form', 'era',
-  'texture', 'scale', 'nature', 'saturation', 'materialOrigin'
+  'colorTemperature', 'colorSaturation', 'density', 'formality',
+  'era', 'material', 'texture', 'pattern',
+  'lineQuality', 'lightPreference', 'nature', 'culturalInfluence',
 ] as const
 
 export async function POST(request: Request) {
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
     // Find highest-variance dimension from covariance diagonal
     const diag = fingerprint.covariance.map((row: number[], i: number) => row[i] ?? 0)
     const maxIdx = diag.indexOf(Math.max(...diag))
-    const targetDim = DIM_KEYS[maxIdx] ?? 'luminosity'
+    const targetDim = DIM_KEYS[maxIdx] ?? 'colorTemperature'
 
     // Get Phase B pairs for room_type not in answered_pairs
     const { data: initialPairCards, error: pairError } = await admin

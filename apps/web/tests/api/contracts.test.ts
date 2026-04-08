@@ -37,20 +37,22 @@ function admin() {
 
 const SAMPLE_FINGERPRINT = {
   dimensions: {
-    luminosity: 0.5,
-    density: -0.3,
-    temperature: 0.4,
-    form: 0.5,
-    era: 0.2,
-    texture: 0.3,
-    scale: 0,
-    nature: 0.6,
-    saturation: -0.3,
-    materialOrigin: 0.5,
+    colorTemperature: 0.7,
+    colorSaturation: 0.4,
+    density: 0.3,
+    formality: 0.5,
+    era: 0.6,
+    material: 0.6,
+    texture: 0.65,
+    pattern: 0.4,
+    lineQuality: 0.5,
+    lightPreference: 0.75,
+    nature: 0.7,
+    culturalInfluence: 0.4,
   },
-  // Real shape: 10x10 number[][] with 0.3 on the diagonal
-  covariance: Array.from({ length: 10 }, (_, i) =>
-    Array.from({ length: 10 }, (_, j) => (i === j ? 0.3 : 0))
+  // Real shape: 12x12 number[][] with 0.3 on the diagonal
+  covariance: Array.from({ length: 12 }, (_, i) =>
+    Array.from({ length: 12 }, (_, j) => (i === j ? 0.3 : 0))
   ),
   confidence: 0.7,
 }
@@ -97,7 +99,7 @@ test.describe('Auth gates', () => {
 // ── QUIZ FINGERPRINT ────────────────────────────────────────────────────────
 
 test.describe('Quiz fingerprint', () => {
-  test('Empty selections return a 10-dim fingerprint and a style name', async () => {
+  test('Empty selections return a 12-dim fingerprint and a style name', async () => {
     const res = await fetch(BASE + '/api/quiz/fingerprint', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -119,18 +121,19 @@ test.describe('Quiz fingerprint', () => {
     expect(data.fingerprint.dimensions).toBeDefined()
 
     const requiredDims = [
-      'luminosity', 'density', 'temperature', 'form', 'era',
-      'texture', 'scale', 'nature', 'saturation', 'materialOrigin',
+      'colorTemperature', 'colorSaturation', 'density', 'formality',
+      'era', 'material', 'texture', 'pattern',
+      'lineQuality', 'lightPreference', 'nature', 'culturalInfluence',
     ]
     for (const dim of requiredDims) {
       const v = data.fingerprint.dimensions[dim]
       expect(typeof v, `dim ${dim}`).toBe('number')
-      expect(v).toBeGreaterThanOrEqual(-1)
+      expect(v).toBeGreaterThanOrEqual(0)
       expect(v).toBeLessThanOrEqual(1)
     }
 
     // Style name + 4 tags. Route fills with neutral fillers when fewer than
-    // 4 dimensions exceed the |0.3| threshold.
+    // 4 dimensions deviate from 0.5 by more than 0.2.
     expect(data.style_name).toBeTruthy()
     expect(data.style_name.length).toBeGreaterThan(3)
     expect(Array.isArray(data.style_tags)).toBe(true)
@@ -190,14 +193,14 @@ test.describe('Quiz fingerprint', () => {
     const bd = bohemianFp.fingerprint.dimensions
     const md = minimalistFp.fingerprint.dimensions
 
-    // Bohemian: dense, textured, biophilic
-    expect(bd.density, `bohemian density (${bd.density})`).toBeGreaterThan(0.2)
-    expect(bd.texture, `bohemian texture (${bd.texture})`).toBeGreaterThan(0.2)
-    expect(bd.nature, `bohemian nature (${bd.nature})`).toBeGreaterThan(0.2)
+    // Bohemian: dense, textured, biophilic — directional > 0.5 in [0, 1]
+    expect(bd.density, `bohemian density (${bd.density})`).toBeGreaterThan(0.6)
+    expect(bd.texture, `bohemian texture (${bd.texture})`).toBeGreaterThan(0.6)
+    expect(bd.nature, `bohemian nature (${bd.nature})`).toBeGreaterThan(0.6)
 
-    // Minimalist: sparse, smooth
-    expect(md.density, `minimalist density (${md.density})`).toBeLessThan(-0.2)
-    expect(md.texture, `minimalist texture (${md.texture})`).toBeLessThan(-0.2)
+    // Minimalist: sparse, smooth — directional < 0.5 in [0, 1]
+    expect(md.density, `minimalist density (${md.density})`).toBeLessThan(0.4)
+    expect(md.texture, `minimalist texture (${md.texture})`).toBeLessThan(0.4)
 
     // Meaningful difference
     const dimKeys = Object.keys(bd)

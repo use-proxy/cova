@@ -14,8 +14,9 @@ import type { StyleFingerprint } from "@/types/fingerprint";
 type QuizPhase = "A" | "transitioning" | "B" | "C";
 
 type DimKey =
-  | "luminosity" | "density" | "temperature" | "form" | "era"
-  | "texture" | "scale" | "nature" | "saturation" | "materialOrigin";
+  | "colorTemperature" | "colorSaturation" | "density" | "formality"
+  | "era" | "material" | "texture" | "pattern"
+  | "lineQuality" | "lightPreference" | "nature" | "culturalInfluence";
 
 interface CardData {
   id: string;
@@ -32,9 +33,13 @@ interface PairData {
 }
 
 const DIM_KEYS: DimKey[] = [
-  "luminosity", "density", "temperature", "form", "era",
-  "texture", "scale", "nature", "saturation", "materialOrigin",
+  "colorTemperature", "colorSaturation", "density", "formality",
+  "era", "material", "texture", "pattern",
+  "lineQuality", "lightPreference", "nature", "culturalInfluence",
 ];
+
+const DIM_COUNT = DIM_KEYS.length; // 12
+const NEUTRAL_MIDPOINT = 0.5;
 
 const TOTAL_PAIRS = 12;
 
@@ -50,14 +55,14 @@ const BUDGET_LABELS: Record<BudgetTier, string> = {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function makeIdentityCov(scale: number): number[][] {
-  return Array.from({ length: 10 }, (_, i) =>
-    Array.from({ length: 10 }, (__, j) => (i === j ? scale : 0))
+  return Array.from({ length: DIM_COUNT }, (_, i) =>
+    Array.from({ length: DIM_COUNT }, (__, j) => (i === j ? scale : 0))
   );
 }
 
-function makeZeroDims(): Record<DimKey, number> {
+function makeNeutralDims(): Record<DimKey, number> {
   const d = {} as Record<DimKey, number>;
-  for (const k of DIM_KEYS) d[k] = 0;
+  for (const k of DIM_KEYS) d[k] = NEUTRAL_MIDPOINT;
   return d;
 }
 
@@ -66,10 +71,12 @@ function clamp(v: number, lo: number, hi: number) {
 }
 
 function buildWarmStart(phaseADims: Array<Record<DimKey, number>>): StyleFingerprint {
-  const mean = makeZeroDims();
+  const mean = makeNeutralDims();
   if (phaseADims.length > 0) {
+    // Reset to 0 and average actual labels (in [0, 1])
+    for (const k of DIM_KEYS) mean[k] = 0;
     for (const dims of phaseADims) {
-      for (const k of DIM_KEYS) mean[k] += dims[k]! / phaseADims.length;
+      for (const k of DIM_KEYS) mean[k] += (dims[k] ?? NEUTRAL_MIDPOINT) / phaseADims.length;
     }
   }
   return {
@@ -367,14 +374,14 @@ function PhaseB({ roomType, warmStart, onComplete }: PhaseBProps) {
 
     DIM_KEYS.forEach((dim, i) => {
       const delta =
-        ((chosenCard.dimensionLabels[dim] ?? 0) - (rejectedCard.dimensionLabels[dim] ?? 0)) *
+        ((chosenCard.dimensionLabels[dim] ?? NEUTRAL_MIDPOINT) - (rejectedCard.dimensionLabels[dim] ?? NEUTRAL_MIDPOINT)) *
         0.15 * lambda;
-      newDims[dim] = clamp((newDims[dim] ?? 0) + delta, -1, 1);
+      newDims[dim] = clamp((newDims[dim] ?? NEUTRAL_MIDPOINT) + delta, 0, 1);
       newCov[i]![i] = (newCov[i]![i] ?? 0.5) * 0.85;
     });
 
     const diagSum = newCov.reduce((s, row, i) => s + (row[i] ?? 0), 0);
-    const confidence = Math.min(1, Math.max(0, 1 - (diagSum / 10) / 0.5));
+    const confidence = Math.min(1, Math.max(0, 1 - (diagSum / DIM_COUNT) / 0.5));
 
     const updatedFP: StyleFingerprint = {
       dimensions: newDims as StyleFingerprint["dimensions"],

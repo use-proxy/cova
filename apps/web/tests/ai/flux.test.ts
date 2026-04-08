@@ -2,15 +2,17 @@ import { describe, it, expect } from 'vitest'
 import { buildFluxPrompt } from '@/lib/ai/flux'
 import type { StyleFingerprint } from '@/types/fingerprint'
 
-// Helper to build a StyleFingerprint with overrides
+// Helper to build a StyleFingerprint with overrides.
+// All dims are in [0, 1] with 0.5 as the neutral midpoint.
 function makeFingerprint(overrides: Partial<StyleFingerprint['dimensions']> = {}): StyleFingerprint {
   const defaults: StyleFingerprint['dimensions'] = {
-    luminosity: 0.4, density: -0.4, temperature: 0.6, form: 0.2,
-    era: -0.2, texture: 0.4, scale: 0.0, nature: 0.0, saturation: 0.0, materialOrigin: 0.0,
+    colorTemperature: 0.7, colorSaturation: 0.5, density: 0.3, formality: 0.5,
+    era: 0.4, material: 0.5, texture: 0.7, pattern: 0.5,
+    lineQuality: 0.5, lightPreference: 0.7, nature: 0.5, culturalInfluence: 0.5,
   }
   return {
     dimensions: { ...defaults, ...overrides },
-    covariance: Array(10).fill(Array(10).fill(0)) as number[][],
+    covariance: Array(12).fill(Array(12).fill(0)) as number[][],
     confidence: 0.8,
   }
 }
@@ -47,32 +49,32 @@ describe('buildFluxPrompt', () => {
     expect(result.toLowerCase()).toContain('bedroom')
   })
 
-  it('maps high luminosity (>0.3) to bright descriptors', () => {
-    const fp = makeFingerprint({ luminosity: 0.6 })
+  it('maps high lightPreference (>0.7) to bright descriptors', () => {
+    const fp = makeFingerprint({ lightPreference: 0.85 })
     const result = prompt(fp)
     expect(result.toLowerCase()).toMatch(/bright|airy|natural light/)
   })
 
-  it('maps low luminosity (<-0.3) to moody descriptors', () => {
-    const fp = makeFingerprint({ luminosity: -0.6 })
+  it('maps low lightPreference (<0.3) to moody descriptors', () => {
+    const fp = makeFingerprint({ lightPreference: 0.15 })
     const result = prompt(fp)
-    expect(result.toLowerCase()).toMatch(/moody|dramatic|dark/)
+    expect(result.toLowerCase()).toMatch(/moody|dramatic|dark|cozy/)
   })
 
-  it('neutral luminosity (in [-0.3, 0.3]) generates no luminosity descriptor', () => {
-    const fp = makeFingerprint({ luminosity: 0.1 })
+  it('neutral lightPreference (in [0.3, 0.7]) generates no light descriptor', () => {
+    const fp = makeFingerprint({ lightPreference: 0.5 })
     const result = prompt(fp)
-    expect(result.toLowerCase()).not.toMatch(/bright|airy|moody|dramatic/)
+    expect(result.toLowerCase()).not.toMatch(/sun-drenched|cozy intimate/)
   })
 
-  it('maps high temperature to warm descriptors', () => {
-    const fp = makeFingerprint({ temperature: 0.8 })
+  it('maps high colorTemperature to warm descriptors', () => {
+    const fp = makeFingerprint({ colorTemperature: 0.9 })
     const result = prompt(fp)
     expect(result.toLowerCase()).toMatch(/warm|amber|terracotta/)
   })
 
-  it('maps low temperature to cool descriptors', () => {
-    const fp = makeFingerprint({ temperature: -0.8 })
+  it('maps low colorTemperature to cool descriptors', () => {
+    const fp = makeFingerprint({ colorTemperature: 0.1 })
     const result = prompt(fp)
     expect(result.toLowerCase()).toMatch(/cool|slate|concrete/)
   })
@@ -110,12 +112,14 @@ describe('buildFluxPrompt', () => {
 
   it('handles all fingerprint dimensions at extremes without error', () => {
     const allHigh = makeFingerprint({
-      luminosity: 1, density: 1, temperature: 1, form: 1, era: 1,
-      texture: 1, scale: 1, nature: 1, saturation: 1, materialOrigin: 1,
+      colorTemperature: 1, colorSaturation: 1, density: 1, formality: 1,
+      era: 1, material: 1, texture: 1, pattern: 1,
+      lineQuality: 1, lightPreference: 1, nature: 1, culturalInfluence: 1,
     })
     const allLow = makeFingerprint({
-      luminosity: -1, density: -1, temperature: -1, form: -1, era: -1,
-      texture: -1, scale: -1, nature: -1, saturation: -1, materialOrigin: -1,
+      colorTemperature: 0, colorSaturation: 0, density: 0, formality: 0,
+      era: 0, material: 0, texture: 0, pattern: 0,
+      lineQuality: 0, lightPreference: 0, nature: 0, culturalInfluence: 0,
     })
     expect(() => prompt(allHigh)).not.toThrow()
     expect(() => prompt(allLow)).not.toThrow()

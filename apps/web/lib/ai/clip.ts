@@ -48,27 +48,28 @@ export function cosineSimilarity(a: number[], b: number[]): number {
 }
 
 // Maps fingerprint dimensions to style descriptor terms
-// used to align with product style_tags
+// used to align with product style_tags. All dimensions are in [0, 1] with
+// 0.5 as the neutral midpoint.
 export function fingerprintToStyleTags(fingerprint: StyleFingerprint): string[] {
   const d = fingerprint.dimensions
   const tags: string[] = []
 
-  if (d.luminosity >= 0) tags.push('bright', 'airy', 'light')
+  if (d.lightPreference >= 0.5) tags.push('bright', 'airy', 'light')
   else tags.push('moody', 'dark', 'dramatic')
 
-  if (d.density >= 0) tags.push('maximalist', 'layered', 'rich')
+  if (d.density >= 0.5) tags.push('maximalist', 'layered', 'rich')
   else tags.push('minimal', 'clean', 'simple')
 
-  if (d.temperature >= 0) tags.push('warm', 'amber', 'wood', 'terracotta')
+  if (d.colorTemperature >= 0.5) tags.push('warm', 'amber', 'wood', 'terracotta')
   else tags.push('cool', 'slate', 'concrete', 'grey')
 
-  if (d.form >= 0) tags.push('organic', 'curved', 'natural', 'rattan')
+  if (d.lineQuality >= 0.5) tags.push('organic', 'curved', 'natural', 'rattan')
   else tags.push('geometric', 'structured', 'angular')
 
-  if (d.era >= 0) tags.push('traditional', 'heritage', 'classic', 'antique')
+  if (d.era >= 0.5) tags.push('traditional', 'heritage', 'classic', 'antique')
   else tags.push('modern', 'contemporary', 'minimal')
 
-  if (d.texture >= 0) tags.push('textured', 'tactile', 'linen', 'stone')
+  if (d.texture >= 0.5) tags.push('textured', 'tactile', 'linen', 'stone')
   else tags.push('smooth', 'polished', 'sleek', 'lacquered')
 
   return tags

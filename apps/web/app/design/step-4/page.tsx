@@ -37,27 +37,30 @@ function hslToHex(h: number, s: number, l: number): string {
 
 function generateSwatches(dims: StyleFingerprint['dimensions']): string[] {
   try {
-    const temp = dims.temperature
+    // All dims are in [0, 1] with 0.5 as the neutral midpoint.
+    const temp = dims.colorTemperature
     let hue: number, sat: number
 
-    if (temp <= 0) {
-      // Interpolate: temp -1 → hsl(210, 20%), temp 0 → hsl(35, 15%)
-      hue = 210 + (35 - 210) * (temp + 1)
-      sat = 20 + (15 - 20) * (temp + 1)
+    if (temp <= 0.5) {
+      // Interpolate: temp 0 → hsl(210, 20%), temp 0.5 → hsl(35, 15%)
+      const t = temp * 2
+      hue = 210 + (35 - 210) * t
+      sat = 20 + (15 - 20) * t
     } else {
-      // Interpolate: temp 0 → hsl(35, 15%), temp 1 → hsl(28, 65%)
-      hue = 35 + (28 - 35) * temp
-      sat = 15 + (65 - 15) * temp
+      // Interpolate: temp 0.5 → hsl(35, 15%), temp 1 → hsl(28, 65%)
+      const t = (temp - 0.5) * 2
+      hue = 35 + (28 - 35) * t
+      sat = 15 + (65 - 15) * t
     }
 
-    const lum = dims.luminosity
-    const baseLightness = lum <= 0
-      ? 15 + (lum + 1) * 30   // lum -1 → 15%, lum 0 → 45%
-      : 45 + lum * 40           // lum 0 → 45%, lum 1 → 85%
+    const lum = dims.lightPreference
+    const baseLightness = lum <= 0.5
+      ? 15 + lum * 60   // lum 0 → 15%, lum 0.5 → 45%
+      : 45 + (lum - 0.5) * 80  // lum 0.5 → 45%, lum 1 → 85%
 
-    const satAdj = dims.saturation > 0.3
+    const satAdj = dims.colorSaturation > 0.7
       ? sat * 1.2
-      : dims.saturation < -0.3
+      : dims.colorSaturation < 0.3
         ? sat * 0.8
         : sat
     const finalSat = Math.min(100, Math.max(0, satAdj))

@@ -33,50 +33,64 @@ const MULTI_KONTEXT_MODEL = 'flux-kontext-apps/multi-image-kontext-pro'
 
 type DimKey = keyof StyleFingerprint['dimensions']
 
+// All dimension values are in the [0, 1] range with 0.5 as the neutral midpoint.
+// `lo` describes values approaching 0; `hi` describes values approaching 1.
 const DESCRIPTORS: Record<DimKey, { lo: string; hi: string }> = {
-  luminosity: {
-    lo: 'very dark, moody, dramatic, candlelit, cave-like atmosphere',
-    hi: 'bright airy space, flooded with natural light, sun-drenched',
+  colorTemperature: {
+    lo: 'icy cool, concrete grey, slate, steel blue, cold whites',
+    hi: 'warm amber tones, honey wood, terracotta, beeswax',
+  },
+  colorSaturation: {
+    lo: 'achromatic palette, near-neutral, greige, white, grey, black',
+    hi: 'rich saturated color, bold hues, high-contrast palette, vivid accents',
   },
   density: {
     lo: 'stark, near-empty, intentional void, almost no objects',
     hi: 'richly layered, curated objects, maximalist, every surface considered',
   },
-  temperature: {
-    lo: 'icy cool, concrete grey, slate, steel blue, cold whites',
-    hi: 'warm amber tones, honey wood, terracotta, beeswax',
-  },
-  form: {
-    lo: 'hyper-geometric, hard right angles, razor-sharp lines, zero curves',
-    hi: 'organic curves, soft rounded forms, natural shapes, no hard edges',
+  formality: {
+    lo: 'casual relaxed setting, lived-in, nothing perfectly arranged',
+    hi: 'formal structured arrangement, symmetrical, precisely placed',
   },
   era: {
     lo: 'ultra-modern, futuristic, cutting-edge contemporary, no historical reference',
     hi: 'classic heritage, antique references, traditional craft, heirloom quality',
   },
+  material: {
+    lo: 'synthetic manufactured surfaces, polished steel, glass, lacquered panels',
+    hi: 'natural organic materials, raw linen, reclaimed wood, stone, rattan, jute',
+  },
   texture: {
     lo: 'mirror-smooth, lacquered, polished stone, glass, zero tactile variation',
     hi: 'tactile richness, chunky knits, rough linen, natural stone, woven rattan',
   },
-  scale: {
-    lo: 'petite furnishings, delicate proportions, small-scale pieces',
-    hi: 'oversized statement pieces, large-scale furnishings, grand proportions',
+  pattern: {
+    lo: 'pattern-free, solid colors throughout, plain surfaces, no prints',
+    hi: 'pattern-rich, geometric wallpaper, printed textiles, layered prints',
+  },
+  lineQuality: {
+    lo: 'hyper-geometric, hard right angles, razor-sharp lines, zero curves',
+    hi: 'organic curves, soft rounded forms, arched silhouettes, no hard edges',
+  },
+  lightPreference: {
+    lo: 'cozy intimate lamp light, warm pools of golden light, soft shadows',
+    hi: 'bright airy space, flooded with natural daylight, sun-drenched',
   },
   nature: {
-    lo: 'synthetic materials, industrial, man-made surfaces, no plants',
-    hi: 'abundant natural materials, wood grain, stone, live plants, rattan, linen',
+    lo: 'urban no-plant interior, no greenery, no botanical elements',
+    hi: 'biophilic abundance, monstera, ferns, trailing pothos, living moss',
   },
-  saturation: {
-    lo: 'achromatic palette, near-neutral, greige, white, grey, black',
-    hi: 'rich saturated color, bold hues, high-contrast palette, vivid accents',
-  },
-  materialOrigin: {
-    lo: 'industrial materials, concrete, steel, factory-made, precision-manufactured',
-    hi: 'artisanal craft, hand-thrown ceramics, hand-woven textiles, bespoke joinery',
+  culturalInfluence: {
+    lo: 'pure Western contemporary, no cultural references, mainstream',
+    hi: 'globally eclectic, Moroccan tile, Japanese ceramics, kente textiles',
   },
 }
 
-const NEUTRAL_BAND = 0.3
+// Strong band: a dimension is "directional" when it deviates from 0.5 by more
+// than NEUTRAL_BAND (i.e. v < 0.3 or v > 0.7). Values inside the neutral band
+// produce no descriptor text.
+const NEUTRAL_MIDPOINT = 0.5
+const NEUTRAL_BAND = 0.2
 
 const BUDGET_MODIFIERS: Record<string, string> = {
   budget:  'affordable accessible pieces, high-street furniture',
@@ -134,37 +148,37 @@ export interface BuildFluxPromptParams {
 // inside Kontext's 80-word sweet spot.
 function getMaterialPalette(d: StyleFingerprint['dimensions']): string {
   const items: string[] = []
-  if (d.nature > 0.3) items.push('rattan', 'linen', 'live plants')
-  if (d.texture > 0.3) items.push('rough linen', 'woven cotton')
-  if (d.texture < -0.3) items.push('polished marble', 'glass')
-  if (d.temperature > 0.3) items.push('warm oak', 'aged brass')
-  if (d.temperature < -0.3) items.push('concrete', 'brushed steel')
-  if (d.materialOrigin > 0.3) items.push('hand-thrown ceramics')
-  if (d.era > 0.3) items.push('heirloom textiles')
-  if (d.era < -0.3) items.push('brushed nickel')
+  if (d.nature > 0.7) items.push('rattan', 'linen', 'live plants')
+  if (d.texture > 0.7) items.push('rough linen', 'woven cotton')
+  if (d.texture < 0.3) items.push('polished marble', 'glass')
+  if (d.colorTemperature > 0.7) items.push('warm oak', 'aged brass')
+  if (d.colorTemperature < 0.3) items.push('concrete', 'brushed steel')
+  if (d.material > 0.7) items.push('hand-thrown ceramics')
+  if (d.era > 0.7) items.push('heirloom textiles')
+  if (d.era < 0.3) items.push('brushed nickel')
   const deduped = Array.from(new Set(items)).slice(0, 3)
   if (deduped.length === 0) return ''
   return 'Materials: ' + deduped.join(', ')
 }
 
 function getLightingInstruction(d: StyleFingerprint['dimensions']): string {
-  if (d.luminosity > 0.3) return 'Bright natural daylight, airy atmosphere'
-  if (d.luminosity < -0.3) return 'Warm intimate lamp light, cozy shadows'
+  if (d.lightPreference > 0.7) return 'Bright natural daylight, airy atmosphere'
+  if (d.lightPreference < 0.3) return 'Warm intimate lamp light, cozy shadows'
   return 'Balanced natural ambient light'
 }
 
-// Select the top-K dominant descriptors (by absolute dimension value).
+// Select the top-K dominant descriptors (by distance from the neutral midpoint).
 function dominantDescriptors(
   d: StyleFingerprint['dimensions'],
   k: number,
 ): string[] {
   const entries = (Object.keys(DESCRIPTORS) as DimKey[])
-    .map((key) => ({ key, v: d[key] }))
-    .filter((e) => Math.abs(e.v) > NEUTRAL_BAND)
-    .sort((a, b) => Math.abs(b.v) - Math.abs(a.v))
+    .map((key) => ({ key, v: d[key], dev: d[key] - NEUTRAL_MIDPOINT }))
+    .filter((e) => Math.abs(e.dev) > NEUTRAL_BAND)
+    .sort((a, b) => Math.abs(b.dev) - Math.abs(a.dev))
     .slice(0, k)
   return entries.map((e) =>
-    e.v > 0 ? DESCRIPTORS[e.key].hi : DESCRIPTORS[e.key].lo,
+    e.dev > 0 ? DESCRIPTORS[e.key].hi : DESCRIPTORS[e.key].lo,
   )
 }
 
@@ -250,12 +264,23 @@ export function buildFluxPrompt(params: BuildFluxPromptParams): string {
   if (result.coreWords > 80) result = buildAt(1)
   if (result.coreWords > 80) result = buildAt(0)
 
-  // 400-word absolute cap (safety net — long preservationInstructions can blow past 80)
-  const totalWords = result.prompt.split(/\s+/).length
-  if (totalWords > 400) {
-    throw new Error(
-      `buildFluxPrompt: prompt exceeds 400 words (${totalWords} words). Trim inclusions or keptItems.`,
+  // 350-word absolute cap — Kontext Pro's real limit is ~512 tokens (≈380
+  // words for English). We target 350 to leave a safe buffer for tokenization
+  // overhead. If the combined prompt exceeds this, truncate silently (never
+  // throw): a truncated prompt still produces a render, while an error
+  // produces nothing. The tail (Gemini preservation + kept items) is what
+  // typically blows past budget, so we truncate it word-by-word from the end
+  // while preserving the core transformation prompt in full.
+  const MAX_WORDS = 350
+  const totalWords = result.prompt.split(/\s+/).filter(Boolean).length
+  if (totalWords > MAX_WORDS) {
+    const words = result.prompt.split(/\s+/).filter(Boolean)
+    const truncated = words.slice(0, MAX_WORDS).join(' ')
+    console.warn(
+      `[buildFluxPrompt] Prompt was ${totalWords} words, truncated to ${MAX_WORDS} ` +
+        `(preservation detail trimmed; core transformation preserved).`,
     )
+    return truncated
   }
 
   return result.prompt

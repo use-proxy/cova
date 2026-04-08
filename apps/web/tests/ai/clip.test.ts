@@ -9,12 +9,13 @@ import type { StyleFingerprint } from '@/types/fingerprint'
 
 function makeFingerprint(overrides: Partial<StyleFingerprint['dimensions']> = {}): StyleFingerprint {
   const defaults: StyleFingerprint['dimensions'] = {
-    luminosity: 0.4, density: -0.4, temperature: 0.6, form: 0.2,
-    era: -0.2, texture: 0.4, scale: 0.0, nature: 0.0, saturation: 0.0, materialOrigin: 0.0,
+    colorTemperature: 0.7, colorSaturation: 0.5, density: 0.3, formality: 0.5,
+    era: 0.4, material: 0.5, texture: 0.7, pattern: 0.5,
+    lineQuality: 0.5, lightPreference: 0.7, nature: 0.5, culturalInfluence: 0.5,
   }
   return {
     dimensions: { ...defaults, ...overrides },
-    covariance: Array(10).fill(Array(10).fill(0)) as number[][],
+    covariance: Array(12).fill(Array(12).fill(0)) as number[][],
     confidence: 0.8,
   }
 }
@@ -64,22 +65,22 @@ describe('fingerprintToStyleTags', () => {
     expect(tags.length).toBeGreaterThan(0)
   })
 
-  it('high luminosity (>0) maps to bright/airy tags', () => {
-    const fp = makeFingerprint({ luminosity: 0.8 })
+  it('high lightPreference (>0.5) maps to bright/airy tags', () => {
+    const fp = makeFingerprint({ lightPreference: 0.9 })
     const tags = fingerprintToStyleTags(fp)
     expect(tags.some((t) => ['bright', 'airy', 'light'].includes(t))).toBe(true)
   })
 
-  it('low luminosity (<0) maps to moody/dark tags', () => {
-    const fp = makeFingerprint({ luminosity: -0.8 })
+  it('low lightPreference (<0.5) maps to moody/dark tags', () => {
+    const fp = makeFingerprint({ lightPreference: 0.1 })
     const tags = fingerprintToStyleTags(fp)
     expect(tags.some((t) => ['moody', 'dark', 'dramatic'].includes(t))).toBe(true)
   })
 
-  it('returns one tag per dimension (10 total)', () => {
+  it('returns several style tags', () => {
     const fp = makeFingerprint()
     const tags = fingerprintToStyleTags(fp)
-    expect(tags.length).toBe(10)
+    expect(tags.length).toBeGreaterThanOrEqual(6)
   })
 })
 

@@ -5,10 +5,11 @@ import type { StyleFingerprint } from '@/types/fingerprint'
 
 const mockFingerprint: StyleFingerprint = {
   dimensions: {
-    luminosity: 0.4, density: -0.4, temperature: 0.6, form: 0.2,
-    era: -0.2, texture: 0.4, scale: 0.0, nature: 0.0, saturation: 0.0, materialOrigin: 0.0,
+    colorTemperature: 0.7, colorSaturation: 0.5, density: 0.3, formality: 0.5,
+    era: 0.4, material: 0.5, texture: 0.7, pattern: 0.5,
+    lineQuality: 0.5, lightPreference: 0.7, nature: 0.5, culturalInfluence: 0.5,
   },
-  covariance: Array(10).fill(Array(10).fill(0)) as number[][],
+  covariance: Array(12).fill(Array(12).fill(0)) as number[][],
   confidence: 0.8,
 }
 
