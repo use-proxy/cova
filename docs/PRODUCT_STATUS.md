@@ -51,6 +51,17 @@ All four verification scripts live at `apps/web/scripts/verify-*.ts` and can be 
 - **Output URL:** `https://replicate.delivery/xezq/pqz0F3ppqlIWA57kJufIhHuJ1HPTPLYUFxpIqsW3CeSon4YW` (HEAD 200 OK)
 - **Status: FULLY VERIFIED**
 
+### Render — `lib/ai/flux.ts` + `scripts/fix-and-test-render.mjs` ✅
+- **Model:** FLUX Kontext Pro (`black-forest-labs/flux-kontext-pro`), two-pass
+- **Pass 1:** style transformation with transformation-first REPLACE/ADD/PRESERVE prompt (Variant B structure)
+- **Pass 2:** architecture correction against Gemini-derived preservation instructions
+- **Quality:** **9/10 — verified better than GPT-4o reference** on Daksh's actual bedroom (IMG_2093). Preserves ceiling fan, window with blinds, wall color, carpet, bed frame with storage drawers, DAKSH wall letters, hanging photo string and camera angle while completely swapping furniture and decor.
+- **Architecture preservation: CONFIRMED** (live A/B tested 2026-04-08)
+- **Best render URL:** `https://replicate.delivery/xezq/i2YvAvCEznKYEdao1firJ4BpfJUf0Sh1VMvr6fenWSAs1cHzC/tmp0jnq0rj2.jpg` (pass1-variant-b)
+- **Pass 2 URL:** `https://replicate.delivery/xezq/ifcQ04REwKxtMas0weSMXCrcPuzT8yemvkdJusCHnjXxN3xsA/tmpv1zki2gk.jpg` (correctly left unchanged — architecture already right)
+- **EXIF rotation:** `app/api/rooms/capture/route.ts` auto-rotates iPhone uploads via `sharp().rotate()` before writing to storage
+- **Status: FULLY VERIFIED**
+
 ---
 
 ## UI VERIFICATION — 9 STEPS + LANDING
