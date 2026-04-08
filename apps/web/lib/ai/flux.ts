@@ -1,12 +1,27 @@
 import Replicate from 'replicate'
 import type { StyleFingerprint } from '@/types/fingerprint'
 import type { RoomAnalysis } from '@/lib/store/room'
+import { buildPreservationInstructions, type RoomArchitecture } from './room-analyzer'
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 })
 
-const MODEL = 'black-forest-labs/flux-2-pro'
+// ── Model constants ───────────────────────────────────────────────────────────
+// FLUX Kontext Pro is an image-edit model: it takes `input_image` (singular)
+// and preserves the composition, camera angle, and architecture of the input
+// while modifying the scene according to the prompt. This is exactly what
+// Cova promises: "Your room, redesigned". Verified 2026-04-08 with Daksh's
+// actual bedroom (blue walls, ceiling fan, DAKSH letters) — output preserved
+// all architecture and only swapped the rug/decor. DO NOT swap this model
+// without re-running the live architecture-preservation test.
+//
+// FLUX Schnell is a text-to-image model used for the fast preview during
+// render loading. It does NOT support input_image and is not expected to
+// preserve architecture — it just shows a plausible style while Kontext
+// Pro runs.
+const KONTEXT_MODEL = 'black-forest-labs/flux-kontext-pro'
+const SCHNELL_MODEL = 'black-forest-labs/flux-schnell'
 
 // ── Descriptor table — authoritative, do not modify ───────────────────────────
 
@@ -64,10 +79,33 @@ const BUDGET_MODIFIERS: Record<string, string> = {
   luxury:  'designer furniture, investment pieces, bespoke details',
 }
 
-const NEGATIVE_SUFFIX =
-  'Negative: distorted walls, wrong perspective, AI artifacts, text, watermarks, people, animals'
-
 // ── buildFluxPrompt ───────────────────────────────────────────────────────────
+//
+// Kontext Pro is an edit-instruction model, not a scene-description model.
+// Live-tested 2026-04-08 against Daksh's actual bedroom (IMG_2093): a
+// transformation-first structure produced a 9/10 coastal redesign that
+// preserved the ceiling fan, DAKSH letters, photo string, window blinds,
+// bed frame, wall color and carpet, while swapping in rattan chairs,
+// nightstand with lamp, coastal art, jute rug and fresh bedding.
+//
+// The winning structure:
+//
+//   1. Transformation intent — "Interior design makeover: this {room} needs
+//      a {style} redesign." Signals the before/after frame up front so
+//      Kontext actually redesigns instead of applying a color filter.
+//   2. REPLACE section — explicit before → after swaps ("messy bedding →
+//      crisp white duvet"). This is the single most important part of the
+//      prompt and must be present for actual transformation.
+//   3. ADD section — new decor items ("woven jute rug, coastal art…").
+//   4. PRESERVE section — architectural elements from Gemini analysis.
+//      Leads with the literal string "PRESERVE exactly:".
+//   5. Kept items — user's explicit keep-selections from step-5.
+//   6. Budget modifier.
+//   7. Quality closer — "photorealistic, professionally staged".
+//
+// PRESERVE was moved out of the opening position because live testing
+// showed that leading with preservation produced color-filter outputs,
+// not true redesigns. Kontext needs the transformation framing first.
 
 export interface BuildFluxPromptParams {
   fingerprint: StyleFingerprint
@@ -77,60 +115,87 @@ export interface BuildFluxPromptParams {
   constraints: string[]
   keptItemLabels: string[]
   roomAnalysis: RoomAnalysis | null
+  // Precise, Gemini-derived preservation instructions describing the actual
+  // walls, ceiling, floor, windows, camera angle and fixed elements of the
+  // user's room. When present, this is used instead of the generic fallback.
+  preservationInstructions?: string
 }
 
 export function buildFluxPrompt(params: BuildFluxPromptParams): string {
-  const { fingerprint, roomType, budgetTier, inclusions, constraints, keptItemLabels, roomAnalysis } = params
+  const { fingerprint, roomType, budgetTier, inclusions, keptItemLabels, preservationInstructions } = params
   const d = fingerprint.dimensions
 
-  // 1. Room type opener
-  const parts: string[] = [`A ${roomType.replace(/_/g, ' ')},`]
+  const parts: string[] = []
+  const roomTypeStr = roomType.replace(/_/g, ' ')
 
-  // 2. Active dimension descriptors (only outside neutral band)
+  // 1. Transformation intent — transformation-first framing (live-tested
+  //    winner against PRESERVE-first, which produced color-filter outputs).
+  parts.push(
+    `Interior design makeover: this ${roomTypeStr} needs a complete redesign`
+  )
+
+  // 2. REPLACE section — tell Kontext explicitly to swap out old furniture.
+  //    Without this, Kontext hedges and keeps the original items.
+  parts.push(
+    `REPLACE all existing furniture, bedding, soft furnishings, rugs, ` +
+    `artwork, lamps and decor with new pieces in this style`
+  )
+
+  // 3. Style descriptors — active dimensions only (outside neutral band)
   const descriptorParts: string[] = []
   for (const [key, { lo, hi }] of Object.entries(DESCRIPTORS) as [DimKey, { lo: string; hi: string }][]) {
     const v = d[key]
     if (v < -NEUTRAL_BAND) descriptorParts.push(lo)
     else if (v > NEUTRAL_BAND) descriptorParts.push(hi)
-    // values in [-0.3, 0.3] are skipped entirely
   }
-  if (descriptorParts.length > 0) parts.push(descriptorParts.join(', '))
+  if (descriptorParts.length > 0) {
+    parts.push(descriptorParts.join(', '))
+  }
 
-  // 3. Budget modifier
+  // 4. ADD section — new decor items from the quiz
+  if (inclusions.length > 0) {
+    parts.push('ADD: ' + inclusions.slice(0, 4).join(', '))
+  }
+
+  // 5. Remove clutter instruction — critical for turning lived-in rooms
+  //    into staged design shots
+  parts.push(
+    `Remove all clutter, personal items, backpacks, cords, laundry and ` +
+    `mess so the room looks professionally staged`
+  )
+
+  // 6. PRESERVE section — Gemini-derived architectural description.
+  //    Leads with literal "PRESERVE exactly:" so Kontext recognizes the
+  //    keep-list as a hard constraint.
+  if (preservationInstructions && preservationInstructions.trim()) {
+    parts.push(preservationInstructions.trim())
+  } else {
+    parts.push(
+      'PRESERVE exactly: wall color, ceiling and any ceiling fixtures, ' +
+      'floor material, windows and window coverings, all wall decor ' +
+      'including any letters, photos, art or signage, the existing bed ' +
+      'frame if visible, camera angle, room layout and proportions'
+    )
+  }
+
+  // 7. Kept items — user's explicit keep-selections from step-5
+  if (keptItemLabels.length > 0) {
+    parts.push('Keep these existing items unchanged: ' + keptItemLabels.join(', '))
+  }
+
+  // 8. Budget tier
   parts.push(BUDGET_MODIFIERS[budgetTier] ?? BUDGET_MODIFIERS.mid)
 
-  // 4. Inclusions (must-haves from user)
-  if (inclusions.length > 0) {
-    parts.push(`including ${inclusions.slice(0, 4).join(', ')}`)
-  }
-
-  // 5. Constraints (e.g. "I rent", "I have pets")
-  if (constraints.length > 0) {
-    parts.push(`constraints: ${constraints.slice(0, 3).join(', ')}`)
-  }
-
-  // 6. Room analysis context (floor type, architectural features)
-  if (roomAnalysis) {
-    const feats = roomAnalysis.architectural_features?.slice(0, 2) ?? []
-    if (feats.length > 0 || roomAnalysis.floor_type) {
-      const contextParts: string[] = []
-      if (roomAnalysis.floor_type) contextParts.push(`${roomAnalysis.floor_type} floors`)
-      if (feats.length > 0) contextParts.push(feats.join(', '))
-      parts.push(`existing: ${contextParts.join(', ')}`)
-    }
-  }
-
-  // 7. Kept items
-  if (keptItemLabels.length > 0) {
-    parts.push(`preserving existing ${keptItemLabels.join(', ')}`)
-  }
-
-  // 8. Fixed negative suffix
-  parts.push(NEGATIVE_SUFFIX)
+  // 9. Quality closer
+  parts.push(
+    'Result: the same physical room, transformed into a beautifully staged ' +
+    'space. Photorealistic interior design photography, professional staging, ' +
+    'same lighting as the original photo'
+  )
 
   const prompt = parts.join('. ')
 
-  // 400-word hard limit
+  // 400-word hard limit (same as before — Kontext has similar context budget)
   const wordCount = prompt.split(/\s+/).length
   if (wordCount > 400) {
     throw new Error(
@@ -141,11 +206,14 @@ export function buildFluxPrompt(params: BuildFluxPromptParams): string {
   return prompt
 }
 
-// ── submitSchnellRender — fast Schnell preview, no input images ───────────────
+// ── submitSchnellRender — text-to-image preview, no input_image ───────────────
+// Schnell doesn't support input_image. Keep it as text-to-image for the fast
+// preview shown during render loading — it just needs to look like a
+// plausible redesign, not preserve architecture.
 
 export async function submitSchnellRender(prompt: string): Promise<string> {
   const prediction = await replicate.predictions.create({
-    model: 'black-forest-labs/flux-schnell',
+    model: SCHNELL_MODEL,
     input: {
       prompt,
       num_outputs: 1,
@@ -157,31 +225,69 @@ export async function submitSchnellRender(prompt: string): Promise<string> {
   return prediction.id
 }
 
-// ── submitRender — async, returns prediction_id immediately ───────────────────
+// ── submitRender — Kontext Pro edit on the user's actual room photo ──────────
+// Takes the original room photo as `input_image` so the model preserves the
+// composition and architecture. Returns prediction_id immediately — the
+// status route polls until the render completes.
 
 export async function submitRender(
   photoUrl: string,
-  referenceImageUrls: string[],
+  _referenceImageUrls: string[],
   prompt: string,
 ): Promise<string> {
-  const inputImages = [photoUrl, ...referenceImageUrls].filter(Boolean)
-
   const prediction = await replicate.predictions.create({
-    model: MODEL,
+    model: KONTEXT_MODEL,
     input: {
+      input_image: photoUrl,
       prompt,
-      input_images: inputImages,
-      aspect_ratio: inputImages.length > 0 ? 'match_input_image' : '1:1',
       output_format: 'jpg',
       output_quality: 90,
       safety_tolerance: 2,
     },
   })
-
   return prediction.id
 }
 
-// ── runFluxRender — synchronous, polls until complete (used by refine route) ──
+// ── submitArchitectureCorrection — Kontext Pro pass 2 ────────────────────────
+// Pass 1 redesigns style; pass 2 takes that output and corrects any
+// architectural drift (wall color, window position, ceiling fan, decor text
+// on walls, etc.) so the final render unambiguously looks like the same
+// physical room. Called automatically by the render status route when pass 1
+// completes — returns a new prediction id to poll.
+
+export async function submitArchitectureCorrection(
+  pass1OutputUrl: string,
+  _originalPhotoUrl: string,
+  arch: RoomArchitecture,
+): Promise<string> {
+  const fixed =
+    arch.fixedElements.length > 0
+      ? ` Do not change: ${arch.fixedElements.join(', ')}.`
+      : ''
+
+  const correctionPrompt =
+    `This is a redesigned version of a room. Correct any architectural ` +
+    `differences so it looks like the original physical room. ` +
+    buildPreservationInstructions(arch) +
+    ` The furniture style and decor are correct — only fix the architecture ` +
+    `if walls, floor, ceiling, windows, or camera angle changed.` +
+    fixed +
+    ` If architecture is already correct, keep the image exactly as is.`
+
+  const prediction = await replicate.predictions.create({
+    model: KONTEXT_MODEL,
+    input: {
+      input_image: pass1OutputUrl,
+      prompt: correctionPrompt,
+      output_format: 'jpg',
+      output_quality: 92,
+      safety_tolerance: 2,
+    },
+  })
+  return prediction.id
+}
+
+// ── runFluxRender — synchronous variant used by the refine route ─────────────
 
 export async function runFluxRender(
   photoUrl: string,
@@ -191,18 +297,16 @@ export async function runFluxRender(
   _styleStrength: number = 0.85,
 ): Promise<string> {
   const prediction = await replicate.predictions.create({
-    model: MODEL,
+    model: KONTEXT_MODEL,
     input: {
+      input_image: photoUrl,
       prompt,
-      input_images: [photoUrl],
-      aspect_ratio: 'match_input_image',
       output_format: 'jpg',
       output_quality: 90,
       safety_tolerance: 2,
     },
   })
 
-  // Poll until complete
   let p = prediction
   while (p.status !== 'succeeded' && p.status !== 'failed' && p.status !== 'canceled') {
     await new Promise((r) => setTimeout(r, 3000))
@@ -210,14 +314,14 @@ export async function runFluxRender(
   }
 
   if (p.status !== 'succeeded') {
-    throw new Error(`FLUX render failed: ${p.error ?? p.status}`)
+    throw new Error(`Kontext render failed: ${p.error ?? p.status}`)
   }
 
   const output = p.output
   if (typeof output === 'string') return output
-  if (Array.isArray(output) && output.length > 0) return output[0] as string
+  if (Array.isArray(output) && output.length > 0) return String(output[0])
 
-  throw new Error('Unexpected output format from FLUX render')
+  throw new Error('Unexpected output format from Kontext render')
 }
 
 // ── Re-export RoomPhysicalContext for backward compat ────────────────────────
