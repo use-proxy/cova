@@ -4,6 +4,8 @@ const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 })
 
+const DINO_MODEL = 'adirik/grounding-dino:efd10a8ddc57ea28773327e881ce95e20cc1d734c589f7dd01d2036921ed78aa'
+
 export interface Detection {
   type: string
   label: string
@@ -63,18 +65,14 @@ function normalizeBbox(
   ]
 }
 
-// Comprehensive furniture prompt — covers everything visible in a room
-const FURNITURE_PROMPT = [
-  'sofa', 'couch', 'chair', 'armchair', 'accent chair',
-  'bed', 'desk', 'table', 'coffee table', 'dining table', 'side table',
-  'bookshelf', 'bookcase', 'wardrobe', 'dresser', 'nightstand',
-  'lamp', 'floor lamp', 'table lamp', 'ceiling light', 'pendant light',
-  'rug', 'curtain', 'curtains', 'blind', 'blinds', 'window treatment',
-  'tv', 'television', 'monitor',
-  'plant', 'artwork', 'painting', 'picture frame', 'wall art', 'wall decoration',
-  'mirror', 'cabinet', 'shelf', 'ottoman', 'bench',
-  'throw pillow', 'pillow', 'blanket', 'vase',
-].join(' . ')
+// Split furniture into three focused prompts — shorter queries yield higher confidence
+const FURNITURE_PRIMARY =
+  'sofa . couch . chair . armchair . bed . desk . dining table . coffee table . side table . bookshelf . wardrobe . dresser . nightstand . bench . ottoman'
+
+const FURNITURE_ACCENT =
+  'rug . floor lamp . table lamp . pendant light . plant . artwork . painting . mirror . cabinet . shelf . curtain . blind . vase . throw pillow'
+
+const FURNITURE_TECH = 'tv . television . monitor . speaker . soundbar'
 
 // Architecture elements that affect room redesign
 const ARCHITECTURE_PROMPT = [
@@ -141,38 +139,44 @@ async function toBase64DataUri(url: string): Promise<string> {
   return `data:${contentType};base64,${base64}`
 }
 
+type DinoOutput = { detections?: Array<{ label: string; confidence: number; bbox: number[] }> }
+
 export async function detectFurniture(photoUrl: string): Promise<Detection[]> {
   try {
-    const imageInput = await toBase64DataUri(photoUrl)
-
-    const [output, { width: imgW, height: imgH }] = await Promise.all([
-      replicate.run(
-        'adirik/grounding-dino:efd10a8ddc57ea28773327e881ce95e20cc1d734c589f7dd01d2036921ed78aa',
-        {
-          input: {
-            image: imageInput,
-            query: FURNITURE_PROMPT,
-            box_threshold: 0.25,
-            text_threshold: 0.20,
-          },
-        }
-      ) as Promise<{
-        detections?: Array<{ label: string; confidence: number; bbox: number[] }>
-      }>,
-      getImageDimensions(imageInput),
+    // Fetch base64 for DINO (requires data URI) and actual dimensions from original URL in parallel
+    const [imageInput, { width: imgW, height: imgH }] = await Promise.all([
+      toBase64DataUri(photoUrl),
+      getImageDimensions(photoUrl),  // Use original URL — base64 data URIs don't have reliable headers
     ])
 
-    if (!output.detections) return []
+    // Three focused prompts in parallel — shorter queries yield higher confidence scores
+    const [primary, accent, tech] = await Promise.all([
+      replicate.run(DINO_MODEL, {
+        input: { image: imageInput, query: FURNITURE_PRIMARY, box_threshold: 0.25, text_threshold: 0.20 },
+      }) as Promise<DinoOutput>,
+      replicate.run(DINO_MODEL, {
+        input: { image: imageInput, query: FURNITURE_ACCENT, box_threshold: 0.25, text_threshold: 0.20 },
+      }) as Promise<DinoOutput>,
+      replicate.run(DINO_MODEL, {
+        input: { image: imageInput, query: FURNITURE_TECH, box_threshold: 0.25, text_threshold: 0.20 },
+      }) as Promise<DinoOutput>,
+    ])
+
+    const allRaw = [
+      ...(primary.detections ?? []),
+      ...(accent.detections ?? []),
+      ...(tech.detections ?? []),
+    ]
 
     return deduplicateByIoU(
-      output.detections
-        .filter((d) => d.confidence >= 0.30)
+      allRaw
+        .filter((d) => d.confidence >= 0.28)
         .map((d) => ({
           type: 'furniture',
           label: cleanLabel(d.label),
           bbox: normalizeBbox(d.bbox, imgW, imgH),
           confidence: d.confidence,
-          showToUser: d.confidence >= 0.40,
+          showToUser: d.confidence >= 0.50,
         }))
     )
   } catch (err) {
@@ -183,36 +187,31 @@ export async function detectFurniture(photoUrl: string): Promise<Detection[]> {
 
 export async function detectArchitecture(photoUrl: string): Promise<Detection[]> {
   try {
-    const imageInput = await toBase64DataUri(photoUrl)
-
-    const [output, { width: imgW, height: imgH }] = await Promise.all([
-      replicate.run(
-        'adirik/grounding-dino:efd10a8ddc57ea28773327e881ce95e20cc1d734c589f7dd01d2036921ed78aa',
-        {
-          input: {
-            image: imageInput,
-            query: ARCHITECTURE_PROMPT,
-            box_threshold: 0.25,
-            text_threshold: 0.20,
-          },
-        }
-      ) as Promise<{
-        detections?: Array<{ label: string; confidence: number; bbox: number[] }>
-      }>,
-      getImageDimensions(imageInput),
+    const [imageInput, { width: imgW, height: imgH }] = await Promise.all([
+      toBase64DataUri(photoUrl),
+      getImageDimensions(photoUrl),  // Use original URL for accurate dimensions
     ])
+
+    const output = await replicate.run(DINO_MODEL, {
+      input: {
+        image: imageInput,
+        query: ARCHITECTURE_PROMPT,
+        box_threshold: 0.25,
+        text_threshold: 0.20,
+      },
+    }) as DinoOutput
 
     if (!output.detections) return []
 
     return deduplicateByIoU(
       output.detections
-        .filter((d) => d.confidence >= 0.30)
+        .filter((d) => d.confidence >= 0.28)
         .map((d) => ({
           type: 'architecture',
           label: cleanLabel(d.label),
           bbox: normalizeBbox(d.bbox, imgW, imgH),
           confidence: d.confidence,
-          showToUser: d.confidence >= 0.40,
+          showToUser: d.confidence >= 0.50,
         }))
     )
   } catch {
