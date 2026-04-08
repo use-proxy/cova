@@ -1,247 +1,437 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+/**
+ * Step 8 — Style Refinement
+ * Lets the user adjust their render: quick actions, natural-language change,
+ * additive items, transformation intensity slider.
+ */
+
+import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Share2, ArrowLeftRight } from 'lucide-react'
+import Image from 'next/image'
+import { motion, AnimatePresence } from 'framer-motion'
+import { RefreshCw, Edit3, Plus, RotateCcw, ChevronLeft } from 'lucide-react'
+import { toast } from 'sonner'
 import { useRoomStore } from '@/lib/store/room'
-import { StepIndicator } from '@/components/cova/StepIndicator'
+import { useRefineStore } from '@/lib/store/refine'
+import { useSessionStore } from '@/lib/store/session'
+import { CovaButton } from '@/components/cova/CovaButton'
+
+type ActionKey = 'regenerate' | 'refine' | 'add' | 'reset' | null
+
+const ADD_CHIPS = [
+  'a reading nook',
+  'indoor plants',
+  'gallery wall',
+  'soft rug',
+  'floor lamp',
+  'throw pillows',
+  'bookshelf',
+  'statement mirror',
+]
+
+function intensityLabel(v: number): string {
+  if (v < 0.4) return 'Subtle Refresh'
+  if (v < 0.7) return 'Balanced'
+  return 'Complete Transformation'
+}
 
 export default function Step8Page() {
   const router = useRouter()
-  const { renderUrl, originalPhotoUrl } = useRoomStore()
+  const roomStore = useRoomStore()
+  const refineStore = useRefineStore()
+  const { setStep } = useSessionStore()
 
-  const [showingBefore, setShowingBefore] = useState(false)
-  const [showCopied, setShowCopied] = useState(false)
+  const [activeAction, setActiveAction] = useState<ActionKey>(null)
+  const [refinementText, setRefinementText] = useState('')
+  const [additions, setAdditions] = useState<string[]>([])
+  const [transformIntensity, setTransformIntensity] = useState(
+    refineStore.styleStrength || 0.7
+  )
+  const [isRefining, setIsRefining] = useState(false)
+  const [hydrated, setHydrated] = useState(false)
 
-  // Redirect if render hasn't completed yet
   useEffect(() => {
-    if (!renderUrl) {
-      router.replace('/design/step-7')
+    const t = setTimeout(() => setHydrated(true), 0)
+    return () => clearTimeout(t)
+  }, [])
+
+  // Guard — redirect client-side if no render yet, after hydration
+  useEffect(() => {
+    if (hydrated && !roomStore.renderUrl) {
+      router.push('/design/step-7')
     }
-  }, [renderUrl, router])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated])
 
-  if (!renderUrl) return null
-
-  const handleShare = async () => {
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: 'My room redesigned by Cova',
-          url: window.location.href,
-        })
-      } else {
-        await navigator.clipboard.writeText(window.location.href)
-        setShowCopied(true)
-        setTimeout(() => setShowCopied(false), 2000)
+  const runRefine = useCallback(
+    async (text: string) => {
+      if (!roomStore.renderUrl || !roomStore.roomId) {
+        toast.error('No render to refine')
+        return
       }
-    } catch {
-      // user cancelled or API unavailable
-    }
-  }
+      setIsRefining(true)
+      refineStore.setRefinement(text, transformIntensity)
+      try {
+        const res = await fetch('/api/render/refine', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            current_render_url: roomStore.renderUrl,
+            refinement_text: text,
+            room_id: roomStore.roomId,
+            current_prompt: '',
+            style_strength: transformIntensity,
+          }),
+        })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          throw new Error(err.error || 'Refinement failed')
+        }
+        const data = (await res.json()) as {
+          render_url: string
+          render_session_id?: string
+        }
+        if (!data.render_url) throw new Error('No render_url returned')
 
-  const canToggle = Boolean(originalPhotoUrl)
+        roomStore.addRenderSession({
+          id: data.render_session_id || crypto.randomUUID(),
+          renderUrl: data.render_url,
+          previewUrl: null,
+          parallaxVideoUrl: null,
+          iteration: roomStore.currentRenderIteration + 1,
+          createdAt: new Date().toISOString(),
+        })
+        roomStore.setRenderUrl(data.render_url)
+        roomStore.setParallaxVideoUrl('')
+
+        toast.success('Refinement complete')
+        setStep(7)
+        router.push('/design/step-7')
+      } catch (e) {
+        toast.error((e as Error).message || 'Refinement failed — try again')
+        setIsRefining(false)
+      }
+    },
+    [roomStore, refineStore, transformIntensity, router, setStep]
+  )
+
+  const handleRefine = useCallback(() => {
+    const text = refinementText.trim()
+    if (!text) return
+    void runRefine(text)
+  }, [refinementText, runRefine])
+
+  const handleAdd = useCallback(() => {
+    if (additions.length === 0) {
+      toast.error('Pick at least one thing to add')
+      return
+    }
+    const text = 'Add to the room: ' + additions.join(', ')
+    void runRefine(text)
+  }, [additions, runRefine])
+
+  const handleRegenerate = useCallback(() => {
+    const text =
+      'Keep the same style and color palette, but try a fresh arrangement and different furniture picks.'
+    void runRefine(text)
+  }, [runRefine])
+
+  const handleReset = useCallback(() => {
+    roomStore.setRenderUrl('')
+    refineStore.clearRefinement()
+    router.push('/design/step-6')
+  }, [roomStore, refineStore, router])
+
+  if (!hydrated || !roomStore.renderUrl) return null
 
   return (
-    <div
-      style={{
-        position: 'relative',
-        width: '100vw',
-        height: '100svh',
-        overflow: 'hidden',
-        background: 'var(--cova-bg)',
-      }}
-    >
-      <StepIndicator currentStep={8} totalSteps={9} />
-      {/* ── After image (AI render) ──────────────────────────────────────────── */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={renderUrl}
-        alt="AI-redesigned room"
-        style={{
-          position: 'absolute',
-          inset: 0,
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          imageOrientation: 'from-image',
-          opacity: showingBefore ? 0 : 1,
-          transition: 'opacity 400ms ease',
-        }}
-      />
+    <div className="flex min-h-[100svh] flex-col bg-cova-bg">
+      {/* Top: current render as context */}
+      <div className="relative overflow-hidden rounded-b-3xl" style={{ height: '45vh' }}>
+        {roomStore.renderUrl && (
+          <Image
+            src={roomStore.renderUrl}
+            alt="Current design"
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover"
+          />
+        )}
+        <div className="absolute inset-0 bg-black/30" />
 
-      {/* ── Before image (original, grayscale) ──────────────────────────────── */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={originalPhotoUrl ?? undefined}
-        alt="Original room"
-        style={{
-          position: 'absolute',
-          inset: 0,
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          imageOrientation: 'from-image',
-          opacity: showingBefore && canToggle ? 1 : 0,
-          transition: 'opacity 400ms ease',
-          filter: 'grayscale(1)',
-          display: canToggle ? undefined : 'none',
-        }}
-      />
-
-      {/* ── "Before" label — fades in with the before image ─────────────────── */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 148,
-          left: 20,
-          zIndex: 20,
-          fontFamily: 'var(--font-sans)',
-          fontSize: 'var(--text-xs)',
-          color: 'rgba(245,240,232,0.6)',
-          pointerEvents: 'none',
-          opacity: showingBefore ? 1 : 0,
-          transition: 'opacity 400ms ease',
-        }}
-      >
-        Before
-      </div>
-
-      {/* ── Top bar ──────────────────────────────────────────────────────────── */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 30,
-          height: 72,
-          padding: '16px 20px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          background: 'linear-gradient(to bottom, rgba(9,24,41,0.6), transparent)',
-        }}
-      >
-        {/* Before / After pill */}
         <button
-          onClick={() => canToggle && setShowingBefore((prev) => !prev)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '6px 12px',
-            borderRadius: 9999,
-            border: '1px solid rgba(201,168,76,0.5)',
-            background: 'transparent',
-            color: 'var(--cova-ivory)',
-            fontSize: 'var(--text-xs)',
-            fontFamily: 'var(--font-sans)',
-            cursor: canToggle ? 'pointer' : 'default',
-            opacity: canToggle ? 1 : 0.4,
-            transition: 'border-color 150ms ease, background 150ms ease',
-          }}
+          onClick={() => router.back()}
+          className="absolute top-4 left-4 flex h-9 items-center gap-1 rounded-full bg-black/40 px-3 text-xs text-white/80 backdrop-blur-sm"
+          style={{ fontFamily: 'var(--font-sans)' }}
         >
-          <ArrowLeftRight size={12} />
-          <span>{showingBefore ? 'See Redesign' : 'Before / After'}</span>
+          <ChevronLeft size={14} />
+          Back
         </button>
 
-        {/* Share */}
-        <button
-          onClick={handleShare}
-          style={{
-            width: 44,
-            height: 44,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'transparent',
-            border: 'none',
-            color: 'var(--cova-ivory)',
-            cursor: 'pointer',
-          }}
-        >
-          <Share2 size={20} />
-        </button>
-      </div>
-
-      {/* ── "Link copied" toast ──────────────────────────────────────────────── */}
-      {showCopied && (
         <div
-          style={{
-            position: 'absolute',
-            top: 80,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 40,
-            background: 'var(--cova-surface-2)',
-            color: 'var(--cova-ivory)',
-            fontFamily: 'var(--font-sans)',
-            fontSize: 'var(--text-xs)',
-            padding: '8px 16px',
-            borderRadius: 8,
-            border: '1px solid var(--cova-border)',
-            whiteSpace: 'nowrap',
-          }}
+          className="absolute top-4 right-4 rounded-full bg-black/40 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.15em] text-white/70 backdrop-blur-sm"
+          style={{ fontFamily: 'var(--font-sans)' }}
         >
-          Link copied
+          Current Design
         </div>
-      )}
+      </div>
 
-      {/* ── Bottom bar ───────────────────────────────────────────────────────── */}
+      {/* Controls */}
+      <div className="flex-1 px-4 pb-28 pt-6">
+        <h1
+          className="mb-1 text-cova-ivory"
+          style={{ fontFamily: 'var(--font-serif)', fontSize: 26, lineHeight: 1.1 }}
+        >
+          Refine your design
+        </h1>
+        <p
+          className="mb-6 text-sm text-cova-muted"
+          style={{ fontFamily: 'var(--font-sans)' }}
+        >
+          What would you like to change?
+        </p>
+
+        {/* Quick actions */}
+        <div className="mb-6 grid grid-cols-2 gap-3">
+          <QuickAction
+            icon={<RefreshCw size={20} className="text-cova-gold" />}
+            title="Try Different Look"
+            description="Same style, new arrangement"
+            active={activeAction === 'regenerate'}
+            onClick={() => setActiveAction('regenerate')}
+          />
+          <QuickAction
+            icon={<Edit3 size={20} className="text-cova-gold" />}
+            title="Make a Change"
+            description="Describe what to adjust"
+            active={activeAction === 'refine'}
+            onClick={() => setActiveAction('refine')}
+          />
+          <QuickAction
+            icon={<Plus size={20} className="text-cova-gold" />}
+            title="Add Something"
+            description="Include a specific item"
+            active={activeAction === 'add'}
+            onClick={() => setActiveAction('add')}
+          />
+          <QuickAction
+            icon={<RotateCcw size={20} className="text-cova-muted" />}
+            title="Start Fresh"
+            description="Clear and redesign"
+            active={activeAction === 'reset'}
+            onClick={() => setActiveAction('reset')}
+          />
+        </div>
+
+        <AnimatePresence mode="wait">
+          {activeAction === 'refine' && (
+            <motion.div
+              key="refine"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18 }}
+              className="mt-3"
+            >
+              <textarea
+                value={refinementText}
+                onChange={(e) => setRefinementText(e.target.value)}
+                placeholder="e.g. Make the sofa darker, add more plants, brighter lighting"
+                rows={3}
+                className="w-full rounded-lg border border-cova-border bg-cova-surface px-4 py-3 text-base text-cova-ivory placeholder:text-cova-muted focus:border-cova-border-gold focus:outline-none"
+                style={{ fontFamily: 'var(--font-sans)', resize: 'none' }}
+              />
+              <CovaButton
+                variant="primary"
+                size="md"
+                className="mt-3 w-full"
+                isLoading={isRefining}
+                disabled={!refinementText.trim() || isRefining}
+                onClick={handleRefine}
+              >
+                Apply Changes
+              </CovaButton>
+            </motion.div>
+          )}
+
+          {activeAction === 'regenerate' && (
+            <motion.div
+              key="regen"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18 }}
+              className="mt-3"
+            >
+              <p
+                className="mb-3 text-sm text-cova-muted"
+                style={{ fontFamily: 'var(--font-sans)' }}
+              >
+                Generate a new arrangement using the same style DNA.
+              </p>
+              <CovaButton
+                variant="primary"
+                size="md"
+                className="w-full"
+                isLoading={isRefining}
+                disabled={isRefining}
+                onClick={handleRegenerate}
+              >
+                Generate New Arrangement
+              </CovaButton>
+            </motion.div>
+          )}
+
+          {activeAction === 'add' && (
+            <motion.div
+              key="add"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18 }}
+              className="mt-3"
+            >
+              <div className="mb-3 flex flex-wrap gap-2">
+                {ADD_CHIPS.map((chip) => {
+                  const selected = additions.includes(chip)
+                  return (
+                    <button
+                      key={chip}
+                      onClick={() =>
+                        setAdditions((prev) =>
+                          selected ? prev.filter((x) => x !== chip) : [...prev, chip]
+                        )
+                      }
+                      className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                        selected
+                          ? 'border-cova-border-gold bg-cova-surface-2 text-cova-ivory'
+                          : 'border-cova-border bg-cova-surface text-cova-muted hover:text-cova-ivory'
+                      }`}
+                      style={{ fontFamily: 'var(--font-sans)' }}
+                    >
+                      {chip}
+                    </button>
+                  )
+                })}
+              </div>
+              <CovaButton
+                variant="primary"
+                size="md"
+                className="w-full"
+                isLoading={isRefining}
+                disabled={additions.length === 0 || isRefining}
+                onClick={handleAdd}
+              >
+                Add to Design
+              </CovaButton>
+            </motion.div>
+          )}
+
+          {activeAction === 'reset' && (
+            <motion.div
+              key="reset"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18 }}
+              className="mt-3 rounded-lg border border-cova-border bg-cova-surface p-4"
+            >
+              <p
+                className="mb-3 text-sm text-cova-muted"
+                style={{ fontFamily: 'var(--font-sans)' }}
+              >
+                This will clear your current render and take you back to capture a new photo.
+              </p>
+              <CovaButton
+                variant="destructive"
+                size="md"
+                className="w-full"
+                onClick={handleReset}
+              >
+                Start Fresh
+              </CovaButton>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Intensity slider */}
+        <div className="mt-8">
+          <div className="mb-2 flex items-center justify-between">
+            <span
+              className="text-sm text-cova-muted"
+              style={{ fontFamily: 'var(--font-sans)' }}
+            >
+              Transformation intensity
+            </span>
+            <span
+              className="text-sm font-medium text-cova-gold"
+              style={{ fontFamily: 'var(--font-sans)' }}
+            >
+              {intensityLabel(transformIntensity)}
+            </span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={transformIntensity}
+            onChange={(e) => setTransformIntensity(parseFloat(e.target.value))}
+            className="w-full accent-cova-gold"
+            aria-label="Transformation intensity"
+          />
+        </div>
+      </div>
+
+      {/* Sticky bottom */}
       <div
-        style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          zIndex: 30,
-          padding: '20px 20px 40px',
-          background:
-            'linear-gradient(to top, rgba(9,24,41,0.97), rgba(9,24,41,0.7), transparent)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 8,
-        }}
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-cova-border-dim bg-cova-bg px-4 py-4"
+        style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
       >
-        {/* Primary CTA */}
-        <button
-          onClick={() => router.push('/design/step-10')}
-          style={{
-            width: '100%',
-            padding: '12px 20px',
-            borderRadius: 12,
-            border: 'none',
-            background: 'var(--cova-gold)',
-            color: 'var(--cova-bg)',
-            fontSize: 'var(--text-sm)',
-            fontWeight: 500,
-            fontFamily: 'var(--font-sans)',
-            cursor: 'pointer',
-            transition: 'all 150ms ease',
+        <CovaButton
+          variant="primary"
+          size="lg"
+          className="w-full"
+          onClick={() => {
+            setStep(9)
+            router.push('/design/step-9')
           }}
         >
-          Shop This Look →
-        </button>
-
-        {/* Ghost CTA */}
-        <button
-          onClick={() => router.push('/design/step-9')}
-          style={{
-            width: '100%',
-            padding: '12px 20px',
-            borderRadius: 12,
-            border: '1px solid rgba(201,168,76,0.4)',
-            background: 'transparent',
-            color: 'var(--cova-ivory)',
-            fontSize: 'var(--text-sm)',
-            fontFamily: 'var(--font-sans)',
-            cursor: 'pointer',
-            transition: 'all 150ms ease',
-          }}
-        >
-          Not quite right?
-        </button>
+          Shop Current Look
+        </CovaButton>
       </div>
     </div>
+  )
+}
+
+function QuickAction({
+  icon,
+  title,
+  description,
+  active,
+  onClick,
+}: {
+  icon: React.ReactNode
+  title: string
+  description: string
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex flex-col items-start gap-1.5 rounded-2xl border p-4 text-left transition-all duration-150 ${
+        active
+          ? 'border-cova-border-gold bg-cova-surface-2'
+          : 'border-cova-border bg-cova-surface hover:border-cova-border-gold'
+      }`}
+      style={{ fontFamily: 'var(--font-sans)' }}
+    >
+      {icon}
+      <span className="text-sm font-medium text-cova-ivory">{title}</span>
+      <span className="text-xs leading-snug text-cova-muted">{description}</span>
+    </button>
   )
 }

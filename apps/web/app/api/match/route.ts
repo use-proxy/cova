@@ -29,6 +29,69 @@ interface MatchRequestBody {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/**
+ * Google Lens visual search via SearchApi. Returns SerperProduct-shaped objects
+ * so downstream code can treat Lens + Serper candidates uniformly.
+ */
+async function searchGoogleLens(imageUrl: string): Promise<SerperProduct[]> {
+  const key = process.env.SEARCHAPI_KEY
+  if (!key) return []
+  const url =
+    'https://www.searchapi.io/api/v1/search?' +
+    new URLSearchParams({
+      engine: 'google_lens',
+      search_type: 'products',
+      url: imageUrl,
+      api_key: key,
+    })
+  const res = await fetch(url, { signal: AbortSignal.timeout(10000) })
+  if (!res.ok) return []
+  const data = (await res.json()) as {
+    visual_matches?: Array<{
+      title?: string
+      link?: string
+      source?: string
+      price?: { value?: string } | string
+      thumbnail?: string
+      image?: string
+      rating?: number
+      reviews?: number
+    }>
+  }
+  const matches = data.visual_matches ?? []
+  const out: SerperProduct[] = []
+  for (const m of matches) {
+    const link = m.link ?? ''
+    if (!link.startsWith('http')) continue
+    const img = m.thumbnail ?? m.image ?? ''
+    if (!img) continue
+    const priceStr = typeof m.price === 'string' ? m.price : m.price?.value ?? ''
+    const price = parseFloat(priceStr.replace(/[^0-9.]/g, '')) || 0
+    if (price <= 0) continue
+    let retailer = m.source ?? ''
+    if (!retailer) {
+      try {
+        retailer = new URL(link).hostname.replace(/^www\./, '')
+      } catch {
+        retailer = 'unknown'
+      }
+    }
+    out.push({
+      title: m.title ?? '',
+      price,
+      currency: 'USD',
+      productUrl: link,
+      imageUrl: img,
+      retailer,
+      isSale: false,
+      rating: m.rating ?? null,
+      ratingCount: m.reviews ?? null,
+      delivery: null,
+    })
+  }
+  return out.slice(0, 15)
+}
+
 function cosineSimilarity(a: number[], b: number[]): number {
   if (a.length !== b.length) return 0
   let dot = 0, magA = 0, magB = 0
@@ -158,15 +221,33 @@ Example: "low-profile walnut coffee table tapered hairpin legs mid-century"`,
     const specificQuery = buildSearchQuery(itemDescription, itemBudgetRange, isTech)
     const broaderQuery = buildSearchQuery(item_label, itemBudgetRange, isTech)
 
-    const [specificResults, broaderResults] = await Promise.allSettled([
+    // Google Lens visual search (if SEARCHAPI_KEY configured) — runs in parallel
+    const lensPromise = searchGoogleLens(cropUrl).catch((e) => {
+      console.warn('[match] Google Lens failed (non-fatal):', (e as Error).message)
+      return [] as SerperProduct[]
+    })
+
+    const [specificResults, broaderResults, lensResults] = await Promise.allSettled([
       searchProducts(specificQuery, 10),
       searchProducts(broaderQuery, 10),
+      lensPromise,
     ])
+
+    // Track which candidates came from Lens for scoring boost
+    const lensUrls = new Set<string>()
 
     // Combine and deduplicate by productUrl
     const allProductsMap = new Map<string, SerperProduct>()
+    if (lensResults.status === 'fulfilled') {
+      ;(lensResults.value as SerperProduct[]).forEach((p) => {
+        allProductsMap.set(p.productUrl, p)
+        lensUrls.add(p.productUrl)
+      })
+    }
     if (specificResults.status === 'fulfilled') {
-      specificResults.value.products.forEach((p) => allProductsMap.set(p.productUrl, p))
+      specificResults.value.products.forEach((p) => {
+        if (!allProductsMap.has(p.productUrl)) allProductsMap.set(p.productUrl, p)
+      })
     }
     if (broaderResults.status === 'fulfilled') {
       broaderResults.value.products.forEach((p) => {
@@ -287,11 +368,13 @@ Example: "low-profile walnut coffee table tapered hairpin legs mid-century"`,
       if (!fitResult.passes) return
 
       const qualityScore = product.rating ? product.rating / 5 : 0.70
+      const lensBoost = lensUrls.has(product.productUrl) ? 0.08 : 0
       const finalScore =
         0.55 * visualScore +
         0.25 * budgetScore +
         0.10 * fitResult.score +
-        0.10 * qualityScore
+        0.10 * qualityScore +
+        lensBoost
 
       candidatesWithScores.push({ ...product, visualScore, budgetScore, fitResult, finalScore })
     })
