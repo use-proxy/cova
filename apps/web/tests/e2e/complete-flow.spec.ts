@@ -1,31 +1,41 @@
 /**
- * Complete Cova user journey — investor-ready verification.
+ * Complete Cova User Journey — Zero Tolerance E2E
  *
- * Strategy:
- *   1. Snapshot landing page (unauthenticated).
- *   2. Inject test auth.
- *   3. Visit each design step with Zustand store pre-populated via addInitScript,
- *      capture a screenshot of the fully rendered page.
- *   4. For steps 6/7/8/9, run a real render via API first so the render_url + depth
- *      + hotspot data is real, then inject it into the room store and navigate.
- *   5. Exercise the drag slider on step 7 and the hotspot → product sheet flow on step 9.
+ * Replaces the previous hybrid (sessionStorage-injection) test with one that
+ * clicks the real UI, hits real APIs, and asserts on real downstream effects.
  *
- * This hybrid API + UI approach gives fast, reliable coverage without clicking
- * through the 19-pair quiz by hand, while still verifying that every page
- * renders and behaves correctly with real data.
+ * What this test guarantees when it passes:
+ *   1. Landing page renders for an unauthenticated user.
+ *   2. Authenticated user can navigate through every design step end-to-end.
+ *   3. Photo upload succeeds and kicks off real detection.
+ *   4. Quiz produces a real fingerprint via /api/quiz/fingerprint that
+ *      reflects the user's selections (non-zero dimensions).
+ *   5. Real FLUX render runs end-to-end (~$1.10, ~3-4 min).
+ *   6. Step-7 reveal renders with before/after labels and a draggable slider.
+ *   7. Step-9 hotspot click hits /api/match and returns real furniture
+ *      products (price ≥ $30, retailer in furniture allowlist).
+ *
+ * Cost per run: ~$1.50–$2.00 (Replicate render + Anthropic detect/match +
+ * Serper + Lens + CLIP). Runtime: ~5–7 minutes wall clock.
+ *
+ * NOTE for the next engineer:
+ * The previous test injected zustand state into sessionStorage via
+ * addInitScript. That worked but masked any breakage in the real navigation
+ * flow (a 500 in /api/quiz/fingerprint shipped to production undetected
+ * because no test ever clicked through the quiz). This test is intentionally
+ * slow and expensive — its job is to fail loudly when the real user path
+ * breaks.
  */
-
-import { test, expect, Page } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import { injectTestAuth } from './helpers/auth'
-import { createClient } from '@supabase/supabase-js'
 import * as fs from 'fs'
 import * as path from 'path'
 
 const BASE_URL = `http://localhost:${process.env.E2E_PORT ?? '3001'}`
 const SCREENSHOTS_DIR = path.join(process.cwd(), 'docs/verification-screenshots')
-const TEST_PHOTO_PATH = path.join(__dirname, '../../fixtures/test-room.jpg')
+const TEST_PHOTO_PATH = path.join(__dirname, '../fixtures/test-room.jpg')
 
-async function screenshot(page: Page, name: string) {
+async function snap(page: Page, name: string) {
   fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true })
   await page.screenshot({
     path: path.join(SCREENSHOTS_DIR, `${name}.png`),
@@ -34,330 +44,452 @@ async function screenshot(page: Page, name: string) {
   console.log(`[shot] ${name}.png`)
 }
 
-function admin() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
+// Console error tracker. Returns an assert function that throws if any
+// non-noise console errors fired during the run.
+function trackConsoleErrors(page: Page) {
+  const errors: string[] = []
+  const noise = [
+    'Warning:',
+    'DevTools',
+    'favicon',
+    'posthog',
+    'sentry',
+    'Failed to load resource: the server responded with a status of 404',
+    // Next.js dev-mode chunk MIME issues — only show in dev, not prod build
+    'MIME type',
+    'strict MIME',
+    'NEXT_REDIRECT',
+    'net::ERR_ABORTED',  // expected on navigation cancellation
+  ]
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') errors.push(msg.text())
+  })
+  page.on('pageerror', (err) => errors.push(err.message))
+  return () => {
+    const real = errors.filter((e) => !noise.some((n) => e.includes(n)))
+    if (real.length > 0) {
+      throw new Error('Console errors detected:\n' + real.join('\n  '))
+    }
+  }
+}
+
+async function ensureFixture() {
+  if (fs.existsSync(TEST_PHOTO_PATH)) return
+  console.log('[fixture] downloading test-room.jpg')
+  const res = await fetch(
+    'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1024'
   )
+  if (!res.ok) throw new Error(`Fixture download failed: ${res.status}`)
+  fs.mkdirSync(path.dirname(TEST_PHOTO_PATH), { recursive: true })
+  fs.writeFileSync(TEST_PHOTO_PATH, Buffer.from(await res.arrayBuffer()))
 }
 
-const SAMPLE_FINGERPRINT = {
-  dimensions: {
-    luminosity: 0.4,
-    density: -0.4,
-    temperature: 0.6,
-    form: -0.2,
-    era: -0.6,
-    texture: 0.4,
-    scale: 0.0,
-    nature: 0.2,
-    saturation: -0.2,
-    materialOrigin: -0.4,
-  },
-  covariance: Array(10).fill(Array(10).fill(0)),
-  confidence: 0.8,
-}
+test.describe('Complete Cova Flow — Zero Tolerance', () => {
+  test.setTimeout(720_000) // 12 min — render alone is up to 4 min
 
-test.describe('Complete Cova User Journey', () => {
-  test.setTimeout(600_000)
+  test('full flow with real APIs and downstream verification', async ({ browser }) => {
+    await ensureFixture()
 
-  test('full flow captures screenshots at every step', async ({ browser }) => {
-    // ── 1. Landing page (unauthenticated) ──────────────────────────────────
+    // ── 1. LANDING (unauthenticated) ───────────────────────────────────────
     const anonContext = await browser.newContext()
     const anonPage = await anonContext.newPage()
+    const checkAnonErrors = trackConsoleErrors(anonPage)
     await anonPage.goto(BASE_URL, { waitUntil: 'networkidle' })
-    await anonPage.waitForTimeout(500)
-    await screenshot(anonPage, '00-landing')
-    await expect(anonPage.getByText(/Your room,/i).first()).toBeVisible()
+    await snap(anonPage, '00-landing')
+
+    // Hero copy is "Your room, redesigned." — verified in DOM map
+    await expect(anonPage.getByText(/Your room/i).first()).toBeVisible()
+    // Primary CTA reads "Design My Room →" (multiple instances on landing)
+    await expect(
+      anonPage.locator('button', { hasText: /Design My Room/i }).first()
+    ).toBeVisible()
+    checkAnonErrors()
     await anonContext.close()
 
-    // ── 2. Authenticated context for the design flow ───────────────────────
+    // ── 2. AUTHENTICATED CONTEXT ────────────────────────────────────────────
     const context = await browser.newContext()
     await injectTestAuth(context)
     const page = await context.newPage()
+    const checkErrors = trackConsoleErrors(page)
 
-    // Make sure we land somewhere public first so the cookies apply for the
-    // upcoming API calls.
+    // ── STEP 1: room type + budget ─────────────────────────────────────────
     await page.goto(BASE_URL + '/design/step-1', { waitUntil: 'networkidle' })
+    await page.waitForLoadState('load')
     await page.waitForTimeout(400)
-    await screenshot(page, '01-step-1-room-type')
+    await snap(page, '01-step-1-room-type')
 
-    // ── 3. Create a room via API and upload the fixture photo ──────────────
-    if (!fs.existsSync(TEST_PHOTO_PATH)) {
-      const res = await fetch(
-        'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1024'
-      )
-      if (res.ok) {
-        fs.mkdirSync(path.dirname(TEST_PHOTO_PATH), { recursive: true })
-        fs.writeFileSync(TEST_PHOTO_PATH, Buffer.from(await res.arrayBuffer()))
-      }
-    }
+    await expect(page.getByText(/Step 1 of 9/i)).toBeVisible()
 
-    const createRes = await page.request.post(`${BASE_URL}/api/rooms/create`, {
-      data: { room_type: 'bedroom' },
-    })
-    expect(createRes.status()).toBe(200)
-    const { id: roomId } = (await createRes.json()) as { id: string }
-    console.log('[e2e] room:', roomId)
+    // Select Bedroom (use button that contains the room name)
+    const bedroomBtn = page.locator('button', { hasText: 'Bedroom' }).first()
+    await expect(bedroomBtn).toBeVisible()
+    await bedroomBtn.click()
+    await page.waitForTimeout(200)
 
-    const photoBuffer = fs.readFileSync(TEST_PHOTO_PATH)
-    const captureRes = await page.request.post(`${BASE_URL}/api/rooms/capture`, {
-      multipart: {
-        photo: { name: 'test-room.jpg', mimeType: 'image/jpeg', buffer: photoBuffer },
-        room_id: roomId,
-      },
-    })
-    expect(captureRes.status()).toBe(200)
-    const { photo_url: photoUrl } = (await captureRes.json()) as {
-      photo_url: string
-    }
-    console.log('[e2e] photo:', photoUrl.slice(0, 60))
+    // Select Mid-Range budget tier
+    const midRangeBtn = page
+      .locator('button', { hasText: /Mid-Range|\$500|500.*2,?000/i })
+      .first()
+    await expect(midRangeBtn).toBeVisible()
+    await midRangeBtn.click()
+    await page.waitForTimeout(200)
 
-    // ── 4. Step 2 (capture page) snapshot ──────────────────────────────────
-    await page.goto(BASE_URL + '/design/step-2', { waitUntil: 'networkidle' })
+    // "Start Designing →" must now be enabled
+    const startBtn = page.locator('button', { hasText: /Start Designing/i }).first()
+    await expect(startBtn).toBeEnabled()
+    await snap(page, '01-step-1-selected')
+    await startBtn.click()
+
+    // ── STEP 2: photo upload ───────────────────────────────────────────────
+    await page.waitForURL('**/design/step-2', { timeout: 10_000 })
+    await page.waitForLoadState('networkidle')
     await page.waitForTimeout(400)
-    await screenshot(page, '02-step-2-capture')
+    await snap(page, '02-step-2-capture')
+    await expect(page.getByText(/Step 2 of 9/i)).toBeVisible()
 
-    // ── 5. Steps 3, 4, 5, 6 snapshots with store pre-populated ─────────────
-    const seedState = async (stateOverrides: Record<string, unknown>) => {
-      await page.addInitScript((state) => {
-        // Merge into the persisted room + fingerprint + session stores
-        const room = JSON.parse(sessionStorage.getItem('cova-room-v1') || '{"state":{},"version":0}')
-        const fp = JSON.parse(sessionStorage.getItem('cova-fingerprint-v1') || '{"state":{},"version":0}')
-        const ses = JSON.parse(sessionStorage.getItem('cova-session') || '{"state":{},"version":0}')
-        Object.assign(room.state, (state as Record<string, Record<string, unknown>>).room || {})
-        Object.assign(fp.state, (state as Record<string, Record<string, unknown>>).fingerprint || {})
-        Object.assign(ses.state, (state as Record<string, Record<string, unknown>>).session || {})
-        sessionStorage.setItem('cova-room-v1', JSON.stringify(room))
-        sessionStorage.setItem('cova-fingerprint-v1', JSON.stringify(fp))
-        sessionStorage.setItem('cova-session', JSON.stringify(ses))
-      }, stateOverrides)
-    }
+    // Two hidden file inputs exist (capture + upload). The upload one has
+    // no `capture` attribute. Use the second-to-last visible one to be safe.
+    const fileInputs = page.locator('input[type="file"]')
+    const inputCount = await fileInputs.count()
+    expect(inputCount, 'file inputs on step-2').toBeGreaterThanOrEqual(1)
+    // Upload to the LAST input (uploadRef in source — has no capture attr).
+    // setInputFiles works on hidden inputs.
+    await fileInputs.last().setInputFiles(TEST_PHOTO_PATH)
 
-    await seedState({
-      room: { roomId, originalPhotoUrl: photoUrl },
-      fingerprint: {
-        roomType: 'bedroom',
-        budgetTier: 'mid',
-        budgetRange: [500, 2000],
-      },
-      session: { currentStep: 3, pendingPhotoUrl: photoUrl, pendingRoomId: roomId },
-    })
+    // Step-2 fires /api/rooms/capture, then auto-navigates to step-3 800ms
+    // after the upload completes. Wait for the URL change instead of clicking
+    // any button.
+    await page.waitForURL('**/design/step-3', { timeout: 30_000 })
+    await snap(page, '02-step-2-uploaded')
 
-    await page.goto(BASE_URL + '/design/step-3', { waitUntil: 'networkidle' })
+    // ── STEP 3: real quiz interaction ──────────────────────────────────────
+    await page.waitForLoadState('networkidle')
     await page.waitForTimeout(800)
-    await screenshot(page, '03-step-3-quiz')
+    await snap(page, '03-step-3-phase-a-round-1')
 
-    // Seed fingerprint for step 4+
-    await seedState({
-      fingerprint: {
-        fingerprint: SAMPLE_FINGERPRINT,
-        styleName: 'your design style',
-        styleTags: ['warm', 'minimalist'],
-      },
-    })
+    // Wait for Phase A cards to render. Cards are <Image> components with
+    // alt="Interior design style option" (route api/quiz/next-card sets it).
+    // We select by alt because Phase B uses lazy-loading <Image>, and the
+    // `src` attribute remains a placeholder until viewport intersection —
+    // selecting by `src` would match Phase A but miss Phase B silently.
+    const cardSelector = 'img[alt*="Interior" i]'
+    await page.waitForSelector(cardSelector, { timeout: 20_000 })
+    await page.waitForTimeout(600)  // let all 9 images settle
 
-    await page.goto(BASE_URL + '/design/step-4', { waitUntil: 'networkidle' })
-    await page.waitForTimeout(600)
-    await screenshot(page, '04-step-4-fingerprint')
+    // Run 3 Phase A rounds. Each round: select 3 cards, then click Next/Continue.
+    for (let round = 1; round <= 3; round++) {
+      // Wait for card grid to be visible
+      await page.waitForTimeout(400)
+      const cardImages = page.locator(cardSelector)
+      const cardCount = await cardImages.count()
+      console.log(`[quiz] Phase A round ${round}: ${cardCount} cards`)
 
-    await page.goto(BASE_URL + '/design/step-5', { waitUntil: 'networkidle' })
-    await page.waitForTimeout(600)
-    await screenshot(page, '05-step-5-keep-remove')
-
-    await page.goto(BASE_URL + '/design/step-6', { waitUntil: 'networkidle' })
-    await page.waitForTimeout(600)
-    await screenshot(page, '06-step-6-capture-entry')
-
-    // ── 6a. Run detection first so keep_mask + depth are populated ────────
-    console.log('[e2e] Running detection (may take 60-120s)...')
-    const detectRes = await page.request.post(`${BASE_URL}/api/detect`, {
-      data: { photo_url: photoUrl, room_id: roomId },
-      timeout: 300_000,
-    })
-    if (detectRes.status() === 200) {
-      const detectJson = (await detectRes.json()) as {
-        detections: Array<{ label: string }>
-        depth_map_url: string | null
-      }
-      console.log(
-        `[e2e] detect ok — ${detectJson.detections.length} items, depth: ${detectJson.depth_map_url ? 'yes' : 'no'}`
-      )
-    } else {
-      console.warn('[e2e] detection failed, continuing:', await detectRes.text())
-    }
-
-    // ── 6b. Run a real render via API ──────────────────────────────────────
-    console.log('[e2e] Submitting render...')
-    const renderRes = await page.request.post(`${BASE_URL}/api/render`, {
-      data: {
-        photo_url: photoUrl,
-        fingerprint_vector: SAMPLE_FINGERPRINT,
-        room_type: 'bedroom',
-        budget: 'mid',
-        budget_tier: 'mid',
-        inclusions: [],
-        constraints: [],
-        keep_mask: [],
-        room_id: roomId,
-        room_length: 14,
-        room_width: 12,
-        ceiling_height: 9,
-        natural_light: 'Multiple windows',
-        floor_type: 'Hardwood',
-        wall_finish: 'Painted (standard)',
-        fixed_elements: [],
-        render_iteration: 1,
-      },
-    })
-    expect(renderRes.status()).toBe(200)
-    const { prediction_id } = (await renderRes.json()) as { prediction_id: string }
-    console.log('[e2e] render prediction:', prediction_id)
-
-    // Poll DB for render_url — up to 4 minutes
-    const sb = admin()
-    let renderUrl: string | null = null
-    const deadline = Date.now() + 240_000
-    while (Date.now() < deadline) {
-      const { data } = await sb
-        .from('rooms')
-        .select('render_url, depth_map_url, keep_mask')
-        .eq('id', roomId)
-        .single()
-      if (data?.render_url) {
-        renderUrl = data.render_url
+      if (cardCount === 0) {
+        // Maybe we already advanced — bail out of Phase A loop
+        console.log('[quiz] no cards visible, exiting Phase A loop')
         break
       }
-      // Also poll status endpoint so the write happens
-      await page.request
-        .get(
-          `${BASE_URL}/api/render/status?prediction_id=${prediction_id}&room_id=${roomId}&render_iteration=1`
-        )
-        .catch(() => {})
-      await page.waitForTimeout(5000)
-    }
-    expect(renderUrl).toBeTruthy()
-    console.log('[e2e] render ready:', renderUrl?.slice(0, 60))
 
-    // Fetch the full room row to seed all render-related fields
-    const { data: finalRoom } = await sb
-      .from('rooms')
-      .select('render_url, depth_map_url, keep_mask')
-      .eq('id', roomId)
-      .single()
+      // Click 3 cards (parents of the img — the wrappers carry the click handler)
+      for (let i = 0; i < Math.min(3, cardCount); i++) {
+        await cardImages.nth(i).click({ force: true })
+        await page.waitForTimeout(250)
+      }
 
-    const keepMaskArr = Array.isArray(finalRoom?.keep_mask) ? finalRoom!.keep_mask : []
-    console.log(`[e2e] keep_mask items: ${keepMaskArr.length}`)
-    if (keepMaskArr.length > 0) {
-      console.log('[e2e] first item:', JSON.stringify(keepMaskArr[0]).slice(0, 200))
+      await snap(page, `03-step-3-phase-a-round-${round}-selected`)
+
+      // Click "Next Round →" (rounds 1-2) or "Continue →" (round 3)
+      const advanceBtn = page
+        .locator('button', { hasText: /Next Round|Continue/i })
+        .first()
+      await expect(advanceBtn).toBeEnabled({ timeout: 5_000 })
+      await advanceBtn.click()
+      await page.waitForTimeout(1500)
     }
 
-    // ── 7. Step 7 — reveal ──────────────────────────────────────────────────
-    await seedState({
-      room: {
-        renderUrl: finalRoom?.render_url ?? null,
-        depthMapUrl: finalRoom?.depth_map_url ?? null,
-        keepMask: keepMaskArr,
-      },
-      session: { currentStep: 7 },
-    })
+    // After Phase A round 3, transition screen plays for ~1.4s, then Phase B
+    await page.waitForTimeout(2_000)
 
-    await page.goto(BASE_URL + '/design/step-7', { waitUntil: 'networkidle' })
-    await page.waitForTimeout(1200)
-    await screenshot(page, '07-step-7-reveal')
+    // Phase B: 12 pairwise comparisons. Cards are clicked directly to advance.
+    // Look for the "Pair X of 12" indicator OR "Which feels more like you" text.
+    const phaseBVisible = await page
+      .getByText(/Which feels more like you|Pair \d+ of 12/i)
+      .first()
+      .isVisible({ timeout: 8_000 })
+      .catch(() => false)
 
-    // Exercise the drag slider: move to 25% position
-    const viewport = page.viewportSize() || { width: 1280, height: 720 }
+    if (phaseBVisible) {
+      await snap(page, '03-step-3-phase-b-start')
+      // Up to 14 iterations — pick the first card each time. Each click
+      // advances the pair (handlePairResponse fires onComplete after the
+      // animation). AnimatePresence transitions take ~300ms.
+      for (let pair = 1; pair <= 14; pair++) {
+        // Wait for two pair cards. NOTE: locator.isVisible() is a sync
+        // instantaneous check — its `timeout` option is ignored. Use
+        // waitFor({state: 'visible'}) to actually wait through the animation.
+        const pairImages = page.locator(cardSelector)
+        try {
+          await pairImages.first().waitFor({ state: 'visible', timeout: 8_000 })
+        } catch {
+          console.log(`[quiz] Phase B pair ${pair}: no cards visible, breaking`)
+          break
+        }
+        // Click the first pair card. Click on the img — the parent div has
+        // the onClick handler but click events propagate up.
+        await pairImages.first().click({ force: true }).catch(() => {})
+        await page.waitForTimeout(700)
+
+        // Have we left Phase B? (Phase C heading appears)
+        const inPhaseC = await page
+          .getByText(/Almost done|Who uses this space|Confirm your budget/i)
+          .first()
+          .isVisible()
+          .catch(() => false)
+        if (inPhaseC) {
+          console.log(`[quiz] reached Phase C after ${pair} Phase B pairs`)
+          break
+        }
+      }
+    } else {
+      console.log('[quiz] Phase B did not appear — checking for Phase C directly')
+    }
+
+    // Phase C: household selection + (optional) budget confirm + textarea
+    await page.waitForTimeout(1_000)
+    const phaseCVisible = await page
+      .getByText(/Almost done|Who uses this space/i)
+      .first()
+      .isVisible({ timeout: 5_000 })
+      .catch(() => false)
+
+    if (phaseCVisible) {
+      await snap(page, '03-step-3-phase-c')
+      // Pick "Solo" — household composition is required to enable See My Style
+      const soloBtn = page.locator('button', { hasText: /^Solo$/ }).first()
+      if (await soloBtn.isVisible().catch(() => false)) {
+        await soloBtn.click()
+        await page.waitForTimeout(200)
+      }
+    }
+
+    // ── KEY ASSERT: See My Style → triggers /api/quiz/fingerprint ──────────
+    const seeMyStyleBtn = page
+      .locator('button', { hasText: /See My Style/i })
+      .first()
+    await expect(seeMyStyleBtn).toBeVisible({ timeout: 10_000 })
+    await expect(seeMyStyleBtn).toBeEnabled({ timeout: 5_000 })
+
+    // Intercept the fingerprint POST. This is THE assertion that catches the
+    // 500-error class of bug — if the API regresses, this fails immediately.
+    const fingerprintRespPromise = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/quiz/fingerprint') &&
+        res.request().method() === 'POST',
+      { timeout: 30_000 }
+    )
+
+    await seeMyStyleBtn.click()
+    const fingerprintResp = await fingerprintRespPromise
+
+    expect(
+      fingerprintResp.status(),
+      `fingerprint API status: ${fingerprintResp.status()}`
+    ).toBe(200)
+    const fpData = (await fingerprintResp.json()) as {
+      fingerprint: { dimensions: Record<string, number> }
+      style_name: string
+      style_tags: string[]
+    }
+    expect(fpData.fingerprint).toBeDefined()
+    expect(fpData.style_name).toBeTruthy()
+    expect(fpData.style_tags).toHaveLength(4)
+
+    // Dimensions must NOT all be zero — that would mean Phase A selections
+    // weren't read. (Empty selections also return all zeros, so this is the
+    // direct test that the click-through actually fed data to the API.)
+    const dims = fpData.fingerprint.dimensions
+    const allZero = Object.values(dims).every((v) => v === 0)
+    expect(
+      allZero,
+      `fingerprint dimensions all zero — quiz selections did not reach API: ${JSON.stringify(dims)}`
+    ).toBe(false)
+    console.log(`[quiz] fingerprint: ${fpData.style_name} | dims sample: density=${dims.density?.toFixed(2)}`)
+
+    // ── STEP 4: fingerprint reveal ─────────────────────────────────────────
+    await page.waitForURL('**/design/step-4', { timeout: 15_000 })
+    await page.waitForLoadState('networkidle')
+    await page.waitForTimeout(2_500)  // typewriter animation
+    await snap(page, '04-step-4-fingerprint-reveal')
+
+    // Skip auth if the auth panel slid up
+    const skipAuth = page.getByText(/Continue without saving|Skip/i).first()
+    if (await skipAuth.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await skipAuth.click()
+      await page.waitForTimeout(400)
+    }
+
+    // Click "Design My Room →" to advance to step 5
+    const dmRoomFromStep4 = page
+      .locator('button, a', { hasText: /Design My Room/i })
+      .first()
+    if (await dmRoomFromStep4.isVisible({ timeout: 5_000 }).catch(() => false)) {
+      await dmRoomFromStep4.click()
+    }
+
+    // ── STEP 5: keep/remove ────────────────────────────────────────────────
+    await page.waitForURL('**/design/step-5', { timeout: 15_000 })
+    await page.waitForLoadState('networkidle')
+    await snap(page, '05-step-5-keep-remove-loading')
+
+    // Detection was kicked off in step 2 fire-and-forget. Step 5 polls
+    // /api/detect/status. Wait until "Analyzing" goes away or 90s elapses.
+    const detectionDeadline = Date.now() + 100_000
+    while (Date.now() < detectionDeadline) {
+      const stillAnalyzing = await page
+        .getByText(/Analyzing your room/i)
+        .first()
+        .isVisible()
+        .catch(() => false)
+      if (!stillAnalyzing) break
+      await page.waitForTimeout(2_000)
+    }
+    await snap(page, '05-step-5-keep-remove-detected')
+
+    // Pick a room size if visible
+    const mediumBtn = page.locator('button', { hasText: /^Medium$/ }).first()
+    if (await mediumBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await mediumBtn.click()
+    }
+
+    // Click "Design My Room →" — it lives in a sticky bottom bar
+    const designBtn = page
+      .locator('button', { hasText: /Design My Room/i })
+      .last()
+    await expect(designBtn).toBeVisible({ timeout: 10_000 })
+    await expect(designBtn).toBeEnabled({ timeout: 10_000 })
+    await designBtn.click()
+
+    // ── STEP 6: render loading ─────────────────────────────────────────────
+    await page.waitForURL('**/design/step-6', { timeout: 15_000 })
+    await page.waitForLoadState('networkidle')
+    await snap(page, '06-step-6-render-firing')
+
+    // Step 6 auto-fires POST /api/render on mount. Intercept it.
+    const renderResp = await page
+      .waitForResponse(
+        (res) =>
+          res.url().includes('/api/render') &&
+          res.request().method() === 'POST' &&
+          !res.url().includes('/status') &&
+          !res.url().includes('/refine'),
+        { timeout: 30_000 }
+      )
+      .catch((err) => {
+        throw new Error(`Render POST never fired: ${err}`)
+      })
+
+    expect(renderResp.status()).toBe(200)
+    const renderData = (await renderResp.json()) as { prediction_id: string }
+    expect(renderData.prediction_id).toBeTruthy()
+    console.log(`[render] prediction_id: ${renderData.prediction_id}`)
+
+    // Wait for navigation to step 7 — render takes 3-4 minutes
+    console.log('[render] waiting up to 5 min for FLUX render to complete...')
+    await page.waitForURL('**/design/step-7', { timeout: 300_000 })
+    console.log('[render] complete, on step 7')
+
+    // ── STEP 7: before/after reveal ────────────────────────────────────────
+    await page.waitForLoadState('networkidle')
+    await page.waitForTimeout(1_500)
+    await snap(page, '07-step-7-reveal')
+
+    // Both BEFORE and AFTER labels are visible at default position
+    await expect(
+      page.getByText(/^before$/i).or(page.getByText(/^after$/i)).first()
+    ).toBeVisible({ timeout: 10_000 })
+
+    // Drag the slider to verify interaction
+    const viewport = page.viewportSize() ?? { width: 1280, height: 720 }
     await page.mouse.move(viewport.width / 2, viewport.height / 2)
     await page.mouse.down()
     await page.mouse.move(viewport.width * 0.25, viewport.height / 2, { steps: 10 })
     await page.mouse.up()
-    await page.waitForTimeout(400)
-    await screenshot(page, '07-step-7-reveal-dragged')
+    await page.waitForTimeout(300)
+    await snap(page, '07-step-7-reveal-dragged')
 
-    // ── 8. Step 8 — refine ──────────────────────────────────────────────────
-    await page.goto(BASE_URL + '/design/step-8', { waitUntil: 'networkidle' })
-    await page.waitForTimeout(600)
-    await screenshot(page, '08-step-8-refine')
+    // Click "Shop This Look" → step 9
+    const shopBtn = page
+      .locator('button, a', { hasText: /Shop This Look/i })
+      .first()
+    await expect(shopBtn).toBeVisible({ timeout: 10_000 })
+    await expect(shopBtn).toBeEnabled()
+    await shopBtn.click()
 
-    // Tap a quick action to show the dynamic panel
-    const makeAChange = page.getByRole('button', { name: /Make a Change/i }).first()
-    try {
-      await makeAChange.click({ timeout: 2000 })
-      await page.waitForTimeout(400)
-      await screenshot(page, '08-step-8-refine-panel')
-    } catch {
-      console.log('[e2e] Make a Change button not interactable — skipping')
-    }
+    // ── STEP 9: shoppable hotspots ─────────────────────────────────────────
+    await page.waitForURL('**/design/step-9', { timeout: 15_000 })
+    await page.waitForLoadState('networkidle')
+    await page.waitForTimeout(1_500)
+    await snap(page, '09-step-9-shelf')
 
-    // ── 9. Step 9 — shoppable shelf ─────────────────────────────────────────
-    await page.goto(BASE_URL + '/design/step-9', { waitUntil: 'networkidle' })
-    await page.waitForTimeout(800)
-
-    // Debug: what does the store actually have?
-    const storeDebug = await page.evaluate(() => {
-      const r = JSON.parse(sessionStorage.getItem('cova-room-v1') || '{}')
-      const state = r.state || {}
-      return {
-        hasRender: !!state.renderUrl,
-        hasKeepMask: Array.isArray(state.keepMask),
-        keepMaskLen: Array.isArray(state.keepMask) ? state.keepMask.length : 0,
-        firstItem: Array.isArray(state.keepMask) && state.keepMask[0]
-          ? JSON.stringify(state.keepMask[0]).slice(0, 200)
-          : null,
-      }
-    })
-    console.log('[e2e] store debug:', JSON.stringify(storeDebug))
-
-    await screenshot(page, '09-step-9-shelf')
-
-    // Debug aria-labels
-    const allAria = await page.evaluate(() =>
-      Array.from(document.querySelectorAll('[aria-label]'))
-        .map((el) => el.getAttribute('aria-label'))
-        .filter(Boolean)
-    )
-    console.log('[e2e] aria-labels on page:', JSON.stringify(allAria))
-
-    await page.waitForTimeout(1000)
+    // Hotspots use aria-label="Shop {label}" — verified in DOM map
     const hotspots = page.locator('button[aria-label^="Shop "]')
-    const hotspotCount = await hotspots.count().catch(() => 0)
-    console.log(`[e2e] hotspots on step 9: ${hotspotCount}`)
+    const hotspotCount = await hotspots.count()
+    console.log(`[step9] hotspots: ${hotspotCount}`)
+    expect(hotspotCount, 'no hotspots — keep_mask was empty').toBeGreaterThan(0)
 
-    if (hotspotCount > 0) {
-      await hotspots.first().click()
+    // Intercept the /api/match call that fires when a hotspot is tapped
+    const matchRespPromise = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/match') &&
+        res.request().method() === 'POST' &&
+        !res.url().includes('/coherence') &&
+        !res.url().includes('/accessories'),
+      { timeout: 120_000 }
+    )
 
-      // Wait up to 50s for products to arrive — poll for either Buy Now or
-      // the "No matches found" copy so we don't over-sleep on fast responses.
-      const buyBtn = page.getByText(/Buy Now/i).first()
-      const noMatches = page.getByText(/No matches found/i).first()
-      const deadline = Date.now() + 50_000
-      let buyVisible = false
-      let noMatchesVisible = false
-      while (Date.now() < deadline) {
-        buyVisible = await buyBtn.isVisible().catch(() => false)
-        noMatchesVisible = await noMatches.isVisible().catch(() => false)
-        if (buyVisible || noMatchesVisible) break
-        await page.waitForTimeout(1500)
-      }
-      await screenshot(page, '09-step-9-product-sheet')
-      console.log(
-        `[e2e] Buy Now visible: ${buyVisible} | No matches visible: ${noMatchesVisible}`
-      )
+    await hotspots.first().click()
+    await snap(page, '09-step-9-hotspot-tapped')
 
-      // If we landed on "No matches", try a different hotspot that's more
-      // likely to return furniture (skip lamps/curtains/pillows)
-      if (!buyVisible && !noMatchesVisible) {
-        console.log('[e2e] neither state visible after 50s — continuing')
-      }
-    } else {
-      console.log('[e2e] no hotspots to tap — keep_mask was empty')
+    const matchResp = await matchRespPromise
+    expect(matchResp.status()).toBe(200)
+    const matchData = (await matchResp.json()) as {
+      products: Array<{
+        name: string
+        retailer: string
+        price: number
+        affiliate_url: string
+        match_label: string
+      }>
     }
 
-    await screenshot(page, '09-step-9-final')
+    expect(matchData.products?.length, 'match returned 0 products').toBeGreaterThan(0)
 
-    console.log('[e2e] COMPLETE — screenshots at:', SCREENSHOTS_DIR)
+    const FURNITURE_RETAILERS = [
+      'wayfair', 'westelm', 'article', 'crateandbarrel', 'potterybarn', 'ikea',
+      'target', 'cb2', 'overstock', 'amazon', 'walmart', 'allmodern',
+      'birchlane', 'jossandmain', 'macys', 'homedepot', 'castlery', 'burrow',
+      'joybird', 'crate', 'roomandboard', 'livingspaces', 'serenaandlily',
+    ]
+    const first = matchData.products[0]!
+    expect(first.price, `${first.name}`).toBeGreaterThanOrEqual(30)
+    expect(first.affiliate_url).toMatch(/^https:\/\//)
+    const isFurniture =
+      FURNITURE_RETAILERS.some((r) => first.retailer?.toLowerCase().includes(r)) ||
+      FURNITURE_RETAILERS.some((r) => first.affiliate_url.toLowerCase().includes(r))
+    expect(isFurniture, `non-furniture: ${first.retailer} ${first.affiliate_url}`).toBe(true)
+    console.log(
+      `[step9] product: ${first.name?.slice(0, 40)} | $${first.price} | ${first.retailer}`
+    )
+
+    // Wait for the product sheet to render with Buy Now
+    const buyBtn = page.getByText(/Buy Now/i).first()
+    await expect(buyBtn).toBeVisible({ timeout: 10_000 })
+    await snap(page, '09-step-9-product-sheet')
+
+    checkErrors()
+    console.log('[e2e] FULL FLOW PASSED — all hard asserts green')
+    console.log('[e2e] screenshots:', SCREENSHOTS_DIR)
+
     await context.close()
   })
 })

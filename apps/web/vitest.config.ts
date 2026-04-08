@@ -9,7 +9,10 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./tests/setup.ts'],
     include: ['tests/**/*.test.ts', 'tests/**/*.test.tsx'],
-    exclude: ['node_modules', '.next', 'lib/**', 'tests/e2e/**'],
+    // tests/api/ holds Playwright API contract tests that hit a real running
+    // server — they intentionally do not run under Vitest. tests/e2e/ is
+    // Playwright too.
+    exclude: ['node_modules', '.next', 'lib/**', 'tests/e2e/**', 'tests/api/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

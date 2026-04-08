@@ -142,15 +142,20 @@ const FURNITURE_PRICE_FLOOR = 30
 
 function isFurnitureProduct(p: SerperProduct): boolean {
   if (p.price < FURNITURE_PRICE_FLOOR) return false
-  if (!isFurnitureRetailer(p.retailer)) return false
-  // Also hostname-based check — defensive, in case retailer field is a display name
+  // Allow if EITHER the retailer field OR the productUrl hostname matches.
+  // Serper Shopping often returns google.com/search?ibp=oshop indirect links
+  // with `source` set to the real retailer (e.g. 'crateandbarrel.com'). The
+  // earlier "defensive" code required BOTH to match, which silently dropped
+  // every Serper result and returned an empty product list.
+  const retailerMatches = isFurnitureRetailer(p.retailer)
+  let hostMatches = false
   try {
     const host = new URL(p.productUrl).hostname.replace(/^www\./, '').toLowerCase()
-    if (!FURNITURE_RETAILER_ALLOWLIST.some((r) => host.includes(r))) return false
+    hostMatches = FURNITURE_RETAILER_ALLOWLIST.some((r) => host.includes(r))
   } catch {
-    return false
+    hostMatches = false
   }
-  return true
+  return retailerMatches || hostMatches
 }
 
 // ── Route handler ─────────────────────────────────────────────────────────────

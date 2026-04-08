@@ -295,19 +295,33 @@ async function computeNewFingerprint(
   }
 
   // ── Step 3 — Style name from dominant dimensions ──────────────────────────
+  // A dimension must exceed |0.3| to count as "strong". If nothing is strong,
+  // the quiz hasn't learned enough to commit to a named style — return a
+  // truly neutral label rather than a specific-sounding fallback.
   const d = fingerprint.dimensions
-  let styleName = 'Contemporary Eclectic'
-  if      (d.temperature > 0.3 && d.nature > 0.3 && d.form > 0.3)             styleName = 'Warm Japandi'
-  else if (d.temperature > 0.3 && d.texture > 0.3 && d.era > 0.3)             styleName = 'Cozy Heritage'
-  else if (d.luminosity > 0.3 && d.density < -0.3 && d.form < -0.3)           styleName = 'Nordic Minimal'
-  else if (d.luminosity < -0.3 && d.saturation > 0.3 && d.era < -0.3)         styleName = 'Dark Contemporary'
-  else if (d.temperature > 0.3 && d.density > 0.3 && d.materialOrigin > 0.3)  styleName = 'Artisanal Maximalist'
-  else if (d.luminosity > 0.3 && d.nature > 0.3 && d.saturation < -0.3)       styleName = 'Coastal Organic'
-  else if (d.form < -0.3 && d.materialOrigin < -0.3 && d.luminosity < -0.3)   styleName = 'Industrial Modern'
-  else if (d.era > 0.3 && d.temperature > 0.3 && d.texture > 0.3)             styleName = 'Traditional Warmth'
-  else if (d.density > 0.3 && d.saturation > 0.3)                             styleName = 'Eclectic Maximalist'
+  const strongDims = DIMENSION_ORDER.filter(k => Math.abs(d[k as DimKey]) > 0.3)
 
-  // ── Step 4 — Style tags (top 4 dominant dimensions) ──────────────────────
+  let styleName: string
+  if (strongDims.length === 0) {
+    styleName = 'Your Unique Style'
+  } else {
+    styleName = 'Contemporary Eclectic'
+    if      (d.temperature > 0.3 && d.nature > 0.3 && d.form > 0.3)             styleName = 'Warm Japandi'
+    else if (d.temperature > 0.3 && d.texture > 0.3 && d.era > 0.3)             styleName = 'Cozy Heritage'
+    else if (d.luminosity > 0.3 && d.density < -0.3 && d.form < -0.3)           styleName = 'Nordic Minimal'
+    else if (d.luminosity < -0.3 && d.saturation > 0.3 && d.era < -0.3)         styleName = 'Dark Contemporary'
+    else if (d.temperature > 0.3 && d.density > 0.3 && d.materialOrigin > 0.3)  styleName = 'Artisanal Maximalist'
+    else if (d.luminosity > 0.3 && d.nature > 0.3 && d.saturation < -0.3)       styleName = 'Coastal Organic'
+    else if (d.form < -0.3 && d.materialOrigin < -0.3 && d.luminosity < -0.3)   styleName = 'Industrial Modern'
+    else if (d.era > 0.3 && d.temperature > 0.3 && d.texture > 0.3)             styleName = 'Traditional Warmth'
+    else if (d.density > 0.3 && d.saturation > 0.3)                             styleName = 'Eclectic Maximalist'
+  }
+
+  // ── Step 4 — Style tags (only strong dimensions) ─────────────────────────
+  // Tags only come from dimensions with |value| > 0.3 — never emit a
+  // directional label for a neutral (near-zero) dimension. If fewer than 4
+  // strong dimensions exist, fill with neutral/positive tags so the user
+  // never sees "Moody & Dark" or "Cool Palette" for a zero fingerprint.
   const DIM_LABELS: Record<string, [string, string]> = {
     luminosity:     ['Sun-Drenched', 'Moody & Dark'],
     density:        ['Richly Layered', 'Clean & Spare'],
@@ -321,16 +335,30 @@ async function computeNewFingerprint(
     materialOrigin: ['Handcrafted', 'Precision Made'],
   }
 
-  const dimsWithMag = DIMENSION_ORDER.map(k => ({
-    key: k,
-    value: d[k as DimKey],
-    mag: Math.abs(d[k as DimKey]),
-  })).sort((a, b) => b.mag - a.mag)
+  const NEUTRAL_FILLERS = [
+    'Balanced Style',
+    'Versatile Space',
+    'Open to Ideas',
+    'Your Taste',
+  ]
 
-  const styleTags = dimsWithMag.slice(0, 4).map(({ key, value }) => {
+  const THRESHOLD = 0.3
+  const strong = DIMENSION_ORDER
+    .map((k) => ({ key: k, value: d[k as DimKey], mag: Math.abs(d[k as DimKey]) }))
+    .filter((x) => x.mag > THRESHOLD)
+    .sort((a, b) => b.mag - a.mag)
+
+  const styleTags: string[] = strong.slice(0, 4).map(({ key, value }) => {
     const labels = DIM_LABELS[key]!
     return value > 0 ? labels[0] : labels[1]
   })
+
+  // Fill remaining slots with neutral tags
+  let fillerIdx = 0
+  while (styleTags.length < 4 && fillerIdx < NEUTRAL_FILLERS.length) {
+    styleTags.push(NEUTRAL_FILLERS[fillerIdx]!)
+    fillerIdx++
+  }
 
   return { fingerprint, styleName, styleTags }
 }
@@ -391,17 +419,24 @@ export async function POST(request: Request) {
 
       const { fingerprint, styleName, styleTags } = await computeNewFingerprint(body)
 
-      // Save if authenticated
+      // Save if authenticated. NOTE: the supabase-js query builder is a
+      // thenable, NOT a real Promise — `.catch()` is not a method on it.
+      // Calling `.catch()` directly throws "insert(...).catch is not a
+      // function" and 500s the route. Use try/catch on the awaited builder.
       if (user) {
-        const admin = createAdminSupabaseClient()
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (admin.from('style_fingerprints') as any).insert({
-          user_id: user.id,
-          vector_data: Object.values(fingerprint.dimensions),
-          style_name: styleName,
-          room_type: body.room_type,
-          entry_path: 'pairs',
-        }).catch(() => { /* non-fatal */ })
+        try {
+          const admin = createAdminSupabaseClient()
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (admin.from('style_fingerprints') as any).insert({
+            user_id: user.id,
+            vector_data: Object.values(fingerprint.dimensions),
+            style_name: styleName,
+            room_type: body.room_type,
+            entry_path: 'pairs',
+          })
+        } catch {
+          /* non-fatal — fingerprint result is still returned to the client */
+        }
       }
 
       return NextResponse.json({
@@ -424,17 +459,22 @@ export async function POST(request: Request) {
       const styleChips = matchedStyle.chips
       const fingerprint = toStyleFingerprint(rawVector)
 
+      // See note above about .catch() on the supabase-js builder.
       if (user) {
-        const admin = createAdminSupabaseClient()
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (admin.from('style_fingerprints') as any).insert({
-          user_id: user.id,
-          vector_data: rawVector,
-          style_name: styleName,
-          room_type,
-          entry_path,
-          quiz_responses: responses,
-        }).catch(() => { /* non-fatal */ })
+        try {
+          const admin = createAdminSupabaseClient()
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (admin.from('style_fingerprints') as any).insert({
+            user_id: user.id,
+            vector_data: rawVector,
+            style_name: styleName,
+            room_type,
+            entry_path,
+            quiz_responses: responses,
+          })
+        } catch {
+          /* non-fatal */
+        }
       }
 
       return NextResponse.json({
