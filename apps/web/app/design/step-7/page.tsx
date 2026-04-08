@@ -166,10 +166,7 @@ export default function Step7Page() {
   if (!hydrated || !roomStore.renderUrl || !roomStore.originalPhotoUrl) return null
 
   return (
-    <div
-      className="relative w-screen overflow-hidden bg-black"
-      style={{ height: '100svh' }}
-    >
+    <div className="fixed inset-0 overflow-hidden bg-black">
       {/* Comparison layer */}
       <div
         ref={containerRef}
@@ -182,13 +179,16 @@ export default function Step7Page() {
         onTouchStart={() => setIsDragging(true)}
         onTouchEnd={() => setIsDragging(false)}
       >
-        {/* AFTER image — base layer with CSS depth parallax */}
+        {/* AFTER image — base layer with subtle CSS depth parallax (translate only,
+            no scale, so before/after don't diverge at the drag seam). */}
         <div
           className="absolute inset-0"
           style={{
             transform:
-              'translate(var(--parallax-x, 0px), var(--parallax-y, 0px)) scale(1.05)',
-            transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+              'translate(var(--parallax-x, 0px), var(--parallax-y, 0px))',
+            transition: isDragging ? 'none' : 'transform 0.15s ease-out',
+            filter: 'none',
+            mixBlendMode: 'normal',
           }}
         >
           <Image
@@ -201,14 +201,21 @@ export default function Step7Page() {
           />
         </div>
 
-        {/* BEFORE image — clipped to the left of the drag handle */}
+        {/* BEFORE image — clipped to the left of the drag handle.
+            Zero color treatment: no filter, no mix-blend-mode, no overlay.
+            The inner div must be exactly the same size/position as the after
+            container so object-cover produces identical framing on both sides. */}
         <div
-          className="absolute inset-0 overflow-hidden"
-          style={{ width: `${dragPosition * 100}%` }}
+          className="absolute inset-y-0 left-0 overflow-hidden"
+          style={{
+            width: `${dragPosition * 100}%`,
+            filter: 'none',
+            mixBlendMode: 'normal',
+          }}
         >
           <div
-            className="relative h-full"
-            style={{ width: '100vw' }}
+            className="absolute inset-y-0 left-0 h-full"
+            style={{ width: '100vw', filter: 'none' }}
           >
             <Image
               src={roomStore.originalPhotoUrl}
@@ -217,14 +224,26 @@ export default function Step7Page() {
               priority
               sizes="100vw"
               className="object-cover"
+              style={{ filter: 'none' }}
             />
           </div>
         </div>
 
-        {/* Labels — quiet, not competing with the image */}
+        {/* Subtle edge vignette for depth — 15% darkening at the corners only,
+            no color tint. Sits above both images, below the handle and labels. */}
+        <div
+          className="pointer-events-none absolute inset-0 z-[5]"
+          style={{
+            background:
+              'radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.15) 100%)',
+          }}
+        />
+
+        {/* Labels — quiet, not competing with the image. No backdrop-blur to
+            avoid any chromatic blending with the navy page background. */}
         {dragPosition > 0.15 && (
           <div
-            className="absolute top-6 left-4 z-20 rounded-full bg-black/40 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.15em] text-white/70 backdrop-blur-sm"
+            className="absolute top-6 left-4 z-20 rounded-full bg-black/60 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.15em] text-white/80"
             style={{ fontFamily: 'var(--font-sans)' }}
           >
             Before
@@ -232,7 +251,7 @@ export default function Step7Page() {
         )}
         {dragPosition < 0.85 && (
           <div
-            className="absolute top-6 right-4 z-20 rounded-full bg-black/40 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.15em] text-white/70 backdrop-blur-sm"
+            className="absolute top-6 right-4 z-20 rounded-full bg-black/60 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.15em] text-white/80"
             style={{ fontFamily: 'var(--font-sans)' }}
           >
             After
@@ -283,7 +302,7 @@ export default function Step7Page() {
             <CovaButton
               variant="primary"
               size="lg"
-              className="flex-1"
+              className="flex-1 whitespace-nowrap"
               onClick={() => {
                 setStep(9)
                 router.push('/design/step-9')
@@ -294,7 +313,7 @@ export default function Step7Page() {
             <CovaButton
               variant="ghost"
               size="lg"
-              className="flex-1"
+              className="flex-1 whitespace-nowrap"
               onClick={() => {
                 setStep(8)
                 router.push('/design/step-8')

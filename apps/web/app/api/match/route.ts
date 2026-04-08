@@ -120,6 +120,39 @@ function getMatchLabel(score: number): 'Perfect Match' | 'Very Similar' | 'Inspi
   return 'Inspired By'
 }
 
+// Furniture retailer allowlist — keeps Serper/Lens results out of office-supply
+// and electronics-accessory territory. Matched as substrings against retailer hostname.
+const FURNITURE_RETAILER_ALLOWLIST = [
+  'wayfair', 'westelm', 'article', 'crateandbarrel', 'potterybarn', 'ikea',
+  'target', 'cb2', 'overstock', 'homedepot', 'bedbathandbeyond', 'macys',
+  'anthropologie', 'restoration', 'arhaus', 'joybird', 'burrow', 'castlery',
+  'amazon', 'walmart', 'costco', 'zgallerie', 'roomandboard',
+  'livingspaces', 'havertys', 'ashley', 'bob', 'raymour', 'ethan', 'crate',
+  'allmodern', 'worldmarket', 'lulu', 'birchlane', 'jossandmain', 'nordstrom',
+  'hayneedle', 'mcgee', 'serenaandlily',
+]
+
+function isFurnitureRetailer(retailer: string): boolean {
+  const host = retailer.toLowerCase().replace(/\s+/g, '')
+  return FURNITURE_RETAILER_ALLOWLIST.some((r) => host.includes(r))
+}
+
+// Minimum price to eliminate paper, office supplies, electronics accessories
+const FURNITURE_PRICE_FLOOR = 30
+
+function isFurnitureProduct(p: SerperProduct): boolean {
+  if (p.price < FURNITURE_PRICE_FLOOR) return false
+  if (!isFurnitureRetailer(p.retailer)) return false
+  // Also hostname-based check — defensive, in case retailer field is a display name
+  try {
+    const host = new URL(p.productUrl).hostname.replace(/^www\./, '').toLowerCase()
+    if (!FURNITURE_RETAILER_ALLOWLIST.some((r) => host.includes(r))) return false
+  } catch {
+    return false
+  }
+  return true
+}
+
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
@@ -195,13 +228,15 @@ export async function POST(request: Request) {
             {
               type: 'text',
               text: `Describe this ${item_label} for product matching.
+Focus only on furniture and home decor attributes.
+The search query must be suitable for finding this exact furniture piece on a furniture retailer website.
 Focus only on essential visual attributes that would help find a real product:
 - Material (e.g. "solid walnut wood", "bouclé fabric", "brushed brass")
 - Color (e.g. "warm camel", "charcoal grey", "natural oak")
 - Form (e.g. "low-profile with tapered legs", "rounded arms", "arc silhouette")
 - Scale indicator (e.g. "3-seater", "large", "accent")
 Do NOT describe lighting, shadows, or room context.
-Return a single search-optimized phrase under 15 words.
+Return a single search-optimized phrase under 15 words that names the furniture type.
 Example: "low-profile walnut coffee table tapered hairpin legs mid-century"`,
             },
           ],
@@ -216,10 +251,18 @@ Example: "low-profile walnut coffee table tapered hairpin legs mid-century"`,
       console.warn('[match] Claude Vision failed, using item label:', err)
     }
 
-    // Step 3: Serper Shopping — two queries in parallel (use per-item budget range)
+    // Step 3: Serper Shopping — furniture-constrained queries
+    // Google Shopping doesn't honor site: operators, so we bias the query with
+    // furniture-retailer keywords and apply a strict retailer allowlist post-search.
     const isTech = isTechItem(item_label)
-    const specificQuery = buildSearchQuery(itemDescription, itemBudgetRange, isTech)
-    const broaderQuery = buildSearchQuery(item_label, itemBudgetRange, isTech)
+    const furnitureRetailerHint =
+      'wayfair westelm article crate barrel pottery barn ikea target cb2'
+    const specificQuery = `${itemDescription} ${item_label} furniture ${furnitureRetailerHint}`
+    const broaderQuery = buildSearchQuery(
+      `${item_label} ${isTech ? '' : 'furniture'}`.trim(),
+      itemBudgetRange,
+      isTech
+    )
 
     // Google Lens visual search (if SEARCHAPI_KEY configured) — runs in parallel
     const lensPromise = searchGoogleLens(cropUrl).catch((e) => {
@@ -228,8 +271,8 @@ Example: "low-profile walnut coffee table tapered hairpin legs mid-century"`,
     })
 
     const [specificResults, broaderResults, lensResults] = await Promise.allSettled([
-      searchProducts(specificQuery, 10),
-      searchProducts(broaderQuery, 10),
+      searchProducts(specificQuery, 20),
+      searchProducts(broaderQuery, 20),
       lensPromise,
     ])
 
@@ -256,7 +299,7 @@ Example: "low-profile walnut coffee table tapered hairpin legs mid-century"`,
     }
     // Also deduplicate by normalized title (catches same product at different URLs)
     const seenTitles = new Set<string>()
-    const candidates = Array.from(allProductsMap.values()).filter((p) => {
+    let candidates = Array.from(allProductsMap.values()).filter((p) => {
       const normalized = p.title
         .toLowerCase()
         .replace(/[^a-z0-9\s]/g, '')
@@ -268,7 +311,34 @@ Example: "low-profile walnut coffee table tapered hairpin legs mid-century"`,
       return true
     })
 
-    // If Serper returned nothing (no API key, rate limited, etc.) — empty response
+    // Relevance filter: furniture retailers + $30 price floor
+    const preFilterCount = candidates.length
+    candidates = candidates.filter(isFurnitureProduct)
+    const postFilterCount = candidates.length
+    console.log(
+      `[match] candidates: ${preFilterCount} raw → ${postFilterCount} after furniture filter`
+    )
+
+    // Fallback search if fewer than 3 products survive the filter
+    if (candidates.length < 3) {
+      console.log('[match] < 3 after filter, running furniture fallback search')
+      const fallbackQuery = `${itemDescription} furniture ${item_label} sofa chair table lamp`
+      try {
+        const fallbackRes = await searchProducts(fallbackQuery, 30)
+        for (const p of fallbackRes.products) {
+          if (allProductsMap.has(p.productUrl)) continue
+          if (p.price < FURNITURE_PRICE_FLOOR) continue
+          if (!isFurnitureRetailer(p.retailer)) continue
+          allProductsMap.set(p.productUrl, p)
+          candidates.push(p)
+        }
+        console.log(`[match] after fallback: ${candidates.length} candidates`)
+      } catch (e) {
+        console.warn('[match] fallback search failed:', (e as Error).message)
+      }
+    }
+
+    // If still nothing — empty response
     if (candidates.length === 0) {
       return NextResponse.json({
         products: [],

@@ -276,11 +276,8 @@ export default function Step9Page() {
   if (!hydrated || !roomStore.renderUrl) return null
 
   return (
-    <div
-      className="relative w-screen overflow-hidden bg-black"
-      style={{ height: '100svh' }}
-    >
-      {/* Base render */}
+    <div className="fixed inset-0 overflow-hidden bg-black">
+      {/* Base render — fills the entire viewport */}
       <div className="absolute inset-0">
         <Image
           src={roomStore.renderUrl}
