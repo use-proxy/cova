@@ -53,7 +53,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<StatusResp
   // Ready if we have detections — depth_map_url may be null if depth model skipped
   if (keep_mask && keep_mask.length > 0) {
     // Re-apply current showToUser threshold — stored data may predate threshold changes
-    const detections = keep_mask.map((d) => ({ ...d, showToUser: d.confidence >= 0.35 }))
+    const detections = keep_mask.map((d) => ({ ...d, showToUser: d.confidence >= 0.40 }))
     return NextResponse.json({
       ready: true,
       detections,

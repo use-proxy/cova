@@ -83,14 +83,6 @@ const ARCHITECTURE_PROMPT = [
   'crown molding', 'wainscoting',
 ].join(' . ')
 
-// SAM mask prompt — comma-separated for schananas/grounded_sam
-const SAM_FURNITURE_PROMPT =
-  'sofa, couch, chair, armchair, accent chair, bed, desk, table, coffee table, dining table, ' +
-  'side table, bookshelf, bookcase, wardrobe, dresser, nightstand, lamp, floor lamp, table lamp, ' +
-  'ceiling light, pendant light, rug, curtain, curtains, blind, blinds, window treatment, ' +
-  'tv, television, monitor, plant, artwork, painting, picture frame, wall art, wall decoration, ' +
-  'mirror, cabinet, shelf, ottoman, bench, throw pillow, pillow, blanket, vase'
-
 // Remove repeated words in GroundingDINO labels ("pillow pillow" → "Pillow",
 // "curtain curtains blinds" → "Curtain blinds")
 function cleanLabel(raw: string): string {
@@ -149,52 +141,6 @@ async function toBase64DataUri(url: string): Promise<string> {
   return `data:${contentType};base64,${base64}`
 }
 
-async function getGroundedSamMaskUrl(photoUrl: string): Promise<string | undefined> {
-  try {
-    const output = await replicate.run(
-      'schananas/grounded_sam:ee871c19efb1941f55f66a3d7d960428c8a5afcb77449547fe8e5a3ab9ebc21c',
-      {
-        input: {
-          image: photoUrl,
-          mask_prompt: SAM_FURNITURE_PROMPT,
-          negative_mask_prompt: 'wall, floor, ceiling, window, door, baseboard, crown molding',
-          adjustment_factor: 0,
-        },
-      }
-    )
-    // Output is an array of 4 file URLs; index [2] is the primary segmentation mask
-    const extractUrl = (item: unknown): string | undefined => {
-      if (typeof item === 'string') return item
-      if (item && typeof (item as { url?: () => { href: string } }).url === 'function') {
-        return (item as { url(): { href: string } }).url().href
-      }
-      return undefined
-    }
-
-    const results: string[] = []
-    if (Array.isArray(output)) {
-      for (const item of output) {
-        const url = extractUrl(item)
-        if (url) results.push(url)
-      }
-    } else if (output && typeof (output as AsyncIterable<unknown>)[Symbol.asyncIterator] === 'function') {
-      for await (const item of output as AsyncIterable<unknown>) {
-        const url = extractUrl(item)
-        if (url) results.push(url)
-      }
-    } else {
-      const url = extractUrl(output)
-      if (url) results.push(url)
-    }
-
-    const maskUrl = results[2] ?? results[results.length - 1]
-    return maskUrl || undefined
-  } catch (err) {
-    console.error('[detect] grounded_sam mask call failed (non-fatal):', err)
-    return undefined
-  }
-}
-
 export async function detectFurniture(photoUrl: string): Promise<Detection[]> {
   try {
     const imageInput = await toBase64DataUri(photoUrl)
@@ -206,8 +152,8 @@ export async function detectFurniture(photoUrl: string): Promise<Detection[]> {
           input: {
             image: imageInput,
             query: FURNITURE_PROMPT,
-            box_threshold: 0.28,
-            text_threshold: 0.22,
+            box_threshold: 0.25,
+            text_threshold: 0.20,
           },
         }
       ) as Promise<{
@@ -218,26 +164,17 @@ export async function detectFurniture(photoUrl: string): Promise<Detection[]> {
 
     if (!output.detections) return []
 
-    const detections = deduplicateByIoU(
+    return deduplicateByIoU(
       output.detections
-        .filter((d) => d.confidence >= 0.35)
+        .filter((d) => d.confidence >= 0.30)
         .map((d) => ({
           type: 'furniture',
           label: cleanLabel(d.label),
           bbox: normalizeBbox(d.bbox, imgW, imgH),
           confidence: d.confidence,
-          showToUser: d.confidence >= 0.35,
+          showToUser: d.confidence >= 0.40,
         }))
     )
-
-    // Fire SAM call only if we have detections — it's slow (~71s) and expensive ($0.068)
-    if (detections.length === 0) return detections
-
-    const maskUrl = await getGroundedSamMaskUrl(imageInput)
-
-    // Attach the same combined mask URL to every item (shared mask for all furniture)
-    if (!maskUrl) return detections
-    return detections.map((d) => ({ ...d, mask_url: maskUrl }))
   } catch (err) {
     console.error('[detect] Furniture detection failed:', err)
     return []
@@ -255,8 +192,8 @@ export async function detectArchitecture(photoUrl: string): Promise<Detection[]>
           input: {
             image: imageInput,
             query: ARCHITECTURE_PROMPT,
-            box_threshold: 0.28,
-            text_threshold: 0.22,
+            box_threshold: 0.25,
+            text_threshold: 0.20,
           },
         }
       ) as Promise<{
@@ -269,13 +206,13 @@ export async function detectArchitecture(photoUrl: string): Promise<Detection[]>
 
     return deduplicateByIoU(
       output.detections
-        .filter((d) => d.confidence >= 0.35)
+        .filter((d) => d.confidence >= 0.30)
         .map((d) => ({
           type: 'architecture',
           label: cleanLabel(d.label),
           bbox: normalizeBbox(d.bbox, imgW, imgH),
           confidence: d.confidence,
-          showToUser: d.confidence >= 0.35,
+          showToUser: d.confidence >= 0.40,
         }))
     )
   } catch {

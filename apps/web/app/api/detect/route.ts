@@ -56,7 +56,10 @@ export async function POST(request: Request) {
     const [furniture, architecture, depthResult] = await Promise.all([
       withRetry(() => detectFurniture(photo_url)),
       withRetry(() => detectArchitecture(photo_url)),
-      estimateDepth(photo_url),
+      estimateDepth(photo_url).catch((err: Error) => {
+        console.error('[detect] Depth estimation failed (non-fatal):', err.message)
+        return { depth_map_url: null, quality_score: 0 }
+      }),
     ])
 
     const allDetections = [...furniture, ...architecture]

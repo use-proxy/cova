@@ -5,7 +5,7 @@ const replicate = new Replicate({
 })
 
 export interface DepthResult {
-  depth_map_url: string
+  depth_map_url: string | null
   quality_score: number
 }
 
