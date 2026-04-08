@@ -1,0 +1,665 @@
+{
+  "anchors": {
+    "1-Warm Japandi": {
+      "url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/anchors/1-warm-japandi.webp",
+      "storage_path": "anchors/1-warm-japandi.webp",
+      "livability": 4
+    },
+    "2-Dark Moody Glam": {
+      "url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/anchors/2-dark-moody-glam.webp",
+      "storage_path": "anchors/2-dark-moody-glam.webp",
+      "livability": 4
+    },
+    "3-Coastal Bright": {
+      "url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/anchors/3-coastal-bright.webp",
+      "storage_path": "anchors/3-coastal-bright.webp",
+      "livability": 4
+    },
+    "4-Industrial Loft": {
+      "url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/anchors/4-industrial-loft.webp",
+      "storage_path": "anchors/4-industrial-loft.webp",
+      "livability": 3
+    },
+    "5-Maximalist Eclectic": {
+      "url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/anchors/5-maximalist-eclectic.webp",
+      "storage_path": "anchors/5-maximalist-eclectic.webp",
+      "livability": 4
+    },
+    "6-Heritage Traditional": {
+      "url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/anchors/6-heritage-traditional.webp",
+      "storage_path": "anchors/6-heritage-traditional.webp",
+      "livability": 4
+    },
+    "7-Pure Minimal White": {
+      "url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/anchors/7-pure-minimal-white.webp",
+      "storage_path": "anchors/7-pure-minimal-white.webp",
+      "livability": 3
+    },
+    "8-Biophilic Jungle": {
+      "url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/anchors/8-biophilic-jungle.webp",
+      "storage_path": "anchors/8-biophilic-jungle.webp",
+      "livability": 4
+    },
+    "9-Retro Mid-Century": {
+      "url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/anchors/9-retro-mid-century.webp",
+      "storage_path": "anchors/9-retro-mid-century.webp",
+      "livability": 4
+    }
+  },
+  "baseRooms": {
+    "dim-0-colorTemperature": {
+      "url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/base-rooms/dim-0-colortemperature.webp",
+      "storage_path": "base-rooms/dim-0-colortemperature.webp",
+      "livability": 3
+    },
+    "dim-1-colorSaturation": {
+      "url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/base-rooms/dim-1-colorsaturation.webp",
+      "storage_path": "base-rooms/dim-1-colorsaturation.webp",
+      "livability": 4
+    },
+    "dim-2-density": {
+      "url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/base-rooms/dim-2-density.webp",
+      "storage_path": "base-rooms/dim-2-density.webp",
+      "livability": 4
+    },
+    "dim-3-formality": {
+      "url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/base-rooms/dim-3-formality.webp",
+      "storage_path": "base-rooms/dim-3-formality.webp",
+      "livability": 4
+    },
+    "dim-4-era": {
+      "url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/base-rooms/dim-4-era.webp",
+      "storage_path": "base-rooms/dim-4-era.webp",
+      "livability": 5
+    },
+    "dim-5-material": {
+      "url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/base-rooms/dim-5-material.webp",
+      "storage_path": "base-rooms/dim-5-material.webp",
+      "livability": 4
+    },
+    "dim-6-texture": {
+      "url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/base-rooms/dim-6-texture.webp",
+      "storage_path": "base-rooms/dim-6-texture.webp",
+      "livability": 5
+    },
+    "dim-7-pattern": {
+      "url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/base-rooms/dim-7-pattern.webp",
+      "storage_path": "base-rooms/dim-7-pattern.webp",
+      "livability": 4
+    },
+    "dim-8-lineQuality": {
+      "url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/base-rooms/dim-8-linequality.webp",
+      "storage_path": "base-rooms/dim-8-linequality.webp",
+      "livability": 4
+    },
+    "dim-9-lightPreference": {
+      "url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/base-rooms/dim-9-lightpreference.webp",
+      "storage_path": "base-rooms/dim-9-lightpreference.webp",
+      "livability": 5
+    },
+    "dim-10-nature": {
+      "url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/base-rooms/dim-10-nature.webp",
+      "storage_path": "base-rooms/dim-10-nature.webp",
+      "livability": 4
+    },
+    "dim-11-culturalInfluence": {
+      "url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/base-rooms/dim-11-culturalinfluence.webp",
+      "storage_path": "base-rooms/dim-11-culturalinfluence.webp",
+      "livability": 4
+    }
+  },
+  "pairs": {
+    "dim-0-colorTemperature-pair-0": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-0/0-a.png",
+      "a_path": "pairs/dim-0/0-a.png",
+      "a_livability": 3,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-0/0-b.png",
+      "b_path": "pairs/dim-0/0-b.png",
+      "b_livability": 3,
+      "is_validated": true
+    },
+    "dim-0-colorTemperature-pair-1": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-0/1-a.png",
+      "a_path": "pairs/dim-0/1-a.png",
+      "a_livability": 3,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-0/1-b.png",
+      "b_path": "pairs/dim-0/1-b.png",
+      "b_livability": 3,
+      "is_validated": true
+    },
+    "dim-0-colorTemperature-pair-2": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-0/2-a.png",
+      "a_path": "pairs/dim-0/2-a.png",
+      "a_livability": 3,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-0/2-b.png",
+      "b_path": "pairs/dim-0/2-b.png",
+      "b_livability": 3,
+      "is_validated": true
+    },
+    "dim-0-colorTemperature-pair-3": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-0/3-a.png",
+      "a_path": "pairs/dim-0/3-a.png",
+      "a_livability": 3,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-0/3-b.png",
+      "b_path": "pairs/dim-0/3-b.png",
+      "b_livability": 3,
+      "is_validated": true
+    },
+    "dim-0-colorTemperature-pair-4": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-0/4-a.png",
+      "a_path": "pairs/dim-0/4-a.png",
+      "a_livability": 3,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-0/4-b.png",
+      "b_path": "pairs/dim-0/4-b.png",
+      "b_livability": 3,
+      "is_validated": true
+    },
+    "dim-1-colorSaturation-pair-0": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-1/0-a.png",
+      "a_path": "pairs/dim-1/0-a.png",
+      "a_livability": 3,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-1/0-b.png",
+      "b_path": "pairs/dim-1/0-b.png",
+      "b_livability": 3,
+      "is_validated": true
+    },
+    "dim-1-colorSaturation-pair-1": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-1/1-a.png",
+      "a_path": "pairs/dim-1/1-a.png",
+      "a_livability": 3,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-1/1-b.png",
+      "b_path": "pairs/dim-1/1-b.png",
+      "b_livability": 3,
+      "is_validated": true
+    },
+    "dim-1-colorSaturation-pair-2": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-1/2-a.png",
+      "a_path": "pairs/dim-1/2-a.png",
+      "a_livability": 3,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-1/2-b.png",
+      "b_path": "pairs/dim-1/2-b.png",
+      "b_livability": 3,
+      "is_validated": true
+    },
+    "dim-1-colorSaturation-pair-3": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-1/3-a.png",
+      "a_path": "pairs/dim-1/3-a.png",
+      "a_livability": 3,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-1/3-b.png",
+      "b_path": "pairs/dim-1/3-b.png",
+      "b_livability": 3,
+      "is_validated": true
+    },
+    "dim-1-colorSaturation-pair-4": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-1/4-a.png",
+      "a_path": "pairs/dim-1/4-a.png",
+      "a_livability": 3,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-1/4-b.png",
+      "b_path": "pairs/dim-1/4-b.png",
+      "b_livability": 3,
+      "is_validated": true
+    },
+    "dim-2-density-pair-0": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-2/0-a.png",
+      "a_path": "pairs/dim-2/0-a.png",
+      "a_livability": 3,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-2/0-b.png",
+      "b_path": "pairs/dim-2/0-b.png",
+      "b_livability": 5,
+      "is_validated": true
+    },
+    "dim-2-density-pair-1": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-2/1-a.png",
+      "a_path": "pairs/dim-2/1-a.png",
+      "a_livability": 3,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-2/1-b.png",
+      "b_path": "pairs/dim-2/1-b.png",
+      "b_livability": 5,
+      "is_validated": true
+    },
+    "dim-2-density-pair-2": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-2/2-a.png",
+      "a_path": "pairs/dim-2/2-a.png",
+      "a_livability": 3,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-2/2-b.png",
+      "b_path": "pairs/dim-2/2-b.png",
+      "b_livability": 5,
+      "is_validated": true
+    },
+    "dim-2-density-pair-3": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-2/3-a.png",
+      "a_path": "pairs/dim-2/3-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-2/3-b.png",
+      "b_path": "pairs/dim-2/3-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-2-density-pair-4": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-2/4-a.png",
+      "a_path": "pairs/dim-2/4-a.png",
+      "a_livability": 3,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-2/4-b.png",
+      "b_path": "pairs/dim-2/4-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-3-formality-pair-0": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-3/0-a.png",
+      "a_path": "pairs/dim-3/0-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-3/0-b.png",
+      "b_path": "pairs/dim-3/0-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-3-formality-pair-1": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-3/1-a.png",
+      "a_path": "pairs/dim-3/1-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-3/1-b.png",
+      "b_path": "pairs/dim-3/1-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-3-formality-pair-2": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-3/2-a.png",
+      "a_path": "pairs/dim-3/2-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-3/2-b.png",
+      "b_path": "pairs/dim-3/2-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-3-formality-pair-3": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-3/3-a.png",
+      "a_path": "pairs/dim-3/3-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-3/3-b.png",
+      "b_path": "pairs/dim-3/3-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-3-formality-pair-4": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-3/4-a.png",
+      "a_path": "pairs/dim-3/4-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-3/4-b.png",
+      "b_path": "pairs/dim-3/4-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-4-era-pair-0": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-4/0-a.png",
+      "a_path": "pairs/dim-4/0-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-4/0-b.png",
+      "b_path": "pairs/dim-4/0-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-4-era-pair-1": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-4/1-a.png",
+      "a_path": "pairs/dim-4/1-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-4/1-b.png",
+      "b_path": "pairs/dim-4/1-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-4-era-pair-2": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-4/2-a.png",
+      "a_path": "pairs/dim-4/2-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-4/2-b.png",
+      "b_path": "pairs/dim-4/2-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-4-era-pair-3": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-4/3-a.png",
+      "a_path": "pairs/dim-4/3-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-4/3-b.png",
+      "b_path": "pairs/dim-4/3-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-4-era-pair-4": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-4/4-a.png",
+      "a_path": "pairs/dim-4/4-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-4/4-b.png",
+      "b_path": "pairs/dim-4/4-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-5-material-pair-0": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-5/0-a.png",
+      "a_path": "pairs/dim-5/0-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-5/0-b.png",
+      "b_path": "pairs/dim-5/0-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-5-material-pair-1": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-5/1-a.png",
+      "a_path": "pairs/dim-5/1-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-5/1-b.png",
+      "b_path": "pairs/dim-5/1-b.png",
+      "b_livability": 3,
+      "is_validated": true
+    },
+    "dim-5-material-pair-2": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-5/2-a.png",
+      "a_path": "pairs/dim-5/2-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-5/2-b.png",
+      "b_path": "pairs/dim-5/2-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-5-material-pair-3": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-5/3-a.png",
+      "a_path": "pairs/dim-5/3-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-5/3-b.png",
+      "b_path": "pairs/dim-5/3-b.png",
+      "b_livability": 3,
+      "is_validated": true
+    },
+    "dim-5-material-pair-4": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-5/4-a.png",
+      "a_path": "pairs/dim-5/4-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-5/4-b.png",
+      "b_path": "pairs/dim-5/4-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-6-texture-pair-0": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-6/0-a.png",
+      "a_path": "pairs/dim-6/0-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-6/0-b.png",
+      "b_path": "pairs/dim-6/0-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-6-texture-pair-1": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-6/1-a.png",
+      "a_path": "pairs/dim-6/1-a.png",
+      "a_livability": 5,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-6/1-b.png",
+      "b_path": "pairs/dim-6/1-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-6-texture-pair-2": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-6/2-a.png",
+      "a_path": "pairs/dim-6/2-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-6/2-b.png",
+      "b_path": "pairs/dim-6/2-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-6-texture-pair-3": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-6/3-a.png",
+      "a_path": "pairs/dim-6/3-a.png",
+      "a_livability": 5,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-6/3-b.png",
+      "b_path": "pairs/dim-6/3-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-6-texture-pair-4": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-6/4-a.png",
+      "a_path": "pairs/dim-6/4-a.png",
+      "a_livability": 5,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-6/4-b.png",
+      "b_path": "pairs/dim-6/4-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-7-pattern-pair-0": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-7/0-a.png",
+      "a_path": "pairs/dim-7/0-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-7/0-b.png",
+      "b_path": "pairs/dim-7/0-b.png",
+      "b_livability": 5,
+      "is_validated": true
+    },
+    "dim-7-pattern-pair-1": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-7/1-a.png",
+      "a_path": "pairs/dim-7/1-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-7/1-b.png",
+      "b_path": "pairs/dim-7/1-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-7-pattern-pair-2": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-7/2-a.png",
+      "a_path": "pairs/dim-7/2-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-7/2-b.png",
+      "b_path": "pairs/dim-7/2-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-7-pattern-pair-3": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-7/3-a.png",
+      "a_path": "pairs/dim-7/3-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-7/3-b.png",
+      "b_path": "pairs/dim-7/3-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-7-pattern-pair-4": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-7/4-a.png",
+      "a_path": "pairs/dim-7/4-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-7/4-b.png",
+      "b_path": "pairs/dim-7/4-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-8-lineQuality-pair-0": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-8/0-a.png",
+      "a_path": "pairs/dim-8/0-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-8/0-b.png",
+      "b_path": "pairs/dim-8/0-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-8-lineQuality-pair-1": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-8/1-a.png",
+      "a_path": "pairs/dim-8/1-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-8/1-b.png",
+      "b_path": "pairs/dim-8/1-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-8-lineQuality-pair-2": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-8/2-a.png",
+      "a_path": "pairs/dim-8/2-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-8/2-b.png",
+      "b_path": "pairs/dim-8/2-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-8-lineQuality-pair-3": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-8/3-a.png",
+      "a_path": "pairs/dim-8/3-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-8/3-b.png",
+      "b_path": "pairs/dim-8/3-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-8-lineQuality-pair-4": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-8/4-a.png",
+      "a_path": "pairs/dim-8/4-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-8/4-b.png",
+      "b_path": "pairs/dim-8/4-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-9-lightPreference-pair-0": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-9/0-a.png",
+      "a_path": "pairs/dim-9/0-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-9/0-b.png",
+      "b_path": "pairs/dim-9/0-b.png",
+      "b_livability": 5,
+      "is_validated": true
+    },
+    "dim-9-lightPreference-pair-1": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-9/1-a.png",
+      "a_path": "pairs/dim-9/1-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-9/1-b.png",
+      "b_path": "pairs/dim-9/1-b.png",
+      "b_livability": 5,
+      "is_validated": true
+    },
+    "dim-9-lightPreference-pair-2": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-9/2-a.png",
+      "a_path": "pairs/dim-9/2-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-9/2-b.png",
+      "b_path": "pairs/dim-9/2-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-9-lightPreference-pair-3": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-9/3-a.png",
+      "a_path": "pairs/dim-9/3-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-9/3-b.png",
+      "b_path": "pairs/dim-9/3-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-9-lightPreference-pair-4": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-9/4-a.png",
+      "a_path": "pairs/dim-9/4-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-9/4-b.png",
+      "b_path": "pairs/dim-9/4-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-10-nature-pair-0": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-10/0-a.png",
+      "a_path": "pairs/dim-10/0-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-10/0-b.png",
+      "b_path": "pairs/dim-10/0-b.png",
+      "b_livability": 3,
+      "is_validated": true
+    },
+    "dim-10-nature-pair-1": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-10/1-a.png",
+      "a_path": "pairs/dim-10/1-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-10/1-b.png",
+      "b_path": "pairs/dim-10/1-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-10-nature-pair-2": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-10/2-a.png",
+      "a_path": "pairs/dim-10/2-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-10/2-b.png",
+      "b_path": "pairs/dim-10/2-b.png",
+      "b_livability": 3,
+      "is_validated": true
+    },
+    "dim-10-nature-pair-3": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-10/3-a.png",
+      "a_path": "pairs/dim-10/3-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-10/3-b.png",
+      "b_path": "pairs/dim-10/3-b.png",
+      "b_livability": 3,
+      "is_validated": true
+    },
+    "dim-10-nature-pair-4": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-10/4-a.png",
+      "a_path": "pairs/dim-10/4-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-10/4-b.png",
+      "b_path": "pairs/dim-10/4-b.png",
+      "b_livability": 3,
+      "is_validated": true
+    },
+    "dim-11-culturalInfluence-pair-0": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-11/0-a.png",
+      "a_path": "pairs/dim-11/0-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-11/0-b.png",
+      "b_path": "pairs/dim-11/0-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-11-culturalInfluence-pair-1": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-11/1-a.png",
+      "a_path": "pairs/dim-11/1-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-11/1-b.png",
+      "b_path": "pairs/dim-11/1-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-11-culturalInfluence-pair-2": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-11/2-a.png",
+      "a_path": "pairs/dim-11/2-a.png",
+      "a_livability": 5,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-11/2-b.png",
+      "b_path": "pairs/dim-11/2-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-11-culturalInfluence-pair-3": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-11/3-a.png",
+      "a_path": "pairs/dim-11/3-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-11/3-b.png",
+      "b_path": "pairs/dim-11/3-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    },
+    "dim-11-culturalInfluence-pair-4": {
+      "a_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-11/4-a.png",
+      "a_path": "pairs/dim-11/4-a.png",
+      "a_livability": 4,
+      "b_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/pairs/dim-11/4-b.png",
+      "b_path": "pairs/dim-11/4-b.png",
+      "b_livability": 4,
+      "is_validated": true
+    }
+  },
+  "rejected": [
+    {
+      "kind": "pair",
+      "key": "dim-0-colorTemperature-pair-0",
+      "reason": "Replicate black-forest-labs/flux-kontext-pro failed after 3 attempts: Request to https://api.replicate.com/v1/models/black-forest-labs/flux-kontext-pro/predictions failed with status 422 Unprocessable Entity: {\"detail\":\"- input.output_format: output_format must be one of the following: \\\"jpg\\\", \\\"png\\\"\\n\",\"status\":422,\"title\":\"Input validation failed\",\"invalid_fields\":[{\"type\":\"enum\",\"field\":\"input.output_format\",\"description\":\"output_format must be one of the following: \\\"jpg\\\", \\\"png\\\"\"}]}\n."
+    }
+  ],
+  "spend": {
+    "flux_pro_calls": 22,
+    "flux_kontext_calls": 122,
+    "livability_calls": 142
+  }
+}
