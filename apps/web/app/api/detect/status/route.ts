@@ -15,7 +15,7 @@ type StatusNotReady = { ready: false }
 type StatusReady = {
   ready: true
   detections: KeepMaskItem[]
-  depth_map_url: string
+  depth_map_url: string | null
 }
 type StatusResponse = StatusNotReady | StatusReady
 
@@ -50,13 +50,14 @@ export async function GET(request: NextRequest): Promise<NextResponse<StatusResp
     keep_mask: KeepMaskItem[] | null
   }
 
-  if (depth_map_url && keep_mask) {
+  // Ready if we have detections — depth_map_url may be null if depth model skipped
+  if (keep_mask && keep_mask.length > 0) {
     // Re-apply current showToUser threshold — stored data may predate threshold changes
     const detections = keep_mask.map((d) => ({ ...d, showToUser: d.confidence >= 0.35 }))
     return NextResponse.json({
       ready: true,
       detections,
-      depth_map_url,
+      depth_map_url: depth_map_url ?? null,
     })
   }
 
