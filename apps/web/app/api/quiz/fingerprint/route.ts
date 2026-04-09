@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import type { StyleFingerprint } from '@/types/fingerprint'
+import { toDisplayName } from '@/lib/ai/anchor-display'
 
 // ── 12-dimension system ───────────────────────────────────────────────────────
 // All dimensions are in [0, 1] with 0.5 as the neutral midpoint.
@@ -349,12 +350,17 @@ async function computeNewFingerprint(
   const d = fingerprint.dimensions
   const strongDims = DIMENSION_ORDER.filter(k => Math.abs(d[k] - NEUTRAL_MIDPOINT) > STRONG_BAND)
 
+  // Internal anchor name (e.g. "Warm Japandi") is used by server-side
+  // matching only. The user-facing label goes through toDisplayName() so
+  // CLAUDE.md hard rule #8 (no forbidden style names in user-facing strings)
+  // is honored at the route boundary — this is the *only* place where the
+  // raw anchor name leaves the server.
   let styleName: string
   if (strongDims.length === 0) {
     styleName = 'Your Unique Style'
   } else {
     const fpVec = DIMENSION_ORDER.map((k) => d[k])
-    styleName = matchStyle(fpVec).name
+    styleName = toDisplayName(matchStyle(fpVec).name)
   }
 
   // ── Step 4 — Style tags (only directional dimensions) ─────────────────────
@@ -497,7 +503,8 @@ export async function POST(request: Request) {
 
       const rawVector = computeRawVector(responses)
       const matchedStyle = matchStyle(rawVector)
-      const styleName = matchedStyle.name
+      // Map internal anchor name → user-facing display label (rule #8).
+      const styleName = toDisplayName(matchedStyle.name)
       const styleChips = matchedStyle.chips
       const fingerprint = toStyleFingerprint(rawVector)
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import type { StyleFingerprint } from '@/types/fingerprint'
+import { toDisplayName } from '@/lib/ai/anchor-display'
 
 // ── /api/style-references/match ──────────────────────────────────────────────
 // Match a 12-dim style fingerprint to the closest of the 9 anchor styles in
@@ -83,8 +84,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No match' }, { status: 500 })
     }
 
+    // Return the user-facing display name (rule #8). The internal anchor
+    // name `bestRow.style_name` never reaches the client.
     return NextResponse.json({
-      styleName: bestRow.style_name,
+      styleName: toDisplayName(bestRow.style_name),
       styleIndex: bestRow.style_index,
       distance: bestDist,
       imageUrl: bestRow.image_url,

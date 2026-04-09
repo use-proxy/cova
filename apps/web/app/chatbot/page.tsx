@@ -26,7 +26,7 @@ const PRELOADED_MESSAGES: Message[] = [
     id: "m4",
     role: "assistant",
     content:
-      'Here are three floor lamps that would complement your Japandi style perfectly.\n\n<products>\n[{"name":"Oda Floor Lamp","price":349,"retailer":"Article","image":"https://images.unsplash.com/photo-1507473885765-e6ed057ab3fe?w=300","url":"#"},{"name":"Arc Brass Lamp","price":289,"retailer":"CB2","image":"https://images.unsplash.com/photo-1543198126-a8ad8e47fb22?w=300","url":"#"},{"name":"Stick Floor Light","price":199,"retailer":"West Elm","image":"https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?w=300","url":"#"}]\n</products>',
+      'Here are three floor lamps that would complement your space perfectly.\n\n<products>\n[{"name":"Oda Floor Lamp","price":349,"retailer":"Article","image":"https://images.unsplash.com/photo-1507473885765-e6ed057ab3fe?w=300","url":"#"},{"name":"Arc Brass Lamp","price":289,"retailer":"CB2","image":"https://images.unsplash.com/photo-1543198126-a8ad8e47fb22?w=300","url":"#"},{"name":"Stick Floor Light","price":199,"retailer":"West Elm","image":"https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?w=300","url":"#"}]\n</products>',
   },
 ]
 

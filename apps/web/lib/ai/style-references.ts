@@ -1,19 +1,34 @@
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import type { StyleFingerprint } from '@/types/fingerprint'
 
-// Same cosine similarity + room-type boost as the /api/style-references/match
-// route. Kept server-side so the render route can resolve the top style
-// reference directly without making an internal HTTP round-trip.
+// Server-side helper that returns the closest anchor style image to a user's
+// fingerprint. Used by /api/render to drive the multi-image kontext path —
+// the returned image_url becomes the style reference passed to flux-kontext.
+//
+// Migrated from style_references → quiz_anchor_images in Session C cleanup.
+// Cosine similarity over the 12-dim style_vector. Higher = closer.
+
+const DIMENSION_ORDER = [
+  'colorTemperature', 'colorSaturation', 'density', 'formality',
+  'era', 'material', 'texture', 'pattern',
+  'lineQuality', 'lightPreference', 'nature', 'culturalInfluence',
+] as const
 
 function cosineSim(
   a: Record<string, number>,
   b: Record<string, number>,
 ): number {
-  const keys = Object.keys(a)
-  const dot = keys.reduce((s, k) => s + a[k] * (b[k] ?? 0), 0)
-  const magA = Math.sqrt(keys.reduce((s, k) => s + a[k] ** 2, 0))
-  const magB = Math.sqrt(keys.reduce((s, k) => s + (b[k] ?? 0) ** 2, 0))
-  return dot / (magA * magB + 1e-8)
+  let dot = 0
+  let magA = 0
+  let magB = 0
+  for (const k of DIMENSION_ORDER) {
+    const av = a[k] ?? 0.5
+    const bv = b[k] ?? 0.5
+    dot += av * bv
+    magA += av * av
+    magB += bv * bv
+  }
+  return dot / (Math.sqrt(magA) * Math.sqrt(magB) + 1e-8)
 }
 
 export interface StyleReferenceMatch {
@@ -25,34 +40,34 @@ export interface StyleReferenceMatch {
 
 export async function fetchTopStyleReference(
   fingerprint: StyleFingerprint,
-  roomType: string,
+  // Kept in the signature for backwards compatibility with the render route.
+  // quiz_anchor_images is room-agnostic, so the parameter is unused.
+  _roomType: string,
 ): Promise<StyleReferenceMatch | null> {
   try {
     const admin = createAdminSupabaseClient()
-    const { data: refs, error } = await admin
-      .from('style_references')
-      .select('id, image_url, room_type, dimension_labels, style_name')
+    const { data, error } = await admin
+      .from('quiz_anchor_images')
+      .select('id, image_url, style_name, style_vector')
 
-    if (error || !refs || refs.length === 0) return null
+    if (error || !data || data.length === 0) return null
 
     const dims = fingerprint.dimensions as unknown as Record<string, number>
 
-    const scored = refs
-      .filter((ref) => ref.dimension_labels != null)
-      .map((ref) => {
-        const refDims = ref.dimension_labels as Record<string, number>
-        let similarity = cosineSim(dims, refDims)
-        if (ref.room_type === roomType) similarity *= 1.3
-        return {
-          id: ref.id as string,
-          image_url: ref.image_url as string,
-          style_name: (ref.style_name ?? '') as string,
+    let best: StyleReferenceMatch | null = null
+    for (const row of data) {
+      const sv = row.style_vector as Record<string, number>
+      const similarity = cosineSim(dims, sv)
+      if (!best || similarity > best.similarity) {
+        best = {
+          id: row.id as string,
+          image_url: row.image_url as string,
+          style_name: (row.style_name ?? '') as string,
           similarity,
         }
-      })
-
-    scored.sort((a, b) => b.similarity - a.similarity)
-    return scored[0] ?? null
+      }
+    }
+    return best
   } catch (err) {
     console.error('[style-references] fetchTopStyleReference failed:', err)
     return null
