@@ -1,420 +1,212 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
-import { AlertCircle } from 'lucide-react'
-import Image from 'next/image'
+import { motion } from 'framer-motion'
+import { Upload } from 'lucide-react'
 
-import { useRoomStore } from '@/lib/store/room'
-import { useFingerprintStore } from '@/lib/store/fingerprint'
-import { CovaButton } from '@/components/cova/CovaButton'
+// ─── Animation Variants ──────────────────────────────────────────────────────
 
-// ─── Types ─────────────────────────────────────────────────────────────────
-
-type RenderStage = 'firing' | 'preview' | 'complete' | 'error'
-
-// ─── Constants ─────────────────────────────────────────────────────────────
-
-const POLL_INTERVAL_MS = 3000
-const MAX_POLLS = 30 // 90 seconds total
-
-// ─── Stage indicator text ───────────────────────────────────────────────────
-
-const STAGE_TEXT: Record<RenderStage, string> = {
-  firing: 'Applying your style...',
-  preview: 'Refining details...',
-  complete: 'Your room is ready',
-  error: '',
+const container = {
+  hidden: {},
+  show: {
+    transition: { staggerChildren: 0.08 },
+  },
 }
 
-// ─── Main page ──────────────────────────────────────────────────────────────
+const item = {
+  hidden: { opacity: 0, y: 24 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number] } },
+}
+
+// ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function Step6Page() {
   const router = useRouter()
 
-  const roomStore = useRoomStore()
-  const fingerprintStore = useFingerprintStore()
-
-  const [stage, setStage] = useState<RenderStage>('firing')
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [, setPollCount] = useState(0)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [fireCount, setFireCount] = useState(0) // incremented to re-trigger render fire
+  const [isDragOver, setIsDragOver] = useState(false)
 
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-      if (timeoutRef.current) clearTimeout(timeoutRef.current)
-    }
+  // ─── File handlers ─────────────────────────────────────────────────────────
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadedFile(file)
+    setPreviewUrl(URL.createObjectURL(file))
   }, [])
 
-  // ─── Fire render on mount ─────────────────────────────────────────────────
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(false)
+    const file = e.dataTransfer.files?.[0]
+    if (!file) return
+    setUploadedFile(file)
+    setPreviewUrl(URL.createObjectURL(file))
+  }, [])
 
-  useEffect(() => {
-    const { roomId, originalPhotoUrl, depthMapUrl, keepMask, referenceImageUrls, renderUrl, predictionId } = roomStore
-    const { fingerprint, roomType, budgetTier } = fingerprintStore
+  // ─── CTA handler ───────────────────────────────────────────────────────────
 
-    // Guard: missing room
-    if (!roomId || !originalPhotoUrl) {
-      router.push('/design/step-2')
-      return
-    }
-
-    // Guard: missing fingerprint
-    if (!fingerprint) {
-      router.push('/design/step-3')
-      return
-    }
-
-    // Guard: render already complete (back navigation)
-    if (renderUrl) {
-      router.push('/design/step-7a')
-      return
-    }
-
-    // Guard: prediction already in flight (e.g. React strict mode double-invoke)
-    if (predictionId) {
-      return
-    }
-
-    const payload = {
-      room_id: roomId,
-      photo_url: originalPhotoUrl,
-      depth_map_url: depthMapUrl ?? null,
-      keep_mask: keepMask ?? [],
-      fingerprint_vector: fingerprint,
-      reference_image_urls: referenceImageUrls ?? [],
-      room_type: roomType ?? 'bedroom',
-      budget: budgetTier ?? 'mid',
-      inclusions: fingerprintStore.inclusions ?? [],
-      constraints: fingerprintStore.constraints ?? [],
-      room_analysis: roomStore.roomAnalysis ?? null,
-    }
-
-    fetch('/api/render', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(payload),
-    })
-      .then(async (res) => {
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}))
-          throw new Error((data as { error?: string }).error ?? `Render failed (${res.status})`)
-        }
-        return res.json() as Promise<{ prediction_id: string; schnell_prediction_id?: string }>
-      })
-      .then((data) => {
-        roomStore.setPredictionIds(data.prediction_id, data.schnell_prediction_id)
-      })
-      .catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : 'Render failed — please try again'
-        setStage('error')
-        setErrorMessage(msg)
-      })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fireCount])
-
-  // ─── Polling ──────────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    const { predictionId, schnellPredictionId, roomId } = roomStore
-    if (!predictionId || !roomId) return
-    if (stage === 'complete' || stage === 'error') return
-
-    let localPollCount = 0
-
-    intervalRef.current = setInterval(async () => {
-      if (localPollCount >= MAX_POLLS) {
-        clearInterval(intervalRef.current!)
-        setStage('error')
-        setErrorMessage('Render timed out — please try again')
-        return
-      }
-
-      try {
-        const schnellParam = schnellPredictionId ? `&schnell_prediction_id=${schnellPredictionId}` : ''
-        const res = await fetch(
-          `/api/render/status?prediction_id=${predictionId}&room_id=${roomId}${schnellParam}`,
-          { credentials: 'include' },
-        )
-        if (res.status === 401) {
-          clearInterval(intervalRef.current!)
-          router.push('/design/step-2')
-          return
-        }
-
-        const data = (await res.json()) as {
-          status?: string
-          render_url?: string
-          preview_url?: string
-          render_session_id?: string | null
-          error?: string
-        }
-
-        localPollCount += 1
-        setPollCount(localPollCount)
-
-        // Preview URL (optional — API may not return this)
-        if (data.preview_url && !previewUrl) {
-          setPreviewUrl(data.preview_url)
-          roomStore.setPreviewUrl(data.preview_url)
-          setStage('preview')
-        }
-
-        // Full render complete
-        if (data.render_url) {
-          clearInterval(intervalRef.current!)
-          roomStore.setRenderUrl(data.render_url)
-          roomStore.addRenderSession({
-            id: data.render_session_id ?? crypto.randomUUID(),
-            renderUrl: data.render_url,
-            previewUrl: data.preview_url ?? null,
-            parallaxVideoUrl: null,
-            iteration: roomStore.currentRenderIteration,
-            createdAt: new Date().toISOString(),
-          })
-          setStage('complete')
-          timeoutRef.current = setTimeout(() => router.push('/design/step-7a'), 800)
-          return
-        }
-
-        // Error from API
-        if (data.status === 'failed' || data.error) {
-          clearInterval(intervalRef.current!)
-          setStage('error')
-          setErrorMessage(data.error ?? 'Render failed — please try again')
-        }
-      } catch {
-        // transient network error — keep polling
-      }
-    }, POLL_INTERVAL_MS)
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomStore.predictionId])
-
-  // ─── Retry handler ────────────────────────────────────────────────────────
-
-  const handleRetry = useCallback(() => {
-    // Clear existing prediction so fire guard doesn't skip
-    roomStore.setPredictionIds('', undefined)
-    if (intervalRef.current) clearInterval(intervalRef.current)
-    if (timeoutRef.current) clearTimeout(timeoutRef.current)
-    setStage('firing')
-    setPreviewUrl(null)
-    setPollCount(0)
-    setErrorMessage(null)
-    setFireCount((c) => c + 1)
-  }, [roomStore])
-
-  // ─── Derived values ───────────────────────────────────────────────────────
-
-  const { originalPhotoUrl } = roomStore
-  const isShimmering = stage === 'firing' || stage === 'preview'
-  const progressWidth = stage === 'complete' ? '100%' : '40%'
-
-  // ─── Error state ──────────────────────────────────────────────────────────
-
-  if (stage === 'error') {
-    return (
-      <div
-        className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden font-sans"
-        style={{ background: 'var(--cova-bg)' }}
-      >
-        {/* Blurred background */}
-        {originalPhotoUrl && (
-          <div className="absolute inset-0 pointer-events-none" aria-hidden>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={originalPhotoUrl}
-              alt=""
-              className="absolute inset-0 w-full h-full object-cover"
-              style={{ filter: 'blur(24px) brightness(0.3)', transform: 'scale(1.1)' }}
-            />
-          </div>
-        )}
-
-        <div className="relative z-10 flex flex-col items-center gap-2 px-8 max-w-sm text-center">
-          <AlertCircle size={48} style={{ color: 'var(--cova-error)' }} />
-          <h2
-            className="font-serif mt-4"
-            style={{ color: 'var(--cova-ivory)', fontSize: 'var(--text-2xl)' }}
-          >
-            Render failed
-          </h2>
-          <p
-            className="font-sans mt-2 max-w-xs"
-            style={{ color: 'var(--cova-muted)', fontSize: 'var(--text-sm)' }}
-          >
-            {errorMessage}
-          </p>
-          <div className="mt-8 flex gap-3">
-            <CovaButton variant="primary" onClick={handleRetry}>
-              Try Again
-            </CovaButton>
-            <CovaButton variant="ghost" onClick={() => router.push('/design/step-5')}>
-              Go Back
-            </CovaButton>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // ─── Normal state (firing / preview / complete) ───────────────────────────
+  const handleAnalyze = useCallback(() => {
+    if (!uploadedFile) return
+    router.push('/design/step-7')
+  }, [uploadedFile, router])
 
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden font-sans"
-      style={{ background: 'var(--cova-bg)' }}
-    >
-      {/* ── Background Layer ── */}
-      <div className="absolute inset-0 pointer-events-none" aria-hidden>
-        {/* Base: blurred original photo */}
-        {originalPhotoUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={originalPhotoUrl}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover"
-            style={{
-              filter: 'blur(24px) brightness(0.4)',
-              transform: 'scale(1.1)',
-            }}
-          />
-        )}
+    <div className="min-h-screen bg-[#091829] font-dm-sans">
 
-        {/* Top layer: Schnell preview crossfade (if present) */}
-        <AnimatePresence>
-          {previewUrl && (
-            <motion.div
-              key="preview-bg"
-              className="absolute inset-0"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: stage === 'complete' ? 1 : 0.85 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 1.2, ease: 'easeInOut' }}
-            >
-              <Image
-                src={previewUrl}
-                alt=""
-                fill
-                className="object-cover"
-                style={{
-                  filter: stage === 'complete' ? 'none' : 'brightness(0.7)',
-                }}
-                priority
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+      {/* Gold progress bar */}
+      <div
+        className="fixed top-0 left-0 right-0 z-[60]"
+        style={{ height: 3, background: 'rgba(201,168,76,0.15)' }}
+      >
+        <div
+          className="h-full bg-cova-gold transition-[width] duration-[400ms] ease-out"
+          style={{ width: '71%' }}
+        />
       </div>
 
-      {/* ── Foreground content ── */}
-      <div className="relative z-10 flex flex-col items-center gap-6 px-8 max-w-sm text-center">
-        {/* Heading */}
-        <h2
-          className="font-serif"
-          style={{
-            color: 'var(--cova-ivory)',
-            fontSize: 'var(--text-3xl)',
-            textShadow: '0 2px 20px rgba(0,0,0,0.8)',
-          }}
-        >
-          Designing your room...
-        </h2>
+      {/* Frosted glass top bar */}
+      <div
+        className="sticky top-0 h-14 z-[50] flex items-center justify-between px-6 border-b border-[rgba(201,168,76,0.1)]"
+        style={{
+          background: 'rgba(9,24,41,0.8)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+        }}
+      >
+        <span className="font-playfair italic text-xl text-cova-gold tracking-[0.05em]">
+          Cova
+        </span>
+        <span className="font-dm-sans font-semibold text-[15px] text-cova-ivory">
+          Upload Your Room
+        </span>
+        <span className="font-dm-sans text-[13px] text-cova-muted">
+          Step 5 of 7
+        </span>
+      </div>
 
-        {/* Progress bar */}
-        <div className="flex flex-col items-center gap-2 w-full">
+      {/* Main content */}
+      <motion.div
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="pt-12 pb-[120px] px-6 max-w-[680px] mx-auto text-center"
+      >
+
+        {/* Section heading */}
+        <motion.h1
+          variants={item}
+          className="font-playfair text-[40px] font-normal text-cova-ivory mb-2 mt-0"
+        >
+          Upload your room
+        </motion.h1>
+
+        {/* Subtext */}
+        <motion.p
+          variants={item}
+          className="font-dm-sans text-[15px] text-cova-muted mb-8"
+        >
+          We&apos;ll analyze every detail.
+        </motion.p>
+
+        {/* Upload zone */}
+        <motion.div variants={item}>
           <div
-            className="overflow-hidden rounded-full"
+            onDragOver={(e) => { e.preventDefault(); setIsDragOver(true) }}
+            onDragLeave={() => setIsDragOver(false)}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className="relative overflow-hidden flex flex-col items-center justify-center rounded-xl cursor-pointer transition-all duration-200 ease-out"
             style={{
-              width: 256,
-              height: 2,
-              background: 'rgba(255,255,255,0.2)',
+              minHeight: 400,
+              border: isDragOver
+                ? '2px solid rgba(201,168,76,0.8)'
+                : '2px dashed rgba(201,168,76,0.35)',
+              background: isDragOver
+                ? 'rgba(201,168,76,0.06)'
+                : previewUrl ? 'transparent' : 'rgba(255,255,255,0.04)',
             }}
           >
-            <div
-              style={{
-                height: '100%',
-                width: progressWidth,
-                background: 'var(--cova-gold)',
-                borderRadius: 9999,
-                transition: stage === 'complete' ? 'width 500ms ease' : undefined,
-                animation: isShimmering ? 'shimmer 1.8s ease-in-out infinite' : undefined,
-              }}
-            />
+            {previewUrl ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={previewUrl}
+                  alt="Room preview"
+                  className="w-full h-full object-cover absolute inset-0"
+                />
+                {/* Dark gradient overlay at bottom */}
+                <div
+                  className="absolute bottom-0 left-0 right-0"
+                  style={{
+                    height: 80,
+                    background: 'linear-gradient(transparent, rgba(9,24,41,0.8))',
+                  }}
+                />
+                <p className="font-dm-sans text-sm text-cova-ivory absolute bottom-4 text-center w-full">
+                  Looking good. Ready to analyze.
+                </p>
+              </>
+            ) : (
+              <>
+                <Upload size={48} color="#C9A84C" />
+                <p className="font-dm-sans text-base text-cova-ivory mt-4 mb-0">
+                  Drag &amp; drop your photo here
+                </p>
+                <p className="font-dm-sans text-sm text-cova-muted my-2">
+                  or
+                </p>
+                <p className="font-dm-sans text-sm text-cova-gold cursor-pointer">
+                  Browse files
+                </p>
+              </>
+            )}
           </div>
 
-          {/* Stage text */}
-          <AnimatePresence mode="wait">
-            <motion.p
-              key={stage}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="font-sans"
-              style={{ color: 'rgba(255,255,255,0.6)', fontSize: 'var(--text-xs)' }}
-            >
-              {STAGE_TEXT[stage]}
-            </motion.p>
-          </AnimatePresence>
-        </div>
+          {/* Hidden file input */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept="image/*,.heic"
+            className="hidden"
+            onChange={handleFileChange}
+          />
 
-        {/* Preview thumbnail (only when preview URL available) */}
-        <AnimatePresence>
-          {previewUrl && (
-            <motion.div
-              key="preview-thumb"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              transition={{ duration: 0.6 }}
-              className="flex flex-col items-center gap-1"
-            >
-              <div
-                className="relative overflow-hidden"
-                style={{
-                  width: 128,
-                  height: 96,
-                  borderRadius: 12,
-                  border: '1px solid rgba(255,255,255,0.2)',
-                }}
-              >
-                <Image
-                  src={previewUrl}
-                  alt="Preview"
-                  fill
-                  className="object-cover"
-                />
-              </div>
-              <p
-                className="font-sans"
-                style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'var(--text-xs)' }}
-              >
-                Preview
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+          {/* File format note */}
+          <p className="font-dm-sans text-[13px] text-cova-muted mt-3 text-center">
+            JPG, PNG or HEIC — max 25MB
+          </p>
+        </motion.div>
 
-      {/* Keyframes */}
-      <style>{`
-        @keyframes shimmer {
-          0%   { transform: translateX(-100%); }
-          100% { transform: translateX(200%); }
-        }
-      `}</style>
+        {/* CTA */}
+        <motion.div
+          variants={item}
+          className="mt-8 flex justify-center"
+        >
+          <motion.button
+            onClick={handleAnalyze}
+            disabled={!uploadedFile}
+            whileHover={uploadedFile ? { scale: 1.02, backgroundColor: '#D4B460' } : {}}
+            whileTap={uploadedFile ? { scale: 0.97 } : {}}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="bg-cova-gold text-[#091829] font-dm-sans font-semibold text-[15px] rounded-lg border-none"
+            style={{
+              padding: '12px 24px',
+              cursor: uploadedFile ? 'pointer' : 'not-allowed',
+              opacity: uploadedFile ? 1 : 0.4,
+              pointerEvents: uploadedFile ? 'auto' : 'none',
+              transition: 'opacity 300ms ease',
+            }}
+          >
+            Analyze My Room →
+          </motion.button>
+        </motion.div>
+
+      </motion.div>
     </div>
   )
 }

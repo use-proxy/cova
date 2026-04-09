@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { EB_Garamond, Inter } from "next/font/google";
+import { EB_Garamond, Inter, Playfair_Display, DM_Sans } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 import { AnalyticsProvider } from "@/components/providers/AnalyticsProvider";
@@ -14,6 +14,21 @@ const ebGaramond = EB_Garamond({
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
+  display: "swap",
+});
+
+const playfairDisplay = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-playfair",
+  weight: ["400", "700"],
+  style: ["normal", "italic"],
+  display: "swap",
+});
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-dm-sans",
+  weight: ["400", "500", "600"],
   display: "swap",
 });
 
@@ -37,7 +52,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${ebGaramond.variable} ${inter.variable} ${geistMono.variable} antialiased`}
+        className={`${ebGaramond.variable} ${inter.variable} ${playfairDisplay.variable} ${dmSans.variable} ${geistMono.variable} antialiased`}
       >
         <AnalyticsProvider>{children}</AnalyticsProvider>
         <Toaster position="top-center" richColors />

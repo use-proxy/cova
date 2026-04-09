@@ -11,24 +11,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
+import { ArrowRight } from 'lucide-react'
 import { createBrowserClient } from '@/lib/supabase/client'
 import { useArea2Store } from '@/lib/stores/area2Store'
 import { persistRenderContext } from '@/lib/ai/renderContext/persist'
 import type { TabId } from '@/lib/types/area2'
 
-// ─── Tokens ────────────────────────────────────────────────────────────────
-
-const bg = 'var(--cova-bg)'
-const surface = 'var(--cova-surface)'
-const surface2 = 'var(--cova-surface-2)'
-const border = 'var(--cova-border)'
-const gold = 'var(--cova-gold)'
-const goldDim = 'var(--cova-gold-dim)'
-const ivory = 'var(--cova-ivory)'
-const muted = 'var(--cova-muted)'
-const success = 'var(--cova-success)'
-
-// ─── Tab labels + starters ─────────────────────────────────────────────────
+// ─── Tab labels + starters ────────────────────────────────────────────────────
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'budget', label: 'Budget' },
@@ -72,11 +62,26 @@ const STARTERS: Record<TabId, string[]> = {
   ],
 }
 
-// ─── URL detection ──────────────────────────────────────────────────────────
-
 const URL_RE = /https?:\/\/[^\s]+/i
 
-// ─── Page ──────────────────────────────────────────────────────────────────
+// ─── Typing indicator component ───────────────────────────────────────────────
+
+function TypingIndicator() {
+  return (
+    <div className="flex gap-[6px] items-center p-3 px-4">
+      {[0, 1, 2].map((i) => (
+        <motion.div
+          key={i}
+          animate={{ opacity: [0.3, 1, 0.3] }}
+          transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+          className="w-[7px] h-[7px] rounded-full bg-cova-gold"
+        />
+      ))}
+    </div>
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 interface InlineArt {
   messageIndex: number
@@ -105,14 +110,13 @@ export default function Step7DPage() {
   const [ctaError, setCtaError] = useState<string | null>(null)
   const [inlineArt, setInlineArt] = useState<Record<string, InlineArt[]>>({})
   const [artPolling, setArtPolling] = useState<{ roomId: string; tabKey: TabId; messageIndex: number } | null>(null)
-  // Pending image for the Identity tab (Tab 6). Computed client-side before sending.
   const [pendingImage, setPendingImage] = useState<{ base64: string; contentHash: string } | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => setHydrated(true), [])
 
-  // Poll for art generation results every 3s when triggered.
+  // Poll for art generation results.
   useEffect(() => {
     if (!artPolling) return
     const { roomId: pollingRoomId, tabKey, messageIndex } = artPolling
@@ -180,18 +184,14 @@ export default function Step7DPage() {
     return 'empty'
   }
 
-  // Handles image selection for the Identity tab. Computes a SHA-256 hash
-  // client-side via SubtleCrypto so the server can detect duplicate uploads.
   const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     try {
       const arrayBuffer = await file.arrayBuffer()
-      // Compute SHA-256 content hash for dedup
       const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer)
       const hashArray = Array.from(new Uint8Array(hashBuffer))
       const contentHash = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
-      // Convert to base64 for the API
       const bytes = new Uint8Array(arrayBuffer)
       let binary = ''
       for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]!)
@@ -199,15 +199,13 @@ export default function Step7DPage() {
       setPendingImage({ base64, contentHash })
       if (!input) setInput('I want to share this image for inspiration.')
     } catch {
-      // Ignore — user can still type without image
+      // Ignore
     }
-    // Reset input so the same file can be re-selected if needed
     e.target.value = ''
   }, [input])
 
   const sendMessage = async (override?: string) => {
     const text = (override ?? input).trim()
-    // Allow sending with only an image (empty text)
     if (!text && !pendingImage || sending) return
     const effectiveText = text || 'I shared an image.'
     const detectedUrl = effectiveText.match(URL_RE)?.[0]
@@ -216,7 +214,6 @@ export default function Step7DPage() {
     setInput('')
     setPendingImage(null)
 
-    // Embed hash marker in stored message for server-side dedup on future uploads
     const storedText = imgData
       ? `${effectiveText} [img-hash:${imgData.contentHash.slice(0, 8)}]`
       : effectiveText
@@ -257,8 +254,7 @@ export default function Step7DPage() {
       }
 
       if (data.shouldGenerateArt && roomId) {
-        // Attach a pending art block to the assistant message — will fill when polling completes.
-        const nextIndex = activeHistory.length + 1 // user appended, assistant appended
+        const nextIndex = activeHistory.length + 1
         const tabKey = activeTab
         setInlineArt((prev) => ({
           ...prev,
@@ -289,7 +285,6 @@ export default function Step7DPage() {
           : block
       ),
     }))
-    // Persist the chosen art image.
     const current = useArea2Store.getState().artBrief
     if (current) {
       setArtBrief({ ...current, chosenArtImageUrl: url })
@@ -299,7 +294,6 @@ export default function Step7DPage() {
   const handleDesignMyRoom = async () => {
     setCtaError(null)
     if (!minimumThresholdMet || !roomId) return
-    // Gather a user id from Supabase for assembly.
     const supabase = createBrowserClient()
     const {
       data: { user },
@@ -321,196 +315,98 @@ export default function Step7DPage() {
 
   if (!hydrated) return null
 
-  // ─── Layout ─────────────────────────────────────────────────────────────
-
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: bg,
-        color: ivory,
-        fontFamily: 'var(--font-sans)',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
-      <header
+    <div className="min-h-screen bg-cova-bg font-dm-sans flex flex-col">
+      {/* Gold progress bar — fixed top */}
+      <div className="fixed top-0 left-0 right-0 h-[3px] bg-[rgba(201,168,76,0.15)] z-[60]">
+        <div className="h-full w-[86%] bg-cova-gold transition-all duration-[400ms] ease-out" />
+      </div>
+
+      {/* Frosted glass top bar */}
+      <nav
+        className="sticky top-0 z-50 h-14 flex items-center justify-between px-6"
         style={{
-          padding: 'var(--space-5) var(--space-5) var(--space-3)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
+          background: 'rgba(9,24,41,0.8)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderBottom: '1px solid rgba(201,168,76,0.1)',
         }}
       >
-        <button
-          type="button"
-          onClick={() => router.back()}
-          style={{
-            background: 'transparent',
-            border: `1px solid ${border}`,
-            color: muted,
-            borderRadius: 'var(--radius-md)',
-            padding: '6px 12px',
-            cursor: 'pointer',
-            fontSize: 'var(--text-sm)',
-          }}
-        >
-          ← Back
-        </button>
-        <div style={{ color: muted, fontSize: 'var(--text-xs)' }}>
-          Step 4 of 4
-        </div>
-      </header>
+        <span className="font-playfair italic text-xl text-cova-gold tracking-[0.05em]">Cova</span>
+        <span className="font-semibold text-[15px] text-cova-ivory">Personalize</span>
+        <span className="text-[13px] text-cova-muted">Step 7 of 7</span>
+      </nav>
 
+      {/* Tab bar */}
       <div
-        style={{
-          margin: '0 var(--space-5) var(--space-4)',
-          height: 3,
-          background: border,
-          borderRadius: 'var(--radius-full)',
-          overflow: 'hidden',
-        }}
+        className="flex overflow-x-auto flex-shrink-0 px-6"
+        style={{ borderBottom: '1px solid rgba(201,168,76,0.1)' }}
       >
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            background: gold,
-          }}
-        />
+        {TABS.map((t) => {
+          const status = tabStatus(t.id)
+          const isActive = t.id === activeTab
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setActiveTab(t.id)}
+              className={[
+                'bg-transparent border-none whitespace-nowrap flex items-center gap-[6px] transition-all duration-200 ease-out cursor-pointer text-sm py-3 px-4',
+                isActive ? 'text-cova-ivory font-semibold' : 'text-cova-muted font-normal',
+              ].join(' ')}
+              style={{
+                borderBottom: `2px solid ${isActive ? '#C9A84C' : 'transparent'}`,
+              }}
+            >
+              {t.label}
+              {status === 'complete' && (
+                <span className="text-cova-gold text-xs">✓</span>
+              )}
+              {status === 'in-progress' && (
+                <span className="w-[6px] h-[6px] rounded-full bg-cova-gold inline-block" />
+              )}
+            </button>
+          )
+        })}
       </div>
 
-      <div style={{ padding: '0 var(--space-5)', maxWidth: 720, margin: '0 auto', width: '100%' }}>
-        <h1
-          style={{
-            fontFamily: 'var(--font-serif)',
-            fontSize: 'var(--text-3xl)',
-            marginBottom: 'var(--space-3)',
-          }}
-        >
-          Make it yours
-        </h1>
-
-        {/* Tab bar */}
-        <div
-          style={{
-            display: 'flex',
-            gap: 'var(--space-2)',
-            overflowX: 'auto',
-            paddingBottom: 'var(--space-2)',
-            marginBottom: 'var(--space-3)',
-            borderBottom: `1px solid ${border}`,
-          }}
-        >
-          {TABS.map((t) => {
-            const status = tabStatus(t.id)
-            const isActive = t.id === activeTab
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setActiveTab(t.id)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  borderBottom: `2px solid ${isActive ? gold : 'transparent'}`,
-                  color: isActive ? gold : ivory,
-                  padding: '8px 12px',
-                  cursor: 'pointer',
-                  fontSize: 'var(--text-sm)',
-                  fontWeight: isActive ? 600 : 400,
-                  whiteSpace: 'nowrap',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  fontFamily: 'var(--font-sans)',
-                }}
-              >
-                {t.label}
-                {status === 'complete' && (
-                  <span style={{ color: success, fontSize: 12 }}>✓</span>
-                )}
-                {status === 'in-progress' && (
-                  <span
-                    style={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: '50%',
-                      background: gold,
-                      display: 'inline-block',
-                    }}
-                  />
-                )}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Chat body */}
+      {/* Chat area */}
       <div
         ref={scrollRef}
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '0 var(--space-5)',
-          maxWidth: 720,
-          margin: '0 auto',
-          width: '100%',
-        }}
+        className="flex-1 overflow-y-auto py-4 px-6 max-w-[720px] mx-auto w-full"
       >
         {activeHistory.length === 0 ? (
-          <div style={{ color: muted, fontSize: 'var(--text-sm)', padding: 'var(--space-4) 0' }}>
+          <div className="text-cova-muted text-sm font-dm-sans py-4">
             Tap a prompt below to begin, or type something yourself.
           </div>
         ) : (
           activeHistory.map((m, i) => {
             const isUser = m.role === 'user'
-            const art = (inlineArt[activeTab] ?? []).find(
-              (b) => b.messageIndex === i
-            )
+            const art = (inlineArt[activeTab] ?? []).find((b) => b.messageIndex === i)
             return (
-              <div
+              <motion.div
                 key={i}
-                style={{
-                  display: 'flex',
-                  justifyContent: isUser ? 'flex-end' : 'flex-start',
-                  marginBottom: 'var(--space-3)',
-                }}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+                className={['flex mb-3', isUser ? 'justify-end' : 'justify-start'].join(' ')}
               >
                 <div
+                  className="max-w-[82%] rounded-xl p-3 px-4 text-cova-ivory text-[15px] whitespace-pre-wrap"
                   style={{
-                    maxWidth: '82%',
-                    background: isUser ? surface2 : surface,
-                    border: `1px solid ${border}`,
-                    borderRadius: 'var(--radius-lg)',
-                    padding: '10px 14px',
-                    color: ivory,
-                    fontSize: 'var(--text-sm)',
-                    whiteSpace: 'pre-wrap',
+                    background: isUser ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${isUser ? 'transparent' : 'rgba(201,168,76,0.15)'}`,
+                    borderLeft: isUser ? '2px solid #C9A84C' : '1px solid rgba(201,168,76,0.15)',
                   }}
                 >
                   {m.content}
                   {art && art.urls.length === 0 && (
-                    <div
-                      style={{
-                        color: muted,
-                        fontSize: 'var(--text-xs)',
-                        marginTop: 'var(--space-2)',
-                      }}
-                    >
+                    <div className="text-cova-muted text-xs mt-2">
                       Creating art options...
                     </div>
                   )}
                   {art && art.urls.length > 0 && (
-                    <div
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: '1fr 1fr',
-                        gap: 'var(--space-2)',
-                        marginTop: 'var(--space-3)',
-                      }}
-                    >
+                    <div className="grid grid-cols-2 gap-2 mt-3">
                       {art.urls.map((url) => {
                         const selected = art.selectedUrl === url
                         return (
@@ -518,25 +414,16 @@ export default function Step7DPage() {
                             key={url}
                             type="button"
                             onClick={() => selectArt(activeTab, i, url)}
+                            className="bg-transparent rounded-lg p-0 cursor-pointer overflow-hidden"
                             style={{
-                              background: 'transparent',
-                              border: `2px solid ${selected ? gold : border}`,
-                              borderRadius: 'var(--radius-md)',
-                              padding: 0,
-                              cursor: 'pointer',
-                              overflow: 'hidden',
+                              border: `2px solid ${selected ? '#C9A84C' : 'rgba(201,168,76,0.15)'}`,
                             }}
                           >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={url}
                               alt="Art option"
-                              style={{
-                                width: '100%',
-                                height: 160,
-                                objectFit: 'cover',
-                                display: 'block',
-                              }}
+                              className="w-full h-[160px] object-cover block"
                             />
                           </button>
                         )
@@ -544,53 +431,41 @@ export default function Step7DPage() {
                     </div>
                   )}
                 </div>
-              </div>
+              </motion.div>
             )
           })
         )}
+
+        {/* Typing indicator */}
         {sending && (
-          <div
-            style={{
-              color: muted,
-              fontSize: 'var(--text-xs)',
-              marginBottom: 'var(--space-3)',
-            }}
-          >
-            Thinking…
+          <div className="flex justify-start mb-3">
+            <div
+              className="rounded-xl"
+              style={{
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(201,168,76,0.15)',
+              }}
+            >
+              <TypingIndicator />
+            </div>
           </div>
         )}
       </div>
 
       {/* Starter chips */}
       {activeHistory.length === 0 && (
-        <div
-          style={{
-            padding: '0 var(--space-5) var(--space-3)',
-            maxWidth: 720,
-            margin: '0 auto',
-            width: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 'var(--space-2)',
-          }}
-        >
+        <div className="px-6 pb-3 max-w-[720px] mx-auto w-full flex flex-col gap-2">
           {STARTERS[activeTab].map((s) => (
             <button
               key={s}
               type="button"
               onClick={() => sendMessage(s)}
               disabled={sending}
-              style={{
-                background: 'transparent',
-                border: `1px solid ${border}`,
-                color: ivory,
-                padding: '10px 14px',
-                borderRadius: 'var(--radius-pill)',
-                cursor: sending ? 'not-allowed' : 'pointer',
-                fontSize: 'var(--text-sm)',
-                textAlign: 'left',
-                fontFamily: 'var(--font-sans)',
-              }}
+              className={[
+                'bg-transparent text-cova-ivory py-[10px] px-[14px] rounded-full text-sm text-left transition-all duration-200 ease-out',
+                sending ? 'cursor-not-allowed' : 'cursor-pointer',
+              ].join(' ')}
+              style={{ border: '1px solid rgba(201,168,76,0.15)' }}
             >
               {s}
             </button>
@@ -600,71 +475,47 @@ export default function Step7DPage() {
 
       {/* Input bar */}
       <div
-        style={{
-          padding: 'var(--space-3) var(--space-5)',
-          borderTop: `1px solid ${border}`,
-          background: bg,
-          maxWidth: 720,
-          margin: '0 auto',
-          width: '100%',
-        }}
+        className="py-3 px-6 max-w-[720px] mx-auto w-full flex-shrink-0 bg-cova-bg"
+        style={{ borderTop: '1px solid rgba(201,168,76,0.15)' }}
       >
-        {/* Hidden file input — triggered by the attach button for Identity tab */}
+        {/* Hidden file input */}
         <input
           ref={fileInputRef}
           type="file"
           accept="image/*"
           onChange={handleImageUpload}
-          style={{ display: 'none' }}
+          className="hidden"
         />
 
-        {/* Image attachment indicator for Identity tab */}
+        {/* Image attachment indicator */}
         {pendingImage && (
-          <div
-            style={{
-              marginBottom: 'var(--space-2)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--space-2)',
-              fontSize: 'var(--text-xs)',
-              color: gold,
-            }}
-          >
+          <div className="mb-2 flex items-center gap-2 text-xs text-cova-gold">
             <span>Image ready to send</span>
             <button
               type="button"
               onClick={() => setPendingImage(null)}
-              style={{ background: 'transparent', border: 'none', color: muted, cursor: 'pointer', fontSize: 'var(--text-xs)' }}
+              className="bg-transparent border-none text-cova-muted cursor-pointer text-xs"
             >
               Remove
             </button>
           </div>
         )}
 
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'var(--space-2)',
-          }}
-        >
-          {/* Image attach button — only shown for the Identity tab */}
+        <div className="flex items-center gap-2">
+          {/* Image attach for Identity tab */}
           {activeTab === 'identity' && (
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={sending}
               title="Attach image (sentimental objects, inspiration photos)"
+              className={[
+                'bg-transparent rounded-full py-[11px] px-[13px] text-[13px] leading-none',
+                sending ? 'cursor-not-allowed' : 'cursor-pointer',
+                pendingImage ? 'text-cova-gold' : 'text-cova-muted',
+              ].join(' ')}
               style={{
-                background: 'transparent',
-                border: `1px solid ${pendingImage ? gold : border}`,
-                color: pendingImage ? gold : muted,
-                borderRadius: 'var(--radius-pill)',
-                padding: '11px 13px',
-                cursor: sending ? 'not-allowed' : 'pointer',
-                fontSize: 'var(--text-sm)',
-                lineHeight: 1,
-                fontFamily: 'var(--font-sans)',
+                border: `1px solid ${pendingImage ? '#C9A84C' : 'rgba(201,168,76,0.15)'}`,
               }}
             >
               +img
@@ -677,53 +528,37 @@ export default function Step7DPage() {
               if (e.key === 'Enter') sendMessage()
             }}
             placeholder="Type a message…"
+            className="flex-1 rounded-lg text-cova-ivory py-3 px-4 text-[15px] outline-none transition-[border-color] duration-[150ms] ease-out"
             style={{
-              flex: 1,
-              background: surface,
-              border: `1px solid ${border}`,
-              borderRadius: 'var(--radius-pill)',
-              color: ivory,
-              padding: '12px 16px',
-              fontSize: 'var(--text-sm)',
-              outline: 'none',
-              fontFamily: 'var(--font-sans)',
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(201,168,76,0.15)',
             }}
+            onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = 'rgba(201,168,76,0.6)' }}
+            onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = 'rgba(201,168,76,0.15)' }}
           />
           <button
             type="button"
             onClick={() => sendMessage()}
             disabled={sending || (!input.trim() && !pendingImage)}
+            className={[
+              'border-none rounded-lg py-3 px-[14px] flex items-center justify-center',
+              (sending || (!input.trim() && !pendingImage)) ? 'cursor-not-allowed' : 'cursor-pointer',
+            ].join(' ')}
             style={{
-              background: (input.trim() || pendingImage) ? gold : border,
-              color: (input.trim() || pendingImage) ? 'var(--cova-bg)' : muted,
-              border: 'none',
-              borderRadius: 'var(--radius-pill)',
-              padding: '12px 20px',
-              cursor: sending || (!input.trim() && !pendingImage) ? 'not-allowed' : 'pointer',
-              fontWeight: 600,
-              fontSize: 'var(--text-sm)',
-              fontFamily: 'var(--font-sans)',
+              background: (input.trim() || pendingImage) ? '#C9A84C' : 'rgba(201,168,76,0.15)',
+              color: (input.trim() || pendingImage) ? '#091829' : 'rgba(245,240,232,0.45)',
             }}
           >
-            Send
+            <ArrowRight size={18} />
           </button>
         </div>
 
-        {/* Completion status + CTA */}
-        <div
-          style={{
-            marginTop: 'var(--space-3)',
-            color: muted,
-            fontSize: 'var(--text-xs)',
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 'var(--space-2)',
-          }}
-        >
+        {/* Completion status row */}
+        <div className="mt-3 text-cova-muted text-xs flex flex-wrap gap-2">
           {TABS.map((t) => {
             const done = tabStatus(t.id) === 'complete'
             return (
-              <span key={t.id} style={{ color: done ? success : muted }}>
+              <span key={t.id} style={{ color: done ? '#6FCF97' : undefined }} className={done ? '' : 'text-cova-muted'}>
                 {t.label}
                 {done ? ' ✓' : ''}
               </span>
@@ -731,41 +566,39 @@ export default function Step7DPage() {
           })}
         </div>
 
+        {/* CTA error */}
         {ctaError && (
-          <div
-            style={{
-              marginTop: 'var(--space-3)',
-              color: 'var(--cova-error)',
-              fontSize: 'var(--text-sm)',
-              textAlign: 'center',
-            }}
-          >
+          <div className="mt-3 text-[#E87070] text-sm text-center">
             {ctaError}
           </div>
         )}
-        <button
+
+        {/* Design My Room CTA */}
+        <motion.button
           type="button"
           onClick={handleDesignMyRoom}
           disabled={!minimumThresholdMet}
+          whileHover={minimumThresholdMet ? { scale: 1.02, backgroundColor: '#D4B460' } : {}}
+          whileTap={minimumThresholdMet ? { scale: 0.97 } : {}}
+          transition={{ duration: 0.15 }}
+          className={[
+            'mt-3 w-full border-none rounded-lg py-[14px] px-5 text-[15px] font-semibold transition-all duration-200 ease-out',
+            minimumThresholdMet ? 'cursor-pointer' : 'cursor-not-allowed',
+          ].join(' ')}
           style={{
-            marginTop: 'var(--space-3)',
-            width: '100%',
-            background: minimumThresholdMet ? gold : goldDim,
-            color: minimumThresholdMet ? 'var(--cova-bg)' : muted,
-            border: 'none',
-            borderRadius: 'var(--radius-md)',
-            padding: '14px 20px',
-            fontSize: 'var(--text-base)',
-            fontWeight: 600,
-            cursor: minimumThresholdMet ? 'pointer' : 'not-allowed',
-            transition: 'all var(--transition-base)',
-            fontFamily: 'var(--font-sans)',
+            background: minimumThresholdMet ? '#C9A84C' : 'rgba(201,168,76,0.12)',
+            color: minimumThresholdMet ? '#091829' : 'rgba(245,240,232,0.45)',
           }}
         >
           {minimumThresholdMet
             ? 'Design My Room →'
             : 'Complete Budget + one more tab to continue'}
-        </button>
+        </motion.button>
+
+        {/* Helper text */}
+        <p className="mt-2 text-[13px] text-cova-muted text-center">
+          Your personalized redesign takes about 60 seconds.
+        </p>
       </div>
     </div>
   )

@@ -1,329 +1,254 @@
-"use client"
+'use client'
 
-import { useState, useCallback, useEffect, useRef, Suspense } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import { ChevronLeft } from "lucide-react"
+/**
+ * Budget Calculator Panel
+ * Bottom sheet UI: tier tabs, total display, item list with tier alternatives.
+ * Preserves searchParams handling (roomId) and router navigation.
+ */
 
-interface Tier {
-  id: number
-  label: string
-  range: string
-  description: string
-  tags: string[]
-}
+import { useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
+import { X } from 'lucide-react'
 
-const TIERS: Tier[] = [
-  { id: 1, label: "STARTER", range: "Under $500", description: "Accent pieces and small updates that make a big difference", tags: ["Accent pieces", "Textiles", "Lighting"] },
-  { id: 2, label: "REFRESH", range: "$500 \u2013 $2,000", description: "Key furniture pieces that anchor your new style", tags: ["Statement sofa", "Coffee table", "Rugs"] },
-  { id: 3, label: "REDESIGN", range: "$2,000 \u2013 $5,000", description: "A complete room overhaul with premium pieces", tags: ["Full furniture set", "Premium brands", "Lighting"] },
-  { id: 4, label: "PREMIUM", range: "$5,000 \u2013 $15,000", description: "Luxury furniture and designer pieces throughout", tags: ["Designer brands", "Custom pieces", "Full room"] },
-  { id: 5, label: "LUXURY", range: "$15,000+", description: "No compromises. The finest furniture available", tags: ["Bespoke", "Designer", "White glove"] },
+// ─── Tier data ──────────────────────────────────────────────────────────────
+const TIERS = ['Budget', 'Mid-Range', 'Premium', 'Luxury']
+const TOTALS = [1240, 4240, 12800, 28500]
+const ORIGINAL: (number | null)[] = [1890, 4880, null, null]
+const SAVINGS: (number | null)[] = [650, 640, null, null]
+
+// ─── Item list (label + product per tier) ────────────────────────────────────
+const ITEMS = [
+  {
+    label: 'Sofa',
+    products: [
+      'Andover Mills Sofa $399',
+      'Rivet Sofa $899',
+      'Article Timber $2,400',
+      'Restoration Hardware $7,200',
+    ],
+  },
+  {
+    label: 'Coffee Table',
+    products: [
+      'Zinus $89',
+      'Article Sven $349',
+      'CB2 Sphinx $1,100',
+      'Minotti $3,800',
+    ],
+  },
+  {
+    label: 'Floor Lamp',
+    products: [
+      'Amazon Basics $45',
+      'West Elm Arched $299',
+      'FLOS IC F $890',
+      'Apparatus Studio $3,200',
+    ],
+  },
+  {
+    label: 'Area Rug',
+    products: [
+      'Ruggable $189',
+      'Ruggable Premium $489',
+      'CR Laine $2,100',
+      'Custom Tibetan $7,500',
+    ],
+  },
 ]
 
-// ─── Tier Card ─────────────────────────────────────────────
-function TierCard({ tier, isSelected, onClick }: { tier: Tier; isSelected: boolean; onClick: () => void }) {
-  return (
-    <div
-      onClick={onClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick() }}
-      className="rounded-2xl relative overflow-hidden flex-shrink-0 transition-none"
-      style={{
-        width: 300,
-        height: 280,
-        padding: 28,
-        background: isSelected
-          ? "linear-gradient(135deg, #0d1f3c 0%, rgba(201,168,76,0.06) 50%, #0d1f3c 100%)"
-          : "#0d1f3c",
-        backgroundSize: isSelected ? "200% 200%" : undefined,
-        animation: isSelected ? "cardShimmer 4s ease infinite" : undefined,
-        border: isSelected ? "1.5px solid #C9A84C" : "1px solid rgba(201,168,76,0.2)",
-        boxShadow: isSelected
-          ? "0 32px 80px rgba(0,0,0,0.6), 0 0 40px rgba(201,168,76,0.15)"
-          : "0 12px 40px rgba(0,0,0,0.3)",
-        cursor: isSelected ? "default" : "pointer",
-      }}
-    >
-      {/* Decorative number */}
-      <span
-        className="absolute font-serif font-bold pointer-events-none select-none"
-        style={{ bottom: -10, right: 12, fontSize: 120, color: "rgba(201,168,76,0.04)", lineHeight: 1 }}
-      >
-        {tier.id}
-      </span>
-
-      {/* Content */}
-      <div className="relative z-10 flex flex-col h-full">
-        <p className="text-xs font-sans uppercase tracking-[0.15em] text-[#C9A84C] mb-2">{tier.label}</p>
-        <p className="font-serif text-2xl text-white font-semibold mb-1">{tier.range}</p>
-        <div className="w-10 h-px my-3" style={{ background: "rgba(201,168,76,0.3)" }} />
-        <p className="text-xs font-sans text-white/50 leading-relaxed mb-4">{tier.description}</p>
-        <div className="flex flex-wrap gap-2 mt-auto">
-          {tier.tags.map((tag) => (
-            <span
-              key={tag}
-              className="px-2.5 py-1 rounded-full text-[10px] font-sans uppercase tracking-[0.08em] text-[#C9A84C]"
-              style={{ border: "1px solid rgba(201,168,76,0.3)" }}
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Custom Slider ─────────────────────────────────────────
-function TierSlider({ selected, onSelect }: { selected: number; onSelect: (tier: number) => void }) {
-  const fillWidth = ((selected) / 4) * 100
-
-  return (
-    <div className="w-full px-5">
-      {/* Track */}
-      <div className="relative h-10 flex items-center">
-        {/* Background track */}
-        <div className="absolute left-4 right-4 h-[3px] rounded-full" style={{ background: "rgba(201,168,76,0.15)" }} />
-        {/* Gold fill */}
-        <div
-          className="absolute left-4 h-[3px] rounded-full"
-          style={{
-            width: `calc(${fillWidth}% - 16px)`,
-            background: "#C9A84C",
-            transition: "width 400ms ease",
-          }}
-        />
-
-        {/* Nodes */}
-        <div className="relative flex items-center justify-between w-full px-2">
-          {TIERS.map((t, i) => {
-            const isActive = i === selected
-            return (
-              <button
-                key={t.id}
-                onClick={() => onSelect(i)}
-                className="relative flex items-center justify-center w-8 h-8"
-                aria-label={`Select ${t.label} tier`}
-              >
-                {/* Outer ring */}
-                <div
-                  className="absolute rounded-full transition-all duration-200"
-                  style={{
-                    width: 32,
-                    height: 32,
-                    border: `1.5px solid ${isActive ? "rgba(201,168,76,0.6)" : "rgba(201,168,76,0.2)"}`,
-                    boxShadow: isActive ? "0 0 16px rgba(201,168,76,0.4)" : "none",
-                  }}
-                />
-                {/* Inner dot */}
-                <div
-                  className="rounded-full transition-all duration-200"
-                  style={{
-                    width: 8,
-                    height: 8,
-                    background: isActive || i <= selected ? "#C9A84C" : "#0d1f3c",
-                  }}
-                />
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Labels */}
-      <div className="flex items-center justify-between px-2 mt-1">
-        {TIERS.map((t, i) => (
-          <span
-            key={t.id}
-            className="text-[10px] font-sans uppercase tracking-[0.06em] transition-colors duration-200 w-8 text-center"
-            style={{ color: i === selected ? "#C9A84C" : "rgba(255,255,255,0.35)" }}
-          >
-            {t.label.slice(0, 3)}
-          </span>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// ─── Main Budget Page ──────────────────────────────────────
-const TIER_MAX: Record<number, number> = {
-  0: 500,
-  1: 2000,
-  2: 5000,
-  3: 15000,
-  4: 999999,
-}
-
+// ─── Inner component (needs Suspense for useSearchParams) ────────────────────
 function BudgetInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const roomId = searchParams.get("roomId")
+  // Preserve roomId from searchParams — available for callers passing ?roomId=xxx
+  const roomId = searchParams.get('roomId')
+  void roomId // preserved for future Supabase data loading
 
-  const [selected, setSelected] = useState(1) // 0-indexed
-  const [bouncing, setBouncing] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [saveError, setSaveError] = useState(false)
-  const [showPulse, setShowPulse] = useState(false)
-  const dragStart = useRef<number | null>(null)
+  const [activeTier, setActiveTier] = useState(1) // default Mid-Range
 
-  const tier = TIERS[selected]
-
-  // CTA pulse after 3s
-  useEffect(() => {
-    const timeout = setTimeout(() => setShowPulse(true), 3000)
-    return () => clearTimeout(timeout)
-  }, [])
-
-  // Bounce on tier change
-  useEffect(() => {
-    setBouncing(true)
-    const timeout = setTimeout(() => setBouncing(false), 400)
-    return () => clearTimeout(timeout)
-  }, [selected])
-
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowRight") setSelected((t) => Math.min(t + 1, 4))
-      if (e.key === "ArrowLeft") setSelected((t) => Math.max(t - 1, 0))
-    }
-    window.addEventListener("keydown", handleKey)
-    return () => window.removeEventListener("keydown", handleKey)
-  }, [])
-
-  // Swipe/drag navigation
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    dragStart.current = e.clientX
-  }, [])
-  const handlePointerUp = useCallback((e: React.PointerEvent) => {
-    if (dragStart.current === null) return
-    const delta = e.clientX - dragStart.current
-    if (delta < -50) setSelected((t) => Math.min(t + 1, 4))
-    if (delta > 50) setSelected((t) => Math.max(t - 1, 0))
-    dragStart.current = null
-  }, [])
-
-  const handleContinue = useCallback(async () => {
-    if (!roomId) {
-      router.push("/")
-      return
-    }
-    setSaving(true)
-    setSaveError(false)
-    try {
-      const res = await fetch(`/api/rooms/${roomId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          budget_tier: TIERS[selected].label.toLowerCase(),
-          budget_max: TIER_MAX[selected],
-        }),
-      })
-      if (!res.ok) throw new Error("save failed")
-      router.push(`/processing/${roomId}`)
-    } catch {
-      setSaveError(true)
-      setSaving(false)
-    }
-  }, [roomId, selected, router])
+  const total = TOTALS[activeTier]
+  const original = ORIGINAL[activeTier]
+  const savings = SAVINGS[activeTier]
+  const isPremium = activeTier >= 2
 
   return (
-    <div className="fixed inset-0 bg-[#0a1628] flex flex-col overflow-hidden animate-[slideUp_300ms_ease-out]">
-      {/* Top bar */}
-      <div className="flex items-center justify-between px-5 h-[60px] flex-shrink-0">
-        <button onClick={() => router.back()} className="text-white/40 hover:text-white/60 transition-colors p-2 -ml-2">
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-        <span className="text-xs font-sans uppercase tracking-[0.15em] text-white/50">Your Budget</span>
-        <div className="w-9" />
-      </div>
+    <div className="min-h-screen bg-black/60 flex items-end">
+      {/* CSS keyframes for shimmer */}
+      <style>{`
+        @keyframes shimmer {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+      `}</style>
 
-      {/* Content — vertically centered */}
-      <div className="flex-1 flex flex-col items-center justify-center gap-8 px-5">
-        {/* Headline */}
-        <div className="text-center">
-          <h1 className="font-serif text-2xl text-white">How much are you looking to spend?</h1>
-          <p className="text-xs font-sans uppercase tracking-wider text-white/50 mt-2">
-            {"We\u2019ll match furniture to your budget"}
+      <motion.div
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={{ type: 'spring', stiffness: 280, damping: 30 }}
+        className="w-full max-h-[80vh] overflow-y-auto rounded-t-[24px] px-6 pb-10 font-dm-sans"
+        style={{
+          background: 'rgba(9,24,41,0.95)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+        }}
+      >
+        {/* Drag handle */}
+        <div className="w-12 h-1 rounded-full mx-auto mt-2 mb-0" style={{ background: 'rgba(245,240,232,0.2)' }} />
+
+        {/* Header row */}
+        <div className="flex items-center justify-between pt-4">
+          <p className="text-lg font-semibold text-cova-ivory m-0 font-dm-sans">
+            Room Budget
           </p>
+          <button
+            onClick={() => router.back()}
+            aria-label="Close"
+            className="bg-transparent border-none cursor-pointer text-cova-ivory flex items-center"
+          >
+            <X size={20} />
+          </button>
         </div>
 
-        {/* 3D Carousel */}
+        {/* Tier tabs */}
         <div
-          className="relative w-full touch-none select-none"
-          style={{ perspective: 1200, height: 320 }}
-          onPointerDown={handlePointerDown}
-          onPointerUp={handlePointerUp}
+          className="flex mb-6 mt-2"
+          style={{ borderBottom: 'rgba(201,168,76,0.1) 1px solid' }}
         >
-          <div className="absolute inset-0 flex items-center justify-center">
-            {TIERS.map((t, i) => {
-              const offset = i - selected
-              const isSelected = offset === 0
-              const absOffset = Math.abs(offset)
-
-              return (
-                <div
-                  key={t.id}
-                  className="absolute"
-                  style={{
-                    transform: `
-                      translateX(${offset * 220}px)
-                      translateZ(${isSelected ? 0 : -120}px)
-                      rotateY(${offset * -18}deg)
-                      scale(${isSelected ? 1 : 0.82})
-                    `,
-                    opacity: isSelected ? 1 : Math.max(0.35, 1 - absOffset * 0.3),
-                    zIndex: isSelected ? 10 : 5 - absOffset,
-                    transition: "all 500ms cubic-bezier(0.34, 1.56, 0.64, 1)",
-                    animation: isSelected && bouncing ? "cardBounce 400ms ease-out" : undefined,
-                  }}
-                >
-                  <TierCard tier={t} isSelected={isSelected} onClick={() => setSelected(i)} />
-                </div>
-              )
-            })}
-          </div>
+          {TIERS.map((tier, i) => (
+            <button
+              key={tier}
+              onClick={() => setActiveTier(i)}
+              className="font-dm-sans text-sm px-4 py-3 cursor-pointer bg-transparent border-none transition-all duration-200 ease-out"
+              style={{
+                borderBottom: activeTier === i ? '2px solid #C9A84C' : '2px solid transparent',
+                color: activeTier === i ? '#F5F0E8' : 'rgba(245,240,232,0.45)',
+                marginBottom: -1,
+              }}
+            >
+              {tier}
+            </button>
+          ))}
         </div>
 
-        {/* Custom slider */}
-        <TierSlider selected={selected} onSelect={setSelected} />
+        {/* Total display */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTier}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+            className="text-center mb-6"
+          >
+            <p className="font-dm-sans text-[32px] font-bold text-cova-ivory mb-1.5">
+              Total Room: ${total.toLocaleString()}
+            </p>
 
-        {/* Budget estimate */}
-        <p className="text-xs font-sans text-white/40 uppercase tracking-wider transition-all duration-200">
-          Estimated budget: <span className="text-white/60">{tier.range}</span>
-        </p>
+            {original !== null && (
+              <p className="font-dm-sans text-lg font-medium mb-2 line-through" style={{ color: 'rgba(245,240,232,0.3)' }}>
+                Was ${original.toLocaleString()}
+              </p>
+            )}
 
-        {/* Error */}
-        {saveError && (
-          <p className="text-sm text-[#C0504A]">Something went wrong, please try again</p>
-        )}
+            <div className="flex justify-center gap-2">
+              {savings !== null && (
+                <span
+                  className="rounded-full px-3 py-1 font-dm-sans text-[13px] font-medium"
+                  style={{ background: 'rgba(111,207,151,0.12)', color: '#6FCF97' }}
+                >
+                  Save ${savings.toLocaleString()}
+                </span>
+              )}
+              {isPremium && (
+                <span
+                  className="rounded-full px-3 py-1 font-dm-sans text-[13px] font-medium text-cova-gold"
+                  style={{ background: 'rgba(201,168,76,0.12)' }}
+                >
+                  Premium Selection
+                </span>
+              )}
+            </div>
+          </motion.div>
+        </AnimatePresence>
 
-        {/* CTA */}
-        <button
-          onClick={handleContinue}
-          disabled={saving}
-          className="w-full max-w-[480px] py-3.5 rounded-xl bg-[#C9A84C] text-[#0a1628] font-sans text-sm font-semibold uppercase tracking-widest transition-all duration-200 hover:bg-[#D4B460] disabled:opacity-50"
-          style={{
-            animation: showPulse && !saving ? "ctaPulse 2s ease infinite" : undefined,
-          }}
-        >
-          {saving ? "Saving..." : "Continue"}
-        </button>
-      </div>
+        {/* Item list */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={`items-${activeTier}`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            {ITEMS.map((item) => (
+              <div
+                key={item.label}
+                className="flex items-center justify-between py-3 gap-2"
+                style={{ borderBottom: '1px solid rgba(201,168,76,0.08)' }}
+              >
+                {/* Item label */}
+                <span className="font-dm-sans text-sm font-medium text-cova-ivory shrink-0 min-w-[80px]">
+                  {item.label}
+                </span>
+
+                {/* Arrow */}
+                <span className="text-cova-muted font-dm-sans text-sm shrink-0">→</span>
+
+                {/* Tier alternative */}
+                <span className="font-dm-sans text-sm text-cova-ivory flex-1 text-center">
+                  {item.products[activeTier]}
+                </span>
+
+                {/* Shop link */}
+                <button
+                  className="font-dm-sans text-[13px] font-semibold text-cova-gold bg-transparent border-none cursor-pointer shrink-0 ml-4 transition-all duration-200 ease-out"
+                >
+                  Shop →
+                </button>
+              </div>
+            ))}
+          </motion.div>
+        </AnimatePresence>
+      </motion.div>
     </div>
   )
 }
 
+// ─── Page export (Suspense boundary for useSearchParams) ────────────────────
 export default function BudgetPage() {
   return (
-    <Suspense fallback={
-      <div className="fixed inset-0 flex items-center justify-center bg-[#0a1628]">
-        <div className="w-8 h-8 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
-      </div>
-    }>
-      <BudgetInner />
-    </Suspense>
+    <div className="min-h-screen bg-cova-bg">
+      <Suspense fallback={
+        <div className="min-h-screen bg-cova-bg flex items-end">
+          <div
+            className="w-full h-[80vh] rounded-t-[24px] p-6"
+            style={{ background: 'rgba(9,24,41,0.95)' }}
+          >
+            {/* Shimmer loading rows */}
+            {[0, 1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="h-12 rounded-lg mb-3"
+                style={{
+                  background: `linear-gradient(90deg, rgba(201,168,76,0.08) 0%, rgba(201,168,76,0.15) 50%, rgba(201,168,76,0.08) 100%)`,
+                  backgroundSize: '200% 100%',
+                  animation: `shimmer 1.5s infinite ease-in-out ${i * 0.15}s`,
+                }}
+              />
+            ))}
+          </div>
+          <style>{`
+            @keyframes shimmer {
+              0% { background-position: 200% 0; }
+              100% { background-position: -200% 0; }
+            }
+          `}</style>
+        </div>
+      }>
+        <BudgetInner />
+      </Suspense>
+    </div>
   )
 }

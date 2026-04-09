@@ -1,337 +1,185 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
-import { Camera, CheckCircle, ArrowRight } from 'lucide-react'
-import { StepIndicator } from '@/components/cova/StepIndicator'
-import { CovaButton } from '@/components/cova/CovaButton'
-import { toast } from 'sonner'
-import { useFingerprintStore, useRoomStore, useSessionStore } from '@/lib/store'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Check } from 'lucide-react'
 
-type UploadState = 'idle' | 'uploading' | 'complete' | 'error'
+// ─── Anchor images ─────────────────────────────────────────────────────────────
+
+const ANCHOR_IMAGES = [
+  { id: 1, src: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=600&q=80', alt: 'Clean modern living room' },
+  { id: 2, src: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=600&q=80', alt: 'Warm bohemian space' },
+  { id: 3, src: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&q=80', alt: 'Contemporary bedroom' },
+  { id: 4, src: 'https://images.unsplash.com/photo-1484101403633-562f891dc89a?w=600&q=80', alt: 'Scandinavian interior' },
+  { id: 5, src: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=600&q=80', alt: 'Industrial loft' },
+  { id: 6, src: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=600&q=80', alt: 'Luxury living room' },
+  { id: 7, src: 'https://images.unsplash.com/photo-1567767292278-a4f21aa2d36e?w=600&q=80', alt: 'Light airy bedroom' },
+  { id: 8, src: 'https://images.unsplash.com/photo-1583845112203-29329902332e?w=600&q=80', alt: 'Japanese minimal' },
+  { id: 9, src: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600&q=80', alt: 'Modern sofa' },
+]
+
+// Heights for masonry-like variation (alternating pattern across 3 columns)
+const CARD_HEIGHTS = [260, 240, 280, 280, 260, 240, 240, 280, 260]
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Step2Page() {
   const router = useRouter()
-  const fingerprintStore = useFingerprintStore()
-  const roomStore = useRoomStore()
-  const { setStep } = useSessionStore()
+  const [selected, setSelected] = useState<number[]>([])
 
-  const [uploadState, setUploadState] = useState<UploadState>('idle')
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const captureRef = useRef<HTMLInputElement>(null)
-  const uploadRef = useRef<HTMLInputElement>(null)
-
-  // Guard: must have room type selected
-  useEffect(() => {
-    if (!fingerprintStore.roomType) {
-      router.push('/design/step-1')
+  function handleToggle(id: number) {
+    if (selected.includes(id)) {
+      setSelected(selected.filter((s) => s !== id))
+    } else if (selected.length < 2) {
+      setSelected([...selected, id])
     }
-  }, [fingerprintStore.roomType, router])
+    // If already 2 selected and this card isn't one of them, do nothing
+  }
 
-  // Pre-populate if user navigated back with existing photo
-  useEffect(() => {
-    if (roomStore.originalPhotoUrl && uploadState === 'idle') {
-      setPreviewUrl(roomStore.originalPhotoUrl)
-      setUploadState('complete')
-    }
-  }, [roomStore.originalPhotoUrl]) // eslint-disable-line react-hooks/exhaustive-deps
+  function handleContinue() {
+    if (selected.length < 2) return
+    router.push('/design/step-3')
+  }
 
-  // Cleanup object URLs on unmount
-  useEffect(() => {
-    return () => {
-      if (previewUrl && previewUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(previewUrl)
-      }
-    }
-  }, [previewUrl])
-
-  const handleRetake = useCallback(() => {
-    if (previewUrl) URL.revokeObjectURL(previewUrl)
-    setPreviewUrl(null)
-    setUploadState('idle')
-    if (captureRef.current) captureRef.current.value = ''
-    if (uploadRef.current) uploadRef.current.value = ''
-  }, [previewUrl])
-
-  const handleFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    // Size validation
-    if (file.size > 15 * 1024 * 1024) {
-      toast.error('Please use a photo under 15MB')
-      event.target.value = ''
-      return
-    }
-
-    // Type validation
-    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
-    if (!allowed.includes(file.type)) {
-      toast.error('Please use a JPEG, PNG, WebP, or HEIC photo')
-      event.target.value = ''
-      return
-    }
-
-    // Show preview immediately
-    const objectUrl = URL.createObjectURL(file)
-    setPreviewUrl(objectUrl)
-    setUploadState('uploading')
-
-    try {
-      // Ensure room exists
-      let currentRoomId = roomStore.roomId
-      if (!currentRoomId) {
-        const res = await fetch('/api/rooms/create', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ room_type: fingerprintStore.roomType }),
-        })
-        if (!res.ok) throw new Error('Failed to create room')
-        const { id } = await res.json() as { id: string }
-        roomStore.setRoom(id)
-        currentRoomId = id
-      }
-
-      // Upload photo
-      const formData = new FormData()
-      formData.append('photo', file)
-      formData.append('room_id', currentRoomId)
-      const uploadRes = await fetch('/api/rooms/capture', {
-        method: 'POST',
-        body: formData,
-      })
-      if (!uploadRes.ok) throw new Error('Upload failed')
-
-      const { photo_url } = await uploadRes.json() as { photo_url: string }
-      roomStore.setPhotoUrl(photo_url)
-      setUploadState('complete')
-      setStep(3)
-
-      // Fire detection silently — do NOT await
-      fetch('/api/detect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ photo_url, room_id: currentRoomId }),
-      }).catch((err: unknown) => console.error('[Step 2] Detection fire-and-forget failed:', err))
-      console.log('[Step 2] Detection started for room:', currentRoomId)
-
-      // Navigate after short delay for UX
-      setTimeout(() => router.push('/design/step-3'), 800)
-    } catch (err) {
-      console.error('[Step 2] Upload error:', err)
-      setUploadState('error')
-      toast.error('Upload failed — tap to retry')
-    }
-  }, [fingerprintStore, roomStore, router, setStep])
+  const canContinue = selected.length === 2
 
   return (
-    <div className="bg-cova-bg min-h-screen flex flex-col font-sans overflow-hidden">
-      <style>{`@keyframes shimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }`}</style>
-
-      {/* Top bar */}
-      <div className="relative">
-        <StepIndicator currentStep={2} totalSteps={9} />
-        <button
-          onClick={() => router.push('/design/step-1')}
-          className="absolute top-4 left-4 text-sm text-cova-muted hover:text-cova-ivory transition-colors duration-200"
-        >
-          ← Back
-        </button>
+    <div className="min-h-screen bg-[#091829] font-dm-sans">
+      {/* Gold progress bar — position fixed, z-index 60 */}
+      <div className="fixed top-0 left-0 right-0 h-[3px] bg-[rgba(201,168,76,0.15)] z-[60]">
+        <div
+          className="h-full bg-cova-gold transition-all duration-[400ms] ease-out"
+          style={{ width: `${(1 / 7) * 100}%` }}
+        />
       </div>
 
-      {/* Hero */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 pb-8 gap-8">
+      {/* Frosted glass top bar */}
+      <div
+        className="sticky top-0 z-50 h-14 flex items-center justify-between px-6 border-b border-[rgba(201,168,76,0.1)]"
+        style={{
+          background: 'rgba(9,24,41,0.8)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+        }}
+      >
+        {/* Wordmark */}
+        <span className="font-playfair italic text-xl text-cova-gold tracking-[0.05em]">
+          Cova
+        </span>
+        {/* Center label */}
+        <span
+          className="font-dm-sans font-semibold text-[15px] text-cova-ivory absolute left-1/2"
+          style={{ transform: 'translateX(-50%)' }}
+        >
+          Choose your anchors
+        </span>
+        {/* Step counter */}
+        <span className="font-dm-sans text-[13px] text-cova-muted">
+          Step 1 of 7
+        </span>
+      </div>
+
+      {/* Main content */}
+      <div className="pt-20 pb-[120px] px-6 max-w-[1200px] mx-auto">
         {/* Heading */}
         <motion.h1
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: 'easeOut' }}
-          className="font-serif text-4xl md:text-5xl text-cova-ivory tracking-wide text-center leading-tight"
+          transition={{ duration: 0.4 }}
+          className="font-playfair text-4xl font-normal text-cova-ivory mb-8"
         >
-          Show us your space
+          Choose two rooms that feel like you.
         </motion.h1>
 
-        {/* Subheading */}
-        <motion.p
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1, ease: 'easeOut' }}
-          className="text-base text-cova-muted text-center max-w-xs leading-relaxed"
-        >
-          One photo is all we need
-        </motion.p>
-
-        {/* Viewfinder */}
+        {/* Image grid */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.97 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, delay: 0.2, ease: 'easeOut' }}
-          className="w-full max-w-sm mx-auto rounded-2xl overflow-hidden relative bg-cova-surface"
-          style={{ aspectRatio: '4/3', border: '2px dashed var(--cova-border-gold)' }}
+          variants={{ show: { transition: { staggerChildren: 0.08 } } }}
+          initial="hidden"
+          animate="show"
+          className="grid grid-cols-3 gap-4"
         >
-          {/* Empty state */}
-          {uploadState === 'idle' && !previewUrl && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-              {/* Rule-of-thirds SVG overlay */}
-              <svg
-                className="absolute inset-0 w-full h-full pointer-events-none"
-                viewBox="0 0 100 100"
-                preserveAspectRatio="none"
-              >
-                <line x1="33.3" y1="0" x2="33.3" y2="100" stroke="rgba(201,168,76,0.12)" strokeWidth="0.5" />
-                <line x1="66.6" y1="0" x2="66.6" y2="100" stroke="rgba(201,168,76,0.12)" strokeWidth="0.5" />
-                <line x1="0" y1="33.3" x2="100" y2="33.3" stroke="rgba(201,168,76,0.12)" strokeWidth="0.5" />
-                <line x1="0" y1="66.6" x2="100" y2="66.6" stroke="rgba(201,168,76,0.12)" strokeWidth="0.5" />
-              </svg>
-              {/* Center crosshair */}
-              <svg
-                className="absolute pointer-events-none"
-                style={{ left: '50%', top: '50%', transform: 'translate(-50%,-50%)' }}
-                width="40"
-                height="40"
-                viewBox="0 0 40 40"
-              >
-                <line x1="0" y1="20" x2="40" y2="20" stroke="var(--cova-gold)" strokeWidth="1" opacity="0.4" />
-                <line x1="20" y1="0" x2="20" y2="40" stroke="var(--cova-gold)" strokeWidth="1" opacity="0.4" />
-              </svg>
-              {/* Pulsing camera icon */}
+          {ANCHOR_IMAGES.map((img, i) => {
+            const isSelected = selected.includes(img.id)
+            const isDimmed = selected.length === 2 && !isSelected
+            const cardHeight = CARD_HEIGHTS[i] ?? 260
+
+            return (
               <motion.div
-                animate={{ opacity: [0.6, 1, 0.6] }}
-                transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+                key={img.id}
+                variants={{ hidden: { opacity: 0, y: 24 }, show: { opacity: 1, y: 0 } }}
+                onClick={() => handleToggle(img.id)}
+                className="relative rounded-xl overflow-hidden transition-all duration-200 ease-out"
+                style={{
+                  cursor: isDimmed ? 'default' : 'pointer',
+                  outline: isSelected ? '2px solid #C9A84C' : 'none',
+                  opacity: isDimmed ? 0.5 : 1,
+                }}
               >
-                <Camera size={48} color="var(--cova-gold)" />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={img.src}
+                  alt={img.alt}
+                  className="w-full object-cover block"
+                  style={{ height: cardHeight }}
+                />
+
+                {/* Gold checkmark badge */}
+                <AnimatePresence>
+                  {isSelected && (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      exit={{ scale: 0 }}
+                      transition={{ type: 'spring', stiffness: 280, damping: 30 }}
+                      className="absolute top-2 right-2 w-7 h-7 rounded-full bg-cova-gold flex items-center justify-center"
+                    >
+                      <Check size={16} color="#091829" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
-              <p className="text-sm text-cova-muted text-center">Tap to capture your room</p>
-            </div>
-          )}
-
-          {/* Photo preview state */}
-          {previewUrl && (
-            <>
-              <motion.img
-                key={previewUrl}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.4 }}
-                src={previewUrl}
-                alt="Room preview"
-                className="absolute inset-0 w-full h-full object-cover"
-              />
-              {/* Checkmark badge */}
-              {uploadState === 'complete' && (
-                <div className="absolute top-3 right-3 bg-cova-gold text-cova-bg rounded-full w-7 h-7 flex items-center justify-center">
-                  <CheckCircle size={16} />
-                </div>
-              )}
-              {/* Upload overlay with shimmer */}
-              {uploadState === 'uploading' && (
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-cova-surface overflow-hidden">
-                    <div
-                      className="h-full w-3/5 bg-cova-gold"
-                      style={{ animation: 'shimmer 1.2s ease-in-out infinite' }}
-                    />
-                  </div>
-                </div>
-              )}
-            </>
-          )}
+            )
+          })}
         </motion.div>
+      </div>
 
-        {/* Buttons section */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.35 }}
-          className="mt-6 flex flex-col gap-3 w-full max-w-sm mx-auto"
+      {/* Selection counter pill */}
+      <div
+        className="fixed z-40 bg-[rgba(255,255,255,0.04)] border border-[rgba(201,168,76,0.15)] rounded-full font-dm-sans text-sm text-cova-gold whitespace-nowrap"
+        style={{
+          bottom: 80,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          padding: '8px 20px',
+        }}
+      >
+        {selected.length} of 2 selected
+      </div>
+
+      {/* CTA button */}
+      <div
+        className="fixed z-40"
+        style={{
+          bottom: 16,
+          left: '50%',
+          transform: 'translateX(-50%)',
+        }}
+      >
+        <button
+          onClick={handleContinue}
+          disabled={!canContinue}
+          className="bg-cova-gold text-[#091829] font-dm-sans font-semibold text-base rounded-lg transition-all duration-[300ms] ease-out"
+          style={{
+            padding: '14px 40px',
+            border: 'none',
+            cursor: canContinue ? 'pointer' : 'default',
+            opacity: canContinue ? 1 : 0.4,
+            pointerEvents: canContinue ? 'auto' : 'none',
+          }}
         >
-          {uploadState === 'idle' && (
-            <>
-              <CovaButton
-                variant="primary"
-                size="lg"
-                className="w-full"
-                onClick={() => captureRef.current?.click()}
-              >
-                <Camera size={18} /> Take Photo
-              </CovaButton>
-              <CovaButton
-                variant="ghost"
-                size="md"
-                className="w-full"
-                onClick={() => uploadRef.current?.click()}
-              >
-                Upload from Camera Roll
-              </CovaButton>
-            </>
-          )}
-
-          {uploadState === 'uploading' && (
-            <CovaButton variant="primary" size="lg" className="w-full" isLoading disabled>
-              Uploading...
-            </CovaButton>
-          )}
-
-          {uploadState === 'complete' && (
-            <>
-              <CovaButton
-                variant="primary"
-                size="lg"
-                className="w-full"
-                onClick={() => router.push('/design/step-3')}
-              >
-                Continue to Quiz <ArrowRight size={18} />
-              </CovaButton>
-              <CovaButton
-                variant="ghost"
-                size="md"
-                className="w-full"
-                onClick={handleRetake}
-              >
-                Retake Photo
-              </CovaButton>
-            </>
-          )}
-
-          {uploadState === 'error' && (
-            <>
-              <CovaButton
-                variant="primary"
-                size="lg"
-                className="w-full"
-                onClick={() => uploadRef.current?.click()}
-              >
-                Retry Upload
-              </CovaButton>
-              <CovaButton
-                variant="ghost"
-                size="md"
-                className="w-full"
-                onClick={handleRetake}
-              >
-                Choose Different Photo
-              </CovaButton>
-            </>
-          )}
-        </motion.div>
-
-        {/* Hidden inputs */}
-        <input
-          ref={captureRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="hidden"
-          onChange={handleFileSelect}
-        />
-        <input
-          ref={uploadRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handleFileSelect}
-        />
+          Continue →
+        </button>
       </div>
     </div>
   )

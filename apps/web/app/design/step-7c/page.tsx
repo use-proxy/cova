@@ -13,24 +13,19 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
 import { createBrowserClient } from '@/lib/supabase/client'
 import { useArea2Store } from '@/lib/stores/area2Store'
 import type { DetectedObject } from '@/lib/types/area2'
 
-// ─── Tokens ────────────────────────────────────────────────────────────────
+// ─── Design tokens (kept for JS-driven style values only) ────────────────────
 
-const bg = 'var(--cova-bg)'
-const surface = 'var(--cova-surface)'
-const border = 'var(--cova-border)'
-const gold = 'var(--cova-gold)'
-const goldDim = 'var(--cova-gold-dim)'
-const ivory = 'var(--cova-ivory)'
-const muted = 'var(--cova-muted)'
-const keepColor = 'var(--cova-keep-bright)'
-const keepBg = 'var(--cova-keep-bg)'
-const removeColor = 'var(--cova-remove)'
+const GOLD = '#C9A84C'
+const BORDER = 'rgba(201,168,76,0.15)'
+const BORDER_ACTIVE = 'rgba(201,168,76,0.6)'
+const ERROR = '#E87070'
 
-// ─── Helpers ───────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function bboxCenter(bbox: [number, number, number, number]): {
   cx: number
@@ -63,7 +58,7 @@ function tierOrder(tier: ConfidenceTier): number {
   return 2
 }
 
-// ─── Material extractor (fire-and-forget) ──────────────────────────────────
+// ─── Material extractor (fire-and-forget) ────────────────────────────────────
 
 async function fetchObjectMaterial(
   imageUrl: string,
@@ -87,7 +82,7 @@ async function fetchObjectMaterial(
   }
 }
 
-// ─── Page ──────────────────────────────────────────────────────────────────
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Step7CPage() {
   const router = useRouter()
@@ -120,16 +115,13 @@ export default function Step7CPage() {
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(
     null
   )
-  const [materialBusy, setMaterialBusy] = useState<Record<string, boolean>>(
-    {}
-  )
+  const [materialBusy, setMaterialBusy] = useState<Record<string, boolean>>({})
 
   const imgRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => setHydrated(true), [])
 
-  // Poll the store when detection is still running (Screens A/B may have
-  // navigated here before the pipeline finished).
+  // Poll the store when detection is still running.
   useEffect(() => {
     if (detectionStatus !== 'running' || !roomId) return
     const supabase = createBrowserClient()
@@ -158,6 +150,7 @@ export default function Step7CPage() {
   )
   const keptCount = objects.filter((o) => o.keep).length
   const removedCount = objects.length - keptCount
+  const hasAnyDecision = objects.some((o) => o.keep)
 
   const handleDotTap = async (obj: DetectedObject, evt: React.MouseEvent) => {
     evt.stopPropagation()
@@ -172,7 +165,6 @@ export default function Step7CPage() {
       setTooltip((t) => (t?.id === obj.id ? null : t))
     }, 1500)
 
-    // Was REMOVE, becoming KEEP → fetch material
     const becomingKeep = !obj.keep
     if (becomingKeep && imageUrl && !obj.material) {
       setMaterialBusy((prev) => ({ ...prev, [obj.id]: true }))
@@ -205,7 +197,6 @@ export default function Step7CPage() {
     setActionSheetFor(objId)
   }
 
-  // Long-press detection via pointerdown timer.
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const startPress = (objId: string) => {
     pressTimer.current = setTimeout(() => handleLongPress(objId), 500)
@@ -215,7 +206,6 @@ export default function Step7CPage() {
     pressTimer.current = null
   }
 
-  // Zone drawing handlers
   const onPhotoPointerDown = (evt: React.PointerEvent<HTMLDivElement>) => {
     if (!zoneMode || !imgRef.current) return
     const rect = imgRef.current.getBoundingClientRect()
@@ -278,115 +268,67 @@ export default function Step7CPage() {
 
   if (!hydrated) return null
 
-  // ─── Layout ─────────────────────────────────────────────────────────────
+  // Group visible objects by type category
+  const furniture = visibleObjects.filter((o) =>
+    ['sofa', 'chair', 'table', 'desk', 'bed', 'wardrobe', 'shelving', 'bookcase', 'cabinet', 'dresser'].some(
+      (kw) => o.type.toLowerCase().includes(kw)
+    )
+  )
+  const lighting = visibleObjects.filter((o) =>
+    ['lamp', 'light', 'chandelier', 'sconce', 'pendant'].some(
+      (kw) => o.type.toLowerCase().includes(kw)
+    )
+  )
+  const decor = visibleObjects.filter(
+    (o) => !furniture.includes(o) && !lighting.includes(o)
+  )
+
+  const groups: { label: string; items: typeof visibleObjects }[] = [
+    { label: 'Furniture', items: furniture },
+    { label: 'Lighting', items: lighting },
+    { label: 'Decor', items: decor },
+  ].filter((g) => g.items.length > 0)
+
+  if (groups.length === 0 && visibleObjects.length > 0) {
+    groups.push({ label: 'Items', items: visibleObjects })
+  }
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: bg,
-        color: ivory,
-        fontFamily: 'var(--font-sans)',
-        paddingBottom: 'var(--space-16)',
-      }}
-    >
-      <header
-        style={{
-          padding: 'var(--space-5) var(--space-5) var(--space-3)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
-        <button
-          type="button"
-          onClick={() => router.back()}
-          style={{
-            background: 'transparent',
-            border: `1px solid ${border}`,
-            color: muted,
-            borderRadius: 'var(--radius-md)',
-            padding: '6px 12px',
-            cursor: 'pointer',
-            fontSize: 'var(--text-sm)',
-          }}
-        >
-          ← Back
-        </button>
-        <div style={{ color: muted, fontSize: 'var(--text-xs)' }}>
-          Step 3 of 4
-        </div>
-      </header>
+    <div className="min-h-screen bg-cova-bg font-dm-sans flex flex-col">
+      <style>{`
+        @keyframes covaPulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.55; }
+        }
+      `}</style>
 
-      <div
-        style={{
-          margin: '0 var(--space-5) var(--space-5)',
-          height: 3,
-          background: border,
-          borderRadius: 'var(--radius-full)',
-          overflow: 'hidden',
-        }}
-      >
-        <div
-          style={{
-            width: '75%',
-            height: '100%',
-            background: gold,
-            transition: 'width var(--transition-base)',
-          }}
-        />
+      {/* Gold progress bar — fixed top */}
+      <div className="fixed top-0 left-0 right-0 h-[3px] bg-[rgba(201,168,76,0.15)] z-[60]">
+        <div className="h-full w-[86%] bg-cova-gold transition-[width] duration-[400ms] ease-out" />
       </div>
 
-      <main
-        style={{
-          maxWidth: 720,
-          margin: '0 auto',
-          padding: '0 var(--space-5)',
-        }}
+      {/* Frosted glass top bar */}
+      <nav
+        className="sticky top-0 z-50 h-14 flex items-center justify-between px-6 border-b border-[rgba(201,168,76,0.1)]"
+        style={{ background: 'rgba(9,24,41,0.8)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
       >
-        <h1
-          style={{
-            fontFamily: 'var(--font-serif)',
-            fontSize: 'var(--text-3xl)',
-            marginBottom: 'var(--space-1)',
-          }}
-        >
-          What stays?
-        </h1>
-        <p
-          style={{
-            color: ivory,
-            fontSize: 'var(--text-lg)',
-            marginBottom: 'var(--space-1)',
-            fontWeight: 500,
-          }}
-        >
-          Tap anything to keep
-        </p>
-        <p
-          style={{
-            color: muted,
-            fontSize: 'var(--text-sm)',
-            marginBottom: 'var(--space-5)',
-          }}
-        >
-          Everything starts fresh. Protect what matters.
-        </p>
+        <span className="font-playfair italic text-xl text-cova-gold tracking-[0.05em]">Cova</span>
+        <span className="font-dm-sans font-semibold text-[15px] text-cova-ivory">What stays?</span>
+        <span className="font-dm-sans text-[13px] text-cova-muted">Step 6 of 7</span>
+      </nav>
 
-        {/* ─── Room photo with dot overlay ─── */}
+      {/* Split layout below top bar */}
+      <div className="flex flex-1" style={{ height: 'calc(100vh - 56px)' }}>
+
+        {/* LEFT PANEL — 60%: room photo with overlays */}
         <div
           ref={imgRef}
           onPointerDown={onPhotoPointerDown}
           onPointerMove={onPhotoPointerMove}
           onPointerUp={onPhotoPointerUp}
+          className="relative overflow-hidden bg-cova-bg"
           style={{
-            position: 'relative',
-            width: '100%',
-            aspectRatio: '4 / 3',
-            background: surface,
-            borderRadius: 'var(--radius-lg)',
-            overflow: 'hidden',
-            border: `1px solid ${border}`,
+            width: '60%',
             cursor: zoneMode ? 'crosshair' : 'default',
             touchAction: zoneMode ? 'none' : 'auto',
           }}
@@ -397,75 +339,87 @@ export default function Step7CPage() {
               src={imageUrl}
               alt="Your room"
               draggable={false}
+              className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
+            />
+          ) : (
+            <div
+              className="absolute inset-0"
               style={{
-                position: 'absolute',
-                inset: 0,
-                width: '100%',
-                height: '100%',
-                objectFit: 'contain',
-                userSelect: 'none',
-                pointerEvents: 'none',
+                background: 'linear-gradient(90deg, rgba(201,168,76,0.08) 0%, rgba(201,168,76,0.15) 50%, rgba(201,168,76,0.08) 100%)',
+                backgroundSize: '200% 100%',
+                animation: 'shimmer 1.5s infinite ease-in-out',
               }}
             />
-          ) : null}
+          )}
 
-          {/* Loading skeleton if detection still running */}
+          {/* Detection running overlay */}
           {detectionStatus === 'running' && (
             <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'rgba(10, 22, 40, 0.70)',
-                color: ivory,
-                fontSize: 'var(--text-sm)',
-              }}
+              className="absolute inset-0 flex items-center justify-center text-cova-ivory text-[15px] font-dm-sans"
+              style={{ background: 'rgba(9,24,41,0.70)' }}
             >
               Analyzing your room…
             </div>
           )}
 
-          {/* Existing zone of interest */}
+          {/* Bounding boxes — positions are computed percentages, kept as inline style */}
+          {visibleObjects.map((obj) => {
+            const pct = bboxPct(obj.bbox)
+            const isKeep = obj.keep
+            const isUnreviewed = obj.confidenceTier === 'show-user' && !isKeep
+            return (
+              <div
+                key={`bbox-${obj.id}`}
+                className="absolute pointer-events-none transition-all duration-200 ease-out"
+                style={{
+                  ...pct,
+                  border: isKeep
+                    ? `2px solid ${GOLD}`
+                    : isUnreviewed
+                    ? '2px dashed rgba(255,255,255,0.5)'
+                    : 'none',
+                  background: !isKeep && !isUnreviewed ? 'rgba(232,112,112,0.3)' : 'transparent',
+                  boxShadow: isKeep ? '0 0 12px rgba(201,168,76,0.4)' : 'none',
+                }}
+              />
+            )
+          })}
+
+          {/* Zone of interest — computed percentage position, kept as inline style */}
           {keepMask?.zoneOfInterest && (
             <div
+              className="absolute rounded-lg pointer-events-none"
               style={{
-                position: 'absolute',
                 left: `${keepMask.zoneOfInterest.x * 100}%`,
                 top: `${keepMask.zoneOfInterest.y * 100}%`,
                 width: `${keepMask.zoneOfInterest.w * 100}%`,
                 height: `${keepMask.zoneOfInterest.h * 100}%`,
-                border: `2px dashed ${gold}`,
-                borderRadius: 'var(--radius-md)',
-                pointerEvents: 'none',
+                border: `2px dashed ${GOLD}`,
               }}
             />
           )}
 
-          {/* Live drag rectangle */}
+          {/* Live drag rectangle — computed percentage position, kept as inline style */}
           {zoneDraft && (
             <div
+              className="absolute pointer-events-none bg-[rgba(201,168,76,0.12)]"
               style={{
-                position: 'absolute',
                 left: `${zoneDraft.x * 100}%`,
                 top: `${zoneDraft.y * 100}%`,
                 width: `${zoneDraft.w * 100}%`,
                 height: `${zoneDraft.h * 100}%`,
-                border: `2px dashed ${gold}`,
-                background: goldDim,
-                pointerEvents: 'none',
+                border: `2px dashed ${GOLD}`,
               }}
             />
           )}
 
-          {/* Object dots */}
+          {/* Object dots — computed cx/cy positions, kept as inline style */}
           {objects.map((obj) => {
             const { cx, cy } = bboxCenter(obj.bbox)
             const isKeep = obj.keep
             const isLowConf = obj.confidenceTier === 'low-use-internally'
             const dotSize = isLowConf ? 10 : 18
-            const hitSize = 44 // WCAG
+            const hitSize = 44
             return (
               <button
                 key={obj.id}
@@ -475,26 +429,18 @@ export default function Step7CPage() {
                 onPointerDown={() => startPress(obj.id)}
                 onPointerUp={cancelPress}
                 onPointerLeave={cancelPress}
+                className="absolute bg-transparent border-none p-0 cursor-pointer flex items-center justify-center"
                 style={{
-                  position: 'absolute',
                   left: `${cx * 100}%`,
                   top: `${cy * 100}%`,
                   width: hitSize,
                   height: hitSize,
                   transform: 'translate(-50%, -50%)',
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
                 }}
               >
-                {/* Highlight overlay when keeping — tinted bbox */}
                 <div
+                  className="absolute flex items-center justify-center text-cova-ivory text-[11px] font-bold"
                   style={{
-                    position: 'absolute',
                     left: '50%',
                     top: '50%',
                     transform: 'translate(-50%, -50%)',
@@ -502,24 +448,16 @@ export default function Step7CPage() {
                     height: dotSize,
                     borderRadius: '50%',
                     background: isLowConf
-                      ? muted
+                      ? 'rgba(245,240,232,0.45)'
                       : isKeep
-                        ? keepBg
-                        : 'rgba(231, 76, 60, 0.25)',
-                    border: `2px solid ${
-                      isLowConf ? muted : isKeep ? keepColor : removeColor
-                    }`,
-                    color: ivory,
-                    fontSize: 11,
-                    fontWeight: 700,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                        ? 'rgba(201,168,76,0.12)'
+                        : 'rgba(231,76,60,0.25)',
+                    border: `2px solid ${isLowConf ? 'rgba(245,240,232,0.45)' : isKeep ? GOLD : ERROR}`,
                     boxShadow: isKeep
-                      ? `0 0 0 3px ${goldDim}`
+                      ? `0 0 0 3px rgba(201,168,76,0.12)`
                       : isLowConf
                         ? 'none'
-                        : `0 0 0 2px rgba(231, 76, 60, 0.25)`,
+                        : `0 0 0 2px rgba(231,76,60,0.25)`,
                     animation: isLowConf || isKeep ? 'none' : 'covaPulse 2s ease-in-out infinite',
                   }}
                 >
@@ -529,534 +467,271 @@ export default function Step7CPage() {
             )
           })}
 
-          {/* Bbox highlight when an object is in the action sheet */}
-          {actionSheetFor &&
-            (() => {
-              const obj = objects.find((o) => o.id === actionSheetFor)
-              if (!obj) return null
-              const pct = bboxPct(obj.bbox)
-              return (
-                <div
-                  style={{
-                    position: 'absolute',
-                    ...pct,
-                    border: `2px solid ${obj.keep ? keepColor : removeColor}`,
-                    background: obj.keep ? keepBg : 'rgba(231, 76, 60, 0.15)',
-                    pointerEvents: 'none',
-                    borderRadius: 'var(--radius-sm)',
-                  }}
-                />
-              )
-            })()}
-        </div>
-
-        {/* Keyframes for pulse */}
-        <style>{`
-          @keyframes covaPulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.55; }
-          }
-        `}</style>
-
-        {/* Tooltip */}
-        {tooltip && (
-          <div
-            style={{
-              position: 'fixed',
-              left: tooltip.x + 12,
-              top: tooltip.y - 8,
-              background: 'var(--cova-surface-3)',
-              color: ivory,
-              padding: '6px 10px',
-              borderRadius: 'var(--radius-sm)',
-              fontSize: 'var(--text-xs)',
-              border: `1px solid ${border}`,
-              pointerEvents: 'none',
-              zIndex: 1000,
-            }}
-          >
-            {tooltip.label}
-          </div>
-        )}
-
-        {/* Hint bar */}
-        <div
-          style={{
-            marginTop: 'var(--space-3)',
-            color: muted,
-            fontSize: 'var(--text-xs)',
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 'var(--space-3)',
-          }}
-        >
-          <span>
-            <span style={{ color: keepColor }}>●</span> Keeping
-          </span>
-          <span>
-            <span style={{ color: removeColor }}>●</span> Redesigning
-          </span>
-          <span>
-            <span style={{ color: muted }}>●</span> Low confidence
-          </span>
-        </div>
-
-        {/* Zone toggle */}
-        <button
-          type="button"
-          onClick={() => {
-            setZoneMode((z) => !z)
-            setZoneDraft(null)
-          }}
-          style={{
-            marginTop: 'var(--space-4)',
-            background: zoneMode ? goldDim : 'transparent',
-            border: `1px solid ${zoneMode ? gold : border}`,
-            color: zoneMode ? gold : ivory,
-            padding: '10px 16px',
-            borderRadius: 'var(--radius-pill)',
-            cursor: 'pointer',
-            fontSize: 'var(--text-sm)',
-            fontFamily: 'var(--font-sans)',
-          }}
-        >
-          {zoneMode
-            ? 'Drag on the photo to draw…'
-            : keepMask?.zoneOfInterest
-              ? 'Redraw focus area'
-              : 'Focus on a specific area'}
-        </button>
-        {keepMask?.zoneOfInterest && !zoneMode && (
-          <p
-            style={{
-              color: muted,
-              fontSize: 'var(--text-xs)',
-              marginTop: 'var(--space-2)',
-            }}
-          >
-            AI will prioritize redesigning this zone.
-          </p>
-        )}
-
-        {/* Detection list */}
-        <section
-          style={{
-            marginTop: 'var(--space-6)',
-            background: surface,
-            border: `1px solid ${border}`,
-            borderRadius: 'var(--radius-lg)',
-            padding: 'var(--space-4)',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              marginBottom: 'var(--space-3)',
-              color: ivory,
-              fontSize: 'var(--text-sm)',
-              fontWeight: 600,
-            }}
-          >
-            <span>
-              Keeping {keptCount} · Redesigning {removedCount}
-            </span>
-          </div>
-
-          {visibleObjects.length === 0 ? (
-            <p style={{ color: muted, fontSize: 'var(--text-sm)' }}>
-              We couldn&rsquo;t identify specific items in this photo. You
-              can continue — the AI will redesign the full room.
-            </p>
-          ) : (
-            <ul
+          {/* Tooltip — computed mouse position, kept as inline style */}
+          {tooltip && (
+            <div
+              className="fixed bg-[rgba(255,255,255,0.04)] text-cova-ivory px-[10px] py-[6px] rounded-lg text-[12px] font-dm-sans border border-[rgba(201,168,76,0.15)] pointer-events-none z-[1000]"
               style={{
-                listStyle: 'none',
-                padding: 0,
-                margin: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 'var(--space-2)',
+                left: tooltip.x + 12,
+                top: tooltip.y - 8,
               }}
             >
-              {visibleObjects.map((obj) => {
-                const isLow = obj.confidenceTier === 'low-use-internally'
-                return (
-                  <li
+              {tooltip.label}
+            </div>
+          )}
+
+          {/* Zone toggle */}
+          <button
+            type="button"
+            onClick={() => {
+              setZoneMode((z) => !z)
+              setZoneDraft(null)
+            }}
+            className="absolute bottom-4 left-4 px-[14px] py-2 rounded-full cursor-pointer text-[12px] font-dm-sans backdrop-blur-[8px]"
+            style={{
+              background: zoneMode ? 'rgba(201,168,76,0.12)' : 'rgba(9,24,41,0.8)',
+              border: `1px solid ${zoneMode ? GOLD : BORDER}`,
+              color: zoneMode ? GOLD : '#F5F0E8',
+            }}
+          >
+            {zoneMode
+              ? 'Drag to draw focus zone…'
+              : keepMask?.zoneOfInterest
+                ? 'Redraw focus area'
+                : 'Focus on an area'}
+          </button>
+        </div>
+
+        {/* RIGHT PANEL — 40%: scrollable item list */}
+        <div
+          className="overflow-y-auto p-6 bg-cova-bg border-l border-[rgba(201,168,76,0.1)] flex flex-col"
+          style={{ width: '40%' }}
+        >
+          {/* Summary */}
+          <div className="mb-5">
+            <p className="text-cova-muted text-[12px] font-dm-sans mb-1">
+              Keeping {keptCount} · Redesigning {removedCount}
+            </p>
+          </div>
+
+          {/* Grouped items */}
+          {visibleObjects.length === 0 ? (
+            <p className="text-cova-muted text-sm font-dm-sans">
+              No items detected. The AI will redesign the full room.
+            </p>
+          ) : (
+            groups.map((group) => (
+              <div key={group.label} className="mb-6">
+                <div className="text-cova-muted text-[11px] font-dm-sans font-medium uppercase tracking-[0.12em] mb-[10px]">
+                  {group.label}
+                </div>
+                {group.items.map((obj) => (
+                  <div
                     key={obj.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '10px 12px',
-                      background: bg,
-                      border: `1px solid ${border}`,
-                      borderRadius: 'var(--radius-md)',
-                    }}
+                    className="flex items-center justify-between px-3 py-[10px] bg-[rgba(255,255,255,0.04)] border border-[rgba(201,168,76,0.15)] rounded-lg mb-2"
                   >
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 'var(--space-2)',
-                          color: ivory,
-                          fontSize: 'var(--text-sm)',
-                          fontWeight: 500,
-                        }}
-                      >
-                        <span>{obj.type}</span>
-                        <span style={{ color: muted, fontSize: 'var(--text-xs)' }}>
-                          {(obj.confidence * 100).toFixed(0)}%
-                          {isLow ? ' (lower confidence)' : ''}
-                        </span>
-                        {materialBusy[obj.id] && (
-                          <span
-                            style={{
-                              color: gold,
-                              fontSize: 'var(--text-xs)',
-                            }}
-                          >
-                            reading…
-                          </span>
-                        )}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-cova-ivory text-sm font-dm-sans font-normal">
+                        {obj.type}
                       </div>
+                      {materialBusy[obj.id] && (
+                        <span className="text-cova-gold text-[11px] font-dm-sans">
+                          reading…
+                        </span>
+                      )}
                       {obj.userNote && (
-                        <div
-                          style={{
-                            color: muted,
-                            fontSize: 'var(--text-xs)',
-                            marginTop: 2,
-                          }}
-                        >
+                        <div className="text-cova-muted text-[12px] font-dm-sans mt-[2px]">
                           Note: {obj.userNote}
                         </div>
                       )}
-                      {obj.material && (
-                        <div
-                          style={{
-                            color: muted,
-                            fontSize: 'var(--text-xs)',
-                            marginTop: 2,
-                          }}
-                        >
-                          {obj.material}
-                          {obj.dominantColor ? ` · ${obj.dominantColor}` : ''}
-                        </div>
+                    </div>
+                    <div className="flex gap-2 ml-3">
+                      {/* Keep badge */}
+                      {obj.keep ? (
+                        <span className="bg-[rgba(201,168,76,0.12)] text-cova-gold text-[11px] font-dm-sans font-medium rounded-full px-[10px] py-1">
+                          Keep
+                        </span>
+                      ) : (
+                        <span className="bg-[rgba(232,112,112,0.12)] text-[#E87070] text-[11px] font-dm-sans font-medium rounded-full px-[10px] py-1">
+                          Remove
+                        </span>
                       )}
-                    </div>
-                    <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                      {/* Toggle button */}
                       <button
                         type="button"
-                        onClick={() => {
-                          if (obj.keep) toggleObjectKeep(obj.id)
-                        }}
-                        style={{
-                          background: !obj.keep ? 'rgba(231,76,60,0.15)' : 'transparent',
-                          border: `1px solid ${!obj.keep ? removeColor : border}`,
-                          color: !obj.keep ? removeColor : muted,
-                          padding: '6px 12px',
-                          borderRadius: 'var(--radius-pill)',
-                          fontSize: 'var(--text-xs)',
-                          cursor: 'pointer',
-                        }}
+                        onClick={() => toggleObjectKeep(obj.id)}
+                        className="bg-transparent border border-[rgba(201,168,76,0.15)] text-cova-muted px-[10px] py-1 rounded-full text-[11px] font-dm-sans cursor-pointer transition-all duration-200 ease-out"
                       >
-                        Remove
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!obj.keep) toggleObjectKeep(obj.id)
-                        }}
-                        style={{
-                          background: obj.keep ? keepBg : 'transparent',
-                          border: `1px solid ${obj.keep ? keepColor : border}`,
-                          color: obj.keep ? keepColor : muted,
-                          padding: '6px 12px',
-                          borderRadius: 'var(--radius-pill)',
-                          fontSize: 'var(--text-xs)',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Keep
+                        {obj.keep ? 'Remove' : 'Keep'}
                       </button>
                     </div>
-                  </li>
-                )
-              })}
-            </ul>
+                  </div>
+                ))}
+              </div>
+            ))
           )}
-        </section>
 
-        {/* Action sheet */}
-        {actionSheetFor && (() => {
-          const obj = objects.find((o) => o.id === actionSheetFor)
-          if (!obj) return null
-          return (
-            <div
-              onClick={() => setActionSheetFor(null)}
-              style={{
-                position: 'fixed',
-                inset: 0,
-                background: 'rgba(10,22,40,0.70)',
-                display: 'flex',
-                alignItems: 'flex-end',
-                justifyContent: 'center',
-                zIndex: 500,
-              }}
-            >
-              <div
-                onClick={(e) => e.stopPropagation()}
-                style={{
-                  width: '100%',
-                  maxWidth: 480,
-                  background: surface,
-                  borderTopLeftRadius: 'var(--radius-xl)',
-                  borderTopRightRadius: 'var(--radius-xl)',
-                  padding: 'var(--space-5)',
-                  border: `1px solid ${border}`,
-                }}
-              >
-                <div
-                  style={{
-                    color: ivory,
-                    fontSize: 'var(--text-base)',
-                    fontWeight: 600,
-                    marginBottom: 'var(--space-3)',
-                  }}
-                >
-                  {obj.type}
-                </div>
-                {(['Keep', 'Remove', 'Mark as immovable', 'Add a note'] as const).map(
-                  (action) => (
-                    <button
-                      key={action}
-                      type="button"
-                      onClick={() => {
-                        if (action === 'Keep' && !obj.keep) toggleObjectKeep(obj.id)
-                        if (action === 'Remove' && obj.keep) toggleObjectKeep(obj.id)
-                        if (action === 'Mark as immovable') {
-                          const m = keepMask
-                          if (m) {
-                            setKeepMask({
-                              ...m,
-                              objects: m.objects.map((o) =>
-                                o.id === obj.id
-                                  ? { ...o, immovable: !o.immovable }
-                                  : o
-                              ),
-                            })
-                          }
-                        }
-                        if (action === 'Add a note') {
-                          setNoteInputFor(obj.id)
-                        }
-                        setActionSheetFor(null)
-                      }}
-                      style={{
-                        display: 'block',
-                        width: '100%',
-                        textAlign: 'left',
-                        background: 'transparent',
-                        border: `1px solid ${border}`,
-                        color: ivory,
-                        padding: '12px 14px',
-                        borderRadius: 'var(--radius-md)',
-                        marginBottom: 'var(--space-2)',
-                        cursor: 'pointer',
-                        fontSize: 'var(--text-sm)',
-                        fontFamily: 'var(--font-sans)',
-                      }}
-                    >
-                      {action}
-                    </button>
-                  )
-                )}
-              </div>
-            </div>
-          )
-        })()}
-
-        {/* Inline note input */}
-        {noteInputFor && (() => {
-          const obj = objects.find((o) => o.id === noteInputFor)
-          if (!obj) return null
-          return (
-            <div
-              style={{
-                marginTop: 'var(--space-4)',
-                background: surface,
-                border: `1px solid ${border}`,
-                borderRadius: 'var(--radius-md)',
-                padding: 'var(--space-3)',
-              }}
-            >
-              <div
-                style={{
-                  color: muted,
-                  fontSize: 'var(--text-xs)',
-                  marginBottom: 'var(--space-2)',
-                }}
-              >
-                Note on {obj.type}
-              </div>
-              <input
-                autoFocus
-                defaultValue={obj.userNote ?? ''}
-                onBlur={(e) => {
-                  setObjectNote(obj.id, e.target.value)
-                  setNoteInputFor(null)
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    setObjectNote(
-                      obj.id,
-                      (e.target as HTMLInputElement).value
-                    )
-                    setNoteInputFor(null)
-                  }
-                }}
-                style={{
-                  width: '100%',
-                  background: bg,
-                  border: `1px solid ${border}`,
-                  borderRadius: 'var(--radius-md)',
-                  color: ivory,
-                  padding: '10px 12px',
-                  fontFamily: 'var(--font-sans)',
-                  fontSize: 'var(--text-sm)',
-                  outline: 'none',
-                }}
-                placeholder="e.g. this is my grandmother's armchair"
-              />
-            </div>
-          )
-        })()}
-
-        {/* Bottom actions */}
-        <div style={{ marginTop: 'var(--space-6)' }}>
-          <button
-            type="button"
-            onClick={handleContinue}
-            disabled={saving}
-            style={{
-              width: '100%',
-              background: gold,
-              color: 'var(--cova-bg)',
-              border: 'none',
-              borderRadius: 'var(--radius-md)',
-              padding: '16px 20px',
-              fontSize: 'var(--text-lg)',
-              fontWeight: 600,
-              cursor: saving ? 'not-allowed' : 'pointer',
-              transition: 'all var(--transition-base)',
-              fontFamily: 'var(--font-sans)',
-            }}
-          >
-            {saving ? 'Saving…' : 'Continue →'}
-          </button>
+          {/* Fresh start */}
           <button
             type="button"
             onClick={() => setFreshStartOpen(true)}
-            style={{
-              width: '100%',
-              background: 'transparent',
-              color: muted,
-              border: 'none',
-              padding: '12px 20px',
-              marginTop: 'var(--space-2)',
-              fontSize: 'var(--text-sm)',
-              cursor: 'pointer',
-              fontFamily: 'var(--font-sans)',
-              textDecoration: 'underline',
-            }}
+            className="bg-transparent text-cova-muted border-none py-2 px-0 text-[13px] font-dm-sans cursor-pointer underline text-left mt-2 mb-6"
           >
             Start completely fresh
           </button>
-        </div>
 
-        {freshStartOpen && (
-          <div
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* CTA */}
+          <motion.button
+            type="button"
+            onClick={handleContinue}
+            disabled={!hasAnyDecision || saving}
+            whileHover={hasAnyDecision && !saving ? { scale: 1.02, backgroundColor: '#D4B460' } : {}}
+            whileTap={hasAnyDecision && !saving ? { scale: 0.97 } : {}}
+            transition={{ duration: 0.15 }}
+            className="w-full bg-cova-gold text-cova-bg border-none rounded-lg px-5 py-[14px] text-[15px] font-semibold font-dm-sans mt-4"
             style={{
-              position: 'fixed',
-              inset: 0,
-              background: 'rgba(10,22,40,0.70)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 600,
+              cursor: hasAnyDecision && !saving ? 'pointer' : 'not-allowed',
+              opacity: hasAnyDecision && !saving ? 1 : 0.4,
+              pointerEvents: hasAnyDecision && !saving ? 'auto' : 'none',
             }}
-            onClick={() => setFreshStartOpen(false)}
+          >
+            {saving ? 'Saving…' : 'Continue →'}
+          </motion.button>
+        </div>
+      </div>
+
+      {/* Action sheet */}
+      {actionSheetFor && (() => {
+        const obj = objects.find((o) => o.id === actionSheetFor)
+        if (!obj) return null
+        return (
+          <div
+            onClick={() => setActionSheetFor(null)}
+            className="fixed inset-0 bg-black/60 flex items-end justify-center z-[500]"
           >
             <div
               onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-[480px] border border-[rgba(201,168,76,0.15)] p-6"
               style={{
-                background: surface,
-                border: `1px solid ${border}`,
-                borderRadius: 'var(--radius-lg)',
-                padding: 'var(--space-5)',
-                maxWidth: 360,
-                width: '90%',
+                background: 'rgba(9,24,41,0.95)',
+                borderTopLeftRadius: 24,
+                borderTopRightRadius: 24,
               }}
             >
-              <div
-                style={{
-                  color: ivory,
-                  fontSize: 'var(--text-lg)',
-                  fontWeight: 600,
-                  marginBottom: 'var(--space-2)',
-                }}
-              >
-                Remove everything and start fresh?
+              <div className="text-cova-ivory text-base font-semibold font-dm-sans mb-4">
+                {obj.type}
               </div>
-              <p
-                style={{
-                  color: muted,
-                  fontSize: 'var(--text-sm)',
-                  marginBottom: 'var(--space-4)',
-                }}
-              >
-                All kept items and focus zones will be cleared.
-              </p>
-              <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
-                <button
-                  type="button"
-                  onClick={() => setFreshStartOpen(false)}
-                  style={{
-                    flex: 1,
-                    background: 'transparent',
-                    border: `1px solid ${border}`,
-                    color: ivory,
-                    padding: '12px',
-                    borderRadius: 'var(--radius-md)',
-                    cursor: 'pointer',
-                    fontFamily: 'var(--font-sans)',
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleFreshStart}
-                  style={{
-                    flex: 1,
-                    background: gold,
-                    color: 'var(--cova-bg)',
-                    border: 'none',
-                    padding: '12px',
-                    borderRadius: 'var(--radius-md)',
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                    fontFamily: 'var(--font-sans)',
-                  }}
-                >
-                  Start fresh
-                </button>
-              </div>
+              {(['Keep', 'Remove', 'Mark as immovable', 'Add a note'] as const).map(
+                (action) => (
+                  <button
+                    key={action}
+                    type="button"
+                    onClick={() => {
+                      if (action === 'Keep' && !obj.keep) toggleObjectKeep(obj.id)
+                      if (action === 'Remove' && obj.keep) toggleObjectKeep(obj.id)
+                      if (action === 'Mark as immovable') {
+                        const m = keepMask
+                        if (m) {
+                          setKeepMask({
+                            ...m,
+                            objects: m.objects.map((o) =>
+                              o.id === obj.id ? { ...o, immovable: !o.immovable } : o
+                            ),
+                          })
+                        }
+                      }
+                      if (action === 'Add a note') {
+                        setNoteInputFor(obj.id)
+                      }
+                      setActionSheetFor(null)
+                    }}
+                    className="block w-full text-left bg-transparent border border-[rgba(201,168,76,0.15)] text-cova-ivory px-[14px] py-3 rounded-lg mb-2 cursor-pointer text-sm font-dm-sans"
+                  >
+                    {action}
+                  </button>
+                )
+              )}
             </div>
           </div>
-        )}
-      </main>
+        )
+      })()}
+
+      {/* Inline note input — computed position, kept as inline style */}
+      {noteInputFor && (() => {
+        const obj = objects.find((o) => o.id === noteInputFor)
+        if (!obj) return null
+        return (
+          <div
+            className="fixed w-[90%] max-w-[480px] border border-[rgba(201,168,76,0.15)] rounded-xl p-4 z-[600]"
+            style={{
+              bottom: 24,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              background: 'rgba(9,24,41,0.95)',
+            }}
+          >
+            <div className="text-cova-muted text-[12px] font-dm-sans mb-2">
+              Note on {obj.type}
+            </div>
+            <input
+              autoFocus
+              defaultValue={obj.userNote ?? ''}
+              onBlur={(e) => {
+                setObjectNote(obj.id, e.target.value)
+                setNoteInputFor(null)
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  setObjectNote(obj.id, (e.target as HTMLInputElement).value)
+                  setNoteInputFor(null)
+                }
+              }}
+              className="w-full bg-cova-bg border border-[rgba(201,168,76,0.15)] rounded-lg text-cova-ivory px-3 py-[10px] font-dm-sans text-sm outline-none"
+              placeholder="e.g. this is my grandmother's armchair"
+              onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = BORDER_ACTIVE }}
+            />
+          </div>
+        )
+      })()}
+
+      {/* Fresh start confirm */}
+      {freshStartOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-[600]"
+          onClick={() => setFreshStartOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-[rgba(255,255,255,0.04)] border border-[rgba(201,168,76,0.15)] rounded-xl p-6 max-w-[360px] w-[90%]"
+          >
+            <div className="text-cova-ivory text-base font-semibold font-dm-sans mb-2">
+              Remove everything and start fresh?
+            </div>
+            <p className="text-cova-muted text-sm font-dm-sans mb-5">
+              All kept items and focus zones will be cleared.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setFreshStartOpen(false)}
+                className="flex-1 bg-transparent border border-[rgba(201,168,76,0.15)] text-cova-ivory p-3 rounded-lg cursor-pointer font-dm-sans text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleFreshStart}
+                className="flex-1 bg-cova-gold text-cova-bg border-none p-3 rounded-lg cursor-pointer font-semibold font-dm-sans text-sm"
+              >
+                Start fresh
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,365 +1,149 @@
 'use client'
 
-/**
- * Step 7 — Instant Confidence Reveal
- * Before/after drag comparison with CSS parallax depth. No video ceremony.
- * The redesigned room is there the moment the user arrives.
- */
-
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
-import { ChevronLeft, ChevronRight, Share2 } from 'lucide-react'
-import { toast } from 'sonner'
-import { useRoomStore } from '@/lib/store/room'
-import { useSessionStore } from '@/lib/store/session'
-import { CovaButton } from '@/components/cova/CovaButton'
-import { createBrowserClient } from '@/lib/supabase/client'
+import { motion, AnimatePresence } from 'framer-motion'
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+const MESSAGES = [
+  'Reading your room...',
+  'Mapping the light...',
+  'Identifying materials...',
+  'Understanding your space...',
+  'Building your profile...',
+]
+
+// Stable particle data — generated once at module level to avoid re-render flicker
+const PARTICLES = Array.from({ length: 15 }, (_, i) => ({
+  id: i,
+  top: `${(i * 47 + 11) % 90 + 5}%`,
+  left: `${(i * 61 + 7) % 90 + 5}%`,
+  size: ((i * 3 + 2) % 4) + 2,
+  opacity: ((i * 17 + 5) % 30) / 100 + 0.05,
+  duration: ((i * 7 + 4) % 8) + 6,
+  delay: ((i * 11 + 3) % 5) * 0.8,
+}))
+
+// ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function Step7Page() {
   const router = useRouter()
-  const roomStore = useRoomStore()
-  const { setStep } = useSessionStore()
 
-  const [dragPosition, setDragPosition] = useState(0.5)
-  const [isDragging, setIsDragging] = useState(false)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [hydrated, setHydrated] = useState(false)
+  const [messageIndex, setMessageIndex] = useState(0)
+  const [mounted, setMounted] = useState(false)
 
-  const containerRef = useRef<HTMLDivElement>(null)
-  const isDraggingRef = useRef(false)
-
+  // Mark mounted to enable animations
   useEffect(() => {
-    isDraggingRef.current = isDragging
-  }, [isDragging])
-
-  // Wait for Zustand persist to hydrate before running guards
-  useEffect(() => {
-    const t = setTimeout(() => setHydrated(true), 0)
-    return () => clearTimeout(t)
+    setMounted(true)
   }, [])
 
-  // Guards + side effects — only after hydration
+  // Cycle status messages every 2.5s
   useEffect(() => {
-    if (!hydrated) return
-    if (!roomStore.renderUrl) {
-      router.push('/design/step-6')
-      return
-    }
-    if (!roomStore.originalPhotoUrl) {
-      router.push('/design/step-2')
-      return
-    }
+    const interval = setInterval(() => {
+      setMessageIndex((i) => (i + 1) % MESSAGES.length)
+    }, 2500)
+    return () => clearInterval(interval)
+  }, [])
 
-    const supabase = createBrowserClient()
-
-    // Area 2 guard: if the room has no render_context yet, the user belongs
-    // in the new personalization flow (step-7a). Legacy rooms that already
-    // have a render_context fall through and render normally.
-    if (roomStore.roomId) {
-      supabase
-        .from('rooms')
-        .select('render_context')
-        .eq('id', roomStore.roomId)
-        .single()
-        .then(({ data }) => {
-          const ctx = (data as { render_context?: unknown } | null)?.render_context
-          if (!ctx) {
-            router.push('/design/step-7a')
-          }
-        })
-    }
-
-    // Auth check — async, non-blocking
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setIsAuthenticated(!!session)
-    })
-
-    // Fire parallax generation if we have depth + render but no video yet.
-    // Fire and forget — never blocks the reveal.
-    if (
-      !roomStore.parallaxVideoUrl &&
-      roomStore.depthMapUrl &&
-      roomStore.renderUrl &&
-      roomStore.roomId
-    ) {
-      fetch('/api/parallax', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          render_url: roomStore.renderUrl,
-          depth_map_url: roomStore.depthMapUrl,
-          room_id: roomStore.roomId,
-        }),
-      })
-        .then((r) => r.json())
-        .then((d: { video_url?: string | null }) => {
-          if (d?.video_url) roomStore.setParallaxVideoUrl(d.video_url)
-        })
-        .catch(() => {
-          /* silent — CSS parallax is the primary experience */
-        })
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated])
-
-  // Touch drag with passive:false so we can preventDefault
+  // Auto-advance to step-7a after 12 seconds
   useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-    const onTouchMove = (e: TouchEvent) => {
-      if (!isDraggingRef.current) return
-      e.preventDefault()
-      const rect = el.getBoundingClientRect()
-      const x = (e.touches[0]!.clientX - rect.left) / rect.width
-      setDragPosition(Math.max(0.02, Math.min(0.98, x)))
-    }
-    el.addEventListener('touchmove', onTouchMove, { passive: false })
-    return () => el.removeEventListener('touchmove', onTouchMove)
-  }, [])
-
-  // CSS depth parallax — subtle mouse tracking
-  useEffect(() => {
-    const onMove = (e: MouseEvent) => {
-      if (isDraggingRef.current) return
-      const x = (e.clientX / window.innerWidth - 0.5) * 8
-      const y = (e.clientY / window.innerHeight - 0.5) * 8
-      document.documentElement.style.setProperty('--parallax-x', `${x}px`)
-      document.documentElement.style.setProperty('--parallax-y', `${y}px`)
-    }
-    window.addEventListener('mousemove', onMove)
-    return () => {
-      window.removeEventListener('mousemove', onMove)
-      document.documentElement.style.removeProperty('--parallax-x')
-      document.documentElement.style.removeProperty('--parallax-y')
-    }
-  }, [])
-
-  const updateDragFromClientX = useCallback((clientX: number) => {
-    if (!containerRef.current) return
-    const rect = containerRef.current.getBoundingClientRect()
-    const x = (clientX - rect.left) / rect.width
-    setDragPosition(Math.max(0.02, Math.min(0.98, x)))
-  }, [])
-
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!isDragging) return
-      updateDragFromClientX(e.clientX)
-    },
-    [isDragging, updateDragFromClientX]
-  )
-
-  const handleBgClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      if (isDragging) return
-      // Ignore taps on bottom bar area
-      const rect = e.currentTarget.getBoundingClientRect()
-      if (e.clientY - rect.top > rect.height - 180) return
-      updateDragFromClientX(e.clientX)
-    },
-    [isDragging, updateDragFromClientX]
-  )
-
-  const handleShare = useCallback(async () => {
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: 'My AI-designed room by Cova',
-          text: 'I redesigned my room with AI — check out Cova!',
-          url: window.location.origin,
-        })
-      } else {
-        await navigator.clipboard.writeText(window.location.origin)
-        toast.success('Link copied')
-      }
-    } catch {
-      /* user cancelled */
-    }
-  }, [])
-
-  if (!hydrated || !roomStore.renderUrl || !roomStore.originalPhotoUrl) return null
+    const timeout = setTimeout(() => {
+      router.push('/design/step-7a')
+    }, 12000)
+    return () => clearTimeout(timeout)
+  }, [router])
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-black">
-      {/* Comparison layer */}
+    <div className="min-h-screen bg-[#091829] relative overflow-hidden flex items-center justify-center flex-col">
+
+      {/* Ring pulse keyframe styles */}
+      <style>{`
+        @keyframes ring-pulse {
+          0% { transform: scale(0.5); opacity: 0.8; }
+          100% { transform: scale(2.5); opacity: 0; }
+        }
+        @keyframes particle-float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-12px); }
+        }
+      `}</style>
+
+      {/* Ambient background glow */}
       <div
-        ref={containerRef}
-        className="absolute inset-0"
-        style={{ cursor: isDragging ? 'ew-resize' : 'col-resize' }}
-        onMouseMove={handleMouseMove}
-        onMouseUp={() => setIsDragging(false)}
-        onMouseLeave={() => setIsDragging(false)}
-        onClick={handleBgClick}
-        onTouchStart={() => setIsDragging(true)}
-        onTouchEnd={() => setIsDragging(false)}
-      >
-        {/* AFTER image — base layer with subtle CSS depth parallax (translate only,
-            no scale, so before/after don't diverge at the drag seam). */}
-        <div
-          className="absolute inset-0"
-          style={{
-            transform:
-              'translate(var(--parallax-x, 0px), var(--parallax-y, 0px))',
-            transition: isDragging ? 'none' : 'transform 0.15s ease-out',
-            filter: 'none',
-            mixBlendMode: 'normal',
-          }}
-        >
-          <Image
-            src={roomStore.renderUrl}
-            alt="Your redesigned room"
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover"
-          />
-        </div>
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full pointer-events-none"
+        style={{
+          width: 600,
+          height: 600,
+          background: 'rgba(201,168,76,0.03)',
+        }}
+      />
 
-        {/* BEFORE image — clipped to the left of the drag handle.
-            Zero color treatment: no filter, no mix-blend-mode, no overlay.
-            The inner div must be exactly the same size/position as the after
-            container so object-cover produces identical framing on both sides. */}
+      {/* Gold particle system */}
+      {mounted && PARTICLES.map((p) => (
         <div
-          className="absolute inset-y-0 left-0 overflow-hidden"
+          key={p.id}
+          className="absolute rounded-full bg-cova-gold pointer-events-none"
           style={{
-            width: `${dragPosition * 100}%`,
-            filter: 'none',
-            mixBlendMode: 'normal',
-          }}
-        >
-          <div
-            className="absolute inset-y-0 left-0 h-full"
-            style={{ width: '100vw', filter: 'none' }}
-          >
-            <Image
-              src={roomStore.originalPhotoUrl}
-              alt="Your original room"
-              fill
-              priority
-              sizes="100vw"
-              className="object-cover"
-              style={{ filter: 'none' }}
-            />
-          </div>
-        </div>
-
-        {/* Subtle edge vignette for depth — 15% darkening at the corners only,
-            no color tint. Sits above both images, below the handle and labels. */}
-        <div
-          className="pointer-events-none absolute inset-0 z-[5]"
-          style={{
-            background:
-              'radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.15) 100%)',
+            top: p.top,
+            left: p.left,
+            width: p.size,
+            height: p.size,
+            opacity: p.opacity,
+            animation: `particle-float ${p.duration}s ease-in-out infinite ${p.delay}s`,
           }}
         />
+      ))}
 
-        {/* Labels — quiet, not competing with the image. No backdrop-blur to
-            avoid any chromatic blending with the navy page background. */}
-        {dragPosition > 0.15 && (
-          <div
-            className="absolute top-6 left-4 z-20 rounded-full bg-black/60 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.15em] text-white/80"
-            style={{ fontFamily: 'var(--font-sans)' }}
-          >
-            Before
-          </div>
-        )}
-        {dragPosition < 0.85 && (
-          <div
-            className="absolute top-6 right-4 z-20 rounded-full bg-black/60 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.15em] text-white/80"
-            style={{ fontFamily: 'var(--font-sans)' }}
-          >
-            After
-          </div>
-        )}
-
-        {/* Drag handle */}
+      {/* Concentric pulsing rings */}
+      <div className="relative flex items-center justify-center" style={{ width: 200, height: 200 }}>
+        {/* Ring 1 */}
         <div
-          className="absolute top-0 bottom-0 z-30"
-          style={{ left: `${dragPosition * 100}%`, transform: 'translateX(-50%)' }}
-          onMouseDown={(e) => {
-            e.stopPropagation()
-            setIsDragging(true)
+          className="absolute rounded-full border border-cova-gold"
+          style={{
+            width: 120,
+            height: 120,
+            animation: 'ring-pulse 2s ease-out infinite',
           }}
-          onTouchStart={(e) => {
-            e.stopPropagation()
-            setIsDragging(true)
+        />
+        {/* Ring 2 — delayed 667ms */}
+        <div
+          className="absolute rounded-full border border-cova-gold"
+          style={{
+            width: 120,
+            height: 120,
+            animation: 'ring-pulse 2s ease-out infinite 0.667s',
           }}
-        >
-          {/* Vertical beam */}
-          <div
-            className="absolute top-0 bottom-0 left-1/2 w-px -translate-x-1/2 bg-white/90"
-            style={{ boxShadow: '0 0 8px rgba(255,255,255,0.6)' }}
-          />
-          {/* Handle puck */}
-          <div
-            className="absolute left-1/2 top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 cursor-grab items-center justify-center gap-0.5 rounded-full bg-white active:cursor-grabbing"
-            style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.4)' }}
+        />
+        {/* Ring 3 — delayed 1333ms */}
+        <div
+          className="absolute rounded-full border border-cova-gold"
+          style={{
+            width: 120,
+            height: 120,
+            animation: 'ring-pulse 2s ease-out infinite 1.333s',
+          }}
+        />
+        {/* Center dot */}
+        <div className="w-3 h-3 rounded-full bg-cova-gold" />
+      </div>
+
+      {/* Status message crossfade */}
+      <div className="mt-12 h-8 relative w-full max-w-[480px]">
+        <AnimatePresence mode="wait">
+          <motion.p
+            key={messageIndex}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6, ease: 'easeInOut' }}
+            className="font-dm-sans text-lg text-cova-ivory text-center absolute w-full"
           >
-            <ChevronLeft size={14} className="-mx-0.5 text-neutral-700" />
-            <ChevronRight size={14} className="-mx-0.5 text-neutral-700" />
-          </div>
-        </div>
+            {MESSAGES[messageIndex]}
+          </motion.p>
+        </AnimatePresence>
       </div>
 
-      {/* Bottom bar — always floating over the image */}
-      <div
-        className="fixed inset-x-0 bottom-0 z-40 px-4 pt-16"
-        style={{
-          paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
-          background:
-            'linear-gradient(to top, rgba(0,0,0,0.85), rgba(0,0,0,0.4) 55%, transparent)',
-        }}
-      >
-        <div className="mx-auto flex max-w-sm flex-col gap-3">
-          {/* Primary CTA row */}
-          <div className="flex gap-3">
-            <CovaButton
-              variant="primary"
-              size="lg"
-              className="flex-1 whitespace-nowrap"
-              onClick={() => {
-                setStep(9)
-                router.push('/design/step-9')
-              }}
-            >
-              Shop This Look
-            </CovaButton>
-            <CovaButton
-              variant="ghost"
-              size="lg"
-              className="flex-1 whitespace-nowrap"
-              onClick={() => {
-                setStep(8)
-                router.push('/design/step-8')
-              }}
-            >
-              Refine →
-            </CovaButton>
-          </div>
-
-          {/* Secondary row */}
-          <div className="flex items-center justify-between px-1">
-            <button
-              onClick={handleShare}
-              className="flex items-center gap-1.5 text-sm text-white/60 transition-colors hover:text-white"
-              style={{ fontFamily: 'var(--font-sans)' }}
-            >
-              <Share2 size={16} />
-              Share
-            </button>
-            {isAuthenticated && (
-              <button
-                onClick={() => router.push('/dashboard')}
-                className="text-xs text-white/40 transition-colors hover:text-white/70"
-                style={{ fontFamily: 'var(--font-sans)' }}
-              >
-                View in Dashboard →
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
     </div>
   )
 }

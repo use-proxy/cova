@@ -248,3 +248,55 @@ body::-webkit-scrollbar-thumb:hover {
 .chat-scrollbar::-webkit-scrollbar { width: 4px; }
 .chat-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .chat-scrollbar::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.2); border-radius: 2px; }
+
+/* Hotspot sonar rings — used in step-9 shoppable room */
+.hotspot-pulse::before,
+.hotspot-pulse::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  margin-top: -20px;
+  margin-left: -20px;
+  border: 2px solid #C9A84C;
+  border-radius: 50%;
+  opacity: 0;
+  transform: scale(1);
+  animation: sonar-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+.hotspot-pulse::after {
+  animation-delay: 700ms;
+}
+@keyframes sonar-ring {
+  0%   { transform: scale(1);   opacity: 0.6; }
+  100% { transform: scale(2.5); opacity: 0;   }
+}
+
+/* Hint pill subtle pulse */
+@keyframes hint-pulse {
+  0%, 100% { opacity: 0.7; }
+  50%       { opacity: 1;   }
+}
+.animate-hint-pulse {
+  animation: hint-pulse 3s ease-in-out infinite;
+}
+
+/* Gold shimmer sweep — Buy Now buttons */
+@keyframes shimmer-sweep {
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+.shimmer-gold:hover {
+  background: linear-gradient(
+    90deg,
+    #C9A84C 0%,
+    #D4B460 40%,
+    #F0D080 50%,
+    #D4B460 60%,
+    #C9A84C 100%
+  );
+  background-size: 200% auto;
+  animation: shimmer-sweep 400ms ease-in-out;
+}
