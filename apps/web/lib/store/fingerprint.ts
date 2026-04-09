@@ -5,8 +5,11 @@ import type { StyleFingerprint } from '@/types/fingerprint'
 export type { StyleFingerprint }
 
 export interface PairwiseResponse {
+  /** Single id from quiz_comparison_pairs.id (Session C). */
   pairId: string
-  chosenId: string
+  /** Which side of the pair the user chose. 'skip' is reserved for a future
+   *  UI session — the current step-3 quiz only emits 'A' or 'B'. */
+  chosenSide: 'A' | 'B' | 'skip'
   responseTimeMs: number
 }
 

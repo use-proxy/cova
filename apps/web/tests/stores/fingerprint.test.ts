@@ -84,15 +84,15 @@ describe('useFingerprintStore', () => {
   })
 
   it('addPhaseBResponse appends to responses array', () => {
-    const response: PairwiseResponse = { pairId: 'pair-1', chosenId: 'img-A', responseTimeMs: 1200 }
+    const response: PairwiseResponse = { pairId: 'pair-1', chosenSide: 'A', responseTimeMs: 1200 }
     useFingerprintStore.getState().addPhaseBResponse(response)
     expect(useFingerprintStore.getState().phaseBResponses).toHaveLength(1)
-    expect(useFingerprintStore.getState().phaseBResponses[0]?.chosenId).toBe('img-A')
+    expect(useFingerprintStore.getState().phaseBResponses[0]?.chosenSide).toBe('A')
   })
 
   it('addPhaseBResponse accumulates multiple responses', () => {
-    useFingerprintStore.getState().addPhaseBResponse({ pairId: '1', chosenId: 'A', responseTimeMs: 800 })
-    useFingerprintStore.getState().addPhaseBResponse({ pairId: '2', chosenId: 'B', responseTimeMs: 1100 })
+    useFingerprintStore.getState().addPhaseBResponse({ pairId: '1', chosenSide: 'A', responseTimeMs: 800 })
+    useFingerprintStore.getState().addPhaseBResponse({ pairId: '2', chosenSide: 'B', responseTimeMs: 1100 })
     expect(useFingerprintStore.getState().phaseBResponses).toHaveLength(2)
   })
 

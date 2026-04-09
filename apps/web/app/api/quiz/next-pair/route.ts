@@ -2,113 +2,154 @@ import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import type { StyleFingerprint } from '@/types/fingerprint'
 
+// ── /api/quiz/next-pair ──────────────────────────────────────────────────────
+// Phase B selector. Returns one validated comparison pair from
+// quiz_comparison_pairs, or quizComplete=true when responseCount >= 12.
+//
+// Selection logic (per Session C spec):
+//   • responses 1-4: spread across 4 distinct dimensions not yet covered by
+//     completedPairIds. Random pick from the validated pool for that dim.
+//   • responses 5-12: pick the dimension with the LOWEST confidence in the
+//     client's currentFingerprint (= MAX value on the covariance diagonal,
+//     under the per-dim confidence encoding `cov[i][i] = 1 - confidence`).
+//     Random pick from the validated pool for that dim.
+//   • Always exclude any id in completedPairIds.
+//   • Return null + quizComplete=true when responseCount >= 12 or there are
+//     no remaining unshown validated pairs.
+//
+// Migrated from swipe_cards in Session C.
+
 interface NextPairRequest {
-  fingerprint: StyleFingerprint
-  answered_pairs: string[]
-  room_type: string
+  completedPairIds?: string[]
+  currentFingerprint?: StyleFingerprint
+  responseCount?: number
 }
 
-interface CardRow {
+interface PairRow {
   id: string
-  image_url: string
-  style: string
-  dimension_labels: Record<string, number>
-  pair_id: string
-  pair_side: string
+  dimension: string
+  dimension_index: number
+  image_a_url: string
+  image_b_url: string
+  image_a_vector: Record<string, number>
+  image_b_vector: Record<string, number>
 }
 
-const DIM_KEYS = [
+const DIMENSION_ORDER = [
   'colorTemperature', 'colorSaturation', 'density', 'formality',
   'era', 'material', 'texture', 'pattern',
   'lineQuality', 'lightPreference', 'nature', 'culturalInfluence',
 ] as const
+type DimKey = typeof DIMENSION_ORDER[number]
+
+const TOTAL_PAIRS = 12
+
+function pickRandom<T>(arr: T[]): T | null {
+  if (arr.length === 0) return null
+  return arr[Math.floor(Math.random() * arr.length)] ?? null
+}
 
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as NextPairRequest
-    const { fingerprint, answered_pairs = [], room_type } = body
+    const completedPairIds = body.completedPairIds ?? []
+    const currentFingerprint = body.currentFingerprint
+    const responseCount = body.responseCount ?? completedPairIds.length
+
+    // Quiz complete by count
+    if (responseCount >= TOTAL_PAIRS) {
+      return NextResponse.json({ pair: null, quizComplete: true })
+    }
 
     const admin = createAdminSupabaseClient()
-    const normalizedRoom = (room_type ?? 'bedroom').replace(/-/g, '_')
 
-    // Find highest-variance dimension from covariance diagonal
-    const diag = fingerprint.covariance.map((row: number[], i: number) => row[i] ?? 0)
-    const maxIdx = diag.indexOf(Math.max(...diag))
-    const targetDim = DIM_KEYS[maxIdx] ?? 'colorTemperature'
-
-    // Get Phase B pairs for room_type not in answered_pairs
-    const { data: initialPairCards, error: pairError } = await admin
-      .from('swipe_cards')
-      .select('id, image_url, style, dimension_labels, pair_id, pair_side')
-      .eq('phase', 'pairwise')
-      .eq('room_type', normalizedRoom)
-      .not('dimension_labels', 'is', null)
-
-    if (pairError) {
-      return NextResponse.json({ error: pairError.message }, { status: 500 })
-    }
-    let pairCards = initialPairCards
-
-    // Fall back to any room_type if no pairs found
-    if (!pairCards || pairCards.length === 0) {
-      const { data: fallback, error: fallbackError } = await admin
-        .from('swipe_cards')
-        .select('id, image_url, style, dimension_labels, pair_id, pair_side')
-        .eq('phase', 'pairwise')
-        .not('dimension_labels', 'is', null)
-
-      if (!fallbackError && fallback) {
-        pairCards = fallback
+    // 1. Discover which dimensions are already covered by completed pairs.
+    const coveredDims = new Set<string>()
+    if (completedPairIds.length > 0) {
+      const { data: completedRows, error: completedErr } = await admin
+        .from('quiz_comparison_pairs')
+        .select('dimension')
+        .in('id', completedPairIds)
+      if (completedErr) {
+        return NextResponse.json({ error: completedErr.message }, { status: 500 })
+      }
+      for (const r of completedRows ?? []) {
+        coveredDims.add(r.dimension as string)
       }
     }
 
-    if (!pairCards || pairCards.length === 0) {
-      return NextResponse.json({ error: 'No pairs available' }, { status: 404 })
+    // 2. Choose target dimension.
+    let targetDim: DimKey | null = null
+
+    if (responseCount < 4) {
+      // Spread phase: pick a dim NOT yet covered.
+      const uncoveredDims = DIMENSION_ORDER.filter((d) => !coveredDims.has(d))
+      targetDim = pickRandom<DimKey>([...uncoveredDims]) ?? DIMENSION_ORDER[0]
+    } else {
+      // Refine phase: pick the dim with lowest confidence in currentFingerprint.
+      // Encoding: cov[i][i] = 1 - confidence_i, so highest diagonal = lowest confidence.
+      if (currentFingerprint && Array.isArray(currentFingerprint.covariance)) {
+        const diag = currentFingerprint.covariance.map((row, i) => row[i] ?? 0)
+        let maxIdx = 0
+        let maxVal = -Infinity
+        for (let i = 0; i < diag.length && i < DIMENSION_ORDER.length; i++) {
+          const v = diag[i] ?? 0
+          if (v > maxVal) { maxVal = v; maxIdx = i }
+        }
+        targetDim = DIMENSION_ORDER[maxIdx] ?? DIMENSION_ORDER[0]
+      } else {
+        // No fingerprint sent — fall back to a random uncovered dim, then any.
+        const uncoveredDims = DIMENSION_ORDER.filter((d) => !coveredDims.has(d))
+        targetDim =
+          (uncoveredDims.length > 0
+            ? pickRandom<DimKey>([...uncoveredDims])
+            : pickRandom<DimKey>([...DIMENSION_ORDER])) ?? DIMENSION_ORDER[0]
+      }
     }
 
-    // Group by pair_id, filter out answered pairs
-    const pairMap = new Map<string, { a?: CardRow; b?: CardRow }>()
-    for (const card of pairCards as CardRow[]) {
-      if (!card.pair_id || answered_pairs.includes(card.pair_id)) continue
-      if (!pairMap.has(card.pair_id)) pairMap.set(card.pair_id, {})
-      const entry = pairMap.get(card.pair_id)!
-      if (card.pair_side === 'a') entry.a = card
-      else if (card.pair_side === 'b') entry.b = card
+    // 3. Query validated pairs for the target dimension, exclude completed.
+    //    Filter completedPairIds in JS to avoid PostgREST IN() escaping issues.
+    const { data: candidates, error: candErr } = await admin
+      .from('quiz_comparison_pairs')
+      .select('id, dimension, dimension_index, image_a_url, image_b_url, image_a_vector, image_b_vector')
+      .eq('dimension', targetDim)
+      .eq('is_validated', true)
+
+    if (candErr) {
+      return NextResponse.json({ error: candErr.message }, { status: 500 })
     }
 
-    // Only complete pairs (both sides)
-    const completePairs: Array<{ pairId: string; a: CardRow; b: CardRow; contrast: number }> = []
-    for (const entry of Array.from(pairMap.entries())) {
-      const [pairId, sides] = entry
-      if (!sides.a || !sides.b) continue
-      const dimA = sides.a.dimension_labels[targetDim] ?? 0
-      const dimB = sides.b.dimension_labels[targetDim] ?? 0
-      const contrast = Math.abs(dimA - dimB)
-      completePairs.push({ pairId, a: sides.a, b: sides.b, contrast })
+    let pool = (candidates ?? []).filter((c) => !completedPairIds.includes(c.id as string))
+
+    // 4. Fallback: if the target dim has nothing left, pick from ANY validated dim.
+    if (pool.length === 0) {
+      const { data: anyValidated, error: anyErr } = await admin
+        .from('quiz_comparison_pairs')
+        .select('id, dimension, dimension_index, image_a_url, image_b_url, image_a_vector, image_b_vector')
+        .eq('is_validated', true)
+      if (anyErr) {
+        return NextResponse.json({ error: anyErr.message }, { status: 500 })
+      }
+      pool = (anyValidated ?? []).filter((c) => !completedPairIds.includes(c.id as string))
     }
 
-    if (completePairs.length === 0) {
-      return NextResponse.json({ error: 'No unanswered pairs available' }, { status: 404 })
+    if (pool.length === 0) {
+      // Library exhausted — quiz complete.
+      return NextResponse.json({ pair: null, quizComplete: true })
     }
 
-    // Sort by contrast descending, pick highest
-    completePairs.sort((x, y) => y.contrast - x.contrast)
-    const best = completePairs[0]!
-
-    const makeCard = (card: CardRow) => ({
-      id: card.id,
-      imageUrl: card.image_url,
-      alt: 'Interior design style option',
-      dimensionLabels: card.dimension_labels,
-      pair_id: card.pair_id,
-    })
-
+    const chosen = pool[Math.floor(Math.random() * pool.length)] as PairRow
     return NextResponse.json({
       pair: {
-        imageA: makeCard(best.a),
-        imageB: makeCard(best.b),
+        id: chosen.id,
+        dimension: chosen.dimension,
+        dimension_index: chosen.dimension_index,
+        image_a_url: chosen.image_a_url,
+        image_b_url: chosen.image_b_url,
+        image_a_vector: chosen.image_a_vector,
+        image_b_vector: chosen.image_b_vector,
       },
-      targetDimension: targetDim,
+      quizComplete: false,
     })
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Internal server error'

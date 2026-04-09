@@ -17,8 +17,10 @@ interface QuizResponse {
 }
 
 interface PairwiseResponse {
+  /** quiz_comparison_pairs.id (single id, post-Session-C). */
   pairId: string
-  chosenId: string
+  /** Which image of the pair the user picked. 'skip' = no preference. */
+  chosenSide: 'A' | 'B' | 'skip'
   responseTimeMs: number
 }
 
@@ -240,57 +242,99 @@ async function computeNewFingerprint(
   let confidence = 0.3
 
   if (phase_a_selections.length > 0) {
+    // Phase A selections are now quiz_anchor_images.id values (Session C
+    // wiring). Read the 12-dim style_vector for each selected anchor and
+    // average them as the warm start.
     const admin = createAdminSupabaseClient()
-    const { data: selectedCards } = await admin
-      .from('swipe_cards')
-      .select('dimension_labels')
+    const { data: selectedAnchors } = await admin
+      .from('quiz_anchor_images')
+      .select('style_vector')
       .in('id', phase_a_selections)
-      .not('dimension_labels', 'is', null)
+      .not('style_vector', 'is', null)
 
-    if (selectedCards && selectedCards.length > 0) {
-      // Reset to 0 before averaging actual labels
+    if (selectedAnchors && selectedAnchors.length > 0) {
+      // Reset to 0 before averaging actual vectors
       for (const k of DIMENSION_ORDER) meanDims[k] = 0
-      for (const card of selectedCards) {
-        const dl = card.dimension_labels as Record<string, number>
+      for (const anchor of selectedAnchors) {
+        const sv = anchor.style_vector as Record<string, number>
         for (const k of DIMENSION_ORDER) {
-          meanDims[k] += (dl[k] ?? NEUTRAL_MIDPOINT) / selectedCards.length
+          meanDims[k] += (sv[k] ?? NEUTRAL_MIDPOINT) / selectedAnchors.length
         }
       }
     }
   }
 
   // ── Step 2 — Apply Phase B updates ───────────────────────────────────────
+  // Reads each pair from quiz_comparison_pairs by id (Session C wiring).
+  // For each non-skip response: chosen side vs other side gives a delta
+  // applied to meanDims with a response-time lambda. Per-dimension response
+  // counts are tracked and converted to a confidence formula:
+  //     covariance[i][i] = 1 - min(1, responses_for_dim / 4)
+  // — so a dim with 4+ responses → diagonal=0 (full confidence), a dim with
+  // 0 responses → diagonal=1 (no confidence). This encoding is consumed by
+  // /api/quiz/next-pair to pick the next least-confident dimension.
+  //
+  // NOTE: full Bradley-Terry inference (with explicit 'strong' vs 'normal'
+  // intensity weights and explicit 'skip' records) is deferred to a future UI
+  // session — it requires a "super-like" gesture that doesn't exist in the
+  // current step-3 client. The minimum wiring here keeps the response-time
+  // lambda as a proxy for intensity. See docs/sessions/session-quiz-wiring-progress.md
+  // for the deferred items.
+  const responsesPerDim: Record<DimKey, number> =
+    Object.fromEntries(DIMENSION_ORDER.map((d) => [d, 0])) as Record<DimKey, number>
+
   if (phase_b_responses.length > 0) {
     const admin = createAdminSupabaseClient()
+    const pairIds = Array.from(new Set(phase_b_responses.map((r) => r.pairId).filter(Boolean)))
+
+    const { data: pairRows } = await admin
+      .from('quiz_comparison_pairs')
+      .select('id, dimension, image_a_vector, image_b_vector')
+      .in('id', pairIds)
+
+    const pairsById = new Map<string, {
+      dimension: string
+      image_a_vector: Record<string, number>
+      image_b_vector: Record<string, number>
+    }>()
+    for (const row of pairRows ?? []) {
+      pairsById.set(row.id as string, {
+        dimension: row.dimension as string,
+        image_a_vector: row.image_a_vector as Record<string, number>,
+        image_b_vector: row.image_b_vector as Record<string, number>,
+      })
+    }
+
     for (const resp of phase_b_responses) {
-      const ids = resp.pairId.split('_').filter(Boolean)
-      if (ids.length < 2) continue
+      if (resp.chosenSide === 'skip') continue
+      const pair = pairsById.get(resp.pairId)
+      if (!pair) continue
 
-      const { data: pairCards } = await admin
-        .from('swipe_cards')
-        .select('id, dimension_labels')
-        .in('id', ids)
-        .not('dimension_labels', 'is', null)
-
-      if (!pairCards || pairCards.length < 2) continue
-
-      const chosen = pairCards.find(c => c.id === resp.chosenId)
-      const rejected = pairCards.find(c => c.id !== resp.chosenId)
-      if (!chosen || !rejected) continue
+      const chosenVec = resp.chosenSide === 'A' ? pair.image_a_vector : pair.image_b_vector
+      const rejectedVec = resp.chosenSide === 'A' ? pair.image_b_vector : pair.image_a_vector
 
       const lambda = Math.min(3, 1 + 500 / Math.max(resp.responseTimeMs, 100))
-      const chosenDims = chosen.dimension_labels as Record<string, number>
-      const rejectedDims = rejected.dimension_labels as Record<string, number>
 
-      for (let i = 0; i < DIMENSION_ORDER.length; i++) {
-        const k = DIMENSION_ORDER[i]!
-        const delta = ((chosenDims[k] ?? NEUTRAL_MIDPOINT) - (rejectedDims[k] ?? NEUTRAL_MIDPOINT)) * 0.15 * lambda
+      for (const k of DIMENSION_ORDER) {
+        const delta = ((chosenVec[k] ?? NEUTRAL_MIDPOINT) - (rejectedVec[k] ?? NEUTRAL_MIDPOINT)) * 0.15 * lambda
         meanDims[k] = clamp(meanDims[k] + delta, 0, 1)
-        covariance[i]![i] = (covariance[i]![i] ?? 0.5) * 0.85
+      }
+
+      // Increment per-dim response counter for the pair's primary dimension.
+      if (pair.dimension && pair.dimension in responsesPerDim) {
+        responsesPerDim[pair.dimension as DimKey] += 1
       }
     }
-    const diagSum = covariance.reduce((s, row, i) => s + (row[i] ?? 0), 0)
-    confidence = Math.min(1, Math.max(0, 1 - (diagSum / DIM_COUNT) / 0.5))
+
+    // Confidence encoding: cov[i][i] = 1 - min(1, count / 4)
+    let confSum = 0
+    for (let i = 0; i < DIMENSION_ORDER.length; i++) {
+      const k = DIMENSION_ORDER[i]!
+      const dimConfidence = Math.min(1, responsesPerDim[k] / 4)
+      covariance[i]![i] = 1 - dimConfidence
+      confSum += dimConfidence
+    }
+    confidence = confSum / DIM_COUNT
   }
 
   const fingerprint: StyleFingerprint = {

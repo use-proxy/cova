@@ -18,18 +18,24 @@ type DimKey =
   | "era" | "material" | "texture" | "pattern"
   | "lineQuality" | "lightPreference" | "nature" | "culturalInfluence";
 
-interface CardData {
+// Response shape from /api/quiz/next-card (Session C wiring).
+interface AnchorCard {
   id: string;
-  imageUrl: string;
-  alt: string;
-  styleName: string;
-  dimensionLabels: Record<DimKey, number>;
-  pair_id?: string;
+  style_name: string;
+  style_index: number;
+  image_url: string;
+  style_vector: Record<DimKey, number>;
 }
 
+// Response shape from /api/quiz/next-pair (Session C wiring).
 interface PairData {
-  imageA: CardData;
-  imageB: CardData;
+  id: string;
+  dimension: string;
+  dimension_index: number;
+  image_a_url: string;
+  image_b_url: string;
+  image_a_vector: Record<DimKey, number>;
+  image_b_vector: Record<DimKey, number>;
 }
 
 const DIM_KEYS: DimKey[] = [
@@ -87,84 +93,69 @@ function buildWarmStart(phaseADims: Array<Record<DimKey, number>>): StyleFingerp
 }
 
 // ── Phase A Component ─────────────────────────────────────────────────────────
+//
+// Single-round Phase A (Session C).
+// Shows all 9 anchor images simultaneously. The user selects EXACTLY 2.
+// The second tap immediately advances to Phase B — no Next button.
 
 interface PhaseAProps {
-  roomType: string;
   onComplete: (phaseADims: Array<Record<DimKey, number>>) => void;
   onBack: () => void;
 }
 
-function PhaseA({ roomType, onComplete, onBack }: PhaseAProps) {
+function PhaseA({ onComplete, onBack }: PhaseAProps) {
   const { addPhaseASelection } = useFingerprintStore();
-  const [currentRound, setCurrentRound] = useState<1 | 2 | 3>(1);
-  const [roundImages, setRoundImages] = useState<CardData[]>([]);
-  const [selections, setSelections] = useState<CardData[]>([]);
-  const [shownIds, setShownIds] = useState<string[]>([]);
+  const [anchors, setAnchors] = useState<AnchorCard[]>([]);
+  const [selections, setSelections] = useState<AnchorCard[]>([]);
   const [isLoadingImages, setIsLoadingImages] = useState(true);
-  const [accumulatedDims, setAccumulatedDims] = useState<Array<Record<DimKey, number>>>([]);
+  const [isAdvancing, setIsAdvancing] = useState(false);
   const loadedRef = useRef(false);
 
-  const loadCards = useCallback(async (round: number, shown: string[]) => {
+  const loadAnchors = useCallback(async () => {
     setIsLoadingImages(true);
     try {
-      const res = await fetch("/api/quiz/next-card", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ round, room_type: roomType, shown_ids: shown }),
-      });
-      if (!res.ok) throw new Error("Failed to load cards");
-      const data = await res.json() as { cards: CardData[] };
-      setRoundImages(data.cards ?? []);
-      setShownIds((prev) => [...prev, ...(data.cards ?? []).map((c) => c.id)]);
+      const res = await fetch("/api/quiz/next-card", { method: "GET" });
+      if (!res.ok) throw new Error("Failed to load anchors");
+      const data = (await res.json()) as { cards: AnchorCard[] };
+      setAnchors(data.cards ?? []);
     } catch {
-      setRoundImages([]);
+      setAnchors([]);
     } finally {
       setIsLoadingImages(false);
     }
-  }, [roomType]);
+  }, []);
 
   useEffect(() => {
     if (loadedRef.current) return;
     loadedRef.current = true;
-    void loadCards(1, []);
-  }, [loadCards]);
+    void loadAnchors();
+  }, [loadAnchors]);
 
-  function toggleCard(card: CardData) {
+  function handleCardTap(card: AnchorCard) {
+    if (isAdvancing) return;
+
     setSelections((prev) => {
-      const exists = prev.find((c) => c.id === card.id);
-      if (exists) return prev.filter((c) => c.id !== card.id);
-      if (prev.length >= 3) return [...prev.slice(1), card];
-      return [...prev, card];
+      const existsAt = prev.findIndex((c) => c.id === card.id);
+      // Toggle: if already selected, deselect.
+      if (existsAt >= 0) {
+        return prev.filter((c) => c.id !== card.id);
+      }
+      // Cap at 2; second selection auto-advances below.
+      if (prev.length >= 2) return prev;
+      const next = [...prev, card];
+
+      // Second tap → record selections in store and advance immediately.
+      if (next.length === 2) {
+        setIsAdvancing(true);
+        for (const c of next) addPhaseASelection(c.id);
+        // Brief delay so the user sees the second checkmark before transition.
+        setTimeout(() => {
+          onComplete(next.map((c) => c.style_vector));
+        }, 350);
+      }
+      return next;
     });
   }
-
-  const headings: Record<number, string> = {
-    1: "Which rooms speak to you?",
-    2: "Pick the spaces that feel right",
-    3: "Almost there",
-  };
-
-  function handleNext() {
-    const newDims = selections.map((c) => c.dimensionLabels);
-    const allDims = [...accumulatedDims, ...newDims];
-
-    for (const card of selections) {
-      addPhaseASelection(card.id);
-    }
-
-    setAccumulatedDims(allDims);
-    setSelections([]);
-
-    if (currentRound < 3) {
-      const nextRound = (currentRound + 1) as 1 | 2 | 3;
-      setCurrentRound(nextRound);
-      void loadCards(nextRound, shownIds);
-    } else {
-      onComplete(allDims);
-    }
-  }
-
-  const isDisabled = selections.length < 2;
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--cova-bg, #0A1628)" }}>
@@ -185,30 +176,13 @@ function PhaseA({ roomType, onComplete, onBack }: PhaseAProps) {
           className="font-serif text-3xl text-center mt-8 mb-1"
           style={{ color: "var(--cova-ivory, #F8F6F1)", fontFamily: "'EB Garamond', serif" }}
         >
-          {headings[currentRound]}
+          Which rooms speak to you?
         </h1>
-        <p className="text-sm text-center mb-5" style={{ color: "var(--cova-muted, #8BA3C0)" }}>
-          Choose 2 or 3 that resonate
+        <p className="text-sm text-center mb-6" style={{ color: "var(--cova-muted, #8BA3C0)" }}>
+          Pick the two that feel most like home
         </p>
 
-        {/* Round progress dots */}
-        <div className="flex gap-2 justify-center mb-6">
-          {[1, 2, 3].map((r) => (
-            <div
-              key={r}
-              className="rounded-full"
-              style={{
-                width: r === currentRound ? 10 : 8,
-                height: r === currentRound ? 10 : 8,
-                backgroundColor: r <= currentRound ? "var(--cova-gold, #C9A84C)" : "transparent",
-                border: r > currentRound ? "1px solid var(--cova-border, #1E3A5F)" : "none",
-                transition: "all 200ms ease-out",
-              }}
-            />
-          ))}
-        </div>
-
-        {/* Image grid */}
+        {/* Image grid — 3×3 of all 9 anchors */}
         <div className="grid grid-cols-3 gap-2 w-full max-w-md mx-auto">
           {isLoadingImages
             ? Array.from({ length: 9 }).map((_, i) => (
@@ -218,7 +192,7 @@ function PhaseA({ roomType, onComplete, onBack }: PhaseAProps) {
                   style={{ aspectRatio: "1/1", backgroundColor: "var(--cova-surface, #0F1F3D)" }}
                 />
               ))
-            : roundImages.map((card, idx) => {
+            : anchors.map((card, idx) => {
                 const isSelected = selections.some((c) => c.id === card.id);
                 return (
                   <motion.div
@@ -226,7 +200,7 @@ function PhaseA({ roomType, onComplete, onBack }: PhaseAProps) {
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.25, delay: idx * 0.035 }}
-                    onClick={() => toggleCard(card)}
+                    onClick={() => handleCardTap(card)}
                     className="relative cursor-pointer rounded-xl overflow-hidden"
                     style={{
                       aspectRatio: "1/1",
@@ -236,8 +210,8 @@ function PhaseA({ roomType, onComplete, onBack }: PhaseAProps) {
                     }}
                   >
                     <Image
-                      src={card.imageUrl}
-                      alt={card.alt}
+                      src={card.image_url}
+                      alt="Interior design style option"
                       fill
                       className="object-cover"
                       loading="eager"
@@ -265,26 +239,16 @@ function PhaseA({ roomType, onComplete, onBack }: PhaseAProps) {
               })}
         </div>
 
-        <p className="text-xs text-center mt-3" style={{ color: "var(--cova-muted, #8BA3C0)" }}>
-          {selections.length} selected
-        </p>
-
-        <button
-          onClick={handleNext}
-          disabled={isDisabled}
-          className="w-full max-w-md mt-4 py-3 rounded-xl font-medium transition-all duration-200"
-          style={{
-            backgroundColor: isDisabled ? "rgba(201,168,76,0.3)" : "var(--cova-gold, #C9A84C)",
-            color: isDisabled ? "rgba(201,168,76,0.5)" : "var(--cova-bg, #0A1628)",
-            cursor: isDisabled ? "not-allowed" : "pointer",
-          }}
+        <p
+          className="text-xs text-center mt-4"
+          style={{ color: "var(--cova-muted, #8BA3C0)", minHeight: 16 }}
         >
-          {isDisabled
-            ? "Select at least 2 to continue"
-            : currentRound < 3
-            ? "Next Round →"
-            : "Continue →"}
-        </button>
+          {selections.length === 0
+            ? "Tap two to continue"
+            : selections.length === 1
+              ? "One more"
+              : "Refining your style…"}
+        </p>
       </div>
     </div>
   );
@@ -316,35 +280,59 @@ function TransitionScreen() {
 }
 
 // ── Phase B Component ─────────────────────────────────────────────────────────
+//
+// Pairwise refinement (Session C). Body shape sent to /api/quiz/next-pair:
+//   { completedPairIds, currentFingerprint, responseCount }
+// Response shape:
+//   { pair: { id, dimension, dimension_index, image_a_url, image_b_url,
+//             image_a_vector, image_b_vector } | null,
+//     quizComplete: boolean }
+// On every tap we record { pairId, chosenSide: 'A'|'B', responseTimeMs } in
+// the store. The skip button records nothing (skip support is deferred per
+// Session C scope) and just advances to the next pair.
 
 interface PhaseBProps {
-  roomType: string;
   warmStart: StyleFingerprint;
   onComplete: (finalFP: StyleFingerprint) => void;
 }
 
-function PhaseB({ roomType, warmStart, onComplete }: PhaseBProps) {
+function PhaseB({ warmStart, onComplete }: PhaseBProps) {
   const { addPhaseBResponse } = useFingerprintStore();
   const [pairNumber, setPairNumber] = useState(1);
   const [currentPair, setCurrentPair] = useState<PairData | null>(null);
-  const [answeredPairs, setAnsweredPairs] = useState<string[]>([]);
+  const [completedPairIds, setCompletedPairIds] = useState<string[]>([]);
+  const [responsesPerDim, setResponsesPerDim] = useState<Record<DimKey, number>>(() => {
+    const o = {} as Record<DimKey, number>;
+    for (const k of DIM_KEYS) o[k] = 0;
+    return o;
+  });
   const [localFingerprint, setLocalFingerprint] = useState<StyleFingerprint>(warmStart);
   const [pairShownAt, setPairShownAt] = useState(Date.now());
   const [isLoadingPair, setIsLoadingPair] = useState(true);
-  const [chosenId, setChosenId] = useState<string | null>(null);
+  const [chosenSide, setChosenSide] = useState<"A" | "B" | null>(null);
   const loadedRef = useRef(false);
 
   const loadNextPair = useCallback(
-    async (fp: StyleFingerprint, answered: string[]) => {
+    async (fp: StyleFingerprint, completed: string[], count: number) => {
       setIsLoadingPair(true);
       try {
         const res = await fetch("/api/quiz/next-pair", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fingerprint: fp, answered_pairs: answered, room_type: roomType }),
+          body: JSON.stringify({
+            completedPairIds: completed,
+            currentFingerprint: fp,
+            responseCount: count,
+          }),
         });
-        if (!res.ok) throw new Error("No pairs");
-        const data = await res.json() as { pair: PairData };
+        if (!res.ok) throw new Error("next-pair failed");
+        const data = (await res.json()) as { pair: PairData | null; quizComplete: boolean };
+        if (data.quizComplete || !data.pair) {
+          setCurrentPair(null);
+          // Library exhausted before TOTAL_PAIRS reached — finish with what we have.
+          onComplete(fp);
+          return;
+        }
         setCurrentPair(data.pair);
         setPairShownAt(Date.now());
       } catch {
@@ -353,35 +341,49 @@ function PhaseB({ roomType, warmStart, onComplete }: PhaseBProps) {
         setIsLoadingPair(false);
       }
     },
-    [roomType]
+    [onComplete]
   );
 
   useEffect(() => {
     if (loadedRef.current) return;
     loadedRef.current = true;
-    void loadNextPair(warmStart, []);
+    void loadNextPair(warmStart, [], 0);
   }, [loadNextPair, warmStart]);
 
-  function handlePairResponse(chosenCard: CardData) {
-    if (!currentPair || chosenId) return;
+  function handlePairResponse(side: "A" | "B") {
+    if (!currentPair || chosenSide) return;
     const responseTimeMs = Date.now() - pairShownAt;
-    const rejectedCard =
-      chosenCard.id === currentPair.imageA.id ? currentPair.imageB : currentPair.imageA;
 
+    const chosenVec = side === "A" ? currentPair.image_a_vector : currentPair.image_b_vector;
+    const rejectedVec = side === "A" ? currentPair.image_b_vector : currentPair.image_a_vector;
+
+    // Local fingerprint update — mirrors the server math in
+    // /api/quiz/fingerprint so the next-pair selection sees a correct
+    // covariance diagonal between calls.
     const lambda = Math.min(3, 1 + 500 / Math.max(responseTimeMs, 100));
     const newDims = { ...localFingerprint.dimensions } as Record<DimKey, number>;
-    const newCov = localFingerprint.covariance.map((row) => [...row]);
 
-    DIM_KEYS.forEach((dim, i) => {
+    DIM_KEYS.forEach((dim) => {
       const delta =
-        ((chosenCard.dimensionLabels[dim] ?? NEUTRAL_MIDPOINT) - (rejectedCard.dimensionLabels[dim] ?? NEUTRAL_MIDPOINT)) *
-        0.15 * lambda;
+        ((chosenVec[dim] ?? NEUTRAL_MIDPOINT) - (rejectedVec[dim] ?? NEUTRAL_MIDPOINT)) *
+        0.15 *
+        lambda;
       newDims[dim] = clamp((newDims[dim] ?? NEUTRAL_MIDPOINT) + delta, 0, 1);
-      newCov[i]![i] = (newCov[i]![i] ?? 0.5) * 0.85;
     });
 
-    const diagSum = newCov.reduce((s, row, i) => s + (row[i] ?? 0), 0);
-    const confidence = Math.min(1, Math.max(0, 1 - (diagSum / DIM_COUNT) / 0.5));
+    // Per-dim response counter → covariance encoding cov[i][i] = 1 - min(1, count/4).
+    const newCounts = { ...responsesPerDim };
+    if (currentPair.dimension && (currentPair.dimension as DimKey) in newCounts) {
+      newCounts[currentPair.dimension as DimKey] += 1;
+    }
+    const newCov: number[][] = makeIdentityCov(0);
+    let confSum = 0;
+    DIM_KEYS.forEach((dim, i) => {
+      const dimConf = Math.min(1, newCounts[dim] / 4);
+      newCov[i]![i] = 1 - dimConf;
+      confSum += dimConf;
+    });
+    const confidence = confSum / DIM_COUNT;
 
     const updatedFP: StyleFingerprint = {
       dimensions: newDims as StyleFingerprint["dimensions"],
@@ -389,40 +391,42 @@ function PhaseB({ roomType, warmStart, onComplete }: PhaseBProps) {
       confidence,
     };
     setLocalFingerprint(updatedFP);
+    setResponsesPerDim(newCounts);
 
     addPhaseBResponse({
-      pairId: currentPair.imageA.id + "_" + currentPair.imageB.id,
-      chosenId: chosenCard.id,
+      pairId: currentPair.id,
+      chosenSide: side,
       responseTimeMs,
     });
 
-    const newAnswered = [
-      ...answeredPairs,
-      currentPair.imageA.pair_id ?? currentPair.imageA.id,
-    ];
-    setAnsweredPairs(newAnswered);
-    setChosenId(chosenCard.id);
+    const newCompleted = [...completedPairIds, currentPair.id];
+    setCompletedPairIds(newCompleted);
+    setChosenSide(side);
 
     setTimeout(() => {
-      setChosenId(null);
+      setChosenSide(null);
       if (pairNumber >= TOTAL_PAIRS) {
         onComplete(updatedFP);
       } else {
         setPairNumber((p) => p + 1);
-        void loadNextPair(updatedFP, newAnswered);
+        void loadNextPair(updatedFP, newCompleted, newCompleted.length);
       }
     }, 650);
   }
 
   function handleSkip() {
-    if (!currentPair || chosenId) return;
-    const newAnswered = [...answeredPairs, currentPair.imageA.pair_id ?? currentPair.imageA.id];
-    setAnsweredPairs(newAnswered);
+    if (!currentPair || chosenSide) return;
+    // Skip records no phase_b_response (per Session C scope — full skip support
+    // is deferred). The pair is still added to the exclusion list so it
+    // doesn't reappear, and responseCount advances so the quiz still ends
+    // after TOTAL_PAIRS rounds.
+    const newCompleted = [...completedPairIds, currentPair.id];
+    setCompletedPairIds(newCompleted);
     if (pairNumber >= TOTAL_PAIRS) {
       onComplete(localFingerprint);
     } else {
       setPairNumber((p) => p + 1);
-      void loadNextPair(localFingerprint, newAnswered);
+      void loadNextPair(localFingerprint, newCompleted, newCompleted.length);
     }
   }
 
@@ -481,39 +485,42 @@ function PhaseB({ roomType, warmStart, onComplete }: PhaseBProps) {
                 exit={{ opacity: 0, x: -40 }}
                 transition={{ duration: 0.3 }}
               >
-                {([currentPair.imageA, currentPair.imageB] as CardData[]).map((card) => (
-                  <div
-                    key={card.id}
-                    className="flex-1 relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-150"
-                    style={{
-                      aspectRatio: "3/4",
-                      boxShadow:
-                        chosenId === card.id
-                          ? "0 0 0 2px var(--cova-gold, #C9A84C)"
-                          : "none",
-                      transform: chosenId === card.id ? "scale(1.02)" : "scale(1)",
-                    }}
-                    onClick={() => handlePairResponse(card)}
-                    onMouseEnter={(e) => {
-                      if (!chosenId) {
-                        e.currentTarget.style.boxShadow = "0 0 0 2px rgba(201,168,76,0.5)";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (chosenId !== card.id) {
-                        e.currentTarget.style.boxShadow = "none";
-                      }
-                    }}
-                  >
-                    <Image
-                      src={card.imageUrl}
-                      alt={card.alt}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 512px) 45vw, 230px"
-                    />
-                  </div>
-                ))}
+                {(["A", "B"] as const).map((side) => {
+                  const url = side === "A" ? currentPair.image_a_url : currentPair.image_b_url;
+                  return (
+                    <div
+                      key={`${currentPair.id}-${side}`}
+                      className="flex-1 relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-150"
+                      style={{
+                        aspectRatio: "3/4",
+                        boxShadow:
+                          chosenSide === side
+                            ? "0 0 0 2px var(--cova-gold, #C9A84C)"
+                            : "none",
+                        transform: chosenSide === side ? "scale(1.02)" : "scale(1)",
+                      }}
+                      onClick={() => handlePairResponse(side)}
+                      onMouseEnter={(e) => {
+                        if (!chosenSide) {
+                          e.currentTarget.style.boxShadow = "0 0 0 2px rgba(201,168,76,0.5)";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (chosenSide !== side) {
+                          e.currentTarget.style.boxShadow = "none";
+                        }
+                      }}
+                    >
+                      <Image
+                        src={url}
+                        alt="Interior design style option"
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 512px) 45vw, 230px"
+                      />
+                    </div>
+                  );
+                })}
               </motion.div>
             </AnimatePresence>
           )}
@@ -521,7 +528,7 @@ function PhaseB({ roomType, warmStart, onComplete }: PhaseBProps) {
 
         <button
           onClick={handleSkip}
-          disabled={!!chosenId}
+          disabled={!!chosenSide}
           className="text-xs text-center mt-4 transition-colors duration-200 bg-transparent border-none cursor-pointer"
           style={{ color: "var(--cova-muted, #8BA3C0)" }}
           onMouseEnter={(e) => (e.currentTarget.style.color = "var(--cova-ivory, #F8F6F1)")}
@@ -772,8 +779,6 @@ export default function StyleQuizPage() {
     setPhase("C");
   }
 
-  const roomTypeNorm = roomType ?? "bedroom";
-
   return (
     <AnimatePresence mode="wait">
       {phase === "A" && (
@@ -785,7 +790,6 @@ export default function StyleQuizPage() {
           transition={{ duration: 0.3 }}
         >
           <PhaseA
-            roomType={roomTypeNorm}
             onComplete={handlePhaseAComplete}
             onBack={() => router.push("/design/step-2")}
           />
@@ -813,7 +817,6 @@ export default function StyleQuizPage() {
           transition={{ duration: 0.3 }}
         >
           <PhaseB
-            roomType={roomTypeNorm}
             warmStart={warmStart}
             onComplete={handlePhaseBComplete}
           />

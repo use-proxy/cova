@@ -1,5 +1,5 @@
 # Cova — Build Status
-Last updated: 2026-04-04
+Last updated: 2026-04-08
 
 ---
 
@@ -129,6 +129,9 @@ The pipeline runs end-to-end. Rooms can be created, captured, processed through 
 | 2026-04-04 | 19 quiz pairs (up from 15). Three contrast levels: extreme (0.1/0.9), mid (0.25/0.75), fine (0.35/0.65). Contrast weight: extreme=0.25, mid=0.35, fine=0.40. | scripts/generate-all-images.ts |
 | 2026-04-04 | Quiz images generated via Replicate FLUX 1.1 Pro. 342 pair images + 27 stock photos across 9 room types. Stored in quiz-pairs and room-photos Supabase buckets. | scripts/generate-all-images.ts |
 | 2026-04-04 | FLUX prompt builder updated to use all 10 fingerprint dimensions. | apps/web/lib/ai/flux.ts |
+| 2026-04-08 | **Session A**: 12-dim `[0,1]` fingerprint replaces 10-dim `[-1,1]`. New dimensions: colorTemperature, colorSaturation, density, formality, era, material, texture, pattern, lineQuality, lightPreference, nature, culturalInfluence. 9 named anchor styles replace the prior 12. Legacy `swipe_cards` / `style_references` / `style_fingerprints` rows wiped. Commit `8060281`. | apps/web/types/fingerprint.ts + 10 source files + 5 test files |
+| 2026-04-08 | **Session B**: Generated 9 anchor images + 60 validated comparison pairs (5 per dim × 12 dims) via Replicate FLUX 1.1 Pro + Kontext Pro into new `quiz_anchor_images` and `quiz_comparison_pairs` tables. Inline Claude Sonnet livability gate. $8.06 spent / $20 ceiling. Commit `75abbf6`. | supabase/migrations/20260408000000_quiz_image_library.sql + apps/web/scripts/generate-quiz-library.ts |
+| 2026-04-08 | **Session C**: Wired the live quiz routes (`/api/quiz/next-card`, `/api/quiz/next-pair`, `/api/quiz/fingerprint`, `/api/style-references/match`) to read from `quiz_anchor_images` and `quiz_comparison_pairs`. Phase A collapsed from 3 rounds → single round with exactly 2 selections. PairwiseResponse `chosenId` → `chosenSide: 'A'\|'B'\|'skip'`. Per-dim confidence formula `cov[i][i] = 1 - min(1, count/4)`. All 6 smoke tests pass against live dev server. | apps/web/app/api/quiz/* + app/design/step-3/page.tsx + lib/store/fingerprint.ts |
 
 ## Landing Page Real Images (2026-04-04)
 
