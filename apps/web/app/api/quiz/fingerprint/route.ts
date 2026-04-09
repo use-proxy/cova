@@ -500,44 +500,57 @@ export async function POST(request: Request) {
         styleTags = result.styleTags
       }
 
-      // Save if authenticated. NOTE: the supabase-js query builder is a
-      // thenable, NOT a real Promise — `.catch()` is not a method on it.
-      // Calling `.catch()` directly throws "insert(...).catch is not a
-      // function" and 500s the route. Use try/catch on the awaited builder.
-      if (user) {
-        try {
-          const admin = createAdminSupabaseClient()
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { data: inserted, error: insertErr } = await (admin.from('style_fingerprints') as any)
-            .insert({
-              user_id: user.id,
-              dimensions: fingerprint.dimensions,
-              covariance: fingerprint.covariance,
-              confidence: fingerprint.confidence,
-              style_name: styleName,
-              room_type: body.room_type,
-              budget_tier: body.budget_tier ?? null,
-              quiz_responses: body.phase_b_responses ?? [],
-              entry_path: 'pairs',
-            })
-            .select('id')
-            .single()
-          if (insertErr) {
-            console.warn('[fingerprint] save failed:', insertErr.message)
-          } else {
-            console.log('[fingerprint] saved to DB:', {
-              userId: user.id,
-              styleId: inserted?.id ?? null,
-              styleName,
-            })
-          }
-        } catch (e) {
-          /* non-fatal — fingerprint result is still returned to the client */
-          console.warn(
-            '[fingerprint] save threw:',
-            e instanceof Error ? e.message : String(e)
+      // Guard: require authenticated user before attempting any DB insert.
+      // Do not silently skip the save — return 401 so the client knows
+      // the fingerprint was not persisted. The cookie-based pre-auth flow
+      // (cova_anon_fingerprint) handles the unauthenticated case.
+      if (!user) {
+        return NextResponse.json(
+          { success: false, error: 'unauthenticated' },
+          { status: 401 }
+        )
+      }
+
+      // Save to DB. NOTE: the supabase-js query builder is a thenable, NOT
+      // a real Promise — `.catch()` is not a method on it. Use try/catch on
+      // the awaited builder. Both network errors (thrown exceptions) and
+      // Supabase-returned errors (error field on the response) are handled.
+      try {
+        const admin = createAdminSupabaseClient()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: inserted, error: insertErr } = await (admin.from('style_fingerprints') as any)
+          .insert({
+            user_id: user.id,
+            dimensions: fingerprint.dimensions,
+            covariance: fingerprint.covariance,
+            confidence: fingerprint.confidence,
+            style_name: styleName,
+            room_type: body.room_type,
+            budget_tier: body.budget_tier ?? null,
+            quiz_responses: body.phase_b_responses ?? [],
+            entry_path: 'pairs',
+          })
+          .select('id')
+          .single()
+        if (insertErr) {
+          console.error(`[fingerprint-save] ERROR: ${JSON.stringify(insertErr)}`)
+          return NextResponse.json(
+            { success: false, error: 'fingerprint_save_failed', detail: insertErr.message },
+            { status: 500 }
           )
         }
+        console.log('[fingerprint] saved to DB:', {
+          userId: user.id,
+          styleId: inserted?.id ?? null,
+          styleName,
+        })
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        console.error(`[fingerprint-save] ERROR: ${JSON.stringify({ message: msg })}`)
+        return NextResponse.json(
+          { success: false, error: 'fingerprint_save_failed', detail: msg },
+          { status: 500 }
+        )
       }
 
       return NextResponse.json({
@@ -561,22 +574,40 @@ export async function POST(request: Request) {
       const styleChips = matchedStyle.chips
       const fingerprint = toStyleFingerprint(rawVector)
 
+      // Guard: require auth before any DB insert (same as new format above).
+      if (!user) {
+        return NextResponse.json(
+          { success: false, error: 'unauthenticated' },
+          { status: 401 }
+        )
+      }
+
       // See note above about .catch() on the supabase-js builder.
-      if (user) {
-        try {
-          const admin = createAdminSupabaseClient()
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (admin.from('style_fingerprints') as any).insert({
-            user_id: user.id,
-            vector_data: rawVector,
-            style_name: styleName,
-            room_type,
-            entry_path,
-            quiz_responses: responses,
-          })
-        } catch {
-          /* non-fatal */
+      try {
+        const admin = createAdminSupabaseClient()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: insertErr } = await (admin.from('style_fingerprints') as any).insert({
+          user_id: user.id,
+          vector_data: rawVector,
+          style_name: styleName,
+          room_type,
+          entry_path,
+          quiz_responses: responses,
+        })
+        if (insertErr) {
+          console.error(`[fingerprint-save] ERROR: ${JSON.stringify(insertErr)}`)
+          return NextResponse.json(
+            { success: false, error: 'fingerprint_save_failed', detail: insertErr.message },
+            { status: 500 }
+          )
         }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        console.error(`[fingerprint-save] ERROR: ${JSON.stringify({ message: msg })}`)
+        return NextResponse.json(
+          { success: false, error: 'fingerprint_save_failed', detail: msg },
+          { status: 500 }
+        )
       }
 
       return NextResponse.json({

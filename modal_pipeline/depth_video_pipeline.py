@@ -13,6 +13,7 @@ import modal
 import os
 import json
 import math
+import base64
 
 app = modal.App("cova-depth-video")
 
@@ -23,6 +24,7 @@ image = (
         "torch==2.2.0",
         "torchvision==0.17.0",
         "timm==0.6.12",
+        "transformers>=4.38.0",
         "Pillow==10.2.0",
         "numpy<2",
         "requests",
@@ -141,27 +143,69 @@ def generate_depth_video(
     pano_img = pano_img.resize((PANO_W, PANO_H), Image.LANCZOS)
     pano_np = np.array(pano_img)
 
-    # Step 2: Depth estimation via ZoeDepth
-    print("[depth-video] Running ZoeDepth...")
-    os.makedirs("/model-cache", exist_ok=True)
-    torch.hub.set_dir("/model-cache")
-    zoe = torch.hub.load("isl-org/ZoeDepth", "ZoeD_N", pretrained=True)
+    # Step 2: Depth estimation via Apple Depth Pro (HuggingFace Transformers).
+    #
+    # NORMALIZATION CRITICAL — DO NOT SKIP:
+    # Apple Depth Pro outputs float32 metric depth tensors in meters (range ~0.5–8.0m).
+    # Casting these directly to uint8 maps ALL values to 0–8, producing an
+    # essentially black depth map that makes all downstream parallax/depth operations
+    # return 0.
+    #
+    # WRONG (always returns 0):
+    #   depth_uint8 = depth_np.astype(np.uint8)
+    #
+    # CORRECT — normalize to [0,1] BEFORE casting to uint8:
+    #   depth_min, depth_max = depth_np.min(), depth_np.max()
+    #   depth_normalized = (depth_np - depth_min) / (depth_max - depth_min)
+    #   depth_uint8 = (depth_normalized * 255).astype(np.uint8)
+    #
+    # We use the HuggingFace Transformers pipeline("depth-estimation") to avoid
+    # checkpoint path issues on ephemeral Modal filesystems (no torch.hub caching
+    # required — transformers downloads to ~/.cache/huggingface automatically).
+    print("[depth-video] Running Apple Depth Pro via HuggingFace Transformers...")
+    from transformers import pipeline as hf_pipeline
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    zoe.to(device).eval()
+    depth_raw = None
+    try:
+        depth_pipe = hf_pipeline(
+            "depth-estimation",
+            model="apple/DepthPro-hf",
+            device=0 if device == "cuda" else -1,
+        )
+        pano_pil = Image.fromarray(pano_np)
+        depth_output = depth_pipe(pano_pil)
+        # depth_output["depth"] is a PIL Image (uint16 or float) — convert to float32 numpy
+        import numpy as _np
+        depth_raw = _np.array(depth_output["depth"]).astype(np.float32)
+    except Exception as depth_pro_err:
+        print(f"[depth-video] Depth Pro failed ({depth_pro_err}), falling back to ZoeDepth...")
 
-    with torch.no_grad():
-        pano_tensor = torch.from_numpy(pano_np).permute(2, 0, 1).float() / 255.0
-        pano_tensor = pano_tensor.unsqueeze(0).to(device)
-        depth_raw = zoe.infer(pano_tensor).squeeze().cpu().numpy()
+    if depth_raw is None:
+        # Fallback: ZoeDepth (MIT License — confirmed safe for commercial use)
+        os.makedirs("/model-cache", exist_ok=True)
+        torch.hub.set_dir("/model-cache")
+        zoe = torch.hub.load("isl-org/ZoeDepth", "ZoeD_N", pretrained=True)
+        zoe.to(device).eval()
+        with torch.no_grad():
+            pano_tensor = torch.from_numpy(pano_np).permute(2, 0, 1).float() / 255.0
+            pano_tensor = pano_tensor.unsqueeze(0).to(device)
+            depth_raw = zoe.infer(pano_tensor).squeeze().cpu().numpy()
 
-    depth_min, depth_max = depth_raw.min(), depth_raw.max()
-    depth_norm = (depth_raw - depth_min) / (depth_max - depth_min + 1e-8)
+    # CRITICAL: normalize float32 metric depth to [0,1] before any uint8 conversion.
+    # See normalization note above — skipping this step produces an all-zero depth map.
+    depth_min = depth_raw.min()
+    depth_max = depth_raw.max()
+    if depth_max - depth_min > 0:
+        depth_norm = (depth_raw - depth_min) / (depth_max - depth_min)
+    else:
+        depth_norm = np.zeros_like(depth_raw)
     depth_resized = cv2.resize(depth_norm, (PANO_W, PANO_H))
     depth_filtered = cv2.bilateralFilter(
         depth_resized.astype(np.float32), d=9, sigmaColor=0.1, sigmaSpace=15
     )
 
-    print(f"[depth-video] Depth complete. Range: {depth_min:.2f}-{depth_max:.2f}")
+    print(f"[depth-video] depth shape={depth_filtered.shape} min={depth_filtered.min():.4f} max={depth_filtered.max():.4f}")
 
     # Step 3: Color grade from style
     dominant_style = max(style_blend.items(), key=lambda x: x[1])[0] if style_blend else "transitional"
@@ -385,10 +429,22 @@ def generate_depth_video(
         "redesign_status": "video_ready",
     })
 
+    # Serialize depth as base64 float32 bytes so callers can reconstruct the
+    # depth array without re-fetching and PNG-decoding the stored image.
+    # Format: { depth_b64: str, shape: [H, W], dtype: "float32" }
+    depth_b64 = base64.b64encode(
+        depth_filtered.astype(np.float32).tobytes()
+    ).decode("utf-8")
+
     print(f"[depth-video] Complete. Video: {video_signed_url}")
     return {
         "flythrough_video_url": video_signed_url,
         "depth_map_url": depth_signed_url,
+        "depth_data": {
+            "depth_b64": depth_b64,
+            "shape": list(depth_filtered.shape),
+            "dtype": "float32",
+        },
         "hotspot_timing": hotspot_timing,
         "video_duration_seconds": VIDEO_DURATION,
         "video_size_mb": round(video_mb, 2),

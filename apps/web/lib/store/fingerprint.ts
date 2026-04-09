@@ -50,6 +50,93 @@ interface FingerprintState {
   resetFingerprint: () => void
 }
 
+/**
+ * Cookie name used to persist fingerprint state across OAuth redirects.
+ *
+ * Two-layer persistence strategy:
+ *   PRIMARY   — cookie `cova_anon_fingerprint` (Path=/, SameSite=Lax, Max-Age=3600).
+ *               Survives cross-origin OAuth redirects where sessionStorage is wiped.
+ *               Base64url-encoded JSON. If the encoded value exceeds 3800 bytes
+ *               (cookie size headroom), falls back to sessionStorage with a warning.
+ *   SECONDARY — sessionStorage, read-only fallback for same-tab reads before any
+ *               redirect occurs. Never written to directly (except the size overflow case).
+ *
+ * The OAuth callback route (app/auth/callback/route.ts) reads this cookie after
+ * successful session establishment and persists the fingerprint to Supabase
+ * style_fingerprints under the newly authenticated user, then clears the cookie.
+ */
+const COOKIE_NAME = 'cova_anon_fingerprint'
+
+/**
+ * Custom storage adapter that writes fingerprint state to a cookie so it
+ * survives OAuth redirects. All cookie operations are wrapped in try/catch
+ * because cookie access can fail in certain iframe / privacy-restricted contexts
+ * and must never crash the app.
+ */
+const fingerprintCookieStorage = {
+  getItem: (_name: string): string | null => {
+    try {
+      if (typeof document === 'undefined') return null
+      // Primary: read from cookie
+      const cookies = document.cookie.split('; ')
+      for (const cookie of cookies) {
+        const eqIdx = cookie.indexOf('=')
+        if (eqIdx === -1) continue
+        const key = cookie.slice(0, eqIdx)
+        if (key === COOKIE_NAME) {
+          const encoded = cookie.slice(eqIdx + 1)
+          try {
+            return decodeURIComponent(atob(encoded))
+          } catch {
+            return null
+          }
+        }
+      }
+      // Secondary: sessionStorage read fallback (same-tab, pre-redirect)
+      try {
+        return sessionStorage.getItem(COOKIE_NAME) ?? null
+      } catch {
+        return null
+      }
+    } catch {
+      return null
+    }
+  },
+
+  setItem: (_name: string, value: string): void => {
+    try {
+      if (typeof document === 'undefined') return
+      const encoded = btoa(encodeURIComponent(value))
+      if (encoded.length > 3800) {
+        console.warn(
+          '[fingerprint-store] Cookie value exceeds 3800 bytes — falling back to sessionStorage'
+        )
+        try {
+          sessionStorage.setItem(COOKIE_NAME, value)
+        } catch {
+          /* ignore */
+        }
+        return
+      }
+      const isProduction =
+        typeof process !== 'undefined' && process.env.NODE_ENV === 'production'
+      const secure = isProduction ? '; Secure' : ''
+      document.cookie = `${COOKIE_NAME}=${encoded}; Path=/; SameSite=Lax; Max-Age=3600${secure}`
+    } catch {
+      // Cookie access can fail in restrictive iframe / privacy contexts — ignore silently
+    }
+  },
+
+  removeItem: (_name: string): void => {
+    try {
+      if (typeof document === 'undefined') return
+      document.cookie = `${COOKIE_NAME}=; Path=/; Max-Age=0; SameSite=Lax`
+    } catch {
+      /* ignore */
+    }
+  },
+}
+
 const INITIAL_STATE = {
   roomType: null,
   budgetTier: null,
@@ -96,7 +183,9 @@ export const useFingerprintStore = create<FingerprintState>()(
     }),
     {
       name: 'cova-fingerprint-v1',
-      storage: createJSONStorage(() => sessionStorage),
+      // createJSONStorage wraps our cookie adapter so Zustand gets the
+      // PersistStorage<T> interface it expects (parse/stringify handled for us).
+      storage: createJSONStorage(() => fingerprintCookieStorage),
       partialize: (state) => ({
         roomType: state.roomType,
         budgetTier: state.budgetTier,

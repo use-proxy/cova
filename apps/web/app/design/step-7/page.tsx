@@ -14,7 +14,7 @@ import { toast } from 'sonner'
 import { useRoomStore } from '@/lib/store/room'
 import { useSessionStore } from '@/lib/store/session'
 import { CovaButton } from '@/components/cova/CovaButton'
-import { createBrowserClient } from '@supabase/ssr'
+import { createBrowserClient } from '@/lib/supabase/client'
 
 export default function Step7Page() {
   const router = useRouter()
@@ -51,11 +51,26 @@ export default function Step7Page() {
       return
     }
 
+    const supabase = createBrowserClient()
+
+    // Area 2 guard: if the room has no render_context yet, the user belongs
+    // in the new personalization flow (step-7a). Legacy rooms that already
+    // have a render_context fall through and render normally.
+    if (roomStore.roomId) {
+      supabase
+        .from('rooms')
+        .select('render_context')
+        .eq('id', roomStore.roomId)
+        .single()
+        .then(({ data }) => {
+          const ctx = (data as { render_context?: unknown } | null)?.render_context
+          if (!ctx) {
+            router.push('/design/step-7a')
+          }
+        })
+    }
+
     // Auth check — async, non-blocking
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
     supabase.auth.getSession().then(({ data: { session } }) => {
       setIsAuthenticated(!!session)
     })

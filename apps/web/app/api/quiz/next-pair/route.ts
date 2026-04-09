@@ -88,15 +88,28 @@ export async function POST(request: Request) {
     } else {
       // Refine phase: pick the dim with lowest confidence in currentFingerprint.
       // Encoding: cov[i][i] = 1 - confidence_i, so highest diagonal = lowest confidence.
+      // BUG-3 fix (2026-04-08): when multiple dims are tied at max covariance,
+      // randomly select among tied candidates (Fisher-Yates on the tied subset)
+      // so the quiz doesn't feel scripted. Coverage is unchanged — all dims still
+      // get exactly one pair each across the 12-pair quiz.
       if (currentFingerprint && Array.isArray(currentFingerprint.covariance)) {
         const diag = currentFingerprint.covariance.map((row, i) => row[i] ?? 0)
-        let maxIdx = 0
         let maxVal = -Infinity
         for (let i = 0; i < diag.length && i < DIMENSION_ORDER.length; i++) {
           const v = diag[i] ?? 0
-          if (v > maxVal) { maxVal = v; maxIdx = i }
+          if (v > maxVal) maxVal = v
         }
-        targetDim = DIMENSION_ORDER[maxIdx] ?? DIMENSION_ORDER[0]
+        // Collect all indices tied at the maximum value
+        const tiedIndices: number[] = []
+        for (let i = 0; i < diag.length && i < DIMENSION_ORDER.length; i++) {
+          if ((diag[i] ?? 0) === maxVal) tiedIndices.push(i)
+        }
+        // Fisher-Yates shuffle of tied subset, then pick first
+        for (let i = tiedIndices.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1))
+          ;[tiedIndices[i], tiedIndices[j]] = [tiedIndices[j]!, tiedIndices[i]!]
+        }
+        targetDim = DIMENSION_ORDER[tiedIndices[0]!] ?? DIMENSION_ORDER[0]
       } else {
         // No fingerprint sent — fall back to a random uncovered dim, then any.
         const uncoveredDims = DIMENSION_ORDER.filter((d) => !coveredDims.has(d))

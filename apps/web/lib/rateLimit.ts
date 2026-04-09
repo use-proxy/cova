@@ -18,6 +18,8 @@ interface RateLimitConfig {
 const RATE_LIMITS: Record<string, RateLimitConfig> = {
   render: { maxRequests: 5, windowSeconds: 3600 },
   match: { maxRequests: 30, windowSeconds: 3600 },
+  'room-budget': { maxRequests: 20, windowSeconds: 3600 },
+  'complete-room': { maxRequests: 20, windowSeconds: 3600 },
   detect: { maxRequests: 10, windowSeconds: 3600 },
   'parse-constraints': { maxRequests: 20, windowSeconds: 3600 },
   default: { maxRequests: 60, windowSeconds: 3600 },

@@ -4,7 +4,7 @@ import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import Replicate from 'replicate'
 import type { InsertTables } from '@/types/supabase'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { submitArchitectureCorrection } from '@/lib/ai/flux'
+import { submitArchitectureCorrection, runUpscale } from '@/lib/ai/flux'
 import { upscaleRender } from '@/lib/ai/upscaler'
 import type { RoomArchitecture } from '@/lib/ai/room-analyzer'
 
@@ -96,6 +96,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ status: 'failed', error: prediction.error ?? 'Render failed' })
     }
     if (prediction.status === 'succeeded') {
+      // Handles output from: flux-kontext-pro, flux-depth-pro, flux-kontext-apps/multi-image-kontext-pro
+      // All return output as string URL or string[] — extraction logic below handles both
       const output = prediction.output
       let renderUrl: string | null = null
       if (Array.isArray(output) && output.length > 0) {
@@ -139,6 +141,8 @@ export async function GET(request: NextRequest) {
     pass2_url?: string
     arch_analysis?: RoomArchitecture
     schnell_prediction_id?: string | null
+    // Which render pipeline was used for pass 1
+    pipeline?: 'depth_pro' | 'kontext_multi' | 'kontext_single'
   }
   const roomMeta = roomRaw as {
     pipeline_cost_log?: unknown
@@ -459,13 +463,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ status: 'failed', error: 'No valid output URL from render' })
     }
 
+    // Upscale the hero render for maximum quality (2x, ~11s, $0.012)
+    // Non-fatal: falls back to original URL if upscaling fails
+    const finalUrl = await runUpscale(renderUrl)
+
     const input = prediction.input as Record<string, unknown> | undefined
     const prompt = (input?.prompt as string | undefined) ?? ''
     const styleStrength = (input?._style_strength as number | undefined) ?? 0.85
 
     const renderSessionInsert: InsertTables<'render_sessions'> = {
       room_id: roomId!,
-      render_url: renderUrl,
+      render_url: finalUrl,
       prompt,
       style_strength: styleStrength,
       iteration: 1,
@@ -482,15 +490,25 @@ export async function GET(request: NextRequest) {
       console.error('Failed to save render session:', renderSessionError.message)
     }
 
-    await admin.from('rooms').update({ render_url: renderUrl }).eq('id', roomId)
+    await admin
+      .from('rooms')
+      .update({
+        render_url: finalUrl,
+        pipeline_cost_log: {
+          ...(costLog ?? {}),
+          upscaled: finalUrl !== renderUrl,
+          original_render_url: renderUrl,
+        },
+      } as Record<string, unknown>)
+      .eq('id', roomId)
 
     // Re-detect on the rendered image (async — don't block response)
     // Rendered images are clean AI images, detection works better on them
-    void triggerRenderDetection(renderUrl, roomId!, admin)
+    void triggerRenderDetection(finalUrl, roomId!, admin)
 
     return NextResponse.json({
       status: 'complete',
-      render_url: renderUrl,
+      render_url: finalUrl,
       render_session_id: renderSession?.id ?? null,
     })
   }

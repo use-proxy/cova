@@ -223,16 +223,23 @@ export async function detectFurniture(photoUrl: string): Promise<Detection[]> {
       ...(tech.detections ?? []),
     ]
 
+    // Thresholds: reject below 0.25 (matches box_threshold), showToUser
+    // at 0.40 so users see anything the model is moderately confident
+    // about. Previously 0.28/0.50 dropped too many real furniture items.
     const deduplicated = deduplicateByIoU(
       allRaw
-        .filter((d) => d.confidence >= 0.28)
+        .filter((d) => d.confidence >= 0.25)
         .map((d) => ({
           type: 'furniture',
           label: cleanLabel(d.label),
           bbox: normalizeBbox(d.bbox, imgW, imgH),
           confidence: d.confidence,
-          showToUser: d.confidence >= 0.50,
+          showToUser: d.confidence >= 0.40,
         }))
+    )
+    console.log(
+      `[grounding] detectFurniture: raw=${allRaw.length} kept=${deduplicated.length} ` +
+        `showToUser=${deduplicated.filter((d) => d.showToUser).length}`,
     )
 
     // Get SAM combined mask for all detected furniture (non-fatal if fails)
@@ -273,13 +280,13 @@ export async function detectArchitecture(photoUrl: string): Promise<Detection[]>
 
     return deduplicateByIoU(
       output.detections
-        .filter((d) => d.confidence >= 0.28)
+        .filter((d) => d.confidence >= 0.25)
         .map((d) => ({
           type: 'architecture',
           label: cleanLabel(d.label),
           bbox: normalizeBbox(d.bbox, imgW, imgH),
           confidence: d.confidence,
-          showToUser: d.confidence >= 0.50,
+          showToUser: d.confidence >= 0.40,
         }))
     )
   } catch {

@@ -73,7 +73,7 @@ export default function Step6Page() {
 
     // Guard: render already complete (back navigation)
     if (renderUrl) {
-      router.push('/design/step-7')
+      router.push('/design/step-7a')
       return
     }
 
@@ -180,7 +180,7 @@ export default function Step6Page() {
             createdAt: new Date().toISOString(),
           })
           setStage('complete')
-          timeoutRef.current = setTimeout(() => router.push('/design/step-7'), 800)
+          timeoutRef.current = setTimeout(() => router.push('/design/step-7a'), 800)
           return
         }
 

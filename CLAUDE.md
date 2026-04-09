@@ -1,6 +1,9 @@
 # COVA V1 — Claude Code Constraints
+
 # Copy this file to: apps/web/CLAUDE.md AND root CLAUDE.md
+
 # READ THIS BEFORE EVERY SESSION. NO EXCEPTIONS.
+
 # Last updated: April 1, 2026 | Spec: v7
 
 ---
@@ -24,9 +27,13 @@
    Auth state uses HTTP-only cookies via `@supabase/ssr`. Any localStorage usage will break auth on page refresh. Use `createBrowserClient` from `@supabase/ssr` in Client Components, `createServerClient` in Server Components and API routes.
 
 2. **ALWAYS dynamic import SplatViewer with `ssr: false`.**
+
    ```typescript
-   const SplatViewer = dynamic(() => import('@/components/SplatViewer'), { ssr: false })
+   const SplatViewer = dynamic(() => import("@/components/SplatViewer"), {
+     ssr: false,
+   });
    ```
+
    Three.js requires the `window` object. Violating this causes a build error.
 
 3. **NEVER import `@sparkjsdev/spark` at module level in any page file.**
@@ -59,7 +66,7 @@
 12. **NEVER modify Supabase Edge Functions except one specific change.**
     Only permitted change: in `chat-room` Edge Function, change model name from `claude-haiku-4-5-20251001` to `claude-sonnet-4-5` (already done in Session 0). All other Edge Functions are FROZEN: `render-room`, `get-render-status`, `match-products`, `detect-furniture`, `extract-colors`, `clip-embed`, `aggregate-style-profiles`, `delete-account`, `generate-depth-map`.
 
-16. **The capture flow is HYBRID — QR for desktop, direct camera for mobile, upload as fallback.**
+13. **The capture flow is HYBRID — QR for desktop, direct camera for mobile, upload as fallback.**
     NEVER reintroduce webcam mode.
     NEVER reintroduce multi-shot/ShotStrip flow.
     Always wire new capture UI through `app/design/step-6/page.tsx` not `app/capture/`.
@@ -70,12 +77,14 @@
 ## Supabase Schema Rules
 
 **FROZEN — never alter:**
+
 - `products` table (5,581+ rows with 768-dim CLIP embeddings)
 - `quiz_cards` table (950 rows)
 - All existing table columns
 - All existing Edge Functions (except `chat-room` model name)
 
 **PERMITTED additions only (run once, idempotent):**
+
 ```sql
 ALTER TABLE renders ADD COLUMN IF NOT EXISTS splat_url TEXT;
 ALTER TABLE renders ADD COLUMN IF NOT EXISTS redesign_splat_url TEXT;
@@ -101,6 +110,7 @@ AnySplat splat → gsplat renders equirectangular 360° panorama from room centr
 gsplat renders 6 undistorted perspective cube face crops (front/back/left/right/ceiling/floor) from redesigned room → Claude Vision detects ALL furniture on 6 crops in parallel → project detections to 3D world coordinates using AnySplat depth + camera poses → deduplicate by 3D proximity (0.5m threshold) → CLIP embed each crop (Replicate) → pgvector cosine search → style vector re-ranking (×1.10 match, ×0.85 no match) → retailer diversity enforcement → top 3 per item → THREE.Sprite hotspots at 3D world coordinates in SparkJS
 
 **Critical pipeline rules:**
+
 - Detect furniture on CUBE FACES not on equirectangular panorama (distortion problem)
 - CLIP similarity threshold: 0.65 (not 0.70 — maximizes hotspot coverage)
 - Modal GPU: A10G primary, L4 or A100 fallback
@@ -111,12 +121,14 @@ gsplat renders 6 undistorted perspective cube face crops (front/back/left/right/
 ## Product Matching — Retailer Lineup
 
 **Tier 1 (active/applying now):**
+
 - **Amazon:** cova03-20 tag (ACTIVE) — unlimited products
 - **Target:** Impact network (application submitted, pending approval)
 - **Article:** article.com/affiliates (apply now) — ~2,000 curated products
 - **IKEA:** direct links, no affiliate, $0 commission — ~10,000 products
 
 **Tier 2 (apply this week):**
+
 - **Crate & Barrel:** Sovrn network — 5% commission
 - **CB2:** Sovrn network (same account as Crate & Barrel) — 5% commission
 - **West Elm:** ShareASale — 3% commission
@@ -124,6 +136,7 @@ gsplat renders 6 undistorted perspective cube face crops (front/back/left/right/
 - **One Kings Lane:** CJ (existing account) — up to 12% commission
 
 **Tier 3 (before M6):**
+
 - **Pottery Barn:** ShareASale — up to 4% commission
 - **Overstock/Beyond:** CJ — up to 6% commission
 - **Etsy:** Awin — 4% commission
@@ -160,23 +173,23 @@ Target clean product count: ~18,150 across all sources
 
 Pre-milestone conversation required before any milestone begins. Nothing gets built until that conversation happens.
 
-| Milestone | Description | Status |
-|-----------|-------------|--------|
-| M0 | Setup — accounts, credentials, Supabase columns, repo, CLAUDE.md | ✅ DONE |
-| M1 | Pipeline Proof CRITICAL — AnySplat on Modal, walk through real room in browser | ✅ DONE |
-| M2 | Seed Catalog — Wayfair replaced; scrape one retailer (~1,000 products) to validate matching | ✅ DONE |
-| M3 | Web Foundation — Next.js scaffold, auth (all 3 methods), routing | ✅ DONE |
-| M4 | Quiz + Capture + UI Pass 1 — quiz ported, Path A+B capture, v0 generates quiz/capture screens | ✅ DONE |
-| M5 | Processing + Viewer + UI Pass 2 — processing UI, SparkJS viewer, real room loads | ✅ DONE |
-| M6 | Full Catalog Completion — all 12 retailers, ~18,000 clean products, IVFFlat rebuilt | ✅ DONE |
-| M7 | AI Redesign Pipeline — full pipeline end-to-end, Marble vs SHARP decision | ✅ DONE |
-| **M8** | **Commerce — cube face detection, CLIP matching, hotspots, product panel, affiliate URLs** | **🔄 IN PROGRESS** |
-| M9 | Chatbot + Analytics + UI Pass 3 — chatbot, PostHog, Sentry, remaining screens | |
-| M10 | Polish + User Testing — error states, 5 real user tests | |
-| M11 | Deployment — Vercel production, covainterior.com | |
-| M12 | iOS Shell — Expo WebView, camera bridge, TestFlight | |
-| M13 | Final UI Polish + Landing Page — demo video, full polish | |
-| M14 | VC Prep — example rooms, pitch deck, demo script | |
+| Milestone | Description                                                                                   | Status             |
+| --------- | --------------------------------------------------------------------------------------------- | ------------------ |
+| M0        | Setup — accounts, credentials, Supabase columns, repo, CLAUDE.md                              | ✅ DONE            |
+| M1        | Pipeline Proof CRITICAL — AnySplat on Modal, walk through real room in browser                | ✅ DONE            |
+| M2        | Seed Catalog — Wayfair replaced; scrape one retailer (~1,000 products) to validate matching   | ✅ DONE            |
+| M3        | Web Foundation — Next.js scaffold, auth (all 3 methods), routing                              | ✅ DONE            |
+| M4        | Quiz + Capture + UI Pass 1 — quiz ported, Path A+B capture, v0 generates quiz/capture screens | ✅ DONE            |
+| M5        | Processing + Viewer + UI Pass 2 — processing UI, SparkJS viewer, real room loads              | ✅ DONE            |
+| M6        | Full Catalog Completion — all 12 retailers, ~18,000 clean products, IVFFlat rebuilt           | ✅ DONE            |
+| M7        | AI Redesign Pipeline — full pipeline end-to-end, Marble vs SHARP decision                     | ✅ DONE            |
+| **M8**    | **Commerce — cube face detection, CLIP matching, hotspots, product panel, affiliate URLs**    | **🔄 IN PROGRESS** |
+| M9        | Chatbot + Analytics + UI Pass 3 — chatbot, PostHog, Sentry, remaining screens                 |                    |
+| M10       | Polish + User Testing — error states, 5 real user tests                                       |                    |
+| M11       | Deployment — Vercel production, covainterior.com                                              |                    |
+| M12       | iOS Shell — Expo WebView, camera bridge, TestFlight                                           |                    |
+| M13       | Final UI Polish + Landing Page — demo video, full polish                                      |                    |
+| M14       | VC Prep — example rooms, pitch deck, demo script                                              |                    |
 
 ---
 
@@ -201,6 +214,7 @@ zod@3.x
 @anthropic-ai/sdk@0.82.0
 lucide-react@1.7.0
 ```
+
 Note: `sharp` is Python/pipeline only (not in web app). `@react-three/fiber` removed — SparkJS used instead.
 
 ---
@@ -273,6 +287,7 @@ ETSY_AFFILIATE_ID=
 ## M0 Status (as of March 30, 2026)
 
 **Done:**
+
 - [x] CJ Affiliate account created + W-9 submitted
 - [x] Wayfair confirmed closed to new publishers
 - [x] Amazon cova03-20 confirmed active
@@ -285,6 +300,7 @@ ETSY_AFFILIATE_ID=
 - [x] SESSION_MEMORY.md created
 
 **Pending — come back to:**
+
 - [ ] ImprovMX — wait for DNS propagation, set up hello@covainterior.com
 - [ ] Impact — verify covainterior.com, apply to Target
 - [ ] Amazon tax info — after EIN obtained
@@ -313,26 +329,26 @@ ETSY_AFFILIATE_ID=
 
 ## Screen Build Log
 
-| Screen | Route | Status | Notes |
-|--------|-------|--------|-------|
+| Screen                | Route        | Status   | Notes                                                                                  |
+| --------------------- | ------------ | -------- | -------------------------------------------------------------------------------------- |
 | Screen 11 — Dashboard | `/dashboard` | **DONE** | RoomCard, StatsRow, StyleProfile, NewRoomCTA, ChatBubble; mock data; Supabase fallback |
 
 ---
 
 ## Known Decisions Log
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Reconstruction | AnySplat on Modal A10G | Feed-forward, no COLMAP, indoor-trained |
-| Redesign input | gsplat 360° panorama | Solves single-frame coverage problem |
-| Furniture segmentation | Lang-SAM | Text-prompted, no bounding boxes |
-| 3D lift | Marble (primary) + SHARP (fallback) | Both until M7 testing |
-| Product detection | 6 cube face crops | Eliminates equirectangular distortion |
-| UI generation | v0 + Framer Motion | Real Next.js code output |
-| CLIP threshold | 0.65 | Maximizes hotspot coverage |
-| Wayfair replacement | 12-retailer lineup | ~18,150 clean products |
-| Domain | covainterior.com | Registered Namecheap March 30 2026 |
-| UI platform | v0 by Vercel | NOT Framer (website builder) |
-| App name | Cova | Domain covainterior.com is separate |
-| W-9 | SSN individual (Daksh Parikh) | EIN application failed online |
-| Tax info | Defer Amazon tax until EIN | Get EIN before submitting |
+| Decision               | Choice                              | Rationale                               |
+| ---------------------- | ----------------------------------- | --------------------------------------- |
+| Reconstruction         | AnySplat on Modal A10G              | Feed-forward, no COLMAP, indoor-trained |
+| Redesign input         | gsplat 360° panorama                | Solves single-frame coverage problem    |
+| Furniture segmentation | Lang-SAM                            | Text-prompted, no bounding boxes        |
+| 3D lift                | Marble (primary) + SHARP (fallback) | Both until M7 testing                   |
+| Product detection      | 6 cube face crops                   | Eliminates equirectangular distortion   |
+| UI generation          | v0 + Framer Motion                  | Real Next.js code output                |
+| CLIP threshold         | 0.65                                | Maximizes hotspot coverage              |
+| Wayfair replacement    | 12-retailer lineup                  | ~18,150 clean products                  |
+| Domain                 | covainterior.com                    | Registered Namecheap March 30 2026      |
+| UI platform            | v0 by Vercel                        | NOT Framer (website builder)            |
+| App name               | Cova                                | Domain covainterior.com is separate     |
+| W-9                    | SSN individual (Daksh Parikh)       | EIN application failed online           |
+| Tax info               | Defer Amazon tax until EIN          | Get EIN before submitting               |

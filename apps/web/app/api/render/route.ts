@@ -1,5 +1,5 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { buildFluxPrompt, submitRender, submitMultiImageRender, submitSchnellRender, type RoomPhysicalContext } from '@/lib/ai/flux'
+import { buildFluxPrompt, submitRender, submitMultiImageRender, submitSchnellRender, submitDepthRender, type RoomPhysicalContext } from '@/lib/ai/flux'
 import { analyzeRoomArchitecture, buildPreservationInstructions } from '@/lib/ai/room-analyzer'
 import { fetchTopStyleReference } from '@/lib/ai/style-references'
 import type { RoomAnalysis } from '@/lib/store/room'
@@ -198,9 +198,17 @@ Modify the prompt to incorporate the user's instruction while preserving the cor
       // TWO-PASS KONTEXT PRO: pass 1 = style transform (submitted now),
       // pass 2 = architecture correction (submitted by status route when
       // pass 1 completes). Schnell runs in parallel as the fast preview.
-      predictionId = styleReferenceUrl
-        ? await submitMultiImageRender(photo_url, styleReferenceUrl, positive)
-        : await submitRender(photo_url, reference_image_urls ?? [], positive)
+      //
+      // Prefer depth-conditioned render when no items need preserving.
+      // Depth Pro preserves room geometry while allowing full style transformation.
+      let pipeline: 'depth_pro' | 'kontext_multi' | 'kontext_single'
+      if (styleReferenceUrl) {
+        predictionId = await submitMultiImageRender(photo_url, styleReferenceUrl, positive)
+        pipeline = 'kontext_multi'
+      } else {
+        predictionId = await submitDepthRender(photo_url, positive)
+        pipeline = 'depth_pro'
+      }
 
       await supabase
         .from('rooms')
@@ -212,6 +220,7 @@ Modify the prompt to incorporate the user's instruction while preserving the cor
             arch_analysis: arch,
             positive_prompt: positive,
             schnell_prediction_id: schnellPredictionId,
+            pipeline,
           },
         } as Record<string, unknown>)
         .eq('id', room_id)

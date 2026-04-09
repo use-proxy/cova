@@ -17,6 +17,9 @@ import {
   Share2,
   ExternalLink,
   Zap,
+  DollarSign,
+  ArrowRight,
+  Sparkles,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRoomStore, type KeepMaskItem } from '@/lib/store/room'
@@ -35,6 +38,47 @@ interface MatchedProduct {
   rating?: number | null
   rating_count?: number | null
 }
+
+type BudgetTierKey = 'budget' | 'mid' | 'premium' | 'luxury'
+
+interface RoomBudgetResponseItem {
+  label: string
+  original: {
+    name: string
+    price: number
+    retailer: string
+    affiliate_url: string
+    image_url: string
+  } | null
+  alternative: MatchedProduct | null
+}
+
+interface RoomBudgetResponse {
+  tier: BudgetTierKey
+  total_price: number
+  original_total: number
+  savings_or_premium: number
+  items: RoomBudgetResponseItem[]
+}
+
+interface CompleteRoomComplementaryItem {
+  label: string
+  bbox: [number, number, number, number]
+  products: MatchedProduct[]
+  style_reason: string
+}
+
+interface CompleteRoomResponse {
+  tapped_item: string
+  complementary_items: CompleteRoomComplementaryItem[]
+}
+
+const BUDGET_TIERS: Array<{ key: BudgetTierKey; label: string }> = [
+  { key: 'budget', label: 'Budget' },
+  { key: 'mid', label: 'Mid-Range' },
+  { key: 'premium', label: 'Premium' },
+  { key: 'luxury', label: 'Luxury' },
+]
 
 interface SwapState {
   predictionId: string | null
@@ -60,6 +104,21 @@ export default function Step9Page() {
   const [swapState, setSwapState] = useState<SwapState>(INITIAL_SWAP)
   const [hydrated, setHydrated] = useState(false)
   const swapPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Room Budget + Complete the Room additive state
+  const [budgetTier, setBudgetTier] = useState<BudgetTierKey>('mid')
+  const [budgetData, setBudgetData] = useState<RoomBudgetResponse | null>(null)
+  const [budgetLoading, setBudgetLoading] = useState(false)
+  const [completeRoomData, setCompleteRoomData] =
+    useState<CompleteRoomResponse | null>(null)
+  const [completeRoomLoading, setCompleteRoomLoading] = useState(false)
+  const [showBudgetPanel, setShowBudgetPanel] = useState(false)
+  const [showCompletePanel, setShowCompletePanel] = useState(false)
+
+  // Cache of the best matched product per hotspot label — used to seed the
+  // budget calculator with "original" prices. Populated whenever we fetch
+  // products for a hotspot via handleHotspotTap.
+  const matchedByLabelRef = useRef<Map<string, MatchedProduct>>(new Map())
 
   // Wait for Zustand persist to finish hydrating before running guards
   useEffect(() => {
@@ -141,7 +200,14 @@ export default function Step9Page() {
         }
 
         const data = (await res.json()) as { products?: MatchedProduct[] }
-        setProducts(data.products ?? [])
+        const fetched = data.products ?? []
+        setProducts(fetched)
+        if (fetched[0]) {
+          matchedByLabelRef.current.set(detection.label, fetched[0])
+          // Invalidate cached budget data so the next open re-fetches with
+          // the latest per-hotspot original prices.
+          setBudgetData(null)
+        }
       } catch (e) {
         console.error('[step-9] match error:', e)
         toast.error('Could not load products')
@@ -244,6 +310,147 @@ export default function Step9Page() {
     [activeHotspot, roomStore.renderUrl, roomStore.roomId, fingerprintStore.fingerprint, fingerprintStore.budgetTier]
   )
 
+  const fetchBudgetData = useCallback(
+    async (tier: BudgetTierKey) => {
+      if (!roomStore.renderUrl || !roomStore.roomId) return
+      if (!fingerprintStore.fingerprint) {
+        toast.error('Style fingerprint missing — refresh and try again')
+        return
+      }
+
+      setBudgetLoading(true)
+      try {
+        const hotspotsPayload = effectiveHotspots.map((h) => {
+          const cached = matchedByLabelRef.current.get(h.label)
+          return {
+            label: h.label,
+            bbox: h.bbox,
+            matched_product: cached
+              ? {
+                  name: cached.name,
+                  price: cached.price,
+                  retailer: cached.retailer,
+                  affiliate_url: cached.affiliate_url,
+                  image_url: cached.image_url,
+                }
+              : null,
+          }
+        })
+
+        const res = await fetch('/api/match/room-budget', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            room_id: roomStore.roomId,
+            render_url: roomStore.renderUrl,
+            hotspots: hotspotsPayload,
+            fingerprint: fingerprintStore.fingerprint,
+            budget_range: fingerprintStore.budgetRange,
+            room_type: fingerprintStore.roomType ?? 'living_room',
+            current_tier: fingerprintStore.budgetTier ?? 'mid',
+            target_tier: tier,
+          }),
+        })
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          console.error('[step-9] room-budget failed:', err)
+          toast.error('Could not calculate budget')
+          setBudgetData(null)
+          return
+        }
+
+        const data = (await res.json()) as RoomBudgetResponse
+        setBudgetData(data)
+      } catch (e) {
+        console.error('[step-9] room-budget error:', e)
+        toast.error('Could not calculate budget')
+      } finally {
+        setBudgetLoading(false)
+      }
+    },
+    [
+      roomStore.renderUrl,
+      roomStore.roomId,
+      effectiveHotspots,
+      fingerprintStore.fingerprint,
+      fingerprintStore.budgetRange,
+      fingerprintStore.roomType,
+      fingerprintStore.budgetTier,
+    ]
+  )
+
+  const handleOpenBudgetPanel = useCallback(() => {
+    setShowBudgetPanel(true)
+    if (!budgetData && !budgetLoading) {
+      void fetchBudgetData(budgetTier)
+    }
+  }, [budgetData, budgetLoading, budgetTier, fetchBudgetData])
+
+  const handleSelectBudgetTier = useCallback(
+    (tier: BudgetTierKey) => {
+      setBudgetTier(tier)
+      void fetchBudgetData(tier)
+    },
+    [fetchBudgetData]
+  )
+
+  const fetchCompleteRoomData = useCallback(async () => {
+    if (!activeHotspot || !roomStore.renderUrl || !roomStore.roomId) return
+    if (!fingerprintStore.fingerprint) {
+      toast.error('Style fingerprint missing — refresh and try again')
+      return
+    }
+
+    setCompleteRoomLoading(true)
+    setCompleteRoomData(null)
+    try {
+      const res = await fetch('/api/match/complete-room', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          room_id: roomStore.roomId,
+          render_url: roomStore.renderUrl,
+          tapped_item_label: activeHotspot.label,
+          tapped_item_bbox: activeHotspot.bbox,
+          all_hotspots: effectiveHotspots.map((h) => ({
+            label: h.label,
+            bbox: h.bbox,
+          })),
+          fingerprint: fingerprintStore.fingerprint,
+          budget_range: fingerprintStore.budgetRange,
+          room_type: fingerprintStore.roomType ?? 'living_room',
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        console.error('[step-9] complete-room failed:', err)
+        toast.error('Could not load complementary items')
+        return
+      }
+      const data = (await res.json()) as CompleteRoomResponse
+      setCompleteRoomData(data)
+    } catch (e) {
+      console.error('[step-9] complete-room error:', e)
+      toast.error('Could not load complementary items')
+    } finally {
+      setCompleteRoomLoading(false)
+    }
+  }, [
+    activeHotspot,
+    roomStore.renderUrl,
+    roomStore.roomId,
+    effectiveHotspots,
+    fingerprintStore.fingerprint,
+    fingerprintStore.budgetRange,
+    fingerprintStore.roomType,
+  ])
+
+  const handleOpenCompletePanel = useCallback(() => {
+    setShowCompletePanel(true)
+    void fetchCompleteRoomData()
+  }, [fetchCompleteRoomData])
+
   const handleShare = useCallback(async () => {
     try {
       if (navigator.share) {
@@ -304,13 +511,24 @@ export default function Step9Page() {
         >
           Shop This Look
         </span>
-        <button
-          onClick={handleShare}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm"
-          aria-label="Share"
-        >
-          <Share2 size={18} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleOpenBudgetPanel}
+            className="flex h-10 items-center gap-1.5 rounded-full bg-black/40 px-3 text-white backdrop-blur-sm"
+            aria-label="Budget Room"
+            style={{ fontFamily: 'var(--font-sans)' }}
+          >
+            <DollarSign size={16} />
+            <span className="text-xs font-medium">Budget Room</span>
+          </button>
+          <button
+            onClick={handleShare}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm"
+            aria-label="Share"
+          >
+            <Share2 size={18} />
+          </button>
+        </div>
       </div>
 
       {/* Hotspot layer */}
@@ -414,17 +632,28 @@ export default function Step9Page() {
                 )}
 
                 {!isLoadingProducts && products.length > 0 && !swapState.isSwapping && !swapState.swapUrl && (
-                  <ProductSheetContent
-                    products={products}
-                    onBuyNow={handleBuyNow}
-                    onTryInRoom={handleTryInRoom}
-                    onSelectAlternative={(p) =>
-                      setProducts((current) => [
-                        p,
-                        ...current.filter((x) => x.id !== p.id),
-                      ])
-                    }
-                  />
+                  <>
+                    <ProductSheetContent
+                      products={products}
+                      onBuyNow={handleBuyNow}
+                      onTryInRoom={handleTryInRoom}
+                      onSelectAlternative={(p) =>
+                        setProducts((current) => [
+                          p,
+                          ...current.filter((x) => x.id !== p.id),
+                        ])
+                      }
+                    />
+                    <button
+                      onClick={handleOpenCompletePanel}
+                      className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-cova-border bg-cova-surface-2 py-3 text-sm font-medium text-cova-ivory"
+                      style={{ fontFamily: 'var(--font-sans)' }}
+                    >
+                      <Sparkles size={14} className="text-cova-gold" />
+                      Complete the Room
+                      <ArrowRight size={14} />
+                    </button>
+                  </>
                 )}
 
                 {/* Swap in progress */}
@@ -455,6 +684,329 @@ export default function Step9Page() {
                     onRevert={handleRevertSwap}
                   />
                 )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Room Budget panel */}
+      <AnimatePresence>
+        {showBudgetPanel && (
+          <>
+            <motion.div
+              key="budget-backdrop"
+              className="fixed inset-0 z-[60] bg-black/50"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowBudgetPanel(false)}
+            />
+            <motion.div
+              key="budget-sheet"
+              className="fixed inset-x-0 bottom-0 z-[70] rounded-t-3xl bg-cova-surface"
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 280 }}
+              style={{ maxHeight: '90vh' }}
+            >
+              <div className="mx-auto mt-3 mb-2 h-1 w-12 rounded-full bg-white/20" />
+              <div
+                className="flex items-center justify-between px-4 pb-3"
+                style={{ fontFamily: 'var(--font-sans)' }}
+              >
+                <div className="flex items-center gap-2">
+                  <DollarSign size={18} className="text-cova-gold" />
+                  <h2 className="text-base font-semibold text-cova-ivory">
+                    Room Budget
+                  </h2>
+                </div>
+                <button
+                  onClick={() => setShowBudgetPanel(false)}
+                  className="text-xs uppercase tracking-wider text-cova-muted"
+                >
+                  Close
+                </button>
+              </div>
+
+              {/* Tier selector */}
+              <div className="px-4 pb-3">
+                <div className="flex gap-2">
+                  {BUDGET_TIERS.map((t) => {
+                    const active = budgetTier === t.key
+                    return (
+                      <button
+                        key={t.key}
+                        onClick={() => handleSelectBudgetTier(t.key)}
+                        disabled={budgetLoading}
+                        className={`flex-1 rounded-full px-2 py-2 text-[11px] font-medium transition-colors ${
+                          active
+                            ? 'bg-cova-gold text-cova-bg'
+                            : 'bg-cova-surface-2 text-cova-ivory'
+                        } disabled:opacity-60`}
+                        style={{ fontFamily: 'var(--font-sans)' }}
+                      >
+                        {t.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div
+                className="overflow-y-auto px-4 pb-8"
+                style={{
+                  maxHeight: 'calc(90vh - 170px)',
+                  fontFamily: 'var(--font-sans)',
+                }}
+              >
+                {/* Totals */}
+                {budgetData && !budgetLoading && (
+                  <div className="mb-4 rounded-2xl bg-cova-surface-2 p-4">
+                    <p className="text-[10px] uppercase tracking-[0.15em] text-cova-muted">
+                      Total at this tier
+                    </p>
+                    <p className="mt-1 text-3xl font-semibold text-cova-ivory">
+                      ${Math.round(budgetData.total_price).toLocaleString()}
+                    </p>
+                    <div className="mt-2 flex items-center gap-3 text-xs">
+                      <span className="text-cova-muted">
+                        Original $
+                        {Math.round(budgetData.original_total).toLocaleString()}
+                      </span>
+                      {budgetData.savings_or_premium !== 0 && (
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                            budgetData.savings_or_premium < 0
+                              ? 'bg-cova-success/20 text-cova-success'
+                              : 'bg-cova-gold/20 text-cova-gold'
+                          }`}
+                        >
+                          {budgetData.savings_or_premium < 0
+                            ? `Save $${Math.round(
+                                -budgetData.savings_or_premium
+                              ).toLocaleString()}`
+                            : `+$${Math.round(
+                                budgetData.savings_or_premium
+                              ).toLocaleString()}`}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Loading skeleton */}
+                {budgetLoading && (
+                  <div className="space-y-3">
+                    {[0, 1, 2, 3].map((i) => (
+                      <div
+                        key={i}
+                        className="h-24 w-full animate-pulse rounded-xl bg-cova-surface-2"
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* Item rows */}
+                {!budgetLoading &&
+                  budgetData &&
+                  budgetData.items.map((item, idx) => (
+                    <div
+                      key={`${item.label}-${idx}`}
+                      className="mb-3 rounded-2xl bg-cova-surface-2 p-3"
+                    >
+                      <p className="mb-2 text-[10px] uppercase tracking-[0.15em] text-cova-muted">
+                        {item.label}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="line-clamp-1 text-xs text-cova-muted">
+                            {item.original?.name ?? '—'}
+                          </p>
+                          <p className="text-sm font-medium text-cova-ivory">
+                            $
+                            {item.original
+                              ? Math.round(item.original.price).toLocaleString()
+                              : '—'}
+                          </p>
+                        </div>
+                        <ArrowRight
+                          size={14}
+                          className="flex-shrink-0 text-cova-gold"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="line-clamp-1 text-xs text-cova-ivory">
+                            {item.alternative?.name ?? 'No alternative'}
+                          </p>
+                          <p className="text-sm font-semibold text-cova-gold">
+                            {item.alternative
+                              ? `$${Math.round(
+                                  item.alternative.price
+                                ).toLocaleString()}`
+                              : '—'}
+                          </p>
+                        </div>
+                      </div>
+                      {item.alternative && (
+                        <button
+                          onClick={() => {
+                            if (item.alternative) handleBuyNow(item.alternative)
+                          }}
+                          className="mt-3 flex w-full items-center justify-center gap-1 rounded-lg bg-cova-gold/90 py-2 text-xs font-semibold text-cova-bg"
+                        >
+                          <ExternalLink size={12} />
+                          Shop Alternative
+                        </button>
+                      )}
+                    </div>
+                  ))}
+
+                {!budgetLoading &&
+                  budgetData &&
+                  budgetData.items.length === 0 && (
+                    <p className="py-10 text-center text-sm text-cova-muted">
+                      No items to price — tap hotspots first.
+                    </p>
+                  )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Complete the Room panel */}
+      <AnimatePresence>
+        {showCompletePanel && (
+          <>
+            <motion.div
+              key="complete-backdrop"
+              className="fixed inset-0 z-[60] bg-black/50"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowCompletePanel(false)}
+            />
+            <motion.div
+              key="complete-sheet"
+              className="fixed inset-x-0 bottom-0 z-[70] rounded-t-3xl bg-cova-surface"
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 280 }}
+              style={{ maxHeight: '90vh' }}
+            >
+              <div className="mx-auto mt-3 mb-2 h-1 w-12 rounded-full bg-white/20" />
+              <div
+                className="flex items-center justify-between px-4 pb-3"
+                style={{ fontFamily: 'var(--font-sans)' }}
+              >
+                <button
+                  onClick={() => setShowCompletePanel(false)}
+                  className="flex items-center gap-1 text-xs uppercase tracking-wider text-cova-muted"
+                >
+                  <ChevronLeft size={14} />
+                  Back
+                </button>
+                <div className="flex items-center gap-2">
+                  <Sparkles size={16} className="text-cova-gold" />
+                  <h2 className="text-base font-semibold text-cova-ivory">
+                    Complete the Look
+                  </h2>
+                </div>
+                <span className="w-12" />
+              </div>
+
+              <div
+                className="overflow-y-auto px-4 pb-8"
+                style={{
+                  maxHeight: 'calc(90vh - 70px)',
+                  fontFamily: 'var(--font-sans)',
+                }}
+              >
+                {completeRoomLoading && (
+                  <div className="space-y-5">
+                    {[0, 1, 2].map((i) => (
+                      <div key={i}>
+                        <div className="mb-2 h-3 w-24 animate-pulse rounded bg-cova-surface-2" />
+                        <div className="flex gap-3">
+                          {[0, 1, 2].map((j) => (
+                            <div
+                              key={j}
+                              className="h-32 w-32 flex-shrink-0 animate-pulse rounded-xl bg-cova-surface-2"
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {!completeRoomLoading &&
+                  completeRoomData &&
+                  completeRoomData.complementary_items.length === 0 && (
+                    <p className="py-10 text-center text-sm text-cova-muted">
+                      No complementary suggestions for this item.
+                    </p>
+                  )}
+
+                {!completeRoomLoading &&
+                  completeRoomData &&
+                  completeRoomData.complementary_items.map((item, idx) => (
+                    <div key={`${item.label}-${idx}`} className="mb-6">
+                      <p className="text-xs uppercase tracking-[0.15em] text-cova-muted">
+                        {item.label}
+                      </p>
+                      {item.style_reason && (
+                        <p className="mt-1 mb-3 text-xs italic text-cova-muted">
+                          {item.style_reason}
+                        </p>
+                      )}
+                      {item.products.length === 0 ? (
+                        <p className="text-xs text-cova-muted">
+                          No matches found.
+                        </p>
+                      ) : (
+                        <div
+                          className="flex gap-3 overflow-x-auto pb-2"
+                          style={{ scrollbarWidth: 'none' }}
+                        >
+                          {item.products.map((p) => (
+                            <div
+                              key={p.id}
+                              className="flex w-36 flex-shrink-0 flex-col"
+                            >
+                              <div className="relative h-36 w-36 overflow-hidden rounded-xl bg-cova-surface-2">
+                                {p.image_url && (
+                                  <Image
+                                    src={p.image_url}
+                                    alt={p.name}
+                                    fill
+                                    sizes="144px"
+                                    className="object-cover"
+                                    unoptimized
+                                  />
+                                )}
+                              </div>
+                              <p className="mt-1 line-clamp-2 text-xs text-cova-ivory">
+                                {p.name}
+                              </p>
+                              <p className="text-sm font-semibold text-cova-ivory">
+                                ${Math.round(p.price).toLocaleString()}
+                              </p>
+                              <button
+                                onClick={() => handleBuyNow(p)}
+                                className="mt-1 flex items-center justify-center gap-1 rounded-lg bg-cova-gold/90 py-1.5 text-[11px] font-semibold text-cova-bg"
+                              >
+                                <ExternalLink size={10} />
+                                Shop
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
               </div>
             </motion.div>
           </>

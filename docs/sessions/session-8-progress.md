@@ -1,129 +1,86 @@
-# Session 8 Progress — Step 8: Render Reveal
+# Session 8 Progress — Step 4: Fingerprint Reveal + Auth + Mood Board
 
-Date: 2026-04-05
+Updated: 2026-04-07
 
 ---
 
 ## Files Created / Modified
 
-### `apps/web/app/design/step-8/page.tsx`
-Full implementation of the render reveal screen, replacing the stub.
+- `apps/web/app/design/step-4/page.tsx` — Complete rewrite (cinematic sequential reveal)
+- `apps/web/app/api/quiz/mood-strip/route.ts` — New: fetch swipe_cards by ID
+- `apps/web/app/api/quiz/mood-board/route.ts` — New: fetch 9 style-matched images
+- `apps/web/app/api/auth/callback/route.ts` — Default redirect: step-1 → step-4
+- `apps/web/app/auth/callback/route.ts` — Simplified: always → step-4
+- `apps/web/middleware.ts` — Added mood-strip + mood-board to PUBLIC_API_ROUTES
 
 ---
 
-## Architecture Notes
+## Reveal Sequence + Timing
 
-### Source component
-v0 component `render-reveal.tsx` imported from Downloads. Converted entirely from
-Tailwind classes to inline `style` objects to match the rest of the design/step-* pages.
+Stage-driven reveal (0→5). Each stage advances via setTimeout or `typingDone`:
 
-### `styleName` — Not Displayed
-`useFingerprintStore` is not imported in step-8. The v0 component showed a
-hardcoded "Warm Japandi" style label. Rule 8 prohibits showing style names
-(Japandi, Bohemian, Coastal, Mid-Century Modern, Minimalist) in any user-facing
-string. The label was removed entirely.
+| Stage | Trigger | Element |
+|-------|---------|---------|
+| 0 | Mount | Nothing visible |
+| 1 | +100ms | "Your Design DNA" label (fadeUp) |
+| 2 | +400ms | Style name typewriter begins (60ms/char) |
+| 3 | typingDone +300ms | 5 color swatches (spring, 0.08s stagger) |
+| 4 | stage3 +300ms | Style descriptor chips (fade, 0.1s stagger) |
+| 5 | stage4 +400ms | Mood strip photos + Share button |
 
----
-
-## Before / After Toggle
-
-Two `<img>` elements, both always in the DOM (`position: absolute, inset: 0`):
-- Layer 1 (render/after): `opacity: showingBefore ? 0 : 1`
-- Layer 2 (original/before): `opacity: showingBefore && canToggle ? 1 : 0`, `filter: grayscale(1)`
-- Both: `transition: opacity 400ms ease`
-
-No conditional rendering on the image layers — avoids layout shift and preserves
-the crossfade transition.
-
-`canToggle = Boolean(originalPhotoUrl)` — if no original photo in store, the
-Before/After pill is disabled (opacity 0.4, cursor default).
+Total for a 12-char style name: ~2.5–3s, then auth panel slides up.
 
 ---
 
-## State
+## Auth Panel
 
-| State var | Type | Purpose |
-|---|---|---|
-| `showingBefore` | `boolean` | Controls opacity crossfade between after/before |
-| `showCopied` | `boolean` | 2s "Link copied" toast after clipboard fallback |
-
----
-
-## Button Labels
-
-| State | Pill label |
-|---|---|
-| `showingBefore === false` (default) | `Before / After` |
-| `showingBefore === true` | `See Redesign` |
-
-"Before" label (bottom-left, above bottom bar, opacity-animated):
-- `position: absolute`, `bottom: 148`, `left: 20`
-- `fontSize: var(--text-xs)`, `color: rgba(245,240,232,0.6)`
-- `opacity: showingBefore ? 1 : 0`, `transition: opacity 400ms ease`
+- Appears 2.5s after mount (skipped if session already exists)
+- Slides up: `y: 100 → 0` over 0.5s easeOut
+- Apple Sign In: bg-black, inline Apple SVG
+- Google Sign In: bg-white, inline multi-color G SVG
+- "Continue without saving" → setShowMoodBoard(true) directly
 
 ---
 
-## Navigation
+## Mood Board API — Warm Japandi Test
 
-| Button | Destination |
-|---|---|
-| "Shop This Look →" | `/design/step-10` |
-| "Not quite right?" | `/design/step-9` |
-
----
-
-## Share
-
-```ts
-if (navigator.share) {
-  await navigator.share({ title: 'My room redesigned by Cova', url: window.location.href })
-} else {
-  await navigator.clipboard.writeText(window.location.href)
-  setShowCopied(true)           // shows "Link copied" toast for 2s
-  setTimeout(() => setShowCopied(false), 2000)
-}
-```
-
-User cancel / API unavailable: caught silently.
+- `POST /api/quiz/mood-board { style_name: "Warm Japandi", count: 9 }`
+- **Result: 9 images returned** ✅
+- First URL: `https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/swipe-cards/...`
+- Mapping: "Warm Japandi" → contains "japandi" → queries `style = 'japandi'`
 
 ---
 
-## Button Sizing
+## Auth Callback Redirect Target
 
-- Primary "Shop This Look →": `padding: 12px 20px` (py-3 equiv), `fontSize: var(--text-sm)`, `fontWeight: 500`, `borderRadius: 12`
-- Ghost "Not quite right?": `padding: 12px 20px`, `fontSize: var(--text-sm)`, `borderRadius: 12`
-- Bottom bar: `padding: 20px 20px 40px` (pb-10 equiv), `gap: 8px` between buttons
-- Total bottom bar height: ~148px
+- `/api/auth/callback`: `next ?? '/design/step-4'` ✅
+- `/auth/callback`: always redirects to `/design/step-4` ✅
 
 ---
 
-## Color Compliance
+## Supabase OAuth Providers — Manual Config Needed
 
-Zero hardcoded hex values.
-All colors use `var(--cova-*)` CSS variables or `rgba(...)` for overlay gradients.
-Verified: `grep -r "#[0-9A-Fa-f]{6}" app/design/step-8/ --include="*.tsx"` → 0 matches
-
----
-
-## Redirect Guard
-
-```ts
-useEffect(() => {
-  if (!renderUrl) router.replace('/design/step-7')
-}, [renderUrl, router])
-if (!renderUrl) return null
-```
+- Apple and Google OAuth must be enabled in Supabase dashboard → Auth → Providers
+- Redirect URL `http://localhost:3000/api/auth/callback` must be in Auth → URL Configuration
+- Not blocking implementation — just needs manual one-time Supabase dashboard setup
 
 ---
 
-## Build Status
+## Deviations from Spec
 
-- `npm run build` → **PASS** (58 pages, zero errors)
-- `npx tsc --noEmit` → **PASS** (zero errors)
+1. **sessionStore.setError(null)** in handleSkipAuth — `useSessionStore` not imported in new page; replaced with `setShowAuth(false); setShowMoodBoard(true)` (correct behavior)
+2. **/auth/callback rooms-check logic removed** — spec says always go to step-4; done. Dashboard users from this route will land at step-4 instead
 
 ---
 
-## What's Next
+## Build Results
 
-- step-9: Refine flow — user can describe changes, sends `modified_prompt` to render API
-- step-10: Product matching + shop panel (hotspots from cube face detection)
+| Check | Result |
+|-------|--------|
+| `npx tsc --noEmit` | ✅ zero errors |
+| `npm run build` | ✅ zero errors |
+| Mood-strip empty input | ✅ `images: 0` |
+| Mood-board "Warm Japandi" | ✅ `images: 9` |
+| `curl /design/step-4` | ✅ HTTP 307 (protected) |
+| Auth callback has step-4 | ✅ confirmed |
+| Playwright suite | ✅ **72 passing**, zero regressions |
