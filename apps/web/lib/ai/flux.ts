@@ -35,62 +35,64 @@ type DimKey = keyof StyleFingerprint['dimensions']
 
 // All dimension values are in the [0, 1] range with 0.5 as the neutral midpoint.
 // `lo` describes values approaching 0; `hi` describes values approaching 1.
+// Concise (<8 word) descriptors for all 12 dims. Trimmed 2026-04-08 so the
+// quiz validation-render path can emit a <80-word total prompt.
 const DESCRIPTORS: Record<DimKey, { lo: string; hi: string }> = {
   colorTemperature: {
-    lo: 'icy cool, concrete grey, slate, steel blue, cold whites',
-    hi: 'warm amber tones, honey wood, terracotta, beeswax',
+    lo: 'cool slate and stone tones',
+    hi: 'warm amber and honey tones',
   },
   colorSaturation: {
-    lo: 'achromatic palette, near-neutral, greige, white, grey, black',
-    hi: 'rich saturated color, bold hues, high-contrast palette, vivid accents',
+    lo: 'muted desaturated palette',
+    hi: 'bold saturated colors',
   },
   density: {
-    lo: 'stark, near-empty, intentional void, almost no objects',
-    hi: 'richly layered, curated objects, maximalist, every surface considered',
+    lo: 'minimal sparse furnishing',
+    hi: 'richly layered maximalist',
   },
   formality: {
-    lo: 'casual relaxed setting, lived-in, nothing perfectly arranged',
-    hi: 'formal structured arrangement, symmetrical, precisely placed',
+    lo: 'casual relaxed atmosphere',
+    hi: 'formal structured arrangement',
   },
   era: {
-    lo: 'ultra-modern, futuristic, cutting-edge contemporary, no historical reference',
-    hi: 'classic heritage, antique references, traditional craft, heirloom quality',
+    lo: 'contemporary cutting-edge aesthetic',
+    hi: 'heritage vintage character',
   },
   material: {
-    lo: 'synthetic manufactured surfaces, polished steel, glass, lacquered panels',
-    hi: 'natural organic materials, raw linen, reclaimed wood, stone, rattan, jute',
+    lo: 'sleek manufactured surfaces',
+    hi: 'natural organic materials',
   },
   texture: {
-    lo: 'mirror-smooth, lacquered, polished stone, glass, zero tactile variation',
-    hi: 'tactile richness, chunky knits, rough linen, natural stone, woven rattan',
+    lo: 'smooth polished surfaces',
+    hi: 'tactile layered textures',
   },
   pattern: {
-    lo: 'pattern-free, solid colors throughout, plain surfaces, no prints',
-    hi: 'pattern-rich, geometric wallpaper, printed textiles, layered prints',
+    lo: 'solid plain surfaces',
+    hi: 'pattern-rich decorative',
   },
   lineQuality: {
-    lo: 'hyper-geometric, hard right angles, razor-sharp lines, zero curves',
-    hi: 'organic curves, soft rounded forms, arched silhouettes, no hard edges',
+    lo: 'sharp geometric angular lines',
+    hi: 'soft organic curved forms',
   },
   lightPreference: {
-    lo: 'cozy intimate lamp light, warm pools of golden light, soft shadows',
-    hi: 'bright airy space, flooded with natural daylight, sun-drenched',
+    lo: 'cozy intimate lamp-lit',
+    hi: 'bright airy natural daylight',
   },
   nature: {
-    lo: 'urban no-plant interior, no greenery, no botanical elements',
-    hi: 'biophilic abundance, monstera, ferns, trailing pothos, living moss',
+    lo: 'urban minimal greenery',
+    hi: 'biophilic plant-filled',
   },
   culturalInfluence: {
-    lo: 'pure Western contemporary, no cultural references, mainstream',
-    hi: 'globally eclectic, Moroccan tile, Japanese ceramics, kente textiles',
+    lo: 'clean Western contemporary',
+    hi: 'globally eclectic influences',
   },
 }
 
 // Strong band: a dimension is "directional" when it deviates from 0.5 by more
-// than NEUTRAL_BAND (i.e. v < 0.3 or v > 0.7). Values inside the neutral band
-// produce no descriptor text.
+// than NEUTRAL_BAND (i.e. v < 0.35 or v > 0.65). Values inside the neutral
+// band produce no descriptor text.
 const NEUTRAL_MIDPOINT = 0.5
-const NEUTRAL_BAND = 0.2
+const NEUTRAL_BAND = 0.15
 
 const BUDGET_MODIFIERS: Record<string, string> = {
   budget:  'affordable accessible pieces, high-street furniture',
@@ -139,6 +141,10 @@ export interface BuildFluxPromptParams {
   // walls, ceiling, floor, windows, camera angle and fixed elements of the
   // user's room. When present, this is used instead of the generic fallback.
   preservationInstructions?: string
+  // Quiz preview mode (validation renders): drop the preservation/kept-items
+  // tail and the lived-in realism cue so the total prompt stays under
+  // ~80 words for a clean text-to-image FLUX 1.1 Pro render.
+  quizPreviewMode?: boolean
 }
 
 // Material palette derived from fingerprint dimensions. Stating materials up
@@ -183,7 +189,7 @@ function dominantDescriptors(
 }
 
 export function buildFluxPrompt(params: BuildFluxPromptParams): string {
-  const { fingerprint, roomType, budgetTier, inclusions, keptItemLabels, preservationInstructions } = params
+  const { fingerprint, roomType, budgetTier, inclusions, keptItemLabels, preservationInstructions, quizPreviewMode } = params
   const d = fingerprint.dimensions
   const roomTypeStr = roomType.replace(/_/g, ' ')
 
@@ -214,26 +220,32 @@ export function buildFluxPrompt(params: BuildFluxPromptParams): string {
     const descriptors = dominantDescriptors(d, descriptorCount)
     if (descriptors.length > 0) core.push(descriptors.join(', '))
 
-    // 4. REPLACE clause (tight)
-    core.push('Replace all furniture, bedding, rugs, art and decor')
+    if (!quizPreviewMode) {
+      // 4. REPLACE clause (tight)
+      core.push('Replace all furniture, bedding, rugs, art and decor')
 
-    // 5. ADD clause — user's inclusion list
-    if (inclusions.length > 0) {
-      core.push('Add: ' + inclusions.slice(0, 3).join(', '))
+      // 5. ADD clause — user's inclusion list
+      if (inclusions.length > 0) {
+        core.push('Add: ' + inclusions.slice(0, 3).join(', '))
+      }
+
+      // 6. Lived-in realism cue (single short phrase)
+      core.push('One lived-in detail: a book on a nightstand or throw on an armrest')
     }
-
-    // 6. Lived-in realism cue (single short phrase)
-    core.push('One lived-in detail: a book on a nightstand or throw on an armrest')
 
     // 7. Lighting (derived from luminosity)
     core.push(getLightingInstruction(d))
 
-    // 8. Budget tier
-    core.push(BUDGET_MODIFIERS[budgetTier] ?? BUDGET_MODIFIERS.mid)
+    // 8. Budget tier (skipped in quiz preview — generic target)
+    if (!quizPreviewMode) {
+      core.push(BUDGET_MODIFIERS[budgetTier] ?? BUDGET_MODIFIERS.mid)
+    }
 
     // 9. Camera closer — strong rendering hint (final position)
     core.push(
-      'Shot on Canon R5 24mm f/8, soft window light with warm 2700K lamps, photorealistic, Architectural Digest',
+      quizPreviewMode
+        ? 'photorealistic interior photography'
+        : 'Shot on Canon R5 24mm f/8, soft window light with warm 2700K lamps, photorealistic, Architectural Digest',
     )
 
     const coreStr = core.join('. ')
@@ -241,19 +253,23 @@ export function buildFluxPrompt(params: BuildFluxPromptParams): string {
 
     // Append preserve clauses as hard constraints — excluded from the 80-word
     // core budget because Gemini output is variable-length and non-negotiable.
+    // Quiz preview mode skips the tail entirely — it's a text-to-image style
+    // probe, not an edit of a real room photo.
     const tail: string[] = []
-    if (preservationInstructions && preservationInstructions.trim()) {
-      tail.push(preservationInstructions.trim())
-    } else {
-      tail.push(
-        'PRESERVE exactly: wall color, ceiling, floor, windows, wall decor, camera angle, room layout',
-      )
-    }
-    if (keptItemLabels.length > 0) {
-      tail.push('Keep unchanged: ' + keptItemLabels.join(', '))
+    if (!quizPreviewMode) {
+      if (preservationInstructions && preservationInstructions.trim()) {
+        tail.push(preservationInstructions.trim())
+      } else {
+        tail.push(
+          'PRESERVE exactly: wall color, ceiling, floor, windows, wall decor, camera angle, room layout',
+        )
+      }
+      if (keptItemLabels.length > 0) {
+        tail.push('Keep unchanged: ' + keptItemLabels.join(', '))
+      }
     }
 
-    const prompt = [coreStr, ...tail].join('. ')
+    const prompt = tail.length > 0 ? [coreStr, ...tail].join('. ') : coreStr
     return { prompt, coreWords }
   }
 

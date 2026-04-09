@@ -1,5 +1,5 @@
 # Cova — Build Status
-Last updated: 2026-04-08
+Last updated: 2026-04-08 (quiz validation renders)
 
 ---
 
@@ -133,6 +133,7 @@ The pipeline runs end-to-end. Rooms can be created, captured, processed through 
 | 2026-04-08 | **Session B**: Generated 9 anchor images + 60 validated comparison pairs (5 per dim × 12 dims) via Replicate FLUX 1.1 Pro + Kontext Pro into new `quiz_anchor_images` and `quiz_comparison_pairs` tables. Inline Claude Sonnet livability gate. $8.06 spent / $20 ceiling. Commit `75abbf6`. | supabase/migrations/20260408000000_quiz_image_library.sql + apps/web/scripts/generate-quiz-library.ts |
 | 2026-04-08 | **Session C**: Wired the live quiz routes (`/api/quiz/next-card`, `/api/quiz/next-pair`, `/api/quiz/fingerprint`, `/api/style-references/match`) to read from `quiz_anchor_images` and `quiz_comparison_pairs`. Phase A collapsed from 3 rounds → single round with exactly 2 selections. PairwiseResponse `chosenId` → `chosenSide: 'A'\|'B'\|'skip'`. Per-dim confidence formula `cov[i][i] = 1 - min(1, count/4)`. All 6 smoke tests pass against live dev server. | apps/web/app/api/quiz/* + app/design/step-3/page.tsx + lib/store/fingerprint.ts |
 | 2026-04-08 | **Session C cleanup**: Migrated `/api/quiz/mood-board`, `/api/quiz/mood-strip`, and `lib/ai/style-references.ts#fetchTopStyleReference` from `swipe_cards`/`style_references` to `quiz_anchor_images`. Added `lib/ai/anchor-display.ts` display-name mapping (rule #8) wired into the fingerprint route + style-references match route. Dropped legacy `swipe_cards` and `style_references` tables via `supabase/migrations/20260408100000_drop_legacy_quiz_tables.sql`. 8/8 smoke tests pass. | apps/web/app/api/quiz/mood-*/route.ts + lib/ai/{style-references,anchor-display}.ts + supabase/migrations/20260408100000_*.sql |
+| 2026-04-08 | **Quiz validation renders**: Step-3 Phase C rewritten from the old form into a 3-up FLUX 1.1 Pro validation render (exact fp + density/temperature ±0.15 nudges) with per-card selection, optional 4-slider tweak panel (600 ms debounced re-render), and final confirmation that saves the full 12-dim `dimensions` + `covariance` + `confidence` + `budget_tier` + `quiz_responses` into `style_fingerprints`. New public route `/api/quiz/validation-renders`. `buildFluxPrompt()` descriptors trimmed to ≤6 words each and `NEUTRAL_BAND` tightened to 0.15 so quiz-preview prompts stay ≤32 words (far under the 80-word target). Build clean. Live smoke test: all 3 render URLs return HTTP 200 on a Warm Japandi fp. | apps/web/lib/ai/flux.ts + apps/web/app/api/quiz/{validation-renders,fingerprint}/route.ts + apps/web/app/design/step-3/page.tsx + apps/web/middleware.ts |
 
 ## Landing Page Real Images (2026-04-04)
 

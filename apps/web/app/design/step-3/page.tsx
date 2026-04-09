@@ -49,15 +49,6 @@ const NEUTRAL_MIDPOINT = 0.5;
 
 const TOTAL_PAIRS = 12;
 
-type BudgetTier = "budget" | "mid" | "premium" | "luxury";
-
-const BUDGET_LABELS: Record<BudgetTier, string> = {
-  budget: "Under $500",
-  mid: "$500–$2,000",
-  premium: "$2,000–$5,000",
-  luxury: "$5,000+",
-};
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function makeIdentityCov(scale: number): number[][] {
@@ -542,21 +533,129 @@ function PhaseB({ warmStart, onComplete }: PhaseBProps) {
 }
 
 // ── Phase C Component ─────────────────────────────────────────────────────────
+//
+// Phase C — Validation Render Experience.
+// Generates 3 FLUX 1.1 Pro previews of the user's style (exact + warmer/layered
+// + cooler/minimal), lets them pick the one that feels right, optionally tweak
+// 4 sliders for fine adjustment, then confirms and saves to style_fingerprints.
 
-function PhaseC({ onBack }: { onBack: () => void }) {
+interface RenderSlot {
+  url: string | null;
+  label: string;
+  fingerprint: StyleFingerprint;
+  error?: string;
+}
+
+interface PhaseCProps {
+  initialFingerprint: StyleFingerprint;
+  onBack: () => void;
+}
+
+function PhaseC({ initialFingerprint, onBack }: PhaseCProps) {
   const router = useRouter();
   const fingerprintStore = useFingerprintStore();
   const sessionStore = useSessionStore();
 
-  const [householdComposition, setHouseholdComposition] = useState("");
-  const [localBudgetTier, setLocalBudgetTier] = useState<BudgetTier>(
-    (fingerprintStore.budgetTier as BudgetTier | null) ?? "mid"
-  );
-  const [freeText, setFreeText] = useState("");
+  const roomType = fingerprintStore.roomType ?? "bedroom";
+
+  const [renders, setRenders] = useState<RenderSlot[] | null>(null);
+  const [isLoadingRenders, setIsLoadingRenders] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+  const [confirmedFingerprint, setConfirmedFingerprint] =
+    useState<StyleFingerprint>(initialFingerprint);
+  const [tweakOpen, setTweakOpen] = useState(false);
+  const [isRetweaking, setIsRetweaking] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const loadedRef = useRef(false);
+  const tweakTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  async function handleFinishQuiz() {
+  const fetchValidationRenders = useCallback(
+    async (fp: StyleFingerprint): Promise<RenderSlot[] | null> => {
+      const res = await fetch("/api/quiz/validation-renders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fingerprint: fp, roomType }),
+      });
+      if (!res.ok) return null;
+      const data = (await res.json()) as { renders: RenderSlot[] };
+      return data.renders ?? null;
+    },
+    [roomType]
+  );
+
+  useEffect(() => {
+    if (loadedRef.current) return;
+    loadedRef.current = true;
+    void (async () => {
+      setIsLoadingRenders(true);
+      setLoadError(null);
+      const slots = await fetchValidationRenders(initialFingerprint);
+      if (!slots || slots.length === 0) {
+        setLoadError("Couldn't generate previews. Tap to retry.");
+      } else {
+        setRenders(slots);
+      }
+      setIsLoadingRenders(false);
+    })();
+  }, [fetchValidationRenders, initialFingerprint]);
+
+  function handleSelectCard(idx: number) {
+    if (!renders || !renders[idx]) return;
+    const slot = renders[idx];
+    if (!slot.url) return;
+    setSelectedIdx(idx);
+    setConfirmedFingerprint(slot.fingerprint);
+  }
+
+  function handleTweakChange(
+    dim: keyof StyleFingerprint["dimensions"],
+    value: number
+  ) {
+    setConfirmedFingerprint((prev) => ({
+      ...prev,
+      dimensions: { ...prev.dimensions, [dim]: clamp(value, 0, 1) },
+    }));
+    if (tweakTimerRef.current) clearTimeout(tweakTimerRef.current);
+    tweakTimerRef.current = setTimeout(() => {
+      void runTweakRerender();
+    }, 600);
+  }
+
+  async function runTweakRerender() {
+    if (!renders) return;
+    setIsRetweaking(true);
+    try {
+      const res = await fetch("/api/quiz/validation-renders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fingerprint: confirmedFingerprint,
+          roomType,
+        }),
+      });
+      if (!res.ok) throw new Error("retweak failed");
+      const data = (await res.json()) as { renders: RenderSlot[] };
+      const first = data.renders?.[0];
+      if (first && first.url) {
+        // Replace center card only. Keep warmer/cooler flanks intact.
+        setRenders((prev) => {
+          if (!prev) return prev;
+          const next = [...prev];
+          next[0] = { ...first, label: "Your tweaked style" };
+          return next;
+        });
+        setSelectedIdx(0);
+      }
+    } catch {
+      /* silent — tweak errors are non-fatal */
+    } finally {
+      setIsRetweaking(false);
+    }
+  }
+
+  async function handleConfirm() {
     setIsSubmitting(true);
     setSubmitError(null);
     try {
@@ -566,32 +665,23 @@ function PhaseC({ onBack }: { onBack: () => void }) {
         body: JSON.stringify({
           phase_a_selections: fingerprintStore.phaseASelections,
           phase_b_responses: fingerprintStore.phaseBResponses,
-          room_type: fingerprintStore.roomType ?? "bedroom",
-          household_composition: householdComposition,
-          free_text: freeText || undefined,
+          room_type: roomType,
+          budget_tier: fingerprintStore.budgetTier,
+          phase_c_confirmation: true,
+          confirmed_fingerprint: confirmedFingerprint,
         }),
       });
-
-      if (!res.ok) throw new Error("Request failed");
-
-      const data = await res.json() as {
+      if (!res.ok) throw new Error("save failed");
+      const data = (await res.json()) as {
         fingerprint: StyleFingerprint;
         style_name: string;
         style_tags: string[];
       };
-
-      fingerprintStore.setFingerprint(data.fingerprint, data.style_name, data.style_tags);
-
-      if (localBudgetTier !== fingerprintStore.budgetTier) {
-        const ranges: Record<BudgetTier, [number, number]> = {
-          budget: [200, 500],
-          mid: [500, 2000],
-          premium: [2000, 5000],
-          luxury: [5000, 25000],
-        };
-        fingerprintStore.setBudget(localBudgetTier, ranges[localBudgetTier]);
-      }
-
+      fingerprintStore.setFingerprint(
+        data.fingerprint,
+        data.style_name,
+        data.style_tags
+      );
       sessionStore.setStep(4);
       router.push("/design/step-4");
     } catch {
@@ -600,153 +690,295 @@ function PhaseC({ onBack }: { onBack: () => void }) {
     }
   }
 
-  const HOUSEHOLD_OPTIONS = ["Solo", "Couple", "Family", "Roommates"];
-  const BUDGET_TIERS: BudgetTier[] = ["budget", "mid", "premium", "luxury"];
+  async function handleRetryLoad() {
+    loadedRef.current = false;
+    setRenders(null);
+    setLoadError(null);
+    setIsLoadingRenders(true);
+    const slots = await fetchValidationRenders(initialFingerprint);
+    if (!slots || slots.length === 0) {
+      setLoadError("Couldn't generate previews. Tap to retry.");
+    } else {
+      setRenders(slots);
+    }
+    setIsLoadingRenders(false);
+  }
+
+  const TWEAK_SLIDERS: Array<{
+    key: keyof StyleFingerprint["dimensions"];
+    lowLabel: string;
+    highLabel: string;
+  }> = [
+    { key: "colorTemperature", lowLabel: "Cooler", highLabel: "Warmer" },
+    { key: "density", lowLabel: "Minimal", highLabel: "Layered" },
+    { key: "lightPreference", lowLabel: "Calm", highLabel: "Dramatic" },
+    { key: "material", lowLabel: "Manufactured", highLabel: "Natural" },
+  ];
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center px-6 pt-8"
+      className="min-h-screen flex flex-col items-center px-4 pt-8 pb-12"
       style={{ backgroundColor: "var(--cova-bg, #0A1628)" }}
     >
-      <div className="w-full max-w-sm mx-auto">
+      <div className="w-full max-w-4xl mx-auto">
         <StepIndicator currentStep={3} totalSteps={9} />
 
         <h1
-          className="font-serif text-3xl text-center mt-10 mb-1"
-          style={{ color: "var(--cova-ivory, #F8F6F1)", fontFamily: "'EB Garamond', serif" }}
-        >
-          Almost done
-        </h1>
-        <p className="text-sm text-center mb-10" style={{ color: "var(--cova-muted, #8BA3C0)" }}>
-          Three quick questions
-        </p>
-
-        <p className="text-sm mb-3" style={{ color: "var(--cova-ivory, #F8F6F1)" }}>
-          Who uses this space?
-        </p>
-        <div className="flex flex-wrap gap-2 mb-8">
-          {HOUSEHOLD_OPTIONS.map((opt) => (
-            <button
-              key={opt}
-              onClick={() => setHouseholdComposition(opt)}
-              className="px-4 py-2 rounded-full text-sm transition-all duration-200"
-              style={{
-                backgroundColor:
-                  householdComposition === opt
-                    ? "var(--cova-gold, #C9A84C)"
-                    : "var(--cova-surface, #0F1F3D)",
-                color:
-                  householdComposition === opt
-                    ? "var(--cova-bg, #0A1628)"
-                    : "var(--cova-ivory, #F8F6F1)",
-                border: householdComposition === opt
-                  ? "none"
-                  : "1px solid var(--cova-border, #1E3A5F)",
-                fontWeight: householdComposition === opt ? 500 : 400,
-              }}
-            >
-              {opt}
-            </button>
-          ))}
-        </div>
-
-        <p className="text-sm mb-3" style={{ color: "var(--cova-ivory, #F8F6F1)" }}>
-          Confirm your budget
-        </p>
-        <div className="flex flex-wrap gap-2 mb-8">
-          {BUDGET_TIERS.map((tier) => (
-            <button
-              key={tier}
-              onClick={() => setLocalBudgetTier(tier)}
-              className="px-4 py-2 rounded-full text-sm transition-all duration-200"
-              style={{
-                backgroundColor:
-                  localBudgetTier === tier
-                    ? "var(--cova-gold, #C9A84C)"
-                    : "var(--cova-surface, #0F1F3D)",
-                color:
-                  localBudgetTier === tier
-                    ? "var(--cova-bg, #0A1628)"
-                    : "var(--cova-ivory, #F8F6F1)",
-                border: localBudgetTier === tier
-                  ? "none"
-                  : "1px solid var(--cova-border, #1E3A5F)",
-                fontWeight: localBudgetTier === tier ? 500 : 400,
-              }}
-            >
-              {BUDGET_LABELS[tier]}
-            </button>
-          ))}
-        </div>
-
-        <p className="text-sm mb-3" style={{ color: "var(--cova-ivory, #F8F6F1)" }}>
-          Anything we should know?{" "}
-          <span style={{ color: "var(--cova-muted, #8BA3C0)" }}>(optional)</span>
-        </p>
-        <textarea
-          value={freeText}
-          onChange={(e) => setFreeText(e.target.value)}
-          placeholder="e.g. I rent, I have a dog, limited natural light"
-          rows={3}
-          className="w-full rounded-lg px-4 py-3 text-sm resize-none outline-none transition-all duration-200 mb-8"
+          className="font-serif text-3xl text-center mt-8 mb-2"
           style={{
-            backgroundColor: "var(--cova-surface, #0F1F3D)",
             color: "var(--cova-ivory, #F8F6F1)",
-            border: "1px solid var(--cova-border, #1E3A5F)",
+            fontFamily: "'EB Garamond', serif",
           }}
-          onFocus={(e) => (e.target.style.borderColor = "var(--cova-gold, #C9A84C)")}
-          onBlur={(e) => (e.target.style.borderColor = "var(--cova-border, #1E3A5F)")}
-        />
+        >
+          Is this your style?
+        </h1>
+        <p
+          className="text-sm text-center mb-8"
+          style={{ color: "var(--cova-muted, #8BA3C0)" }}
+        >
+          Pick the one that feels right
+        </p>
 
-        <div className="h-px mb-8" style={{ backgroundColor: "var(--cova-border, #1E3A5F)" }} />
-
-        {submitError && (
-          <p className="text-sm text-center mb-4" style={{ color: "var(--cova-error, #C0504A)" }}>
-            {submitError}
-          </p>
+        {/* Loading state */}
+        {isLoadingRenders && (
+          <div className="flex flex-col items-center justify-center py-20 gap-4">
+            <motion.div
+              className="rounded-full"
+              animate={{ opacity: [0.3, 1, 0.3], scale: [0.9, 1.1, 0.9] }}
+              transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+              style={{
+                width: 12,
+                height: 12,
+                backgroundColor: "var(--cova-gold, #C9A84C)",
+              }}
+            />
+            <p
+              className="text-sm"
+              style={{ color: "var(--cova-ivory, #F8F6F1)" }}
+            >
+              Generating your style...
+            </p>
+          </div>
         )}
 
-        <button
-          onClick={handleFinishQuiz}
-          disabled={!householdComposition || isSubmitting}
-          className="w-full py-4 rounded-xl text-base font-medium transition-all duration-200 mb-4"
-          style={{
-            backgroundColor:
-              !householdComposition || isSubmitting
-                ? "rgba(201,168,76,0.3)"
-                : "var(--cova-gold, #C9A84C)",
-            color:
-              !householdComposition || isSubmitting
-                ? "rgba(201,168,76,0.5)"
-                : "var(--cova-bg, #0A1628)",
-            cursor: !householdComposition || isSubmitting ? "not-allowed" : "pointer",
-          }}
-        >
-          {isSubmitting ? (
-            <span className="flex items-center justify-center gap-2">
-              <span
-                className="w-4 h-4 rounded-full animate-spin inline-block"
-                style={{
-                  border: "2px solid rgba(201,168,76,0.5)",
-                  borderTopColor: "rgba(201,168,76,0.8)",
-                }}
-              />
-              Building your profile...
-            </span>
-          ) : (
-            "See My Style →"
-          )}
-        </button>
+        {/* Error state */}
+        {!isLoadingRenders && loadError && (
+          <div className="flex flex-col items-center justify-center py-20 gap-4">
+            <p
+              className="text-sm text-center"
+              style={{ color: "var(--cova-error, #C0504A)" }}
+            >
+              {loadError}
+            </p>
+            <button
+              onClick={handleRetryLoad}
+              className="px-4 py-2 rounded-full text-sm"
+              style={{
+                backgroundColor: "var(--cova-surface, #0F1F3D)",
+                color: "var(--cova-ivory, #F8F6F1)",
+                border: "1px solid var(--cova-border, #1E3A5F)",
+              }}
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
-        <button
-          onClick={onBack}
-          className="w-full text-sm text-center bg-transparent border-none cursor-pointer transition-colors duration-200"
-          style={{ color: "var(--cova-muted, #8BA3C0)" }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "var(--cova-ivory, #F8F6F1)")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "var(--cova-muted, #8BA3C0)")}
-        >
-          ← Back
-        </button>
+        {/* Render cards */}
+        {!isLoadingRenders && !loadError && renders && (
+          <>
+            <div className="flex flex-col md:flex-row gap-4 mb-8">
+              {renders.map((slot, idx) => {
+                const isSel = selectedIdx === idx;
+                const isBroken = !slot.url;
+                return (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.35, delay: idx * 0.15 }}
+                    onClick={() => !isBroken && handleSelectCard(idx)}
+                    className="flex-1 rounded-xl overflow-hidden transition-all duration-200"
+                    style={{
+                      cursor: isBroken ? "not-allowed" : "pointer",
+                      border: isSel
+                        ? "2px solid var(--cova-gold, #C9A84C)"
+                        : "2px solid transparent",
+                      backgroundColor: "var(--cova-surface, #0F1F3D)",
+                      opacity: isBroken ? 0.5 : 1,
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isSel && !isBroken)
+                        e.currentTarget.style.border =
+                          "2px solid rgba(201,168,76,0.5)";
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isSel)
+                        e.currentTarget.style.border = "2px solid transparent";
+                    }}
+                  >
+                    <div
+                      className="relative w-full"
+                      style={{ aspectRatio: "1/1" }}
+                    >
+                      {slot.url ? (
+                        <Image
+                          src={slot.url}
+                          alt={slot.label}
+                          fill
+                          className="object-cover"
+                          loading="lazy"
+                          sizes="(max-width: 768px) 100vw, 33vw"
+                          unoptimized
+                        />
+                      ) : (
+                        <div
+                          className="w-full h-full flex items-center justify-center text-xs"
+                          style={{ color: "var(--cova-muted, #8BA3C0)" }}
+                        >
+                          Couldn&apos;t render
+                        </div>
+                      )}
+                      {isSel && slot.url && (
+                        <div
+                          className="absolute top-2 right-2 flex items-center justify-center rounded-full"
+                          style={{
+                            width: 24,
+                            height: 24,
+                            backgroundColor: "var(--cova-gold, #C9A84C)",
+                          }}
+                        >
+                          <Check
+                            size={14}
+                            style={{ color: "var(--cova-bg, #0A1628)" }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="px-3 py-2">
+                      <p
+                        className="text-xs text-center"
+                        style={{ color: "var(--cova-ivory, #F8F6F1)" }}
+                      >
+                        {slot.label}
+                      </p>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+
+            {submitError && (
+              <p
+                className="text-sm text-center mb-4"
+                style={{ color: "var(--cova-error, #C0504A)" }}
+              >
+                {submitError}
+              </p>
+            )}
+
+            <button
+              onClick={handleConfirm}
+              disabled={selectedIdx === null || isSubmitting}
+              className="w-full max-w-sm mx-auto block py-4 rounded-xl text-base font-medium transition-all duration-200 mb-4"
+              style={{
+                backgroundColor:
+                  selectedIdx === null || isSubmitting
+                    ? "rgba(201,168,76,0.3)"
+                    : "var(--cova-gold, #C9A84C)",
+                color:
+                  selectedIdx === null || isSubmitting
+                    ? "rgba(201,168,76,0.5)"
+                    : "var(--cova-bg, #0A1628)",
+                cursor:
+                  selectedIdx === null || isSubmitting
+                    ? "not-allowed"
+                    : "pointer",
+              }}
+            >
+              {isSubmitting ? "Saving..." : "This is my style →"}
+            </button>
+
+            <div className="text-center mb-4">
+              <button
+                onClick={() => setTweakOpen((v) => !v)}
+                className="text-xs bg-transparent border-none cursor-pointer transition-colors duration-200"
+                style={{ color: "var(--cova-muted, #8BA3C0)" }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.color = "var(--cova-ivory, #F8F6F1)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.color = "var(--cova-muted, #8BA3C0)")
+                }
+              >
+                {tweakOpen ? "Close tweaks" : "Tweak your style"}
+              </button>
+            </div>
+
+            {tweakOpen && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="max-w-md mx-auto rounded-xl p-4 mb-4"
+                style={{
+                  backgroundColor: "var(--cova-surface, #0F1F3D)",
+                  border: "1px solid var(--cova-border, #1E3A5F)",
+                }}
+              >
+                {TWEAK_SLIDERS.map((s) => {
+                  const val = confirmedFingerprint.dimensions[s.key] ?? 0.5;
+                  return (
+                    <div key={s.key} className="mb-4 last:mb-0">
+                      <div className="flex justify-between text-xs mb-1">
+                        <span style={{ color: "var(--cova-muted, #8BA3C0)" }}>
+                          {s.lowLabel}
+                        </span>
+                        <span style={{ color: "var(--cova-muted, #8BA3C0)" }}>
+                          {s.highLabel}
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={val}
+                        onChange={(e) =>
+                          handleTweakChange(s.key, parseFloat(e.target.value))
+                        }
+                        className="w-full"
+                        style={{ accentColor: "var(--cova-gold, #C9A84C)" }}
+                      />
+                    </div>
+                  );
+                })}
+                {isRetweaking && (
+                  <p
+                    className="text-xs text-center mt-2"
+                    style={{ color: "var(--cova-muted, #8BA3C0)" }}
+                  >
+                    Re-rendering...
+                  </p>
+                )}
+              </motion.div>
+            )}
+
+            <button
+              onClick={onBack}
+              className="w-full text-sm text-center bg-transparent border-none cursor-pointer transition-colors duration-200"
+              style={{ color: "var(--cova-muted, #8BA3C0)" }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.color = "var(--cova-ivory, #F8F6F1)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.color = "var(--cova-muted, #8BA3C0)")
+              }
+            >
+              ← Back
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -823,7 +1055,7 @@ export default function StyleQuizPage() {
         </motion.div>
       )}
 
-      {phase === "C" && (
+      {phase === "C" && warmStart && (
         <motion.div
           key="phase-c"
           initial={{ opacity: 0 }}
@@ -831,7 +1063,7 @@ export default function StyleQuizPage() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
         >
-          <PhaseC onBack={() => setPhase("B")} />
+          <PhaseC initialFingerprint={warmStart} onBack={() => setPhase("B")} />
         </motion.div>
       )}
     </AnimatePresence>

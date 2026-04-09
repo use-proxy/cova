@@ -30,8 +30,15 @@ interface NewFingerprintRequest {
   phase_a_selections: string[]
   phase_b_responses: PairwiseResponse[]
   room_type: string
-  household_composition: string
+  household_composition?: string
   free_text?: string
+  budget_tier?: 'budget' | 'mid' | 'premium' | 'luxury' | null
+  // When true, the client has confirmed a (possibly tweaked) fingerprint
+  // from the Phase C validation-render flow. When set together with
+  // confirmed_fingerprint, the route skips recomputation and saves the
+  // client-confirmed vector directly.
+  phase_c_confirmation?: boolean
+  confirmed_fingerprint?: StyleFingerprint
 }
 
 // Legacy API format (kept for backward compat with existing quiz)
@@ -465,7 +472,33 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'room_type required' }, { status: 400 })
       }
 
-      const { fingerprint, styleName, styleTags } = await computeNewFingerprint(body)
+      // Phase C confirmation path: the client has already confirmed a
+      // (possibly tweaked) fingerprint from the validation-render flow.
+      // Skip recomputation and save the client-confirmed vector directly —
+      // still re-derives style name and tags from that vector for display.
+      let fingerprint: StyleFingerprint
+      let styleName: string
+      let styleTags: string[]
+
+      if (body.phase_c_confirmation && body.confirmed_fingerprint) {
+        fingerprint = body.confirmed_fingerprint
+        const d = fingerprint.dimensions
+        const strongDims = DIMENSION_ORDER.filter(
+          (k) => Math.abs((d[k] ?? NEUTRAL_MIDPOINT) - NEUTRAL_MIDPOINT) > STRONG_BAND
+        )
+        if (strongDims.length === 0) {
+          styleName = 'Your Unique Style'
+        } else {
+          const fpVec = DIMENSION_ORDER.map((k) => d[k] ?? NEUTRAL_MIDPOINT)
+          styleName = toDisplayName(matchStyle(fpVec).name)
+        }
+        styleTags = fingerprintToStyleTags(fingerprint).slice(0, 4)
+      } else {
+        const result = await computeNewFingerprint(body)
+        fingerprint = result.fingerprint
+        styleName = result.styleName
+        styleTags = result.styleTags
+      }
 
       // Save if authenticated. NOTE: the supabase-js query builder is a
       // thenable, NOT a real Promise — `.catch()` is not a method on it.
@@ -475,15 +508,35 @@ export async function POST(request: Request) {
         try {
           const admin = createAdminSupabaseClient()
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (admin.from('style_fingerprints') as any).insert({
-            user_id: user.id,
-            vector_data: Object.values(fingerprint.dimensions),
-            style_name: styleName,
-            room_type: body.room_type,
-            entry_path: 'pairs',
-          })
-        } catch {
+          const { data: inserted, error: insertErr } = await (admin.from('style_fingerprints') as any)
+            .insert({
+              user_id: user.id,
+              dimensions: fingerprint.dimensions,
+              covariance: fingerprint.covariance,
+              confidence: fingerprint.confidence,
+              style_name: styleName,
+              room_type: body.room_type,
+              budget_tier: body.budget_tier ?? null,
+              quiz_responses: body.phase_b_responses ?? [],
+              entry_path: 'pairs',
+            })
+            .select('id')
+            .single()
+          if (insertErr) {
+            console.warn('[fingerprint] save failed:', insertErr.message)
+          } else {
+            console.log('[fingerprint] saved to DB:', {
+              userId: user.id,
+              styleId: inserted?.id ?? null,
+              styleName,
+            })
+          }
+        } catch (e) {
           /* non-fatal — fingerprint result is still returned to the client */
+          console.warn(
+            '[fingerprint] save threw:',
+            e instanceof Error ? e.message : String(e)
+          )
         }
       }
 
