@@ -8,9 +8,9 @@ dotenv.config({ path: '.env.local' })
 
 async function verify() {
   console.log('=== PARALLAX VERIFICATION ===')
-  const webhookUrl = process.env.DEPTHFLOW_WEBHOOK_URL
+  const webhookUrl = process.env.DEPTH_VIDEO_WEBHOOK_URL
   if (!webhookUrl) {
-    console.log('WARN DEPTHFLOW_WEBHOOK_URL not configured — CSS parallax fallback')
+    console.log('WARN DEPTH_VIDEO_WEBHOOK_URL not configured — CSS parallax fallback')
     return null
   }
 

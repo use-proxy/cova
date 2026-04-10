@@ -1,502 +1,567 @@
-'use client'
+'use client';
 
-/**
- * Screen B — Constraints.
- *
- * Fast chip-based inputs for context the AI can't see. Target <60s
- * to complete. Wall permanence + best light time are required; all
- * other sections optional.
- */
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import '../step-1/step1.css';
+import './step7b.css';
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
-import { createBrowserClient } from '@/lib/supabase/client'
-import { useArea2Store } from '@/lib/stores/area2Store'
-import type { RoomConstraints } from '@/lib/types/area2'
+/* ------------------------------------------------------------------ */
+/*  Types                                                              */
+/* ------------------------------------------------------------------ */
+type Fixture = 'Fireplace' | 'Built-ins' | 'Staircase' | 'Bay Window' | 'Exposed Beam' | 'Skylight';
+type FlooringType = 'Hardwood' | 'Tile' | 'Carpet' | 'Concrete' | 'Mixed';
+type BrightestTime = 'Morning' | 'Midday' | 'Afternoon' | 'Evening';
+type ProtectedArea = 'Reading Corner' | 'Dining Area' | 'Entryway' | 'Home Office' | 'Kids Zone' | 'Bedroom Corner' | 'Window Seat' | 'None';
 
-// ─── Design tokens (kept for JS-driven style values only) ────────────────────
+const FIXTURES: Fixture[] = ['Fireplace', 'Built-ins', 'Staircase', 'Bay Window', 'Exposed Beam', 'Skylight'];
+const FLOORING_TYPES: FlooringType[] = ['Hardwood', 'Tile', 'Carpet', 'Concrete', 'Mixed'];
+const BRIGHTEST_TIMES: BrightestTime[] = ['Morning', 'Midday', 'Afternoon', 'Evening'];
+const PROTECTED_AREAS: ProtectedArea[] = ['Reading Corner', 'Dining Area', 'Entryway', 'Home Office', 'Kids Zone', 'Bedroom Corner', 'Window Seat', 'None'];
 
-const GOLD = '#C9A84C'
-const BORDER = 'rgba(201,168,76,0.15)'
-const BORDER_ACTIVE = 'rgba(201,168,76,0.6)'
-
-// ─── Option tables ────────────────────────────────────────────────────────────
-
-const WALL_OPTIONS: {
-  id: RoomConstraints['wallPermanence']
-  label: string
-}[] = [
-  { id: 'own-anything-goes', label: 'Yes, do anything' },
-  { id: 'renting-no-paint', label: 'Renting — no painting or drilling' },
-  { id: 'some-walls-only', label: 'Some walls only' },
-]
-
-const PHYSICAL_OPTIONS = [
-  { id: 'radiator', label: 'Radiator' },
-  { id: 'column', label: 'Exposed column or beam' },
-  { id: 'sloped-ceiling', label: 'Sloped ceiling' },
-  { id: 'awkward-alcove', label: 'Awkward alcove' },
-  { id: 'structural-wall', label: "Structural wall I can't remove" },
-  { id: 'none', label: 'None' },
-]
-
-const LIGHT_TIMES: {
-  id: RoomConstraints['bestLightTime']
-  label: string
-}[] = [
-  { id: 'morning', label: 'Morning' },
-  { id: 'afternoon', label: 'Afternoon' },
-  { id: 'evening', label: 'Evening' },
-  { id: 'always-dim', label: 'Always dim' },
-]
-
-const WHO_USES = [
-  { id: 'just-me', label: 'Just me' },
-  { id: 'couple', label: 'Couple' },
-  { id: 'family-kids', label: 'Family with kids' },
-  { id: 'frequent-guests', label: 'Frequent guests' },
-]
-
-const FUNCTIONS = [
-  { id: 'relaxing', label: 'Relaxing' },
-  { id: 'entertaining', label: 'Entertaining' },
-  { id: 'wfh', label: 'Working from home' },
-  { id: 'gaming', label: 'Gaming' },
-  { id: 'sleeping', label: 'Sleeping' },
-  { id: 'multi-use', label: 'Multi-use' },
-]
-
-const STORAGE_OPTIONS: {
-  id: RoomConstraints['storagePriority']
-  label: string
-}[] = [
-  { id: 'low', label: 'Not important' },
-  { id: 'medium', label: 'Some' },
-  { id: 'high', label: 'A lot — I need storage everywhere' },
-]
-
-const ROOM_SIZE: { id: RoomConstraints['roomSize']; label: string }[] = [
-  { id: 'small', label: 'Small (under 150 sqft)' },
-  { id: 'medium', label: 'Medium (150–300)' },
-  { id: 'large', label: 'Large (300+)' },
-  { id: 'unknown', label: 'Not sure' },
-]
-
-const INITIAL: RoomConstraints = {
-  wallPermanence: 'own-anything-goes',
-  physicalConstraints: [],
-  bestLightTime: 'afternoon',
-  roomSize: 'unknown',
-  whoUsesRoom: [],
-  primaryFunction: [],
-  hasPetsOrKids: false,
-  storagePriority: 'medium',
-  offScreenPieces: '',
-  styleDirectionDelta: {
-    coziness: 0,
-    colorBoldness: 0,
-    traditionality: 0,
-  },
-}
-
-// ─── Sub-components ────────────────────────────────────────────────────────────
-
-const cardVariants = {
-  hidden: { opacity: 0, y: 24 },
-  show: { opacity: 1, y: 0 },
-}
-
-const containerVariants = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.08 } },
-}
-
-function SectionCard({ children }: { children: React.ReactNode }) {
-  return (
-    <motion.div
-      variants={cardVariants}
-      className="bg-[rgba(255,255,255,0.04)] border border-[rgba(201,168,76,0.15)] rounded-xl mb-4"
-      style={{ padding: '16px 20px' }}
-    >
-      {children}
-    </motion.div>
-  )
-}
-
-function SectionTitle({
-  children,
-  required,
-}: {
-  children: React.ReactNode
-  required?: boolean
-}) {
-  return (
-    <div className="flex items-center justify-between mb-3">
-      <h2 className="text-cova-ivory text-base font-dm-sans font-semibold m-0">
-        {children}
-      </h2>
-      {required && (
-        <span className="text-cova-gold text-[11px] font-dm-sans tracking-[0.08em] uppercase">
-          Required
-        </span>
-      )}
-    </div>
-  )
-}
-
-function Chips<T extends string>({
-  options,
-  selected,
-  onSelect,
-  multi = false,
-  multiSelected,
-}: {
-  options: { id: T; label: string }[]
-  selected?: T | null
-  onSelect: (id: T) => void
-  multi?: boolean
-  multiSelected?: T[]
-}) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      {options.map((opt) => {
-        const isActive = multi
-          ? (multiSelected ?? []).includes(opt.id)
-          : selected === opt.id
-        return (
-          <button
-            key={opt.id}
-            type="button"
-            onClick={() => onSelect(opt.id)}
-            className={[
-              'rounded-full px-[14px] py-2 text-[13px] font-dm-sans cursor-pointer transition-all duration-200 ease-out',
-              isActive
-                ? 'bg-[rgba(201,168,76,0.12)] border border-cova-gold text-cova-gold'
-                : 'bg-transparent border border-[rgba(201,168,76,0.15)] text-cova-ivory',
-            ].join(' ')}
-          >
-            {opt.label}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-function DeltaSlider({
-  value,
-  onChange,
-  leftLabel,
-  rightLabel,
-}: {
-  value: number
-  onChange: (v: number) => void
-  leftLabel: string
-  rightLabel: string
-}) {
-  return (
-    <div className="mb-5">
-      <div className="flex justify-between text-cova-muted text-[12px] font-dm-sans mb-2">
-        <span>{leftLabel}</span>
-        <span style={{ color: value === 0 ? GOLD : undefined }} className="text-[11px]">
-          {value === 0 ? '— balanced —' : value > 0 ? `+${value}` : `${value}`}
-        </span>
-        <span>{rightLabel}</span>
-      </div>
-      <input
-        type="range"
-        min={-2}
-        max={2}
-        step={1}
-        value={value}
-        onChange={(e) => onChange(parseInt(e.target.value, 10))}
-        className="w-full"
-        style={{ accentColor: GOLD }}
-      />
-    </div>
-  )
-}
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
-export default function Step7BPage() {
-  const router = useRouter()
-  const {
-    roomId,
-    roomConstraints,
-    setRoomConstraints,
-  } = useArea2Store()
-
-  const [state, setState] = useState<RoomConstraints>(
-    roomConstraints ?? INITIAL
-  )
-  const [wallTouched, setWallTouched] = useState(Boolean(roomConstraints))
-  const [lightTouched, setLightTouched] = useState(Boolean(roomConstraints))
-  const [saving, setSaving] = useState(false)
-  const [hydrated, setHydrated] = useState(false)
+/* ------------------------------------------------------------------ */
+/*  useScrollReveal — IntersectionObserver hook                        */
+/* ------------------------------------------------------------------ */
+function useScrollReveal<T extends HTMLElement>(
+  threshold = 0.15,
+  rootMargin = '0px 0px -40px 0px',
+) {
+  const ref = useRef<T>(null);
+  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    setHydrated(true)
-  }, [])
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          obs.unobserve(el);
+        }
+      },
+      { threshold, rootMargin },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [threshold, rootMargin]);
 
-  const canContinue = wallTouched && lightTouched
+  return { ref, visible };
+}
 
-  const togglePhysical = (id: string) => {
-    const next = state.physicalConstraints.includes(id)
-      ? state.physicalConstraints.filter((p) => p !== id)
-      : [...state.physicalConstraints, id]
-    setState({ ...state, physicalConstraints: next })
-  }
-  const toggleWho = (id: string) => {
-    const next = state.whoUsesRoom.includes(id)
-      ? state.whoUsesRoom.filter((p) => p !== id)
-      : [...state.whoUsesRoom, id]
-    setState({ ...state, whoUsesRoom: next })
-  }
-  const toggleFn = (id: string) => {
-    const next = state.primaryFunction.includes(id)
-      ? state.primaryFunction.filter((p) => p !== id)
-      : [...state.primaryFunction, id]
-    setState({ ...state, primaryFunction: next })
-  }
-
-  const handleContinue = async () => {
-    if (!canContinue) return
-    setSaving(true)
-    try {
-      setRoomConstraints(state)
-      if (roomId) {
-        const supabase = createBrowserClient()
-        const { data: { session } } = await supabase.auth.getSession()
-        const userId = session?.user?.id
-        if (!userId) return
-        await supabase
-          .from('rooms')
-          .update({ room_constraints: state, design_step: 2 })
-          .eq('id', roomId)
-          .eq('user_id', userId)
-      }
-      router.push('/design/step-7c')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  if (!hydrated) return null
-
-  const inputClassName = 'bg-cova-bg border border-[rgba(201,168,76,0.15)] rounded-lg text-cova-ivory px-3 py-[10px] font-dm-sans text-sm w-full outline-none'
-
+/* ------------------------------------------------------------------ */
+/*  Section Icons (inline SVGs)                                        */
+/* ------------------------------------------------------------------ */
+function IconStructure() {
   return (
-    <div className="min-h-screen bg-cova-bg font-dm-sans">
-      {/* Gold progress bar — fixed top */}
-      <div className="fixed top-0 left-0 right-0 h-[3px] bg-[rgba(201,168,76,0.15)] z-[60]">
-        <div className="h-full w-[86%] bg-cova-gold transition-[width] duration-[400ms] ease-out" />
-      </div>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 21h18" />
+      <path d="M5 21V7l7-4 7 4v14" />
+      <path d="M9 21v-6h6v6" />
+    </svg>
+  );
+}
 
-      {/* Frosted glass top bar */}
-      <nav
-        className="sticky top-0 z-50 h-14 flex items-center justify-between px-6 border-b border-[rgba(201,168,76,0.1)]"
-        style={{ background: 'rgba(9,24,41,0.8)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
-      >
-        <span className="font-playfair italic text-xl text-cova-gold tracking-[0.05em]">Cova</span>
-        <span className="font-dm-sans font-semibold text-[15px] text-cova-ivory">Your Space</span>
-        <span className="font-dm-sans text-[13px] text-cova-muted">Step 6 of 7</span>
+function IconFlooring() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M3 12h18" />
+      <path d="M12 3v18" />
+      <path d="M3 7.5h8.5" />
+      <path d="M12.5 16.5H21" />
+    </svg>
+  );
+}
+
+function IconLight() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2" />
+      <path d="M12 20v2" />
+      <path d="m4.93 4.93 1.41 1.41" />
+      <path d="m17.66 17.66 1.41 1.41" />
+      <path d="M2 12h2" />
+      <path d="M20 12h2" />
+      <path d="m6.34 17.66-1.41 1.41" />
+      <path d="m19.07 4.93-1.41 1.41" />
+    </svg>
+  );
+}
+
+function IconShield() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
+function IconNote() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+      <polyline points="10 9 9 9 8 9" />
+    </svg>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Floor Texture Icons (CSS-drawn)                                    */
+/* ------------------------------------------------------------------ */
+function FloorIcon({ type }: { type: FlooringType }) {
+  switch (type) {
+    case 'Hardwood':
+      return (
+        <div className="floor-icon floor-hardwood">
+          <div className="floor-hardwood-plank" />
+          <div className="floor-hardwood-plank" />
+          <div className="floor-hardwood-plank" />
+          <div className="floor-hardwood-plank" />
+          <div className="floor-hardwood-plank" />
+        </div>
+      );
+    case 'Tile':
+      return (
+        <div className="floor-icon floor-tile">
+          <div className="floor-tile-cell" />
+          <div className="floor-tile-cell" />
+          <div className="floor-tile-cell" />
+          <div className="floor-tile-cell" />
+        </div>
+      );
+    case 'Carpet':
+      return <div className="floor-icon floor-carpet" />;
+    case 'Concrete':
+      return <div className="floor-icon floor-concrete" />;
+    case 'Mixed':
+      return (
+        <div className="floor-icon floor-mixed">
+          <div className="floor-mixed-a" />
+          <div className="floor-mixed-b" />
+          <div className="floor-mixed-b" />
+          <div className="floor-mixed-a" />
+        </div>
+      );
+    default:
+      return null;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Back Arrow SVG                                                     */
+/* ------------------------------------------------------------------ */
+function BackArrow() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="15 18 9 12 15 6" />
+    </svg>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Main Component                                                     */
+/* ------------------------------------------------------------------ */
+export default function Step7b() {
+  const router = useRouter();
+
+  /* ---- Auth gate ---- */
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { createBrowserClient } = await import('@/lib/supabase/client');
+      const supabase = createBrowserClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) router.push('/auth?next=/design/step-7b');
+    };
+    checkAuth();
+  }, [router]);
+
+  /* ---- State ---- */
+  const [removeWalls, setRemoveWalls] = useState(false);
+  const [ceilingHeight, setCeilingHeight] = useState(9);
+  const [selectedFixtures, setSelectedFixtures] = useState<Set<Fixture>>(new Set());
+  const [selectedFlooring, setSelectedFlooring] = useState<FlooringType | null>(null);
+  const [keepFlooring, setKeepFlooring] = useState(false);
+  const [brightestTime, setBrightestTime] = useState<BrightestTime | null>(null);
+  const [windowCount, setWindowCount] = useState(3);
+  const [protectedAreas, setProtectedAreas] = useState<Set<ProtectedArea>>(new Set());
+  const [notes, setNotes] = useState('');
+  const [stepperBump, setStepperBump] = useState(false);
+
+  /* ---- Nav scroll state ---- */
+  const [navScrolled, setNavScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setNavScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  /* ---- Scroll reveal refs ---- */
+  const headerEyebrow = useScrollReveal<HTMLParagraphElement>(0.5);
+  const headerLine = useScrollReveal<HTMLDivElement>(0.5);
+  const headerHeadline = useScrollReveal<HTMLHeadingElement>(0.3);
+  const headerSubtext = useScrollReveal<HTMLParagraphElement>(0.3);
+  const card1 = useScrollReveal<HTMLElement>(0.1);
+  const card2 = useScrollReveal<HTMLElement>(0.1);
+  const card3 = useScrollReveal<HTMLElement>(0.1);
+  const card4 = useScrollReveal<HTMLElement>(0.1);
+  const card5 = useScrollReveal<HTMLElement>(0.1);
+
+  /* ---- Slider logic ---- */
+  const sliderRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const MIN_HEIGHT = 7;
+  const MAX_HEIGHT = 14;
+  const heightToPercent = (h: number) => ((h - MIN_HEIGHT) / (MAX_HEIGHT - MIN_HEIGHT)) * 100;
+
+  const updateSliderFromClient = useCallback((clientX: number) => {
+    if (!sliderRef.current) return;
+    const rect = sliderRef.current.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const raw = MIN_HEIGHT + pct * (MAX_HEIGHT - MIN_HEIGHT);
+    setCeilingHeight(Math.round(raw * 2) / 2);
+  }, []);
+
+  const onSliderPointerDown = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+    updateSliderFromClient(e.clientX);
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+  }, [updateSliderFromClient]);
+
+  const onSliderPointerMove = useCallback((e: React.PointerEvent) => {
+    if (!isDragging) return;
+    updateSliderFromClient(e.clientX);
+  }, [isDragging, updateSliderFromClient]);
+
+  const onSliderPointerUp = useCallback(() => setIsDragging(false), []);
+
+  /* ---- Toggles ---- */
+  const toggleFixture = (f: Fixture) => {
+    setSelectedFixtures((prev) => {
+      const next = new Set(prev);
+      if (next.has(f)) {
+        next.delete(f);
+      } else {
+        next.add(f);
+      }
+      return next;
+    });
+  };
+
+  const toggleProtectedArea = (area: ProtectedArea) => {
+    setProtectedAreas((prev) => {
+      const next = new Set(prev);
+      if (area === 'None') {
+        if (next.has('None')) {
+          next.clear();
+        } else {
+          next.clear();
+          next.add('None');
+        }
+      } else {
+        next.delete('None');
+        if (next.has(area)) {
+          next.delete(area);
+        } else {
+          next.add(area);
+        }
+      }
+      return next;
+    });
+  };
+
+  /* ---- Stepper with bump animation ---- */
+  const bumpStepper = () => {
+    setStepperBump(true);
+    setTimeout(() => setStepperBump(false), 200);
+  };
+
+  const incrementWindows = () => {
+    setWindowCount((c) => Math.min(20, c + 1));
+    bumpStepper();
+  };
+
+  const decrementWindows = () => {
+    setWindowCount((c) => Math.max(0, c - 1));
+    bumpStepper();
+  };
+
+  /* ---- Navigation ---- */
+  const handleBack = () => { router.push('/design/step-7'); };
+  const handleContinue = () => {
+    // TODO: persist form data to store/Supabase
+    void [removeWalls, ceilingHeight, selectedFixtures, selectedFlooring, keepFlooring, brightestTime, windowCount, protectedAreas, notes];
+    router.push('/design/step-7c');
+  };
+
+  /* ================================================================ */
+  /*  RENDER                                                           */
+  /* ================================================================ */
+  return (
+    <div className="step7b-page">
+      {/* ---- Fixed Nav ---- */}
+      <nav className={`step7b-nav ${navScrolled ? 'scrolled' : ''}`}>
+        <button className="step7b-nav-back" onClick={handleBack} aria-label="Go back">
+          <BackArrow />
+        </button>
+        <button
+          type="button"
+          className="step7b-nav-logo"
+          onClick={() => router.push('/')}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+        >
+          Cova
+        </button>
+        <div className="step7b-nav-progress">
+          <span>2</span> of 5
+        </div>
       </nav>
 
-      {/* Main content */}
-      <main className="max-w-[680px] mx-auto px-6 pt-20 pb-[120px]">
-        <motion.h1
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="font-playfair text-[36px] text-cova-ivory mb-8 font-normal"
-        >
-          Tell us about your constraints.
-        </motion.h1>
+      {/* ---- Main Content ---- */}
+      <main className="step7b-content">
+        {/* Header */}
+        <header className="step7b-header">
+          <p ref={headerEyebrow.ref} className={`step7b-eyebrow ${headerEyebrow.visible ? 'visible' : ''}`}>
+            Your Constraints
+          </p>
+          <div ref={headerLine.ref} className={`step7b-eyebrow-line ${headerLine.visible ? 'visible' : ''}`} />
+          <h1 ref={headerHeadline.ref} className={`step7b-headline ${headerHeadline.visible ? 'visible' : ''}`}>
+            What should we work around?
+          </h1>
+          <p ref={headerSubtext.ref} className={`step7b-subtext ${headerSubtext.visible ? 'visible' : ''}`}>
+            Tell us what&rsquo;s fixed. We&rsquo;ll design around everything else.
+          </p>
+        </header>
 
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="show"
-        >
-          <SectionCard>
-            <SectionTitle required>Can we touch the walls?</SectionTitle>
-            <Chips
-              options={WALL_OPTIONS}
-              selected={state.wallPermanence}
-              onSelect={(id) => {
-                setState({ ...state, wallPermanence: id })
-                setWallTouched(true)
-              }}
-            />
-          </SectionCard>
+        {/* ======== 1. STRUCTURAL LIMITS ======== */}
+        <section ref={card1.ref} className={`step7b-card ${card1.visible ? 'visible' : ''}`}>
+          <h2 className="step7b-card-title">
+            <span className="step7b-card-icon"><IconStructure /></span>
+            Structural Limits
+          </h2>
 
-          <SectionCard>
-            <SectionTitle>Physical constraints</SectionTitle>
-            <Chips
-              options={PHYSICAL_OPTIONS}
-              multi
-              multiSelected={state.physicalConstraints}
-              onSelect={togglePhysical}
-            />
-          </SectionCard>
-
-          <SectionCard>
-            <SectionTitle required>When&rsquo;s the light best?</SectionTitle>
-            <Chips
-              options={LIGHT_TIMES}
-              selected={state.bestLightTime}
-              onSelect={(id) => {
-                setState({ ...state, bestLightTime: id })
-                setLightTouched(true)
-              }}
-            />
-          </SectionCard>
-
-          <SectionCard>
-            <SectionTitle>Who uses this room?</SectionTitle>
-            <Chips
-              options={WHO_USES}
-              multi
-              multiSelected={state.whoUsesRoom}
-              onSelect={toggleWho}
-            />
-          </SectionCard>
-
-          <SectionCard>
-            <SectionTitle>Main purpose?</SectionTitle>
-            <Chips
-              options={FUNCTIONS}
-              multi
-              multiSelected={state.primaryFunction}
-              onSelect={toggleFn}
-            />
-          </SectionCard>
-
-          <SectionCard>
-            <SectionTitle>Pets or young kids?</SectionTitle>
-            <div className="flex gap-3">
-              {(['Yes', 'No'] as const).map((label) => {
-                const isYes = label === 'Yes'
-                const isActive = state.hasPetsOrKids === isYes
-                return (
-                  <button
-                    key={label}
-                    type="button"
-                    onClick={() => setState({ ...state, hasPetsOrKids: isYes })}
-                    className={[
-                      'rounded-full px-5 py-2 text-[13px] font-dm-sans cursor-pointer transition-all duration-200 ease-out',
-                      isActive
-                        ? 'bg-[rgba(201,168,76,0.12)] border border-cova-gold text-cova-gold'
-                        : 'bg-transparent border border-[rgba(201,168,76,0.15)] text-cova-ivory',
-                    ].join(' ')}
-                  >
-                    {label}
-                  </button>
-                )
-              })}
+          <div className="step7b-toggle-row">
+            <span className="step7b-toggle-label">Open to removing walls?</span>
+            <div
+              className={`step7b-toggle ${removeWalls ? 'active' : ''}`}
+              role="switch"
+              aria-checked={removeWalls}
+              tabIndex={0}
+              onClick={() => setRemoveWalls(!removeWalls)}
+              onKeyDown={(e) => e.key === 'Enter' && setRemoveWalls(!removeWalls)}
+            >
+              <div className="step7b-toggle-knob" />
             </div>
-            {state.hasPetsOrKids && (
-              <p className="text-cova-muted text-[12px] font-dm-sans mt-2">
-                We&rsquo;ll avoid delicate materials like bouclé and glass tables.
-              </p>
-            )}
-          </SectionCard>
+          </div>
 
-          <SectionCard>
-            <SectionTitle>Storage priority</SectionTitle>
-            <Chips
-              options={STORAGE_OPTIONS}
-              selected={state.storagePriority}
-              onSelect={(id) => setState({ ...state, storagePriority: id })}
-            />
-          </SectionCard>
+          <div className="step7b-divider" />
 
-          <SectionCard>
-            <SectionTitle>
-              Anything coming that&rsquo;s not in the photo?
-            </SectionTitle>
+          <div className="step7b-field">
+            <label className="step7b-field-label">Ceiling height</label>
+            <div className="step7b-slider-wrapper">
+              <div className={`step7b-slider-value ${isDragging ? 'dragging' : ''}`}>
+                {ceilingHeight % 1 === 0 ? ceilingHeight : ceilingHeight.toFixed(1)}
+                <span>ft</span>
+              </div>
+              <div
+                className="step7b-slider-track"
+                ref={sliderRef}
+                onPointerDown={onSliderPointerDown}
+                onPointerMove={onSliderPointerMove}
+                onPointerUp={onSliderPointerUp}
+                onPointerCancel={onSliderPointerUp}
+              >
+                <div className="step7b-slider-fill" style={{ width: `${heightToPercent(ceilingHeight)}%` }} />
+                <div
+                  className={`step7b-slider-orb ${isDragging ? 'dragging' : ''}`}
+                  style={{ left: `${heightToPercent(ceilingHeight)}%` }}
+                />
+              </div>
+              <div className="step7b-slider-labels">
+                <span>7 ft</span>
+                <span>14 ft</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="step7b-divider" />
+
+          <div className="step7b-field">
+            <label className="step7b-field-label">Permanent fixtures in the room</label>
+            <div className="step7b-pill-grid">
+              {FIXTURES.map((f) => (
+                <button
+                  key={f}
+                  className={`step7b-pill ${selectedFixtures.has(f) ? 'selected' : ''}`}
+                  onClick={() => toggleFixture(f)}
+                  type="button"
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ======== 2. FLOORING ======== */}
+        <section ref={card2.ref} className={`step7b-card ${card2.visible ? 'visible' : ''}`}>
+          <h2 className="step7b-card-title">
+            <span className="step7b-card-icon"><IconFlooring /></span>
+            Flooring
+          </h2>
+
+          <div className="step7b-field">
+            <label className="step7b-field-label">What&rsquo;s currently underfoot?</label>
+            <div className="step7b-icon-cards">
+              {FLOORING_TYPES.map((ft) => (
+                <button
+                  key={ft}
+                  className={`step7b-icon-card ${selectedFlooring === ft ? 'selected' : ''}`}
+                  onClick={() => setSelectedFlooring(ft)}
+                  type="button"
+                >
+                  <div className="step7b-icon-card-icon">
+                    <FloorIcon type={ft} />
+                  </div>
+                  <span className="step7b-icon-card-label">{ft}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="step7b-divider" />
+
+          <div className="step7b-toggle-row">
+            <span className="step7b-toggle-label">Keep existing flooring?</span>
+            <div
+              className={`step7b-toggle ${keepFlooring ? 'active' : ''}`}
+              role="switch"
+              aria-checked={keepFlooring}
+              tabIndex={0}
+              onClick={() => setKeepFlooring(!keepFlooring)}
+              onKeyDown={(e) => e.key === 'Enter' && setKeepFlooring(!keepFlooring)}
+            >
+              <div className="step7b-toggle-knob" />
+            </div>
+          </div>
+        </section>
+
+        {/* ======== 3. NATURAL LIGHT ======== */}
+        <section ref={card3.ref} className={`step7b-card ${card3.visible ? 'visible' : ''}`}>
+          <h2 className="step7b-card-title">
+            <span className="step7b-card-icon"><IconLight /></span>
+            Natural Light
+          </h2>
+
+          <div className="step7b-field">
+            <label className="step7b-field-label">When is your room brightest?</label>
+            <div className="step7b-pill-grid">
+              {BRIGHTEST_TIMES.map((t) => (
+                <button
+                  key={t}
+                  className={`step7b-pill ${brightestTime === t ? 'selected' : ''}`}
+                  onClick={() => setBrightestTime(brightestTime === t ? null : t)}
+                  type="button"
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="step7b-divider" />
+
+          <div className="step7b-field">
+            <label className="step7b-field-label">How many windows?</label>
+            <div className="step7b-stepper">
+              <button
+                className="step7b-stepper-btn"
+                onClick={decrementWindows}
+                type="button"
+                aria-label="Decrease window count"
+              >
+                −
+              </button>
+              <div className={`step7b-stepper-value ${stepperBump ? 'bump' : ''}`}>
+                {windowCount}
+              </div>
+              <button
+                className="step7b-stepper-btn"
+                onClick={incrementWindows}
+                type="button"
+                aria-label="Increase window count"
+              >
+                +
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* ======== 4. PROTECTED AREAS ======== */}
+        <section ref={card4.ref} className={`step7b-card ${card4.visible ? 'visible' : ''}`}>
+          <h2 className="step7b-card-title">
+            <span className="step7b-card-icon"><IconShield /></span>
+            Protected Areas
+          </h2>
+
+          <div className="step7b-field">
+            <label className="step7b-field-label">Which areas should stay exactly as they are?</label>
+            <div className="step7b-pill-grid">
+              {PROTECTED_AREAS.map((area) => (
+                <button
+                  key={area}
+                  className={`step7b-pill ${protectedAreas.has(area) ? 'selected' : ''}`}
+                  onClick={() => toggleProtectedArea(area)}
+                  type="button"
+                >
+                  {area}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ======== 5. SPECIAL REQUIREMENTS ======== */}
+        <section ref={card5.ref} className={`step7b-card ${card5.visible ? 'visible' : ''}`}>
+          <h2 className="step7b-card-title">
+            <span className="step7b-card-icon"><IconNote /></span>
+            Special Requirements
+          </h2>
+
+          <div className="step7b-field">
+            <label className="step7b-field-label">Anything else we should know?</label>
             <textarea
-              className={`${inputClassName} min-h-[80px] resize-y`}
-              value={state.offScreenPieces}
-              onChange={(e) => setState({ ...state, offScreenPieces: e.target.value })}
-              placeholder="e.g. dark green velvet sofa arriving next month, or a piano I'm keeping"
-              onFocus={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = BORDER_ACTIVE }}
-              onBlur={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = BORDER }}
+              className="step7b-textarea"
+              placeholder="E.g. &quot;The east wall has water damage&quot; or &quot;We need wheelchair access throughout.&quot;"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={4}
             />
-          </SectionCard>
-
-          <SectionCard>
-            <SectionTitle>Style direction</SectionTitle>
-            <p className="text-cova-muted text-[13px] font-dm-sans mb-4">
-              Compared to how it looks now, you want it to feel…
-            </p>
-            <DeltaSlider
-              value={state.styleDirectionDelta.coziness}
-              onChange={(v) =>
-                setState({
-                  ...state,
-                  styleDirectionDelta: { ...state.styleDirectionDelta, coziness: v },
-                })
-              }
-              leftLabel="Minimal ←"
-              rightLabel="→ Cozy"
-            />
-            <DeltaSlider
-              value={state.styleDirectionDelta.colorBoldness}
-              onChange={(v) =>
-                setState({
-                  ...state,
-                  styleDirectionDelta: { ...state.styleDirectionDelta, colorBoldness: v },
-                })
-              }
-              leftLabel="Neutral ←"
-              rightLabel="→ Bold"
-            />
-            <DeltaSlider
-              value={state.styleDirectionDelta.traditionality}
-              onChange={(v) =>
-                setState({
-                  ...state,
-                  styleDirectionDelta: { ...state.styleDirectionDelta, traditionality: v },
-                })
-              }
-              leftLabel="Modern ←"
-              rightLabel="→ Traditional"
-            />
-          </SectionCard>
-
-          <SectionCard>
-            <SectionTitle>Room size</SectionTitle>
-            <Chips
-              options={ROOM_SIZE}
-              selected={state.roomSize}
-              onSelect={(id) => setState({ ...state, roomSize: id })}
-            />
-          </SectionCard>
-        </motion.div>
-
-        {/* CTA */}
-        <div className="text-center mt-2">
-          <motion.button
-            type="button"
-            disabled={!canContinue || saving}
-            onClick={handleContinue}
-            whileHover={canContinue ? { scale: 1.02, backgroundColor: '#D4B460' } : {}}
-            whileTap={canContinue ? { scale: 0.97 } : {}}
-            transition={{ duration: 0.15 }}
-            className="border-none rounded-lg px-10 py-[14px] text-base font-semibold font-dm-sans transition-all duration-200 ease-out"
-            style={{
-              background: canContinue ? GOLD : BORDER,
-              color: canContinue ? '#091829' : 'rgba(245,240,232,0.45)',
-              cursor: canContinue && !saving ? 'pointer' : 'not-allowed',
-            }}
-          >
-            {saving ? 'Saving…' : 'Continue →'}
-          </motion.button>
-        </div>
+          </div>
+        </section>
       </main>
+
+      {/* ---- Fixed Bottom Bar ---- */}
+      <div className="step7b-bottom-bar">
+        <button className="step7b-cta" onClick={handleContinue} type="button">
+          Save &amp; Continue
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 12h14" />
+            <path d="m12 5 7 7-7 7" />
+          </svg>
+        </button>
+        <div className="step7b-dots">
+          <div className="step7b-dot completed" />
+          <div className="step7b-dot active" />
+          <div className="step7b-dot" />
+          <div className="step7b-dot" />
+          <div className="step7b-dot" />
+        </div>
+      </div>
     </div>
-  )
+  );
 }

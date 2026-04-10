@@ -1,394 +1,859 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
-import { createBrowserClient } from '@/lib/supabase/client'
 import { useFingerprintStore } from '@/lib/store/fingerprint'
-import type { StyleFingerprint } from '@/types/fingerprint'
+import '../step-1/step1.css'
+import './step4.css'
 
-// ─── Radar chart constants ─────────────────────────────────────────────────────
+type StyleVariation = {
+  name: string
+  desc: string
+  traits: string[]
+}
 
-const RADAR_LABELS = [
-  'Color Temperature',
-  'Saturation',
-  'Density',
-  'Formality',
-  'Era',
-  'Material',
-  'Texture',
-  'Pattern',
-  'Line Quality',
-  'Light Preference',
-  'Nature',
-  'Cultural Influence',
+const STYLE_VARIATIONS: Record<string, StyleVariation> = {
+  warm: {
+    name: 'Warm Naturalist',
+    desc: 'Your core sensibility now glows with added warmth — think amber-toned woods, terracotta accents, and soft candlelight atmospheres. The calm remains, but the palette shifts toward sunset earth tones.',
+    traits: ['Warm Earth Tones', 'Amber Light', 'Organic Comfort'],
+  },
+  earth: {
+    name: 'Earthy Naturalist',
+    desc: 'Grounded and organic. Your style deepens with raw clay textures, undyed linen, and sun-baked terracotta. Spaces feel like they emerged from the earth itself — rooted, honest, and deeply tactile.',
+    traits: ['Clay Textures', 'Raw Materials', 'Grounded Palette'],
+  },
+  bold: {
+    name: 'Bold Naturalist',
+    desc: 'Your restrained foundation now carries confident contrast — deep charcoal walls meet warm wood, with strategic pops of muted indigo or forest green. Restraint meets conviction.',
+    traits: ['High Contrast', 'Confident Color', 'Dramatic Calm'],
+  },
+  vintage: {
+    name: 'Vintage Naturalist',
+    desc: 'A beautiful tension between old and new. Wabi-sabi imperfections meet heritage silhouettes. Patina-rich surfaces, hand-thrown ceramics, and furniture with stories to tell.',
+    traits: ['Wabi-Sabi', 'Patina Surfaces', 'Timeless Pieces'],
+  },
+  luxur: {
+    name: 'Luxe Naturalist',
+    desc: 'Elevated restraint at its finest. Marble meets light oak, brass hardware catches the light, and every surface whispers quality. This is quiet luxury — understated but unmistakably refined.',
+    traits: ['Quiet Luxury', 'Premium Materials', 'Refined Detail'],
+  },
+  color: {
+    name: 'Chromatic Naturalist',
+    desc: 'Your clean-lined aesthetic now embraces muted color — dusty rose, sage green, and soft terracotta join the neutral palette. Color is used sparingly but with purpose, like art on a gallery wall.',
+    traits: ['Muted Palette', 'Purposeful Color', 'Gallery Feel'],
+  },
+  modern: {
+    name: 'Contemporary Naturalist',
+    desc: 'Precision meets zen. Sharper lines, integrated technology, and a cooler palette push your style toward the contemporary edge. Think smart home meets tea ceremony.',
+    traits: ['Sharp Lines', 'Cool Tones', 'Tech-Integrated'],
+  },
+  natur: {
+    name: 'Biophilic Naturalist',
+    desc: "Nature doesn't just inspire your space — it inhabits it. Living walls, abundant natural light, and organic forms blur the boundary between indoors and out. Every room feels like a garden pavilion.",
+    traits: ['Living Greenery', 'Natural Light', 'Indoor-Outdoor Flow'],
+  },
+  coast: {
+    name: 'Seaside Naturalist',
+    desc: 'Sea-washed restraint. Your clean aesthetic meets ocean-inspired calm — bleached woods, soft blues, and the texture of woven rope and linen. Spaces feel like a seaside retreat.',
+    traits: ['Ocean Calm', 'Bleached Wood', 'Soft Blues'],
+  },
+  dark: {
+    name: 'Moody Naturalist',
+    desc: "Dramatic and contemplative. Deep charcoals, midnight blues, and rich walnut create spaces that envelop you. The restraint is still there, but it's wrapped in shadow and mystery.",
+    traits: ['Deep Tones', 'Contemplative', 'Shadow Play'],
+  },
+}
+
+const DEFAULT_VARIATION: StyleVariation = {
+  name: 'Evolved Naturalist',
+  desc: 'Your style has been subtly reimagined based on your preferences. The core principles of intentional design and natural harmony remain, with new nuances layered in to reflect your evolving taste.',
+  traits: ['Evolved Taste', 'Personal Touch', 'Refined Balance'],
+}
+
+const ROOMS = [
+  {
+    id: 1,
+    src: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=600&h=750&fit=crop&q=80',
+    alt: 'Living room',
+    match: '96% Match',
+    label: 'Living Room',
+    name: 'Serene Living',
+    desc: 'Low-profile furniture, warm wood tones, and curated negative space',
+  },
+  {
+    id: 2,
+    src: 'https://images.unsplash.com/photo-1617325247661-675ab4b64ae2?w=600&h=750&fit=crop&q=80',
+    alt: 'Bedroom',
+    match: '94% Match',
+    label: 'Bedroom',
+    name: 'Restful Retreat',
+    desc: 'Organic linens, muted palette, and intentional simplicity',
+  },
+  {
+    id: 3,
+    src: 'https://images.unsplash.com/photo-1600585152220-90363fe7e115?w=600&h=750&fit=crop&q=80',
+    alt: 'Kitchen',
+    match: '91% Match',
+    label: 'Kitchen',
+    name: 'Everyday Ritual',
+    desc: 'Clean surfaces, natural stone, and functional elegance',
+  },
 ]
 
-const RADAR_DIM_KEYS: Array<keyof StyleFingerprint['dimensions']> = [
-  'colorTemperature',
-  'colorSaturation',
-  'density',
-  'formality',
-  'era',
-  'material',
-  'texture',
-  'pattern',
-  'lineQuality',
-  'lightPreference',
-  'nature',
-  'culturalInfluence',
+const PALETTE = [
+  { color: '#F5F0E8', label: '#F5F0E8' },
+  { color: '#A8B5A0', label: '#A8B5A0' },
+  { color: '#7A5C3E', label: '#7A5C3E' },
+  { color: '#B8AFA6', label: '#B8AFA6' },
+  { color: '#C9A84C', label: '#C9A84C' },
 ]
 
-const FALLBACK_VALUES = [0.7, 0.5, 0.8, 0.6, 0.4, 0.9, 0.7, 0.5, 0.6, 0.8, 0.7, 0.5]
+const DIMENSIONS = [
+  { name: 'Calm', score: 87 },
+  { name: 'Warmth', score: 72 },
+  { name: 'Texture', score: 65 },
+  { name: 'Drama', score: 28 },
+  { name: 'Nature', score: 81 },
+  { name: 'Luxury', score: 55 },
+  { name: 'Playfulness', score: 22 },
+  { name: 'Vintage', score: 40 },
+]
 
-const RADAR_CENTER = 210
-const RADAR_RADIUS = 160
-const RADAR_RINGS = [0.25, 0.5, 0.75, 1.0]
-
-function polarToXY(angle: number, r: number, cx: number, cy: number) {
-  return {
-    x: cx + Math.cos(angle) * r,
-    y: cy + Math.sin(angle) * r,
-  }
-}
-
-function buildPolygonPoints(values: number[], cx: number, cy: number, maxR: number): string {
-  return values
-    .map((v, i) => {
-      const angle = (i / values.length) * 2 * Math.PI - Math.PI / 2
-      const r = maxR * Math.max(0, Math.min(1, v))
-      const { x, y } = polarToXY(angle, r, cx, cy)
-      return `${x},${y}`
-    })
-    .join(' ')
-}
-
-function buildRingPoints(fraction: number, count: number, cx: number, cy: number, maxR: number): string {
-  return Array.from({ length: count })
-    .map((_, i) => {
-      const angle = (i / count) * 2 * Math.PI - Math.PI / 2
-      const r = maxR * fraction
-      const { x, y } = polarToXY(angle, r, cx, cy)
-      return `${x},${y}`
-    })
-    .join(' ')
-}
-
-// ─── Radar SVG Component ───────────────────────────────────────────────────────
-
-interface RadarChartProps {
-  values: number[]
-}
-
-function RadarChart({ values }: RadarChartProps) {
-  const [animated, setAnimated] = useState(false)
-  const displayValues = animated ? values : Array(12).fill(0)
-  const polygonPoints = buildPolygonPoints(displayValues, RADAR_CENTER, RADAR_CENTER, RADAR_RADIUS)
-  const n = RADAR_LABELS.length
-
-  useEffect(() => {
-    const t = setTimeout(() => setAnimated(true), 200)
-    return () => clearTimeout(t)
-  }, [])
-
-  return (
-    <svg
-      width={420}
-      height={420}
-      viewBox="0 0 420 420"
-      className="block mx-auto"
-    >
-      {/* Background grid rings */}
-      {RADAR_RINGS.map((fraction) => (
-        <polygon
-          key={fraction}
-          points={buildRingPoints(fraction, n, RADAR_CENTER, RADAR_CENTER, RADAR_RADIUS)}
-          fill="none"
-          stroke="rgba(201,168,76,0.1)"
-          strokeWidth={0.5}
-        />
-      ))}
-
-      {/* Axis lines */}
-      {Array.from({ length: n }).map((_, i) => {
-        const angle = (i / n) * 2 * Math.PI - Math.PI / 2
-        const outer = polarToXY(angle, RADAR_RADIUS, RADAR_CENTER, RADAR_CENTER)
-        return (
-          <line
-            key={i}
-            x1={RADAR_CENTER}
-            y1={RADAR_CENTER}
-            x2={outer.x}
-            y2={outer.y}
-            stroke="rgba(201,168,76,0.1)"
-            strokeWidth={0.5}
-          />
-        )
-      })}
-
-      {/* Data polygon */}
-      <motion.polygon
-        points={polygonPoints}
-        fill="rgba(201,168,76,0.2)"
-        stroke="#C9A84C"
-        strokeWidth={2}
-        animate={{ points: polygonPoints }}
-        transition={{ duration: 0.8, ease: 'easeOut' }}
-      />
-
-      {/* Axis labels */}
-      {RADAR_LABELS.map((label, i) => {
-        const angle = (i / n) * 2 * Math.PI - Math.PI / 2
-        const labelR = RADAR_RADIUS + 22
-        const { x, y } = polarToXY(angle, labelR, RADAR_CENTER, RADAR_CENTER)
-        let anchor: 'start' | 'middle' | 'end' = 'middle'
-        if (x < RADAR_CENTER - 10) anchor = 'end'
-        else if (x > RADAR_CENTER + 10) anchor = 'start'
-        return (
-          <text
-            key={label}
-            x={x}
-            y={y}
-            textAnchor={anchor}
-            dominantBaseline="middle"
-            fill="rgba(245,240,232,0.45)"
-            fontSize={11}
-            fontFamily="var(--font-dm-sans)"
-          >
-            {label}
-          </text>
-        )
-      })}
-    </svg>
-  )
-}
-
-// ─── Page ──────────────────────────────────────────────────────────────────────
-
-export default function Step4Page() {
+export default function StepFourPage() {
   const router = useRouter()
-  const { fingerprint, styleName, styleTags } = useFingerprintStore()
+  const revealCanvasRef = useRef<HTMLCanvasElement>(null)
+  const particleCanvasRef = useRef<HTMLCanvasElement>(null)
+  const radarCanvasRef = useRef<HTMLCanvasElement>(null)
+  const radarContainerRef = useRef<HTMLDivElement>(null)
+  const radarTooltipRef = useRef<HTMLDivElement>(null)
+  const overlayRef = useRef<HTMLDivElement>(null)
 
-  const [showAuth, setShowAuth] = useState(false)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [tweakInput, setTweakInput] = useState('')
+  const [tweakResult, setTweakResult] = useState<StyleVariation | null>(null)
+  const [tweakLoading, setTweakLoading] = useState(false)
 
-  // Guard: redirect if no fingerprint
-  useEffect(() => {
-    if (!fingerprint || !styleName) {
-      router.push('/design/step-3')
+  const { fingerprint, styleName: storedStyleName, styleTags: storedStyleTags, phaseBResponses } =
+    useFingerprintStore()
+
+  // Map 12-dim fingerprint to 8 display dimensions
+  const computedDimensions = useMemo(() => {
+    if (!fingerprint) return DIMENSIONS // fallback to defaults
+    const d = fingerprint.dimensions
+    return [
+      { name: 'Calm', score: Math.round((1 - d.density) * 50 + (1 - d.colorSaturation) * 25 + d.lineQuality * 25) },
+      { name: 'Warmth', score: Math.round(d.colorTemperature * 100) },
+      { name: 'Texture', score: Math.round(d.texture * 100) },
+      { name: 'Drama', score: Math.round(d.colorSaturation * 50 + d.formality * 25 + (1 - d.lightPreference) * 25) },
+      { name: 'Nature', score: Math.round(d.nature * 100) },
+      { name: 'Luxury', score: Math.round(d.formality * 40 + d.material * 30 + (1 - d.density) * 30) },
+      { name: 'Playfulness', score: Math.round(d.pattern * 40 + d.culturalInfluence * 30 + d.colorSaturation * 30) },
+      { name: 'Vintage', score: Math.round(d.era * 100) },
+    ]
+  }, [fingerprint])
+
+  const displayStyleName = useMemo(() => {
+    if (storedStyleName) return storedStyleName
+    if (!fingerprint) return 'Quiet Naturalist' // fallback
+    const d = fingerprint.dimensions
+    // Map to descriptive names based on dominant dimensions
+    const calm = (1 - d.density) * 0.5 + (1 - d.colorSaturation) * 0.5
+    if (d.colorTemperature > 0.7 && d.nature > 0.7) return 'Organic Warmth'
+    if (d.formality > 0.7 && d.colorSaturation > 0.7) return 'Luxe Drama'
+    if (calm > 0.75 && d.texture < 0.4) return 'Pure Quiet'
+    if (d.pattern > 0.7 || d.culturalInfluence > 0.7) return 'Eclectic Spirit'
+    if (d.nature > 0.75 && d.colorTemperature > 0.6) return 'Warm Naturalist'
+    if (d.era > 0.7) return 'Heritage Soul'
+    if (d.material > 0.7 && d.texture > 0.6) return 'Tactile Artisan'
+    if (d.lightPreference > 0.7 && calm > 0.6) return 'Sunlit Purist'
+    if (d.formality > 0.6 && d.material < 0.4) return 'Modern Edge'
+    if (d.colorTemperature < 0.35) return 'Cool Curator'
+    return 'Evolved Naturalist'
+  }, [fingerprint, storedStyleName])
+
+  const displayDescription = useMemo(() => {
+    if (!fingerprint)
+      return 'You gravitate toward spaces that breathe. Clean lines, natural materials, and deliberate calm define your aesthetic. Every object earns its place — nothing is accidental, everything is intentional.'
+    const d = fingerprint.dimensions
+    const parts: string[] = []
+    if (d.colorTemperature > 0.6) parts.push('warm, inviting tones')
+    else if (d.colorTemperature < 0.4) parts.push('cool, composed tones')
+    if (d.nature > 0.65) parts.push('natural materials and organic forms')
+    if (d.texture > 0.65) parts.push('rich tactile surfaces')
+    if (d.density < 0.35) parts.push('deliberate calm and breathing room')
+    if (d.formality > 0.65) parts.push('structured elegance')
+    if (d.era > 0.65) parts.push('heritage character and timeless pieces')
+    if (d.pattern > 0.65) parts.push('expressive pattern and detail')
+    if (parts.length === 0) parts.push('balanced design with personal character')
+    return `Your design DNA draws you toward ${parts.join(', ')}. Every space you create reflects this unique sensibility.`
+  }, [fingerprint])
+
+  const displayTraits = useMemo(() => {
+    if (storedStyleTags.length > 0) return storedStyleTags
+    if (!fingerprint) return ['Calm · Intentional', 'Natural Materials', 'Negative Space']
+    const d = fingerprint.dimensions
+    const traits: string[] = []
+    if (d.colorTemperature > 0.65) traits.push('Warm Tones')
+    if (d.colorTemperature < 0.35) traits.push('Cool Palette')
+    if (d.nature > 0.65) traits.push('Natural Materials')
+    if (d.texture > 0.65) traits.push('Rich Textures')
+    if (d.density < 0.35) traits.push('Negative Space')
+    if (d.formality > 0.65) traits.push('Refined Structure')
+    if (d.era > 0.65) traits.push('Vintage Character')
+    if (d.pattern > 0.65) traits.push('Bold Patterns')
+    if (d.lightPreference > 0.65) traits.push('Natural Light')
+    if (d.culturalInfluence > 0.65) traits.push('Global Influence')
+    return traits.slice(0, 3).length > 0
+      ? traits.slice(0, 3)
+      : ['Evolved Taste', 'Personal Touch', 'Refined Balance']
+  }, [fingerprint, storedStyleTags])
+
+  const displayPalette = useMemo(() => {
+    if (!fingerprint) return PALETTE
+    const d = fingerprint.dimensions
+    if (d.colorTemperature > 0.65 && d.nature > 0.6) {
+      return [
+        { color: '#F5F0E8', label: '#F5F0E8' },
+        { color: '#A8B5A0', label: '#A8B5A0' },
+        { color: '#7A5C3E', label: '#7A5C3E' },
+        { color: '#B8AFA6', label: '#B8AFA6' },
+        { color: '#C9A84C', label: '#C9A84C' },
+      ]
     }
-  }, [fingerprint, styleName, router])
+    if (d.colorTemperature < 0.4) {
+      return [
+        { color: '#E8EDF2', label: '#E8EDF2' },
+        { color: '#8BA3C0', label: '#8BA3C0' },
+        { color: '#4A6B8A', label: '#4A6B8A' },
+        { color: '#2C3E50', label: '#2C3E50' },
+        { color: '#C9A84C', label: '#C9A84C' },
+      ]
+    }
+    if (d.colorSaturation > 0.65) {
+      return [
+        { color: '#F0D080', label: '#F0D080' },
+        { color: '#C06040', label: '#C06040' },
+        { color: '#2D5A27', label: '#2D5A27' },
+        { color: '#4A3060', label: '#4A3060' },
+        { color: '#C9A84C', label: '#C9A84C' },
+      ]
+    }
+    return PALETTE // default warm natural
+  }, [fingerprint])
 
-  // Check auth state on mount
+  // Auth gate
   useEffect(() => {
-    const supabase = createBrowserClient()
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setIsAuthenticated(true)
+    const checkAuth = async () => {
+      const { createBrowserClient } = await import('@/lib/supabase/client')
+      const supabase = createBrowserClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) router.push('/auth?next=/design/step-4')
+    }
+    checkAuth()
+  }, [router])
+
+  // Fetch fingerprint from API if not yet in store but quiz responses exist
+  useEffect(() => {
+    if (fingerprint) return // already computed
+    if (phaseBResponses.length === 0) return // no quiz data
+
+    const computeFingerprint = async () => {
+      try {
+        const res = await fetch('/api/quiz/fingerprint', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ responses: phaseBResponses }),
+        })
+        if (res.ok) {
+          const data = await res.json()
+          if (data.fingerprint) {
+            useFingerprintStore.getState().setFingerprint(
+              data.fingerprint,
+              data.styleName || '',
+              data.styleTags || []
+            )
+          }
+        }
+      } catch (e) {
+        console.warn('[step-4] Fingerprint API failed, using defaults', e)
       }
-    })
+    }
+    computeFingerprint()
+  }, [fingerprint, phaseBResponses])
+
+  // Reveal overlay animation
+  useEffect(() => {
+    const overlay = overlayRef.current
+    const canvas = revealCanvasRef.current
+    if (!overlay || !canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    let w = 0
+    let h = 0
+    const particles: Array<{
+      startX: number
+      startY: number
+      targetX: number
+      targetY: number
+      x: number
+      y: number
+      size: number
+      alpha: number
+      delay: number
+      speed: number
+      update: (p: number) => void
+      draw: () => void
+    }> = []
+
+    const resize = () => {
+      w = canvas.width = window.innerWidth
+      h = canvas.height = window.innerHeight
+    }
+    resize()
+    window.addEventListener('resize', resize)
+
+    const makeParticle = () => {
+      const angle = Math.random() * Math.PI * 2
+      const dist = Math.max(w, h) * 0.8
+      const p = {
+        startX: w / 2 + Math.cos(angle) * dist,
+        startY: h / 2 + Math.sin(angle) * dist,
+        targetX: w / 2 + (Math.random() - 0.5) * 60,
+        targetY: h / 2 + (Math.random() - 0.5) * 60,
+        x: 0,
+        y: 0,
+        size: Math.random() * 3 + 1,
+        alpha: 0,
+        delay: Math.random() * 0.4,
+        speed: 0.6 + Math.random() * 0.4,
+        update(progress: number) {
+          const prog = Math.max(0, Math.min(1, (progress - this.delay) / this.speed))
+          const ease = 1 - Math.pow(1 - prog, 3)
+          this.x = this.startX + (this.targetX - this.startX) * ease
+          this.y = this.startY + (this.targetY - this.startY) * ease
+          if (progress < 0.7) {
+            this.alpha = ease * 0.9
+          } else {
+            this.alpha = Math.max(0, (1 - (progress - 0.7) / 0.3) * 0.9)
+          }
+        },
+        draw() {
+          ctx.beginPath()
+          ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2)
+          ctx.fillStyle = `rgba(201,168,76,${this.alpha})`
+          ctx.fill()
+        },
+      }
+      p.x = p.startX
+      p.y = p.startY
+      return p
+    }
+
+    for (let i = 0; i < 120; i++) particles.push(makeParticle())
+
+    const startTime = performance.now()
+    let rafId = 0
+    let fadeTimeout: ReturnType<typeof setTimeout> | null = null
+
+    const animate = () => {
+      const elapsed = (performance.now() - startTime) / 1500
+      ctx.clearRect(0, 0, w, h)
+
+      if (elapsed < 0.75) {
+        const burstProgress = elapsed / 0.75
+        const burstAlpha =
+          burstProgress > 0.5 ? (1 - burstProgress) * 2 : burstProgress * 0.6
+        const grad = ctx.createRadialGradient(
+          w / 2,
+          h / 2,
+          0,
+          w / 2,
+          h / 2,
+          100 * burstProgress
+        )
+        grad.addColorStop(0, `rgba(201,168,76,${burstAlpha * 0.3})`)
+        grad.addColorStop(1, 'rgba(201,168,76,0)')
+        ctx.fillStyle = grad
+        ctx.fillRect(0, 0, w, h)
+      }
+
+      particles.forEach((p) => {
+        p.update(elapsed)
+        p.draw()
+      })
+
+      if (elapsed < 1) {
+        rafId = requestAnimationFrame(animate)
+      } else {
+        overlay.classList.add('fade-out')
+        fadeTimeout = setTimeout(() => {
+          if (overlay) overlay.style.display = 'none'
+        }, 600)
+      }
+    }
+    rafId = requestAnimationFrame(animate)
+
+    return () => {
+      window.removeEventListener('resize', resize)
+      cancelAnimationFrame(rafId)
+      if (fadeTimeout) clearTimeout(fadeTimeout)
+    }
   }, [])
 
-  // Show auth panel after 2.5s (only if not already authenticated)
+  // Ambient particles
   useEffect(() => {
-    if (isAuthenticated) return
-    const timer = setTimeout(() => setShowAuth(true), 2500)
-    return () => clearTimeout(timer)
-  }, [isAuthenticated])
+    const canvas = particleCanvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
 
-  const handleAppleSignIn = async () => {
-    const supabase = createBrowserClient()
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'apple',
-      options: { redirectTo: window.location.origin + '/api/auth/callback' },
-    })
-    if (error) toast.error('Sign in failed — try again')
+    let w = 0
+    let h = 0
+    const resize = () => {
+      w = canvas.width = window.innerWidth
+      h = canvas.height = document.documentElement.scrollHeight
+    }
+    resize()
+    window.addEventListener('resize', resize)
+
+    const particles: Array<{
+      x: number
+      y: number
+      size: number
+      speedX: number
+      speedY: number
+      alpha: number
+      reset: () => void
+      update: () => void
+      draw: () => void
+    }> = []
+
+    const makeP = () => {
+      const p = {
+        x: 0,
+        y: 0,
+        size: 0,
+        speedX: 0,
+        speedY: 0,
+        alpha: 0,
+        reset() {
+          this.x = Math.random() * w
+          this.y = Math.random() * h
+          this.size = Math.random() * 1.8 + 0.5
+          this.speedX = (Math.random() - 0.5) * 0.3
+          this.speedY = (Math.random() - 0.5) * 0.2
+          this.alpha = Math.random() * 0.25 + 0.05
+        },
+        update() {
+          this.x += this.speedX
+          this.y += this.speedY
+          if (this.x < 0 || this.x > w || this.y < 0 || this.y > h) this.reset()
+        },
+        draw() {
+          ctx.beginPath()
+          ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2)
+          ctx.fillStyle = `rgba(201,168,76,${this.alpha})`
+          ctx.fill()
+        },
+      }
+      p.reset()
+      return p
+    }
+    for (let i = 0; i < 50; i++) particles.push(makeP())
+
+    let rafId = 0
+    const animate = () => {
+      ctx.clearRect(0, 0, w, h)
+      particles.forEach((p) => {
+        p.update()
+        p.draw()
+      })
+      rafId = requestAnimationFrame(animate)
+    }
+    rafId = requestAnimationFrame(animate)
+
+    return () => {
+      window.removeEventListener('resize', resize)
+      cancelAnimationFrame(rafId)
+    }
+  }, [])
+
+  // Radar chart — re-runs when computedDimensions changes (fingerprint loaded)
+  useEffect(() => {
+    const canvas = radarCanvasRef.current
+    const tooltip = radarTooltipRef.current
+    const container = radarContainerRef.current
+    if (!canvas || !tooltip || !container) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const size = 480
+    const cx = size / 2
+    const cy = size / 2
+    const radius = 180
+    const numAxes = computedDimensions.length
+    const angleStep = (Math.PI * 2) / numAxes
+    const DELAY = 2000
+    let startTime: number | null = null
+    let rafId = 0
+
+    const getPoint = (index: number, value: number) => {
+      const angle = angleStep * index - Math.PI / 2
+      const r = radius * (value / 100)
+      return { x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r }
+    }
+    const getAxisEnd = (index: number) => {
+      const angle = angleStep * index - Math.PI / 2
+      return { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius }
+    }
+
+    const drawGrid = () => {
+      ctx.strokeStyle = 'rgba(201,168,76,0.06)'
+      ctx.lineWidth = 1
+      for (let ring = 1; ring <= 4; ring++) {
+        const r = radius * (ring / 4)
+        ctx.beginPath()
+        for (let i = 0; i <= numAxes; i++) {
+          const angle = angleStep * i - Math.PI / 2
+          const x = cx + Math.cos(angle) * r
+          const y = cy + Math.sin(angle) * r
+          if (i === 0) ctx.moveTo(x, y)
+          else ctx.lineTo(x, y)
+        }
+        ctx.stroke()
+      }
+    }
+
+    const draw = (timestamp: number) => {
+      if (startTime === null) startTime = timestamp
+      const elapsed = timestamp - startTime
+      if (elapsed < DELAY) {
+        rafId = requestAnimationFrame(draw)
+        return
+      }
+      const t = elapsed - DELAY
+      ctx.clearRect(0, 0, size, size)
+      drawGrid()
+
+      for (let i = 0; i < numAxes; i++) {
+        const axisStart = i * 150
+        const axisT = Math.max(0, Math.min(1, (t - axisStart) / 400))
+        if (axisT > 0) {
+          const end = getAxisEnd(i)
+          const curX = cx + (end.x - cx) * axisT
+          const curY = cy + (end.y - cy) * axisT
+          ctx.beginPath()
+          ctx.moveTo(cx, cy)
+          ctx.lineTo(curX, curY)
+          ctx.strokeStyle = `rgba(201,168,76,${0.3 * axisT})`
+          ctx.lineWidth = 1
+          ctx.stroke()
+          if (axisT > 0.5) {
+            const labelAlpha = (axisT - 0.5) * 2
+            const angle = angleStep * i - Math.PI / 2
+            const labelR = radius + 24
+            const lx = cx + Math.cos(angle) * labelR
+            const ly = cy + Math.sin(angle) * labelR
+            ctx.font = '11px DM Sans'
+            ctx.fillStyle = `rgba(245,240,232,${0.4 * labelAlpha})`
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'middle'
+            ctx.fillText(computedDimensions[i].name, lx, ly)
+          }
+        }
+      }
+
+      const allAxesDone = t > numAxes * 150 + 400
+      if (allAxesDone) {
+        const polyProgress = Math.min(1, (t - (numAxes * 150 + 400)) / 600)
+        const eased = 1 - Math.pow(1 - polyProgress, 3)
+
+        ctx.beginPath()
+        for (let i = 0; i < numAxes; i++) {
+          const pt = getPoint(i, computedDimensions[i].score * eased)
+          if (i === 0) ctx.moveTo(pt.x, pt.y)
+          else ctx.lineTo(pt.x, pt.y)
+        }
+        ctx.closePath()
+        ctx.fillStyle = `rgba(201,168,76,${0.12 * polyProgress})`
+        ctx.fill()
+        ctx.strokeStyle = `rgba(201,168,76,${0.7 * polyProgress})`
+        ctx.lineWidth = 2
+        ctx.stroke()
+
+        const dotPulse = (Math.sin((t / 1000) * Math.PI) + 1) / 2
+        const dotScale = 1 + dotPulse * 0.15
+        for (let i = 0; i < numAxes; i++) {
+          const pt = getPoint(i, computedDimensions[i].score * eased)
+          const r = 4 * dotScale
+          ctx.beginPath()
+          ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2)
+          ctx.fillStyle = `rgba(201,168,76,${0.9 * polyProgress})`
+          ctx.fill()
+
+          const grad = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, r * 3)
+          grad.addColorStop(0, `rgba(201,168,76,${0.3 * polyProgress * dotPulse})`)
+          grad.addColorStop(1, 'rgba(201,168,76,0)')
+          ctx.beginPath()
+          ctx.arc(pt.x, pt.y, r * 3, 0, Math.PI * 2)
+          ctx.fillStyle = grad
+          ctx.fill()
+        }
+      }
+
+      rafId = requestAnimationFrame(draw)
+    }
+    rafId = requestAnimationFrame(draw)
+
+    const onMove = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect()
+      const scaleX = size / rect.width
+      const scaleY = size / rect.height
+      const mx = (e.clientX - rect.left) * scaleX
+      const my = (e.clientY - rect.top) * scaleY
+
+      let found = false
+      for (let i = 0; i < numAxes; i++) {
+        const pt = getPoint(i, computedDimensions[i].score)
+        const dist = Math.sqrt((mx - pt.x) ** 2 + (my - pt.y) ** 2)
+        if (dist < 20) {
+          tooltip.textContent = `${computedDimensions[i].name} · ${computedDimensions[i].score}%`
+          tooltip.style.opacity = '1'
+          const tipX = e.clientX - container.getBoundingClientRect().left
+          const tipY = e.clientY - container.getBoundingClientRect().top - 40
+          tooltip.style.left = `${tipX}px`
+          tooltip.style.top = `${tipY}px`
+          tooltip.style.transform = 'translateX(-50%)'
+          found = true
+          break
+        }
+      }
+      if (!found) tooltip.style.opacity = '0'
+    }
+    const onLeave = () => {
+      tooltip.style.opacity = '0'
+    }
+    canvas.addEventListener('mousemove', onMove)
+    canvas.addEventListener('mouseleave', onLeave)
+
+    return () => {
+      cancelAnimationFrame(rafId)
+      canvas.removeEventListener('mousemove', onMove)
+      canvas.removeEventListener('mouseleave', onLeave)
+    }
+  }, [computedDimensions])
+
+  const handleRoomMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const card = e.currentTarget
+    const rect = card.getBoundingClientRect()
+    const x = (e.clientX - rect.left) / rect.width - 0.5
+    const y = (e.clientY - rect.top) / rect.height - 0.5
+    card.style.transform = `translateY(-10px) scale(1.02) rotateY(${x * 10}deg) rotateX(${-y * 10}deg)`
   }
 
-  const handleGoogleSignIn = async () => {
-    const supabase = createBrowserClient()
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin + '/api/auth/callback' },
-    })
-    if (error) toast.error('Sign in failed — try again')
+  const handleRoomMouseLeave = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.currentTarget.style.transform = ''
   }
 
-  const handleSkipAuth = () => {
-    setShowAuth(false)
+  const submitTweak = () => {
+    const val = tweakInput.trim()
+    if (!val || tweakLoading) return
+    setTweakLoading(true)
+    setTimeout(() => {
+      const lower = val.toLowerCase()
+      let picked: StyleVariation = DEFAULT_VARIATION
+      for (const [key, variation] of Object.entries(STYLE_VARIATIONS)) {
+        if (lower.includes(key)) {
+          picked = variation
+          break
+        }
+      }
+      setTweakResult(picked)
+      setTweakLoading(false)
+    }, 1200)
   }
-
-  // Build radar values from fingerprint or fallback
-  const radarValues: number[] = fingerprint
-    ? RADAR_DIM_KEYS.map((k, i) => fingerprint.dimensions[k] ?? FALLBACK_VALUES[i] ?? 0.5)
-    : FALLBACK_VALUES
-
-  // Style descriptor tags with fallback
-  const displayTags = styleTags && styleTags.length > 0
-    ? styleTags.slice(0, 3)
-    : ['Warm & Restrained', 'Biophilic', 'Contemporary']
-
-  if (!fingerprint || !styleName) return null
 
   return (
-    <div className="min-h-screen bg-[#091829] font-dm-sans">
-      {/* Gold progress bar — full width (quiz complete) */}
-      <div
-        className="fixed top-0 left-0 right-0 z-[60]"
-        style={{ height: 3, background: 'rgba(201,168,76,0.15)' }}
-      >
-        <div className="h-full w-full bg-cova-gold" />
+    <div className="step4-wrapper">
+      <div className="loading-overlay" ref={overlayRef}>
+        <canvas ref={revealCanvasRef} />
       </div>
 
-      {/* Frosted glass top bar */}
-      <div
-        className="sticky top-0 z-[50] h-14 flex items-center justify-between px-6 border-b border-[rgba(201,168,76,0.1)]"
-        style={{
-          background: 'rgba(9,24,41,0.8)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-        }}
-      >
-        <span className="font-playfair italic text-xl text-cova-gold tracking-[0.05em]">
+      <canvas className="particle-canvas" ref={particleCanvasRef} />
+
+      <div className="top-bar">
+        <button
+          type="button"
+          className="wordmark"
+          onClick={() => router.push('/')}
+          aria-label="Cova home"
+        >
           Cova
-        </span>
-        <span className="font-dm-sans font-semibold text-[15px] text-cova-ivory absolute left-1/2 -translate-x-1/2">
-          Your Style Profile
-        </span>
-        <span className="font-dm-sans text-[13px] text-cova-muted">
-          Step 4 of 7
-        </span>
+        </button>
+        <button
+          type="button"
+          className="back-btn"
+          onClick={() => router.push('/design/step-3')}
+        >
+          ← Back
+        </button>
       </div>
 
-      {/* Main content */}
-      <div className="max-w-[700px] mx-auto pt-20 pb-[120px] px-6 text-center">
-        {/* Section label */}
-        <motion.p
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="font-dm-sans font-medium text-[11px] text-cova-muted tracking-[0.12em] uppercase mb-8"
-        >
-          YOUR STYLE FINGERPRINT
-        </motion.p>
-
-        {/* Radar chart */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="mb-8"
-        >
-          <RadarChart values={radarValues} />
-        </motion.div>
-
-        {/* Style descriptor tags */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.8 }}
-          className="flex gap-2 justify-center flex-wrap mb-10"
-        >
-          {displayTags.map((tag, i) => (
-            <motion.span
-              key={tag}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.9 + i * 0.08, type: 'spring', stiffness: 280, damping: 30 }}
-              className="bg-[rgba(201,168,76,0.12)] text-cova-gold rounded-full px-4 font-dm-sans font-medium text-[13px]"
-              style={{ padding: '6px 16px' }}
+      <div className="main-wrap">
+        <section className="fingerprint-section">
+          <div className="eyebrow">Your Style Fingerprint</div>
+          <h1 className="headline">
+            You are a
+            <span className="style-name">{displayStyleName}</span>
+          </h1>
+          <p className="style-description">{displayDescription}</p>
+          <div className="traits">
+            {displayTraits.map((trait) => (
+              <span key={trait} className="trait-pill">{trait}</span>
+            ))}
+          </div>
+          <div className="palette">
+            {displayPalette.map((swatch) => (
+              <div key={swatch.color} className="palette-swatch">
+                <div
+                  className="swatch-circle"
+                  style={{ background: swatch.color }}
+                />
+                <span className="swatch-label">{swatch.label}</span>
+              </div>
+            ))}
+          </div>
+          <div className="cta-group">
+            <button
+              type="button"
+              className="cta-primary"
+              onClick={() => router.push('/design/step-5')}
             >
-              {tag}
-            </motion.span>
-          ))}
-        </motion.div>
+              Design My Room <span style={{ fontSize: 18 }}>→</span>
+            </button>
+            <button
+              type="button"
+              className="cta-secondary"
+              onClick={() => router.push('/design/step-3')}
+            >
+              Retake quiz
+            </button>
+          </div>
+        </section>
 
-        {/* CTA */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.1 }}
-        >
-          <button
-            onClick={() => router.push('/design/step-5')}
-            className="bg-cova-gold text-[#091829] font-dm-sans font-semibold text-base rounded-lg border-none cursor-pointer"
-            style={{ padding: '14px 40px' }}
-          >
-            Design My Room →
-          </button>
-        </motion.div>
-      </div>
+        <div className="section-divider" />
 
-      {/* Auth panel — slides up from bottom */}
-      <AnimatePresence>
-        {showAuth && !isAuthenticated && (
-          <motion.div
-            initial={{ y: 100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 100, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 280, damping: 30 }}
-            className="fixed bottom-0 left-0 right-0 z-[100] rounded-[24px_24px_0_0] border-t border-[rgba(201,168,76,0.1)]"
-            style={{
-              background: 'rgba(9,24,41,0.95)',
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
-              padding: '24px 24px',
-              paddingBottom: 'max(40px, env(safe-area-inset-bottom))',
-            }}
-          >
-            {/* Drag handle */}
-            <div
-              className="rounded-[2px] mx-auto"
-              style={{
-                width: 48,
-                height: 4,
-                background: 'rgba(245,240,232,0.2)',
-                marginBottom: 20,
+        <section className="radar-section">
+          <div className="eyebrow">Your Style DNA</div>
+          <h2 className="radar-title">Fingerprint Map</h2>
+          <p className="radar-description">
+            Your unique design fingerprint mapped across eight dimensions of taste.
+            Each axis reveals how strongly you lean into a particular aesthetic
+            quality — from calm to drama, nature to luxury.
+          </p>
+          <div className="radar-container" ref={radarContainerRef}>
+            <div className="radar-wrapper">
+              <canvas
+                className="radar-canvas"
+                ref={radarCanvasRef}
+                width={480}
+                height={480}
+              />
+            </div>
+            <div className="radar-tooltip" ref={radarTooltipRef} />
+          </div>
+        </section>
+
+        <div className="section-divider section-divider-late" />
+
+        <section className="rooms-section">
+          <div className="eyebrow">Rooms Like Yours</div>
+          <h2 className="rooms-title">Your Style, Three Ways</h2>
+          <p className="rooms-subtitle">
+            See how your style fingerprint translates across different spaces — each
+            room curated to match your exact aesthetic DNA.
+          </p>
+          <div className="rooms-grid">
+            {ROOMS.map((room) => (
+              <div
+                key={room.id}
+                className="room-card"
+                onMouseMove={handleRoomMouseMove}
+                onMouseLeave={handleRoomMouseLeave}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={room.src} alt={room.alt} loading="lazy" />
+                <div className="room-match-badge">✦ {room.match}</div>
+                <div className="room-card-overlay">
+                  <div className="room-card-label">{room.label}</div>
+                  <div className="room-card-name">{room.name}</div>
+                  <div className="room-card-desc">{room.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <div className="section-divider section-divider-latest" />
+
+        <section className="tweak-section">
+          <div className="eyebrow">Personalize Further</div>
+          <h2 className="tweak-title">Tweak My Style</h2>
+          <p className="tweak-subtitle">
+            Want to shift your aesthetic? Describe what you&apos;d change — more
+            warmth, bolder colors, vintage touches — and we&apos;ll reimagine your
+            style fingerprint.
+          </p>
+          <div className="tweak-input-wrap">
+            <input
+              type="text"
+              className="tweak-input"
+              placeholder="e.g. Make it warmer with more earth tones..."
+              autoComplete="off"
+              value={tweakInput}
+              onChange={(e) => setTweakInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') submitTweak()
               }}
             />
-
-            <p className="font-dm-sans text-sm text-cova-muted text-center mb-5">
-              Save your Design Profile
-            </p>
-
-            {/* Apple Sign In */}
             <button
-              onClick={handleAppleSignIn}
-              className="w-full flex items-center justify-center gap-3 bg-black text-white rounded-lg border-none font-dm-sans font-medium text-[15px] cursor-pointer mb-3"
-              style={{ height: 52 }}
+              type="button"
+              className="tweak-submit"
+              onClick={submitTweak}
+              disabled={tweakLoading}
             >
-              <svg viewBox="0 0 24 24" width={20} height={20} fill="currentColor" aria-hidden="true">
-                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
-              </svg>
-              Continue with Apple
+              {tweakLoading ? '...' : 'Reimagine'}
             </button>
+          </div>
+          <div className={`tweak-result${tweakResult ? ' visible' : ''}`}>
+            {tweakResult && (
+              <div className="tweak-result-card">
+                <div className="tweak-result-label">Your Updated Style</div>
+                <div className="tweak-result-name">{tweakResult.name}</div>
+                <div className="tweak-result-text">{tweakResult.desc}</div>
+                <div className="tweak-new-traits">
+                  {tweakResult.traits.map((t) => (
+                    <span key={t} className="tweak-new-trait">
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
 
-            {/* Google Sign In */}
-            <button
-              onClick={handleGoogleSignIn}
-              className="w-full flex items-center justify-center gap-3 bg-white text-[#1f2937] rounded-lg font-dm-sans font-medium text-[15px] cursor-pointer mb-4"
-              style={{ height: 52, border: '1px solid #e5e7eb' }}
-            >
-              <svg viewBox="0 0 24 24" width={20} height={20} aria-hidden="true">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-              </svg>
-              Continue with Google
-            </button>
-
-            {/* Skip */}
-            <p
-              onClick={handleSkipAuth}
-              className="font-dm-sans text-sm text-cova-muted text-center cursor-pointer"
-            >
-              Continue without saving
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        <div className="footer-strip">
+          <div className="footer-text">
+            <span className="sparkle">✦</span>
+            Inspired by 2,847 rooms with similar fingerprints
+            <span className="sparkle">✦</span>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

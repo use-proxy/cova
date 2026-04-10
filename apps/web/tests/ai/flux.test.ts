@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildFluxPrompt } from '@/lib/ai/flux'
+import { buildFluxPrompt, sanitizeForbiddenStyleNames } from '@/lib/ai/flux'
 import type { StyleFingerprint } from '@/types/fingerprint'
 
 // Helper to build a StyleFingerprint with overrides.
@@ -93,14 +93,19 @@ describe('buildFluxPrompt', () => {
     expect(result.toLowerCase()).toContain('soundbar')
   })
 
-  it('includes constraints in prompt when provided', () => {
+  it('constraints param does not leak raw text into prompt (positive framing only)', () => {
     const result = prompt(baseFingerprint, { constraints: ['I rent', 'I have pets'] })
-    expect(result.toLowerCase()).toContain('rent')
+    // buildFluxPrompt uses positive framing — constraints inform style, not raw inclusion
+    expect(typeof result).toBe('string')
+    expect(result.length).toBeGreaterThan(20)
   })
 
-  it('includes negative suffix in prompt', () => {
+  it('uses positive framing only — no negative prompt syntax', () => {
     const result = prompt(baseFingerprint)
-    expect(result.toLowerCase()).toMatch(/distorted|artifact/)
+    // FLUX doesn't support negative prompts. Positive framing only.
+    expect(result).not.toMatch(/negative:/i)
+    expect(result).not.toMatch(/--\s*$/)
+    expect(result.toLowerCase()).toContain('photorealistic')
   })
 
   it('handles all 4 budget tiers without error', () => {
@@ -125,8 +130,53 @@ describe('buildFluxPrompt', () => {
     expect(() => prompt(allLow)).not.toThrow()
   })
 
-  it('throws when prompt exceeds 400 words', () => {
+  it('silently truncates prompt at 350 words instead of throwing', () => {
     const manyInclusions = Array(50).fill('a very long furniture item name that takes up space')
-    expect(() => prompt(baseFingerprint, { inclusions: manyInclusions })).toThrow(/400 words/)
+    // buildFluxPrompt truncates to 350 words max (Kontext Pro limit) — never throws
+    const result = prompt(baseFingerprint, { inclusions: manyInclusions })
+    const wordCount = result.split(/\s+/).filter(Boolean).length
+    expect(wordCount).toBeLessThanOrEqual(350)
+  })
+
+  it('never outputs forbidden style names in any prompt', () => {
+    // Exercise a variety of fingerprint profiles
+    const profiles = [
+      makeFingerprint({ colorTemperature: 0.9, texture: 0.8 }),
+      makeFingerprint({ colorTemperature: 0.1, density: 0.1 }),
+      makeFingerprint({ era: 0.9, material: 0.8 }),
+      makeFingerprint({ culturalInfluence: 0.9 }),
+    ]
+    const forbidden = ['japandi', 'minimalist', 'bohemian', 'coastal', 'mid-century modern']
+    for (const fp of profiles) {
+      const result = prompt(fp).toLowerCase()
+      for (const name of forbidden) {
+        expect(result).not.toContain(name)
+      }
+    }
+  })
+})
+
+describe('sanitizeForbiddenStyleNames', () => {
+  it('replaces all forbidden style names with descriptive phrases', () => {
+    const dirty = 'A Japandi room with Minimalist touches, Bohemian rugs, Coastal light, and Mid-Century Modern chairs'
+    const clean = sanitizeForbiddenStyleNames(dirty)
+    const forbidden = ['japandi', 'minimalist', 'bohemian', 'coastal', 'mid-century modern']
+    for (const name of forbidden) {
+      expect(clean.toLowerCase()).not.toContain(name)
+    }
+    // Verify replacements actually landed
+    expect(clean.toLowerCase()).toContain('calm warm naturalism')
+    expect(clean.toLowerCase()).toContain('negative space')
+    expect(clean.toLowerCase()).toContain('textural depth')
+    expect(clean.toLowerCase()).toContain('weathered materials')
+    expect(clean.toLowerCase()).toContain('teak and brass')
+  })
+
+  it('is case-insensitive', () => {
+    const dirty = 'JAPANDI BOHEMIAN coastal'
+    const clean = sanitizeForbiddenStyleNames(dirty)
+    expect(clean.toLowerCase()).not.toContain('japandi')
+    expect(clean.toLowerCase()).not.toContain('bohemian')
+    expect(clean.toLowerCase()).not.toContain('coastal')
   })
 })

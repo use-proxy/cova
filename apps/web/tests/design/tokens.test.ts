@@ -26,8 +26,9 @@ describe('Design System Tokens', () => {
 
   requiredTokens.forEach((token) => {
     it(`defines CSS variable ${token}`, () => {
+      // tokens.css may not exist in all environments — skip with explicit warning
       if (!tokensContent) {
-        console.warn(`WARN: tokens.css not found at ${tokensPath} — skipping`)
+        expect.soft(tokensContent).toBeTruthy() // Mark as soft failure for visibility
         return
       }
       expect(tokensContent).toContain(token)

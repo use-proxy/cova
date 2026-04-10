@@ -95,7 +95,7 @@ export async function GET(request: Request) {
         console.warn('[auth-callback] fingerprint cookie handling error:', e instanceof Error ? e.message : String(e))
       }
 
-      return NextResponse.redirect(`${origin}/design/step-4`)
+      return NextResponse.redirect(`${origin}/design/step-1`)
     }
 
     console.error('Auth callback error:', error)

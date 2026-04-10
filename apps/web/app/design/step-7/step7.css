@@ -1,0 +1,610 @@
+/* Step 7 — Room Analysis animation. Extracted from the original HTML. */
+
+.step7-root {
+  --bg: #080f1a;
+  --gold: #C9A84C;
+  --gold-soft: rgba(201, 168, 76, 0.55);
+  --gold-faint: rgba(201, 168, 76, 0.12);
+  --ivory: #F5F0E8;
+  --muted: rgba(245, 240, 232, 0.40);
+  --muted2: rgba(245, 240, 232, 0.18);
+
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--ivory);
+  font-family: 'DM Sans', sans-serif;
+}
+
+.step7-root *,
+.step7-root *::before,
+.step7-root *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ─── AMBIENT CANVAS ─── */
+.step7-ambient-canvas {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ─── VIGNETTE ─── */
+.step7-vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 70% 65% at 50% 48%,
+    transparent 0%,
+    var(--bg) 100%
+  );
+}
+
+/* ─── SCREEN ─── */
+.step7-screen {
+  position: relative;
+  z-index: 5;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+}
+
+/* ─── EYEBROW ─── */
+.step7-eyebrow {
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.32em;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  opacity: 0;
+  animation: step7FadeIn 1s ease forwards 0.4s;
+}
+
+/* ─── HEADLINE ─── */
+.step7-headline-wrap {
+  position: relative;
+  height: 48px;
+  width: 400px;
+  max-width: 88vw;
+  margin-bottom: 40px;
+  overflow: hidden;
+}
+
+.step7-headline {
+  position: absolute;
+  inset: 0;
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(24px, 3.2vw, 32px);
+  font-weight: 400;
+  font-style: italic;
+  color: var(--ivory);
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+  line-height: 48px;
+}
+
+.step7-headline.active {
+  opacity: 1;
+}
+
+/* ─── 3D ROOM ─── */
+.step7-room-stage {
+  width: 400px;
+  height: 300px;
+  perspective: 1000px;
+  position: relative;
+  margin-bottom: 44px;
+  opacity: 0;
+  animation: step7FadeIn 1.2s ease forwards 0.7s;
+}
+
+.step7-room-pivot {
+  width: 220px;
+  height: 160px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: -80px 0 0 -110px;
+  transform-style: preserve-3d;
+  animation: step7RoomRotate 16s linear infinite;
+}
+
+@keyframes step7RoomRotate {
+  from { transform: rotateX(-14deg) rotateY(0deg); }
+  to   { transform: rotateX(-14deg) rotateY(360deg); }
+}
+
+.step7-wall {
+  position: absolute;
+  backface-visibility: visible;
+}
+
+.step7-w-floor {
+  width: 220px;
+  height: 170px;
+  bottom: 0;
+  left: 0;
+  transform: rotateX(90deg) translateZ(-80px);
+  border: 1px solid rgba(201, 168, 76, 0.22);
+  background:
+    linear-gradient(rgba(201, 168, 76, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(201, 168, 76, 0.04) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
+.step7-w-back {
+  width: 220px;
+  height: 160px;
+  top: 0;
+  left: 0;
+  transform: translateZ(-85px);
+  border: 1px solid rgba(201, 168, 76, 0.18);
+  background:
+    linear-gradient(rgba(201, 168, 76, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(201, 168, 76, 0.025) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
+.step7-w-left {
+  width: 170px;
+  height: 160px;
+  top: 0;
+  left: 0;
+  transform: rotateY(-90deg) translateZ(0px);
+  transform-origin: left center;
+  border: 1px solid rgba(201, 168, 76, 0.15);
+  background:
+    linear-gradient(rgba(201, 168, 76, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(201, 168, 76, 0.02) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
+.step7-w-right {
+  width: 170px;
+  height: 160px;
+  top: 0;
+  right: 0;
+  transform: rotateY(90deg) translateZ(0px);
+  transform-origin: right center;
+  border: 1px solid rgba(201, 168, 76, 0.12);
+}
+
+.step7-w-ceil {
+  width: 220px;
+  height: 170px;
+  top: 0;
+  left: 0;
+  transform: rotateX(90deg) translateZ(80px);
+  border: 1px solid rgba(201, 168, 76, 0.06);
+}
+
+.step7-w-front {
+  width: 220px;
+  height: 160px;
+  top: 0;
+  left: 0;
+  transform: translateZ(85px);
+  border: 1px solid rgba(201, 168, 76, 0.04);
+}
+
+/* ─── FURNITURE ─── */
+.step7-f-sofa {
+  position: absolute;
+  transform-style: preserve-3d;
+  width: 60px;
+  height: 20px;
+  bottom: 0;
+  left: 20px;
+  transform: rotateX(90deg) translateZ(-55px) translateY(20px);
+}
+
+.step7-f-sofa-top {
+  width: 60px;
+  height: 22px;
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.step7-f-sofa-back {
+  width: 60px;
+  height: 14px;
+  border: 1px solid rgba(201, 168, 76, 0.14);
+  position: absolute;
+  top: -14px;
+  left: 0;
+  transform-origin: bottom;
+  transform: rotateX(-90deg);
+}
+
+.step7-f-table {
+  position: absolute;
+  transform-style: preserve-3d;
+  bottom: 0;
+  left: 90px;
+  transform: rotateX(90deg) translateZ(-62px) translateY(45px);
+}
+
+.step7-f-table-top {
+  width: 32px;
+  height: 22px;
+  border: 1px solid rgba(201, 168, 76, 0.18);
+}
+
+.step7-f-lamp {
+  position: absolute;
+  right: 25px;
+  bottom: 20px;
+  transform: translateZ(10px);
+}
+
+.step7-f-lamp-pole {
+  width: 1px;
+  height: 40px;
+  background: rgba(201, 168, 76, 0.2);
+  margin: 0 auto;
+}
+
+.step7-f-lamp-shade {
+  width: 16px;
+  height: 7px;
+  border: 1px solid rgba(201, 168, 76, 0.22);
+  border-radius: 50%;
+  margin-left: -7px;
+}
+
+/* ─── FLOOR REFLECTION ─── */
+.step7-room-stage::after {
+  content: '';
+  position: absolute;
+  bottom: 12%;
+  left: 50%;
+  width: 200px;
+  height: 20px;
+  margin-left: -100px;
+  background: radial-gradient(
+    ellipse,
+    rgba(201, 168, 76, 0.10) 0%,
+    transparent 70%
+  );
+  filter: blur(12px);
+  border-radius: 50%;
+}
+
+/* ─── SCAN LINE ─── */
+.step7-scan-line {
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--gold-soft) 30%,
+    rgba(255, 255, 255, 0.5) 50%,
+    var(--gold-soft) 70%,
+    transparent
+  );
+  box-shadow:
+    0 0 12px 3px rgba(201, 168, 76, 0.25),
+    0 0 30px 8px rgba(201, 168, 76, 0.08);
+  top: 0;
+  animation: step7ScanDown 2.5s cubic-bezier(0.4, 0, 0.55, 1) infinite;
+  z-index: 10;
+}
+
+@keyframes step7ScanDown {
+  0%   { top: 15%; opacity: 0; }
+  5%   { opacity: 1; }
+  85%  { top: 80%; opacity: 1; }
+  100% { top: 80%; opacity: 0; }
+}
+
+/* ─── DETECTION DOTS ─── */
+.step7-dot-wrap {
+  position: absolute;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.step7-dot-wrap.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.step7-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 6px 2px rgba(201, 168, 76, 0.4);
+  animation: step7DotSoftPulse 3s ease-in-out infinite;
+}
+
+.step7-dot-label {
+  font-size: 9.5px;
+  font-weight: 400;
+  color: rgba(201, 168, 76, 0.75);
+  white-space: nowrap;
+  letter-spacing: 0.06em;
+  animation: step7LabelFloat 4s ease-in-out infinite;
+}
+
+@keyframes step7DotSoftPulse {
+  0%, 100% { box-shadow: 0 0 6px 2px rgba(201, 168, 76, 0.4); }
+  50%      { box-shadow: 0 0 10px 4px rgba(201, 168, 76, 0.55); }
+}
+
+@keyframes step7LabelFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
+}
+
+/* ─── PROGRESS ─── */
+.step7-progress-wrap {
+  width: 100%;
+  max-width: 480px;
+  margin-bottom: 18px;
+  opacity: 0;
+  animation: step7FadeIn 0.8s ease forwards 1.4s;
+}
+
+.step7-progress-track {
+  width: 100%;
+  height: 1px;
+  background: rgba(201, 168, 76, 0.08);
+  border-radius: 1px;
+  overflow: visible;
+  position: relative;
+}
+
+.step7-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, rgba(201, 168, 76, 0.3), var(--gold));
+  border-radius: 1px;
+  box-shadow: 0 0 8px 2px rgba(201, 168, 76, 0.25);
+  transition:
+    width 5s cubic-bezier(0.22, 0.1, 0.12, 1),
+    box-shadow 0.8s ease;
+  position: relative;
+}
+
+.step7-progress-fill::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 8px 3px rgba(201, 168, 76, 0.45);
+}
+
+/* ─── STATUS ─── */
+.step7-status-wrap {
+  height: 20px;
+  position: relative;
+  width: 280px;
+  overflow: hidden;
+  opacity: 0;
+  animation: step7FadeIn 0.8s ease forwards 1.6s;
+}
+
+.step7-status-msg {
+  position: absolute;
+  inset: 0;
+  font-size: 11px;
+  font-weight: 300;
+  color: var(--muted);
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  line-height: 20px;
+  letter-spacing: 0.04em;
+}
+
+.step7-status-msg.active {
+  opacity: 1;
+}
+
+/* ─── COMPLETION ─── */
+.step7-completion-msg {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--gold);
+  letter-spacing: 0.22em;
+  opacity: 0;
+  z-index: 50;
+  pointer-events: none;
+  text-transform: uppercase;
+  transition: opacity 0.6s ease;
+}
+
+.step7-flash {
+  position: fixed;
+  inset: 0;
+  background: rgba(245, 240, 232, 0.95);
+  opacity: 0;
+  z-index: 60;
+  pointer-events: none;
+}
+
+.step7-continue {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 70;
+  opacity: 0;
+  pointer-events: none;
+  background: var(--bg);
+  transition: opacity 1s ease;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.step7-continue.visible {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.step7-cta-label {
+  font-family: 'Playfair Display', serif;
+  font-size: 26px;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--ivory);
+}
+
+.step7-cta-sub {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+}
+
+.step7-cta-wordmark {
+  position: absolute;
+  top: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--gold);
+  letter-spacing: 0.06em;
+  z-index: 80;
+}
+
+.step7-cta-btn {
+  margin-top: 28px;
+  padding: 13px 42px;
+  border: 1px solid rgba(201, 168, 76, 0.5);
+  background: transparent;
+  color: var(--gold);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 0;
+  transition: all 0.35s ease;
+}
+
+.step7-cta-btn:hover {
+  background: var(--gold);
+  color: var(--bg);
+  border-color: var(--gold);
+}
+
+.step7-back-btn {
+  position: fixed;
+  top: 28px;
+  left: 28px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--gold);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  z-index: 80;
+  opacity: 0.75;
+  transition: opacity 0.2s ease;
+}
+
+.step7-back-btn:hover {
+  opacity: 1;
+}
+
+.step7-skip-btn {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: var(--muted2);
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  border: none;
+  background: none;
+  z-index: 80;
+  transition: color 0.3s;
+}
+
+.step7-skip-btn:hover {
+  color: var(--muted);
+}
+
+/* ─── CORNER MARKS ─── */
+.step7-cm {
+  position: fixed;
+  z-index: 4;
+  width: 24px;
+  height: 24px;
+  opacity: 0;
+  animation: step7FadeIn 1.5s ease forwards 1s;
+}
+
+.step7-cm::before,
+.step7-cm::after {
+  content: '';
+  position: absolute;
+  background: rgba(201, 168, 76, 0.12);
+}
+
+.step7-cm-tl { top: 28px; left: 28px; }
+.step7-cm-tl::before { width: 24px; height: 1px; }
+.step7-cm-tl::after  { width: 1px; height: 24px; }
+
+.step7-cm-tr { top: 28px; right: 28px; }
+.step7-cm-tr::before { width: 24px; height: 1px; right: 0; }
+.step7-cm-tr::after  { width: 1px; height: 24px; right: 0; }
+
+.step7-cm-bl { bottom: 28px; left: 28px; }
+.step7-cm-bl::before { width: 24px; height: 1px; bottom: 0; }
+.step7-cm-bl::after  { width: 1px; height: 24px; bottom: 0; }
+
+.step7-cm-br { bottom: 28px; right: 28px; }
+.step7-cm-br::before { width: 24px; height: 1px; right: 0; bottom: 0; }
+.step7-cm-br::after  { width: 1px; height: 24px; right: 0; bottom: 0; }
+
+@keyframes step7FadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}

@@ -24,33 +24,38 @@ describe('Affiliate URL Builder', () => {
     expect(result).toContain(COVA_TAG)
   })
 
-  it('handles Article affiliate links', async () => {
+  it('Article link includes awc parameter with affiliate ID', async () => {
     const { buildAffiliateUrl } = await import('@/lib/affiliates')
     const url = 'https://www.article.com/products/sofa'
     const result = buildAffiliateUrl(url, 'article')
-    expect(typeof result).toBe('string')
-    expect(result.length).toBeGreaterThan(0)
+    expect(result).toContain('awc=art_12345')
+    expect(result).toContain(url)
   })
 
-  it('handles West Elm affiliate links', async () => {
+  it('West Elm link uses ShareASale redirect with affiliate ID', async () => {
     const { buildAffiliateUrl } = await import('@/lib/affiliates')
     const url = 'https://www.westelm.com/products/sofa'
     const result = buildAffiliateUrl(url, 'west_elm')
-    expect(typeof result).toBe('string')
+    expect(result).toContain('shareasale.com')
+    expect(result).toContain('we_22222')
+    expect(result).toContain(encodeURIComponent(url))
   })
 
-  it('handles Pottery Barn affiliate links', async () => {
+  it('Pottery Barn link uses ShareASale redirect with affiliate ID', async () => {
     const { buildAffiliateUrl } = await import('@/lib/affiliates')
     const url = 'https://www.potterybarn.com/products/sofa'
     const result = buildAffiliateUrl(url, 'pottery_barn')
-    expect(typeof result).toBe('string')
+    expect(result).toContain('shareasale.com')
+    expect(result).toContain('pb_33333')
   })
 
-  it('handles Crate and Barrel affiliate links', async () => {
+  it('Crate and Barrel link uses Sovrn/VigLink redirect', async () => {
     const { buildAffiliateUrl } = await import('@/lib/affiliates')
     const url = 'https://www.crateandbarrel.com/sofa/1'
     const result = buildAffiliateUrl(url, 'crate_barrel')
-    expect(typeof result).toBe('string')
+    expect(result).toContain('viglink.com')
+    expect(result).toContain('cb_key_67890')
+    expect(result).toContain(encodeURIComponent(url))
   })
 
   it('returns valid URL for all supported retailers', async () => {

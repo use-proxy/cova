@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
   // If Modal DepthFlow endpoint is not configured, skip gracefully
   // step-7 UI handles null video_url by showing before/after comparison directly
   if (!DEPTHFLOW_WEBHOOK_URL) {
-    console.warn('[parallax] DEPTHFLOW_WEBHOOK_URL not set — skipping parallax generation')
+    console.warn('[parallax] DEPTH_VIDEO_WEBHOOK_URL not set — skipping parallax generation')
     return NextResponse.json({ video_url: null })
   }
 

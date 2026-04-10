@@ -1,201 +1,327 @@
-'use client'
+'use client';
 
-import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
-import { Sparkles, Image as ImageIcon, Wand2, ShoppingBag } from 'lucide-react'
-import { useSessionStore } from '@/lib/store'
+import { useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import './step1.css';
 
-// ─── Particle seed (stable across renders) ────────────────────────────────────
+export default function StepOnePage() {
+  const router = useRouter();
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const roomFrameRef = useRef<HTMLDivElement | null>(null);
 
-interface Particle {
-  id: number
-  top: string
-  left: string
-  size: number
-  opacity: number
-  delay: number
-  duration: number
-}
+  // Particle field
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-function makeParticles(): Particle[] {
-  // Deterministic seed so SSR and client produce the same values
-  const particles: Particle[] = []
-  const seed = [
-    [12, 34], [87, 23], [45, 67], [23, 89], [67, 12],
-    [34, 56], [78, 45], [56, 78], [90, 11], [11, 90],
-    [43, 32], [65, 54], [21, 76], [98, 43], [37, 65],
-    [73, 87], [54, 21], [29, 49], [81, 72], [16, 58],
-  ]
-  seed.forEach(([topVal, leftVal], i) => {
-    particles.push({
-      id: i,
-      top: `${topVal}%`,
-      left: `${leftVal}%`,
-      size: i % 2 === 0 ? 3 : 4,
-      opacity: 0.15 + (i % 4) * 0.04,
-      delay: (i % 6) * 0.5,
-      duration: 3 + (i % 4) * 0.75,
-    })
-  })
-  return particles
-}
+    const GOLD = '201,168,76';
+    const COUNT = 65;
+    let W = 0;
+    let H = 0;
+    let pts: Array<{
+      x: number;
+      y: number;
+      r: number;
+      ba: number;
+      vx: number;
+      vy: number;
+      ph: number;
+      fr: number;
+    }> = [];
+    let raf = 0;
 
-const PARTICLES = makeParticles()
+    const resize = () => {
+      W = canvas.width = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+    };
 
-// ─── Steps row data ────────────────────────────────────────────────────────────
+    const mkPt = () => ({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      r: Math.random() * 1.3 + 0.25,
+      ba: Math.random() * 0.26 + 0.04,
+      vx: (Math.random() - 0.5) * 0.16,
+      vy: (Math.random() - 0.5) * 0.11,
+      ph: Math.random() * Math.PI * 2,
+      fr: 0.007 + Math.random() * 0.011,
+    });
 
-const STEPS = [
-  { icon: Sparkles, label: 'Style Profile', number: '01' },
-  { icon: ImageIcon, label: 'Upload Room', number: '02' },
-  { icon: Wand2, label: 'AI Redesign', number: '03' },
-  { icon: ShoppingBag, label: 'Shop the Look', number: '04' },
-]
+    const init = () => {
+      resize();
+      pts = Array.from({ length: COUNT }, mkPt);
+    };
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+    const loop = () => {
+      ctx.clearRect(0, 0, W, H);
+      pts.forEach((p) => {
+        p.ph += p.fr;
+        const a = p.ba * (0.55 + 0.45 * Math.sin(p.ph));
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${GOLD},${a.toFixed(3)})`;
+        ctx.fill();
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.x < -8) p.x = W + 8;
+        if (p.x > W + 8) p.x = -8;
+        if (p.y < -8) p.y = H + 8;
+        if (p.y > H + 8) p.y = -8;
+      });
 
-export default function Step1Page() {
-  const router = useRouter()
-  const { setStep } = useSessionStore()
+      for (let i = 0; i < pts.length; i++) {
+        for (let j = i + 1; j < pts.length; j++) {
+          const dx = pts[i].x - pts[j].x;
+          const dy = pts[i].y - pts[j].y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 < 14400) {
+            const la = (1 - Math.sqrt(d2) / 120) * 0.055;
+            ctx.beginPath();
+            ctx.moveTo(pts[i].x, pts[i].y);
+            ctx.lineTo(pts[j].x, pts[j].y);
+            ctx.strokeStyle = `rgba(${GOLD},${la.toFixed(3)})`;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        }
+      }
+      raf = requestAnimationFrame(loop);
+    };
 
-  function handleBegin() {
-    setStep(2)
-    router.push('/design/step-2')
-  }
+    const onResize = () => {
+      resize();
+      pts = Array.from({ length: COUNT }, mkPt);
+    };
+
+    init();
+    loop();
+    window.addEventListener('resize', onResize);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', onResize);
+    };
+  }, []);
+
+  // Staggered entrance
+  useEffect(() => {
+    const stages: Array<[string, number]> = [
+      ['nav-wordmark', 0],
+      ['nav-right', 80],
+      ['eyebrow', 220],
+      ['headline', 340],
+      ['subtext', 460],
+      ['cta-wrap', 580],
+      ['hero-right', 500],
+      ['steps-label', 720],
+      ['step-1', 780],
+      ['step-2', 880],
+      ['step-3', 980],
+    ];
+    const timers: number[] = [];
+    stages.forEach(([id, d]) => {
+      const el = document.getElementById(id);
+      if (el) {
+        timers.push(
+          window.setTimeout(() => el.classList.add('visible'), d + 80)
+        );
+      }
+    });
+    return () => {
+      timers.forEach((t) => window.clearTimeout(t));
+    };
+  }, []);
+
+  // Subtle vertical float only (no perspective / rotation)
+  useEffect(() => {
+    let ft = 0;
+    let raf = 0;
+
+    const animRoom = () => {
+      ft += 0.007;
+      const fy = Math.sin(ft) * 9;
+      const roomFrame = roomFrameRef.current;
+      if (roomFrame) {
+        roomFrame.style.transform = `translateY(${fy.toFixed(2)}px)`;
+      }
+      raf = requestAnimationFrame(animRoom);
+    };
+
+    animRoom();
+
+    return () => {
+      cancelAnimationFrame(raf);
+    };
+  }, []);
 
   return (
-    <div className="min-h-screen bg-[#091829] relative overflow-hidden">
-      {/* Background image */}
-      <div
-        className="absolute inset-0 z-0"
-        style={{
-          backgroundImage: 'url(https://images.unsplash.com/photo-1616137466211-f939a420be84?w=1920&q=80)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      />
-      {/* Dark overlay */}
-      <div className="absolute inset-0 bg-[rgba(9,24,41,0.6)] z-[1]" />
+    <div className="step1-wrapper">
+      <canvas ref={canvasRef} className="particle-canvas" />
+      <div className="radial-glow" />
 
-      {/* Particle system */}
-      <style>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-20px); }
-        }
-      `}</style>
-      {PARTICLES.map((p) => (
-        <div
-          key={p.id}
-          style={{
-            position: 'absolute',
-            top: p.top,
-            left: p.left,
-            width: p.size,
-            height: p.size,
-            borderRadius: '50%',
-            background: '#C9A84C',
-            opacity: p.opacity,
-            zIndex: 2,
-            animation: `float ${p.duration}s ease-in-out ${p.delay}s infinite alternate`,
-          }}
-        />
-      ))}
+      <div className="page-wrapper">
+        <nav>
+          <button
+            type="button"
+            className="nav-wordmark"
+            id="nav-wordmark"
+            onClick={() => router.push('/')}
+          >
+            Cova
+          </button>
+          <div className="nav-right" id="nav-right">
+            <button type="button" className="nav-link">
+              Explore
+            </button>
+            <button type="button" className="nav-link">
+              Projects
+            </button>
+            <div className="nav-divider" />
+            <div className="avatar" title="Your account">
+              A
+            </div>
+          </div>
+        </nav>
 
-      {/* Frosted glass top bar */}
-      <div
-        className="sticky top-0 z-50 h-14 flex items-center justify-between px-6 border-b border-[rgba(201,168,76,0.1)]"
-        style={{
-          background: 'rgba(9,24,41,0.8)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-        }}
-      >
-        {/* Wordmark */}
-        <span className="font-playfair italic text-xl text-cova-gold tracking-[0.05em]">
-          Cova
-        </span>
-        {/* User avatar placeholder */}
-        <div className="w-8 h-8 rounded-full bg-[rgba(255,255,255,0.1)]" />
-      </div>
+        <section className="hero">
+          <div className="hero-left">
+            <div className="eyebrow" id="eyebrow">
+              <div className="eyebrow-line" />
+              <span className="eyebrow-text">Welcome to Cova</span>
+            </div>
 
-      {/* Center content */}
-      <div
-        className="absolute text-center w-full max-w-[800px] px-6 z-10"
-        style={{
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-        }}
-      >
-        {/* Hero headline */}
-        <motion.h1
-          initial={{ opacity: 0, y: 32 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="font-playfair text-[68px] font-normal text-cova-ivory m-0"
-          style={{ lineHeight: 1.1 }}
-        >
-          Your room. Reimagined.
-        </motion.h1>
+            <h1 className="headline" id="headline">
+              Your space,
+              <br />
+              <em>reimagined.</em>
+            </h1>
 
-        {/* Subheading */}
-        <motion.p
-          initial={{ opacity: 0, y: 32 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="font-dm-sans text-lg text-cova-muted max-w-[520px] mx-auto mt-4 leading-relaxed"
-        >
-          Answer a few questions, upload a photo, and get a fully designed AI render with shoppable furniture — in minutes.
-        </motion.p>
+            <p className="subtext" id="subtext">
+              In the next few minutes, we&apos;ll learn your style, analyze your
+              room, and generate a photorealistic redesign — with every item
+              shoppable.
+            </p>
 
-        {/* Steps row */}
-        <motion.div
-          initial="hidden"
-          animate="show"
-          variants={{ show: { transition: { staggerChildren: 0.08, delayChildren: 0.4 } } }}
-          className="flex items-center justify-center mt-10"
-        >
-          {STEPS.map((step, i) => {
-            const Icon = step.icon
-            return (
-              <motion.div
-                key={step.number}
-                variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0 } }}
-                className="flex items-center"
+            <div className="cta-wrap" id="cta-wrap">
+              <button
+                type="button"
+                className="cta-btn"
+                onClick={() => router.push('/design/step-2')}
               >
-                <div className="flex flex-col items-center gap-[6px] px-4">
-                  <span className="font-dm-sans text-[11px] text-cova-gold tracking-[0.05em]">
-                    {step.number}
+                Begin Your Design
+                <span className="cta-arrow">→</span>
+              </button>
+              <span className="cta-note">Takes about 3 minutes</span>
+            </div>
+          </div>
+
+          <div className="hero-right" id="hero-right">
+            <div className="room-frame-outer">
+              <div
+                className="room-frame"
+                ref={roomFrameRef}
+                style={{
+                  position: 'relative',
+                  borderRadius: '18px',
+                  overflow: 'hidden',
+                }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/after-room.jpg"
+                  alt="AI-redesigned luxury living room by Cova"
+                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    background: 'rgba(9,24,41,0.82)',
+                    backdropFilter: 'blur(16px)',
+                    WebkitBackdropFilter: 'blur(16px)',
+                    borderTop: '1px solid rgba(201,168,76,0.2)',
+                    padding: '14px 24px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                  }}
+                >
+                  <div className="badge-dot" />
+                  <span
+                    style={{
+                      fontSize: '10px',
+                      fontWeight: 600,
+                      letterSpacing: '0.14em',
+                      textTransform: 'uppercase',
+                      color: '#8BA3C0',
+                    }}
+                  >
+                    Items detected
                   </span>
-                  <Icon size={18} color="rgba(245,240,232,0.6)" />
-                  <span className="font-dm-sans text-[13px] text-cova-muted">
-                    {step.label}
+                  <span
+                    style={{
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      color: '#F8F6F1',
+                    }}
+                  >
+                    24 shoppable pieces
+                  </span>
+                  <span
+                    style={{
+                      marginLeft: 'auto',
+                      fontSize: '12px',
+                      fontWeight: 500,
+                      color: '#C9A84C',
+                      letterSpacing: '0.04em',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    <span>✦</span>
+                    <span>AI Redesign Ready</span>
                   </span>
                 </div>
-                {/* Divider between steps */}
-                {i < STEPS.length - 1 && (
-                  <div className="w-px h-6 bg-[rgba(201,168,76,0.3)] flex-shrink-0" />
-                )}
-              </motion.div>
-            )
-          })}
-        </motion.div>
+              </div>
+            </div>
+          </div>
+        </section>
 
-        {/* CTA */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
-          className="mt-10"
-        >
-          <button
-            onClick={handleBegin}
-            className="bg-cova-gold text-[#091829] font-dm-sans font-semibold text-base rounded-lg px-8 py-[14px] border-none cursor-pointer"
-          >
-            Begin Your Style Profile
-          </button>
-        </motion.div>
+        <div className="section-sep" />
+
+        <section className="steps-section">
+          <div className="steps-label" id="steps-label">
+            Your journey
+          </div>
+          <div className="steps-grid">
+            <div className="step-card" id="step-1">
+              <div className="step-number">Step 01</div>
+              <span className="step-icon">✦</span>
+              <h3 className="step-title">Your Style</h3>
+              <p className="step-desc">Tell us what you love</p>
+              <div className="step-connector" />
+            </div>
+
+            <div className="step-card" id="step-2">
+              <div className="step-number">Step 02</div>
+              <span className="step-icon">📷</span>
+              <h3 className="step-title">Your Room</h3>
+              <p className="step-desc">One photo is all we need</p>
+              <div className="step-connector" />
+            </div>
+
+            <div className="step-card" id="step-3">
+              <div className="step-number">Step 03</div>
+              <span className="step-icon">✨</span>
+              <h3 className="step-title">Your Redesign</h3>
+              <p className="step-desc">Photorealistic. Shoppable.</p>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
-  )
+  );
 }

@@ -5,7 +5,7 @@ import { ChatBubble } from "@/components/chat/ChatBubble"
 import { ChatPanel, type Message } from "@/components/chat/ChatPanel"
 
 const MOCK_CONTEXT = {
-  styleFingerprint: { primary: "japandi", secondary: "mid-century", tertiary: "minimalist" },
+  styleFingerprint: { primary: "warm-serene", secondary: "retro-organic", tertiary: "clean-essential" },
   budgetTier: 3,
   budgetRange: "$2,000 \u2013 $5,000",
   roomType: "living room",

@@ -1,737 +1,510 @@
-'use client'
+'use client';
 
-/**
- * Screen C — Keep / Remove.
- *
- * Default state: every detected object is REMOVE. Tap a dot (or a
- * list row) to flip it to KEEP. Gold = keeping, red = redesigning,
- * small gray dot = low confidence.
- *
- * On first KEEP we fire a background material+color extraction so
- * the eventual FLUX prompt knows the exact constraint.
- */
+import '../step-1/step1.css';
+import './step7c.css';
 
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
-import { createBrowserClient } from '@/lib/supabase/client'
-import { useArea2Store } from '@/lib/stores/area2Store'
-import type { DetectedObject } from '@/lib/types/area2'
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
-// ─── Design tokens (kept for JS-driven style values only) ────────────────────
+type Decision = 'keep' | 'remove' | null;
 
-const GOLD = '#C9A84C'
-const BORDER = 'rgba(201,168,76,0.15)'
-const BORDER_ACTIVE = 'rgba(201,168,76,0.6)'
-const ERROR = '#E87070'
+type RoomItem = {
+  id: number;
+  name: string;
+  category: string;
+  decision: Decision;
+  position: {
+    x: number;
+    y: number;
+  };
+  highlight: {
+    left: string;
+    top: string;
+    width: string;
+    height: string;
+  };
+};
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+const DEFAULT_ROOM_IMAGE =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100">
+      <defs>
+        <linearGradient id="wall" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stop-color="#d7c4a8"/>
+          <stop offset="100%" stop-color="#b79d7d"/>
+        </linearGradient>
+        <linearGradient id="floor" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0%" stop-color="#6f553f"/>
+          <stop offset="100%" stop-color="#4d392a"/>
+        </linearGradient>
+        <filter id="blurShadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="18"/>
+        </filter>
+      </defs>
+      <rect width="1600" height="720" fill="url(#wall)"/>
+      <polygon points="0,700 1600,620 1600,1100 0,1100" fill="url(#floor)"/>
+      <rect x="70" y="120" width="400" height="350" rx="20" fill="#d9cfbe" stroke="#a98b5d" stroke-width="12"/>
+      <rect x="990" y="100" width="470" height="360" rx="20" fill="#d4cab8" stroke="#a98b5d" stroke-width="12"/>
+      <rect x="1075" y="190" width="110" height="210" fill="#c9bea9"/>
+      <rect x="1265" y="190" width="110" height="210" fill="#c9bea9"/>
+      <ellipse cx="785" cy="885" rx="330" ry="110" fill="#2f2a27" opacity="0.26" filter="url(#blurShadow)"/>
+      <ellipse cx="1130" cy="842" rx="165" ry="75" fill="#2f2a27" opacity="0.24" filter="url(#blurShadow)"/>
+      <ellipse cx="420" cy="810" rx="190" ry="70" fill="#2f2a27" opacity="0.18" filter="url(#blurShadow)"/>
+      <rect x="485" y="545" width="590" height="240" rx="44" fill="#eadfcd"/>
+      <rect x="420" y="592" width="150" height="146" rx="34" fill="#f0e7d8"/>
+      <rect x="980" y="592" width="150" height="146" rx="34" fill="#f0e7d8"/>
+      <rect x="445" y="665" width="660" height="65" rx="26" fill="#d5c5af"/>
+      <rect x="548" y="490" width="450" height="110" rx="42" fill="#e6dac7"/>
+      <rect x="620" y="690" width="110" height="170" rx="18" fill="#4c3327"/>
+      <rect x="826" y="690" width="110" height="170" rx="18" fill="#4c3327"/>
+      <rect x="590" y="860" width="380" height="28" rx="10" fill="#3a271f"/>
+      <rect x="1025" y="705" width="225" height="125" rx="20" fill="#8a6546"/>
+      <rect x="1038" y="680" width="200" height="48" rx="18" fill="#a97f56"/>
+      <rect x="1110" y="610" width="54" height="85" rx="18" fill="#c4b297"/>
+      <rect x="250" y="670" width="170" height="130" rx="24" fill="#a77b50"/>
+      <rect x="272" y="642" width="126" height="42" rx="16" fill="#c59b69"/>
+      <rect x="118" y="590" width="110" height="210" rx="18" fill="#8e6a4d"/>
+      <rect x="136" y="560" width="74" height="38" rx="12" fill="#be9763"/>
+      <rect x="1330" y="725" width="90" height="175" rx="16" fill="#27211f"/>
+      <circle cx="1375" cy="690" r="42" fill="#f5e7b7" opacity="0.9"/>
+      <path d="M0 0h1600v1100H0z" fill="#3d2b1f" opacity="0.12"/>
+    </svg>
+  `);
 
-function bboxCenter(bbox: [number, number, number, number]): {
-  cx: number
-  cy: number
-} {
-  const [x, y, w, h] = bbox
-  return { cx: x + w / 2, cy: y + h / 2 }
+const DEFAULT_ITEMS: RoomItem[] = [
+  {
+    id: 1,
+    name: 'Main Sofa',
+    category: 'Seating',
+    decision: 'keep',
+    position: { x: 47, y: 56 },
+    highlight: { left: '30%', top: '42%', width: '42%', height: '31%' },
+  },
+  {
+    id: 2,
+    name: 'Coffee Table',
+    category: 'Surface',
+    decision: 'keep',
+    position: { x: 48, y: 72 },
+    highlight: { left: '40%', top: '66%', width: '23%', height: '17%' },
+  },
+  {
+    id: 3,
+    name: 'Accent Chair',
+    category: 'Seating',
+    decision: null,
+    position: { x: 70, y: 61 },
+    highlight: { left: '65%', top: '53%', width: '20%', height: '20%' },
+  },
+  {
+    id: 4,
+    name: 'Side Cabinet',
+    category: 'Storage',
+    decision: 'remove',
+    position: { x: 20, y: 62 },
+    highlight: { left: '14%', top: '57%', width: '15%', height: '20%' },
+  },
+  {
+    id: 5,
+    name: 'Floor Lamp',
+    category: 'Lighting',
+    decision: 'keep',
+    position: { x: 84, y: 67 },
+    highlight: { left: '79%', top: '59%', width: '11%', height: '24%' },
+  },
+  {
+    id: 6,
+    name: 'Console Table',
+    category: 'Storage',
+    decision: null,
+    position: { x: 19, y: 39 },
+    highlight: { left: '7%', top: '51%', width: '17%', height: '12%' },
+  },
+  {
+    id: 7,
+    name: 'Curtain Set',
+    category: 'Window Treatment',
+    decision: null,
+    position: { x: 17, y: 25 },
+    highlight: { left: '4%', top: '6%', width: '28%', height: '38%' },
+  },
+  {
+    id: 8,
+    name: 'Wall Art',
+    category: 'Decor',
+    decision: 'remove',
+    position: { x: 57, y: 24 },
+    highlight: { left: '44%', top: '15%', width: '20%', height: '10%' },
+  },
+  {
+    id: 9,
+    name: 'Area Rug',
+    category: 'Textile',
+    decision: 'keep',
+    position: { x: 50, y: 84 },
+    highlight: { left: '29%', top: '68%', width: '44%', height: '22%' },
+  },
+  {
+    id: 10,
+    name: 'Window Bench',
+    category: 'Seating',
+    decision: null,
+    position: { x: 74, y: 31 },
+    highlight: { left: '66%', top: '17%', width: '26%', height: '20%' },
+  },
+  {
+    id: 11,
+    name: 'Throw Pillows',
+    category: 'Textile',
+    decision: null,
+    position: { x: 59, y: 52 },
+    highlight: { left: '42%', top: '47%', width: '19%', height: '13%' },
+  },
+  {
+    id: 12,
+    name: 'Planter',
+    category: 'Decor',
+    decision: 'remove',
+    position: { x: 10, y: 71 },
+    highlight: { left: '7%', top: '67%', width: '8%', height: '13%' },
+  },
+  {
+    id: 13,
+    name: 'Media Console',
+    category: 'Storage',
+    decision: null,
+    position: { x: 73, y: 76 },
+    highlight: { left: '64%', top: '71%', width: '21%', height: '12%' },
+  },
+  {
+    id: 14,
+    name: 'Pendant Light',
+    category: 'Lighting',
+    decision: 'keep',
+    position: { x: 86, y: 15 },
+    highlight: { left: '79%', top: '6%', width: '13%', height: '14%' },
+  },
+];
+
+function CheckIcon() {
+  return (
+    <svg className="step7c-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M3 8.5 6.2 11.7 13 4.8" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
-function bboxPct(bbox: [number, number, number, number]): {
-  left: string
-  top: string
-  width: string
-  height: string
-} {
-  const [x, y, w, h] = bbox
-  return {
-    left: `${x * 100}%`,
-    top: `${y * 100}%`,
-    width: `${w * 100}%`,
-    height: `${h * 100}%`,
-  }
+function CloseIcon() {
+  return (
+    <svg className="step7c-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M4 4 12 12M12 4 4 12" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+    </svg>
+  );
 }
 
-type ConfidenceTier = DetectedObject['confidenceTier']
+export default function Step7cKeepOrRemove() {
+  const router = useRouter();
+  const roomImageSrc = DEFAULT_ROOM_IMAGE;
+  const [items, setItems] = useState<RoomItem[]>(DEFAULT_ITEMS);
+  const [activeItemId, setActiveItemId] = useState<number>(DEFAULT_ITEMS[0]?.id ?? 1);
+  const [flashAction, setFlashAction] = useState<'keepAll' | 'startFresh' | null>(null);
+  const [displayedDecidedCount, setDisplayedDecidedCount] = useState(0);
+  const cardRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
-function tierOrder(tier: ConfidenceTier): number {
-  if (tier === 'show-user') return 0
-  if (tier === 'use-internally') return 1
-  return 2
-}
-
-// ─── Material extractor (fire-and-forget) ────────────────────────────────────
-
-async function fetchObjectMaterial(
-  imageUrl: string,
-  bbox: [number, number, number, number],
-  label: string
-): Promise<{ material: string; dominantColor: string; dominantColorHex: string } | null> {
-  try {
-    const res = await fetch('/api/detect/material', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ imageUrl, bbox, label }),
-    })
-    if (!res.ok) return null
-    return (await res.json()) as {
-      material: string
-      dominantColor: string
-      dominantColorHex: string
-    }
-  } catch {
-    return null
-  }
-}
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
-export default function Step7CPage() {
-  const router = useRouter()
-  const {
-    roomId,
-    imageUrl,
-    keepMask,
-    detectionStatus,
-    setKeepMask,
-    toggleObjectKeep,
-    setObjectNote,
-    setZoneOfInterest,
-  } = useArea2Store()
-
-  const [hydrated, setHydrated] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [tooltip, setTooltip] = useState<{
-    id: string
-    label: string
-    x: number
-    y: number
-  } | null>(null)
-  const [actionSheetFor, setActionSheetFor] = useState<string | null>(null)
-  const [noteInputFor, setNoteInputFor] = useState<string | null>(null)
-  const [freshStartOpen, setFreshStartOpen] = useState(false)
-  const [zoneMode, setZoneMode] = useState(false)
-  const [zoneDraft, setZoneDraft] = useState<
-    { x: number; y: number; w: number; h: number } | null
-  >(null)
-  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(
-    null
-  )
-  const [materialBusy, setMaterialBusy] = useState<Record<string, boolean>>({})
-
-  const imgRef = useRef<HTMLDivElement | null>(null)
-
-  useEffect(() => setHydrated(true), [])
-
-  // Poll the store when detection is still running.
+  /* ---- Auth gate + load pre-detection results from Supabase ---- */
   useEffect(() => {
-    if (detectionStatus !== 'running' || !roomId) return
-    const supabase = createBrowserClient()
-    const interval = setInterval(async () => {
-      const { data } = await supabase
+    const loadData = async () => {
+      const { createBrowserClient } = await import('@/lib/supabase/client');
+      const supabase = createBrowserClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.push('/auth?next=/design/step-7c'); return; }
+
+      // Find the most recent room for this user
+      const { data: rooms } = await supabase
         .from('rooms')
-        .select('keep_mask, detection_status')
-        .eq('id', roomId)
-        .maybeSingle()
-      if (data?.detection_status === 'complete' && data.keep_mask) {
-        setKeepMask(data.keep_mask)
-        clearInterval(interval)
+        .select('id, pre_detection_result, photo_url')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      const room = rooms?.[0];
+      if (room?.pre_detection_result && Array.isArray(room.pre_detection_result) && room.pre_detection_result.length > 0) {
+        const detected = room.pre_detection_result as Array<{
+          label: string; category: string; azimuth_degrees: number;
+          elevation_degrees: number; is_fixed: boolean; confidence: number;
+        }>;
+        const mapped: RoomItem[] = detected.map((d, i) => ({
+          id: i + 1,
+          name: d.label.replace(/\b\w/g, c => c.toUpperCase()),
+          category: d.category.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+          decision: d.is_fixed ? 'keep' as Decision : null,
+          position: {
+            x: Math.round(50 + (d.azimuth_degrees / 90) * 40),
+            y: Math.round(50 + (d.elevation_degrees / 60) * 30),
+          },
+          highlight: {
+            left: `${Math.max(5, Math.min(80, 50 + (d.azimuth_degrees / 90) * 40 - 8))}%`,
+            top: `${Math.max(5, Math.min(80, 50 + (d.elevation_degrees / 60) * 30 - 8))}%`,
+            width: '16%',
+            height: '16%',
+          },
+        }));
+        setItems(mapped);
+        setActiveItemId(mapped[0]?.id ?? 1);
       }
-    }, 2000)
-    return () => clearInterval(interval)
-  }, [detectionStatus, roomId, setKeepMask])
+    };
+    loadData();
+  }, [router]);
 
-  const objects = useMemo(() => keepMask?.objects ?? [], [keepMask])
-  const visibleObjects = useMemo(
-    () =>
-      objects
-        .filter((o) => o.confidenceTier !== 'low-use-internally' || o.keep)
-        .slice()
-        .sort((a, b) => tierOrder(a.confidenceTier) - tierOrder(b.confidenceTier)),
-    [objects]
-  )
-  const keptCount = objects.filter((o) => o.keep).length
-  const removedCount = objects.length - keptCount
-  const hasAnyDecision = objects.some((o) => o.keep)
+  const decidedCount = useMemo(() => items.filter((item) => item.decision !== null).length, [items]);
+  const keepCount = useMemo(() => items.filter((item) => item.decision === 'keep').length, [items]);
+  const removeCount = useMemo(() => items.filter((item) => item.decision === 'remove').length, [items]);
+  const allDecided = decidedCount === items.length;
 
-  const handleDotTap = async (obj: DetectedObject, evt: React.MouseEvent) => {
-    evt.stopPropagation()
-    toggleObjectKeep(obj.id)
-    setTooltip({
-      id: obj.id,
-      label: obj.type,
-      x: evt.clientX,
-      y: evt.clientY,
-    })
-    setTimeout(() => {
-      setTooltip((t) => (t?.id === obj.id ? null : t))
-    }, 1500)
+  useEffect(() => {
+    const totalFrames = 18;
+    const startValue = displayedDecidedCount;
+    const difference = decidedCount - startValue;
 
-    const becomingKeep = !obj.keep
-    if (becomingKeep && imageUrl && !obj.material) {
-      setMaterialBusy((prev) => ({ ...prev, [obj.id]: true }))
-      const mat = await fetchObjectMaterial(imageUrl, obj.bbox, obj.type)
-      setMaterialBusy((prev) => {
-        const next = { ...prev }
-        delete next[obj.id]
-        return next
-      })
-      if (mat && keepMask) {
-        const merged = {
-          ...keepMask,
-          objects: keepMask.objects.map((o) =>
-            o.id === obj.id
-              ? {
-                  ...o,
-                  material: mat.material,
-                  dominantColor: mat.dominantColor,
-                  dominantColorHex: mat.dominantColorHex,
-                }
-              : o
-          ),
-        }
-        setKeepMask(merged)
+    if (difference === 0) {
+      return;
+    }
+
+    let frame = 0;
+    const interval = window.setInterval(() => {
+      frame += 1;
+      const nextValue = Math.round(startValue + (difference * frame) / totalFrames);
+      setDisplayedDecidedCount(nextValue);
+
+      if (frame >= totalFrames) {
+        window.clearInterval(interval);
+        setDisplayedDecidedCount(decidedCount);
       }
-    }
-  }
+    }, 20);
 
-  const handleLongPress = (objId: string) => {
-    setActionSheetFor(objId)
-  }
+    return () => window.clearInterval(interval);
+  }, [decidedCount]);
 
-  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const startPress = (objId: string) => {
-    pressTimer.current = setTimeout(() => handleLongPress(objId), 500)
-  }
-  const cancelPress = () => {
-    if (pressTimer.current) clearTimeout(pressTimer.current)
-    pressTimer.current = null
-  }
+  const setDecision = (id: number, decision: Exclude<Decision, null>) => {
+    setItems((current) =>
+      current.map((item) => (item.id === id ? { ...item, decision } : item)),
+    );
+    setActiveItemId(id);
+  };
 
-  const onPhotoPointerDown = (evt: React.PointerEvent<HTMLDivElement>) => {
-    if (!zoneMode || !imgRef.current) return
-    const rect = imgRef.current.getBoundingClientRect()
-    const x = (evt.clientX - rect.left) / rect.width
-    const y = (evt.clientY - rect.top) / rect.height
-    setDragStart({ x, y })
-    setZoneDraft({ x, y, w: 0, h: 0 })
-  }
-  const onPhotoPointerMove = (evt: React.PointerEvent<HTMLDivElement>) => {
-    if (!zoneMode || !dragStart || !imgRef.current) return
-    const rect = imgRef.current.getBoundingClientRect()
-    const x = (evt.clientX - rect.left) / rect.width
-    const y = (evt.clientY - rect.top) / rect.height
-    const nx = Math.min(dragStart.x, x)
-    const ny = Math.min(dragStart.y, y)
-    const nw = Math.abs(x - dragStart.x)
-    const nh = Math.abs(y - dragStart.y)
-    setZoneDraft({ x: nx, y: ny, w: nw, h: nh })
-  }
-  const onPhotoPointerUp = () => {
-    if (!zoneMode || !zoneDraft) return
-    setDragStart(null)
-    if (zoneDraft.w > 0.02 && zoneDraft.h > 0.02) {
-      setZoneOfInterest(zoneDraft)
-    }
-    setZoneMode(false)
-  }
+  const flash = (name: 'keepAll' | 'startFresh') => {
+    setFlashAction(name);
+    window.setTimeout(() => {
+      setFlashAction((current) => (current === name ? null : current));
+    }, 420);
+  };
 
-  const handleFreshStart = () => {
-    if (!keepMask) return
-    setKeepMask({
-      ...keepMask,
-      objects: keepMask.objects.map((o) => ({ ...o, keep: false })),
-      ...(keepMask.zoneOfInterest ? { zoneOfInterest: undefined } : {}),
-    })
-    setFreshStartOpen(false)
-  }
+  const handleKeepAll = () => {
+    setItems((current) => current.map((item) => ({ ...item, decision: 'keep' })));
+    flash('keepAll');
+  };
+
+  const handleStartFresh = () => {
+    setItems((current) => current.map((item) => ({ ...item, decision: 'remove' })));
+    flash('startFresh');
+  };
+
+  const handleBadgeSelect = (id: number) => {
+    setActiveItemId(id);
+    cardRefs.current[id]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
 
   const handleContinue = async () => {
-    if (!roomId) {
-      router.push('/design/step-7d')
-      return
-    }
-    setSaving(true)
+    if (!allDecided) return;
+
+    // Persist keep/remove decisions to Supabase
     try {
-      const supabase = createBrowserClient()
-      const { data: { session } } = await supabase.auth.getSession()
-      const userId = session?.user?.id
-      if (!userId) return
-      await supabase
-        .from('rooms')
-        .update({ keep_mask: keepMask, design_step: 3 })
-        .eq('id', roomId)
-        .eq('user_id', userId)
-      router.push('/design/step-7d')
-    } finally {
-      setSaving(false)
+      const { createBrowserClient } = await import('@/lib/supabase/client');
+      const supabase = createBrowserClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: rooms } = await supabase
+          .from('rooms')
+          .select('id')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        const roomId = rooms?.[0]?.id;
+        if (roomId) {
+          const decisions = items.map(item => ({
+            id: item.id,
+            name: item.name,
+            category: item.category,
+            decision: item.decision,
+          }));
+          await supabase
+            .from('rooms')
+            .update({ keep_remove_decisions: decisions })
+            .eq('id', roomId);
+        }
+      }
+    } catch (err) {
+      console.warn('[step-7c] Failed to persist decisions:', err);
     }
-  }
 
-  if (!hydrated) return null
-
-  // Group visible objects by type category
-  const furniture = visibleObjects.filter((o) =>
-    ['sofa', 'chair', 'table', 'desk', 'bed', 'wardrobe', 'shelving', 'bookcase', 'cabinet', 'dresser'].some(
-      (kw) => o.type.toLowerCase().includes(kw)
-    )
-  )
-  const lighting = visibleObjects.filter((o) =>
-    ['lamp', 'light', 'chandelier', 'sconce', 'pendant'].some(
-      (kw) => o.type.toLowerCase().includes(kw)
-    )
-  )
-  const decor = visibleObjects.filter(
-    (o) => !furniture.includes(o) && !lighting.includes(o)
-  )
-
-  const groups: { label: string; items: typeof visibleObjects }[] = [
-    { label: 'Furniture', items: furniture },
-    { label: 'Lighting', items: lighting },
-    { label: 'Decor', items: decor },
-  ].filter((g) => g.items.length > 0)
-
-  if (groups.length === 0 && visibleObjects.length > 0) {
-    groups.push({ label: 'Items', items: visibleObjects })
-  }
+    router.push('/design/step-7d');
+  };
 
   return (
-    <div className="min-h-screen bg-cova-bg font-dm-sans flex flex-col">
-      <style>{`
-        @keyframes covaPulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.55; }
-        }
-      `}</style>
-
-      {/* Gold progress bar — fixed top */}
-      <div className="fixed top-0 left-0 right-0 h-[3px] bg-[rgba(201,168,76,0.15)] z-[60]">
-        <div className="h-full w-[86%] bg-cova-gold transition-[width] duration-[400ms] ease-out" />
-      </div>
-
-      {/* Frosted glass top bar */}
-      <nav
-        className="sticky top-0 z-50 h-14 flex items-center justify-between px-6 border-b border-[rgba(201,168,76,0.1)]"
-        style={{ background: 'rgba(9,24,41,0.8)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
-      >
-        <span className="font-playfair italic text-xl text-cova-gold tracking-[0.05em]">Cova</span>
-        <span className="font-dm-sans font-semibold text-[15px] text-cova-ivory">What stays?</span>
-        <span className="font-dm-sans text-[13px] text-cova-muted">Step 6 of 7</span>
-      </nav>
-
-      {/* Split layout below top bar */}
-      <div className="flex flex-1" style={{ height: 'calc(100vh - 56px)' }}>
-
-        {/* LEFT PANEL — 60%: room photo with overlays */}
-        <div
-          ref={imgRef}
-          onPointerDown={onPhotoPointerDown}
-          onPointerMove={onPhotoPointerMove}
-          onPointerUp={onPhotoPointerUp}
-          className="relative overflow-hidden bg-cova-bg"
-          style={{
-            width: '60%',
-            cursor: zoneMode ? 'crosshair' : 'default',
-            touchAction: zoneMode ? 'none' : 'auto',
+    <main className="step7c-page">
+      <nav className="step7c-topbar" aria-label="Step navigation">
+        <a
+          className="step7c-nav-link"
+          href="/design/step-7b"
+          onClick={(event) => {
+            event.preventDefault();
+            router.push('/design/step-7b');
           }}
         >
-          {imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={imageUrl}
-              alt="Your room"
-              draggable={false}
-              className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
-            />
-          ) : (
-            <div
-              className="absolute inset-0"
-              style={{
-                background: 'linear-gradient(90deg, rgba(201,168,76,0.08) 0%, rgba(201,168,76,0.15) 50%, rgba(201,168,76,0.08) 100%)',
-                backgroundSize: '200% 100%',
-                animation: 'shimmer 1.5s infinite ease-in-out',
-              }}
-            />
-          )}
-
-          {/* Detection running overlay */}
-          {detectionStatus === 'running' && (
-            <div
-              className="absolute inset-0 flex items-center justify-center text-cova-ivory text-[15px] font-dm-sans"
-              style={{ background: 'rgba(9,24,41,0.70)' }}
-            >
-              Analyzing your room…
-            </div>
-          )}
-
-          {/* Bounding boxes — positions are computed percentages, kept as inline style */}
-          {visibleObjects.map((obj) => {
-            const pct = bboxPct(obj.bbox)
-            const isKeep = obj.keep
-            const isUnreviewed = obj.confidenceTier === 'show-user' && !isKeep
-            return (
-              <div
-                key={`bbox-${obj.id}`}
-                className="absolute pointer-events-none transition-all duration-200 ease-out"
-                style={{
-                  ...pct,
-                  border: isKeep
-                    ? `2px solid ${GOLD}`
-                    : isUnreviewed
-                    ? '2px dashed rgba(255,255,255,0.5)'
-                    : 'none',
-                  background: !isKeep && !isUnreviewed ? 'rgba(232,112,112,0.3)' : 'transparent',
-                  boxShadow: isKeep ? '0 0 12px rgba(201,168,76,0.4)' : 'none',
-                }}
-              />
-            )
-          })}
-
-          {/* Zone of interest — computed percentage position, kept as inline style */}
-          {keepMask?.zoneOfInterest && (
-            <div
-              className="absolute rounded-lg pointer-events-none"
-              style={{
-                left: `${keepMask.zoneOfInterest.x * 100}%`,
-                top: `${keepMask.zoneOfInterest.y * 100}%`,
-                width: `${keepMask.zoneOfInterest.w * 100}%`,
-                height: `${keepMask.zoneOfInterest.h * 100}%`,
-                border: `2px dashed ${GOLD}`,
-              }}
-            />
-          )}
-
-          {/* Live drag rectangle — computed percentage position, kept as inline style */}
-          {zoneDraft && (
-            <div
-              className="absolute pointer-events-none bg-[rgba(201,168,76,0.12)]"
-              style={{
-                left: `${zoneDraft.x * 100}%`,
-                top: `${zoneDraft.y * 100}%`,
-                width: `${zoneDraft.w * 100}%`,
-                height: `${zoneDraft.h * 100}%`,
-                border: `2px dashed ${GOLD}`,
-              }}
-            />
-          )}
-
-          {/* Object dots — computed cx/cy positions, kept as inline style */}
-          {objects.map((obj) => {
-            const { cx, cy } = bboxCenter(obj.bbox)
-            const isKeep = obj.keep
-            const isLowConf = obj.confidenceTier === 'low-use-internally'
-            const dotSize = isLowConf ? 10 : 18
-            const hitSize = 44
-            return (
-              <button
-                key={obj.id}
-                type="button"
-                aria-label={obj.type}
-                onClick={(e) => handleDotTap(obj, e)}
-                onPointerDown={() => startPress(obj.id)}
-                onPointerUp={cancelPress}
-                onPointerLeave={cancelPress}
-                className="absolute bg-transparent border-none p-0 cursor-pointer flex items-center justify-center"
-                style={{
-                  left: `${cx * 100}%`,
-                  top: `${cy * 100}%`,
-                  width: hitSize,
-                  height: hitSize,
-                  transform: 'translate(-50%, -50%)',
-                }}
-              >
-                <div
-                  className="absolute flex items-center justify-center text-cova-ivory text-[11px] font-bold"
-                  style={{
-                    left: '50%',
-                    top: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    width: dotSize,
-                    height: dotSize,
-                    borderRadius: '50%',
-                    background: isLowConf
-                      ? 'rgba(245,240,232,0.45)'
-                      : isKeep
-                        ? 'rgba(201,168,76,0.12)'
-                        : 'rgba(231,76,60,0.25)',
-                    border: `2px solid ${isLowConf ? 'rgba(245,240,232,0.45)' : isKeep ? GOLD : ERROR}`,
-                    boxShadow: isKeep
-                      ? `0 0 0 3px rgba(201,168,76,0.12)`
-                      : isLowConf
-                        ? 'none'
-                        : `0 0 0 2px rgba(231,76,60,0.25)`,
-                    animation: isLowConf || isKeep ? 'none' : 'covaPulse 2s ease-in-out infinite',
-                  }}
-                >
-                  {isLowConf ? '' : isKeep ? '✓' : '×'}
-                </div>
-              </button>
-            )
-          })}
-
-          {/* Tooltip — computed mouse position, kept as inline style */}
-          {tooltip && (
-            <div
-              className="fixed bg-[rgba(255,255,255,0.04)] text-cova-ivory px-[10px] py-[6px] rounded-lg text-[12px] font-dm-sans border border-[rgba(201,168,76,0.15)] pointer-events-none z-[1000]"
-              style={{
-                left: tooltip.x + 12,
-                top: tooltip.y - 8,
-              }}
-            >
-              {tooltip.label}
-            </div>
-          )}
-
-          {/* Zone toggle */}
-          <button
-            type="button"
-            onClick={() => {
-              setZoneMode((z) => !z)
-              setZoneDraft(null)
-            }}
-            className="absolute bottom-4 left-4 px-[14px] py-2 rounded-full cursor-pointer text-[12px] font-dm-sans backdrop-blur-[8px]"
-            style={{
-              background: zoneMode ? 'rgba(201,168,76,0.12)' : 'rgba(9,24,41,0.8)',
-              border: `1px solid ${zoneMode ? GOLD : BORDER}`,
-              color: zoneMode ? GOLD : '#F5F0E8',
-            }}
-          >
-            {zoneMode
-              ? 'Drag to draw focus zone…'
-              : keepMask?.zoneOfInterest
-                ? 'Redraw focus area'
-                : 'Focus on an area'}
-          </button>
-        </div>
-
-        {/* RIGHT PANEL — 40%: scrollable item list */}
-        <div
-          className="overflow-y-auto p-6 bg-cova-bg border-l border-[rgba(201,168,76,0.1)] flex flex-col"
-          style={{ width: '40%' }}
+          <span aria-hidden="true">&larr;</span>
+          <span>Back</span>
+        </a>
+        <button
+          type="button"
+          className="step7c-brand"
+          onClick={() => router.push('/')}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
         >
-          {/* Summary */}
-          <div className="mb-5">
-            <p className="text-cova-muted text-[12px] font-dm-sans mb-1">
-              Keeping {keptCount} · Redesigning {removedCount}
-            </p>
+          Cova
+        </button>
+        <div className="step7c-step">3 of 5</div>
+      </nav>
+
+      <div className="step7c-shell">
+        <section className="step7c-grid" aria-label="Keep or remove room items">
+          <div className="step7c-room">
+            <div className="step7c-room-frame">
+              <img className="step7c-room-photo" src={roomImageSrc} alt="Scanned room with detected furniture items" />
+              <div className="step7c-room-overlay" />
+              <div className="step7c-room-scan" />
+
+              {items.map((item, index) => {
+                const isVisible = activeItemId === item.id;
+
+                return (
+                  <div key={item.id}>
+                    <div
+                      className={`step7c-item-highlight${isVisible ? ' is-visible' : ''}`}
+                      style={item.highlight}
+                      aria-hidden="true"
+                    />
+                    <button
+                      type="button"
+                      className={`step7c-badge${isVisible ? ' is-active' : ''}`}
+                      style={{ left: `${item.position.x}%`, top: `${item.position.y}%`, animationDelay: `${index * 90}ms` }}
+                      onMouseEnter={() => setActiveItemId(item.id)}
+                      onFocus={() => setActiveItemId(item.id)}
+                      onClick={() => handleBadgeSelect(item.id)}
+                      aria-label={`Select ${item.name}`}
+                    >
+                      {item.id}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Grouped items */}
-          {visibleObjects.length === 0 ? (
-            <p className="text-cova-muted text-sm font-dm-sans">
-              No items detected. The AI will redesign the full room.
-            </p>
-          ) : (
-            groups.map((group) => (
-              <div key={group.label} className="mb-6">
-                <div className="text-cova-muted text-[11px] font-dm-sans font-medium uppercase tracking-[0.12em] mb-[10px]">
-                  {group.label}
-                </div>
-                {group.items.map((obj) => (
+          <aside className="step7c-panel">
+            <div className="step7c-panel-header">
+              <div>
+                <h1 className="step7c-heading">What stays in your new room?</h1>
+                <p className="step7c-subtext">Only items you keep will be worked around.</p>
+              </div>
+              <div className="step7c-progress-pill" aria-live="polite">
+                {displayedDecidedCount} of {items.length} decided
+              </div>
+            </div>
+
+            <div className="step7c-quick-actions">
+              <button
+                type="button"
+                className={`step7c-ghost-action${flashAction === 'keepAll' ? ' is-flashing' : ''}`}
+                onClick={handleKeepAll}
+              >
+                Keep All
+              </button>
+              <button
+                type="button"
+                className={`step7c-ghost-action${flashAction === 'startFresh' ? ' is-flashing' : ''}`}
+                onClick={handleStartFresh}
+              >
+                Start Fresh
+              </button>
+            </div>
+
+            <div className="step7c-list" role="list" aria-label="Detected furniture items">
+              {items.map((item) => {
+                const isKeep = item.decision === 'keep';
+                const isRemove = item.decision === 'remove';
+                const isFocused = activeItemId === item.id;
+
+                return (
                   <div
-                    key={obj.id}
-                    className="flex items-center justify-between px-3 py-[10px] bg-[rgba(255,255,255,0.04)] border border-[rgba(201,168,76,0.15)] rounded-lg mb-2"
+                    key={item.id}
+                    ref={(element) => {
+                      cardRefs.current[item.id] = element;
+                    }}
+                    className={`step7c-card${isFocused ? ' is-focused' : ''}${isKeep ? ' is-keep' : ''}${isRemove ? ' is-remove' : ''}`}
+                    role="listitem"
+                    onMouseEnter={() => setActiveItemId(item.id)}
                   >
-                    <div className="flex-1 min-w-0">
-                      <div className="text-cova-ivory text-sm font-dm-sans font-normal">
-                        {obj.type}
+                    <div className="step7c-card-main">
+                      <div className="step7c-card-badge">{item.id}</div>
+                      <div className="step7c-card-copy">
+                        <h2 className="step7c-card-title">{item.name}</h2>
+                        <div className="step7c-card-category">{item.category}</div>
                       </div>
-                      {materialBusy[obj.id] && (
-                        <span className="text-cova-gold text-[11px] font-dm-sans">
-                          reading…
-                        </span>
-                      )}
-                      {obj.userNote && (
-                        <div className="text-cova-muted text-[12px] font-dm-sans mt-[2px]">
-                          Note: {obj.userNote}
-                        </div>
-                      )}
                     </div>
-                    <div className="flex gap-2 ml-3">
-                      {/* Keep badge */}
-                      {obj.keep ? (
-                        <span className="bg-[rgba(201,168,76,0.12)] text-cova-gold text-[11px] font-dm-sans font-medium rounded-full px-[10px] py-1">
-                          Keep
-                        </span>
-                      ) : (
-                        <span className="bg-[rgba(232,112,112,0.12)] text-[#E87070] text-[11px] font-dm-sans font-medium rounded-full px-[10px] py-1">
-                          Remove
-                        </span>
-                      )}
-                      {/* Toggle button */}
+
+                    <div className="step7c-actions">
                       <button
                         type="button"
-                        onClick={() => toggleObjectKeep(obj.id)}
-                        className="bg-transparent border border-[rgba(201,168,76,0.15)] text-cova-muted px-[10px] py-1 rounded-full text-[11px] font-dm-sans cursor-pointer transition-all duration-200 ease-out"
+                        className={`step7c-choice step7c-choice--keep${isKeep ? ' is-selected' : ''}`}
+                        onClick={() => setDecision(item.id, 'keep')}
+                        aria-pressed={isKeep}
                       >
-                        {obj.keep ? 'Remove' : 'Keep'}
+                        <CheckIcon />
+                        <span>KEEP</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`step7c-choice step7c-choice--remove${isRemove ? ' is-selected' : ''}`}
+                        onClick={() => setDecision(item.id, 'remove')}
+                        aria-pressed={isRemove}
+                      >
+                        <CloseIcon />
+                        <span>REMOVE</span>
                       </button>
                     </div>
                   </div>
-                ))}
-              </div>
-            ))
-          )}
-
-          {/* Fresh start */}
-          <button
-            type="button"
-            onClick={() => setFreshStartOpen(true)}
-            className="bg-transparent text-cova-muted border-none py-2 px-0 text-[13px] font-dm-sans cursor-pointer underline text-left mt-2 mb-6"
-          >
-            Start completely fresh
-          </button>
-
-          {/* Spacer */}
-          <div className="flex-1" />
-
-          {/* CTA */}
-          <motion.button
-            type="button"
-            onClick={handleContinue}
-            disabled={!hasAnyDecision || saving}
-            whileHover={hasAnyDecision && !saving ? { scale: 1.02, backgroundColor: '#D4B460' } : {}}
-            whileTap={hasAnyDecision && !saving ? { scale: 0.97 } : {}}
-            transition={{ duration: 0.15 }}
-            className="w-full bg-cova-gold text-cova-bg border-none rounded-lg px-5 py-[14px] text-[15px] font-semibold font-dm-sans mt-4"
-            style={{
-              cursor: hasAnyDecision && !saving ? 'pointer' : 'not-allowed',
-              opacity: hasAnyDecision && !saving ? 1 : 0.4,
-              pointerEvents: hasAnyDecision && !saving ? 'auto' : 'none',
-            }}
-          >
-            {saving ? 'Saving…' : 'Continue →'}
-          </motion.button>
-        </div>
+                );
+              })}
+            </div>
+          </aside>
+        </section>
       </div>
 
-      {/* Action sheet */}
-      {actionSheetFor && (() => {
-        const obj = objects.find((o) => o.id === actionSheetFor)
-        if (!obj) return null
-        return (
-          <div
-            onClick={() => setActionSheetFor(null)}
-            className="fixed inset-0 bg-black/60 flex items-end justify-center z-[500]"
-          >
-            <div
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-[480px] border border-[rgba(201,168,76,0.15)] p-6"
-              style={{
-                background: 'rgba(9,24,41,0.95)',
-                borderTopLeftRadius: 24,
-                borderTopRightRadius: 24,
-              }}
-            >
-              <div className="text-cova-ivory text-base font-semibold font-dm-sans mb-4">
-                {obj.type}
-              </div>
-              {(['Keep', 'Remove', 'Mark as immovable', 'Add a note'] as const).map(
-                (action) => (
-                  <button
-                    key={action}
-                    type="button"
-                    onClick={() => {
-                      if (action === 'Keep' && !obj.keep) toggleObjectKeep(obj.id)
-                      if (action === 'Remove' && obj.keep) toggleObjectKeep(obj.id)
-                      if (action === 'Mark as immovable') {
-                        const m = keepMask
-                        if (m) {
-                          setKeepMask({
-                            ...m,
-                            objects: m.objects.map((o) =>
-                              o.id === obj.id ? { ...o, immovable: !o.immovable } : o
-                            ),
-                          })
-                        }
-                      }
-                      if (action === 'Add a note') {
-                        setNoteInputFor(obj.id)
-                      }
-                      setActionSheetFor(null)
-                    }}
-                    className="block w-full text-left bg-transparent border border-[rgba(201,168,76,0.15)] text-cova-ivory px-[14px] py-3 rounded-lg mb-2 cursor-pointer text-sm font-dm-sans"
-                  >
-                    {action}
-                  </button>
-                )
-              )}
-            </div>
-          </div>
-        )
-      })()}
-
-      {/* Inline note input — computed position, kept as inline style */}
-      {noteInputFor && (() => {
-        const obj = objects.find((o) => o.id === noteInputFor)
-        if (!obj) return null
-        return (
-          <div
-            className="fixed w-[90%] max-w-[480px] border border-[rgba(201,168,76,0.15)] rounded-xl p-4 z-[600]"
-            style={{
-              bottom: 24,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              background: 'rgba(9,24,41,0.95)',
-            }}
-          >
-            <div className="text-cova-muted text-[12px] font-dm-sans mb-2">
-              Note on {obj.type}
-            </div>
-            <input
-              autoFocus
-              defaultValue={obj.userNote ?? ''}
-              onBlur={(e) => {
-                setObjectNote(obj.id, e.target.value)
-                setNoteInputFor(null)
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  setObjectNote(obj.id, (e.target as HTMLInputElement).value)
-                  setNoteInputFor(null)
-                }
-              }}
-              className="w-full bg-cova-bg border border-[rgba(201,168,76,0.15)] rounded-lg text-cova-ivory px-3 py-[10px] font-dm-sans text-sm outline-none"
-              placeholder="e.g. this is my grandmother's armchair"
-              onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = BORDER_ACTIVE }}
-            />
-          </div>
-        )
-      })()}
-
-      {/* Fresh start confirm */}
-      {freshStartOpen && (
-        <div
-          className="fixed inset-0 bg-black/60 flex items-center justify-center z-[600]"
-          onClick={() => setFreshStartOpen(false)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-[rgba(255,255,255,0.04)] border border-[rgba(201,168,76,0.15)] rounded-xl p-6 max-w-[360px] w-[90%]"
-          >
-            <div className="text-cova-ivory text-base font-semibold font-dm-sans mb-2">
-              Remove everything and start fresh?
-            </div>
-            <p className="text-cova-muted text-sm font-dm-sans mb-5">
-              All kept items and focus zones will be cleared.
-            </p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setFreshStartOpen(false)}
-                className="flex-1 bg-transparent border border-[rgba(201,168,76,0.15)] text-cova-ivory p-3 rounded-lg cursor-pointer font-dm-sans text-sm"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleFreshStart}
-                className="flex-1 bg-cova-gold text-cova-bg border-none p-3 rounded-lg cursor-pointer font-semibold font-dm-sans text-sm"
-              >
-                Start fresh
-              </button>
-            </div>
-          </div>
+      <div className="step7c-bottombar">
+        <div className="step7c-summary">
+          <strong>{keepCount}</strong> items keeping <span aria-hidden="true">/</span>{' '}
+          <strong>{removeCount}</strong> items removing
         </div>
-      )}
-    </div>
-  )
+        <button
+          type="button"
+          className={`step7c-cta${allDecided ? ' is-ready' : ''}`}
+          disabled={!allDecided}
+          onClick={handleContinue}
+        >
+          Lock In My Choices &rarr;
+        </button>
+      </div>
+    </main>
+  );
 }

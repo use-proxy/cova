@@ -1,9 +1,15 @@
 /**
  * Marble API client for Cova M7 pipeline.
  * Handles video upload, world generation, and asset retrieval.
+ *
+ * MARBLE_DISABLED — All functions are commented out. Marble is not in the
+ * core pipeline. The code is preserved intact for re-enabling when ready.
  */
 
-const MARBLE_BASE_URL = 'https://api.worldlabs.ai/marble/v1'
+// MARBLE_DISABLED — preserved for re-enabling
+// @ts-expect-error MARBLE_DISABLED - preserved for re-enabling
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _MARBLE_BASE_URL = 'https://api.worldlabs.ai/marble/v1' // eslint-disable-line
 
 export interface MarbleWorld {
   world_id: string
@@ -24,13 +30,15 @@ export interface MarbleGenerateOptions {
   seed?: number
 }
 
+// MARBLE_DISABLED - not in core pipeline
 export async function uploadMediaAsset(
-  fileBytes: ArrayBuffer,
-  fileName: string,
-  kind: 'video' | 'image',
-  extension: string,
-  apiKey: string
+  _fileBytes: ArrayBuffer,
+  _fileName: string,
+  _kind: 'video' | 'image',
+  _extension: string,
+  _apiKey: string
 ): Promise<string> {
+  /*
   const prepareResp = await fetch(`${MARBLE_BASE_URL}/media-assets:prepare_upload`, {
     method: 'POST',
     headers: {
@@ -50,8 +58,6 @@ export async function uploadMediaAsset(
   const uploadUrl = prepareData.upload_info.upload_url
   const sizeLimit = prepareData.upload_info.required_headers['x-goog-content-length-range']
 
-  // CRITICAL: Only send x-goog-content-length-range header.
-  // Adding Content-Type or other headers breaks the GCS signature.
   const uploadResp = await fetch(uploadUrl, {
     method: 'PUT',
     headers: { 'x-goog-content-length-range': sizeLimit },
@@ -64,29 +70,24 @@ export async function uploadMediaAsset(
   }
 
   return mediaAssetId
+  */
+  throw new Error('MARBLE_DISABLED — Marble is not in the core pipeline. Re-enable when ready.')
 }
 
+// MARBLE_DISABLED - not in core pipeline
 export async function generateWorld(
-  mediaAssetId: string,
-  kind: 'video' | 'image' | 'pano',
-  options: MarbleGenerateOptions,
-  apiKey: string
+  _mediaAssetId: string,
+  _kind: 'video' | 'image' | 'pano',
+  _options: MarbleGenerateOptions,
+  _apiKey: string
 ): Promise<string> {
+  /*
   const worldPrompt =
     kind === 'video'
-      ? {
-          type: 'video',
-          video_prompt: { source: 'media_asset', media_asset_id: mediaAssetId },
-        }
+      ? { type: 'video', video_prompt: { source: 'media_asset', media_asset_id: mediaAssetId } }
       : kind === 'pano'
-        ? {
-            type: 'image',
-            image_prompt: { source: 'media_asset', media_asset_id: mediaAssetId, is_pano: true },
-          }
-        : {
-            type: 'image',
-            image_prompt: { source: 'media_asset', media_asset_id: mediaAssetId },
-          }
+        ? { type: 'image', image_prompt: { source: 'media_asset', media_asset_id: mediaAssetId, is_pano: true } }
+        : { type: 'image', image_prompt: { source: 'media_asset', media_asset_id: mediaAssetId } }
 
   const body: Record<string, unknown> = {
     model: options.model,
@@ -115,14 +116,18 @@ export async function generateWorld(
 
   const data = await resp.json()
   return data.operation_id
+  */
+  throw new Error('MARBLE_DISABLED — Marble is not in the core pipeline. Re-enable when ready.')
 }
 
+// MARBLE_DISABLED - not in core pipeline
 export async function pollOperation(
-  operationId: string,
-  apiKey: string,
-  maxWaitMs: number = 600000,
-  pollIntervalMs: number = 10000
+  _operationId: string,
+  _apiKey: string,
+  _maxWaitMs = 600000,
+  _pollIntervalMs = 10000
 ): Promise<string> {
+  /*
   const startTime = Date.now()
 
   while (Date.now() - startTime < maxWaitMs) {
@@ -153,14 +158,18 @@ export async function pollOperation(
   }
 
   throw new Error(`Marble operation timed out after ${maxWaitMs / 1000}s`)
+  */
+  throw new Error('MARBLE_DISABLED — Marble is not in the core pipeline. Re-enable when ready.')
 }
 
+// MARBLE_DISABLED - not in core pipeline
 export async function fetchWorld(
-  worldId: string,
-  apiKey: string,
-  retries: number = 5,
-  retryDelayMs: number = 5000
+  _worldId: string,
+  _apiKey: string,
+  _retries = 5,
+  _retryDelayMs = 5000
 ): Promise<MarbleWorld> {
+  /*
   let lastError: Error | null = null
 
   for (let i = 0; i < retries; i++) {
@@ -198,38 +207,54 @@ export async function fetchWorld(
   }
 
   throw lastError ?? new Error('Failed to fetch world after retries')
+  */
+  throw new Error('MARBLE_DISABLED — Marble is not in the core pipeline. Re-enable when ready.')
 }
 
+// MARBLE_DISABLED - not in core pipeline
 export async function processVideoToWorld(
-  videoBytes: ArrayBuffer,
-  apiKey: string,
-  model: 'Marble 0.1-mini' | 'Marble 0.1-plus' = 'Marble 0.1-mini'
+  _videoBytes: ArrayBuffer,
+  _apiKey: string,
+  _model: 'Marble 0.1-mini' | 'Marble 0.1-plus' = 'Marble 0.1-mini'
 ): Promise<MarbleWorld> {
+  /*
   const mediaAssetId = await uploadMediaAsset(videoBytes, 'room.mp4', 'video', 'mp4', apiKey)
   const operationId = await generateWorld(mediaAssetId, 'video', { model }, apiKey)
   const worldId = await pollOperation(operationId, apiKey)
   const world = await fetchWorld(worldId, apiKey)
   return world
+  */
+  throw new Error('MARBLE_DISABLED — Marble is not in the core pipeline. Re-enable when ready.')
 }
 
-export async function uploadPanoAsset(panoBytes: ArrayBuffer, apiKey: string): Promise<string> {
+// MARBLE_DISABLED - not in core pipeline
+export async function uploadPanoAsset(_panoBytes: ArrayBuffer, _apiKey: string): Promise<string> {
+  /*
   return uploadMediaAsset(panoBytes, 'redesigned_room.png', 'image', 'png', apiKey)
+  */
+  throw new Error('MARBLE_DISABLED — Marble is not in the core pipeline. Re-enable when ready.')
 }
 
+// MARBLE_DISABLED - not in core pipeline
 export async function generateWorldFromPano(
-  mediaAssetId: string,
-  options: MarbleGenerateOptions,
-  apiKey: string
+  _mediaAssetId: string,
+  _options: MarbleGenerateOptions,
+  _apiKey: string
 ): Promise<string> {
+  /*
   return generateWorld(mediaAssetId, 'pano', options, apiKey)
+  */
+  throw new Error('MARBLE_DISABLED — Marble is not in the core pipeline. Re-enable when ready.')
 }
 
 // Complete pipeline: download redesigned pano → upload to Marble → generate Plus world
 // Cost: 1,500 credits ($1.20) with is_pano: true
+// MARBLE_DISABLED - not in core pipeline
 export async function processRedesignedPanoToWorld(
-  redesignedPanoUrl: string,
-  apiKey: string
+  _redesignedPanoUrl: string,
+  _apiKey: string
 ): Promise<MarbleWorld> {
+  /*
   const panoResp = await fetch(redesignedPanoUrl)
   if (!panoResp.ok) {
     throw new Error(`Failed to download redesigned pano: ${panoResp.status}`)
@@ -244,4 +269,6 @@ export async function processRedesignedPanoToWorld(
   const worldId = await pollOperation(operationId, apiKey, 600000, 15000)
   const world = await fetchWorld(worldId, apiKey, 8, 10000)
   return world
+  */
+  throw new Error('MARBLE_DISABLED — Marble is not in the core pipeline. Re-enable when ready.')
 }

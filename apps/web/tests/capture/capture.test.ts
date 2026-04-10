@@ -51,37 +51,23 @@ describe('Quality Checker', () => {
 })
 
 describe('Capture Flow Logic', () => {
-  it('mobile path uses capture=environment attribute (design decision)', () => {
-    const mobileInputAttr = 'environment'
-    expect(mobileInputAttr).toBe('environment')
+  it('QRCapture component does not contain webcam references', async () => {
+    // CLAUDE.md rule: NEVER reintroduce webcam mode
+    const module = await import('@/components/capture/QRCapture')
+    const src = module.QRCapture.toString()
+    expect(src).not.toContain('getUserMedia')
+    expect(src).not.toContain('webcam')
   })
 
-  it('desktop path uses QR code not webcam (design decision)', () => {
-    // Webcam mode removed permanently — this documents the decision
-    expect(true).toBe(true)
+  it('desktop path uses QR code not webcam (design decision)', async () => {
+    // Verify QRCapture exists and is a React component (not a webcam wrapper)
+    const module = await import('@/components/capture/QRCapture')
+    expect(typeof module.QRCapture).toBe('function')
   })
 
-  it('upload fallback has no capture attribute (opens gallery)', () => {
-    // UploadFallback must NOT have capture="environment"
-    const uploadInputCapture = undefined
-    expect(uploadInputCapture).toBeUndefined()
-  })
-
-  it('max file size is 10MB', () => {
-    const MAX_FILE_SIZE_MB = 10
-    expect(MAX_FILE_SIZE_MB).toBe(10)
-  })
-
-  it('minimum resolution is 800x600', () => {
-    const MIN_WIDTH = 800
-    const MIN_HEIGHT = 600
-    expect(MIN_WIDTH).toBe(800)
-    expect(MIN_HEIGHT).toBe(600)
-  })
-
-  it('blur threshold is 100 (Laplacian variance)', () => {
-    const BLUR_THRESHOLD = 100
-    expect(BLUR_THRESHOLD).toBe(100)
+  it('upload fallback component exists and is exportable', async () => {
+    const module = await import('@/components/capture/UploadFallback')
+    expect(typeof module.UploadFallback).toBe('function')
   })
 })
 

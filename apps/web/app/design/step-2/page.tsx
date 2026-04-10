@@ -1,186 +1,249 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Check } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useFingerprintStore } from '@/lib/store/fingerprint';
+import '../step-1/step1.css';
+import './step2.css';
 
-// ─── Anchor images ─────────────────────────────────────────────────────────────
+type StyleCard = {
+  id: string;
+  label: string;
+  image: string;
+};
 
-const ANCHOR_IMAGES = [
-  { id: 1, src: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=600&q=80', alt: 'Clean modern living room' },
-  { id: 2, src: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=600&q=80', alt: 'Warm bohemian space' },
-  { id: 3, src: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&q=80', alt: 'Contemporary bedroom' },
-  { id: 4, src: 'https://images.unsplash.com/photo-1484101403633-562f891dc89a?w=600&q=80', alt: 'Scandinavian interior' },
-  { id: 5, src: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=600&q=80', alt: 'Industrial loft' },
-  { id: 6, src: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=600&q=80', alt: 'Luxury living room' },
-  { id: 7, src: 'https://images.unsplash.com/photo-1567767292278-a4f21aa2d36e?w=600&q=80', alt: 'Light airy bedroom' },
-  { id: 8, src: 'https://images.unsplash.com/photo-1583845112203-29329902332e?w=600&q=80', alt: 'Japanese minimal' },
-  { id: 9, src: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600&q=80', alt: 'Modern sofa' },
-]
+const STYLES: StyleCard[] = [
+  {
+    id: 'japandi',
+    label: 'Clean lines with natural warmth',
+    image:
+      'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    id: 'modern-luxe',
+    label: 'Sleek surfaces and refined detail',
+    image:
+      'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80&sat=-10&brightness=5',
+  },
+  {
+    id: 'industrial',
+    label: 'Raw textures and exposed structure',
+    image:
+      'https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    id: 'coastal',
+    label: 'Light and breezy seaside feel',
+    image:
+      'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80&hue=15&brightness=8',
+  },
+  {
+    id: 'maximalist',
+    label: 'Bold color and daring layers',
+    image:
+      'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80&sat=20&contrast=10',
+  },
+  {
+    id: 'scandinavian',
+    label: 'Bright woods and soft neutrals',
+    image:
+      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    id: 'mid-century',
+    label: 'Retro curves and warm wood tones',
+    image:
+      'https://images.unsplash.com/photo-1460317442991-0ec209397118?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    id: 'bohemian',
+    label: 'Layered textures and rich color',
+    image:
+      'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80&sat=25&hue=18',
+  },
+  {
+    id: 'art-deco',
+    label: 'Geometric glamour and metallic shine',
+    image:
+      'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80&contrast=18&hue=-5',
+  },
+];
 
-// Heights for masonry-like variation (alternating pattern across 3 columns)
-const CARD_HEIGHTS = [260, 240, 280, 280, 260, 240, 240, 280, 260]
+export default function CovaStyleSelectionPage() {
+  const router = useRouter();
+  const [selected, setSelected] = useState<string[]>([]);
+  const [burstCard, setBurstCard] = useState<string | null>(null);
+  const [pointer, setPointer] = useState({ x: 50, y: 28 });
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { createBrowserClient } = await import('@/lib/supabase/client');
+      const supabase = createBrowserClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) router.push('/auth?next=/design/step-2');
+    };
+    checkAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-export default function Step2Page() {
-  const router = useRouter()
-  const [selected, setSelected] = useState<number[]>([])
+  const progressWidth = useMemo(() => {
+    const base = 26;
+    const bonus = selected.length * 16;
+    return `${Math.min(base + bonus, 58)}%`;
+  }, [selected.length]);
 
-  function handleToggle(id: number) {
-    if (selected.includes(id)) {
-      setSelected(selected.filter((s) => s !== id))
-    } else if (selected.length < 2) {
-      setSelected([...selected, id])
+  const toggleSelection = (id: string) => {
+    setSelected((current) => {
+      if (current.includes(id)) {
+        return current.filter((item) => item !== id);
+      }
+
+      const next = current.length < 2 ? [...current, id] : [current[1], id];
+
+      if (next.length === 2) {
+        setBurstCard(id);
+        window.setTimeout(() => setBurstCard((active) => (active === id ? null : active)), 650);
+      }
+
+      return next;
+    });
+  };
+
+  const handleContinue = () => {
+    if (selected.length === 2) {
+      // Sync selections to fingerprint store (cookie-persisted, survives OAuth redirects)
+      const fpStore = useFingerprintStore.getState()
+      // Clear any previous phase-A selections before adding new ones
+      fpStore.phaseASelections.forEach((id) => fpStore.removePhaseASelection(id))
+      selected.forEach((id) => fpStore.addPhaseASelection(id))
+      router.push('/design/step-3');
     }
-    // If already 2 selected and this card isn't one of them, do nothing
-  }
-
-  function handleContinue() {
-    if (selected.length < 2) return
-    router.push('/design/step-3')
-  }
-
-  const canContinue = selected.length === 2
+  };
 
   return (
-    <div className="min-h-screen bg-[#091829] font-dm-sans">
-      {/* Gold progress bar — position fixed, z-index 60 */}
-      <div className="fixed top-0 left-0 right-0 h-[3px] bg-[rgba(201,168,76,0.15)] z-[60]">
-        <div
-          className="h-full bg-cova-gold transition-all duration-[400ms] ease-out"
-          style={{ width: `${(1 / 7) * 100}%` }}
-        />
-      </div>
-
-      {/* Frosted glass top bar */}
+    <main
+      className="cova-page"
+      onMouseMove={(event) => {
+        const bounds = event.currentTarget.getBoundingClientRect();
+        const x = ((event.clientX - bounds.left) / bounds.width) * 100;
+        const y = ((event.clientY - bounds.top) / bounds.height) * 100;
+        setPointer({ x, y });
+      }}
+    >
+      <div className="cova-ambient-layer" />
       <div
-        className="sticky top-0 z-50 h-14 flex items-center justify-between px-6 border-b border-[rgba(201,168,76,0.1)]"
+        className="cova-pointer-glow"
         style={{
-          background: 'rgba(9,24,41,0.8)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
+          background: `radial-gradient(circle at ${pointer.x}% ${pointer.y}%, rgba(201,168,76,0.16), rgba(201,168,76,0.06) 22%, rgba(9,24,41,0) 54%)`,
         }}
-      >
-        {/* Wordmark */}
-        <span className="font-playfair italic text-xl text-cova-gold tracking-[0.05em]">
-          Cova
-        </span>
-        {/* Center label */}
-        <span
-          className="font-dm-sans font-semibold text-[15px] text-cova-ivory absolute left-1/2"
-          style={{ transform: 'translateX(-50%)' }}
-        >
-          Choose your anchors
-        </span>
-        {/* Step counter */}
-        <span className="font-dm-sans text-[13px] text-cova-muted">
-          Step 1 of 7
-        </span>
-      </div>
+      />
+      <div className="cova-grid-overlay" />
+      <div className="cova-noise-overlay" />
 
-      {/* Main content */}
-      <div className="pt-20 pb-[120px] px-6 max-w-[1200px] mx-auto">
-        {/* Heading */}
-        <motion.h1
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="font-playfair text-4xl font-normal text-cova-ivory mb-8"
-        >
-          Choose two rooms that feel like you.
-        </motion.h1>
+      <section className="cova-shell">
+        <header className="cova-header">
+          <button
+            type="button"
+            className="cova-icon-button"
+            aria-label="Go back"
+            onClick={() => router.push('/design/step-1')}
+          >
+            <span aria-hidden="true">‹</span>
+          </button>
 
-        {/* Image grid */}
-        <motion.div
-          variants={{ show: { transition: { staggerChildren: 0.08 } } }}
-          initial="hidden"
-          animate="show"
-          className="grid grid-cols-3 gap-4"
-        >
-          {ANCHOR_IMAGES.map((img, i) => {
-            const isSelected = selected.includes(img.id)
-            const isDimmed = selected.length === 2 && !isSelected
-            const cardHeight = CARD_HEIGHTS[i] ?? 260
+          <div className="cova-header-center">
+            <button
+              type="button"
+              className="cova-wordmark"
+              onClick={() => router.push('/')}
+              aria-label="Cova home"
+            >
+              Cova
+            </button>
+            <div className="cova-progress-rail">
+              <div className="cova-progress-fill" style={{ width: progressWidth }} />
+            </div>
+          </div>
+
+          <div className="cova-step-meta">
+            <span>Step 1 of 4</span>
+            <span>Style quiz phase</span>
+          </div>
+        </header>
+
+        <section className="cova-hero">
+          <p className="cova-eyebrow">Your Style Anchors</p>
+          <h1>What draws you in?</h1>
+          <p className="cova-subtext">Choose 2 spaces that feel like home. We&apos;ll do the rest.</p>
+        </section>
+
+        <section className="cova-grid" aria-label="Interior design style selection">
+          {STYLES.map((style, index) => {
+            const isSelected = selected.includes(style.id);
+            const isBursting = burstCard === style.id;
 
             return (
-              <motion.div
-                key={img.id}
-                variants={{ hidden: { opacity: 0, y: 24 }, show: { opacity: 1, y: 0 } }}
-                onClick={() => handleToggle(img.id)}
-                className="relative rounded-xl overflow-hidden transition-all duration-200 ease-out"
-                style={{
-                  cursor: isDimmed ? 'default' : 'pointer',
-                  outline: isSelected ? '2px solid #C9A84C' : 'none',
-                  opacity: isDimmed ? 0.5 : 1,
-                }}
+              <button
+                key={style.id}
+                type="button"
+                className={`cova-card ${isSelected ? 'is-selected' : ''}`}
+                onClick={() => toggleSelection(style.id)}
+                aria-pressed={isSelected}
+                aria-label={style.label}
+                style={{ animationDelay: `${index * 60}ms` }}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={img.src}
-                  alt={img.alt}
-                  className="w-full object-cover block"
-                  style={{ height: cardHeight }}
+                <div
+                  className="cova-card-image"
+                  style={{
+                    backgroundImage: `linear-gradient(180deg, rgba(9,24,41,0.1), rgba(9,24,41,0.42)), url(${style.image})`,
+                  }}
                 />
 
-                {/* Gold checkmark badge */}
-                <AnimatePresence>
-                  {isSelected && (
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      exit={{ scale: 0 }}
-                      transition={{ type: 'spring', stiffness: 280, damping: 30 }}
-                      className="absolute top-2 right-2 w-7 h-7 rounded-full bg-cova-gold flex items-center justify-center"
-                    >
-                      <Check size={16} color="#091829" />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            )
+                <div className="cova-card-shimmer" />
+
+                {isSelected ? (
+                  <div className="cova-check" aria-hidden="true">
+                    ✦
+                  </div>
+                ) : null}
+
+                {isBursting ? (
+                  <div className="cova-burst" aria-hidden="true">
+                    {Array.from({ length: 10 }).map((_, particleIndex) => (
+                      <span
+                        key={particleIndex}
+                        style={{
+                          ['--angle' as string]: `${particleIndex * 36}deg`,
+                          ['--distance' as string]: `${38 + (particleIndex % 3) * 12}px`,
+                        }}
+                      />
+                    ))}
+                  </div>
+                ) : null}
+              </button>
+            );
           })}
-        </motion.div>
-      </div>
+        </section>
 
-      {/* Selection counter pill */}
-      <div
-        className="fixed z-40 bg-[rgba(255,255,255,0.04)] border border-[rgba(201,168,76,0.15)] rounded-full font-dm-sans text-sm text-cova-gold whitespace-nowrap"
-        style={{
-          bottom: 80,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          padding: '8px 20px',
-        }}
-      >
-        {selected.length} of 2 selected
-      </div>
+        <footer className="cova-footer-panel">
+          <div className="cova-selection-copy">
+            <span className={selected.length === 2 ? 'is-complete' : ''}>
+              {selected.length} of 2 selected
+            </span>
+          </div>
 
-      {/* CTA button */}
-      <div
-        className="fixed z-40"
-        style={{
-          bottom: 16,
-          left: '50%',
-          transform: 'translateX(-50%)',
-        }}
-      >
-        <button
-          onClick={handleContinue}
-          disabled={!canContinue}
-          className="bg-cova-gold text-[#091829] font-dm-sans font-semibold text-base rounded-lg transition-all duration-[300ms] ease-out"
-          style={{
-            padding: '14px 40px',
-            border: 'none',
-            cursor: canContinue ? 'pointer' : 'default',
-            opacity: canContinue ? 1 : 0.4,
-            pointerEvents: canContinue ? 'auto' : 'none',
-          }}
-        >
-          Continue →
-        </button>
-      </div>
-    </div>
-  )
+          <button
+            type="button"
+            className={`cova-cta ${selected.length === 2 ? 'is-ready' : ''}`}
+            disabled={selected.length !== 2}
+            onClick={handleContinue}
+          >
+            See Your Matches →
+          </button>
+        </footer>
+      </section>
+    </main>
+  );
 }

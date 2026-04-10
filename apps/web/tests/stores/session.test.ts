@@ -27,10 +27,10 @@ describe('useSessionStore', () => {
     expect(useSessionStore.getState().currentStep).toBe(4)
   })
 
-  it('nextStep does not exceed step 11', () => {
-    useSessionStore.getState().setStep(11)
+  it('nextStep does not exceed step 9', () => {
+    useSessionStore.getState().setStep(9)
     useSessionStore.getState().nextStep()
-    expect(useSessionStore.getState().currentStep).toBe(11)
+    expect(useSessionStore.getState().currentStep).toBe(9)
   })
 
   it('prevStep does not go below step 1', () => {
@@ -58,8 +58,8 @@ describe('useSessionStore', () => {
     expect(useSessionStore.getState().isLoading).toBe(false)
   })
 
-  it('setStep accepts values 1 through 11', () => {
-    for (let step = 1; step <= 11; step++) {
+  it('setStep accepts values 1 through 9', () => {
+    for (let step = 1; step <= 9; step++) {
       useSessionStore.getState().setStep(step)
       expect(useSessionStore.getState().currentStep).toBe(step)
     }

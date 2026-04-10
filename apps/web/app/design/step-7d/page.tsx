@@ -310,7 +310,16 @@ export default function Step7DPage() {
       setCtaError('Something went wrong saving your preferences. Please try again.')
       return
     }
-    router.push('/design/step-8')
+
+    // Fire redesign pipeline (non-blocking — pipeline writes directly to Supabase,
+    // step-8a polls /api/rooms/status for progress)
+    fetch('/api/pipeline/redesign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ room_id: roomId }),
+    }).catch((err) => console.warn('[step-7d] Redesign pipeline trigger failed:', err))
+
+    router.push('/design/step-8a')
   }
 
   if (!hydrated) return null

@@ -18,10 +18,10 @@ const MODAL_TIMEOUT_MS = 90_000
 const MODAL_POLL_INTERVAL_MS = 3_000
 
 export async function submitRenderJob(payload: ModalJobPayload): Promise<string> {
-  const modalEndpoint = process.env.MODAL_RENDER_ENDPOINT
+  const modalEndpoint = process.env.MODAL_WEBHOOK_URL
 
   if (!modalEndpoint) {
-    throw new Error('MODAL_RENDER_ENDPOINT not configured in environment')
+    throw new Error('MODAL_WEBHOOK_URL not configured in environment')
   }
 
   const response = await fetch(modalEndpoint, {
@@ -39,10 +39,10 @@ export async function submitRenderJob(payload: ModalJobPayload): Promise<string>
 }
 
 export async function pollRenderJob(jobId: string): Promise<ModalJobStatus> {
-  const modalStatusEndpoint = process.env.MODAL_STATUS_ENDPOINT
+  const modalStatusEndpoint = process.env.MODAL_WEBHOOK_URL
 
   if (!modalStatusEndpoint) {
-    throw new Error('MODAL_STATUS_ENDPOINT not configured in environment')
+    throw new Error('MODAL_WEBHOOK_URL not configured in environment — needed for status polling')
   }
 
   const response = await fetch(`${modalStatusEndpoint}?job_id=${jobId}`)

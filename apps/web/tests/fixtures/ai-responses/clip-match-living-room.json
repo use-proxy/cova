@@ -1,0 +1,42 @@
+{
+  "products": [
+    {
+      "id": "prod-sofa-01",
+      "name": "Haven Linen Sofa",
+      "retailer": "article",
+      "price": 1899,
+      "affiliate_url": "https://www.article.com/pla/sofa?awc=art_12345",
+      "image_url": "https://example.com/sofa.jpg",
+      "match_score": 0.92,
+      "match_label": "Perfect Match",
+      "fit_label": "Great Fit",
+      "fit_reason": "Natural linen matches your warm organic style"
+    },
+    {
+      "id": "prod-table-01",
+      "name": "Slab Marble Coffee Table",
+      "retailer": "cb2",
+      "price": 799,
+      "affiliate_url": "https://www.cb2.com/table?ref=cova",
+      "image_url": "https://example.com/table.jpg",
+      "match_score": 0.88,
+      "match_label": "Very Similar",
+      "fit_label": "Great Fit",
+      "fit_reason": "White marble pairs beautifully with warm wood tones"
+    },
+    {
+      "id": "prod-lamp-01",
+      "name": "Arc Floor Lamp Brass",
+      "retailer": "westelm",
+      "price": 449,
+      "affiliate_url": "https://www.westelm.com/lamp?ref=cova",
+      "image_url": "https://example.com/lamp.jpg",
+      "match_score": 0.85,
+      "match_label": "Very Similar",
+      "fit_label": "Good Fit",
+      "fit_reason": "Brass finish complements warm color palette"
+    }
+  ],
+  "item_description": "Modern living room with natural materials",
+  "queries_used": ["linen sofa natural", "marble coffee table", "brass floor lamp"]
+}

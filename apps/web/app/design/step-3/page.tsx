@@ -1,799 +1,454 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
-import { useFingerprintStore, useSessionStore } from "@/lib/store";
-import type { StyleFingerprint } from "@/types/fingerprint";
+import { useFingerprintStore } from "@/lib/store/fingerprint";
+import "../step-1/step1.css";
+import "./step3.css";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+type Option = {
+  label: string;
+  image: string;
+  alt: string;
+};
 
-type DimKey =
-  | "colorTemperature" | "colorSaturation" | "density" | "formality"
-  | "era" | "material" | "texture" | "pattern"
-  | "lineQuality" | "lightPreference" | "nature" | "culturalInfluence";
+type Round = {
+  left: Option;
+  right: Option;
+};
 
-// Response shape from /api/quiz/next-pair
-interface PairData {
-  id: string;
-  dimension: string;
-  dimension_index: number;
-  image_a_url: string;
-  image_b_url: string;
-  image_a_vector: Record<DimKey, number>;
-  image_b_vector: Record<DimKey, number>;
-}
-
-const DIM_KEYS: DimKey[] = [
-  "colorTemperature", "colorSaturation", "density", "formality",
-  "era", "material", "texture", "pattern",
-  "lineQuality", "lightPreference", "nature", "culturalInfluence",
+const ROUNDS: Round[] = [
+  {
+    left: {
+      label: "Calm Warm Woods",
+      image:
+        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/wl9fpGVTqfYb_712c46ca.jpg",
+      alt: "Serene interior with warm woods and restrained styling",
+    },
+    right: {
+      label: "Modern Luxe",
+      image:
+        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/OqavQS3nn2Of_9e9fb8e6.jpg",
+      alt: "Modern luxury interior with polished materials and layered lighting",
+    },
+  },
+  {
+    left: {
+      label: "Industrial Edge",
+      image:
+        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/sSOO9vSbaCqI_41f3927f.jpg",
+      alt: "Industrial loft interior with metal, concrete, and moody light",
+    },
+    right: {
+      label: "Breezy & Light",
+      image:
+        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/jibl1ZhpOQ62_055cad1a.jpg",
+      alt: "Breezy interior with pale textiles and airy natural light",
+    },
+  },
+  {
+    left: {
+      label: "Layered & Bold",
+      image:
+        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/jKNihu1uil8r_f0d63957.jpg",
+      alt: "Maximalist room layered with pattern, art, and color",
+    },
+    right: {
+      label: "Bright & Airy",
+      image:
+        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/PIe6acCOKi2m_d8ea754d.jpg",
+      alt: "Bright interior with clean lines and neutral tones",
+    },
+  },
+  {
+    left: {
+      label: "Walnut Warmth",
+      image:
+        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/Usn3xSO69ETo_a5618c3b.jpg",
+      alt: "Room with walnut tones and iconic silhouettes",
+    },
+    right: {
+      label: "Eclectic Layering",
+      image:
+        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/LSlC07ju3zi7_1b911039.jpg",
+      alt: "Eclectic living room with textiles, plants, and expressive styling",
+    },
+  },
+  {
+    left: {
+      label: "Art Deco Drama",
+      image:
+        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/hSdez6NFyEQu_d9775122.jpg",
+      alt: "Art Deco interior with geometry, brass, and theatrical contrast",
+    },
+    right: {
+      label: "Quiet Tactile",
+      image:
+        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/eaiXimstWn9f_7a2cf6ba.jpg",
+      alt: "Quiet room with tactile textures and calm imperfect forms",
+    },
+  },
+  {
+    left: {
+      label: "Contemporary Gallery",
+      image:
+        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/kCu9jgeFZsGf_20a24f20.jpg",
+      alt: "Contemporary interior with sculptural furniture and open space",
+    },
+    right: {
+      label: "Organic Modern",
+      image:
+        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/r1TP9VIo8yZL_6bbf1ff0.jpg",
+      alt: "Organic modern room with curved forms and natural materials",
+    },
+  },
+  {
+    left: {
+      label: "Serene Retreat",
+      image:
+        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/foQ4nZPgizp1_5ae5544b.jpg",
+      alt: "Serene sitting room with minimal furnishings",
+    },
+    right: {
+      label: "Industrial Loft",
+      image:
+        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/a6OpNfqj2Tzi_f131b612.jpg",
+      alt: "Industrial apartment interior with steel framing and exposed structure",
+    },
+  },
+  {
+    left: {
+      label: "Sun-Washed Studio",
+      image:
+        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/Y7za5C9ROKt9_71a8a29c.jpg",
+      alt: "Sitting room with sun-washed palette and soft textures",
+    },
+    right: {
+      label: "Salon Maximalism",
+      image:
+        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/gJMuNAU1m5iy_5b4325bf.jpg",
+      alt: "Salon rich in objects, textiles, and saturated accents",
+    },
+  },
+  {
+    left: {
+      label: "Daylight Studio",
+      image:
+        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/foQ4nZPgizp1_5ae5544b.jpg",
+      alt: "Living room with airy daylight and oak details",
+    },
+    right: {
+      label: "Teak Lounge",
+      image:
+        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/swRjh6koCRGO_1d9e122c.jpg",
+      alt: "Lounge with teak, leather, and low-slung forms",
+    },
+  },
+  {
+    left: {
+      label: "Collected Escape",
+      image:
+        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/jXTFKclXF75e_f67f12cb.jpg",
+      alt: "Interior with layered rugs and collected décor",
+    },
+    right: {
+      label: "Art Deco Suite",
+      image:
+        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/c9rKwfiPJmZn_48f4b95f.jpg",
+      alt: "Art Deco suite with jewel tones and geometric detailing",
+    },
+  },
+  {
+    left: {
+      label: "Raw & Calm",
+      image:
+        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/qt3Z6Ru5Paln_a7023b25.jpg",
+      alt: "Shelter with raw wood and soft plaster tones",
+    },
+    right: {
+      label: "Contemporary Loft",
+      image:
+        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/tHdsVD35bNhW_45615cf1.jpg",
+      alt: "Contemporary loft with crisp forms and gallery-like restraint",
+    },
+  },
+  {
+    left: {
+      label: "Organic Haven",
+      image:
+        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/eeJ7Rl2WER8X_8379fe2f.jpg",
+      alt: "Organic haven with stone, linen, and curved silhouettes",
+    },
+    right: {
+      label: "Modern Luxe Noir",
+      image:
+        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/OqavQS3nn2Of_9e9fb8e6.jpg",
+      alt: "Dark modern luxury interior with brass accents and dramatic mood",
+    },
+  },
 ];
 
-const DIM_COUNT = DIM_KEYS.length; // 12
-const NEUTRAL_MIDPOINT = 0.5;
-const TOTAL_PAIRS = 12;
+const COMPLETION_BACKGROUND =
+  "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/cova-starburst-transition-bg-Qpxi2XBexvgAuRLxVBuzNG.webp";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+const COMPLETION_ROUTE = "/design/step-4";
 
-function makeIdentityCov(scale: number): number[][] {
-  return Array.from({ length: DIM_COUNT }, (_, i) =>
-    Array.from({ length: DIM_COUNT }, (__, j) => (i === j ? scale : 0))
-  );
-}
-
-function makeNeutralDims(): Record<DimKey, number> {
-  const d = {} as Record<DimKey, number>;
-  for (const k of DIM_KEYS) d[k] = NEUTRAL_MIDPOINT;
-  return d;
-}
-
-function clamp(v: number, lo: number, hi: number) {
-  return Math.max(lo, Math.min(hi, v));
-}
-
-// Build a warm-start fingerprint from anchor selection dimensions.
-// Called when no phaseA dims are provided (entry from new step-2 flow).
-function buildNeutralFingerprint(): StyleFingerprint {
-  return {
-    dimensions: makeNeutralDims() as StyleFingerprint["dimensions"],
-    covariance: makeIdentityCov(0.5),
-    confidence: 0.3,
-  };
-}
-
-// ── Phase B Component (Pairwise Quiz) ─────────────────────────────────────────
-//
-// Full-viewport two-image layout matching SITE.md PAGE 4.
-// All quiz logic preserved from original implementation.
-
-interface PhaseBProps {
-  warmStart: StyleFingerprint;
-  onComplete: (finalFP: StyleFingerprint) => void;
-}
-
-function PhaseB({ warmStart, onComplete }: PhaseBProps) {
-  const { addPhaseBResponse } = useFingerprintStore();
-  const [pairNumber, setPairNumber] = useState(1);
-  const [currentPair, setCurrentPair] = useState<PairData | null>(null);
-  const [completedPairIds, setCompletedPairIds] = useState<string[]>([]);
-  const [responsesPerDim, setResponsesPerDim] = useState<Record<DimKey, number>>(() => {
-    const o = {} as Record<DimKey, number>;
-    for (const k of DIM_KEYS) o[k] = 0;
-    return o;
-  });
-  const [localFingerprint, setLocalFingerprint] = useState<StyleFingerprint>(warmStart);
-  const [pairShownAt, setPairShownAt] = useState(Date.now());
-  const [isLoadingPair, setIsLoadingPair] = useState(true);
-  const [chosenSide, setChosenSide] = useState<"A" | "B" | null>(null);
-  const [flashSide, setFlashSide] = useState<"A" | "B" | null>(null);
-  const loadedRef = useRef(false);
-
-  const loadNextPair = useCallback(
-    async (fp: StyleFingerprint, completed: string[], count: number) => {
-      setIsLoadingPair(true);
-      try {
-        const res = await fetch("/api/quiz/next-pair", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            completedPairIds: completed,
-            currentFingerprint: fp,
-            responseCount: count,
-          }),
-        });
-        if (!res.ok) throw new Error("next-pair failed");
-        const data = (await res.json()) as { pair: PairData | null; quizComplete: boolean };
-        if (data.quizComplete || !data.pair) {
-          setCurrentPair(null);
-          onComplete(fp);
-          return;
-        }
-        setCurrentPair(data.pair);
-        setPairShownAt(Date.now());
-      } catch {
-        setCurrentPair(null);
-      } finally {
-        setIsLoadingPair(false);
-      }
-    },
-    [onComplete]
-  );
-
-  useEffect(() => {
-    if (loadedRef.current) return;
-    loadedRef.current = true;
-    void loadNextPair(warmStart, [], 0);
-  }, [loadNextPair, warmStart]);
-
-  // Keyboard support: A/ArrowLeft = left choice, D/ArrowRight = right choice
-  useEffect(() => {
-    function handleKey(e: KeyboardEvent) {
-      if (chosenSide) return;
-      if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') {
-        handlePairResponse('A');
-      } else if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') {
-        handlePairResponse('B');
-      }
-    }
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chosenSide, currentPair]);
-
-  function handlePairResponse(side: "A" | "B") {
-    if (!currentPair || chosenSide) return;
-    const responseTimeMs = Date.now() - pairShownAt;
-
-    const chosenVec = side === "A" ? currentPair.image_a_vector : currentPair.image_b_vector;
-    const rejectedVec = side === "A" ? currentPair.image_b_vector : currentPair.image_a_vector;
-
-    // Local fingerprint update
-    const lambda = Math.min(3, 1 + 500 / Math.max(responseTimeMs, 100));
-    const newDims = { ...localFingerprint.dimensions } as Record<DimKey, number>;
-
-    DIM_KEYS.forEach((dim) => {
-      const delta =
-        ((chosenVec[dim] ?? NEUTRAL_MIDPOINT) - (rejectedVec[dim] ?? NEUTRAL_MIDPOINT)) *
-        0.15 *
-        lambda;
-      newDims[dim] = clamp((newDims[dim] ?? NEUTRAL_MIDPOINT) + delta, 0, 1);
-    });
-
-    const newCounts = { ...responsesPerDim };
-    if (currentPair.dimension && (currentPair.dimension as DimKey) in newCounts) {
-      newCounts[currentPair.dimension as DimKey] += 1;
-    }
-    const newCov: number[][] = makeIdentityCov(0);
-    let confSum = 0;
-    DIM_KEYS.forEach((dim, i) => {
-      const dimConf = Math.min(1, newCounts[dim] / 4);
-      newCov[i]![i] = 1 - dimConf;
-      confSum += dimConf;
-    });
-    const confidence = confSum / DIM_COUNT;
-
-    const updatedFP: StyleFingerprint = {
-      dimensions: newDims as StyleFingerprint["dimensions"],
-      covariance: newCov,
-      confidence,
-    };
-    setLocalFingerprint(updatedFP);
-    setResponsesPerDim(newCounts);
-
-    addPhaseBResponse({
-      pairId: currentPair.id,
-      chosenSide: side,
-      responseTimeMs,
-    });
-
-    const newCompleted = [...completedPairIds, currentPair.id];
-    setCompletedPairIds(newCompleted);
-    setChosenSide(side);
-
-    // Flash gold overlay
-    setFlashSide(side);
-    setTimeout(() => setFlashSide(null), 300);
-
-    setTimeout(() => {
-      setChosenSide(null);
-      if (pairNumber >= TOTAL_PAIRS) {
-        onComplete(updatedFP);
-      } else {
-        setPairNumber((p) => p + 1);
-        void loadNextPair(updatedFP, newCompleted, newCompleted.length);
-      }
-    }, 650);
-  }
-
-  const progressPct = ((pairNumber - 1) / TOTAL_PAIRS) * 100;
-
-  return (
-    <div className="min-h-screen bg-[#091829] relative overflow-hidden">
-      {/* Gold progress bar */}
-      <div className="fixed top-0 left-0 right-0 h-[3px] bg-[rgba(201,168,76,0.15)] z-[60]">
-        <motion.div
-          className="h-full bg-cova-gold"
-          animate={{ width: `${progressPct}%` }}
-          transition={{ type: 'spring', stiffness: 120, damping: 20 }}
-        />
-      </div>
-
-      {/* Top bar */}
-      <div
-        className="fixed top-[3px] left-0 right-0 h-[53px] flex items-center justify-between px-6 border-b border-[rgba(201,168,76,0.1)] z-50"
-        style={{
-          background: 'rgba(9,24,41,0.8)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-        }}
-      >
-        <span className="font-playfair italic text-xl text-cova-gold tracking-[0.05em]">
-          Cova
-        </span>
-        {/* Round counter */}
-        <span className="font-dm-sans text-[13px] text-cova-muted">
-          {pairNumber} of {TOTAL_PAIRS}
-        </span>
-      </div>
-
-      {/* Loading skeleton */}
-      {(isLoadingPair || !currentPair) && (
-        <div className="absolute inset-0 flex">
-          {[0, 1].map((i) => (
-            <div
-              key={i}
-              className="flex-1 bg-[rgba(201,168,76,0.08)]"
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Two-image full-viewport layout */}
-      {!isLoadingPair && currentPair && (
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={pairNumber}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="absolute inset-0"
-          >
-            {/* Left image — A */}
-            <div
-              onClick={() => handlePairResponse('A')}
-              className="absolute left-0 top-0 w-1/2 h-screen overflow-hidden"
-              style={{ cursor: chosenSide ? 'default' : 'pointer' }}
-            >
-              <Image
-                src={currentPair.image_a_url}
-                alt="Option A"
-                fill
-                style={{ objectFit: 'cover' }}
-                sizes="50vw"
-                priority
-              />
-              {/* A label */}
-              <div
-                className="absolute top-[72px] left-4 bg-[rgba(255,255,255,0.07)] border border-[rgba(201,168,76,0.15)] rounded-full font-dm-sans text-[12px] text-cova-ivory"
-                style={{ padding: '4px 12px' }}
-              >
-                A
-              </div>
-              {/* Gold flash overlay */}
-              <AnimatePresence>
-                {flashSide === 'A' && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 0.3 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="absolute inset-0 bg-[rgba(201,168,76,0.3)] pointer-events-none"
-                  />
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Right image — B */}
-            <div
-              onClick={() => handlePairResponse('B')}
-              className="absolute right-0 top-0 w-1/2 h-screen overflow-hidden"
-              style={{ cursor: chosenSide ? 'default' : 'pointer' }}
-            >
-              <Image
-                src={currentPair.image_b_url}
-                alt="Option B"
-                fill
-                style={{ objectFit: 'cover' }}
-                sizes="50vw"
-                priority
-              />
-              {/* B label */}
-              <div
-                className="absolute top-[72px] right-4 bg-[rgba(255,255,255,0.07)] border border-[rgba(201,168,76,0.15)] rounded-full font-dm-sans text-[12px] text-cova-ivory"
-                style={{ padding: '4px 12px' }}
-              >
-                B
-              </div>
-              {/* Gold flash overlay */}
-              <AnimatePresence>
-                {flashSide === 'B' && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 0.3 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="absolute inset-0 bg-[rgba(201,168,76,0.3)] pointer-events-none"
-                  />
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Center divider */}
-            <div
-              className="absolute top-0 bottom-0 w-px bg-[rgba(201,168,76,0.3)] z-10 pointer-events-none"
-              style={{ left: '50%', transform: 'translateX(-50%)' }}
-            />
-            {/* OR pill at center */}
-            <div
-              className="absolute bg-cova-gold text-[#091829] rounded-full font-dm-sans font-semibold text-[12px] z-[11] pointer-events-none"
-              style={{
-                left: '50%',
-                top: '50%',
-                transform: 'translate(-50%, -50%)',
-                padding: '6px 12px',
-              }}
-            >
-              OR
-            </div>
-          </motion.div>
-        </AnimatePresence>
-      )}
-    </div>
-  );
-}
-
-// ── Phase C Component ─────────────────────────────────────────────────────────
-//
-// Phase C — Validation Render Experience.
-// Generates 3 FLUX 1.1 Pro previews, lets user pick, optionally tweak, then saves.
-
-interface RenderSlot {
-  url: string | null;
-  label: string;
-  fingerprint: StyleFingerprint;
-  error?: string;
-}
-
-interface PhaseCProps {
-  initialFingerprint: StyleFingerprint;
-  onBack: () => void;
-}
-
-function PhaseC({ initialFingerprint, onBack }: PhaseCProps) {
+export default function CovaStyleQuizPage() {
   const router = useRouter();
-  const fingerprintStore = useFingerprintStore();
-  const sessionStore = useSessionStore();
+  const totalRounds = ROUNDS.length;
+  const [activeRound, setActiveRound] = useState(0);
+  const [selectedSide, setSelectedSide] = useState<"left" | "right" | null>(
+    null,
+  );
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isComplete, setIsComplete] = useState(false);
 
-  const roomType = fingerprintStore.roomType ?? "bedroom";
+  // Track when current round started for response time measurement
+  const roundStartRef = useRef<number>(Date.now())
 
-  const [renders, setRenders] = useState<RenderSlot[] | null>(null);
-  const [isLoadingRenders, setIsLoadingRenders] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
-  const [confirmedFingerprint, setConfirmedFingerprint] =
-    useState<StyleFingerprint>(initialFingerprint);
-  const [tweakOpen, setTweakOpen] = useState(false);
-  const [isRetweaking, setIsRetweaking] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const loadedRef = useRef(false);
-  const tweakTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const fetchValidationRenders = useCallback(
-    async (fp: StyleFingerprint): Promise<RenderSlot[] | null> => {
-      const res = await fetch("/api/quiz/validation-renders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fingerprint: fp, roomType }),
-      });
-      if (!res.ok) return null;
-      const data = (await res.json()) as { renders: RenderSlot[] };
-      return data.renders ?? null;
-    },
-    [roomType]
+  const currentRound = ROUNDS[activeRound];
+  const roundNumber = activeRound + 1;
+  const progressValue = useMemo(
+    () => ((activeRound + (selectedSide ? 1 : 0)) / totalRounds) * 100,
+    [activeRound, selectedSide, totalRounds],
   );
 
   useEffect(() => {
-    if (loadedRef.current) return;
-    loadedRef.current = true;
-    void (async () => {
-      setIsLoadingRenders(true);
-      setLoadError(null);
-      const slots = await fetchValidationRenders(initialFingerprint);
-      if (!slots || slots.length === 0) {
-        setLoadError("Couldn't generate previews. Tap to retry.");
-      } else {
-        setRenders(slots);
+    const checkAuth = async () => {
+      const { createBrowserClient } = await import('@/lib/supabase/client')
+      const supabase = createBrowserClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) router.push('/auth?next=/design/step-3')
+    }
+    checkAuth()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const handleChoice = (side: "left" | "right") => {
+    if (selectedSide || isTransitioning || isComplete) return;
+    // Record pairwise response to fingerprint store (cookie-persisted)
+    const responseTimeMs = Date.now() - roundStartRef.current
+    useFingerprintStore.getState().addPhaseBResponse({
+      pairId: String(activeRound),
+      chosenSide: side === "left" ? "A" : "B",
+      responseTimeMs,
+    })
+    setSelectedSide(side);
+  };
+
+  useEffect(() => {
+    if (!selectedSide || isTransitioning || isComplete) return;
+
+    const settleTimer = window.setTimeout(() => {
+      if (activeRound === totalRounds - 1) {
+        setIsComplete(true);
+        return;
       }
-      setIsLoadingRenders(false);
-    })();
-  }, [fetchValidationRenders, initialFingerprint]);
 
-  function handleSelectCard(idx: number) {
-    if (!renders || !renders[idx]) return;
-    const slot = renders[idx];
-    if (!slot.url) return;
-    setSelectedIdx(idx);
-    setConfirmedFingerprint(slot.fingerprint);
-  }
+      setIsTransitioning(true);
+      window.setTimeout(() => {
+        setActiveRound((prev) => prev + 1);
+        setSelectedSide(null);
+        setIsTransitioning(false);
+        // Reset round start time for accurate response time tracking
+        roundStartRef.current = Date.now()
+      }, 540);
+    }, 180);
 
-  function handleTweakChange(
-    dim: keyof StyleFingerprint["dimensions"],
-    value: number
-  ) {
-    setConfirmedFingerprint((prev) => ({
-      ...prev,
-      dimensions: { ...prev.dimensions, [dim]: clamp(value, 0, 1) },
-    }));
-    if (tweakTimerRef.current) clearTimeout(tweakTimerRef.current);
-    tweakTimerRef.current = setTimeout(() => {
-      void runTweakRerender();
-    }, 600);
-  }
+    return () => window.clearTimeout(settleTimer);
+  }, [activeRound, isComplete, isTransitioning, selectedSide, totalRounds]);
 
-  async function runTweakRerender() {
-    if (!renders) return;
-    setIsRetweaking(true);
-    try {
-      const res = await fetch("/api/quiz/validation-renders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fingerprint: confirmedFingerprint,
-          roomType,
-        }),
-      });
-      if (!res.ok) throw new Error("retweak failed");
-      const data = (await res.json()) as { renders: RenderSlot[] };
-      const first = data.renders?.[0];
-      if (first && first.url) {
-        setRenders((prev) => {
-          if (!prev) return prev;
-          const next = [...prev];
-          next[0] = { ...first, label: "Your tweaked style" };
-          return next;
-        });
-        setSelectedIdx(0);
+  useEffect(() => {
+    if (!isComplete) return;
+
+    const finishTimer = window.setTimeout(() => {
+      router.push(COMPLETION_ROUTE);
+    }, 1500);
+
+    return () => window.clearTimeout(finishTimer);
+  }, [isComplete, router]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (selectedSide || isTransitioning || isComplete) return;
+
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        handleChoice("left");
       }
-    } catch {
-      /* silent — tweak errors are non-fatal */
-    } finally {
-      setIsRetweaking(false);
-    }
-  }
 
-  async function handleConfirm() {
-    setIsSubmitting(true);
-    setSubmitError(null);
-    try {
-      const res = await fetch("/api/quiz/fingerprint", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phase_a_selections: fingerprintStore.phaseASelections,
-          phase_b_responses: fingerprintStore.phaseBResponses,
-          room_type: roomType,
-          budget_tier: fingerprintStore.budgetTier,
-          phase_c_confirmation: true,
-          confirmed_fingerprint: confirmedFingerprint,
-        }),
-      });
-      if (!res.ok) throw new Error("save failed");
-      const data = (await res.json()) as {
-        fingerprint: StyleFingerprint;
-        style_name: string;
-        style_tags: string[];
-      };
-      fingerprintStore.setFingerprint(
-        data.fingerprint,
-        data.style_name,
-        data.style_tags
-      );
-      sessionStore.setStep(4);
-      router.push("/design/step-4");
-    } catch {
-      setSubmitError("Something went wrong — tap to retry");
-      setIsSubmitting(false);
-    }
-  }
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        handleChoice("right");
+      }
+    };
 
-  async function handleRetryLoad() {
-    loadedRef.current = false;
-    setRenders(null);
-    setLoadError(null);
-    setIsLoadingRenders(true);
-    const slots = await fetchValidationRenders(initialFingerprint);
-    if (!slots || slots.length === 0) {
-      setLoadError("Couldn't generate previews. Tap to retry.");
-    } else {
-      setRenders(slots);
-    }
-    setIsLoadingRenders(false);
-  }
-
-  const TWEAK_SLIDERS: Array<{
-    key: keyof StyleFingerprint["dimensions"];
-    lowLabel: string;
-    highLabel: string;
-  }> = [
-    { key: "colorTemperature", lowLabel: "Cooler", highLabel: "Warmer" },
-    { key: "density", lowLabel: "Minimal", highLabel: "Layered" },
-    { key: "lightPreference", lowLabel: "Calm", highLabel: "Dramatic" },
-    { key: "material", lowLabel: "Manufactured", highLabel: "Natural" },
-  ];
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isComplete, isTransitioning, selectedSide]);
 
   return (
-    <div className="min-h-screen bg-[#091829] font-dm-sans">
-      {/* Top bar */}
-      <div
-        className="sticky top-0 z-50 h-14 flex items-center justify-between px-6 border-b border-[rgba(201,168,76,0.1)]"
-        style={{
-          background: 'rgba(9,24,41,0.8)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-        }}
-      >
-        <span className="font-playfair italic text-xl text-cova-gold tracking-[0.05em]">
-          Cova
-        </span>
-        <span className="font-dm-sans text-[13px] text-cova-muted">
-          Step 3 of 7
-        </span>
-      </div>
+    <main className="cova-shell">
+      <div className="cova-noise" aria-hidden="true" />
+      <div className="cova-glow" aria-hidden="true" />
 
-      <div className="max-w-[900px] mx-auto px-6 pt-12 pb-20">
-        <h1 className="font-playfair text-4xl font-normal text-cova-ivory text-center mb-2">
-          Is this your style?
-        </h1>
-        <p className="font-dm-sans text-base text-cova-muted text-center mb-10">
-          Pick the one that feels right
-        </p>
+      {isComplete ? (
+        <div className="cova-completion-screen" aria-live="polite">
+          <img
+            className="cova-completion-background"
+            src={COMPLETION_BACKGROUND}
+            alt=""
+            aria-hidden="true"
+          />
+          <div className="cova-completion-star">✦</div>
+          <p className="cova-completion-copy">
+            Building your style fingerprint...
+          </p>
+        </div>
+      ) : null}
 
-        {/* Loading state */}
-        {isLoadingRenders && (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <motion.div
-              animate={{ opacity: [0.3, 1, 0.3], scale: [0.9, 1.1, 0.9] }}
-              transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-              className="w-3 h-3 rounded-full bg-cova-gold"
-            />
-            <p className="font-dm-sans text-sm text-cova-ivory">
-              Generating your style...
-            </p>
-          </div>
-        )}
+      <section className="cova-page">
+        <div
+          className="cova-progress-rail"
+          aria-label={`Progress ${Math.round(progressValue)} percent`}
+        >
+          <div
+            className="cova-progress-fill"
+            style={{ width: `${progressValue}%` }}
+          />
+        </div>
 
-        {/* Error state */}
-        {!isLoadingRenders && loadError && (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <p className="font-dm-sans text-sm text-center" style={{ color: '#E87070' }}>
-              {loadError}
-            </p>
-            <button
-              onClick={handleRetryLoad}
-              className="rounded-lg bg-[rgba(255,255,255,0.04)] border border-[rgba(201,168,76,0.15)] text-cova-ivory font-dm-sans text-sm cursor-pointer"
-              style={{ padding: '8px 20px' }}
+        <header className="cova-header">
+          <button
+            className="cova-back-button"
+            type="button"
+            aria-label="Go back"
+            onClick={() => router.push('/design/step-2')}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              className="cova-back-icon"
             >
-              Retry
+              <path
+                d="M15.5 19 8.5 12l7-7"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+
+          <div className="cova-brand-lockup">
+            <div className="cova-progress-copy">
+              Round {roundNumber} of {totalRounds}
+            </div>
+            <button
+              type="button"
+              className="cova-brand-wordmark"
+              onClick={() => router.push('/')}
+              aria-label="Go to home"
+            >
+              Cova
             </button>
           </div>
-        )}
 
-        {/* Render cards */}
-        {!isLoadingRenders && !loadError && renders && (
-          <>
-            <div className="flex flex-row gap-4 mb-8 flex-wrap">
-              {renders.map((slot, idx) => {
-                const isSel = selectedIdx === idx;
-                const isBroken = !slot.url;
-                return (
-                  <motion.div
-                    key={idx}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.35, delay: idx * 0.15 }}
-                    onClick={() => !isBroken && handleSelectCard(idx)}
-                    className="flex-1 min-w-[200px] rounded-xl overflow-hidden bg-[rgba(255,255,255,0.04)] transition-all duration-200 ease-out"
-                    style={{
-                      cursor: isBroken ? 'not-allowed' : 'pointer',
-                      border: isSel
-                        ? '2px solid #C9A84C'
-                        : '2px solid rgba(201,168,76,0.15)',
-                      opacity: isBroken ? 0.5 : 1,
-                    }}
-                  >
-                    <div className="relative aspect-square">
-                      {slot.url ? (
-                        <Image
-                          src={slot.url}
-                          alt={slot.label}
-                          fill
-                          style={{ objectFit: 'cover' }}
-                          sizes="(max-width: 900px) 100vw, 300px"
-                          unoptimized
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center font-dm-sans text-[12px] text-cova-muted">
-                          Couldn&apos;t render
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-2 px-3">
-                      <p className="font-dm-sans text-[12px] text-cova-ivory text-center">
-                        {slot.label}
-                      </p>
-                    </div>
-                  </motion.div>
-                );
-              })}
+          <div className="cova-header-spacer" aria-hidden="true" />
+        </header>
+
+        <div className="cova-eyebrow-band">
+          <div className="cova-divider-gold" aria-hidden="true" />
+          <p className="cova-eyebrow">Style Quiz</p>
+          <div className="cova-divider-gold" aria-hidden="true" />
+        </div>
+
+        <section className="cova-editorial-intro">
+          <h1>Which feels more like you?</h1>
+          <p className="cova-subcopy">
+            Go with your gut — there&apos;s no wrong answer.
+          </p>
+        </section>
+
+        <section className="cova-comparison-stage" aria-live="polite">
+          <div
+            className={`cova-comparison-frame cova-cards-container ${selectedSide ? "has-selection" : ""} ${isTransitioning ? "is-transitioning" : ""}`}
+          >
+            <ChoiceCard
+              option={currentRound.left}
+              side="left"
+              selectedSide={selectedSide}
+              onSelect={handleChoice}
+            />
+
+            <div
+              className={`cova-or-divider ${selectedSide ? "is-hidden" : ""}`}
+              aria-hidden="true"
+            >
+              <span className="cova-divider-line" />
+              <span className="cova-or-badge">OR</span>
+              <span className="cova-divider-line" />
             </div>
 
-            {submitError && (
-              <p
-                className="font-dm-sans text-sm text-center mb-4"
-                style={{ color: '#E87070' }}
-              >
-                {submitError}
-              </p>
-            )}
+            <ChoiceCard
+              option={currentRound.right}
+              side="right"
+              selectedSide={selectedSide}
+              onSelect={handleChoice}
+            />
+          </div>
+        </section>
 
-            <div className="max-w-[400px] mx-auto">
-              <button
-                onClick={handleConfirm}
-                disabled={selectedIdx === null || isSubmitting}
-                className="w-full font-dm-sans font-semibold text-[15px] rounded-lg border-none mb-4 transition-all duration-200 ease-out"
-                style={{
-                  padding: '14px 0',
-                  background:
-                    selectedIdx === null || isSubmitting
-                      ? 'rgba(201,168,76,0.3)'
-                      : '#C9A84C',
-                  color:
-                    selectedIdx === null || isSubmitting
-                      ? 'rgba(201,168,76,0.5)'
-                      : '#091829',
-                  cursor:
-                    selectedIdx === null || isSubmitting ? 'not-allowed' : 'pointer',
-                }}
-              >
-                {isSubmitting ? "Saving..." : "This is my style →"}
-              </button>
-
-              <div className="text-center mb-4">
-                <button
-                  onClick={() => setTweakOpen((v) => !v)}
-                  className="font-dm-sans text-[13px] text-cova-muted bg-transparent border-none cursor-pointer"
-                >
-                  {tweakOpen ? "Close tweaks" : "Tweak your style"}
-                </button>
-              </div>
-
-              {tweakOpen && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="bg-[rgba(255,255,255,0.04)] border border-[rgba(201,168,76,0.15)] rounded-xl p-4 mb-4"
-                >
-                  {TWEAK_SLIDERS.map((s) => {
-                    const val = confirmedFingerprint.dimensions[s.key] ?? 0.5;
-                    return (
-                      <div key={s.key} className="mb-4">
-                        <div className="flex justify-between mb-1">
-                          <span className="font-dm-sans text-[12px] text-cova-muted">
-                            {s.lowLabel}
-                          </span>
-                          <span className="font-dm-sans text-[12px] text-cova-muted">
-                            {s.highLabel}
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min={0}
-                          max={1}
-                          step={0.05}
-                          value={val}
-                          onChange={(e) =>
-                            handleTweakChange(s.key, parseFloat(e.target.value))
-                          }
-                          className="w-full"
-                          style={{ accentColor: '#C9A84C' }}
-                        />
-                      </div>
-                    );
-                  })}
-                  {isRetweaking && (
-                    <p className="font-dm-sans text-[12px] text-cova-muted text-center mt-2">
-                      Re-rendering...
-                    </p>
-                  )}
-                </motion.div>
-              )}
-
-              <button
-                onClick={onBack}
-                className="w-full font-dm-sans text-sm text-cova-muted bg-transparent border-none cursor-pointer text-center py-2"
-              >
-                ← Back
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
+        <footer className="cova-footer">
+          <p>12 quick choices. That&apos;s all we need.</p>
+          <div className="cova-dot-row" aria-hidden="true">
+            {ROUNDS.map((_, index) => {
+              const completed =
+                index < activeRound ||
+                (index === activeRound && selectedSide);
+              return (
+                <span
+                  key={index}
+                  className={`cova-progress-dot ${completed ? "is-complete" : ""}`}
+                />
+              );
+            })}
+          </div>
+        </footer>
+      </section>
+    </main>
   );
 }
 
-// ── Root Page ─────────────────────────────────────────────────────────────────
-//
-// Phase A (anchor selection) has moved to step-2.
-// This page starts directly at Phase B (pairwise comparison).
+type ChoiceCardProps = {
+  option: Option;
+  side: "left" | "right";
+  selectedSide: "left" | "right" | null;
+  onSelect: (side: "left" | "right") => void;
+};
 
-type QuizPhase = "B" | "C";
-
-export default function StyleQuizPage() {
-  const router = useRouter();
-  const { roomType } = useFingerprintStore();
-
-  const [phase, setPhase] = useState<QuizPhase>("B");
-  const [warmStart] = useState<StyleFingerprint>(() => buildNeutralFingerprint());
-  const [phaseBResult, setPhaseBResult] = useState<StyleFingerprint | null>(null);
-
-  useEffect(() => {
-    if (!roomType) {
-      router.push("/design/step-1");
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  function handlePhaseBComplete(finalFP: StyleFingerprint) {
-    setPhaseBResult(finalFP);
-    setPhase("C");
-  }
+function ChoiceCard({ option, side, selectedSide, onSelect }: ChoiceCardProps) {
+  const isSelected = selectedSide === side;
+  const isDimmed = selectedSide !== null && selectedSide !== side;
 
   return (
-    <AnimatePresence mode="wait">
-      {phase === "B" && (
-        <motion.div
-          key="phase-b"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <PhaseB
-            warmStart={warmStart}
-            onComplete={handlePhaseBComplete}
-          />
-        </motion.div>
-      )}
-
-      {phase === "C" && phaseBResult && (
-        <motion.div
-          key="phase-c"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <PhaseC
-            initialFingerprint={phaseBResult}
-            onBack={() => setPhase("B")}
-          />
-        </motion.div>
-      )}
-    </AnimatePresence>
+    <div className={`cova-choice-wrap ${isDimmed ? "is-dimmed" : ""}`}>
+      <button
+        type="button"
+        className={`cova-choice-card ${isSelected ? "is-selected selecting" : ""}`}
+        onClick={() => onSelect(side)}
+        aria-pressed={isSelected}
+        aria-label={`Choose ${option.label}`}
+        style={{
+          backgroundImage: `url(${option.image})`,
+        }}
+      >
+        {isSelected ? <span className="cova-choice-check">✦</span> : null}
+        <span className="cova-sr-only">{option.alt}</span>
+      </button>
+      <span className="cova-choice-label">{option.label}</span>
+    </div>
   );
 }

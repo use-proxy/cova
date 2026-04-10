@@ -258,16 +258,52 @@ function dominantDescriptors(
   );
 }
 
+// Forbidden style names must never appear in user-facing strings (CLAUDE.md rule 8).
+// Strip them from any user-provided text before including in prompts.
+const FORBIDDEN_STYLE_NAMES = ["japandi", "bohemian", "coastal", "mid-century modern", "minimalist"];
+
+// Replacement map: forbidden label → descriptive phrase that FLUX understands better anyway.
+const STYLE_NAME_REPLACEMENTS: Record<string, string> = {
+  "japandi": "calm warm naturalism with clean lines",
+  "minimalist": "deliberately uncluttered with intentional negative space",
+  "bohemian": "eclectic layered with rich textural depth",
+  "coastal": "breezy light-filled with natural weathered materials",
+  "mid-century modern": "warm retro curves with teak and brass accents",
+};
+
+/** Replace forbidden style labels with descriptive phrases in the final prompt. */
+export function sanitizeForbiddenStyleNames(prompt: string): string {
+  let sanitized = prompt;
+  for (const [name, replacement] of Object.entries(STYLE_NAME_REPLACEMENTS)) {
+    sanitized = sanitized.replace(new RegExp(name, "gi"), replacement);
+  }
+  return sanitized;
+}
+
+function sanitizeUserText(text: string): string {
+  let result = text;
+  for (const name of FORBIDDEN_STYLE_NAMES) {
+    result = result.replace(new RegExp(name, "gi"), "").replace(/\s{2,}/g, " ").trim();
+  }
+  // Strip HTML tags — user text goes to image models, not browsers,
+  // but keeping tags adds noise and could confuse the model.
+  result = result.replace(/<[^>]*>/g, "").trim();
+  return result;
+}
+
 export function buildFluxPrompt(params: BuildFluxPromptParams): string {
   const {
     fingerprint,
     roomType,
     budgetTier,
-    inclusions,
-    keptItemLabels,
+    inclusions: rawInclusions,
+    keptItemLabels: rawKeptItemLabels,
     preservationInstructions,
     quizPreviewMode,
   } = params;
+  // Sanitize all user-provided text inputs
+  const inclusions = rawInclusions.map(sanitizeUserText).filter(Boolean);
+  const keptItemLabels = rawKeptItemLabels.map(sanitizeUserText).filter(Boolean);
   const d = fingerprint.dimensions;
   const roomTypeStr = roomType.replace(/_/g, " ");
 
@@ -378,10 +414,10 @@ export function buildFluxPrompt(params: BuildFluxPromptParams): string {
       `[buildFluxPrompt] Prompt was ${totalWords} words, truncated to ${MAX_WORDS} ` +
         `(preservation detail trimmed; core transformation preserved).`,
     );
-    return truncated;
+    return sanitizeForbiddenStyleNames(truncated);
   }
 
-  return result.prompt;
+  return sanitizeForbiddenStyleNames(result.prompt);
 }
 
 // ── submitSchnellRender — text-to-image preview, no input_image ───────────────

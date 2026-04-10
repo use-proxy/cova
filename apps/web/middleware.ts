@@ -3,18 +3,23 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 // Public routes: no auth required (page redirects)
 // /                      landing page
-// /design/step-1         room type + budget selection
-// /design/step-2         style quiz
-// /design/step-3         fingerprint reveal (shows result of quiz, no user data needed)
+// /auth                  sign-in page
+// /design/step-1         welcome screen (public — no data entry yet)
 // /api/auth/callback     OAuth code exchange
 // /api/quiz/fingerprint  quiz fingerprint computation (public API)
 
 const PROTECTED_PAGE_ROUTES = [
+  '/design/step-2',
+  '/design/step-3',
   '/design/step-4',
   '/design/step-5',
   '/design/step-6',
   '/design/step-7',
-  '/design/step-8',
+  '/design/step-7b',
+  '/design/step-7c',
+  '/design/step-7d',
+  '/design/step-8a',
+  '/design/step-8b',
   '/design/step-9',
   '/dashboard',
 ]
@@ -67,13 +72,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
 
-  // Protected page routes → redirect unauthenticated users to /
+  // Protected page routes → redirect unauthenticated users to /auth
   const isProtectedPage = PROTECTED_PAGE_ROUTES.some(route =>
     pathname.startsWith(route)
   )
   if (isProtectedPage && !user) {
     const redirectUrl = request.nextUrl.clone()
-    redirectUrl.pathname = '/'
+    redirectUrl.pathname = '/auth'
     redirectUrl.searchParams.set('next', pathname)
     return NextResponse.redirect(redirectUrl)
   }
