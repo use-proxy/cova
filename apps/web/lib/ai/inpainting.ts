@@ -97,7 +97,7 @@ function encodePng(
     }
   }
 
-  const compressed = deflateSync(raw)
+  const compressed = new Uint8Array(deflateSync(raw))
   return concat(
     PNG_SIG,
     pngChunk('IHDR', ihdr),
@@ -234,7 +234,7 @@ function encodePixelsToPng(pixels: Uint8Array, width: number, height: number): U
     }
   }
 
-  const compressed = deflateSync(raw)
+  const compressed = new Uint8Array(deflateSync(raw))
   return concat(
     PNG_SIG,
     pngChunk('IHDR', ihdr),

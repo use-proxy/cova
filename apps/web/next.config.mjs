@@ -1,7 +1,3 @@
-import { createRequire } from 'node:module'
-import { dirname } from 'node:path'
-const require = createRequire(import.meta.url)
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
@@ -55,16 +51,6 @@ const nextConfig = {
       test: /[\\/]@sparkjsdev[\\/]spark[\\/]dist[\\/]/,
       parser: { url: false },
     })
-
-    // Root pnpm overrides pin three@0.155.0 for mobile compatibility.
-    // SparkJS needs three@0.167.0+ (Matrix2 class). Resolve 'three' to
-    // the npm-aliased 'three-web' package (three@0.169.0) for the web build.
-    const threeWebEntry = require.resolve('three-web')
-    const threeWebDir = dirname(dirname(threeWebEntry))
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      three: threeWebDir,
-    }
 
     return config
   },

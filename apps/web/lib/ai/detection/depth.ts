@@ -88,7 +88,7 @@ function decodePngGrayscale(buf: Buffer): number[][] {
   let height = 0
   let bitDepth = 8
   let colorType = 0
-  const idatChunks: Buffer[] = []
+  const idatChunks: Uint8Array[] = []
   let pos = 8
 
   while (pos + 12 <= buf.length) {
@@ -102,7 +102,7 @@ function decodePngGrayscale(buf: Buffer): number[][] {
       bitDepth = chunkData[8]!
       colorType = chunkData[9]!
     } else if (chunkType === 'IDAT') {
-      idatChunks.push(Buffer.from(chunkData))
+      idatChunks.push(new Uint8Array(chunkData))
     } else if (chunkType === 'IEND') {
       break
     }
@@ -120,7 +120,11 @@ function decodePngGrayscale(buf: Buffer): number[][] {
 
   let rawData: Buffer
   try {
-    rawData = inflateSync(Buffer.concat(idatChunks))
+    const totalLen = idatChunks.reduce((s, c) => s + c.length, 0)
+    const combined = new Uint8Array(totalLen)
+    let off = 0
+    for (const c of idatChunks) { combined.set(c, off); off += c.length }
+    rawData = inflateSync(combined)
   } catch {
     return []
   }

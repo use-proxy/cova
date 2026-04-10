@@ -123,7 +123,7 @@ async function generateBboxMask(
       raw.fill(255, y * rowStride + 1 + x0, y * rowStride + 1 + x1)
     }
 
-    const compressed = deflateSync(raw)
+    const compressed = new Uint8Array(deflateSync(raw))
 
     // Build PNG
     const CRC32_TABLE = (() => {
