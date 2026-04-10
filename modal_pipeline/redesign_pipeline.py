@@ -527,16 +527,22 @@ def redesign_room(room_id: str, user_id: str) -> dict:
     client = create_client(supabase_url, supabase_key)
 
     client.table("rooms").update({
-        "redesign_status": "kontext_processing",
+        "redesign_status": "analyzing_room",
     }).eq("id", room_id).execute()
 
     try:
         room = client.table("rooms").select(
-            "marble_pano_url, style_blend, room_type, user_id"
+            "marble_pano_url, style_blend, room_type, user_id, render_context"
         ).eq("id", room_id).single().execute().data
 
         if not room:
             raise RuntimeError(f"Room {room_id} not found")
+
+        # Check render_context schema version
+        render_context = room.get("render_context") or {}
+        schema_version = render_context.get("schemaVersion", "1.0") if isinstance(render_context, dict) else "1.0"
+        if schema_version < "2.0":
+            print(f"[kontext] WARNING: render_context schema_version={schema_version} (< 2.0), using safe defaults")
 
         pano_url = room.get("marble_pano_url")
         if not pano_url:
@@ -560,6 +566,9 @@ def redesign_room(room_id: str, user_id: str) -> dict:
             prompt_source = "fallback"
 
         print(f"[kontext] Prompt ({prompt_source}): {prompt[:150]}...")
+
+        # Status: applying_style
+        client.table("rooms").update({"redesign_status": "applying_style"}).eq("id", room_id).execute()
 
         # Build perspective prompt
         perspective_prompt = generate_perspective_prompt(style_blend)
@@ -617,6 +626,9 @@ def redesign_room(room_id: str, user_id: str) -> dict:
             except Exception as e:
                 print(f"[depth] Depth extraction failed (non-critical): {e}")
 
+        # Status: rendering
+        client.table("rooms").update({"redesign_status": "rendering"}).eq("id", room_id).execute()
+
         with ThreadPoolExecutor(max_workers=3) as executor:
             futures = [
                 executor.submit(run_pano),
@@ -625,6 +637,9 @@ def redesign_room(room_id: str, user_id: str) -> dict:
             ]
             for f in as_completed(futures):
                 pass  # Wait for all
+
+        # Status: finalizing
+        client.table("rooms").update({"redesign_status": "finalizing"}).eq("id", room_id).execute()
 
         # Pano is critical — must succeed
         if pano_error[0]:
@@ -703,7 +718,7 @@ def redesign_room(room_id: str, user_id: str) -> dict:
                 print(f"[db] Could not write optional columns (may not exist): {e}")
 
         client.table("rooms").update({
-            "redesign_status": "kontext_complete",
+            "redesign_status": "complete",
         }).eq("id", room_id).execute()
 
         print(f"[pipeline] Complete! Depth conditioning: {depth_conditioning_method}")
@@ -723,9 +738,13 @@ def redesign_room(room_id: str, user_id: str) -> dict:
 
     except Exception as e:
         print(f"[kontext] ERROR: {e}")
-        client.table("rooms").update({
-            "redesign_status": "error",
-        }).eq("id", room_id).execute()
+        try:
+            client.table("rooms").update({
+                "redesign_status": "failed",
+                "redesign_error": str(e)[:2000],
+            }).eq("id", room_id).execute()
+        except Exception as update_err:
+            print(f"[kontext] Failed to write error status: {update_err}")
         raise
 
 

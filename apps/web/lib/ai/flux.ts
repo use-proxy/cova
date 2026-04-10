@@ -258,6 +258,121 @@ function dominantDescriptors(
   );
 }
 
+// ── Full fingerprint → prompt mapping ───────────────────────────────────────
+// Maps each of the 12 dimensions to a specific prompt phrase when its value
+// deviates from the neutral midpoint. Mid-scores (0.4-0.6) contribute
+// nothing — only strong directional signals are emitted. Output is capped
+// at ~120 characters to stay inside the total prompt budget.
+//
+// This reduces the lossiness of the prior dominantDescriptors() approach
+// which only kept the top 3-4 dimensions and dropped the rest.
+
+const FINGERPRINT_PHRASE_MAP: Record<
+  DimKey,
+  { high: string; low: string }
+> = {
+  colorTemperature: {
+    high: "warm amber undertones, honey oak, terracotta accents",
+    low: "cool grey undertones, slate, bleached wood",
+  },
+  colorSaturation: {
+    high: "rich saturated jewel tones, bold color statements",
+    low: "muted dusty palette, desaturated earth tones",
+  },
+  density: {
+    high: "richly furnished, layered accessories, curated collection",
+    low: "deliberate negative space, restrained furnishing, breathing room",
+  },
+  formality: {
+    high: "structured symmetry, formal arrangement, architectural poise",
+    low: "relaxed asymmetric layout, casual grouping, lived-in comfort",
+  },
+  era: {
+    high: "heritage patina, vintage character, time-worn richness",
+    low: "contemporary clean lines, modern restraint, cutting-edge silhouettes",
+  },
+  material: {
+    high: "natural organic materials, raw wood, handcrafted textures",
+    low: "sleek manufactured surfaces, lacquer, polished metal",
+  },
+  texture: {
+    high: "rich layered textures, bouclé, woven linen, aged leather",
+    low: "smooth polished surfaces, lacquered finishes, glass",
+  },
+  pattern: {
+    high: "pattern-rich surfaces, decorative motifs, textile layering",
+    low: "solid planes, quiet surfaces, minimal ornament",
+  },
+  lineQuality: {
+    high: "soft organic curves, rounded silhouettes, flowing forms",
+    low: "sharp geometric angles, crisp edges, rectilinear precision",
+  },
+  lightPreference: {
+    high: "bright airy daylight, large windows, luminous atmosphere",
+    low: "cozy intimate lamp pools, dim warm shadows, candlelit mood",
+  },
+  nature: {
+    high: "biophilic layering, abundant greenery, living plants throughout",
+    low: "urban restraint, minimal greenery, refined interior",
+  },
+  culturalInfluence: {
+    high: "globally eclectic references, curated world influences, layered heritage",
+    low: "clean Western contemporary, refined Euro-American sensibility",
+  },
+};
+
+/**
+ * Build a comprehensive prompt section from ALL 12 fingerprint dimensions.
+ * Each dimension contributes a phrase when it's strongly directional
+ * (outside the neutral band). Mid-scores emit nothing.
+ *
+ * Returns a single comma-separated string capped at 120 characters.
+ * Returns empty string when no dimensions are directional.
+ */
+function buildFullFingerprintPhrase(
+  d: StyleFingerprint["dimensions"],
+): string {
+  const phrases: string[] = [];
+
+  for (const key of Object.keys(FINGERPRINT_PHRASE_MAP) as DimKey[]) {
+    const value = d[key];
+    const dev = value - NEUTRAL_MIDPOINT;
+
+    if (Math.abs(dev) <= NEUTRAL_BAND) continue; // mid-score — skip
+
+    phrases.push(
+      dev > 0
+        ? FINGERPRINT_PHRASE_MAP[key].high
+        : FINGERPRINT_PHRASE_MAP[key].low,
+    );
+  }
+
+  if (phrases.length === 0) return "";
+
+  // Order by strength of deviation so most distinctive phrases come first
+  const entriesWithDev = (Object.keys(FINGERPRINT_PHRASE_MAP) as DimKey[])
+    .map((key) => ({ key, dev: Math.abs(d[key] - NEUTRAL_MIDPOINT) }))
+    .filter((e) => e.dev > NEUTRAL_BAND)
+    .sort((a, b) => b.dev - a.dev);
+
+  const orderedPhrases = entriesWithDev.map((e) => {
+    const v = d[e.key];
+    return v > NEUTRAL_MIDPOINT
+      ? FINGERPRINT_PHRASE_MAP[e.key].high
+      : FINGERPRINT_PHRASE_MAP[e.key].low;
+  });
+
+  let joined = orderedPhrases.join(", ");
+  // Cap at 120 chars — drop phrases from the end if over budget
+  while (joined.length > 120 && orderedPhrases.length > 1) {
+    orderedPhrases.pop();
+    joined = orderedPhrases.join(", ");
+  }
+  // Final hard cap in case a single phrase is too long
+  if (joined.length > 120) joined = joined.slice(0, 117) + "...";
+  return joined;
+}
+
 // Forbidden style names must never appear in user-facing strings (CLAUDE.md rule 8).
 // Strip them from any user-provided text before including in prompts.
 const FORBIDDEN_STYLE_NAMES = ["japandi", "bohemian", "coastal", "mid-century modern", "minimalist"];
@@ -679,7 +794,7 @@ export async function runFluxRender(
 //   13. Budget quality (trim third)
 //   14. Camera + quality closer (always kept)
 //
-// Hard cap: 2400 chars. If over, trim sections 11→13 proportionally,
+// Hard cap: 2800 chars. If over, trim sections 11→13 proportionally,
 // keeping 1-10 + 14 always.
 import type { RenderContext } from "@/lib/types/area2";
 
@@ -720,39 +835,91 @@ export function buildFluxPromptFromContext(context: RenderContext): string {
     core.push(s1);
   }
 
+  // ─── SECTION 1b — FULL FINGERPRINT PHRASE (all 12 dimensions) ────────
+  // Ensures dimensions beyond the top-3 still contribute to the prompt.
+  if (fingerprint) {
+    const fullPhrase = buildFullFingerprintPhrase(fingerprint.dimensions);
+    if (fullPhrase) core.push(fullPhrase + ".");
+  }
+
   // ─── SECTION 2 — MATERIAL PALETTE ─────────────────────────────────────
   if (fingerprint) {
     const palette = getMaterialPalette(fingerprint.dimensions);
     if (palette) core.push(palette + ".");
   }
 
-  // ─── SECTION 3 — SPATIAL ENVELOPE ─────────────────────────────────────
+  // ─── SECTION 3 — SPATIAL ENVELOPE (structural, not additive) ─────────
+  // Ceiling height is a HIGH-impact constraint — it drives vertical scale
+  // and the scale of wall-hung elements. Treat it as a structural directive.
   if (rc) {
     const ceilDetail = rc.ceilingDetail ? ` with ${rc.ceilingDetail}` : "";
     let s3 = `${rc.ceilingHeight} ceiling${ceilDetail}. ${rc.roomShape} room, ${rc.estimatedDimensions}.`;
+
+    // Parse ceiling height to number (handle strings like "10ft", "8 ft", "2.4m")
+    const ceilStr = rc.ceilingHeight?.toString() ?? "";
+    const ceilMatch = ceilStr.match(/([\d.]+)/);
+    const ceilFt = ceilMatch ? parseFloat(ceilMatch[1]!) : 9;
+    // Rough metric conversion — if value < 5 assume meters
+    const ceilFtNormalized = ceilFt < 5 ? ceilFt * 3.28 : ceilFt;
+
+    if (ceilFtNormalized >= 10) {
+      s3 += " Grand vertical space — artwork scaled to full wall height, tall bookcases or statement pendant lighting, vertical emphasis throughout.";
+    } else if (ceilFtNormalized <= 8) {
+      s3 += " Intimate human-scale proportions — horizontal emphasis, low-profile furniture, no tall vertical elements.";
+    }
+
     if (cons?.physicalConstraints?.length > 0) {
+      // Fixtures are HIGH impact if they include fireplace/built-ins/brick
+      const fixtures = cons.physicalConstraints.join(" ").toLowerCase();
+      const hasFireplace = fixtures.includes("fireplace");
+      const hasBuiltIns = fixtures.includes("built-in") || fixtures.includes("built in");
+      const hasExposedBrick = fixtures.includes("brick");
+
       s3 += ` Fixed elements: ${cons.physicalConstraints.join(", ")}.`;
+
+      if (hasFireplace) {
+        s3 += " Fireplace MUST be visible and lit in the render — render a fire or glowing embers.";
+      }
+      if (hasBuiltIns) {
+        s3 += " Built-in shelving MUST be preserved and styled — populate with books, art, and objects.";
+      }
+      if (hasExposedBrick) {
+        s3 += " Exposed brick texture MUST be preserved exactly.";
+      }
     }
     core.push(s3);
   }
 
-  // ─── SECTION 4 — LIGHTING ──────────────────────────────────────────────
+  // ─── SECTION 4 — LIGHTING (structural, drives entire scene mood) ─────
+  // Best light time drives color temperature AND shadow direction AND mood.
+  // Treat it as a non-negotiable structural directive, not additive.
   if (rc) {
     const lightMap: Record<string, string> = {
-      morning: "Soft morning light, cool blue tones, eastern windows",
-      afternoon: "Warm afternoon light, long shadows, golden quality",
-      evening: "Golden evening light, warm amber atmosphere",
-      "always-dim": "Soft interior ambient lighting, no strong natural light",
+      morning: "LIGHTING DIRECTIVE: Warm 5600K eastern morning light, energizing golden hour quality, long horizontal shadows raking east-to-west across floor and furniture, supplemented by 2700K ambient. Direction: from east.",
+      afternoon: "LIGHTING DIRECTIVE: Productive 3200K western afternoon light, magic hour quality, diffuse warm amber fill, medium shadows, complementary 2700K accent lighting. Direction: from west.",
+      evening: "LIGHTING DIRECTIVE: Intimate 2200K evening scene, dramatic pools of warm incandescent light, deep shadows between lit zones, no daylight visible. Mood: candlelit, lamp-lit.",
+      "always-dim": "LIGHTING DIRECTIVE: Soft 2700K ambient interior lighting only, no directional light source shown, layered pools of warm light from lamps, no harsh overhead. Mood: cocooned.",
     };
     const lightBase =
-      lightMap[cons?.bestLightTime ?? ""] ?? "Natural ambient light";
-    const s4 = `${lightBase}. ${rc.naturalLightQuality} quality, ${rc.windowCount} ${rc.windowSize} windows from ${rc.naturalLightDirection}.`;
+      lightMap[cons?.bestLightTime ?? ""] ?? "Natural ambient light, balanced exposure, soft fill.";
+    const s4 = `${lightBase} ${rc.windowCount} ${rc.windowSize} windows from ${rc.naturalLightDirection}.`;
     core.push(s4);
   }
 
-  // ─── SECTION 5 — MATERIALS ─────────────────────────────────────────────
+  // ─── SECTION 5 — MATERIALS (flooring is a hard preservation constraint) ─
   if (rc) {
-    let s5 = `${rc.floorMaterial} flooring in ${rc.floorColor}.`;
+    const floorLower = rc.floorMaterial.toLowerCase();
+    const isHardwood = floorLower.includes("hardwood") || floorLower.includes("wood");
+    const keepFlooring = cons?.wallPermanence !== "renting-no-paint" ? true : true; // default keep
+    let floorDesc: string;
+    if (isHardwood && keepFlooring) {
+      floorDesc = `PRESERVE existing ${rc.floorMaterial} flooring exactly — do not replace or cover the ${rc.floorColor} hardwood, natural patina retained`;
+    } else if (isHardwood) {
+      floorDesc = `${rc.floorMaterial} floors preserved, ${rc.floorColor} tone with natural patina`;
+    } else {
+      floorDesc = `${rc.floorMaterial} flooring in ${rc.floorColor}`;
+    }
+    let s5 = `${floorDesc}.`;
     if (cons?.wallPermanence === "renting-no-paint") {
       s5 += ` Walls remain ${rc.wallColor} — no painting permitted.`;
     } else {
@@ -895,11 +1062,11 @@ export function buildFluxPromptFromContext(context: RenderContext): string {
     const sensoryParts: string[] = [];
 
     const cushionMap: Record<number, string> = {
-      1: "Minimal soft furnishings — one folded throw, no excess cushions.",
-      2: "A throw blanket and two cushions.",
-      3: "Several cushions, draped throw blanket.",
-      4: "Layered cushions and multiple throw blankets.",
-      5: "Maximalist soft furnishings — cushions and blankets throughout.",
+      1: "One throw draped casually over sofa arm, deliberate negative space.",
+      2: "Two throws — one folded on sofa, one on accent chair — two cushions in varying sizes.",
+      3: "Three throws artfully arranged across seating, several cushions in varying textures.",
+      4: "Generous layering — throws on sofa, chair, and ottoman, multiple cushions in varying sizes and textures.",
+      5: "Abundantly layered — every seating surface has throws and cushions, maximum textile warmth and visual richness.",
     };
     const cushion = cushionMap[sensoryProfile.throwCushionDensity];
     if (cushion) sensoryParts.push(cushion);
@@ -1017,29 +1184,44 @@ export function buildFluxPromptFromContext(context: RenderContext): string {
 
   // ─── SECTION 14 — CAMERA + QUALITY CLOSER (always kept) ───────────────
   const cameraMap: Record<string, string> = {
-    "eye-level": "Shot at eye level",
+    "eye-level": "Shot from 5 feet height at eye level",
     "slightly-elevated": "Shot from slightly elevated angle",
     "corner-wide": "Wide angle shot from corner of room",
     "straight-on": "Straight-on shot facing primary wall",
   };
+  const focalMap: Record<string, string> = {
+    "wide-angle": "Carl Zeiss 21mm f/2.8 lens",
+    "standard": "24mm f/8 lens",
+    "slight-telephoto": "35mm f/4 lens",
+  };
   const cameraAngle = rc?.cameraAngle ?? "eye-level";
   const focalLength = rc?.focalLength ?? "standard";
-  const closer = `${cameraMap[cameraAngle] ?? "Shot at eye level"}, ${focalLength} lens. Photorealistic, Architectural Digest quality, professionally staged.`;
+  const closer = `Photorealistic interior photograph, ${cameraMap[cameraAngle] ?? "Shot at eye level"}, ${focalMap[focalLength] ?? "24mm f/8 lens"}, f/8, perfect exposure. No people, no text. Architectural Digest quality.`;
 
   // ─── ASSEMBLY WITH 2400-CHAR CAP ───────────────────────────────────────
   const fullSections = [...core, ...trimmable, closer];
   const fullPrompt = fullSections.filter(Boolean).join(" ");
 
-  if (fullPrompt.length <= 2400) return fullPrompt;
+  // Kontext Pro's real token limit is ~512 tokens ≈ 380 words ≈ 2800 chars,
+  // but Section 1b (full fingerprint phrase) + strengthened sections 3/4/5
+  // expand core beyond the previous 2400-char budget. Lift to 3200 to keep
+  // identity/sensory sections from being trimmed in normal cases.
+  const CHAR_CAP = 3200;
 
-  let trimmed = [...core, closer].filter(Boolean).join(" ");
+  if (fullPrompt.length <= CHAR_CAP) return fullPrompt;
+
+  // Over budget — include as many trimmable sections as possible, in order
+  const coreStr = core.filter(Boolean).join(" ");
+  let assembled = coreStr;
   for (const section of trimmable) {
-    const candidate =
-      trimmed.slice(0, -closer.length).trim() + " " + section + " " + closer;
-    if (candidate.length <= 2400) trimmed = candidate;
+    const candidate = assembled + " " + section + " " + closer;
+    if (candidate.length <= CHAR_CAP) {
+      assembled = assembled + " " + section;
+    }
   }
+  assembled = assembled + " " + closer;
 
-  return trimmed;
+  return assembled;
 }
 // ── Re-export RoomPhysicalContext for backward compat ────────────────────────
 

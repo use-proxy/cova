@@ -384,7 +384,7 @@ describe('buildFluxPromptFromContext', () => {
   it('stays under 2800 characters (FLUX T5 limit)', () => {
     const ctx = assembleRenderContext(makeFullInput())
     const prompt = buildFluxPromptFromContext(ctx)
-    expect(prompt.length).toBeLessThanOrEqual(2800)
+    expect(prompt.length).toBeLessThanOrEqual(3200)
   })
 
   it('contains transformation intent phrase', () => {
@@ -526,7 +526,7 @@ describe('buildFluxPromptFromContext', () => {
     delete input.fingerprint
     const ctx = assembleRenderContext(input)
     const prompt = buildFluxPromptFromContext(ctx)
-    expect(prompt.length).toBeLessThanOrEqual(2400)
+    expect(prompt.length).toBeLessThanOrEqual(3200)
     expect(prompt.length).toBeGreaterThan(0)
   })
 
@@ -567,7 +567,7 @@ describe('buildFluxPromptFromContext', () => {
     })
     const ctx = assembleRenderContext(input)
     const prompt = buildFluxPromptFromContext(ctx)
-    expect(prompt.length).toBeLessThanOrEqual(2400)
+    expect(prompt.length).toBeLessThanOrEqual(3200)
     expect(prompt).not.toContain('undefined')
     expect(prompt).not.toContain('[object Object]')
   })

@@ -5,6 +5,7 @@ import "../step-1/step1.css";
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useRoomStore } from "@/lib/store/room";
 
 type RefinementPath = "specific" | "vibe" | "layout" | "direction" | null;
 type LayoutOption = "conversation" | "open" | "cozy" | "balanced" | null;
@@ -481,6 +482,9 @@ function LayoutThumbnail({
 
 export default function Step8B() {
   const router = useRouter();
+  const roomId = useRoomStore((s) => s.roomId);
+  const renderUrl = useRoomStore((s) => s.renderUrl);
+  const setRenderUrl = useRoomStore((s) => s.setRenderUrl);
   const [activePath, setActivePath] = useState<RefinementPath>(null);
   const [specificText, setSpecificText] = useState("");
   const [showPreview, setShowPreview] = useState(false);
@@ -497,6 +501,7 @@ export default function Step8B() {
   const [isRendering, setIsRendering] = useState(false);
   const [renderProgress, setRenderProgress] = useState(0);
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
+  const [renderError, setRenderError] = useState<string | null>(null);
   const [showStartOverModal, setShowStartOverModal] = useState(false);
 
   const refinementsRemaining = Math.max(MAX_REFINEMENTS - refinementsUsed, 0);
@@ -529,6 +534,7 @@ export default function Step8B() {
     return () => window.clearTimeout(timer);
   }, [activePath, specificText]);
 
+  // Animated progress bar and message cycling while rendering
   useEffect(() => {
     if (!isRendering) return;
 
@@ -536,32 +542,24 @@ export default function Step8B() {
     setLoadingMessageIndex(0);
 
     const startedAt = Date.now();
+    // Slow logarithmic progress — caps at 90% until real completion
     const progressInterval = window.setInterval(() => {
       const elapsed = Date.now() - startedAt;
-      const nextProgress = clamp((elapsed / 4000) * 100, 0, 100);
+      const nextProgress = clamp(Math.log10(1 + elapsed / 1000) * 30, 0, 90);
       setRenderProgress(nextProgress);
-    }, 80);
+    }, 200);
 
     const messageInterval = window.setInterval(() => {
       setLoadingMessageIndex(
         (current) => (current + 1) % LOADING_MESSAGES.length,
       );
-    }, 1300);
-
-    const finishTimer = window.setTimeout(() => {
-      window.clearInterval(progressInterval);
-      window.clearInterval(messageInterval);
-      setRenderProgress(100);
-      setIsRendering(false);
-      router.push("/design/step-8a");
-    }, 4200);
+    }, 2500);
 
     return () => {
       window.clearInterval(progressInterval);
       window.clearInterval(messageInterval);
-      window.clearTimeout(finishTimer);
     };
-  }, [isRendering, router]);
+  }, [isRendering]);
 
   const specificPreviewLines = useMemo(() => {
     const content = specificText.trim().toLowerCase();
@@ -674,10 +672,68 @@ export default function Step8B() {
     }));
   }
 
-  function startRerender() {
-    if (refinementsRemaining <= 0 || isRendering) return;
+  async function startRerender() {
+    if (refinementsRemaining <= 0 || isRendering || !roomId) return;
     setRefinementsUsed((current) => clamp(current + 1, 0, MAX_REFINEMENTS));
     setIsRendering(true);
+    setRenderError(null);
+
+    // Build refinement text based on active path
+    let refinementText = "";
+    if (activePath === "specific") {
+      refinementText = specificText.trim();
+    } else if (activePath === "vibe") {
+      refinementText = vibeSummary;
+    } else if (activePath === "layout") {
+      const layoutDesc: Record<string, string> = {
+        conversation: "Rearrange furniture into a conversation-first layout with seating facing center",
+        open: "Push furniture to walls for an open flow layout with maximum floor space",
+        cozy: "Group furniture into a cozy corner arrangement for intimate gathering",
+        balanced: "Create balanced symmetry with mirrored layout on both sides",
+      };
+      refinementText = selectedLayout ? layoutDesc[selectedLayout] ?? "" : "";
+    } else if (activePath === "direction") {
+      const variantDesc: Record<string, string> = {
+        primary: "Keep the overall direction but refine details — closer to my original style profile",
+        contrast: "Make it more dramatic — higher contrast, sharper lines, moodier atmosphere",
+        twist: "Try an unexpected twist — introduce an unusual color or sculptural element",
+      };
+      refinementText = selectedVariant ? variantDesc[selectedVariant] ?? "" : "";
+    }
+
+    if (!refinementText) {
+      refinementText = "Refine the overall design while keeping the same style direction.";
+    }
+
+    try {
+      const res = await fetch("/api/render/refine", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          current_render_url: renderUrl ?? "",
+          refinement_text: refinementText,
+          room_id: roomId,
+          current_prompt: "",
+          style_strength: 0.85,
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(errData.error ?? "Refinement failed");
+      }
+
+      const data = (await res.json()) as { render_url: string };
+      if (data.render_url) {
+        setRenderUrl(data.render_url);
+      }
+      router.push("/design/step-8a");
+    } catch (err) {
+      setRenderError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setIsRendering(false);
+      // Roll back the refinement count on failure
+      setRefinementsUsed((current) => Math.max(0, current - 1));
+    }
   }
 
   function renderSelectionCards() {
@@ -1200,6 +1256,35 @@ export default function Step8B() {
             <p className="step8b-loading-copy">
               {LOADING_MESSAGES[loadingMessageIndex]}
             </p>
+          </div>
+        </div>
+      ) : null}
+
+      {renderError ? (
+        <div
+          className="step8b-loading-overlay"
+          style={{ background: "rgba(10,22,40,0.92)" }}
+        >
+          <div className="step8b-loading-shell" style={{ gap: "16px" }}>
+            <p style={{ color: "#C0504A", fontFamily: "Inter, sans-serif", fontSize: "15px" }}>
+              {renderError}
+            </p>
+            <button
+              type="button"
+              onClick={() => setRenderError(null)}
+              style={{
+                background: "#C9A84C",
+                color: "#0A1628",
+                border: "none",
+                borderRadius: "24px",
+                padding: "10px 24px",
+                fontSize: "14px",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Try Again
+            </button>
           </div>
         </div>
       ) : null}

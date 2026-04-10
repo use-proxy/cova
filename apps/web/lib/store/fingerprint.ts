@@ -30,6 +30,7 @@ interface FingerprintState {
   fingerprint: StyleFingerprint | null
   styleName: string | null
   styleTags: string[]
+  styleExplanation: string | null
   showcasePredictionIds: ShowcasePrediction[]
   // Step-5 space details — persisted so render route receives them
   inclusions: string[]
@@ -43,6 +44,7 @@ interface FingerprintState {
   removePhaseASelection: (imageId: string) => void
   addPhaseBResponse: (response: PairwiseResponse) => void
   setFingerprint: (fingerprint: StyleFingerprint, styleName: string, styleTags: string[]) => void
+  setStyleExplanation: (explanation: string) => void
   setShowcasePredictionIds: (ids: ShowcasePrediction[]) => void
   setInclusions: (inclusions: string[]) => void
   setConstraints: (constraints: string[]) => void
@@ -147,6 +149,7 @@ const INITIAL_STATE = {
   fingerprint: null,
   styleName: null,
   styleTags: [],
+  styleExplanation: null,
   showcasePredictionIds: [],
   inclusions: [] as string[],
   constraints: [] as string[],
@@ -174,6 +177,7 @@ export const useFingerprintStore = create<FingerprintState>()(
         })),
       setFingerprint: (fingerprint, styleName, styleTags) =>
         set({ fingerprint, styleName, styleTags }),
+      setStyleExplanation: (styleExplanation) => set({ styleExplanation }),
       setShowcasePredictionIds: (showcasePredictionIds) =>
         set({ showcasePredictionIds }),
       setInclusions: (inclusions) => set({ inclusions }),
@@ -196,6 +200,7 @@ export const useFingerprintStore = create<FingerprintState>()(
         fingerprint: state.fingerprint,
         styleName: state.styleName,
         styleTags: state.styleTags,
+        styleExplanation: state.styleExplanation,
         showcasePredictionIds: state.showcasePredictionIds,
         inclusions: state.inclusions,
         constraints: state.constraints,

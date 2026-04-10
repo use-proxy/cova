@@ -157,7 +157,7 @@ const initialState: Area2State = {
   keepMask: null,
   detectionStatus: 'pending',
   selectedObjectId: null,
-  activeTab: 'budget',
+  activeTab: 'all',
   tabStates: [],
   budget: null,
   requestedProducts: [],
@@ -284,11 +284,57 @@ export const useArea2Store = create<Area2Store>()(
           ...(reason !== undefined && { completionReason: reason }),
         }
         const completeTabs = tabStates.filter((t) => t.isComplete)
-        const budgetDone = completeTabs.some((t) => t.tabId === 'budget')
-        const otherDone = completeTabs.some((t) => t.tabId !== 'budget')
+        // Budget comes from step-5, not from chat. Primary tab is 'all'.
+        const primaryDone = completeTabs.some((t) => t.tabId === 'all')
+        const otherDone = completeTabs.some((t) => t.tabId !== 'all' && t.tabId !== 'budget')
+        // Budget must also be set (from step-5)
+        const budgetSet = get().budget !== null
+
+        // Promote extracted data to top-level store fields so the assembler
+        // can read them. Without this, chat extraction results stay buried
+        // in tabStates[n].extractedData and never reach the FLUX prompt.
+        const extracted = state.extractedData as Record<string, unknown>
+        const promotion: Partial<Area2State> = {}
+        // Budget is no longer extracted from chat — it comes from step-5 via setBudget()
+        if ((tabId === 'all') && extracted) {
+          const currentTech = get().techSpec ?? defaultTechSpec()
+          promotion.techSpec = { ...currentTech, ...extracted } as typeof currentTech
+          const currentSensory = get().sensoryProfile ?? defaultSensoryProfile()
+          promotion.sensoryProfile = { ...currentSensory, ...extracted } as typeof currentSensory
+          const currentArt = get().artBrief ?? defaultArtBrief()
+          promotion.artBrief = {
+            ...currentArt,
+            ...extracted,
+            hasArtDirection: (extracted.hasArtDirection as boolean) ?? (extracted.visualDirection ? true : currentArt.hasArtDirection),
+          } as typeof currentArt
+          const currentIdentity = get().identityBrief ?? defaultIdentityBrief()
+          promotion.identityBrief = { ...currentIdentity, ...extracted } as typeof currentIdentity
+        }
+        if (tabId === 'tech' && extracted) {
+          const current = get().techSpec ?? defaultTechSpec()
+          promotion.techSpec = { ...current, ...extracted } as typeof current
+        }
+        if (tabId === 'sensory' && extracted) {
+          const current = get().sensoryProfile ?? defaultSensoryProfile()
+          promotion.sensoryProfile = { ...current, ...extracted } as typeof current
+        }
+        if (tabId === 'art' && extracted) {
+          const current = get().artBrief ?? defaultArtBrief()
+          promotion.artBrief = {
+            ...current,
+            ...extracted,
+            hasArtDirection: (extracted.hasArtDirection as boolean) ?? (extracted.visualDirection ? true : current.hasArtDirection),
+          } as typeof current
+        }
+        if (tabId === 'identity' && extracted) {
+          const current = get().identityBrief ?? defaultIdentityBrief()
+          promotion.identityBrief = { ...current, ...extracted } as typeof current
+        }
+
         set({
           tabStates,
-          minimumThresholdMet: budgetDone && otherDone,
+          minimumThresholdMet: primaryDone && otherDone && budgetSet,
+          ...promotion,
         })
       },
       setBudget: (budget) => set({ budget }),
@@ -320,10 +366,13 @@ export const useArea2Store = create<Area2Store>()(
         const tabsComplete = s.tabStates
           .filter((t) => t.isComplete)
           .map((t) => t.tabId)
-        const budgetDone = tabsComplete.includes('budget')
-        const otherDone = tabsComplete.some((id) => id !== 'budget')
+        // Budget is set from step-5, not from tab completion
+        const budgetDone = s.budget !== null
+        const allDone = tabsComplete.includes('all')
+        const otherDone = tabsComplete.some((id) => id !== 'all' && id !== 'budget')
         const fingerprint = useFingerprintStore.getState().fingerprint ?? undefined
         const ctx: RenderContext = {
+          schemaVersion: '2.0',
           roomId: s.roomId,
           userId,
           assembledAt: new Date().toISOString(),
@@ -337,7 +386,7 @@ export const useArea2Store = create<Area2Store>()(
           sensoryProfile: s.sensoryProfile ?? defaultSensoryProfile(),
           identityBrief: s.identityBrief ?? defaultIdentityBrief(),
           tabStates: s.tabStates,
-          minimumThresholdMet: budgetDone && otherDone,
+          minimumThresholdMet: budgetDone && allDone && otherDone,
           tabsComplete,
           fingerprint,
         }
@@ -346,7 +395,7 @@ export const useArea2Store = create<Area2Store>()(
         ctx.fluxPromptVersion = '2.0.0'
         set({
           renderContext: ctx,
-          minimumThresholdMet: budgetDone && otherDone,
+          minimumThresholdMet: budgetDone && allDone && otherDone,
         })
         return ctx
       },

@@ -111,7 +111,7 @@ describe('area2Store — initialization', () => {
     expect(state.keepMask).toBeNull()
     expect(state.detectionStatus).toBe('pending')
     expect(state.selectedObjectId).toBeNull()
-    expect(state.activeTab).toBe('budget')
+    expect(state.activeTab).toBe('all')
     expect(state.tabStates).toEqual([])
     expect(state.budget).toBeNull()
     expect(state.requestedProducts).toEqual([])

@@ -133,8 +133,9 @@ export default function StepFourPage() {
   const [tweakResult, setTweakResult] = useState<StyleVariation | null>(null)
   const [tweakLoading, setTweakLoading] = useState(false)
 
-  const { fingerprint, styleName: storedStyleName, styleTags: storedStyleTags, phaseBResponses } =
+  const { fingerprint, styleName: storedStyleName, styleTags: storedStyleTags, phaseBResponses, styleExplanation } =
     useFingerprintStore()
+  const setStyleExplanation = useFingerprintStore((s) => s.setStyleExplanation)
 
   // Map 12-dim fingerprint to 8 display dimensions
   const computedDimensions = useMemo(() => {
@@ -282,6 +283,27 @@ export default function StepFourPage() {
     }
     computeFingerprint()
   }, [fingerprint, phaseBResponses])
+
+  // Fetch plain-English style explanation (cached in store)
+  useEffect(() => {
+    if (!fingerprint || styleExplanation) return
+    const fetchExplanation = async () => {
+      try {
+        const res = await fetch('/api/fingerprint/explain', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dimensions: fingerprint.dimensions }),
+        })
+        if (res.ok) {
+          const data = await res.json()
+          if (data.explanation) setStyleExplanation(data.explanation)
+        }
+      } catch (e) {
+        console.warn('[step-4] Style explanation fetch failed', e)
+      }
+    }
+    fetchExplanation()
+  }, [fingerprint, styleExplanation, setStyleExplanation])
 
   // Reveal overlay animation
   useEffect(() => {
@@ -709,6 +731,14 @@ export default function StepFourPage() {
             You are a
             <span className="style-name">{displayStyleName}</span>
           </h1>
+          {styleExplanation && (
+            <p
+              className="style-description"
+              style={{ fontStyle: 'italic', opacity: 0.85, marginBottom: 12 }}
+            >
+              {styleExplanation}
+            </p>
+          )}
           <p className="style-description">{displayDescription}</p>
           <div className="traits">
             {displayTraits.map((trait) => (

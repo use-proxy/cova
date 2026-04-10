@@ -75,6 +75,7 @@ export function assembleRenderContext(input: AssembleInput): RenderContext {
   const otherDone = tabsComplete.some((id) => id !== 'budget')
 
   const context: RenderContext = {
+    schemaVersion: '2.0',
     roomId: input.roomId,
     userId: input.userId,
     assembledAt: new Date().toISOString(),

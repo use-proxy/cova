@@ -5,6 +5,7 @@ import './step7c.css';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useArea2Store } from '@/lib/stores/area2Store';
 
 type Decision = 'keep' | 'remove' | null;
 
@@ -13,6 +14,7 @@ type RoomItem = {
   name: string;
   category: string;
   decision: Decision;
+  confidence?: number;
   position: {
     x: number;
     y: number;
@@ -207,6 +209,7 @@ export default function Step7cKeepOrRemove() {
   const router = useRouter();
   const roomImageSrc = DEFAULT_ROOM_IMAGE;
   const [items, setItems] = useState<RoomItem[]>(DEFAULT_ITEMS);
+  const [editingLabelId, setEditingLabelId] = useState<number | null>(null);
   const [activeItemId, setActiveItemId] = useState<number>(DEFAULT_ITEMS[0]?.id ?? 1);
   const [flashAction, setFlashAction] = useState<'keepAll' | 'startFresh' | null>(null);
   const [displayedDecidedCount, setDisplayedDecidedCount] = useState(0);
@@ -239,6 +242,7 @@ export default function Step7cKeepOrRemove() {
           name: d.label.replace(/\b\w/g, c => c.toUpperCase()),
           category: d.category.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
           decision: d.is_fixed ? 'keep' as Decision : null,
+          confidence: typeof d.confidence === 'number' ? d.confidence : undefined,
           position: {
             x: Math.round(50 + (d.azimuth_degrees / 90) * 40),
             y: Math.round(50 + (d.elevation_degrees / 60) * 30),
@@ -315,8 +319,26 @@ export default function Step7cKeepOrRemove() {
     cardRefs.current[id]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
+  const setKeepMask = useArea2Store((s) => s.setKeepMask);
+
   const handleContinue = async () => {
     if (!allDecided) return;
+
+    // Update Area2Store keepMask so the assembler can read it
+    setKeepMask({
+      objects: items.map((item) => ({
+        id: String(item.id),
+        type: item.name,
+        bbox: [0, 0, 0, 0],
+        confidence: 1,
+        confidenceTier: 'show-user' as const,
+        keep: item.decision === 'keep',
+        immovable: false,
+      })),
+      depthMapUrl: '',
+      rawDetectionCount: items.length,
+      detectionModelVersion: 'user-selection',
+    });
 
     // Persist keep/remove decisions to Supabase
     try {
@@ -458,8 +480,76 @@ export default function Step7cKeepOrRemove() {
                     <div className="step7c-card-main">
                       <div className="step7c-card-badge">{item.id}</div>
                       <div className="step7c-card-copy">
-                        <h2 className="step7c-card-title">{item.name}</h2>
+                        {editingLabelId === item.id ? (
+                          <input
+                            type="text"
+                            defaultValue={item.name}
+                            autoFocus
+                            onBlur={(e) => {
+                              const newLabel = e.currentTarget.value.trim();
+                              if (newLabel && newLabel !== item.name) {
+                                setItems((curr) =>
+                                  curr.map((it) =>
+                                    it.id === item.id ? { ...it, name: newLabel } : it,
+                                  ),
+                                );
+                              }
+                              setEditingLabelId(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                (e.currentTarget as HTMLInputElement).blur();
+                              } else if (e.key === 'Escape') {
+                                setEditingLabelId(null);
+                              }
+                            }}
+                            style={{
+                              background: 'transparent',
+                              border: '1px solid rgba(201,168,76,0.6)',
+                              color: '#F8F6F1',
+                              padding: '4px 8px',
+                              borderRadius: 4,
+                              fontSize: 16,
+                              width: '100%',
+                            }}
+                          />
+                        ) : (
+                          <h2 className="step7c-card-title">{item.name}</h2>
+                        )}
                         <div className="step7c-card-category">{item.category}</div>
+                        {typeof item.confidence === 'number' && item.confidence < 0.85 && (
+                          <div
+                            style={{
+                              fontSize: 11,
+                              color: item.confidence < 0.65 ? '#C0504A' : '#C9A84C',
+                              marginTop: 4,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 6,
+                            }}
+                          >
+                            <span>
+                              {item.confidence < 0.65
+                                ? 'Not sure what this is'
+                                : 'AI detected — is this right?'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setEditingLabelId(item.id)}
+                              style={{
+                                background: 'transparent',
+                                border: '1px solid rgba(201,168,76,0.4)',
+                                color: '#C9A84C',
+                                borderRadius: 4,
+                                padding: '2px 8px',
+                                fontSize: 10,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Edit
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
 

@@ -30,12 +30,24 @@ export async function POST(request: Request) {
       current_render_url,
       refinement_text,
       room_id,
-      current_prompt,
+      current_prompt: providedPrompt,
       style_strength = 0.85,
     } = body
 
+    // Load current prompt from Supabase if not provided by the client
+    let current_prompt = providedPrompt
+    if (!current_prompt) {
+      const { data: roomRow } = await supabase
+        .from('rooms')
+        .select('render_context')
+        .eq('id', room_id)
+        .eq('user_id', user.id)
+        .single()
+      current_prompt = (roomRow?.render_context as { fluxPrompt?: string } | null)?.fluxPrompt ?? ''
+    }
+
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       messages: [
         {

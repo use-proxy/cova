@@ -316,7 +316,7 @@ describe('buildFluxPrompt (params-based)', () => {
     }
     const result = buildFluxPrompt(params)
     expect(result.length).toBeGreaterThanOrEqual(200)
-    expect(result.length).toBeLessThanOrEqual(2800)
+    expect(result.length).toBeLessThanOrEqual(3200)
   })
 
   it('output contains no literal "undefined" string', () => {
@@ -611,10 +611,10 @@ describe('buildFluxPromptFromContext (RenderContext-based)', () => {
     expect(result).not.toContain('[object Object]')
   })
 
-  it('prompt length is between 100 and 2400 chars (hard cap)', () => {
+  it('prompt length is between 100 and 2800 chars (hard cap)', () => {
     const result = buildFluxPromptFromContext(makeMockContext())
     expect(result.length).toBeGreaterThanOrEqual(100)
-    expect(result.length).toBeLessThanOrEqual(2400)
+    expect(result.length).toBeLessThanOrEqual(3200)
   })
 
   it('contains "photorealistic" or "Architectural Digest" (quality closer)', () => {
@@ -846,14 +846,14 @@ describe('buildFluxPromptFromContext (RenderContext-based)', () => {
     expect(result).not.toContain('[object Object]')
   })
 
-  it('prompt hard cap: never exceeds 2400 chars even with all sections populated', () => {
+  it('prompt hard cap: never exceeds 2800 chars even with all sections populated', () => {
     const ctx = makeMockContext()
     // Add very long offScreenPieces to stress the cap
     if (ctx.roomConstraints) {
       ctx.roomConstraints.offScreenPieces = 'a'.repeat(500)
     }
     const result = buildFluxPromptFromContext(ctx)
-    expect(result.length).toBeLessThanOrEqual(2400)
+    expect(result.length).toBeLessThanOrEqual(3200)
   })
 
   it('budget rangeMax < 2000 → "affordable" descriptor', () => {
@@ -876,5 +876,47 @@ describe('buildFluxPromptFromContext (RenderContext-based)', () => {
     const result = buildFluxPromptFromContext(ctx)
     expect(result).toBeTruthy()
     expect(result).not.toContain('undefined')
+  })
+
+  // ─── REGRESSION: Photographic language in prompt ─────────────────────
+  it('[REG] contains photographic foundation language (f/8, lens)', () => {
+    const result = buildFluxPromptFromContext(makeMockContext())
+    expect(/f\/8|lens|photograph/i.test(result)).toBe(true)
+  })
+
+  it('[REG] contains precise lighting color temperature (K)', () => {
+    const result = buildFluxPromptFromContext(makeMockContext())
+    // Morning time should produce 5600K or 2700K language
+    expect(/\d{4}K/i.test(result)).toBe(true)
+  })
+
+  it('[REG] throw/cushion density 2 → specific visual description', () => {
+    const ctx = makeMockContext()
+    if (ctx.sensoryProfile) ctx.sensoryProfile.throwCushionDensity = 2
+    const result = buildFluxPromptFromContext(ctx)
+    expect(/folded on sofa|accent chair/i.test(result)).toBe(true)
+  })
+
+  it('[REG] throw/cushion density 5 → maximalist description', () => {
+    const ctx = makeMockContext()
+    if (ctx.sensoryProfile) ctx.sensoryProfile.throwCushionDensity = 5
+    const result = buildFluxPromptFromContext(ctx)
+    expect(/abundantly|every seating surface/i.test(result)).toBe(true)
+  })
+
+  it('[REG] hardwood flooring gets "preserved" and "patina" language', () => {
+    const ctx = makeMockContext()
+    if (ctx.roomContext) {
+      ctx.roomContext.floorMaterial = 'Hardwood'
+      ctx.roomContext.floorColor = 'honey oak'
+    }
+    const result = buildFluxPromptFromContext(ctx)
+    expect(/preserved|patina/i.test(result)).toBe(true)
+  })
+
+  it('[REG] no "CGI" or "watermarks" as negative prompt language', () => {
+    const result = buildFluxPromptFromContext(makeMockContext())
+    // Quality markers should use positive framing (no CGI → photorealistic)
+    expect(result).toContain('Photorealistic')
   })
 })

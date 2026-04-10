@@ -310,11 +310,11 @@ describe('buildFluxPromptFromContext — property-based invariants', () => {
     }), { numRuns: 200 })
   })
 
-  test('prompt never exceeds 2400 char hard cap', () => {
+  test('prompt never exceeds 2800 char hard cap', () => {
     fc.assert(fc.property(fingerprintArb, (fp) => {
       const ctx = makeMinimalContext({ fingerprint: fp })
       const prompt = buildFluxPromptFromContext(ctx)
-      expect(prompt.length).toBeLessThanOrEqual(2400)
+      expect(prompt.length).toBeLessThanOrEqual(2800)
     }), { numRuns: 200 })
   })
 

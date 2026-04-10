@@ -13,6 +13,7 @@ import React, {
   CSSProperties,
 } from "react";
 import { useRouter } from "next/navigation";
+import { useArea2Store } from "@/lib/stores/area2Store";
 import "../step-1/step1.css";
 import "./step5.css";
 
@@ -867,8 +868,19 @@ function ArrowBtn({
 // ─────────────────────────────────────────────
 // Main page
 // ─────────────────────────────────────────────
+// Budget tier → BudgetProfile mapping
+const TIER_TO_BUDGET: Array<{ rangeMin: number; rangeMax: number }> = [
+  { rangeMin: 500, rangeMax: 2000 },
+  { rangeMin: 2000, rangeMax: 5000 },
+  { rangeMin: 5000, rangeMax: 10000 },
+  { rangeMin: 10000, rangeMax: 25000 },
+  { rangeMin: 25000, rangeMax: 50000 },
+];
+
 export default function BudgetSetup() {
   const router = useRouter();
+  const setBudget = useArea2Store((s) => s.setBudget);
+  const roomId = useArea2Store((s) => s.roomId);
   const [active, setActive] = useState(0);
   const [mounted, setMounted] = useState(false);
   const [s0, setS0] = useState(false);
@@ -1135,7 +1147,41 @@ export default function BudgetSetup() {
               </div>
                             
               <button
-                onClick={() => router.push("/design/step-6")}
+                onClick={async () => {
+                  // Write budget to area2Store
+                  const tierBudget = TIER_TO_BUDGET[active] ?? TIER_TO_BUDGET[0]!;
+                  setBudget({
+                    rangeMin: tierBudget.rangeMin,
+                    rangeMax: tierBudget.rangeMax,
+                    strategy: 'even-quality',
+                    hardCeiling: false,
+                  });
+
+                  // Persist to Supabase render_context.budget if roomId exists
+                  if (roomId) {
+                    try {
+                      const { createBrowserClient } = await import("@/lib/supabase/client");
+                      const supabase = createBrowserClient();
+                      await supabase
+                        .from('rooms')
+                        .update({
+                          render_context: {
+                            budget: {
+                              rangeMin: tierBudget.rangeMin,
+                              rangeMax: tierBudget.rangeMax,
+                              strategy: 'even-quality',
+                              hardCeiling: false,
+                            },
+                          },
+                        })
+                        .eq('id', roomId);
+                    } catch (e) {
+                      console.warn('[step-5] Failed to persist budget to Supabase:', e);
+                    }
+                  }
+
+                  router.push("/design/step-6");
+                }}
                 style={{
                   fontFamily: T.sans,
                   fontSize: 14,

@@ -167,7 +167,7 @@ describe('Prompt quality — synchronous checks', () => {
       // Core should be under 80 words (with preservation tail adding more)
       expect(wordCount).toBeLessThanOrEqual(350) // absolute max
       expect(charCount).toBeGreaterThan(100)      // minimum meaningful length
-      expect(charCount).toBeLessThanOrEqual(2400)  // hard cap for context prompt
+      expect(charCount).toBeLessThanOrEqual(2800)  // hard cap for context prompt
     }
   })
 

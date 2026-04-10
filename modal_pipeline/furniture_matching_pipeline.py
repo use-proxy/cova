@@ -243,69 +243,11 @@ def detect_furniture_fallback(style_blend):
     return furniture
 
 
-def embed_text_with_clip(text, clip_embed_url):
-    """Embed text using CLIP via Modal endpoint."""
-    import requests
-    resp = requests.post(clip_embed_url, json={"text": text}, timeout=30)
-    resp.raise_for_status()
-    return resp.json()["embedding"]
-
-
-def _filter_by_category(results, category, match_count):
-    """Apply exact -> group -> unfiltered category matching."""
-    if not category:
-        return results[:match_count]
-    exact = [r for r in results if r.get("category") == category]
-    if len(exact) >= match_count:
-        return exact[:match_count]
-    group_cats = get_category_group(category)
-    if len(group_cats) > 1:
-        grouped = [r for r in results if r.get("category") in group_cats]
-        if len(grouped) >= match_count:
-            return grouped[:match_count]
-        if grouped:
-            return grouped
-    return exact if exact else results[:match_count]
-
-
-def _rpc_search(supabase_url, supabase_key, rpc_name, embedding, fetch_count):
-    """Call a Supabase RPC search function."""
-    import requests
-    resp = requests.post(
-        f"{supabase_url}/rest/v1/rpc/{rpc_name}",
-        headers={
-            "apikey": supabase_key,
-            "Authorization": f"Bearer {supabase_key}",
-            "Content-Type": "application/json",
-        },
-        json={"query_embedding": embedding, "match_count": fetch_count, "match_threshold": 0.0},
-        timeout=30,
-    )
-    return resp
-
-
-def search_products(embedding, category, supabase_url, supabase_key, match_count=3):
-    """Search products by CLIP embedding. Tries fusion first, falls back to image-only."""
-    fetch_count = match_count * 5
-
-    # Try fusion embeddings first (higher quality)
-    fusion_resp = _rpc_search(supabase_url, supabase_key, "search_products_by_fusion_embedding", embedding, fetch_count)
-    if fusion_resp.ok:
-        fusion_results = fusion_resp.json()
-        if fusion_results:
-            filtered = _filter_by_category(fusion_results, category, match_count)
-            if filtered:
-                print(f"  [fusion] Using fusion embeddings (top sim={filtered[0].get('similarity', 0):.3f})")
-                return filtered
-            # Fusion had results but none matched category — return best by similarity
-            return fusion_results[:match_count]
-
-    # Fallback to image-only embeddings (fusion RPC doesn't exist yet or returned error)
-    resp = _rpc_search(supabase_url, supabase_key, "search_products_by_embedding", embedding, fetch_count)
-    if not resp.ok:
-        print(f"[furniture] Search failed: {resp.status_code} {resp.text[:200]}")
-        return []
-    return _filter_by_category(resp.json(), category, match_count)
+## DEPRECATED — catalog-based CLIP/pgvector matching removed.
+## Product matching now uses SERP-based search via the Next.js
+## /api/pipeline/furniture-match route. The Modal pipeline only
+## handles furniture detection; matching is done server-side in
+## the Next.js API layer using SearchAPI.io and Serper.dev.
 
 
 def detect_2d_hotspots(perspective_bytes, furniture_labels, anthropic_key):
@@ -376,46 +318,6 @@ def detect_2d_hotspots(perspective_bytes, furniture_labels, anthropic_key):
     return lookup
 
 
-def store_matches(room_id, furniture_item, matches, supabase_client, hotspot_lookup=None):
-    """Store furniture matches in room_products table."""
-    if not matches:
-        return 0
-    # Delete existing for this label
-    supabase_client.table("room_products").delete().eq(
-        "room_id", room_id
-    ).eq("furniture_label", furniture_item["label"]).execute()
-
-    # Look up 2D hotspot position
-    label = furniture_item["label"]
-    hotspot_x = None
-    hotspot_y = None
-    if hotspot_lookup:
-        pos = hotspot_lookup.get(label)
-        if pos:
-            hotspot_x, hotspot_y = pos
-
-    records = []
-    for rank, m in enumerate(matches[:3], start=1):
-        record = {
-            "room_id": room_id,
-            "product_id": m["id"],
-            "furniture_label": label,
-            "furniture_description": furniture_item["description"],
-            "similarity_score": m.get("similarity", 0),
-            "rank": rank,
-            "azimuth_degrees": furniture_item["azimuth_degrees"],
-            "elevation_degrees": furniture_item.get("elevation_degrees", -25),
-            "is_unlocked": False,
-        }
-        if hotspot_x is not None:
-            record["hotspot_x"] = hotspot_x
-            record["hotspot_y"] = hotspot_y
-        records.append(record)
-    if records:
-        supabase_client.table("room_products").insert(records).execute()
-    return len(records)
-
-
 @app.function(
     timeout=600,
     secrets=[
@@ -423,21 +325,21 @@ def store_matches(room_id, furniture_item, matches, supabase_client, hotspot_loo
         modal.Secret.from_name("anthropic-credentials"),
     ],
 )
-def match_furniture_to_products(room_id: str, user_id: str, fixed_furniture: list = None) -> dict:
-    """Main pipeline: detect furniture + match to catalog."""
+def detect_furniture(room_id: str, user_id: str, fixed_furniture: list = None) -> dict:
+    """Detection-only pipeline: detect furniture in panorama, return items with positions.
+
+    Product matching is handled by the Next.js API layer via SERP search.
+    This function only handles Claude Vision detection + 2D hotspot positioning.
+    """
     import requests as req
     from supabase import create_client
 
     supabase_url = os.environ["SUPABASE_URL"]
     supabase_key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
     anthropic_key = os.environ["ANTHROPIC_API_KEY"]
-    clip_embed_url = os.environ.get("CLIP_TEXT_EMBED_URL", "")
-
-    if not clip_embed_url:
-        raise RuntimeError("CLIP_TEXT_EMBED_URL not set")
 
     client = create_client(supabase_url, supabase_key)
-    client.table("rooms").update({"redesign_status": "matching_products"}).eq("id", room_id).execute()
+    client.table("rooms").update({"redesign_status": "detecting_furniture"}).eq("id", room_id).execute()
 
     try:
         room = client.table("rooms").select(
@@ -456,7 +358,6 @@ def match_furniture_to_products(room_id: str, user_id: str, fixed_furniture: lis
         # Download pano
         pano_resp = req.get(pano_url, timeout=60)
         if not pano_resp.ok:
-            # Hardcoded fallback pano
             pano_resp = req.get(
                 "https://cdn.marble.worldlabs.ai/7f3d51a8-a61d-4e87-a4c0-fcaf96593780/7961e02d-d637-4210-aa34-d68197f46a69_panos/rgb_0.png",
                 timeout=60,
@@ -494,48 +395,15 @@ def match_furniture_to_products(room_id: str, user_id: str, fixed_furniture: lis
                     print(f"  [fixed] Skipping {item['label']} @ az={item_az}° (near fixed furniture)")
             furniture_items = filtered_items if filtered_items else furniture_items
 
-        # Match each piece via CLIP
-        all_matches = []
-        matched_items = []  # (furniture_item, matches) pairs for storing after hotspot detection
-
-        for item in furniture_items:
-            print(f"\n[furniture] Matching: {item['label']} ({item['category']})")
-            try:
-                embedding = embed_text_with_clip(item["search_query"], clip_embed_url)
-            except Exception as e:
-                print(f"  CLIP embed failed: {e}")
-                continue
-
-            matches = search_products(embedding, item["category"], supabase_url, supabase_key, 3)
-
-            if not matches:
-                # Try without category filter
-                matches = search_products(embedding, None, supabase_url, supabase_key, 3)
-
-            if matches:
-                top = matches[0]
-                print(f"  Top: {top.get('name','?')[:50]} (${top.get('price',0):.2f}, sim={top.get('similarity',0):.3f})")
-                matched_items.append((item, matches))
-                all_matches.append({
-                    "furniture": item["label"],
-                    "category": item["category"],
-                    "matches": [{"name": m.get("name", ""), "price": m.get("price", 0),
-                                 "retailer": m.get("retailer", ""), "similarity": m.get("similarity", 0)}
-                                for m in matches[:3]],
-                })
-            else:
-                print(f"  No matches found")
-            time.sleep(0.3)
-
         # 2D hotspot detection from perspective render
-        hotspot_lookup = None
+        hotspot_lookup = {}
         perspective_url = room.get("perspective_render_url")
         if perspective_url:
             try:
                 print(f"\n[hotspots] Detecting 2D positions from perspective render...")
                 persp_resp = req.get(perspective_url, timeout=60)
                 if persp_resp.ok:
-                    labels = [item["label"] for item, _ in matched_items]
+                    labels = [item["label"] for item in furniture_items]
                     hotspot_lookup = detect_2d_hotspots(persp_resp.content, labels, anthropic_key)
                 else:
                     print(f"[hotspots] Failed to download perspective render: {persp_resp.status_code}")
@@ -544,33 +412,31 @@ def match_furniture_to_products(room_id: str, user_id: str, fixed_furniture: lis
         else:
             print(f"\n[hotspots] No perspective_render_url — using azimuth/elevation positioning")
 
-        # Store all matches with hotspot data
-        total_stored = 0
-        for item, matches in matched_items:
-            stored = store_matches(room_id, item, matches, client, hotspot_lookup=hotspot_lookup)
-            total_stored += stored
+        # Enrich items with hotspot positions
+        for item in furniture_items:
+            pos = hotspot_lookup.get(item["label"])
+            if pos:
+                item["hotspot_x"] = pos[0]
+                item["hotspot_y"] = pos[1]
 
-        # Check current status — don't overwrite 'complete' if Plus already finished
-        current = client.table("rooms").select("redesign_status").eq("id", room_id).single().execute().data
-        final_status = "complete" if (current and current.get("redesign_status") == "complete") else "video_ready"
-
-        client.table("rooms").update({
-            "furniture_matches_count": total_stored,
-            "redesign_status": final_status,
-        }).eq("id", room_id).execute()
-
-        print(f"\n[furniture] Done! {len(furniture_items)} detected, {total_stored} matches stored")
+        print(f"\n[furniture] Detection complete: {len(furniture_items)} items found")
         return {
             "room_id": room_id,
+            "pano_url": pano_url,
             "furniture_count": len(furniture_items),
-            "matches_stored": total_stored,
             "detection_source": detection_source,
-            "matches": all_matches,
+            "furniture_items": furniture_items,
         }
 
     except Exception as e:
         print(f"[furniture] ERROR: {e}")
-        client.table("rooms").update({"redesign_status": "error"}).eq("id", room_id).execute()
+        try:
+            client.table("rooms").update({
+                "redesign_status": "failed",
+                "redesign_error": str(e)[:2000],
+            }).eq("id", room_id).execute()
+        except Exception as update_err:
+            print(f"[furniture] Failed to write error status: {update_err}")
         raise
 
 
@@ -582,14 +448,20 @@ def match_furniture_to_products(room_id: str, user_id: str, fixed_furniture: lis
     ],
 )
 @modal.fastapi_endpoint(method="POST")
-def furniture_matching_webhook(item: dict):
+def furniture_detection_webhook(item: dict):
+    """HTTP webhook for furniture detection from Next.js.
+
+    Returns detected furniture items with labels, descriptions, categories,
+    positions, and search queries. Product matching is done by the caller
+    (Next.js API layer) using SERP-based search.
+    """
     room_id = item.get("room_id")
     user_id = item.get("user_id", "test-user")
     fixed_furniture = item.get("fixed_furniture", [])
     if not room_id:
         return {"error": "room_id required"}
     try:
-        result = match_furniture_to_products.local(room_id, user_id, fixed_furniture=fixed_furniture)
+        result = detect_furniture.local(room_id, user_id, fixed_furniture=fixed_furniture)
         return {"status": "complete", **result}
     except Exception as e:
         return {"status": "error", "error": str(e)}
@@ -600,12 +472,14 @@ def test_local(room_id: str = "", user_id: str = "test-user"):
     import uuid
     if not room_id:
         room_id = str(uuid.uuid4())
-    result = match_furniture_to_products.remote(room_id, user_id)
+    result = detect_furniture.remote(room_id, user_id)
     print("\n=== RESULT ===")
     for k, v in result.items():
-        if k != "matches":
+        if k != "furniture_items":
             print(f"  {k}: {v}")
-    for m in result.get("matches", []):
-        print(f"\n  {m['furniture']} ({m['category']}):")
-        for p in m.get("matches", []):
-            print(f"    {p['name'][:50]} ${p['price']:.2f} ({p['retailer']}) sim={p['similarity']:.3f}")
+    for item in result.get("furniture_items", []):
+        print(f"\n  {item['label']} ({item['category']}):")
+        print(f"    query: {item.get('search_query', 'N/A')[:60]}")
+        print(f"    az={item.get('azimuth_degrees', 0)}° el={item.get('elevation_degrees', 0)}°")
+        if item.get("hotspot_x") is not None:
+            print(f"    hotspot: ({item['hotspot_x']:.1f}%, {item['hotspot_y']:.1f}%)")

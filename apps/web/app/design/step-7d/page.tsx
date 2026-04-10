@@ -3,10 +3,10 @@
 /**
  * Screen D — Tabbed chatbot.
  *
- * Six tabs share a single chat UI and a single /api/design-chat
+ * Four tabs share a single chat UI and a single /api/design-chat
  * endpoint. Each tab keeps its own message history, starter chips,
  * and completion status. The "Design My Room" CTA unlocks when
- * budget is complete AND at least one other tab is complete.
+ * the All tab is complete AND at least one other tab is complete.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -20,49 +20,84 @@ import type { TabId } from '@/lib/types/area2'
 
 // ─── Tab labels + starters ────────────────────────────────────────────────────
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: 'budget', label: 'Budget' },
+type ChatTabId = 'all' | 'products' | 'tech' | 'art'
+
+const TABS: { id: ChatTabId; label: string }[] = [
+  { id: 'all', label: 'All' },
   { id: 'products', label: 'Products' },
-  { id: 'art', label: 'Art' },
   { id: 'tech', label: 'Tech' },
-  { id: 'sensory', label: 'Feel' },
-  { id: 'identity', label: 'You' },
+  { id: 'art', label: 'Art' },
 ]
 
-const STARTERS: Record<TabId, string[]> = {
-  budget: [
-    "I'm working with around $3,000",
-    'Budget is flexible, quality matters more',
-    'I want to keep it under $1,500',
+const STARTERS: Record<ChatTabId, string[]> = {
+  all: [
+    'Let me tell you about my vibe',
+    'Make it feel like a boutique hotel',
+    'I want it cozy and warm',
   ],
   products: [
     'I have a specific sofa in mind',
     'Nothing specific, let the AI decide',
     'Let me paste a link',
   ],
-  art: [
-    'I want something related to a specific artist',
-    "Show me some directions and I'll pick",
-    "I'll upload a picture I love",
-  ],
   tech: [
     'I definitely want a TV',
     'Keep it minimal, no TV',
     "I'm into audio — suggest something",
   ],
-  sensory: [
-    'I love plants everywhere',
-    'Keep it clean and minimal',
-    'Lots of cozy textures',
+  art: [
+    'I want something related to a specific artist',
+    "Show me some directions and I'll pick",
+    "I'll upload a picture I love",
   ],
-  identity: [
-    'I have a cultural aesthetic in mind',
-    'I just want it to feel like home',
-    'Let me tell you about my interests',
+}
+
+// Per-tab suggestion chips — shown above chat input, disappear after first message
+const SUGGESTION_CHIPS: Record<ChatTabId, string[]> = {
+  all: [
+    'Make it feel more luxurious',
+    'Keep it minimal and calm',
+    'I want it to feel like a boutique hotel',
+    'Make it cozy and warm',
+    'Bold and maximalist',
+    'Clean and Scandinavian-inspired',
+  ],
+  products: [
+    'I want a sectional sofa',
+    'Add a statement coffee table',
+    'I love velvet accent chairs',
+    'I need a large area rug',
+    'Add open shelving',
+    'I want linen curtains',
+  ],
+  tech: [
+    'Add a 65" wall-mounted TV',
+    'I want a Sonos soundbar',
+    'Hidden cable management',
+    'Smart lighting with scenes',
+    'Wireless charging surfaces',
+    'Projector instead of TV',
+  ],
+  art: [
+    'Gallery wall with mixed frames',
+    'One large statement piece',
+    'Black and white photography',
+    'Abstract colorful prints',
+    'Botanical illustration prints',
+    'Framed vintage maps',
   ],
 }
 
 const URL_RE = /https?:\/\/[^\s]+/i
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface Message {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+type TabMessages = Record<ChatTabId, Message[]>
 
 // ─── Typing indicator component ───────────────────────────────────────────────
 
@@ -89,14 +124,14 @@ interface InlineArt {
   selectedUrl?: string
 }
 
+const EMPTY_TAB_MESSAGES: TabMessages = { all: [], products: [], tech: [], art: [] }
+
 export default function Step7DPage() {
   const router = useRouter()
   const {
     roomId,
-    activeTab,
     tabStates,
     minimumThresholdMet,
-    setActiveTab,
     appendTabMessage,
     updateTabExtractedData,
     markTabComplete,
@@ -104,17 +139,92 @@ export default function Step7DPage() {
     assembleRenderContext,
   } = useArea2Store()
 
+  const setRoomContext = useArea2Store((s) => s.setRoomContext)
+  const setKeepMask = useArea2Store((s) => s.setKeepMask)
+  const existingRoomContext = useArea2Store((s) => s.roomContext)
+
+  // Active tab — ephemeral UI state, not Zustand
+  const [activeTab, setActiveTab] = useState<ChatTabId>('all')
+
+  // Per-tab message history — component state, persisted to Supabase
+  const [tabMessages, setTabMessages] = useState<TabMessages>({ ...EMPTY_TAB_MESSAGES })
+
   const [hydrated, setHydrated] = useState(false)
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [ctaError, setCtaError] = useState<string | null>(null)
   const [inlineArt, setInlineArt] = useState<Record<string, InlineArt[]>>({})
-  const [artPolling, setArtPolling] = useState<{ roomId: string; tabKey: TabId; messageIndex: number } | null>(null)
+  const [artPolling, setArtPolling] = useState<{ roomId: string; tabKey: ChatTabId; messageIndex: number } | null>(null)
   const [pendingImage, setPendingImage] = useState<{ base64: string; contentHash: string } | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => setHydrated(true), [])
+
+  // Load roomContext and keepMask from Supabase into Area2Store if missing.
+  useEffect(() => {
+    if (existingRoomContext || !roomId) return
+    const loadFromSupabase = async () => {
+      const supabase = createBrowserClient()
+      const { data: room } = await supabase
+        .from('rooms')
+        .select('room_context, keep_mask')
+        .eq('id', roomId)
+        .single()
+      if (room?.room_context) {
+        setRoomContext(room.room_context as Parameters<typeof setRoomContext>[0])
+      }
+      if (room?.keep_mask) {
+        setKeepMask(room.keep_mask as Parameters<typeof setKeepMask>[0])
+      }
+    }
+    loadFromSupabase().catch((e) => console.warn('[step-7d] Failed to load room context:', e))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId, existingRoomContext])
+
+  // Load design_chat_history from Supabase on mount
+  useEffect(() => {
+    if (!roomId) return
+    const loadChatHistory = async () => {
+      const supabase = createBrowserClient()
+      const { data: room } = await supabase
+        .from('rooms')
+        .select('design_chat_history')
+        .eq('id', roomId)
+        .single()
+      if (room?.design_chat_history && typeof room.design_chat_history === 'object') {
+        const loaded = room.design_chat_history as Partial<TabMessages>
+        const restored: TabMessages = {
+          all: loaded.all ?? [],
+          products: loaded.products ?? [],
+          tech: loaded.tech ?? [],
+          art: loaded.art ?? [],
+        }
+        setTabMessages(restored)
+        // Also populate Zustand tabStates so API calls have history
+        for (const tabId of ['all', 'products', 'tech', 'art'] as ChatTabId[]) {
+          for (const msg of restored[tabId]) {
+            appendTabMessage(tabId as TabId, msg.role, msg.content)
+          }
+        }
+      }
+    }
+    loadChatHistory().catch((e) => console.warn('[step-7d] Failed to load chat history:', e))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId])
+
+  // Save tabMessages to Supabase
+  const persistChatHistory = useCallback(async (messages: TabMessages) => {
+    if (!roomId) return
+    const supabase = createBrowserClient()
+    await supabase
+      .from('rooms')
+      .update({ design_chat_history: messages })
+      .eq('id', roomId)
+      .then(({ error }) => {
+        if (error) console.warn('[step-7d] Failed to persist chat history:', error)
+      })
+  }, [roomId])
 
   // Poll for art generation results.
   useEffect(() => {
@@ -158,10 +268,7 @@ export default function Step7DPage() {
     return () => clearInterval(interval)
   }, [artPolling, setArtBrief])
 
-  const activeHistory = useMemo(
-    () => tabStates.find((t) => t.tabId === activeTab)?.messages ?? [],
-    [tabStates, activeTab]
-  )
+  const activeHistory = tabMessages[activeTab]
   const activeExtracted = useMemo(
     () =>
       (tabStates.find((t) => t.tabId === activeTab)?.extractedData ??
@@ -176,13 +283,18 @@ export default function Step7DPage() {
     }
   }, [activeHistory.length, activeTab])
 
-  const tabStatus = (id: TabId) => {
+  const tabStatus = (id: ChatTabId) => {
     const t = tabStates.find((ts) => ts.tabId === id)
     if (!t) return 'empty'
     if (t.isComplete) return 'complete'
-    if (t.messages.length > 0) return 'in-progress'
+    if (t.messages.length > 0 || tabMessages[id].length > 0) return 'in-progress'
     return 'empty'
   }
+
+  // Check if any sub-tabs (products, tech, art) have messages — for badge on All tab
+  const subTabsHaveMessages = tabMessages.products.length > 0 ||
+    tabMessages.tech.length > 0 ||
+    tabMessages.art.length > 0
 
   const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -217,7 +329,16 @@ export default function Step7DPage() {
     const storedText = imgData
       ? `${effectiveText} [img-hash:${imgData.contentHash.slice(0, 8)}]`
       : effectiveText
-    appendTabMessage(activeTab, 'user', storedText)
+
+    // Update local tabMessages
+    const updatedMessages = {
+      ...tabMessages,
+      [activeTab]: [...tabMessages[activeTab], { role: 'user' as const, content: storedText }],
+    }
+    setTabMessages(updatedMessages)
+
+    // Also update Zustand for extraction/API
+    appendTabMessage(activeTab as TabId, 'user', storedText)
     setSending(true)
 
     try {
@@ -246,12 +367,23 @@ export default function Step7DPage() {
         artPrompt: string | null
       }
 
-      appendTabMessage(activeTab, 'assistant', data.reply)
-      updateTabExtractedData(activeTab, data.extractedData as never)
+      // Update local tabMessages with assistant reply
+      const withReply: TabMessages = {
+        ...updatedMessages,
+        [activeTab]: [...updatedMessages[activeTab], { role: 'assistant' as const, content: data.reply }],
+      }
+      setTabMessages(withReply)
+
+      // Zustand sync
+      appendTabMessage(activeTab as TabId, 'assistant', data.reply)
+      updateTabExtractedData(activeTab as TabId, data.extractedData as never)
 
       if (data.tabComplete) {
-        markTabComplete(activeTab)
+        markTabComplete(activeTab as TabId)
       }
+
+      // Persist to Supabase after every assistant response
+      persistChatHistory(withReply)
 
       if (data.shouldGenerateArt && roomId) {
         const nextIndex = activeHistory.length + 1
@@ -266,17 +398,19 @@ export default function Step7DPage() {
         setArtPolling({ roomId, tabKey, messageIndex: nextIndex })
       }
     } catch {
-      appendTabMessage(
-        activeTab,
-        'assistant',
-        "Something went wrong on my end. Want to try that again?"
-      )
+      const errorMsg = "Something went wrong on my end. Want to try that again?"
+      const withError: TabMessages = {
+        ...updatedMessages,
+        [activeTab]: [...updatedMessages[activeTab], { role: 'assistant' as const, content: errorMsg }],
+      }
+      setTabMessages(withError)
+      appendTabMessage(activeTab as TabId, 'assistant', errorMsg)
     } finally {
       setSending(false)
     }
   }
 
-  const selectArt = (tabKey: TabId, messageIndex: number, url: string) => {
+  const selectArt = (tabKey: ChatTabId, messageIndex: number, url: string) => {
     setInlineArt((prev) => ({
       ...prev,
       [tabKey]: (prev[tabKey] ?? []).map((block) =>
@@ -301,7 +435,7 @@ export default function Step7DPage() {
     if (!user) return
     const ctx = assembleRenderContext(user.id)
     if (!ctx) {
-      setCtaError('Complete the Budget tab to continue.')
+      setCtaError('Complete the All tab to continue.')
       return
     }
     const result = await persistRenderContext(roomId, ctx, user.id)
@@ -368,10 +502,14 @@ export default function Step7DPage() {
               }}
             >
               {t.label}
+              {/* Badge on All tab when sub-tabs have messages */}
+              {t.id === 'all' && subTabsHaveMessages && !isActive && (
+                <span className="w-[6px] h-[6px] rounded-full bg-cova-gold/60 inline-block" />
+              )}
               {status === 'complete' && (
                 <span className="text-cova-gold text-xs">✓</span>
               )}
-              {status === 'in-progress' && (
+              {status === 'in-progress' && t.id !== 'all' && (
                 <span className="w-[6px] h-[6px] rounded-full bg-cova-gold inline-block" />
               )}
             </button>
@@ -482,6 +620,35 @@ export default function Step7DPage() {
         </div>
       )}
 
+      {/* Suggestion chips — disappear after first message in tab */}
+      {activeHistory.length === 0 && (
+        <div className="px-6 pb-2 max-w-[720px] mx-auto w-full overflow-x-auto">
+          <div className="flex gap-2 flex-nowrap">
+            {SUGGESTION_CHIPS[activeTab].map((chip) => (
+              <button
+                key={chip}
+                type="button"
+                onClick={() => sendMessage(chip)}
+                disabled={sending}
+                className={[
+                  'bg-transparent whitespace-nowrap text-[#F5F0E8] py-2 px-4 rounded-full text-sm transition-all duration-200 ease-out flex-shrink-0',
+                  sending ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
+                ].join(' ')}
+                style={{ border: '1px solid #C9A84C' }}
+                onMouseEnter={(e) => {
+                  if (!sending) (e.currentTarget as HTMLButtonElement).style.background = '#C9A84C'
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.background = 'transparent'
+                }}
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Input bar */}
       <div
         className="py-3 px-6 max-w-[720px] mx-auto w-full flex-shrink-0 bg-cova-bg"
@@ -511,8 +678,8 @@ export default function Step7DPage() {
         )}
 
         <div className="flex items-center gap-2">
-          {/* Image attach for Identity tab */}
-          {activeTab === 'identity' && (
+          {/* Image attach for All tab (identity conversations) */}
+          {activeTab === 'all' && (
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
@@ -601,7 +768,7 @@ export default function Step7DPage() {
         >
           {minimumThresholdMet
             ? 'Design My Room →'
-            : 'Complete Budget + one more tab to continue'}
+            : 'Complete All + one more tab to continue'}
         </motion.button>
 
         {/* Helper text */}

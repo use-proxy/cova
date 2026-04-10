@@ -1426,6 +1426,7 @@ export default function RoomPhotoUpload() {
               ref={inputRef}
               type="file"
               accept=".jpg,.jpeg,.png,.heic,.heif,image/jpeg,image/png,image/heic,image/heif"
+              capture="environment"
               style={{ display: "none" }}
               onChange={onInputChange}
             />

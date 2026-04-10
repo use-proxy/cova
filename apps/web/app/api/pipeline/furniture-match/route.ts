@@ -1,23 +1,50 @@
 /**
- * Pipeline 3 — Furniture Matching
- * Fires when user reaches step-9 (shoppable room).
- * Calls the Modal furniture_matching_webhook to detect furniture via Claude Vision
- * and match to real products via CLIP similarity search.
+ * Pipeline 3 — Furniture Detection + SERP Matching
  *
- * Input:  { room_id: string, fixed_furniture?: array }
- * Output: { status, room_id, furniture_count, matches_stored, matches }
- * Saves:  room_products table (inserts), rooms.furniture_matches_count
- *         (all written by the Modal pipeline directly to Supabase)
+ * 1. Calls Modal webhook to detect furniture via Claude Vision (detection only)
+ * 2. For each detected item, fires Serper Shopping API search
+ * 3. Filters results by budget range
+ * 4. Writes results to room_products table + rooms.matched_products JSONB
+ *
+ * Input:  { room_id: string, fixed_furniture?: array, budget_range?: [number, number] }
+ * Output: { status, room_id, furniture_count, products_matched, items }
  */
 
 export const maxDuration = 300
 
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { searchProducts, type SerperProduct } from '@/lib/ai/serper'
 
 interface FurnitureMatchBody {
   room_id?: string
   fixed_furniture?: unknown[]
+  budget_range?: [number, number]
+  style_descriptor?: string
+}
+
+interface DetectedItem {
+  label: string
+  description: string
+  category: string
+  azimuth_degrees: number
+  elevation_degrees: number
+  search_query: string
+  hotspot_x?: number
+  hotspot_y?: number
+}
+
+interface SerpMatchedProduct {
+  title: string
+  price: number | null
+  retailer: string
+  productUrl: string
+  thumbnailUrl: string
+  itemLabel: string
+  isSale: boolean
+  rating: number | null
+  ratingCount: number | null
+  matchScore: number
 }
 
 export async function POST(request: Request) {
@@ -31,7 +58,7 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json()) as FurnitureMatchBody
-  const { room_id, fixed_furniture } = body
+  const { room_id, fixed_furniture, budget_range, style_descriptor } = body
 
   if (!room_id) {
     return NextResponse.json({ error: 'room_id is required' }, { status: 400 })
@@ -46,7 +73,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const response = await fetch(webhookUrl, {
+    // ── Step 1: Call Modal for furniture detection ──────────────────────
+    const detectionResponse = await fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -54,47 +82,175 @@ export async function POST(request: Request) {
         user_id: user.id,
         fixed_furniture: fixed_furniture ?? [],
       }),
-      signal: AbortSignal.timeout(295_000),
+      signal: AbortSignal.timeout(120_000),
     })
 
-    if (!response.ok) {
-      const text = await response.text().catch(() => response.statusText)
-      console.error('[furniture-match] Modal webhook error:', response.status, text)
+    if (!detectionResponse.ok) {
+      const text = await detectionResponse.text().catch(() => detectionResponse.statusText)
+      console.error('[furniture-match] Detection webhook error:', detectionResponse.status, text)
       return NextResponse.json(
-        { error: 'Furniture matching pipeline failed', detail: text },
+        { error: 'Furniture detection failed', detail: text },
         { status: 502 }
       )
     }
 
-    const result = (await response.json()) as {
+    const detectionResult = (await detectionResponse.json()) as {
       status: string
-      room_id?: string
+      furniture_items?: DetectedItem[]
       furniture_count?: number
-      matches_stored?: number
       detection_source?: string
-      matches?: unknown[]
       error?: string
     }
 
-    if (result.status === 'error') {
-      console.error('[furniture-match] Pipeline error:', result.error)
+    if (detectionResult.status === 'error') {
+      console.error('[furniture-match] Detection error:', detectionResult.error)
       return NextResponse.json(
-        { error: result.error ?? 'Furniture matching failed' },
+        { error: detectionResult.error ?? 'Furniture detection failed' },
         { status: 500 }
       )
     }
 
+    const furnitureItems = detectionResult.furniture_items ?? []
+    if (furnitureItems.length === 0) {
+      return NextResponse.json({
+        status: 'complete',
+        room_id,
+        furniture_count: 0,
+        products_matched: 0,
+        items: [],
+      })
+    }
+
+    // ── Step 2: SERP search per item ───────────────────────────────────
+    await supabase
+      .from('rooms')
+      .update({ redesign_status: 'matching_products' })
+      .eq('id', room_id)
+
+    const allMatchedProducts: SerpMatchedProduct[] = []
+    const roomProductRecords: Record<string, unknown>[] = []
+
+    for (const item of furnitureItems) {
+      const styleTag = style_descriptor ?? ''
+      const searchQuery = item.search_query || `${item.label} ${styleTag} buy`
+
+      let products: SerperProduct[] = []
+      try {
+        const result = await searchProducts(searchQuery, 10)
+        products = result.products
+      } catch (err) {
+        console.warn(`[furniture-match] Serper search failed for "${item.label}":`, err)
+        continue
+      }
+
+      // Filter by budget range if provided
+      if (budget_range && budget_range.length === 2) {
+        const [minBudget, maxBudget] = budget_range
+        // Per-item budget: approximate by dividing total by furniture count
+        const perItemMax = maxBudget / Math.max(furnitureItems.length, 1) * 2 // allow 2x per-item average
+        const perItemMin = minBudget / Math.max(furnitureItems.length, 1) * 0.3
+        products = products.filter(
+          (p) => p.price >= perItemMin && p.price <= perItemMax
+        )
+      }
+
+      // Take top 5 per item
+      const topProducts = products.slice(0, 5)
+
+      for (let rank = 0; rank < topProducts.length; rank++) {
+        const p = topProducts[rank]!
+        const matchScore = 1.0 - rank * 0.1 // simple rank-based score
+
+        allMatchedProducts.push({
+          title: p.title,
+          price: p.price,
+          retailer: p.retailer,
+          productUrl: p.productUrl,
+          thumbnailUrl: p.imageUrl,
+          itemLabel: item.label,
+          isSale: p.isSale,
+          rating: p.rating,
+          ratingCount: p.ratingCount,
+          matchScore,
+        })
+
+        roomProductRecords.push({
+          room_id,
+          product_id: null, // SERP results — not in products table
+          furniture_label: item.label,
+          furniture_description: item.description,
+          similarity_score: matchScore,
+          rank: rank + 1,
+          azimuth_degrees: item.azimuth_degrees,
+          elevation_degrees: item.elevation_degrees ?? -25,
+          hotspot_x: item.hotspot_x ?? null,
+          hotspot_y: item.hotspot_y ?? null,
+          is_unlocked: false,
+          serp_title: p.title,
+          serp_price: p.price,
+          serp_retailer: p.retailer,
+          serp_product_url: p.productUrl,
+          serp_image_url: p.imageUrl,
+          match_score: matchScore,
+          match_label: rank === 0 ? 'Top Match' : rank <= 2 ? 'Close Match' : 'Inspired By',
+          is_sale: p.isSale,
+        })
+      }
+    }
+
+    // ── Step 3: Write to Supabase ──────────────────────────────────────
+
+    // Clear existing room_products for this room
+    await supabase
+      .from('room_products')
+      .delete()
+      .eq('room_id', room_id)
+
+    // Insert new SERP-matched products
+    if (roomProductRecords.length > 0) {
+      const { error: insertError } = await supabase
+        .from('room_products')
+        .insert(roomProductRecords)
+
+      if (insertError) {
+        console.error('[furniture-match] Insert error:', insertError)
+      }
+    }
+
+    // Write matched_products JSONB to rooms table
+    await supabase
+      .from('rooms')
+      .update({
+        matched_products: allMatchedProducts,
+        furniture_matches_count: roomProductRecords.length,
+        redesign_status: 'complete',
+      })
+      .eq('id', room_id)
+
     return NextResponse.json({
-      status: result.status,
-      room_id: result.room_id,
-      furniture_count: result.furniture_count ?? 0,
-      matches_stored: result.matches_stored ?? 0,
-      detection_source: result.detection_source ?? 'unknown',
-      matches: result.matches ?? [],
+      status: 'complete',
+      room_id,
+      furniture_count: furnitureItems.length,
+      products_matched: roomProductRecords.length,
+      detection_source: detectionResult.detection_source ?? 'unknown',
+      items: furnitureItems.map((item) => ({
+        label: item.label,
+        category: item.category,
+        products: allMatchedProducts
+          .filter((p) => p.itemLabel === item.label)
+          .slice(0, 5),
+      })),
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[furniture-match] Unexpected error:', message)
+
+    // Write error status
+    await supabase
+      .from('rooms')
+      .update({ redesign_status: 'error' })
+      .eq('id', room_id)
+
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }

@@ -17,24 +17,29 @@
 126:11  Warning: Unexpected console statement.  no-console
 138:5  Warning: Unexpected console statement.  no-console
 
-./app/api/detect/route.ts
-20:9  Warning: Unexpected console statement.  no-console
-60:9  Warning: Unexpected console statement.  no-console
-86:9  Warning: Unexpected console statement.  no-console
-88:9  Warning: Unexpected console statement.  no-console
+./app/api/design-chat/route.ts
+125:7  Warning: Unexpected console statement.  no-console
+236:21  Warning: Unexpected console statement.  no-console
+
+./app/api/detect/render/route.ts
+130:5  Warning: Unexpected console statement.  no-console
+
+./app/api/fingerprint/explain/route.ts
+62:5  Warning: Unexpected console statement.  no-console
 
 ./app/api/interactions/route.ts
 38:7  Warning: Unexpected console statement.  no-console
 43:5  Warning: Unexpected console statement.  no-console
 
+./app/api/match/complete-room/route.ts
+180:7  Warning: Unexpected console statement.  no-console
+
 ./app/api/match/route.ts
-256:7  Warning: Unexpected console statement.  no-console
-274:7  Warning: Unexpected console statement.  no-console
+259:7  Warning: Unexpected console statement.  no-console
+290:9  Warning: Unexpected console statement.  no-console
+294:9  Warning: Unexpected console statement.  no-console
 323:5  Warning: Unexpected console statement.  no-console
-329:7  Warning: Unexpected console statement.  no-console
-340:9  Warning: Unexpected console statement.  no-console
-342:9  Warning: Unexpected console statement.  no-console
-372:7  Warning: Unexpected console statement.  no-console
+348:7  Warning: Unexpected console statement.  no-console
 
 ./app/api/parallax/route.ts
 41:5  Warning: Unexpected console statement.  no-console
@@ -42,20 +47,57 @@
 62:7  Warning: Unexpected console statement.  no-console
 80:5  Warning: Unexpected console statement.  no-console
 
+./app/api/pipeline/depth-video/route.ts
+48:5  Warning: Unexpected console statement.  no-console
+67:7  Warning: Unexpected console statement.  no-console
+82:7  Warning: Unexpected console statement.  no-console
+96:5  Warning: Unexpected console statement.  no-console
+
+./app/api/pipeline/furniture-match/route.ts
+90:7  Warning: Unexpected console statement.  no-console
+106:7  Warning: Unexpected console statement.  no-console
+142:9  Warning: Unexpected console statement.  no-console
+216:9  Warning: Unexpected console statement.  no-console
+246:5  Warning: Unexpected console statement.  no-console
+
+./app/api/pipeline/pre-detect/route.ts
+59:7  Warning: Unexpected console statement.  no-console
+75:7  Warning: Unexpected console statement.  no-console
+90:5  Warning: Unexpected console statement.  no-console
+
+./app/api/pipeline/redesign/route.ts
+64:7  Warning: Unexpected console statement.  no-console
+82:7  Warning: Unexpected console statement.  no-console
+98:5  Warning: Unexpected console statement.  no-console
+
+./app/api/quiz/fingerprint/route.ts
+536:11  Warning: Unexpected console statement.  no-console
+542:9  Warning: Unexpected console statement.  no-console
+549:9  Warning: Unexpected console statement.  no-console
+598:11  Warning: Unexpected console statement.  no-console
+606:9  Warning: Unexpected console statement.  no-console
+
 ./app/api/render/status/route.ts
 62:5  Warning: Unexpected console statement.  no-console
 64:5  Warning: Unexpected console statement.  no-console
-187:9  Warning: Unexpected console statement.  no-console
-300:9  Warning: Unexpected console statement.  no-console
-428:9  Warning: Unexpected console statement.  no-console
-482:7  Warning: Unexpected console statement.  no-console
+191:9  Warning: Unexpected console statement.  no-console
+304:9  Warning: Unexpected console statement.  no-console
+432:9  Warning: Unexpected console statement.  no-console
+490:7  Warning: Unexpected console statement.  no-console
+
+./app/api/render/tweak/route.ts
+165:7  Warning: Unexpected console statement.  no-console
+171:5  Warning: Unexpected console statement.  no-console
 
 ./app/api/swap/route.ts
 182:7  Warning: Unexpected console statement.  no-console
 188:5  Warning: Unexpected console statement.  no-console
 
 ./app/auth/callback/route.ts
-34:5  Warning: Unexpected console statement.  no-console
+84:15  Warning: Unexpected console statement.  no-console
+86:15  Warning: Unexpected console statement.  no-console
+95:9  Warning: Unexpected console statement.  no-console
+101:5  Warning: Unexpected console statement.  no-console
 
 ./app/capture/[roomId]/page.tsx
 113:15  Warning: Unexpected console statement.  no-console
@@ -70,15 +112,63 @@
 ./app/chatbot/page.tsx
 40:9  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
 
-./app/design/step-2/page.tsx
-116:34  Warning: Unexpected console statement.  no-console
-117:7  Warning: Unexpected console statement.  no-console
-122:7  Warning: Unexpected console statement.  no-console
+./app/dashboard/page.tsx
+700:21  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+847:21  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./app/dashboard/saved/page.tsx
+780:23  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+835:21  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+957:15  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./app/dashboard/settings/page.tsx
+376:22  Warning: The ref value 'autoSaveTimers.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'autoSaveTimers.current' to a variable inside the effect, and use that variable in the cleanup function.  react-hooks/exhaustive-deps
+612:19  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./app/design/step-3/page.tsx
+298:11  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./app/design/step-4/page.tsx
+281:9  Warning: Unexpected console statement.  no-console
+302:9  Warning: Unexpected console statement.  no-console
+
+./app/design/step-5/page.tsx
+1179:23  Warning: Unexpected console statement.  no-console
+
+./app/design/step-6/page.tsx
+1303:21  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+1496:25  Warning: Unexpected console statement.  no-console
+1500:21  Warning: Unexpected console statement.  no-console
+
+./app/design/step-7/page.tsx
+101:11  Warning: Unexpected console statement.  no-console
+131:15  Warning: Unexpected console statement.  no-console
+135:13  Warning: Unexpected console statement.  no-console
+139:9  Warning: Unexpected console statement.  no-console
+
+./app/design/step-7c/page.tsx
+291:6  Warning: React Hook useEffect has a missing dependency: 'displayedDecidedCount'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+370:7  Warning: Unexpected console statement.  no-console
+405:15  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./app/design/step-7d/page.tsx
+181:37  Warning: Unexpected console statement.  no-console
+212:36  Warning: Unexpected console statement.  no-console
+225:20  Warning: Unexpected console statement.  no-console
+443:7  Warning: Unexpected console statement.  no-console
+454:23  Warning: Unexpected console statement.  no-console
+
+./app/design/step-8a/page.tsx
+175:29  Warning: Unexpected console statement.  no-console
+182:29  Warning: Unexpected console statement.  no-console
+500:33  Warning: Unexpected console statement.  no-console
+552:13  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
 
 ./app/design/step-9/page.tsx
-137:11  Warning: Unexpected console statement.  no-console
-146:9  Warning: Unexpected console statement.  no-console
-236:13  Warning: Unexpected console statement.  no-console
+555:17  Warning: Unexpected console statement.  no-console
+650:6  Warning: React Hook useEffect has a missing dependency: 'displayedTotal'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+725:13  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+923:25  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
 
 ./app/product-panel/page.tsx
 83:9  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
@@ -122,8 +212,22 @@
 42:1  Warning: Unexpected console statement.  no-console
 189:1  Warning: Unexpected console statement.  no-console
 
+./lib/ai/detection/depth.ts
+185:5  Warning: Unexpected console statement.  no-console
+200:7  Warning: Unexpected console statement.  no-console
+206:5  Warning: Unexpected console statement.  no-console
+224:5  Warning: Unexpected console statement.  no-console
+241:5  Warning: Unexpected console statement.  no-console
+251:7  Warning: Unexpected console statement.  no-console
+
+./lib/ai/detection/index.ts
+124:5  Warning: Unexpected console statement.  no-console
+
+./lib/ai/detection/roomContext.ts
+105:5  Warning: Unexpected console statement.  no-console
+
 ./lib/ai/flux.ts
-279:5  Warning: Unexpected console statement.  no-console
+528:5  Warning: Unexpected console statement.  no-console
 
 ./lib/ai/grounding.ts
 191:5  Warning: Unexpected console statement.  no-console
@@ -172,9 +276,14 @@
 40:7  Warning: Unexpected console statement.  no-console
 44:5  Warning: Unexpected console statement.  no-console
 
+./lib/store/fingerprint.ts
+113:9  Warning: Unexpected console statement.  no-console
+
 info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/basic-features/eslint#disabling-rules
    Collecting page data ...
-   Generating static pages (0/55) ...
+   Generating static pages (0/76) ...
+   Generating static pages (19/76) 
+   Generating static pages (38/76) 
 Chat history error: B [Error]: Dynamic server usage: Route /api/chat/history couldn't be rendered statically because it used `request.url`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
     at V (/Users/daksh/Desktop/cova/apps/web/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:21778)
     at Object.get (/Users/daksh/Desktop/cova/apps/web/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:29465)
@@ -189,40 +298,55 @@ Chat history error: B [Error]: Dynamic server usage: Route /api/chat/history cou
   description: "Route /api/chat/history couldn't be rendered statically because it used `request.url`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
   digest: 'DYNAMIC_SERVER_USAGE'
 }
-   Generating static pages (13/55) 
-   Generating static pages (27/55) 
-   Generating static pages (41/55) 
- ✓ Generating static pages (55/55)
+   Generating static pages (57/76) 
+ ✓ Generating static pages (76/76)
    Finalizing page optimization ...
    Collecting build traces ...
 
 Route (app)                              Size     First Load JS
-┌ ○ /                                    4.25 kB         137 kB
-├ ○ /_not-found                          875 B          88.3 kB
+┌ ○ /                                    19.9 kB         163 kB
+├ ○ /_not-found                          879 B          88.6 kB
 ├ ƒ /api/auth/callback                   0 B                0 B
 ├ ƒ /api/capture/generate-token          0 B                0 B
 ├ ƒ /api/capture/validate-token          0 B                0 B
 ├ ƒ /api/chat                            0 B                0 B
 ├ ƒ /api/chat/history                    0 B                0 B
+├ ƒ /api/design-chat                     0 B                0 B
 ├ ƒ /api/design-dna/card                 0 B                0 B
 ├ ƒ /api/detect                          0 B                0 B
+├ ƒ /api/detect/material                 0 B                0 B
+├ ƒ /api/detect/render                   0 B                0 B
 ├ ƒ /api/detect/status                   0 B                0 B
+├ ƒ /api/fingerprint/explain             0 B                0 B
+├ ƒ /api/generate-art                    0 B                0 B
 ├ ƒ /api/interactions                    0 B                0 B
 ├ ○ /api/local-ip                        0 B                0 B
 ├ ƒ /api/match                           0 B                0 B
 ├ ƒ /api/match/accessories               0 B                0 B
 ├ ƒ /api/match/coherence                 0 B                0 B
+├ ƒ /api/match/complete-room             0 B                0 B
+├ ƒ /api/match/room-budget               0 B                0 B
 ├ ƒ /api/parallax                        0 B                0 B
 ├ ƒ /api/parse-constraints               0 B                0 B
+├ ƒ /api/pipeline/depth-video            0 B                0 B
+├ ƒ /api/pipeline/furniture-match        0 B                0 B
+├ ƒ /api/pipeline/pre-detect             0 B                0 B
+├ ƒ /api/pipeline/redesign               0 B                0 B
 ├ ƒ /api/quiz/confidence                 0 B                0 B
 ├ ƒ /api/quiz/fingerprint                0 B                0 B
 ├ ƒ /api/quiz/mood-board                 0 B                0 B
 ├ ƒ /api/quiz/mood-strip                 0 B                0 B
 ├ ƒ /api/quiz/next-card                  0 B                0 B
 ├ ƒ /api/quiz/next-pair                  0 B                0 B
+├ ƒ /api/quiz/validation-renders         0 B                0 B
 ├ ƒ /api/render                          0 B                0 B
+├ ƒ /api/render/from-context             0 B                0 B
+├ ƒ /api/render/previews                 0 B                0 B
+├ ƒ /api/render/previews/status          0 B                0 B
 ├ ƒ /api/render/refine                   0 B                0 B
 ├ ƒ /api/render/status                   0 B                0 B
+├ ƒ /api/render/tweak                    0 B                0 B
+├ ƒ /api/render/tweak/status             0 B                0 B
 ├ ƒ /api/rooms/[roomId]                  0 B                0 B
 ├ ƒ /api/rooms/capture                   0 B                0 B
 ├ ƒ /api/rooms/create                    0 B                0 B
@@ -231,31 +355,36 @@ Route (app)                              Size     First Load JS
 ├ ƒ /api/style-references/match          0 B                0 B
 ├ ƒ /api/swap                            0 B                0 B
 ├ ƒ /api/swap/status                     0 B                0 B
-├ ○ /auth                                1.77 kB         151 kB
+├ ○ /auth                                8.23 kB         158 kB
 ├ ƒ /auth/callback                       0 B                0 B
-├ ○ /budget                              3.97 kB        91.4 kB
-├ ƒ /capture/[roomId]                    12 kB           161 kB
-├ ƒ /capture/mobile/[token]              4.49 kB         159 kB
-├ ○ /capture/new                         832 B          88.2 kB
-├ ○ /chatbot                             5.51 kB        92.9 kB
-├ ƒ /dashboard                           7.64 kB         127 kB
-├ ƒ /dashboard/profile                   1.18 kB        97.2 kB
-├ ƒ /dashboard/saved                     1.37 kB          94 kB
-├ ƒ /dashboard/settings                  3.19 kB         101 kB
-├ ○ /design/step-1                       6.64 kB         144 kB
-├ ○ /design/step-2                       6.89 kB         144 kB
-├ ○ /design/step-3                       5.92 kB         143 kB
-├ ○ /design/step-4                       4.8 kB          213 kB
-├ ○ /design/step-5                       7.35 kB         100 kB
-├ ○ /design/step-6                       4.09 kB         141 kB
-├ ○ /design/step-7                       6.86 kB         171 kB
-├ ○ /design/step-8                       4.66 kB         151 kB
-├ ○ /design/step-9                       5.88 kB         152 kB
-└ ○ /product-panel                       6.31 kB        93.7 kB
-+ First Load JS shared by all            87.4 kB
-  ├ chunks/115-ecd7876247376ec4.js       31.7 kB
-  ├ chunks/fd9d1056-6f063cb2267241b7.js  53.7 kB
-  └ other shared chunks (total)          2.04 kB
+├ ○ /budget                              5.2 kB          134 kB
+├ ƒ /capture/[roomId]                    6.12 kB         162 kB
+├ ƒ /capture/mobile/[token]              3.98 kB         160 kB
+├ ○ /capture/new                         835 B          88.5 kB
+├ ○ /chatbot                             2.02 kB        93.7 kB
+├ ƒ /dashboard                           4.75 kB        92.4 kB
+├ ƒ /dashboard/profile                   1.08 kB        97.4 kB
+├ ƒ /dashboard/saved                     6.19 kB        93.9 kB
+├ ƒ /dashboard/settings                  7.79 kB        95.5 kB
+├ ○ /design/step-1                       2.39 kB        90.1 kB
+├ ○ /design/step-2                       2.97 kB        92.7 kB
+├ ○ /design/step-3                       4.27 kB          94 kB
+├ ○ /design/step-4                       7.94 kB        97.7 kB
+├ ○ /design/step-5                       5.84 kB         124 kB
+├ ○ /design/step-6                       6.5 kB          100 kB
+├ ○ /design/step-7                       3.6 kB          122 kB
+├ ○ /design/step-7b                      4.01 kB         123 kB
+├ ○ /design/step-7c                      4.55 kB         123 kB
+├ ○ /design/step-7d                      6.59 kB         221 kB
+├ ○ /design/step-8a                      5.32 kB          95 kB
+├ ○ /design/step-8b                      8.33 kB          96 kB
+├ ○ /design/step-9                       9.39 kB         106 kB
+├ ○ /product-panel                       1.82 kB        94.6 kB
+└ ƒ /room/[roomId]/3d                    2.67 kB        99.4 kB
++ First Load JS shared by all            87.7 kB
+  ├ chunks/7115-782c2f9cd1ce656d.js      31.7 kB
+  ├ chunks/fd9d1056-62f7e59fdc0bc169.js  53.7 kB
+  └ other shared chunks (total)          2.3 kB
 
 
 ƒ Middleware                             77.7 kB

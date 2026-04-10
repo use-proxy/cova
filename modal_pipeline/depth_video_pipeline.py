@@ -461,6 +461,7 @@ def generate_depth_video(
 )
 @modal.fastapi_endpoint(method="POST")
 def depth_video_webhook(item: dict):
+    import requests as _req
     room_id = item.get("room_id")
     pano_url = item.get("pano_url")
     style_blend = item.get("style_blend", {})
@@ -471,6 +472,22 @@ def depth_video_webhook(item: dict):
         result = generate_depth_video.local(room_id, pano_url, style_blend, hotspot_azimuths)
         return {"status": "complete", **result}
     except Exception as e:
+        # Write explicit failure status to Supabase
+        try:
+            sb_url = os.environ["SUPABASE_URL"]
+            sb_key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+            _req.patch(
+                f"{sb_url}/rest/v1/rooms?id=eq.{room_id}",
+                headers={
+                    "apikey": sb_key,
+                    "Authorization": f"Bearer {sb_key}",
+                    "Content-Type": "application/json",
+                },
+                json={"redesign_status": "failed", "redesign_error": str(e)[:2000]},
+                timeout=10,
+            )
+        except Exception as update_err:
+            print(f"[depth-video] Failed to write error status: {update_err}")
         return {"status": "error", "error": str(e)}
 
 

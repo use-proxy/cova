@@ -278,6 +278,7 @@ export interface IdentityBrief {
 // ─── Tab conversation state ──────────────────────────────────────────────────
 
 export type TabId =
+  | 'all'
   | 'budget'
   | 'products'
   | 'art'
@@ -304,6 +305,7 @@ export interface TabConversationState {
 // ─── Master render context ───────────────────────────────────────────────────
 
 export interface RenderContext {
+  schemaVersion?: string
   roomId: string
   userId: string
   assembledAt: string

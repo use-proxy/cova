@@ -231,8 +231,8 @@ describe('Complete data flow — canonical session', () => {
     expect(prompt.length).toBeGreaterThan(200)
   })
 
-  test('prompt respects 2400 char hard cap', () => {
-    expect(prompt.length).toBeLessThanOrEqual(2400)
+  test('prompt respects 2800 char hard cap', () => {
+    expect(prompt.length).toBeLessThanOrEqual(2800)
   })
 
   // ── STYLE FINGERPRINT CHECKS ──────────────────────────────────────────

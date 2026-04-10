@@ -43,6 +43,7 @@ export default function RevealStep8A() {
   const [remainingRenders, setRemainingRenders] = useState(DEFAULT_RENDER_COUNT)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [pipelineStatus, setPipelineStatus] = useState<string>('')
 
   const [pointer, setPointer] = useState<PointerState>({
     x: 0,
@@ -84,23 +85,24 @@ export default function RevealStep8A() {
       try {
         const { data: rooms, error: roomsError } = await supabase
           .from('rooms')
-          .select('render_url, fingerprint_id, created_at')
+          .select('render_url, redesign_pano_url, fingerprint_id, created_at')
           .eq('user_id', user.id)
-          .not('render_url', 'is', null)
           .order('created_at', { ascending: false })
           .limit(1)
 
         if (roomsError) throw roomsError
 
         const room = rooms?.[0] ?? null
+        // Prefer redesign_pano_url (set by redesign pipeline) over legacy render_url
+        const resolvedUrl = room?.redesign_pano_url ?? room?.render_url
 
-        if (!room?.render_url) {
-          setError('No rendered room found. Complete the design flow first.')
+        if (!resolvedUrl) {
+          // No URL yet — don't error, let the polling effect handle it
           setLoading(false)
           return
         }
 
-        setHeroImage(room.render_url)
+        setHeroImage(resolvedUrl)
 
         // 3. Try to load style name/tags from style_fingerprints via fingerprint_id
         if (room.fingerprint_id && (!resolvedStyleName || resolvedStyleTags.length === 0)) {
@@ -150,6 +152,10 @@ export default function RevealStep8A() {
           flythrough_video_url?: string | null
           perspective_render_url?: string | null
         }
+        // Update pipeline status for loading UI
+        if (data.redesign_status) {
+          setPipelineStatus(data.redesign_status)
+        }
         const panoUrl = data.redesignPanoUrl ?? data.perspective_render_url
         if (panoUrl && !cancelled) {
           setHeroImage(panoUrl)
@@ -167,9 +173,16 @@ export default function RevealStep8A() {
               hotspot_azimuths: [],
             }),
           }).catch((err) => console.warn('[step-8a] Depth video trigger failed:', err))
+
+          // Fire render detection for zone bounding boxes (non-blocking)
+          fetch('/api/detect/render', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ roomId }),
+          }).catch((err) => console.warn('[step-8a] Render detection trigger failed:', err))
         }
-        if (data.redesign_status === 'error' && !cancelled) {
-          setError('Something went wrong with your redesign. Please try again.')
+        if ((data.redesign_status === 'error' || data.redesign_status === 'failed') && !cancelled) {
+          setError('Something went wrong with your render. Please try again or contact support.')
           setLoading(false)
           clearInterval(poll)
         }
@@ -350,8 +363,17 @@ export default function RevealStep8A() {
 
   const isRefineLocked = remainingRenders <= 0;
 
-  // Loading state
+  // Loading state — sequential pipeline progress steps
   if (loading) {
+    const steps = [
+      { key: 'analyzing_room', label: 'Analyzing your space...' },
+      { key: 'applying_style', label: 'Applying your style preferences...' },
+      { key: 'rendering', label: 'Rendering your redesign...' },
+      { key: 'finalizing', label: 'Almost ready...' },
+    ]
+    const currentIdx = steps.findIndex((s) => s.key === pipelineStatus)
+    const effectiveIdx = currentIdx === -1 ? 0 : currentIdx
+
     return (
       <div
         style={{
@@ -361,31 +383,79 @@ export default function RevealStep8A() {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '16px',
+          gap: '24px',
+          padding: '0 24px',
         }}
       >
         <div
           style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '50%',
-            border: '2px solid #1E3A5F',
-            borderTopColor: '#C9A84C',
-            animation: 'spin 0.9s linear infinite',
-          }}
-          aria-hidden="true"
-        />
-        <p
-          style={{
-            fontFamily: 'Inter, sans-serif',
-            color: '#8BA3C0',
-            fontSize: '14px',
-            letterSpacing: '0.04em',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 16,
+            minWidth: 280,
           }}
         >
-          Loading your room&hellip;
-        </p>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          {steps.map((step, i) => {
+            const isCompleted = i < effectiveIdx
+            const isActive = i === effectiveIdx
+            return (
+              <div
+                key={step.key}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  opacity: isCompleted || isActive ? 1 : 0.4,
+                  transition: 'opacity 0.3s ease',
+                }}
+              >
+                <div
+                  style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: '50%',
+                    border: `2px solid ${isCompleted ? '#4A9B7F' : isActive ? '#C9A84C' : '#1E3A5F'}`,
+                    background: isCompleted ? '#4A9B7F' : 'transparent',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    animation: isActive ? 'pulse 1.5s ease-in-out infinite' : 'none',
+                  }}
+                  aria-hidden="true"
+                >
+                  {isCompleted ? (
+                    <svg width="10" height="10" viewBox="0 0 12 12">
+                      <polyline
+                        points="2,6 5,9 10,3"
+                        fill="none"
+                        stroke="#0A1628"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  ) : null}
+                </div>
+                <p
+                  style={{
+                    fontFamily: 'Inter, sans-serif',
+                    color: isActive ? '#F8F6F1' : '#8BA3C0',
+                    fontSize: 14,
+                    letterSpacing: '0.02em',
+                    fontWeight: isActive ? 600 : 400,
+                    margin: 0,
+                  }}
+                >
+                  {step.label}
+                </p>
+              </div>
+            )
+          })}
+        </div>
+        <style>{`
+          @keyframes spin { to { transform: rotate(360deg); } }
+          @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+        `}</style>
       </div>
     )
   }
@@ -415,24 +485,54 @@ export default function RevealStep8A() {
         >
           {error ?? 'No rendered room found.'}
         </p>
-        <button
-          type="button"
-          onClick={() => router.push('/design/step-7')}
-          style={{
-            fontFamily: 'Inter, sans-serif',
-            background: '#C9A84C',
-            color: '#0A1628',
-            border: 'none',
-            borderRadius: '24px',
-            padding: '12px 28px',
-            fontSize: '14px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            letterSpacing: '0.04em',
-          }}
-        >
-          Back to Design
-        </button>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button
+            type="button"
+            onClick={() => {
+              if (!roomId) return
+              setError(null)
+              setLoading(true)
+              // Re-fire redesign pipeline
+              fetch('/api/pipeline/redesign', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ room_id: roomId }),
+              }).catch((err) => console.warn('[step-8a] Retry failed:', err))
+            }}
+            style={{
+              fontFamily: 'Inter, sans-serif',
+              background: '#C9A84C',
+              color: '#0A1628',
+              border: 'none',
+              borderRadius: '24px',
+              padding: '12px 28px',
+              fontSize: '14px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              letterSpacing: '0.04em',
+            }}
+          >
+            Retry
+          </button>
+          <button
+            type="button"
+            onClick={() => window.open('mailto:hello@covainterior.com', '_blank')}
+            style={{
+              fontFamily: 'Inter, sans-serif',
+              background: 'transparent',
+              color: '#F8F6F1',
+              border: '1px solid rgba(201,168,76,0.4)',
+              borderRadius: '24px',
+              padding: '12px 28px',
+              fontSize: '14px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              letterSpacing: '0.04em',
+            }}
+          >
+            Contact Support
+          </button>
+        </div>
       </div>
     )
   }

@@ -392,6 +392,7 @@ export default function Step9Experience() {
   const [products, setProducts] = useState<Product[]>([]);
   const [heroImage, setHeroImage] = useState<string>(DEFAULT_HERO_IMAGE);
   const [zones, setZones] = useState<RoomZone[]>(DEFAULT_ZONES);
+  const [zonesLoading, setZonesLoading] = useState(true);
   const [productsLoading, setProductsLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<Category>("All");
   const [sortBy, setSortBy] = useState<SortOption>("Featured");
@@ -419,43 +420,106 @@ export default function Step9Experience() {
         setHeroImage(renderUrl);
       }
 
+      // Load render_detection_result for zone bounding boxes
+      if (roomId) {
+        try {
+          const { data: roomDetection } = await supabase
+            .from("rooms")
+            .select("render_detection_result")
+            .eq("id", roomId)
+            .single();
+
+          if (
+            roomDetection?.render_detection_result &&
+            Array.isArray(roomDetection.render_detection_result.items) &&
+            roomDetection.render_detection_result.items.length > 0
+          ) {
+            const detectedZones: RoomZone[] = roomDetection.render_detection_result.items.map(
+              (item: { label: string; boundingBox: { x: number; y: number; width: number; height: number } }, i: number) => ({
+                id: i + 1,
+                label: item.label,
+                top: `${item.boundingBox.y}%`,
+                left: `${item.boundingBox.x}%`,
+                width: `${item.boundingBox.width}%`,
+                height: `${item.boundingBox.height}%`,
+              })
+            );
+            setZones(detectedZones);
+          }
+          // If null, keep DEFAULT_ZONES — detection hasn't run yet
+        } catch {
+          // Non-fatal — use defaults
+        }
+        setZonesLoading(false);
+      } else {
+        setZonesLoading(false);
+      }
+
       // Load matched products from Supabase if we have a room
       if (roomId) {
         try {
           // Check room_products table first (populated by furniture matching pipeline)
           const { data: roomProducts } = await supabase
             .from("room_products")
-            .select("id, furniture_label, furniture_description, similarity_score, rank, hotspot_x, hotspot_y, product_id")
+            .select("id, furniture_label, furniture_description, similarity_score, rank, hotspot_x, hotspot_y, product_id, serp_title, serp_price, serp_retailer, serp_product_url, serp_image_url, match_score, match_label, is_sale")
             .eq("room_id", roomId);
 
           if (roomProducts && roomProducts.length > 0) {
-            // Load full product details for matched product IDs
-            const productIds = Array.from(new Set(roomProducts.map((rp: Record<string, unknown>) => rp.product_id as string)));
-            const { data: productDetails } = await supabase
-              .from("products")
-              .select("id, name, brand, category, price, image_url, product_url, retailer, affiliate_url")
-              .in("id", productIds);
+            // Check if these are SERP results (serp_title set) or legacy catalog results (product_id set)
+            const hasSerpData = roomProducts.some((rp: Record<string, unknown>) => rp.serp_title);
 
-            const productMap = new Map((productDetails ?? []).map((p: Record<string, unknown>) => [p.id, p]));
-            const mapped: Product[] = roomProducts.map((rp: Record<string, unknown>, i: number) => {
-              const product = productMap.get(rp.product_id) as Record<string, unknown> | undefined;
-              const category = mapCategory((product?.category as string) ?? "");
-              return {
-                id: (product?.id as number) || i + 1,
-                zone: getCategoryZone((product?.category as string) ?? ""),
-                brand: (product?.brand as string) || "Unknown",
-                name: (product?.name as string) || (rp.furniture_label as string) || "Product",
-                category,
-                price: (product?.price as number) || 0,
-                retailer: (product?.retailer as string) || "Unknown",
-                retailerUrl: (product?.affiliate_url as string) || (product?.product_url as string) || "#",
-                image: (product?.image_url as string) || FALLBACK_IMAGE,
-                addedAt: new Date().toISOString(),
-              };
-            });
-            setProducts(mapped);
+            if (hasSerpData) {
+              // SERP path: use inline SERP data directly
+              const mapped: Product[] = roomProducts.map((rp: Record<string, unknown>, i: number) => {
+                const category = mapCategory((rp.furniture_label as string) ?? "");
+                return {
+                  id: i + 1,
+                  zone: getCategoryZone((rp.furniture_label as string) ?? ""),
+                  brand: (rp.serp_retailer as string) || "Unknown",
+                  name: (rp.serp_title as string) || (rp.furniture_label as string) || "Product",
+                  category,
+                  price: (rp.serp_price as number) || 0,
+                  salePrice: (rp.is_sale as boolean) ? undefined : undefined,
+                  retailer: (rp.serp_retailer as string) || "Unknown",
+                  retailerUrl: (rp.serp_product_url as string) || "#",
+                  image: (rp.serp_image_url as string) || FALLBACK_IMAGE,
+                  addedAt: new Date().toISOString(),
+                };
+              });
+              setProducts(mapped);
+            } else {
+              // Legacy catalog path: join to products table via product_id
+              const productIds = Array.from(new Set(
+                roomProducts
+                  .map((rp: Record<string, unknown>) => rp.product_id as string)
+                  .filter(Boolean)
+              ));
+              const { data: productDetails } = await supabase
+                .from("products")
+                .select("id, name, brand, category, price, image_url, product_url, retailer, affiliate_url")
+                .in("id", productIds);
+
+              const productMap = new Map((productDetails ?? []).map((p: Record<string, unknown>) => [p.id, p]));
+              const mapped: Product[] = roomProducts.map((rp: Record<string, unknown>, i: number) => {
+                const product = productMap.get(rp.product_id) as Record<string, unknown> | undefined;
+                const category = mapCategory((product?.category as string) ?? "");
+                return {
+                  id: (product?.id as number) || i + 1,
+                  zone: getCategoryZone((product?.category as string) ?? ""),
+                  brand: (product?.brand as string) || "Unknown",
+                  name: (product?.name as string) || (rp.furniture_label as string) || "Product",
+                  category,
+                  price: (product?.price as number) || 0,
+                  retailer: (product?.retailer as string) || "Unknown",
+                  retailerUrl: (product?.affiliate_url as string) || (product?.product_url as string) || "#",
+                  image: (product?.image_url as string) || FALLBACK_IMAGE,
+                  addedAt: new Date().toISOString(),
+                };
+              });
+              setProducts(mapped);
+            }
           } else {
-            // No room_products yet — check legacy matched_products column
+            // No room_products yet — check rooms.matched_products JSONB column
             const { data: roomRow, error } = await supabase
               .from("rooms")
               .select("matched_products, render_context")
@@ -465,18 +529,18 @@ export default function Step9Experience() {
             if (!error && roomRow?.matched_products && Array.isArray(roomRow.matched_products) && roomRow.matched_products.length > 0) {
               const dbProducts = roomRow.matched_products as Record<string, unknown>[];
               const mapped: Product[] = dbProducts.map((p, i) => {
-                const category = mapCategory((p.category as string) ?? "");
+                const category = mapCategory((p.category as string) ?? (p.itemLabel as string) ?? "");
                 return {
                   id: (p.id as number) || i + 1,
-                  zone: getCategoryZone((p.category as string) ?? ""),
-                  brand: (p.brand as string) || "Unknown",
-                  name: (p.name as string) || "Product",
+                  zone: getCategoryZone((p.category as string) ?? (p.itemLabel as string) ?? ""),
+                  brand: (p.brand as string) || (p.retailer as string) || "Unknown",
+                  name: (p.name as string) || (p.title as string) || "Product",
                   category,
                   price: (p.price as number) || 0,
                   salePrice: (p.sale_price as number) || undefined,
                   retailer: (p.retailer as string) || "Unknown",
-                  retailerUrl: (p.affiliate_url as string) || (p.product_url as string) || "#",
-                  image: (p.image_url as string) || (p.thumbnail_url as string) || FALLBACK_IMAGE,
+                  retailerUrl: (p.affiliate_url as string) || (p.product_url as string) || (p.productUrl as string) || "#",
+                  image: (p.image_url as string) || (p.thumbnail_url as string) || (p.thumbnailUrl as string) || FALLBACK_IMAGE,
                   addedAt: (p.created_at as string) || new Date().toISOString(),
                 };
               });
@@ -678,7 +742,7 @@ export default function Step9Experience() {
             </button>
 
             <div className="step9-hotspots" aria-hidden="true">
-              {zones.map((zone) => {
+              {zonesLoading ? null : zones.map((zone) => {
                 const isActive = zone.id === activeZoneId;
                 return (
                   <div

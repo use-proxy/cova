@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useArea2Store } from '@/lib/stores/area2Store';
 import '../step-1/step1.css';
 import './step7b.css';
 
@@ -290,11 +291,64 @@ export default function Step7b() {
     bumpStepper();
   };
 
+  /* ---- Area2Store access ---- */
+  const setRoomConstraints = useArea2Store((s) => s.setRoomConstraints);
+  const existingConstraints = useArea2Store((s) => s.roomConstraints);
+  const updateRoomContextField = useArea2Store((s) => s.updateRoomContextField);
+
   /* ---- Navigation ---- */
   const handleBack = () => { router.push('/design/step-7'); };
   const handleContinue = () => {
-    // TODO: persist form data to store/Supabase
-    void [removeWalls, ceilingHeight, selectedFixtures, selectedFlooring, keepFlooring, brightestTime, windowCount, protectedAreas, notes];
+    // Map ceiling height to RoomContext format
+    const ceilingMap: Record<string, 'low' | 'standard-8ft' | 'high' | 'vaulted' | 'coffered'> = {};
+    let ceilingLabel: 'low' | 'standard-8ft' | 'high' | 'vaulted' | 'coffered' = 'standard-8ft';
+    if (ceilingHeight <= 7.5) ceilingLabel = 'low';
+    else if (ceilingHeight <= 9) ceilingLabel = 'standard-8ft';
+    else if (ceilingHeight <= 12) ceilingLabel = 'high';
+    else ceilingLabel = 'vaulted';
+    void ceilingMap; // suppress lint
+
+    // Map brightest time to constraint format
+    const timeMap: Record<string, 'morning' | 'afternoon' | 'evening' | 'always-dim'> = {
+      Morning: 'morning',
+      Midday: 'afternoon',
+      Afternoon: 'afternoon',
+      Evening: 'evening',
+    };
+
+    // Persist to Area2Store — merge with existing constraints
+    setRoomConstraints({
+      wallPermanence: existingConstraints?.wallPermanence ?? 'own-anything-goes',
+      physicalConstraints: [
+        ...(removeWalls ? ['walls can be removed'] : []),
+        ...Array.from(selectedFixtures).map((f) => f.toLowerCase()),
+        ...(existingConstraints?.physicalConstraints ?? []),
+      ],
+      bestLightTime: timeMap[brightestTime ?? ''] ?? 'morning',
+      roomSize: existingConstraints?.roomSize ?? 'medium',
+      whoUsesRoom: existingConstraints?.whoUsesRoom ?? [],
+      primaryFunction: existingConstraints?.primaryFunction ?? ['living room'],
+      hasPetsOrKids: existingConstraints?.hasPetsOrKids ?? false,
+      storagePriority: existingConstraints?.storagePriority ?? 'medium',
+      offScreenPieces: existingConstraints?.offScreenPieces ?? '',
+      styleDirectionDelta: existingConstraints?.styleDirectionDelta ?? {
+        coziness: 0,
+        colorBoldness: 0,
+        traditionality: 0,
+      },
+    });
+
+    // Update room context fields from step-7b data
+    updateRoomContextField('ceilingHeight', ceilingLabel);
+    updateRoomContextField('ceilingDetail', `${ceilingHeight}ft${selectedFixtures.size > 0 ? `, ${Array.from(selectedFixtures).join(', ')}` : ''}`);
+    updateRoomContextField('windowCount', windowCount);
+    if (selectedFlooring) {
+      updateRoomContextField('floorMaterial', selectedFlooring.toLowerCase());
+    }
+    if (notes) {
+      updateRoomContextField('userNotes', notes);
+    }
+
     router.push('/design/step-7c');
   };
 

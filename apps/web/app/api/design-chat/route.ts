@@ -143,7 +143,14 @@ export async function POST(req: Request) {
   const scrapedProduct = urlInput ? await scrapeProductUrl(urlInput) : null
 
   const fingerprint = room?.render_context?.fingerprint ?? null
-  const systemPrompt = buildSystemPrompt(activeTab, room, currentExtracted, fingerprint)
+  const baseSystemPrompt = buildSystemPrompt(activeTab, room, currentExtracted, fingerprint)
+
+  const tabScoping: Partial<Record<TabId, string>> = {
+    products: '\n\nSCOPING: Focus only on furniture and physical products — sofas, tables, rugs, lighting fixtures, decor objects. If the user mentions tech or art, acknowledge briefly and redirect to the Products conversation.',
+    tech: '\n\nSCOPING: Focus only on technology and electronics — TVs, sound systems, smart lighting, hidden wiring, mounting solutions. If the user mentions furniture or art, acknowledge briefly and redirect to the Tech conversation.',
+    art: '\n\nSCOPING: Focus only on wall art, posters, gallery walls, framing, and artistic decor. If the user mentions furniture or tech, acknowledge briefly and redirect to the Art conversation.',
+  }
+  const systemPrompt = baseSystemPrompt + (tabScoping[activeTab] ?? '')
 
   const activeTabMessages =
     tabHistory.find((t) => t.tabId === activeTab)?.messages ?? []

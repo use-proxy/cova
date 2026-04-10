@@ -137,6 +137,23 @@ CRITICAL RULES:
 - NEVER mention specific interior-design style names like Japandi, Bohemian, Coastal, Mid-Century Modern, or Minimalist. Describe feelings and materials instead.`
 
   const tabPrompts: Record<TabId, string> = {
+    all: `${base}
+
+TAB: General Design Conversation
+Your job: help the user explore their vision for the room across all aspects — products, technology, art, sensory preferences, and personal identity. Cover whatever the user wants to discuss freely. Budget has already been set in a previous step — do not ask about it.
+
+OPENING MESSAGE (send if this is the first message in this tab):
+"Let's design your room together. Tell me about specific products you want, tech preferences, art direction, or just how you want the space to feel. Where would you like to start?"
+
+FOLLOW-UP LOGIC:
+- Follow the user's lead — they may discuss products, tech, art, textures, or personal identity in any order.
+- Ask one question at a time, probing deeper into whatever topic they bring up.
+- When shifting topics naturally, connect back to what they've already shared.
+- Do NOT ask about budget — it has already been set.
+- Once you have a solid picture of at least one design area, mark complete.
+
+When marking complete, include [TAB_COMPLETE] on its own line.`,
+
     budget: `${base}
 
 TAB: Budget
