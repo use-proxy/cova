@@ -104,7 +104,6 @@ describe('area2Store — initialization', () => {
     expect(state.roomId).toBeNull()
     expect(state.imageUrl).toBeNull()
     expect(state.currentStep).toBe(0)
-    expect(state.styleVariantChosen).toBeNull()
     expect(state.roomContext).toBeNull()
     expect(state.roomContextLoading).toBe(false)
     expect(state.roomConstraints).toBeNull()

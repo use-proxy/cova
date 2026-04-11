@@ -156,6 +156,7 @@ export interface BuildFluxPromptParams {
   // tail and the lived-in realism cue so the total prompt stays under
   // ~80 words for a clean text-to-image FLUX 1.1 Pro render.
   quizPreviewMode?: boolean;
+  anchorPrompt?: string | null;
 }
 
 // Material palette derived from fingerprint dimensions. Stating materials up
@@ -400,7 +401,10 @@ export function buildFluxPrompt(params: BuildFluxPromptParams): string {
     constraints: rawConstraints,
     keptItemLabels: rawKeptItemLabels,
     quizPreviewMode,
+    anchorPrompt: rawAnchorPrompt,
   } = params;
+  const anchorPrompt = rawAnchorPrompt ? sanitizeUserText(rawAnchorPrompt) : '';
+  const anchorBlock = anchorPrompt ? `${anchorPrompt}. ` : '';
   // Sanitize all user-provided text inputs
   const inclusions = rawInclusions.map(sanitizeUserText).filter(Boolean);
   const constraints = (rawConstraints ?? []).map(sanitizeUserText).filter(Boolean);
@@ -449,7 +453,11 @@ export function buildFluxPrompt(params: BuildFluxPromptParams): string {
         if (entry) descriptors.push(dev > 0 ? entry.hi : entry.lo);
       }
     }
-    if (descriptors.length > 0) core.push(descriptors.join(", "));
+    if (descriptors.length > 0) {
+      core.push(anchorBlock + descriptors.join(", "));
+    } else if (anchorBlock) {
+      core.push(anchorBlock.trim().replace(/\.$/, ""));
+    }
 
     if (!quizPreviewMode) {
       // 4. REPLACE clause (tight)

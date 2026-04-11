@@ -36,6 +36,7 @@ export interface StyleReferenceMatch {
   image_url: string
   style_name: string
   similarity: number
+  flux_prompt: string | null
 }
 
 export async function fetchTopStyleReference(
@@ -48,7 +49,7 @@ export async function fetchTopStyleReference(
     const admin = createAdminSupabaseClient()
     const { data, error } = await admin
       .from('quiz_anchor_images')
-      .select('id, image_url, style_name, style_vector')
+      .select('id, image_url, style_name, style_vector, flux_prompt')
 
     if (error || !data || data.length === 0) return null
 
@@ -64,6 +65,7 @@ export async function fetchTopStyleReference(
           image_url: row.image_url as string,
           style_name: (row.style_name ?? '') as string,
           similarity,
+          flux_prompt: (row.flux_prompt ?? null) as string | null,
         }
       }
     }

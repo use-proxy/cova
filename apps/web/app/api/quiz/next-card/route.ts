@@ -26,13 +26,14 @@ interface AnchorRow {
   style_index: number
   image_url: string
   style_vector: Record<string, number>
+  flux_prompt: string | null
 }
 
 async function loadAnchors() {
   const admin = createAdminSupabaseClient()
   const { data, error } = await admin
     .from('quiz_anchor_images')
-    .select('id, style_name, style_index, image_url, style_vector')
+    .select('id, style_name, style_index, image_url, style_vector, flux_prompt')
     .order('style_index', { ascending: true })
 
   if (error) {
@@ -48,6 +49,7 @@ async function loadAnchors() {
     style_index: row.style_index,
     image_url: row.image_url,
     style_vector: row.style_vector,
+    flux_prompt: row.flux_prompt ?? null,
   }))
   return NextResponse.json({ cards })
 }

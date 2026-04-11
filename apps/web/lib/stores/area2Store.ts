@@ -67,7 +67,6 @@ interface Area2State {
   roomId: string | null
   imageUrl: string | null
   currentStep: DesignStep
-  styleVariantChosen: { dimKey: string; nudge: number } | null
 
   // Screen A
   roomContext: RoomContext | null
@@ -100,7 +99,6 @@ interface Area2Actions {
   // Session
   setRoom: (roomId: string, imageUrl: string) => void
   setCurrentStep: (step: DesignStep) => void
-  setStyleVariantChosen: (variant: { dimKey: string; nudge: number } | null) => void
 
   // Screen A
   setRoomContextLoading: (loading: boolean) => void
@@ -150,7 +148,6 @@ const initialState: Area2State = {
   roomId: null,
   imageUrl: null,
   currentStep: 0,
-  styleVariantChosen: null,
   roomContext: null,
   roomContextLoading: false,
   roomConstraints: null,
@@ -195,7 +192,6 @@ export const useArea2Store = create<Area2Store>()(
 
       setRoom: (roomId, imageUrl) => set({ roomId, imageUrl }),
       setCurrentStep: (step) => set({ currentStep: step }),
-      setStyleVariantChosen: (variant) => set({ styleVariantChosen: variant }),
 
       // Screen A
       setRoomContextLoading: (loading) =>

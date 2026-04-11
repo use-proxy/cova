@@ -58,11 +58,15 @@ export async function compilePromptWithClaude(
   context: RenderContext | null,
   roomType: string,
   fingerprint: StyleFingerprint,
+  anchorPrompt: string | null = null,
 ): Promise<string | null> {
   try {
     const fp = fingerprint
     const materialPalette = getMaterialPalette(fp.dimensions)
     const fingerprintPhrase = buildFullFingerprintPhrase(fp.dimensions)
+    const anchorSystem = anchorPrompt
+      ? `\n\nAnchor style reference prompt (high priority): ${anchorPrompt}\nWeight this heavily — it captures the user's confirmed visual preference.`
+      : ''
 
     const compressedContext = {
       roomType,
@@ -114,6 +118,26 @@ export async function compilePromptWithClaude(
             strategy: context?.budget.strategy,
           }
         : null,
+      budgetReconciled: (() => {
+        const explicit = context?.budget
+        const tierFromRange = (max: number | undefined): string | null => {
+          if (max === undefined || max === null) return null
+          if (max <= 2000) return 'budget'
+          if (max <= 5000) return 'mid'
+          if (max <= 10000) return 'premium'
+          return 'luxury'
+        }
+        if (explicit && (explicit.rangeMin !== undefined || explicit.rangeMax !== undefined)) {
+          const min = explicit.rangeMin ?? 0
+          const max = explicit.rangeMax
+          const tier = tierFromRange(max ?? undefined)
+          const rangeStr = max !== undefined && max !== null
+            ? `$${min}–$${max}`
+            : `$${min}+`
+          return tier ? `Budget: ${rangeStr} (${tier} tier)` : `Budget: ${rangeStr}`
+        }
+        return null
+      })(),
       requestedProducts:
         context?.requestedProducts
           ?.filter((p) => p.confirmedByUser)
@@ -182,7 +206,7 @@ export async function compilePromptWithClaude(
           )}`,
         },
       ],
-      system: SYSTEM_PROMPT,
+      system: SYSTEM_PROMPT + anchorSystem,
     })
 
     const text = response.content[0]

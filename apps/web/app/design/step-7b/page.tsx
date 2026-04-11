@@ -3,6 +3,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useArea2Store } from '@/lib/stores/area2Store';
+import { createBrowserClient } from '@/lib/supabase/client';
 import '../step-1/step1.css';
 import './step7b.css';
 
@@ -295,6 +296,7 @@ export default function Step7b() {
   const setRoomConstraints = useArea2Store((s) => s.setRoomConstraints);
   const existingConstraints = useArea2Store((s) => s.roomConstraints);
   const updateRoomContextField = useArea2Store((s) => s.updateRoomContextField);
+  const roomIdFromStore = useArea2Store((s) => s.roomId);
 
   /* ---- Navigation ---- */
   const handleBack = () => { router.push('/design/step-7'); };
@@ -316,8 +318,8 @@ export default function Step7b() {
       Evening: 'evening',
     };
 
-    // Persist to Area2Store — merge with existing constraints
-    setRoomConstraints({
+    // Build merged constraints object
+    const mergedConstraints = {
       wallPermanence: existingConstraints?.wallPermanence ?? 'own-anything-goes',
       physicalConstraints: [
         ...(removeWalls ? ['walls can be removed'] : []),
@@ -336,7 +338,28 @@ export default function Step7b() {
         colorBoldness: 0,
         traditionality: 0,
       },
-    });
+    } as Parameters<typeof setRoomConstraints>[0];
+
+    // Persist to Area2Store
+    setRoomConstraints(mergedConstraints);
+
+    // Immediate fire-and-forget Supabase persist so the compiler sees the
+    // updated constraints even if the user navigates away before step-7d.
+    const roomId =
+      roomIdFromStore ??
+      (typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get('roomId')
+        : null);
+    if (roomId) {
+      const supabase = createBrowserClient();
+      void supabase
+        .from('rooms')
+        .update({ room_constraints: mergedConstraints })
+        .eq('id', roomId)
+        .then(({ error }) => {
+          if (error) console.error('[step-7b] constraint persist failed:', error);
+        });
+    }
 
     // Update room context fields from step-7b data
     updateRoomContextField('ceilingHeight', ceilingLabel);

@@ -161,10 +161,12 @@ export async function POST(request: Request) {
     // render_context is null — the server-side fingerprint fallback is enough
     // to drive the rich prompt path. render_context, when present, adds the
     // Area 2 layers (roomConstraints, sensory, identity, etc).
+    const anchorPrompt = topStyleRef?.flux_prompt ?? null
     const compiled = await compilePromptWithClaude(
       renderContext,
       room_type,
       fingerprint_vector,
+      anchorPrompt,
     )
     const positiveBase =
       compiled ??
@@ -177,6 +179,7 @@ export async function POST(request: Request) {
         keptItemLabels: keptItems.map(m => m.label),
         roomAnalysis: room_analysis ?? null,
         preservationInstructions: undefined,
+        anchorPrompt,
       })
 
     let positive = positiveBase
