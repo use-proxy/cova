@@ -32,7 +32,8 @@ type Category =
   | "Lighting"
   | "Decor"
   | "Rugs"
-  | "Art";
+  | "Art"
+  | "Furniture";
 type SortOption = "Featured" | "Price: Low" | "Price: High" | "Recently Added";
 
 type Product = {
@@ -345,35 +346,116 @@ const DEFAULT_PRODUCTS: Product[] = [
   },
 ];
 
-// Maps a raw DB category string to the closest display category
+// Maps a raw DB category string to the closest display category.
+// Unknown labels fall through to "Furniture" (a catch-all that is rendered
+// under every active filter), not "Decor", so products are never hidden
+// behind a filter just because their label isn't in the trigger list.
 function mapCategory(raw: string): Exclude<Category, "All"> {
-  if (!raw) return "Decor";
+  if (!raw) return "Furniture";
   const normalized = raw.toLowerCase();
-  if (normalized.includes("seat") || normalized.includes("sofa") || normalized.includes("chair") || normalized.includes("ottoman")) return "Seating";
-  if (normalized.includes("table") || normalized.includes("desk") || normalized.includes("shelf") || normalized.includes("storage")) return "Tables";
-  if (normalized.includes("light") || normalized.includes("lamp") || normalized.includes("pendant") || normalized.includes("sconce")) return "Lighting";
+  if (
+    normalized.includes("seat") ||
+    normalized.includes("sofa") ||
+    normalized.includes("chair") ||
+    normalized.includes("ottoman") ||
+    normalized.includes("bench") ||
+    normalized.includes("stool") ||
+    normalized.includes("sectional") ||
+    normalized.includes("recliner") ||
+    normalized.includes("settee") ||
+    normalized.includes("banquette") ||
+    normalized.includes("couch")
+  )
+    return "Seating";
+  if (
+    normalized.includes("table") ||
+    normalized.includes("desk") ||
+    normalized.includes("shelf") ||
+    normalized.includes("storage") ||
+    normalized.includes("nightstand") ||
+    normalized.includes("dresser") ||
+    normalized.includes("cabinet") ||
+    normalized.includes("credenza") ||
+    normalized.includes("sideboard") ||
+    normalized.includes("hutch") ||
+    normalized.includes("bookcase") ||
+    normalized.includes("armoire") ||
+    normalized.includes("wardrobe") ||
+    normalized.includes("bureau") ||
+    normalized.includes("buffet") ||
+    normalized.includes("console") ||
+    normalized.includes("vanity") ||
+    normalized.includes("stand")
+  )
+    return "Tables";
+  if (
+    normalized.includes("light") ||
+    normalized.includes("lamp") ||
+    normalized.includes("pendant") ||
+    normalized.includes("sconce") ||
+    normalized.includes("chandelier") ||
+    normalized.includes("fixture")
+  )
+    return "Lighting";
   if (normalized.includes("rug") || normalized.includes("carpet")) return "Rugs";
-  if (normalized.includes("art") || normalized.includes("canvas") || normalized.includes("print") || normalized.includes("paint")) return "Art";
-  return "Decor";
+  if (
+    normalized.includes("art") ||
+    normalized.includes("canvas") ||
+    normalized.includes("print") ||
+    normalized.includes("paint") ||
+    normalized.includes("mirror") ||
+    normalized.includes("frame") ||
+    normalized.includes("sculpture")
+  )
+    return "Art";
+  if (
+    normalized.includes("vase") ||
+    normalized.includes("plant") ||
+    normalized.includes("planter") ||
+    normalized.includes("pillow") ||
+    normalized.includes("throw") ||
+    normalized.includes("curtain") ||
+    normalized.includes("drape") ||
+    normalized.includes("clock") ||
+    normalized.includes("decor")
+  )
+    return "Decor";
+  // Unknown furniture label — route to Furniture catch-all (always visible).
+  return "Furniture";
 }
 
-// Maps a raw DB category string to a zone id (1–12)
-function getCategoryZone(category: string): number {
-  const map: Record<string, number> = {
-    Seating: 1,
-    Tables: 2,
-    Lighting: 3,
-    Rugs: 4,
-    "Seating-accent": 5,
-    "Tables-side": 6,
-    "Decor-mirror": 7,
-    "Decor-curtains": 8,
-    Decor: 9,
-    Art: 10,
-    "Seating-ottoman": 11,
-    "Lighting-pendant": 12,
-  };
-  return map[category] ?? Math.floor(Math.random() * 12) + 1;
+// Fuzzy label match: find the best-matching detected zone id for a
+// product's furniture_label. Both sources emit short noun-phrase labels
+// (e.g. "sofa", "coffee table", "floor lamp"), so we use case-insensitive
+// token overlap with a substring fallback. Returns null if nothing matches.
+function findZoneIdForLabel(
+  label: string,
+  zones: RoomZone[],
+): number | null {
+  if (!label || zones.length === 0) return null;
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9\s]/g, "").trim();
+  const target = norm(label);
+  if (!target) return null;
+  const targetTokens = new Set(target.split(/\s+/).filter(Boolean));
+
+  let bestId: number | null = null;
+  let bestScore = 0;
+  for (const zone of zones) {
+    const zl = norm(zone.label);
+    if (!zl) continue;
+    let score = 0;
+    if (zl === target) score = 100;
+    else if (zl.includes(target) || target.includes(zl)) score = 50;
+    else {
+      const zTokens = zl.split(/\s+/).filter(Boolean);
+      for (const t of zTokens) if (targetTokens.has(t)) score += 10;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      bestId = zone.id;
+    }
+  }
+  return bestScore > 0 ? bestId : null;
 }
 
 const money = (value: number) =>
@@ -394,6 +476,7 @@ export default function Step9Experience() {
   const [zones, setZones] = useState<RoomZone[]>(DEFAULT_ZONES);
   const [zonesLoading, setZonesLoading] = useState(true);
   const [productsLoading, setProductsLoading] = useState(true);
+  const [matchingInProgress, setMatchingInProgress] = useState(false);
   const [activeFilter, setActiveFilter] = useState<Category>("All");
   const [sortBy, setSortBy] = useState<SortOption>("Featured");
   const [hoveredProductId, setHoveredProductId] = useState<number | null>(null);
@@ -403,12 +486,16 @@ export default function Step9Experience() {
   const [displayedTotal, setDisplayedTotal] = useState(0);
 
   useEffect(() => {
+    let cancelled = false;
+    let pollInterval: number | undefined;
+
     const checkAuth = async () => {
       const { createBrowserClient } = await import("@/lib/supabase/client");
       const supabase = createBrowserClient();
       const {
         data: { user },
       } = await supabase.auth.getUser();
+      if (cancelled) return;
       if (!user) {
         router.push("/auth?next=/design/step-9");
         return;
@@ -420,7 +507,8 @@ export default function Step9Experience() {
         setHeroImage(renderUrl);
       }
 
-      // Load render_detection_result for zone bounding boxes
+      // Load zones from render_detection_result
+      let detectedZones: RoomZone[] = [];
       if (roomId) {
         try {
           const { data: roomDetection } = await supabase
@@ -434,7 +522,7 @@ export default function Step9Experience() {
             Array.isArray(roomDetection.render_detection_result.items) &&
             roomDetection.render_detection_result.items.length > 0
           ) {
-            const detectedZones: RoomZone[] = roomDetection.render_detection_result.items.map(
+            detectedZones = roomDetection.render_detection_result.items.map(
               (item: { label: string; boundingBox: { x: number; y: number; width: number; height: number } }, i: number) => ({
                 id: i + 1,
                 label: item.label,
@@ -444,44 +532,48 @@ export default function Step9Experience() {
                 height: `${item.boundingBox.height}%`,
               })
             );
-            setZones(detectedZones);
-          } else {
-            // Detection hasn't run — show no hotspots rather than fake ones
-            setZones([]);
           }
         } catch {
-          // Non-fatal — use defaults
+          // Non-fatal
         }
+        if (cancelled) return;
+        setZones(detectedZones);
         setZonesLoading(false);
       } else {
         setZonesLoading(false);
       }
 
-      // Load matched products from Supabase if we have a room
+      // Load matched products
       if (roomId) {
         try {
-          // Check room_products table first (populated by furniture matching pipeline)
           const { data: roomProducts } = await supabase
             .from("room_products")
             .select("id, furniture_label, furniture_description, similarity_score, rank, hotspot_x, hotspot_y, product_id, serp_title, serp_price, serp_retailer, serp_product_url, serp_image_url, match_score, match_label, is_sale")
             .eq("room_id", roomId);
 
+          if (cancelled) return;
+
           if (roomProducts && roomProducts.length > 0) {
-            // Check if these are SERP results (serp_title set) or legacy catalog results (product_id set)
             const hasSerpData = roomProducts.some((rp: Record<string, unknown>) => rp.serp_title);
 
             if (hasSerpData) {
-              // SERP path: use inline SERP data directly
               const mapped: Product[] = roomProducts.map((rp: Record<string, unknown>, i: number) => {
-                const category = mapCategory((rp.furniture_label as string) ?? "");
+                const rawLabel = (rp.furniture_label as string) ?? "";
+                const category = mapCategory(rawLabel);
+                const matchedZoneId = findZoneIdForLabel(rawLabel, detectedZones);
+                if (matchedZoneId === null && rawLabel) {
+                  console.warn(
+                    `[step-9] No zone matched for furniture_label="${rawLabel}" — product will render without hover highlight`
+                  );
+                }
+                const zoneId = matchedZoneId ?? 0;
                 return {
                   id: i + 1,
-                  zone: getCategoryZone((rp.furniture_label as string) ?? ""),
+                  zone: zoneId,
                   brand: (rp.serp_retailer as string) || "Unknown",
-                  name: (rp.serp_title as string) || (rp.furniture_label as string) || "Product",
+                  name: (rp.serp_title as string) || rawLabel || "Product",
                   category,
                   price: (rp.serp_price as number) || 0,
-                  salePrice: (rp.is_sale as boolean) ? undefined : undefined,
                   retailer: (rp.serp_retailer as string) || "Unknown",
                   retailerUrl: (rp.serp_product_url as string) || "#",
                   image: (rp.serp_image_url as string) || FALLBACK_IMAGE,
@@ -490,7 +582,7 @@ export default function Step9Experience() {
               });
               setProducts(mapped);
             } else {
-              // Legacy catalog path: join to products table via product_id
+              // Legacy catalog path
               const productIds = Array.from(new Set(
                 roomProducts
                   .map((rp: Record<string, unknown>) => rp.product_id as string)
@@ -500,16 +592,19 @@ export default function Step9Experience() {
                 .from("products")
                 .select("id, name, brand, category, price, image_url, product_url, retailer, affiliate_url")
                 .in("id", productIds);
+              if (cancelled) return;
 
               const productMap = new Map((productDetails ?? []).map((p: Record<string, unknown>) => [p.id, p]));
               const mapped: Product[] = roomProducts.map((rp: Record<string, unknown>, i: number) => {
                 const product = productMap.get(rp.product_id) as Record<string, unknown> | undefined;
-                const category = mapCategory((product?.category as string) ?? "");
+                const rawLabel = (rp.furniture_label as string) ?? (product?.category as string) ?? "";
+                const category = mapCategory((product?.category as string) ?? rawLabel);
+                const zoneId = findZoneIdForLabel(rawLabel, detectedZones) ?? 0;
                 return {
                   id: (product?.id as number) || i + 1,
-                  zone: getCategoryZone((product?.category as string) ?? ""),
+                  zone: zoneId,
                   brand: (product?.brand as string) || "Unknown",
-                  name: (product?.name as string) || (rp.furniture_label as string) || "Product",
+                  name: (product?.name as string) || rawLabel || "Product",
                   category,
                   price: (product?.price as number) || 0,
                   retailer: (product?.retailer as string) || "Unknown",
@@ -521,20 +616,23 @@ export default function Step9Experience() {
               setProducts(mapped);
             }
           } else {
-            // No room_products yet — check rooms.matched_products JSONB column
+            // No room_products — check rooms.matched_products JSONB
             const { data: roomRow, error } = await supabase
               .from("rooms")
-              .select("matched_products, render_context")
+              .select("matched_products, redesign_status")
               .eq("id", roomId)
               .single();
+            if (cancelled) return;
 
             if (!error && roomRow?.matched_products && Array.isArray(roomRow.matched_products) && roomRow.matched_products.length > 0) {
               const dbProducts = roomRow.matched_products as Record<string, unknown>[];
               const mapped: Product[] = dbProducts.map((p, i) => {
-                const category = mapCategory((p.category as string) ?? (p.itemLabel as string) ?? "");
+                const rawLabel = (p.itemLabel as string) ?? (p.category as string) ?? "";
+                const category = mapCategory(rawLabel);
+                const zoneId = findZoneIdForLabel(rawLabel, detectedZones) ?? 0;
                 return {
                   id: (p.id as number) || i + 1,
-                  zone: getCategoryZone((p.category as string) ?? (p.itemLabel as string) ?? ""),
+                  zone: zoneId,
                   brand: (p.brand as string) || (p.retailer as string) || "Unknown",
                   name: (p.name as string) || (p.title as string) || "Product",
                   category,
@@ -548,33 +646,66 @@ export default function Step9Experience() {
               });
               setProducts(mapped);
             } else {
-              // Fire furniture matching pipeline (non-blocking); show empty state
-              // rather than fake hotspots until real products arrive.
-              fetch("/api/pipeline/furniture-match", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ room_id: roomId }),
-              }).catch((err) =>
-                console.warn("[step-9] Furniture matching trigger failed:", err)
-              );
+              // Only trigger furniture matching if it's not already running.
+              // render/status also fires this; don't double-dispatch.
+              setMatchingInProgress(true);
               setProducts([]);
-              setZones([]);
+              const alreadyMatching =
+                (roomRow as { redesign_status?: string } | null)?.redesign_status === "matching_products";
+              if (!alreadyMatching) {
+                fetch("/api/pipeline/furniture-match", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ room_id: roomId }),
+                }).catch((err) =>
+                  console.warn("[step-9] Furniture matching trigger failed:", err)
+                );
+              }
+              // Poll every 3 s until room_products appear (max 90 s)
+              let ticks = 0;
+              pollInterval = window.setInterval(async () => {
+                ticks++;
+                try {
+                  const { count } = await supabase
+                    .from("room_products")
+                    .select("id", { count: "exact", head: true })
+                    .eq("room_id", roomId);
+                  if ((count ?? 0) > 0 || ticks >= 30) {
+                    if (pollInterval !== undefined) {
+                      window.clearInterval(pollInterval);
+                      pollInterval = undefined;
+                    }
+                    if (!cancelled) {
+                      setMatchingInProgress(false);
+                      window.location.reload();
+                    }
+                  }
+                } catch {
+                  // transient — keep polling
+                }
+              }, 3000);
             }
           }
         } catch {
-          // Network or parse error — show empty state
           setProducts([]);
           setZones([]);
         }
       } else {
-        // No active room — demo mode
         setProducts(DEFAULT_PRODUCTS);
         setZones(DEFAULT_ZONES);
       }
 
-      setProductsLoading(false);
+      if (!cancelled) setProductsLoading(false);
     };
     checkAuth();
+
+    return () => {
+      cancelled = true;
+      if (pollInterval !== undefined) {
+        window.clearInterval(pollInterval);
+        pollInterval = undefined;
+      }
+    };
   }, [router, roomId, renderUrl]);
 
   useEffect(() => {
@@ -589,7 +720,10 @@ export default function Step9Experience() {
 
   const visibleProducts = useMemo(() => {
     const filtered = products.filter(
-      (product) => activeFilter === "All" || product.category === activeFilter,
+      (product) =>
+        activeFilter === "All" ||
+        product.category === activeFilter ||
+        product.category === "Furniture",
     );
 
     const sorted = [...filtered].sort((a, b) => {
@@ -744,7 +878,7 @@ export default function Step9Experience() {
               <span>{isTouring ? "◎ Stop Tour" : "◎ Room Tour"}</span>
             </button>
 
-            <div className="step9-hotspots" aria-hidden="true">
+            <div className="step9-hotspots">
               {zonesLoading ? null : zones.map((zone) => {
                 const isActive = zone.id === activeZoneId;
                 return (
@@ -756,7 +890,19 @@ export default function Step9Experience() {
                       left: zone.left,
                       width: zone.width,
                       height: zone.height,
+                      pointerEvents: "auto",
+                      cursor: "pointer",
+                      ...(isActive
+                        ? {
+                            opacity: 1,
+                            border: "2px solid rgba(201, 168, 76, 0.85)",
+                            boxShadow:
+                              "0 0 0 1px rgba(201, 168, 76, 0.4), 0 0 28px 4px rgba(201, 168, 76, 0.35), inset 0 0 24px rgba(201, 168, 76, 0.25)",
+                          }
+                        : null),
                     }}
+                    onMouseEnter={() => setHoveredProductId(zone.id)}
+                    onMouseLeave={() => setHoveredProductId(null)}
                   >
                     <span className="step9-zone-label">{zone.label}</span>
                   </div>
@@ -899,6 +1045,16 @@ export default function Step9Experience() {
                     </div>
                   ))}
                 </>
+              ) : matchingInProgress ? (
+                <div className="step9-empty-state">
+                  <div className="step9-empty-icon">
+                    <Sparkles size={18} />
+                  </div>
+                  <h2>Finding your products</h2>
+                  <p>
+                    Matching furniture to your room — this takes about 30 seconds.
+                  </p>
+                </div>
               ) : visibleProducts.length === 0 ? (
                 <div className="step9-empty-state">
                   <div className="step9-empty-icon">
@@ -914,12 +1070,23 @@ export default function Step9Experience() {
                 visibleProducts.map((product, index) => {
                   const isSaved = savedIds.includes(product.id);
                   const activePrice = product.salePrice ?? product.price;
+                  const isLinked =
+                    activeZoneId !== null && product.zone === activeZoneId;
                   return (
                     <article
                       key={product.id}
-                      className="step9-product-card"
-                      style={{ animationDelay: `${index * 65}ms` }}
-                      onMouseEnter={() => setHoveredProductId(product.zone)}
+                      className={`step9-product-card ${isLinked ? "is-linked" : ""}`}
+                      style={{
+                        animationDelay: `${index * 65}ms`,
+                        ...(isLinked
+                          ? {
+                              borderColor: "rgba(201, 168, 76, 0.8)",
+                              boxShadow:
+                                "0 0 0 1px rgba(201, 168, 76, 0.6), 0 0 24px rgba(201, 168, 76, 0.3)",
+                            }
+                          : null),
+                      }}
+                      onMouseEnter={() => product.zone > 0 && setHoveredProductId(product.zone)}
                       onMouseLeave={() => setHoveredProductId(null)}
                     >
                       <div className="step9-product-image-wrap">

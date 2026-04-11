@@ -120,16 +120,23 @@ Be precise with bounding boxes — they should tightly contain each item. Do not
           typeof item.boundingBox.width === 'number' &&
           typeof item.boundingBox.height === 'number'
       )
-      .map((item) => ({
-        label: item.label,
-        boundingBox: {
-          x: Math.max(0, Math.min(100, item.boundingBox.x)),
-          y: Math.max(0, Math.min(100, item.boundingBox.y)),
-          width: Math.max(1, Math.min(100, item.boundingBox.width)),
-          height: Math.max(1, Math.min(100, item.boundingBox.height)),
-        },
-        confidence: Math.max(0, Math.min(1, item.confidence ?? 0.5)),
-      }))
+      .map((item) => {
+        const { x, y, width, height } = item.boundingBox
+        const cx = Math.max(0, Math.min(100, x))
+        const cy = Math.max(0, Math.min(100, y))
+        const cw = Math.max(1, Math.min(100, width))
+        const ch = Math.max(1, Math.min(100, height))
+        if (cx !== x || cy !== y || cw !== width || ch !== height) {
+          console.warn(
+            `[detect/render] OOB bbox clamped for "${item.label}": x=${x} y=${y} w=${width} h=${height} → x=${cx} y=${cy} w=${cw} h=${ch}`
+          )
+        }
+        return {
+          label: item.label,
+          boundingBox: { x: cx, y: cy, width: cw, height: ch },
+          confidence: Math.max(0, Math.min(1, item.confidence ?? 0.5)),
+        }
+      })
 
     // Write to Supabase
     await supabase

@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
        flythrough_ready, flythrough_video_url, flythrough_duration_seconds,
        plus_upgrade_ready, plus_started_at, plus_completed_at,
        hotspot_timing, pipeline_mode, pipeline_cost_log,
-       pre_detection_result, fixed_furniture, capture_mode`
+       render_detection_result, pre_detection_result, fixed_furniture, capture_mode`
     )
     .eq('id', roomId)
     .eq('user_id', user.id)
@@ -164,7 +164,8 @@ export async function GET(request: NextRequest) {
     pipeline_mode: room.pipeline_mode ?? 'full',
     pipeline_cost_log: room.pipeline_cost_log ?? null,
 
-    // Pre-detection
+    // Detection results
+    render_detection_result: room.render_detection_result ?? null,
     pre_detection_result: room.pre_detection_result ?? null,
     fixed_furniture: room.fixed_furniture ?? null,
 
