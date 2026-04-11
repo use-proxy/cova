@@ -235,6 +235,7 @@ Modify the prompt to incorporate the user's instruction while preserving the cor
             assembledAt: new Date().toISOString(),
           },
           pipeline_cost_log: {
+            pipeline: 'two_stage_mask',
             two_stage: true,
             stage1_prediction_id: predictionId,
             stage2_pending: true,

@@ -93,6 +93,38 @@ export async function GET(request: NextRequest) {
   const statusKey = room.redesign_status ?? 'pending'
   const statusInfo = PROGRESS_MAP[statusKey] ?? { percent: 50, message: 'Processing...' }
 
+  const isComplete =
+    statusKey === 'complete' ||
+    (!!room.render_url && (!room.redesign_status || room.redesign_status === 'pending')) ||
+    !!room.redesign_pano_url
+  const panoUrlForTrigger = room.redesign_pano_url ?? room.render_url ?? null
+
+  if (
+    isComplete &&
+    panoUrlForTrigger &&
+    !room.flythrough_ready &&
+    !room.flythrough_video_url
+  ) {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://covainterior.com'
+    fetch(`${baseUrl}/api/pipeline/depth-video`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-service-key': process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+      },
+      body: JSON.stringify({ room_id: roomId, pano_url: panoUrlForTrigger }),
+    }).catch((err) => console.error('[status] depth-video trigger:', err))
+
+    fetch(`${baseUrl}/api/detect/render`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-service-key': process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+      },
+      body: JSON.stringify({ roomId }),
+    }).catch((err) => console.error('[status] detect/render trigger:', err))
+  }
+
   // Compute Plus ETA
   let plusEtaSeconds: number | null = null
   if (room.plus_started_at && !room.plus_upgrade_ready) {

@@ -24,13 +24,19 @@ interface DepthVideoBody {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createServerSupabaseClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const serviceKey = request.headers.get('x-service-key')
+  const isServiceCall =
+    !!serviceKey && serviceKey === process.env.SUPABASE_SERVICE_ROLE_KEY
 
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!isServiceCall) {
+    const supabase = await createServerSupabaseClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
   }
 
   const body = (await request.json()) as DepthVideoBody
