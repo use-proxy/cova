@@ -16,6 +16,8 @@ import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { searchProducts, type SerperProduct } from '@/lib/ai/serper'
+import { isFurnitureProduct } from '@/lib/ai/matchUtils'
+import { buildAffiliateUrl } from '@/lib/affiliates'
 
 interface FurnitureMatchBody {
   room_id?: string
@@ -84,46 +86,78 @@ export async function POST(request: Request) {
   }
 
   try {
-    // Resolve user_id for the Modal webhook payload.
-    // Service-key calls have no authed user, so look it up from the room.
-    let userId: string | null = user?.id ?? null
-    if (!userId) {
-      const { data: roomRow } = await supabase
-        .from('rooms')
-        .select('user_id')
-        .eq('id', room_id)
-        .single()
-      userId = (roomRow as { user_id?: string } | null)?.user_id ?? null
+    // Resolve user_id + fetch room context (render URL, style, room type) in one query
+    const { data: roomRow } = await supabase
+      .from('rooms')
+      .select('user_id, redesign_pano_url, render_url, style_blend, room_type, redesign_status')
+      .eq('id', room_id)
+      .single()
+
+    // ── Atomic idempotency guard ──────────────────────────────────────
+    // Conditionally lock: only update rows whose status is NOT already
+    // matching_products. If zero rows are returned, another concurrent
+    // caller already claimed this room — bail out.
+    // Exclude both in-flight and already-completed states so reruns cannot
+    // wipe existing products out from under a user who is viewing step-9.
+    const { data: lockRows } = await supabase
+      .from('rooms')
+      .update({ redesign_status: 'matching_products' })
+      .eq('id', room_id)
+      .not('redesign_status', 'in', '("matching_products","complete")')
+      .select('id')
+    if (!lockRows || lockRows.length === 0) {
+      const currentStatus = (roomRow as { redesign_status?: string } | null)?.redesign_status ?? 'unknown'
+      console.log(`[furniture-match] Room ${room_id} skipped — current status: ${currentStatus}`)
+      return NextResponse.json({ status: 'in_progress', room_id, message: 'Product matching already in progress or complete', current_status: currentStatus })
     }
+
+    const userId: string | null = user?.id ?? (roomRow as { user_id?: string } | null)?.user_id ?? null
+    const renderUrl: string | null =
+      (roomRow as { redesign_pano_url?: string; render_url?: string } | null)?.redesign_pano_url ??
+      (roomRow as { redesign_pano_url?: string; render_url?: string } | null)?.render_url ??
+      null
+    const styleBlend: Record<string, number> | null =
+      (roomRow as { style_blend?: Record<string, number> } | null)?.style_blend ?? null
+    const roomType: string =
+      (roomRow as { room_type?: string } | null)?.room_type ?? 'living_room'
 
     // ── Step 1: Call Modal for furniture detection ──────────────────────
-    const detectionResponse = await fetch(webhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        room_id,
-        user_id: userId,
-        fixed_furniture: fixed_furniture ?? [],
-      }),
-      signal: AbortSignal.timeout(120_000),
-    })
-
-    if (!detectionResponse.ok) {
-      const text = await detectionResponse.text().catch(() => detectionResponse.statusText)
-      console.error('[furniture-match] Detection webhook error:', detectionResponse.status, text)
-      return NextResponse.json(
-        { error: 'Furniture detection failed', detail: text },
-        { status: 502 }
-      )
-    }
-
-    const detectionResult = (await detectionResponse.json()) as {
+    type DetectionResult = {
       status: string
       furniture_items?: DetectedItem[]
       furniture_count?: number
       detection_source?: string
       error?: string
     }
+
+    const callModal = async (): Promise<DetectionResult | { __httpError: true; status: number; body: string }> => {
+      const res = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          room_id,
+          user_id: userId,
+          fixed_furniture: fixed_furniture ?? [],
+        }),
+        signal: AbortSignal.timeout(120_000),
+      })
+      if (!res.ok) {
+        const text = await res.text().catch(() => res.statusText)
+        return { __httpError: true, status: res.status, body: text }
+      }
+      return (await res.json()) as DetectionResult
+    }
+
+    let detectionResult: DetectionResult
+    const first = await callModal()
+    if ('__httpError' in first) {
+      console.error('[furniture-match] Detection webhook error:', first.status, first.body)
+      return NextResponse.json(
+        { error: 'Furniture detection failed', detail: first.body },
+        { status: 502 }
+      )
+    }
+    detectionResult = first
 
     if (detectionResult.status === 'error') {
       console.error('[furniture-match] Detection error:', detectionResult.error)
@@ -133,8 +167,95 @@ export async function POST(request: Request) {
       )
     }
 
-    const furnitureItems = detectionResult.furniture_items ?? []
+    let furnitureItems = detectionResult.furniture_items ?? []
+
+    // ── furniture_count: 0 handling ────────────────────────────────────
+    // Modal occasionally returns 0 items on first call (transient Vision
+    // failure). Retry once after a 10s delay; if still 0, fall back to the
+    // detection-only zones in rooms.render_detection_result so step-9 can
+    // still render hotspots. Silent empty → "Nothing here" is the worst UX.
     if (furnitureItems.length === 0) {
+      console.warn('[furniture-match] furniture_count 0 — retrying in 10s')
+      await new Promise((r) => setTimeout(r, 10_000))
+      const second = await callModal()
+      if (!('__httpError' in second) && second.status !== 'error') {
+        detectionResult = second
+        furnitureItems = second.furniture_items ?? []
+      }
+    }
+
+    if (furnitureItems.length === 0) {
+      // Fallback: use render_detection_result zones as detection-only rows.
+      const { data: detRow } = await supabase
+        .from('rooms')
+        .select('render_detection_result')
+        .eq('id', room_id)
+        .single()
+      const detItems = Array.isArray(
+        (detRow as { render_detection_result?: { items?: Array<{ label: string }> } } | null)
+          ?.render_detection_result?.items
+      )
+        ? ((detRow as { render_detection_result: { items: Array<{ label: string }> } })
+            .render_detection_result.items)
+        : []
+
+      if (detItems.length > 0) {
+        const fallbackRows = detItems
+          .filter((z) => typeof z.label === 'string' && z.label.trim().length > 0)
+          .map((z) => ({
+            room_id,
+            product_id: null,
+            furniture_label: z.label,
+            furniture_description: null,
+            similarity_score: 0,
+            rank: 1,
+            azimuth_degrees: 0,
+            elevation_degrees: -25,
+            hotspot_x: null,
+            hotspot_y: null,
+            is_unlocked: false,
+            serp_title: null,
+            serp_price: null,
+            serp_retailer: null,
+            serp_product_url: null,
+            serp_image_url: null,
+            match_score: 0,
+            match_label: 'Inspired By',
+            is_sale: false,
+          }))
+
+        await supabase.from('room_products').delete().eq('room_id', room_id)
+        if (fallbackRows.length > 0) {
+          const { error: fbErr } = await supabase.from('room_products').insert(fallbackRows)
+          if (fbErr) console.error('[furniture-match] Fallback insert error:', fbErr)
+        }
+        await supabase
+          .from('rooms')
+          .update({
+            matched_products: [],
+            furniture_matches_count: fallbackRows.length,
+            redesign_status: 'complete',
+          })
+          .eq('id', room_id)
+
+        console.warn(
+          `[furniture-match] furniture_count 0 after retry — inserted ${fallbackRows.length} detection-only rows`
+        )
+        return NextResponse.json({
+          status: 'complete',
+          room_id,
+          furniture_count: 0,
+          products_matched: fallbackRows.length,
+          detection_source: 'render_detection_fallback',
+          items: [],
+        })
+      }
+
+      // No detection zones either — release the lock and return empty.
+      await supabase
+        .from('rooms')
+        .update({ redesign_status: 'complete', furniture_matches_count: 0 })
+        .eq('id', room_id)
       return NextResponse.json({
         status: 'complete',
         room_id,
@@ -145,25 +266,54 @@ export async function POST(request: Request) {
     }
 
     // ── Step 2: SERP search per item ───────────────────────────────────
-    await supabase
-      .from('rooms')
-      .update({ redesign_status: 'matching_products' })
-      .eq('id', room_id)
+    // (Lock already acquired atomically above.)
+
+    // Derive dominant style descriptor from style_blend for enriched queries
+    const dominantStyleTag: string = (() => {
+      if (style_descriptor) return style_descriptor
+      if (!styleBlend) return ''
+      const top = Object.entries(styleBlend).sort((a, b) => b[1] - a[1])[0]
+      return top ? top[0].replace(/_/g, ' ') : ''
+    })()
 
     const allMatchedProducts: SerpMatchedProduct[] = []
     const roomProductRecords: Record<string, unknown>[] = []
 
+    void renderUrl  // referenced to avoid unused-var lint; used in future CLIP pass
+    void roomType   // available for budget allocation in future pass
+
     for (const item of furnitureItems) {
-      const styleTag = style_descriptor ?? ''
-      const searchQuery = item.search_query || `${item.label} ${styleTag} buy`
+      // Always enrich query with style tag — Modal's search_query often omits it.
+      const baseQuery = item.search_query || `${item.label} buy`
+      const searchQuery = dominantStyleTag && !baseQuery.toLowerCase().includes(dominantStyleTag.toLowerCase())
+        ? `${baseQuery} ${dominantStyleTag}`.trim()
+        : baseQuery.trim()
 
       let products: SerperProduct[] = []
+      let rawResults: SerperProduct[] = []
       try {
         const result = await searchProducts(searchQuery, 10)
-        products = result.products
+        rawResults = result.products
+        products = rawResults.filter(isFurnitureProduct)
       } catch (err) {
         console.warn(`[furniture-match] Serper search failed for "${item.label}":`, err)
         continue
+      }
+
+      // Second-pass fallback: if strict allowlist removed everything but
+      // raw results existed, relax the retailer allowlist and keep only the
+      // price floor. Prevents "Nothing here" when the SERP returned valid
+      // products from retailers we don't yet affiliate with.
+      if (products.length === 0 && rawResults.length > 0) {
+        const relaxed = rawResults.filter((p) => p.price >= 30)
+        console.warn(
+          `[furniture-match] "${item.label}" pre-filter=${rawResults.length} post-filter=0 → relaxed fallback=${relaxed.length}`
+        )
+        products = relaxed
+      } else {
+        console.log(
+          `[furniture-match] "${item.label}" pre-filter=${rawResults.length} post-filter=${products.length}`
+        )
       }
 
       // Filter by budget range if provided
@@ -182,13 +332,16 @@ export async function POST(request: Request) {
 
       for (let rank = 0; rank < topProducts.length; rank++) {
         const p = topProducts[rank]!
-        const matchScore = 1.0 - rank * 0.1 // simple rank-based score
+        const matchScore = 1.0 - rank * 0.1 // rank-based score (0 → 1.0, 1 → 0.9, …)
+        const affiliateUrl = buildAffiliateUrl(p.productUrl, p.retailer)
+        // Rank-tier labels (since scores are rank-derived, threshold by rank).
+        const matchLabel = rank === 0 ? 'Top Match' : rank <= 2 ? 'Close Match' : 'Inspired By'
 
         allMatchedProducts.push({
           title: p.title,
           price: p.price,
           retailer: p.retailer,
-          productUrl: p.productUrl,
+          productUrl: affiliateUrl,
           thumbnailUrl: p.imageUrl,
           itemLabel: item.label,
           isSale: p.isSale,
@@ -212,10 +365,10 @@ export async function POST(request: Request) {
           serp_title: p.title,
           serp_price: p.price,
           serp_retailer: p.retailer,
-          serp_product_url: p.productUrl,
+          serp_product_url: affiliateUrl,
           serp_image_url: p.imageUrl,
           match_score: matchScore,
-          match_label: rank === 0 ? 'Top Match' : rank <= 2 ? 'Close Match' : 'Inspired By',
+          match_label: matchLabel,
           is_sale: p.isSale,
         })
       }
@@ -229,6 +382,10 @@ export async function POST(request: Request) {
       .delete()
       .eq('room_id', room_id)
 
+    // bbox (hotspot_x/y/width/height) is intentionally not stored here.
+    // step-9 reads zones directly from rooms.render_detection_result JSONB
+    // and matches to products by label via findZoneIdForLabel(). No schema
+    // change needed.
     // Insert new SERP-matched products
     if (roomProductRecords.length > 0) {
       const { error: insertError } = await supabase

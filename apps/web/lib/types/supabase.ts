@@ -1204,6 +1204,7 @@ export type Database = {
           plus_started_at: string | null
           plus_upgrade_ready: boolean | null
           pre_detection_result: Json | null
+          render_detection_result: Json | null
           preview_url: string | null
           redesign_pano_url: string | null
           redesign_splat_url: string | null
@@ -1284,6 +1285,7 @@ export type Database = {
           plus_started_at?: string | null
           plus_upgrade_ready?: boolean | null
           pre_detection_result?: Json | null
+          render_detection_result?: Json | null
           preview_url?: string | null
           redesign_pano_url?: string | null
           redesign_splat_url?: string | null
@@ -1364,6 +1366,7 @@ export type Database = {
           plus_started_at?: string | null
           plus_upgrade_ready?: boolean | null
           pre_detection_result?: Json | null
+          render_detection_result?: Json | null
           preview_url?: string | null
           redesign_pano_url?: string | null
           redesign_splat_url?: string | null
