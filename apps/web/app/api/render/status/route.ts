@@ -10,6 +10,55 @@ import type { RoomArchitecture } from '@/lib/ai/room-analyzer'
 
 const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN })
 
+function getInternalBaseUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_APP_URL?.replace(
+      'http://localhost:3000',
+      'https://covainterior.com',
+    ) ?? 'https://covainterior.com'
+  )
+}
+
+async function triggerFurnitureMatching(roomId: string, renderUrl: string) {
+  try {
+    const baseUrl = getInternalBaseUrl()
+    const res = await fetch(`${baseUrl}/api/pipeline/furniture-match`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-service-key': process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+      },
+      body: JSON.stringify({ room_id: roomId, render_url: renderUrl }),
+    })
+    if (!res.ok) {
+      console.error(
+        '[furniture-match] trigger failed:',
+        res.status,
+        await res.text(),
+      )
+    }
+  } catch (err) {
+    console.error('[furniture-match] trigger error:', err)
+  }
+}
+
+// Fire detection on the rendered image first, then trigger furniture matching
+// with a delay to give detection time to complete.
+function triggerDetectionThenMatching(roomId: string, renderUrl: string): void {
+  const baseUrl = getInternalBaseUrl()
+  fetch(`${baseUrl}/api/detect/render`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-service-key': process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+    },
+    body: JSON.stringify({ room_id: roomId, render_url: renderUrl, roomId }),
+  }).catch((err) => console.error('[detect/render] trigger failed:', err))
+  setTimeout(() => {
+    void triggerFurnitureMatching(roomId, renderUrl)
+  }, 20000)
+}
+
 // Async re-detection on the rendered image.
 // Rendered images are clean AI images — GroundingDINO gets better results on them.
 // Merges render detections with user's keep=true choices from the original photo.
@@ -140,6 +189,7 @@ export async function GET(request: NextRequest) {
     pass1_url?: string
     pass2_url?: string
     arch_analysis?: RoomArchitecture
+    original_photo_url?: string
     schnell_prediction_id?: string | null
     // Which render pipeline was used for pass 1
     pipeline?: 'depth_pro' | 'kontext_multi' | 'kontext_single'
@@ -194,6 +244,7 @@ export async function GET(request: NextRequest) {
           return NextResponse.json({ status: 'failed', error: pass2.error ?? 'Pass 2 failed' })
         }
         await admin.from('rooms').update({ render_url: fallbackUrl }).eq('id', roomId)
+        await admin.from('rooms').update({ redesign_status: 'complete' }).eq('id', roomId!).or('redesign_status.eq.pending,redesign_status.is.null')
         const fallbackSession: InsertTables<'render_sessions'> = {
           room_id: roomId!,
           render_url: fallbackUrl,
@@ -207,6 +258,7 @@ export async function GET(request: NextRequest) {
           .select('id')
           .single()
         void triggerRenderDetection(fallbackUrl, roomId!, admin)
+        triggerDetectionThenMatching(roomId!, fallbackUrl)
         return NextResponse.json({
           status: 'complete',
           render_url: fallbackUrl,
@@ -231,6 +283,7 @@ export async function GET(request: NextRequest) {
           .from('rooms')
           .update({
             render_url: finalUrl,
+            redesign_status: 'complete',
             pipeline_cost_log: { ...costLog, pass2_url: finalUrl },
           } as Record<string, unknown>)
           .eq('id', roomId)
@@ -249,6 +302,7 @@ export async function GET(request: NextRequest) {
           .single()
 
         void triggerRenderDetection(finalUrl, roomId!, admin)
+        triggerDetectionThenMatching(roomId!, finalUrl)
 
         return NextResponse.json({
           status: 'complete',
@@ -289,6 +343,8 @@ export async function GET(request: NextRequest) {
       if (!arch) {
         // Missing arch metadata — treat pass 1 output as final
         await admin.from('rooms').update({ render_url: pass1Url }).eq('id', roomId)
+        await admin.from('rooms').update({ redesign_status: 'complete' }).eq('id', roomId!).or('redesign_status.eq.pending,redesign_status.is.null')
+        triggerDetectionThenMatching(roomId!, pass1Url)
         return NextResponse.json({ status: 'complete', render_url: pass1Url })
       }
 
@@ -296,13 +352,15 @@ export async function GET(request: NextRequest) {
       try {
         pass2Id = await submitArchitectureCorrection(
           pass1Url,
-          roomMeta?.original_photo_url ?? pass1Url,
+          costLog.original_photo_url ?? roomMeta?.original_photo_url ?? pass1Url,
           arch,
         )
       } catch (err) {
         // Pass 2 submission failed — use pass 1 output as final
         console.error('[render-status] Failed to submit pass 2:', err)
         await admin.from('rooms').update({ render_url: pass1Url }).eq('id', roomId)
+        await admin.from('rooms').update({ redesign_status: 'complete' }).eq('id', roomId!).or('redesign_status.eq.pending,redesign_status.is.null')
+        triggerDetectionThenMatching(roomId!, pass1Url)
         return NextResponse.json({ status: 'complete', render_url: pass1Url, preview_url: pass1Url })
       }
 
@@ -433,9 +491,11 @@ export async function GET(request: NextRequest) {
       }
 
       await admin.from('rooms').update({ render_url: finalRenderUrl }).eq('id', roomId)
+      await admin.from('rooms').update({ redesign_status: 'complete' }).eq('id', roomId!).or('redesign_status.eq.pending,redesign_status.is.null')
 
       // Re-detect on the rendered image (async — don't block response)
       void triggerRenderDetection(finalRenderUrl, roomId!, admin)
+      triggerDetectionThenMatching(roomId!, finalRenderUrl)
 
       return NextResponse.json({
         status: 'complete',
@@ -494,6 +554,7 @@ export async function GET(request: NextRequest) {
       .from('rooms')
       .update({
         render_url: finalUrl,
+        redesign_status: 'complete',
         pipeline_cost_log: {
           ...(costLog ?? {}),
           upscaled: finalUrl !== renderUrl,
@@ -505,6 +566,7 @@ export async function GET(request: NextRequest) {
     // Re-detect on the rendered image (async — don't block response)
     // Rendered images are clean AI images, detection works better on them
     void triggerRenderDetection(finalUrl, roomId!, admin)
+    triggerDetectionThenMatching(roomId!, finalUrl)
 
     return NextResponse.json({
       status: 'complete',

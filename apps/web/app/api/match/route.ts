@@ -150,6 +150,12 @@ export async function POST(request: Request) {
       primary_wall_usable_inches,
     } = body
 
+    console.log('[match] called with:', { item_label, render_url: render_url?.slice(0, 60) })
+    console.log('[match] env keys present:', {
+      searchapi: !!process.env.SEARCHAPI_KEY,
+      serper: !!process.env.SERPER_API_KEY,
+    })
+
     // Per-item budget target (designer allocation ratios by room type)
     const itemBudgetRange: [number, number] | null = budget_range
       ? getItemBudgetTarget(item_label, room_type, budget_range)

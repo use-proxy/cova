@@ -1,322 +1,333 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useFingerprintStore } from "@/lib/store/fingerprint";
+import { useFingerprintStore, type StyleFingerprint } from "@/lib/store/fingerprint";
 import "../step-1/step1.css";
 import "./step3.css";
 
-type Option = {
+type Phase = "room" | "anchors" | "pairs" | "validation" | "compute";
+
+type ValidationRender = {
+  url: string | null;
   label: string;
-  image: string;
-  alt: string;
 };
 
-type Round = {
-  left: Option;
-  right: Option;
+const MAX_REFINEMENTS = 2;
+
+type AnchorCard = {
+  id: string;
+  image_url: string;
+  style_name: string;
+  style_vector: Record<string, number>;
 };
 
-const ROUNDS: Round[] = [
-  {
-    left: {
-      label: "Calm Warm Woods",
-      image:
-        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/wl9fpGVTqfYb_712c46ca.jpg",
-      alt: "Serene interior with warm woods and restrained styling",
-    },
-    right: {
-      label: "Modern Luxe",
-      image:
-        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/OqavQS3nn2Of_9e9fb8e6.jpg",
-      alt: "Modern luxury interior with polished materials and layered lighting",
-    },
-  },
-  {
-    left: {
-      label: "Industrial Edge",
-      image:
-        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/sSOO9vSbaCqI_41f3927f.jpg",
-      alt: "Industrial loft interior with metal, concrete, and moody light",
-    },
-    right: {
-      label: "Breezy & Light",
-      image:
-        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/jibl1ZhpOQ62_055cad1a.jpg",
-      alt: "Breezy interior with pale textiles and airy natural light",
-    },
-  },
-  {
-    left: {
-      label: "Layered & Bold",
-      image:
-        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/jKNihu1uil8r_f0d63957.jpg",
-      alt: "Maximalist room layered with pattern, art, and color",
-    },
-    right: {
-      label: "Bright & Airy",
-      image:
-        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/PIe6acCOKi2m_d8ea754d.jpg",
-      alt: "Bright interior with clean lines and neutral tones",
-    },
-  },
-  {
-    left: {
-      label: "Walnut Warmth",
-      image:
-        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/Usn3xSO69ETo_a5618c3b.jpg",
-      alt: "Room with walnut tones and iconic silhouettes",
-    },
-    right: {
-      label: "Eclectic Layering",
-      image:
-        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/LSlC07ju3zi7_1b911039.jpg",
-      alt: "Eclectic living room with textiles, plants, and expressive styling",
-    },
-  },
-  {
-    left: {
-      label: "Art Deco Drama",
-      image:
-        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/hSdez6NFyEQu_d9775122.jpg",
-      alt: "Art Deco interior with geometry, brass, and theatrical contrast",
-    },
-    right: {
-      label: "Quiet Tactile",
-      image:
-        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/eaiXimstWn9f_7a2cf6ba.jpg",
-      alt: "Quiet room with tactile textures and calm imperfect forms",
-    },
-  },
-  {
-    left: {
-      label: "Contemporary Gallery",
-      image:
-        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/kCu9jgeFZsGf_20a24f20.jpg",
-      alt: "Contemporary interior with sculptural furniture and open space",
-    },
-    right: {
-      label: "Organic Modern",
-      image:
-        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/r1TP9VIo8yZL_6bbf1ff0.jpg",
-      alt: "Organic modern room with curved forms and natural materials",
-    },
-  },
-  {
-    left: {
-      label: "Serene Retreat",
-      image:
-        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/foQ4nZPgizp1_5ae5544b.jpg",
-      alt: "Serene sitting room with minimal furnishings",
-    },
-    right: {
-      label: "Industrial Loft",
-      image:
-        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/a6OpNfqj2Tzi_f131b612.jpg",
-      alt: "Industrial apartment interior with steel framing and exposed structure",
-    },
-  },
-  {
-    left: {
-      label: "Sun-Washed Studio",
-      image:
-        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/Y7za5C9ROKt9_71a8a29c.jpg",
-      alt: "Sitting room with sun-washed palette and soft textures",
-    },
-    right: {
-      label: "Salon Maximalism",
-      image:
-        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/gJMuNAU1m5iy_5b4325bf.jpg",
-      alt: "Salon rich in objects, textiles, and saturated accents",
-    },
-  },
-  {
-    left: {
-      label: "Daylight Studio",
-      image:
-        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/foQ4nZPgizp1_5ae5544b.jpg",
-      alt: "Living room with airy daylight and oak details",
-    },
-    right: {
-      label: "Teak Lounge",
-      image:
-        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/swRjh6koCRGO_1d9e122c.jpg",
-      alt: "Lounge with teak, leather, and low-slung forms",
-    },
-  },
-  {
-    left: {
-      label: "Collected Escape",
-      image:
-        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/jXTFKclXF75e_f67f12cb.jpg",
-      alt: "Interior with layered rugs and collected décor",
-    },
-    right: {
-      label: "Art Deco Suite",
-      image:
-        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/c9rKwfiPJmZn_48f4b95f.jpg",
-      alt: "Art Deco suite with jewel tones and geometric detailing",
-    },
-  },
-  {
-    left: {
-      label: "Raw & Calm",
-      image:
-        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/qt3Z6Ru5Paln_a7023b25.jpg",
-      alt: "Shelter with raw wood and soft plaster tones",
-    },
-    right: {
-      label: "Contemporary Loft",
-      image:
-        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/tHdsVD35bNhW_45615cf1.jpg",
-      alt: "Contemporary loft with crisp forms and gallery-like restraint",
-    },
-  },
-  {
-    left: {
-      label: "Organic Haven",
-      image:
-        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/eeJ7Rl2WER8X_8379fe2f.jpg",
-      alt: "Organic haven with stone, linen, and curved silhouettes",
-    },
-    right: {
-      label: "Modern Luxe Noir",
-      image:
-        "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/OqavQS3nn2Of_9e9fb8e6.jpg",
-      alt: "Dark modern luxury interior with brass accents and dramatic mood",
-    },
-  },
+type ComparisonPair = {
+  id: string;
+  dimension: string;
+  image_a_url: string;
+  image_b_url: string;
+};
+
+type FingerprintResult = {
+  fingerprint: StyleFingerprint;
+  style_name: string;
+  style_tags: string[];
+};
+
+const ROOM_TYPES: { id: string; label: string }[] = [
+  { id: "living_room", label: "Living Room" },
+  { id: "bedroom", label: "Bedroom" },
+  { id: "dining_room", label: "Dining Room" },
+  { id: "home_office", label: "Home Office" },
+  { id: "kitchen", label: "Kitchen" },
+  { id: "bathroom", label: "Bathroom" },
 ];
 
-const COMPLETION_BACKGROUND =
-  "https://d2xsxph8kpxj0f.cloudfront.net/310519663514830424/AAW43aehHztmjdKk5QKJPs/cova-starburst-transition-bg-Qpxi2XBexvgAuRLxVBuzNG.webp";
-
+const TOTAL_PAIRS = 12;
+const MAX_ANCHOR_PICKS = 3;
 const COMPLETION_ROUTE = "/design/step-4";
 
 export default function CovaStyleQuizPage() {
   const router = useRouter();
-  const totalRounds = ROUNDS.length;
-  const [activeRound, setActiveRound] = useState(0);
-  const [selectedSide, setSelectedSide] = useState<"left" | "right" | null>(
-    null,
-  );
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [isComplete, setIsComplete] = useState(false);
+  const [phase, setPhase] = useState<Phase>("room");
 
-  // Track when current round started for response time measurement
-  const roundStartRef = useRef<number>(Date.now())
+  // Phase A state
+  const [anchors, setAnchors] = useState<AnchorCard[]>([]);
+  const [anchorsLoading, setAnchorsLoading] = useState(false);
+  const [anchorsError, setAnchorsError] = useState<string | null>(null);
+  const [selectedAnchorIds, setSelectedAnchorIds] = useState<string[]>([]);
 
-  const currentRound = ROUNDS[activeRound];
-  const roundNumber = activeRound + 1;
-  const progressValue = useMemo(
-    () => ((activeRound + (selectedSide ? 1 : 0)) / totalRounds) * 100,
-    [activeRound, selectedSide, totalRounds],
-  );
+  // Phase B state
+  const [currentPair, setCurrentPair] = useState<ComparisonPair | null>(null);
+  const [pairsAnswered, setPairsAnswered] = useState(0);
+  const [pairLoading, setPairLoading] = useState(false);
+  const [pairError, setPairError] = useState<string | null>(null);
+  const pairStartRef = useRef<number>(Date.now());
 
+  // Validation state
+  const [validationLoading, setValidationLoading] = useState(false);
+  const [validationRenders, setValidationRenders] = useState<ValidationRender[]>([]);
+  const [refinementCount, setRefinementCount] = useState(0);
+
+  // Phase C state
+  const [computeError, setComputeError] = useState<string | null>(null);
+
+  // Auth check (preserved from previous implementation)
   useEffect(() => {
     const checkAuth = async () => {
-      const { createBrowserClient } = await import('@/lib/supabase/client')
-      const supabase = createBrowserClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) router.push('/auth?next=/design/step-3')
-    }
-    checkAuth()
+      const { createBrowserClient } = await import("@/lib/supabase/client");
+      const supabase = createBrowserClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) router.push("/auth?next=/design/step-3");
+    };
+    checkAuth();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, []);
 
-  const handleChoice = (side: "left" | "right") => {
-    if (selectedSide || isTransitioning || isComplete) return;
-    // Record pairwise response to fingerprint store (cookie-persisted)
-    const responseTimeMs = Date.now() - roundStartRef.current
-    useFingerprintStore.getState().addPhaseBResponse({
-      pairId: String(activeRound),
-      chosenSide: side === "left" ? "A" : "B",
-      responseTimeMs,
-    })
-    setSelectedSide(side);
+  // ── Phase 0 — Room type ───────────────────────────────────────────────────
+  const handleRoomSelect = (roomType: string) => {
+    useFingerprintStore.getState().setRoomType(roomType);
+    setPhase("anchors");
   };
 
+  // ── Phase A — Anchor selection ────────────────────────────────────────────
   useEffect(() => {
-    if (!selectedSide || isTransitioning || isComplete) return;
+    if (phase !== "anchors" || anchors.length > 0) return;
+    let cancelled = false;
+    setAnchorsLoading(true);
+    setAnchorsError(null);
+    fetch("/api/quiz/next-card")
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`next-card ${res.status}`);
+        return res.json() as Promise<{ cards: AnchorCard[] }>;
+      })
+      .then((json) => {
+        if (cancelled) return;
+        setAnchors(json.cards ?? []);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setAnchorsError(err instanceof Error ? err.message : "Failed to load");
+      })
+      .finally(() => {
+        if (!cancelled) setAnchorsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [phase, anchors.length]);
 
-    const settleTimer = window.setTimeout(() => {
-      if (activeRound === totalRounds - 1) {
-        setIsComplete(true);
-        return;
-      }
+  const toggleAnchor = (id: string) => {
+    setSelectedAnchorIds((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (prev.length >= MAX_ANCHOR_PICKS) return prev;
+      return [...prev, id];
+    });
+  };
 
-      setIsTransitioning(true);
-      window.setTimeout(() => {
-        setActiveRound((prev) => prev + 1);
-        setSelectedSide(null);
-        setIsTransitioning(false);
-        // Reset round start time for accurate response time tracking
-        roundStartRef.current = Date.now()
-      }, 540);
-    }, 180);
+  const handleAnchorsContinue = () => {
+    const store = useFingerprintStore.getState();
+    for (const id of selectedAnchorIds) store.addPhaseASelection(id);
+    setPhase("pairs");
+  };
 
-    return () => window.clearTimeout(settleTimer);
-  }, [activeRound, isComplete, isTransitioning, selectedSide, totalRounds]);
+  // ── Phase B — Pairwise comparison ─────────────────────────────────────────
+  const fetchNextPair = useCallback(async () => {
+    setPairLoading(true);
+    setPairError(null);
+    const store = useFingerprintStore.getState();
+    const completedPairIds = store.phaseBResponses.map((r) => r.pairId);
+    const currentFp = store.fingerprint;
 
-  useEffect(() => {
-    if (!isComplete) return;
-
-    const finishTimer = window.setTimeout(() => {
-      router.push(COMPLETION_ROUTE);
-    }, 1500);
-
-    return () => window.clearTimeout(finishTimer);
-  }, [isComplete, router]);
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (selectedSide || isTransitioning || isComplete) return;
-
-      if (event.key === "ArrowLeft") {
-        event.preventDefault();
-        handleChoice("left");
-      }
-
-      if (event.key === "ArrowRight") {
-        event.preventDefault();
-        handleChoice("right");
-      }
+    const doFetch = async (): Promise<ComparisonPair | null> => {
+      const res = await fetch("/api/quiz/next-pair", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          completedPairIds,
+          responseCount: completedPairIds.length,
+          currentFingerprint: currentFp?.dimensions ?? null,
+        }),
+      });
+      if (!res.ok) throw new Error(`next-pair ${res.status}`);
+      const json = (await res.json()) as {
+        pair: ComparisonPair | null;
+        quizComplete?: boolean;
+      };
+      return json.pair;
     };
 
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isComplete, isTransitioning, selectedSide]);
+    try {
+      const pair = await doFetch();
+      setCurrentPair(pair);
+      pairStartRef.current = Date.now();
+    } catch {
+      try {
+        const pair = await doFetch();
+        setCurrentPair(pair);
+        pairStartRef.current = Date.now();
+      } catch (err: unknown) {
+        setPairError(err instanceof Error ? err.message : "Failed to load pair");
+      }
+    } finally {
+      setPairLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (phase !== "pairs") return;
+    if (pairsAnswered >= TOTAL_PAIRS) {
+      setPhase("validation");
+      return;
+    }
+    if (currentPair) return;
+    void fetchNextPair();
+  }, [phase, pairsAnswered, currentPair, fetchNextPair]);
+
+  const handlePairChoice = (side: "A" | "B") => {
+    if (!currentPair || pairLoading) return;
+    useFingerprintStore.getState().addPhaseBResponse({
+      pairId: currentPair.id,
+      chosenSide: side,
+      responseTimeMs: Date.now() - pairStartRef.current,
+    });
+    setCurrentPair(null);
+    setPairsAnswered((n) => n + 1);
+  };
+
+  const handleSkipPair = () => {
+    if (currentPair) {
+      useFingerprintStore.getState().addPhaseBResponse({
+        pairId: currentPair.id,
+        chosenSide: "skip",
+        responseTimeMs: 0,
+      });
+    }
+    setCurrentPair(null);
+    setPairError(null);
+    setPairsAnswered((n) => n + 1);
+  };
+
+  // ── Validation — render previews + confirm ──────────────────────────────
+  const runValidation = useCallback(async () => {
+    setValidationLoading(true);
+    setValidationRenders([]);
+    const store = useFingerprintStore.getState();
+    try {
+      const fpRes = await fetch("/api/quiz/fingerprint", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phase_a_selections: store.phaseASelections,
+          phase_b_responses: store.phaseBResponses,
+          room_type: store.roomType ?? "living_room",
+          entry_path: "pairs",
+        }),
+      });
+      if (!fpRes.ok) throw new Error(`fingerprint ${fpRes.status}`);
+      const fpResult = (await fpRes.json()) as FingerprintResult;
+      useFingerprintStore
+        .getState()
+        .setFingerprint(fpResult.fingerprint, fpResult.style_name, fpResult.style_tags);
+
+      const vrRes = await fetch("/api/quiz/validation-renders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fingerprint: fpResult.fingerprint,
+          roomType: store.roomType ?? "living_room",
+        }),
+      });
+      if (!vrRes.ok) throw new Error(`validation-renders ${vrRes.status}`);
+      const vrJson = (await vrRes.json()) as { renders: ValidationRender[] };
+      setValidationRenders(vrJson.renders ?? []);
+      setValidationLoading(false);
+    } catch (err: unknown) {
+      console.error("[step-3] validation failed:", err);
+      setValidationLoading(false);
+      setPhase("compute");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (phase !== "validation") return;
+    void runValidation();
+  }, [phase, runValidation]);
+
+  const handleValidationConfirm = () => {
+    setPhase("compute");
+  };
+
+  const handleValidationRefine = () => {
+    if (refinementCount >= MAX_REFINEMENTS) {
+      setPhase("compute");
+      return;
+    }
+    setRefinementCount((n) => n + 1);
+    setValidationRenders([]);
+    setCurrentPair(null);
+    setPairError(null);
+    setPairsAnswered(6);
+    setPhase("pairs");
+  };
+
+  // ── Phase C — Compute fingerprint ─────────────────────────────────────────
+  const runCompute = useCallback(async () => {
+    setComputeError(null);
+    const store = useFingerprintStore.getState();
+    try {
+      const res = await fetch("/api/quiz/fingerprint", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phase_a_selections: store.phaseASelections,
+          phase_b_responses: store.phaseBResponses,
+          room_type: store.roomType ?? "living_room",
+          entry_path: "pairs",
+        }),
+      });
+      if (!res.ok) throw new Error(`fingerprint ${res.status}`);
+      const result = (await res.json()) as FingerprintResult;
+      store.setFingerprint(result.fingerprint, result.style_name, result.style_tags);
+      router.push(COMPLETION_ROUTE);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      console.error("[step-3] fingerprint compute failed:", msg);
+      setComputeError(msg);
+    }
+  }, [router]);
+
+  useEffect(() => {
+    if (phase !== "compute") return;
+    void runCompute();
+  }, [phase, runCompute]);
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  const progressValue =
+    phase === "room"
+      ? 0
+      : phase === "anchors"
+        ? 10
+        : phase === "pairs"
+          ? 20 + (pairsAnswered / TOTAL_PAIRS) * 70
+          : phase === "validation"
+            ? 92
+            : 100;
 
   return (
     <main className="cova-shell">
       <div className="cova-noise" aria-hidden="true" />
       <div className="cova-glow" aria-hidden="true" />
 
-      {isComplete ? (
-        <div className="cova-completion-screen" aria-live="polite">
-          <img
-            className="cova-completion-background"
-            src={COMPLETION_BACKGROUND}
-            alt=""
-            aria-hidden="true"
-          />
-          <div className="cova-completion-star">✦</div>
-          <p className="cova-completion-copy">
-            Building your style fingerprint...
-          </p>
-        </div>
-      ) : null}
-
       <section className="cova-page">
         <div
           className="cova-progress-rail"
           aria-label={`Progress ${Math.round(progressValue)} percent`}
         >
-          <div
-            className="cova-progress-fill"
-            style={{ width: `${progressValue}%` }}
-          />
+          <div className="cova-progress-fill" style={{ width: `${progressValue}%` }} />
         </div>
 
         <header className="cova-header">
@@ -324,13 +335,9 @@ export default function CovaStyleQuizPage() {
             className="cova-back-button"
             type="button"
             aria-label="Go back"
-            onClick={() => router.push('/design/step-2')}
+            onClick={() => router.push("/design/step-2")}
           >
-            <svg
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-              className="cova-back-icon"
-            >
+            <svg viewBox="0 0 24 24" aria-hidden="true" className="cova-back-icon">
               <path
                 d="M15.5 19 8.5 12l7-7"
                 fill="none"
@@ -344,12 +351,16 @@ export default function CovaStyleQuizPage() {
 
           <div className="cova-brand-lockup">
             <div className="cova-progress-copy">
-              Round {roundNumber} of {totalRounds}
+              {phase === "room" && "Pick a room"}
+              {phase === "anchors" && "Choose what resonates"}
+              {phase === "pairs" && `${pairsAnswered} of ${TOTAL_PAIRS}`}
+              {phase === "validation" && "Does this feel like you?"}
+              {phase === "compute" && "Analyzing your style..."}
             </div>
             <button
               type="button"
               className="cova-brand-wordmark"
-              onClick={() => router.push('/')}
+              onClick={() => router.push("/")}
               aria-label="Go to home"
             >
               Cova
@@ -365,90 +376,441 @@ export default function CovaStyleQuizPage() {
           <div className="cova-divider-gold" aria-hidden="true" />
         </div>
 
-        <section className="cova-editorial-intro">
-          <h1>Which feels more like you?</h1>
-          <p className="cova-subcopy">
-            Go with your gut — there&apos;s no wrong answer.
-          </p>
-        </section>
+        {phase === "room" && <RoomTypePhase onSelect={handleRoomSelect} />}
 
-        <section className="cova-comparison-stage" aria-live="polite">
-          <div
-            className={`cova-comparison-frame cova-cards-container ${selectedSide ? "has-selection" : ""} ${isTransitioning ? "is-transitioning" : ""}`}
-          >
-            <ChoiceCard
-              option={currentRound.left}
-              side="left"
-              selectedSide={selectedSide}
-              onSelect={handleChoice}
-            />
+        {phase === "anchors" && (
+          <AnchorsPhase
+            anchors={anchors}
+            loading={anchorsLoading}
+            error={anchorsError}
+            selectedIds={selectedAnchorIds}
+            onToggle={toggleAnchor}
+            onContinue={handleAnchorsContinue}
+          />
+        )}
 
-            <div
-              className={`cova-or-divider ${selectedSide ? "is-hidden" : ""}`}
-              aria-hidden="true"
-            >
-              <span className="cova-divider-line" />
-              <span className="cova-or-badge">OR</span>
-              <span className="cova-divider-line" />
-            </div>
+        {phase === "pairs" && (
+          <PairsPhase
+            pair={currentPair}
+            loading={pairLoading}
+            error={pairError}
+            pairsAnswered={pairsAnswered}
+            onChoice={handlePairChoice}
+            onSkip={handleSkipPair}
+            onRetry={() => void fetchNextPair()}
+          />
+        )}
 
-            <ChoiceCard
-              option={currentRound.right}
-              side="right"
-              selectedSide={selectedSide}
-              onSelect={handleChoice}
-            />
-          </div>
-        </section>
+        {phase === "validation" && (
+          <ValidationPhase
+            loading={validationLoading}
+            renders={validationRenders}
+            refinementsLeft={MAX_REFINEMENTS - refinementCount}
+            onConfirm={handleValidationConfirm}
+            onRefine={handleValidationRefine}
+          />
+        )}
 
-        <footer className="cova-footer">
-          <p>12 quick choices. That&apos;s all we need.</p>
-          <div className="cova-dot-row" aria-hidden="true">
-            {ROUNDS.map((_, index) => {
-              const completed =
-                index < activeRound ||
-                (index === activeRound && selectedSide);
-              return (
-                <span
-                  key={index}
-                  className={`cova-progress-dot ${completed ? "is-complete" : ""}`}
-                />
-              );
-            })}
-          </div>
-        </footer>
+        {phase === "compute" && <ComputePhase error={computeError} onRetry={runCompute} />}
       </section>
     </main>
   );
 }
 
-type ChoiceCardProps = {
-  option: Option;
-  side: "left" | "right";
-  selectedSide: "left" | "right" | null;
-  onSelect: (side: "left" | "right") => void;
-};
+// ── Phase 0: Room Type ───────────────────────────────────────────────────────
 
-function ChoiceCard({ option, side, selectedSide, onSelect }: ChoiceCardProps) {
-  const isSelected = selectedSide === side;
-  const isDimmed = selectedSide !== null && selectedSide !== side;
-
+function RoomTypePhase({ onSelect }: { onSelect: (id: string) => void }) {
   return (
-    <div className={`cova-choice-wrap ${isDimmed ? "is-dimmed" : ""}`}>
-      <button
-        type="button"
-        className={`cova-choice-card ${isSelected ? "is-selected selecting" : ""}`}
-        onClick={() => onSelect(side)}
-        aria-pressed={isSelected}
-        aria-label={`Choose ${option.label}`}
+    <>
+      <section className="cova-editorial-intro">
+        <h1>Which room are we designing?</h1>
+        <p className="cova-subcopy">Pick one to get started.</p>
+      </section>
+      <section
+        className="cova-comparison-stage"
         style={{
-          backgroundImage: `url(${option.image})`,
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: "1rem",
+          padding: "1.5rem",
+          maxWidth: "900px",
+          margin: "0 auto",
         }}
       >
-        {isSelected ? <span className="cova-choice-check">✦</span> : null}
-        <span className="cova-sr-only">{option.alt}</span>
-      </button>
-      <span className="cova-choice-label">{option.label}</span>
-    </div>
+        {ROOM_TYPES.map((room) => (
+          <button
+            key={room.id}
+            type="button"
+            onClick={() => onSelect(room.id)}
+            style={{
+              padding: "2rem 1rem",
+              borderRadius: "12px",
+              border: "1px solid rgba(225, 201, 132, 0.22)",
+              background: "rgba(17, 35, 55, 0.54)",
+              color: "#f4efe6",
+              fontSize: "1.1rem",
+              fontFamily: "inherit",
+              cursor: "pointer",
+              transition: "all 200ms ease-out",
+            }}
+          >
+            {room.label}
+          </button>
+        ))}
+      </section>
+    </>
   );
 }
+
+// ── Phase A: Anchors ─────────────────────────────────────────────────────────
+
+function AnchorsPhase({
+  anchors,
+  loading,
+  error,
+  selectedIds,
+  onToggle,
+  onContinue,
+}: {
+  anchors: AnchorCard[];
+  loading: boolean;
+  error: string | null;
+  selectedIds: string[];
+  onToggle: (id: string) => void;
+  onContinue: () => void;
+}) {
+  return (
+    <>
+      <section className="cova-editorial-intro">
+        <h1>Which of these feel like you?</h1>
+        <p className="cova-subcopy">
+          Pick up to {MAX_ANCHOR_PICKS} that resonate most.
+        </p>
+      </section>
+      <section className="cova-comparison-stage">
+        {loading && <p style={{ textAlign: "center" }}>Loading...</p>}
+        {error && (
+          <p style={{ textAlign: "center", color: "#C0504A" }}>
+            Failed to load: {error}
+          </p>
+        )}
+        {!loading && !error && (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, 1fr)",
+              gap: "0.75rem",
+              maxWidth: "900px",
+              margin: "0 auto",
+              padding: "1rem",
+            }}
+          >
+            {anchors.map((a) => {
+              const isSelected = selectedIds.includes(a.id);
+              const disabled = !isSelected && selectedIds.length >= MAX_ANCHOR_PICKS;
+              return (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => onToggle(a.id)}
+                  disabled={disabled}
+                  aria-pressed={isSelected}
+                  style={{
+                    aspectRatio: "1 / 1",
+                    borderRadius: "12px",
+                    border: isSelected
+                      ? "3px solid #C9A84C"
+                      : "1px solid rgba(225, 201, 132, 0.2)",
+                    backgroundImage: `url(${a.image_url})`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                    cursor: disabled ? "not-allowed" : "pointer",
+                    opacity: disabled ? 0.4 : 1,
+                    padding: 0,
+                    transition: "all 200ms ease-out",
+                  }}
+                />
+              );
+            })}
+          </div>
+        )}
+      </section>
+      <footer className="cova-footer">
+        <button
+          type="button"
+          onClick={onContinue}
+          disabled={selectedIds.length === 0}
+          style={{
+            padding: "0.875rem 2.5rem",
+            borderRadius: "24px",
+            border: "none",
+            background: selectedIds.length === 0 ? "#445064" : "#C9A84C",
+            color: "#0A1628",
+            fontFamily: "inherit",
+            fontSize: "1rem",
+            fontWeight: 600,
+            cursor: selectedIds.length === 0 ? "not-allowed" : "pointer",
+            transition: "all 200ms ease-out",
+          }}
+        >
+          Continue
+        </button>
+      </footer>
+    </>
+  );
+}
+
+// ── Phase B: Pairs ───────────────────────────────────────────────────────────
+
+function PairsPhase({
+  pair,
+  loading,
+  error,
+  pairsAnswered,
+  onChoice,
+  onSkip,
+  onRetry,
+}: {
+  pair: ComparisonPair | null;
+  loading: boolean;
+  error: string | null;
+  pairsAnswered: number;
+  onChoice: (side: "A" | "B") => void;
+  onSkip: () => void;
+  onRetry: () => void;
+}) {
+  return (
+    <>
+      <section className="cova-editorial-intro">
+        <h1>Which feels more like you?</h1>
+        <p className="cova-subcopy">Go with your gut — there&apos;s no wrong answer.</p>
+      </section>
+      <section className="cova-comparison-stage" aria-live="polite">
+        {loading && <p style={{ textAlign: "center" }}>Loading next pair...</p>}
+        {error && !loading && (
+          <div style={{ textAlign: "center" }}>
+            <p style={{ color: "#C0504A" }}>Failed: {error}</p>
+            <button type="button" onClick={onRetry} style={retryButton}>
+              Retry
+            </button>
+            <button type="button" onClick={onSkip} style={skipButton}>
+              Skip
+            </button>
+          </div>
+        )}
+        {pair && !loading && !error && (
+          <div className="cova-comparison-frame cova-cards-container">
+            <div className="cova-choice-wrap">
+              <button
+                type="button"
+                className="cova-choice-card"
+                onClick={() => onChoice("A")}
+                aria-label="Choose left"
+                style={{ backgroundImage: `url(${pair.image_a_url})` }}
+              />
+            </div>
+            <div className="cova-or-divider" aria-hidden="true">
+              <span className="cova-divider-line" />
+              <span className="cova-or-badge">OR</span>
+              <span className="cova-divider-line" />
+            </div>
+            <div className="cova-choice-wrap">
+              <button
+                type="button"
+                className="cova-choice-card"
+                onClick={() => onChoice("B")}
+                aria-label="Choose right"
+                style={{ backgroundImage: `url(${pair.image_b_url})` }}
+              />
+            </div>
+          </div>
+        )}
+      </section>
+      <footer className="cova-footer">
+        <p>
+          {pairsAnswered} of {TOTAL_PAIRS}
+        </p>
+        <div className="cova-dot-row" aria-hidden="true">
+          {Array.from({ length: TOTAL_PAIRS }).map((_, index) => (
+            <span
+              key={index}
+              className={`cova-progress-dot ${index < pairsAnswered ? "is-complete" : ""}`}
+            />
+          ))}
+        </div>
+      </footer>
+    </>
+  );
+}
+
+// ── Validation Phase ─────────────────────────────────────────────────────────
+
+function ValidationPhase({
+  loading,
+  renders,
+  refinementsLeft,
+  onConfirm,
+  onRefine,
+}: {
+  loading: boolean;
+  renders: ValidationRender[];
+  refinementsLeft: number;
+  onConfirm: () => void;
+  onRefine: () => void;
+}) {
+  return (
+    <>
+      <section className="cova-editorial-intro">
+        <h1>Does this feel like your style?</h1>
+        <p className="cova-subcopy">
+          Three previews generated from your answers so far.
+        </p>
+      </section>
+      <section className="cova-comparison-stage" aria-live="polite">
+        {loading && (
+          <p style={{ textAlign: "center" }}>Generating style previews...</p>
+        )}
+        {!loading && (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+              gap: "1rem",
+              maxWidth: "1100px",
+              margin: "0 auto",
+              padding: "1rem",
+            }}
+          >
+            {renders.map((r, idx) => (
+              <div
+                key={idx}
+                style={{
+                  aspectRatio: "1 / 1",
+                  borderRadius: "12px",
+                  border: "1px solid rgba(225, 201, 132, 0.22)",
+                  backgroundImage: r.url ? `url(${r.url})` : undefined,
+                  backgroundColor: "rgba(17, 35, 55, 0.54)",
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  position: "relative",
+                }}
+              >
+                <div
+                  style={{
+                    position: "absolute",
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    padding: "0.5rem 0.75rem",
+                    background: "rgba(10, 22, 40, 0.72)",
+                    color: "#f4efe6",
+                    fontSize: "0.85rem",
+                    borderBottomLeftRadius: "12px",
+                    borderBottomRightRadius: "12px",
+                  }}
+                >
+                  {r.label}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+      <footer className="cova-footer">
+        <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center" }}>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={loading}
+            style={{
+              padding: "0.875rem 2.25rem",
+              borderRadius: "24px",
+              border: "none",
+              background: loading ? "#445064" : "#C9A84C",
+              color: "#0A1628",
+              fontFamily: "inherit",
+              fontSize: "1rem",
+              fontWeight: 600,
+              cursor: loading ? "not-allowed" : "pointer",
+            }}
+          >
+            Yes, perfect
+          </button>
+          <button
+            type="button"
+            onClick={onRefine}
+            disabled={loading || refinementsLeft <= 0}
+            style={{
+              padding: "0.875rem 2.25rem",
+              borderRadius: "24px",
+              border: "1px solid rgba(225, 201, 132, 0.3)",
+              background: "transparent",
+              color: "#f4efe6",
+              fontFamily: "inherit",
+              fontSize: "1rem",
+              cursor: loading || refinementsLeft <= 0 ? "not-allowed" : "pointer",
+            }}
+          >
+            Not quite
+          </button>
+        </div>
+      </footer>
+    </>
+  );
+}
+
+// ── Phase C: Compute ─────────────────────────────────────────────────────────
+
+function ComputePhase({
+  error,
+  onRetry,
+}: {
+  error: string | null;
+  onRetry: () => void;
+}) {
+  return (
+    <section className="cova-comparison-stage" aria-live="polite">
+      <div style={{ textAlign: "center", padding: "4rem 1rem" }}>
+        {!error ? (
+          <>
+            <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>✦</div>
+            <p>Analyzing your style...</p>
+          </>
+        ) : (
+          <>
+            <p style={{ color: "#C0504A", marginBottom: "1rem" }}>
+              Something went wrong: {error}
+            </p>
+            <button type="button" onClick={onRetry} style={retryButton}>
+              Retry
+            </button>
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
+const retryButton: React.CSSProperties = {
+  padding: "0.75rem 2rem",
+  borderRadius: "24px",
+  border: "none",
+  background: "#C9A84C",
+  color: "#0A1628",
+  fontFamily: "inherit",
+  fontSize: "0.95rem",
+  fontWeight: 600,
+  cursor: "pointer",
+  marginRight: "0.5rem",
+};
+
+const skipButton: React.CSSProperties = {
+  padding: "0.75rem 2rem",
+  borderRadius: "24px",
+  border: "1px solid rgba(225, 201, 132, 0.3)",
+  background: "transparent",
+  color: "#f4efe6",
+  fontFamily: "inherit",
+  fontSize: "0.95rem",
+  cursor: "pointer",
+};

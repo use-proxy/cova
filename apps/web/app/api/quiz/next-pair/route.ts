@@ -21,7 +21,7 @@ import type { StyleFingerprint } from '@/types/fingerprint'
 
 interface NextPairRequest {
   completedPairIds?: string[]
-  currentFingerprint?: StyleFingerprint
+  currentFingerprint?: Record<string, number> | StyleFingerprint | null
   responseCount?: number
 }
 
@@ -63,8 +63,12 @@ export async function POST(request: Request) {
 
     const admin = createAdminSupabaseClient()
 
-    // 1. Discover which dimensions are already covered by completed pairs.
+    // 1. Discover which dimensions are already covered by completed pairs,
+    //    and count per-dimension response counts for adaptive selection.
     const coveredDims = new Set<string>()
+    const dimCounts: Record<string, number> = Object.fromEntries(
+      DIMENSION_ORDER.map((d) => [d, 0])
+    )
     if (completedPairIds.length > 0) {
       const { data: completedRows, error: completedErr } = await admin
         .from('quiz_comparison_pairs')
@@ -74,50 +78,40 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: completedErr.message }, { status: 500 })
       }
       for (const r of completedRows ?? []) {
-        coveredDims.add(r.dimension as string)
+        const d = r.dimension as string
+        coveredDims.add(d)
+        if (d in dimCounts) dimCounts[d] = (dimCounts[d] ?? 0) + 1
       }
     }
 
     // 2. Choose target dimension.
     let targetDim: DimKey | null = null
 
-    if (responseCount < 4) {
-      // Spread phase: pick a dim NOT yet covered.
-      const uncoveredDims = DIMENSION_ORDER.filter((d) => !coveredDims.has(d))
-      targetDim = pickRandom<DimKey>([...uncoveredDims]) ?? DIMENSION_ORDER[0]
-    } else {
-      // Refine phase: pick the dim with lowest confidence in currentFingerprint.
-      // Encoding: cov[i][i] = 1 - confidence_i, so highest diagonal = lowest confidence.
-      // BUG-3 fix (2026-04-08): when multiple dims are tied at max covariance,
-      // randomly select among tied candidates (Fisher-Yates on the tied subset)
-      // so the quiz doesn't feel scripted. Coverage is unchanged — all dims still
-      // get exactly one pair each across the 12-pair quiz.
-      if (currentFingerprint && Array.isArray(currentFingerprint.covariance)) {
-        const diag = currentFingerprint.covariance.map((row, i) => row[i] ?? 0)
-        let maxVal = -Infinity
-        for (let i = 0; i < diag.length && i < DIMENSION_ORDER.length; i++) {
-          const v = diag[i] ?? 0
-          if (v > maxVal) maxVal = v
-        }
-        // Collect all indices tied at the maximum value
-        const tiedIndices: number[] = []
-        for (let i = 0; i < diag.length && i < DIMENSION_ORDER.length; i++) {
-          if ((diag[i] ?? 0) === maxVal) tiedIndices.push(i)
-        }
-        // Fisher-Yates shuffle of tied subset, then pick first
-        for (let i = tiedIndices.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1))
-          ;[tiedIndices[i], tiedIndices[j]] = [tiedIndices[j]!, tiedIndices[i]!]
-        }
-        targetDim = DIMENSION_ORDER[tiedIndices[0]!] ?? DIMENSION_ORDER[0]
-      } else {
-        // No fingerprint sent — fall back to a random uncovered dim, then any.
-        const uncoveredDims = DIMENSION_ORDER.filter((d) => !coveredDims.has(d))
-        targetDim =
-          (uncoveredDims.length > 0
-            ? pickRandom<DimKey>([...uncoveredDims])
-            : pickRandom<DimKey>([...DIMENSION_ORDER])) ?? DIMENSION_ORDER[0]
+    const hasFingerprint =
+      currentFingerprint != null && typeof currentFingerprint === 'object'
+
+    if (hasFingerprint && responseCount >= 4) {
+      // Adaptive refine phase: build a live per-dim confidence estimate from
+      // the count of completed pairs per dimension. Pick the dim with the
+      // LOWEST confidence (= lowest count, most uncertain). Ties are broken
+      // randomly. We defer the "has unused pairs available" check to the
+      // candidate-pool query + fallback below — if the chosen dim is
+      // exhausted, the fallback at step 4 picks from any validated dim.
+      let minCount = Infinity
+      for (const d of DIMENSION_ORDER) {
+        const c = dimCounts[d] ?? 0
+        if (c < minCount) minCount = c
       }
+      const tied = DIMENSION_ORDER.filter((d) => (dimCounts[d] ?? 0) === minCount)
+      targetDim = pickRandom<DimKey>([...tied]) ?? DIMENSION_ORDER[0]
+    } else {
+      // Spread phase (responseCount < 4 OR no fingerprint): pick a dim NOT
+      // yet covered. If all dims are covered, pick any at random.
+      const uncoveredDims = DIMENSION_ORDER.filter((d) => !coveredDims.has(d))
+      targetDim =
+        (uncoveredDims.length > 0
+          ? pickRandom<DimKey>([...uncoveredDims])
+          : pickRandom<DimKey>([...DIMENSION_ORDER])) ?? DIMENSION_ORDER[0]
     }
 
     // 3. Query validated pairs for the target dimension, exclude completed.

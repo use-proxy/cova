@@ -103,7 +103,7 @@ const DESCRIPTORS: Record<DimKey, { lo: string; hi: string }> = {
 // than NEUTRAL_BAND (i.e. v < 0.35 or v > 0.65). Values inside the neutral
 // band produce no descriptor text.
 const NEUTRAL_MIDPOINT = 0.5;
-const NEUTRAL_BAND = 0.15;
+const NEUTRAL_BAND = 0.10;
 
 const BUDGET_MODIFIERS: Record<string, string> = {
   budget: "affordable accessible pieces, high-street furniture",
@@ -168,7 +168,7 @@ export interface BuildFluxPromptParams {
 //   material=0.60, nature=0.60, colorTemp=0.55 → should NOT produce marble/chrome
 //   material=0.85, nature=0.80, colorTemp=0.65 → warm natural high tier
 //   material=0.20, nature=0.20, colorTemp=0.40 → manufactured tier
-function getMaterialPalette(d: StyleFingerprint["dimensions"]): string {
+export function getMaterialPalette(d: StyleFingerprint["dimensions"]): string {
   const isNatural = d.material >= 0.55 || d.nature >= 0.55;
   const isManufactured = d.material < 0.4 && d.nature < 0.4;
   const isWarm = d.colorTemperature >= 0.55;
@@ -238,9 +238,10 @@ function getMaterialPalette(d: StyleFingerprint["dimensions"]): string {
 
 function getLightingInstruction(d: StyleFingerprint["dimensions"]): string {
   if (d.lightPreference > 0.7)
-    return "Bright natural daylight, airy atmosphere";
-  if (d.lightPreference < 0.3) return "Warm intimate lamp light, cozy shadows";
-  return "Balanced natural ambient light";
+    return "Maximize natural daylight — open, luminous, airy atmosphere throughout";
+  if (d.lightPreference < 0.3)
+    return "Transform to intimate lamp-lit warmth — pools of warm incandescent light, cozy shadows, no harsh overhead";
+  return "Balance natural and ambient light with soft diffused fill";
 }
 
 // Select the top-K dominant descriptors (by distance from the neutral midpoint).
@@ -329,31 +330,15 @@ const FINGERPRINT_PHRASE_MAP: Record<
  * Returns a single comma-separated string capped at 120 characters.
  * Returns empty string when no dimensions are directional.
  */
-function buildFullFingerprintPhrase(
+export function buildFullFingerprintPhrase(
   d: StyleFingerprint["dimensions"],
 ): string {
-  const phrases: string[] = [];
-
-  for (const key of Object.keys(FINGERPRINT_PHRASE_MAP) as DimKey[]) {
-    const value = d[key];
-    const dev = value - NEUTRAL_MIDPOINT;
-
-    if (Math.abs(dev) <= NEUTRAL_BAND) continue; // mid-score — skip
-
-    phrases.push(
-      dev > 0
-        ? FINGERPRINT_PHRASE_MAP[key].high
-        : FINGERPRINT_PHRASE_MAP[key].low,
-    );
-  }
-
-  if (phrases.length === 0) return "";
-
-  // Order by strength of deviation so most distinctive phrases come first
   const entriesWithDev = (Object.keys(FINGERPRINT_PHRASE_MAP) as DimKey[])
     .map((key) => ({ key, dev: Math.abs(d[key] - NEUTRAL_MIDPOINT) }))
     .filter((e) => e.dev > NEUTRAL_BAND)
     .sort((a, b) => b.dev - a.dev);
+
+  if (entriesWithDev.length === 0) return "";
 
   const orderedPhrases = entriesWithDev.map((e) => {
     const v = d[e.key];
@@ -412,12 +397,13 @@ export function buildFluxPrompt(params: BuildFluxPromptParams): string {
     roomType,
     budgetTier,
     inclusions: rawInclusions,
+    constraints: rawConstraints,
     keptItemLabels: rawKeptItemLabels,
-    preservationInstructions,
     quizPreviewMode,
   } = params;
   // Sanitize all user-provided text inputs
   const inclusions = rawInclusions.map(sanitizeUserText).filter(Boolean);
+  const constraints = (rawConstraints ?? []).map(sanitizeUserText).filter(Boolean);
   const keptItemLabels = rawKeptItemLabels.map(sanitizeUserText).filter(Boolean);
   const d = fingerprint.dimensions;
   const roomTypeStr = roomType.replace(/_/g, " ");
@@ -449,6 +435,20 @@ export function buildFluxPrompt(params: BuildFluxPromptParams): string {
 
     // 3. Top-N dominant style descriptors
     const descriptors = dominantDescriptors(d, descriptorCount);
+    const activeDims = (Object.keys(DESCRIPTORS) as DimKey[]).filter(
+      (k) => Math.abs((d[k] ?? 0.5) - 0.5) >= NEUTRAL_BAND,
+    );
+    if (activeDims.length < 2) {
+      // All dims near neutral — fall back to top 2 by absolute deviation
+      const top2 = (Object.keys(DESCRIPTORS) as DimKey[])
+        .map((k) => ({ k, dev: Math.abs((d[k] ?? 0.5) - 0.5) }))
+        .sort((a, b) => b.dev - a.dev)
+        .slice(0, 2);
+      for (const { k, dev } of top2) {
+        const entry = DESCRIPTORS[k];
+        if (entry) descriptors.push(dev > 0 ? entry.hi : entry.lo);
+      }
+    }
     if (descriptors.length > 0) core.push(descriptors.join(", "));
 
     if (!quizPreviewMode) {
@@ -490,13 +490,17 @@ export function buildFluxPrompt(params: BuildFluxPromptParams): string {
     // probe, not an edit of a real room photo.
     const tail: string[] = [];
     if (!quizPreviewMode) {
-      if (preservationInstructions && preservationInstructions.trim()) {
-        tail.push(preservationInstructions.trim());
-      } else {
-        tail.push(
-          "PRESERVE exactly: wall color, ceiling, floor, windows, wall decor, camera angle, room layout",
-        );
+      // Minimal architecture anchor — Kontext Pro sees the room, this is just
+      // a light reminder. Full Gemini PRESERVE goes to pass 2 only.
+      tail.push(
+        "Preserve all walls, floor, ceiling, windows, and camera angle exactly.",
+      );
+
+      // Wire constraints — user-specified rejections are high signal
+      if (constraints.length > 0) {
+        tail.push("Avoid: " + constraints.slice(0, 3).join(", ") + ".");
       }
+
       if (keptItemLabels.length > 0) {
         tail.push("Keep unchanged: " + keptItemLabels.join(", "));
       }
@@ -678,7 +682,7 @@ export async function runUpscale(imageUrl: string): Promise<string> {
 
 export async function submitArchitectureCorrection(
   pass1OutputUrl: string,
-  _originalPhotoUrl: string,
+  originalPhotoUrl: string,
   arch: RoomArchitecture,
 ): Promise<string> {
   const fixed =
@@ -687,18 +691,19 @@ export async function submitArchitectureCorrection(
       : "";
 
   const correctionPrompt =
-    `This is a redesigned version of a room. Correct any architectural ` +
-    `differences so it looks like the original physical room. ` +
+    `Architectural correction pass. Image 1 is the original room. Image 2 is a redesigned version. ` +
+    `Make Image 2 match Image 1's architecture exactly. ` +
     buildPreservationInstructions(arch) +
-    ` The furniture style and decor are correct — only fix the architecture ` +
-    `if walls, floor, ceiling, windows, or camera angle changed.` +
+    ` The furniture style and decor in Image 2 are correct — only fix architecture if ` +
+    `walls, floor, ceiling, windows, or camera angle drifted from Image 1.` +
     fixed +
-    ` If architecture is already correct, keep the image exactly as is.`;
+    ` If architecture already matches, keep Image 2 exactly as is.`;
 
   const prediction = await replicate.predictions.create({
-    model: KONTEXT_MODEL,
+    model: MULTI_KONTEXT_MODEL,
     input: {
-      input_image: pass1OutputUrl,
+      input_image_1: originalPhotoUrl,
+      input_image_2: pass1OutputUrl,
       prompt: correctionPrompt,
       output_format: "png",
       safety_tolerance: 2,

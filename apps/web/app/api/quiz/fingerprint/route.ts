@@ -11,12 +11,6 @@ import { toDisplayName } from '@/lib/ai/anchor-display'
 //   4=era               5=material         6=texture          7=pattern
 //   8=lineQuality       9=lightPreference  10=nature          11=culturalInfluence
 
-interface QuizResponse {
-  pair_id: string
-  chosen: string
-  super_liked: boolean
-}
-
 interface PairwiseResponse {
   /** quiz_comparison_pairs.id (single id, post-Session-C). */
   pairId: string
@@ -41,22 +35,6 @@ interface NewFingerprintRequest {
   confirmed_fingerprint?: StyleFingerprint
 }
 
-// Legacy API format (kept for backward compat with existing quiz)
-interface LegacyFingerprintRequest {
-  responses: QuizResponse[]
-  entry_path: 'pairs' | 'natural_language' | 'inspo_photo'
-  room_type: string
-}
-
-interface PairDefinition {
-  primaryDimension: DimKey | null
-  secondaryDimension: DimKey | null
-  contrastLevel: 'extreme' | 'mid' | 'fine' | null
-  aIntensity: number
-  bIntensity: number
-  isWarmup: boolean
-}
-
 const DIMENSION_ORDER = [
   'colorTemperature', 'colorSaturation', 'density', 'formality',
   'era', 'material', 'texture', 'pattern',
@@ -69,34 +47,6 @@ const DIM_COUNT = DIMENSION_ORDER.length // 12
 
 const NEUTRAL_MIDPOINT = 0.5
 const STRONG_BAND = 0.2 // |v - 0.5| > 0.2 → directional
-
-const PAIR_DEFINITIONS: Record<string, PairDefinition> = {
-  'pair-01': { primaryDimension: 'lightPreference',   secondaryDimension: 'colorTemperature',   contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
-  'pair-02': { primaryDimension: 'density',           secondaryDimension: null,                 contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
-  'pair-03': { primaryDimension: 'colorTemperature',  secondaryDimension: null,                 contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
-  'pair-04': { primaryDimension: 'nature',            secondaryDimension: 'material',           contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
-  'pair-05': { primaryDimension: 'colorSaturation',   secondaryDimension: null,                 contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
-  'pair-06': { primaryDimension: 'lightPreference',   secondaryDimension: null,                 contrastLevel: 'mid',     aIntensity: 0.25,bIntensity: 0.75,isWarmup: false },
-  'pair-07': { primaryDimension: 'colorTemperature',  secondaryDimension: null,                 contrastLevel: 'mid',     aIntensity: 0.25,bIntensity: 0.75,isWarmup: false },
-  'pair-08': { primaryDimension: 'density',           secondaryDimension: null,                 contrastLevel: 'mid',     aIntensity: 0.25,bIntensity: 0.75,isWarmup: false },
-  'pair-09': { primaryDimension: 'lineQuality',       secondaryDimension: 'pattern',            contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
-  'pair-10': { primaryDimension: 'era',               secondaryDimension: null,                 contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
-  'pair-11': { primaryDimension: 'texture',           secondaryDimension: 'material',           contrastLevel: 'extreme', aIntensity: 0.1, bIntensity: 0.9, isWarmup: false },
-  'pair-12': { primaryDimension: 'nature',            secondaryDimension: null,                 contrastLevel: 'mid',     aIntensity: 0.25,bIntensity: 0.75,isWarmup: false },
-  'pair-13': { primaryDimension: 'colorSaturation',   secondaryDimension: null,                 contrastLevel: 'mid',     aIntensity: 0.25,bIntensity: 0.75,isWarmup: false },
-  'pair-14': { primaryDimension: 'formality',         secondaryDimension: null,                 contrastLevel: 'mid',     aIntensity: 0.25,bIntensity: 0.75,isWarmup: false },
-  'pair-15': { primaryDimension: 'lightPreference',   secondaryDimension: null,                 contrastLevel: 'fine',    aIntensity: 0.35,bIntensity: 0.65,isWarmup: false },
-  'pair-16': { primaryDimension: 'colorTemperature',  secondaryDimension: null,                 contrastLevel: 'fine',    aIntensity: 0.35,bIntensity: 0.65,isWarmup: false },
-  'pair-17': { primaryDimension: 'material',          secondaryDimension: null,                 contrastLevel: 'fine',    aIntensity: 0.35,bIntensity: 0.65,isWarmup: false },
-  'pair-18': { primaryDimension: 'lineQuality',       secondaryDimension: null,                 contrastLevel: 'mid',     aIntensity: 0.25,bIntensity: 0.75,isWarmup: false },
-  'pair-19': { primaryDimension: null,                secondaryDimension: null,                 contrastLevel: null,      aIntensity: 0.0, bIntensity: 1.0, isWarmup: true  },
-}
-
-const CONTRAST_WEIGHTS: Record<string, number> = {
-  extreme: 0.25,
-  mid:     0.35,
-  fine:    0.40,
-}
 
 // ── 9 named anchor styles ─────────────────────────────────────────────────────
 // Vectors in DIMENSION_ORDER. Sourced from the quiz library spec — these are
@@ -164,64 +114,6 @@ const STYLES: StyleDefinition[] = [
 const DIMENSION_MATCH_WEIGHTS: number[] = [
   1.5, 1.2, 1.1, 0.9, 1.0, 1.3, 0.9, 1.0, 0.9, 1.4, 1.2, 0.8,
 ]
-
-// ── Legacy fingerprint computation (pair-based) ───────────────────────────────
-
-function computeRawVector(responses: QuizResponse[]): number[] {
-  const dimVoteSum: Record<string, number> = {}
-  const dimWeightSum: Record<string, number> = {}
-  for (const dim of DIMENSION_ORDER) {
-    dimVoteSum[dim] = 0
-    dimWeightSum[dim] = 0
-  }
-  for (const response of responses) {
-    const def = PAIR_DEFINITIONS[response.pair_id]
-    if (!def || def.isWarmup) continue
-    const chosenA = response.chosen === 'A'
-    const superLikeMultiplier = response.super_liked ? 3 : 1
-    const contrastWeight = def.contrastLevel ? (CONTRAST_WEIGHTS[def.contrastLevel] ?? 0.35) : 0.35
-    if (def.primaryDimension) {
-      const primaryVote = chosenA ? def.aIntensity : def.bIntensity
-      const effectiveWeight = contrastWeight * superLikeMultiplier
-      dimVoteSum[def.primaryDimension]! += primaryVote * effectiveWeight
-      dimWeightSum[def.primaryDimension]! += effectiveWeight
-    }
-    if (def.secondaryDimension) {
-      const secondaryVote = chosenA ? def.aIntensity : def.bIntensity
-      const effectiveWeight = contrastWeight * superLikeMultiplier * 0.5
-      dimVoteSum[def.secondaryDimension]! += secondaryVote * effectiveWeight
-      dimWeightSum[def.secondaryDimension]! += effectiveWeight
-    }
-  }
-  return DIMENSION_ORDER.map((dim) => {
-    const wSum = dimWeightSum[dim] ?? 0
-    if (wSum === 0) return NEUTRAL_MIDPOINT
-    const val = (dimVoteSum[dim] ?? 0) / wSum
-    return Math.max(0, Math.min(1, val))
-  })
-}
-
-function toStyleFingerprint(raw: number[]): StyleFingerprint {
-  const clamp01 = (v: number) => Math.max(0, Math.min(1, v))
-  return {
-    dimensions: {
-      colorTemperature:  clamp01(raw[0]  ?? NEUTRAL_MIDPOINT),
-      colorSaturation:   clamp01(raw[1]  ?? NEUTRAL_MIDPOINT),
-      density:           clamp01(raw[2]  ?? NEUTRAL_MIDPOINT),
-      formality:         clamp01(raw[3]  ?? NEUTRAL_MIDPOINT),
-      era:               clamp01(raw[4]  ?? NEUTRAL_MIDPOINT),
-      material:          clamp01(raw[5]  ?? NEUTRAL_MIDPOINT),
-      texture:           clamp01(raw[6]  ?? NEUTRAL_MIDPOINT),
-      pattern:           clamp01(raw[7]  ?? NEUTRAL_MIDPOINT),
-      lineQuality:       clamp01(raw[8]  ?? NEUTRAL_MIDPOINT),
-      lightPreference:   clamp01(raw[9]  ?? NEUTRAL_MIDPOINT),
-      nature:            clamp01(raw[10] ?? NEUTRAL_MIDPOINT),
-      culturalInfluence: clamp01(raw[11] ?? NEUTRAL_MIDPOINT),
-    },
-    covariance: identityCov(0),
-    confidence: 0.8,
-  }
-}
 
 // ── New 3-phase fingerprint computation ───────────────────────────────────────
 
@@ -462,11 +354,8 @@ export async function POST(request: Request) {
 
     const rawBody = (await request.json()) as Record<string, unknown>
 
-    // Detect which API format
-    const isNewFormat = 'phase_a_selections' in rawBody
-
-    if (isNewFormat) {
-      // ── New 3-phase format ────────────────────────────────────────────────
+    {
+      // ── 3-phase format ────────────────────────────────────────────────────
       const body = rawBody as unknown as NewFingerprintRequest
       if (!body.room_type) {
         return NextResponse.json({ error: 'room_type required' }, { status: 400 })
@@ -544,62 +433,22 @@ export async function POST(request: Request) {
           styleId: inserted?.id ?? null,
           styleName,
         })
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e)
-        console.error(`[fingerprint-save] ERROR: ${JSON.stringify({ message: msg })}`)
-        return NextResponse.json(
-          { success: false, error: 'fingerprint_save_failed', detail: msg },
-          { status: 500 }
-        )
-      }
 
-      return NextResponse.json({
-        fingerprint,
-        style_name: styleName,
-        style_tags: styleTags,
-      })
-    } else {
-      // ── Legacy format ─────────────────────────────────────────────────────
-      const body = rawBody as unknown as LegacyFingerprintRequest
-      const { responses, entry_path, room_type } = body
-
-      if (!responses || responses.length === 0) {
-        return NextResponse.json({ error: 'responses are required' }, { status: 400 })
-      }
-
-      const rawVector = computeRawVector(responses)
-      const matchedStyle = matchStyle(rawVector)
-      // Map internal anchor name → user-facing display label (rule #8).
-      const styleName = toDisplayName(matchedStyle.name)
-      const styleChips = matchedStyle.chips
-      const fingerprint = toStyleFingerprint(rawVector)
-
-      // Guard: require auth before any DB insert (same as new format above).
-      if (!user) {
-        return NextResponse.json(
-          { success: false, error: 'unauthenticated' },
-          { status: 401 }
-        )
-      }
-
-      // See note above about .catch() on the supabase-js builder.
-      try {
-        const admin = createAdminSupabaseClient()
+        // Also mirror the fingerprint onto the users row so downstream
+        // routes (/api/render) can fall back to it when the client omits
+        // fingerprint_vector from the request body. Quiz runs at step-3,
+        // before room creation at step-6, so there is no room_id to
+        // attach the fingerprint to — the users table is the only
+        // user-scoped destination available at quiz time.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error: insertErr } = await (admin.from('style_fingerprints') as any).insert({
-          user_id: user.id,
-          vector_data: rawVector,
-          style_name: styleName,
-          room_type,
-          entry_path,
-          quiz_responses: responses,
-        })
-        if (insertErr) {
-          console.error(`[fingerprint-save] ERROR: ${JSON.stringify(insertErr)}`)
-          return NextResponse.json(
-            { success: false, error: 'fingerprint_save_failed', detail: insertErr.message },
-            { status: 500 }
-          )
+        const { error: userErr } = await (admin.from('users') as any)
+          .update({
+            style_fingerprint: fingerprint,
+            style_blend: fingerprint.dimensions,
+          })
+          .eq('id', user.id)
+        if (userErr) {
+          console.error(`[fingerprint-save] users update error: ${JSON.stringify(userErr)}`)
         }
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e)
@@ -613,8 +462,7 @@ export async function POST(request: Request) {
       return NextResponse.json({
         fingerprint,
         style_name: styleName,
-        style_chips: styleChips,
-        style_tags: fingerprintToStyleTags(fingerprint),
+        style_tags: styleTags,
       })
     }
   } catch (error: unknown) {

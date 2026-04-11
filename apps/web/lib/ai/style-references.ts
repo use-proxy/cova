@@ -67,7 +67,8 @@ export async function fetchTopStyleReference(
         }
       }
     }
-    return best
+    const MINIMUM_SIMILARITY = 0.60
+    return best && best.similarity >= MINIMUM_SIMILARITY ? best : null
   } catch (err) {
     console.error('[style-references] fetchTopStyleReference failed:', err)
     return null

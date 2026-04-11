@@ -2,6 +2,8 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { buildFluxPrompt, submitRender, submitMultiImageRender, submitSchnellRender, submitDepthRender, type RoomPhysicalContext } from '@/lib/ai/flux'
 import { analyzeRoomArchitecture, buildPreservationInstructions } from '@/lib/ai/room-analyzer'
 import { fetchTopStyleReference } from '@/lib/ai/style-references'
+import { compilePromptWithClaude } from '@/lib/ai/prompt-compiler'
+import type { RenderContext } from '@/lib/types/area2'
 import type { RoomAnalysis } from '@/lib/store/room'
 import { generateInpaintingMask } from '@/lib/ai/inpainting'
 import { checkRateLimit } from '@/lib/rateLimit'
@@ -61,7 +63,6 @@ export async function POST(request: Request) {
     const {
       photo_url,
       keep_mask,
-      fingerprint_vector,
       room_type,
       budget,
       inclusions,
@@ -73,6 +74,24 @@ export async function POST(request: Request) {
       refinement_text,
       showcase_mode,
     } = body
+
+    // Fingerprint: prefer the request body, fall back to the fingerprint
+    // mirrored onto users.style_fingerprint by /api/quiz/fingerprint. The
+    // quiz runs at step-3 before a room exists, so the mirror on users is
+    // the only server-authoritative source available to later render calls
+    // that don't round-trip the vector through the client.
+    let fingerprint_vector: StyleFingerprint | undefined = body.fingerprint_vector
+    if (!fingerprint_vector) {
+      const { data: userRow } = await supabase
+        .from('users')
+        .select('style_fingerprint')
+        .eq('id', user.id)
+        .single()
+      const mirrored = (userRow as { style_fingerprint?: unknown } | null)?.style_fingerprint
+      if (mirrored && typeof mirrored === 'object' && 'dimensions' in (mirrored as object)) {
+        fingerprint_vector = mirrored as StyleFingerprint
+      }
+    }
 
     // Validate required fields BEFORE rate limit — returns 400 without consuming a rate limit slot
     if (!photo_url || !fingerprint_vector || !room_type || !budget || (!showcase_mode && !room_id)) {
@@ -125,18 +144,40 @@ export async function POST(request: Request) {
       fetchTopStyleReference(fingerprint_vector, room_type),
     ])
 
-    const preservationInstructions = buildPreservationInstructions(arch)
+    // Read render_context from DB if available — this is the rich Area 2
+    // context assembled client-side with all 10 data sources.
+    const { data: roomRow } = await supabase
+      .from('rooms')
+      .select('render_context')
+      .eq('id', room_id)
+      .single()
 
-    const positiveBase = buildFluxPrompt({
-      fingerprint: fingerprint_vector,
-      roomType: room_type,
-      budgetTier: budget,
-      inclusions: inclusions ?? [],
-      constraints: constraints ?? [],
-      keptItemLabels: keptItems.map(m => m.label),
-      roomAnalysis: room_analysis ?? null,
-      preservationInstructions,
-    })
+    const renderContext =
+      ((roomRow as { render_context?: unknown } | null)?.render_context as
+        | RenderContext
+        | null) ?? null
+
+    // Claude compile always runs when a fingerprint is available, even when
+    // render_context is null — the server-side fingerprint fallback is enough
+    // to drive the rich prompt path. render_context, when present, adds the
+    // Area 2 layers (roomConstraints, sensory, identity, etc).
+    const compiled = await compilePromptWithClaude(
+      renderContext,
+      room_type,
+      fingerprint_vector,
+    )
+    const positiveBase =
+      compiled ??
+      buildFluxPrompt({
+        fingerprint: fingerprint_vector,
+        roomType: room_type,
+        budgetTier: budget,
+        inclusions: inclusions ?? [],
+        constraints: constraints ?? [],
+        keptItemLabels: keptItems.map(m => m.label),
+        roomAnalysis: room_analysis ?? null,
+        preservationInstructions: undefined,
+      })
 
     let positive = positiveBase
 
@@ -184,6 +225,7 @@ Modify the prompt to incorporate the user's instruction while preserving the cor
         .from('rooms')
         .update({
           inpainting_mask_url: inpaintingMaskUrl,
+          render_context: { fingerprint: fingerprint_vector?.dimensions ?? null },
           pipeline_cost_log: {
             two_stage: true,
             stage1_prediction_id: predictionId,
@@ -213,11 +255,13 @@ Modify the prompt to incorporate the user's instruction while preserving the cor
       await supabase
         .from('rooms')
         .update({
+          render_context: { fingerprint: fingerprint_vector?.dimensions ?? null },
           pipeline_cost_log: {
             two_pass: true,
             pass1_prediction_id: predictionId,
             pass2_prediction_id: null,
             arch_analysis: arch,
+            original_photo_url: photo_url,
             positive_prompt: positive,
             schnell_prediction_id: schnellPredictionId,
             pipeline,

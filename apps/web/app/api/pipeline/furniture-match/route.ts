@@ -14,6 +14,7 @@ export const maxDuration = 300
 
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import { searchProducts, type SerperProduct } from '@/lib/ai/serper'
 
 interface FurnitureMatchBody {
@@ -48,13 +49,23 @@ interface SerpMatchedProduct {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createServerSupabaseClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const serviceKey = request.headers.get('x-service-key')
+  const isServiceCall =
+    !!serviceKey && serviceKey === process.env.SUPABASE_SERVICE_ROLE_KEY
 
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const supabase = isServiceCall
+    ? createAdminSupabaseClient()
+    : await createServerSupabaseClient()
+
+  let user: { id: string } | null = null
+  if (!isServiceCall) {
+    const {
+      data: { user: authedUser },
+    } = await supabase.auth.getUser()
+    if (!authedUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    user = authedUser
   }
 
   const body = (await request.json()) as FurnitureMatchBody
@@ -73,13 +84,25 @@ export async function POST(request: Request) {
   }
 
   try {
+    // Resolve user_id for the Modal webhook payload.
+    // Service-key calls have no authed user, so look it up from the room.
+    let userId: string | null = user?.id ?? null
+    if (!userId) {
+      const { data: roomRow } = await supabase
+        .from('rooms')
+        .select('user_id')
+        .eq('id', room_id)
+        .single()
+      userId = (roomRow as { user_id?: string } | null)?.user_id ?? null
+    }
+
     // ── Step 1: Call Modal for furniture detection ──────────────────────
     const detectionResponse = await fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         room_id,
-        user_id: user.id,
+        user_id: userId,
         fixed_furniture: fixed_furniture ?? [],
       }),
       signal: AbortSignal.timeout(120_000),

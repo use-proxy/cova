@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
   const { data: room } = await supabase
     .from('rooms')
     .select(
-      `id, status, redesign_status,
+      `id, status, redesign_status, render_url,
        marble_spz_url, marble_spz_url_500k, marble_spz_url_100k,
        marble_mini_spz_url, marble_plus_thumbnail_url,
        furniture_matches_count, redesign_pano_url,
@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
     redesign_status: statusKey,
     progress_percent: statusInfo.percent,
     progress_message: statusInfo.message,
-    isComplete: statusKey === 'complete',
+    isComplete: statusKey === 'complete' || (!!room.render_url && (!room.redesign_status || room.redesign_status === 'pending')),
     isError: statusKey === 'error',
 
     // Flythrough video
@@ -137,7 +137,7 @@ export async function GET(request: NextRequest) {
     fixed_furniture: room.fixed_furniture ?? null,
 
     // Perspective render + hotspots
-    perspective_render_url: room.redesign_pano_url ?? null,
+    perspective_render_url: room.redesign_pano_url ?? room.render_url ?? null,
     room_products: roomProducts ?? [],
 
     // Legacy compat
@@ -145,6 +145,6 @@ export async function GET(request: NextRequest) {
     spzUrl500k: room.marble_spz_url_500k,
     thumbnailUrl: room.marble_plus_thumbnail_url,
     furnitureCount: room.furniture_matches_count ?? 0,
-    redesignPanoUrl: room.redesign_pano_url,
+    redesignPanoUrl: room.redesign_pano_url ?? room.render_url ?? null,
   })
 }

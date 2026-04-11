@@ -11,6 +11,7 @@
 
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'
 import Anthropic from '@anthropic-ai/sdk'
 
 export const maxDuration = 60
@@ -24,27 +25,39 @@ interface DetectedItem {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createServerSupabaseClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const serviceKey = request.headers.get('x-service-key')
+  const isServiceCall =
+    !!serviceKey && serviceKey === process.env.SUPABASE_SERVICE_ROLE_KEY
 
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const supabase = isServiceCall
+    ? createAdminSupabaseClient()
+    : await createServerSupabaseClient()
+
+  let userId: string | null = null
+  if (!isServiceCall) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    userId = user.id
   }
 
-  const { roomId } = (await request.json()) as { roomId?: string }
+  const body = (await request.json()) as { roomId?: string; room_id?: string }
+  const roomId = body.roomId ?? body.room_id
   if (!roomId) {
     return NextResponse.json({ error: 'roomId required' }, { status: 400 })
   }
 
   // Fetch the rendered image URL
-  const { data: room } = await supabase
+  const query = supabase
     .from('rooms')
     .select('redesign_pano_url, perspective_render_url')
     .eq('id', roomId)
-    .eq('user_id', user.id)
-    .single()
+  const { data: room } = await (userId
+    ? query.eq('user_id', userId).single()
+    : query.single())
 
   const renderUrl = room?.perspective_render_url ?? room?.redesign_pano_url
   if (!renderUrl) {

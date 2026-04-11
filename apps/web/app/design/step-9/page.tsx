@@ -445,8 +445,10 @@ export default function Step9Experience() {
               })
             );
             setZones(detectedZones);
+          } else {
+            // Detection hasn't run — show no hotspots rather than fake ones
+            setZones([]);
           }
-          // If null, keep DEFAULT_ZONES — detection hasn't run yet
         } catch {
           // Non-fatal — use defaults
         }
@@ -546,7 +548,8 @@ export default function Step9Experience() {
               });
               setProducts(mapped);
             } else {
-              // Fire furniture matching pipeline (non-blocking) and fall back to defaults
+              // Fire furniture matching pipeline (non-blocking); show empty state
+              // rather than fake hotspots until real products arrive.
               fetch("/api/pipeline/furniture-match", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -554,14 +557,14 @@ export default function Step9Experience() {
               }).catch((err) =>
                 console.warn("[step-9] Furniture matching trigger failed:", err)
               );
-              setProducts(DEFAULT_PRODUCTS);
-              setZones(DEFAULT_ZONES);
+              setProducts([]);
+              setZones([]);
             }
           }
         } catch {
-          // Network or parse error — fall back gracefully
-          setProducts(DEFAULT_PRODUCTS);
-          setZones(DEFAULT_ZONES);
+          // Network or parse error — show empty state
+          setProducts([]);
+          setZones([]);
         }
       } else {
         // No active room — demo mode
