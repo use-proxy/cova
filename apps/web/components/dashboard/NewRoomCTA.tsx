@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { useRouter } from "next/navigation"
-import { ArrowRight } from "lucide-react"
+import { useRouter } from "next/navigation";
+import { ArrowRight } from "lucide-react";
 
 export function NewRoomCTA() {
-  const router = useRouter()
+  const router = useRouter();
 
   return (
     <section
@@ -24,8 +24,8 @@ export function NewRoomCTA() {
       aria-label="Start designing a new room"
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault()
-          router.push("/capture/new")
+          e.preventDefault();
+          router.push("/capture/new");
         }
       }}
     >
@@ -81,11 +81,16 @@ export function NewRoomCTA() {
           style={{ fontFamily: "Playfair Display, Georgia, serif" }}
         >
           Design a new{" "}
-          <em style={{ fontStyle: "italic", color: "var(--cova-gold)" }}>space.</em>
+          <em style={{ fontStyle: "italic", color: "var(--cova-gold)" }}>
+            space.
+          </em>
         </h2>
         <p
           className="text-xs mt-1"
-          style={{ color: "rgba(255,255,255,0.55)", fontFamily: "Inter, sans-serif" }}
+          style={{
+            color: "rgba(255,255,255,0.55)",
+            fontFamily: "Inter, sans-serif",
+          }}
         >
           Ready when you are.
         </p>
@@ -98,8 +103,8 @@ export function NewRoomCTA() {
             fontFamily: "Inter, sans-serif",
           }}
           onClick={(e) => {
-            e.stopPropagation()
-            router.push("/capture/new")
+            e.stopPropagation();
+            router.push("/capture/new");
           }}
           aria-label="Start designing a new room"
         >
@@ -108,5 +113,5 @@ export function NewRoomCTA() {
         </button>
       </div>
     </section>
-  )
+  );
 }

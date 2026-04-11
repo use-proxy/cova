@@ -9,19 +9,19 @@
 
 ## Outcome
 
-| Gate | Result |
-|---|---|
-| `quiz_anchor_images` table created | ✅ via `supabase/migrations/20260408000000_quiz_image_library.sql` |
-| `quiz_comparison_pairs` table created | ✅ same migration |
-| `quiz-images` storage bucket created | ✅ public, 10MB, jpeg/png/webp |
-| 9 anchor images in DB | ✅ all 9 livability ≥ 3 |
-| Validated comparison pairs | ✅ **60/60** validated (target: ≥36 across 12 dims) |
-| Per-dimension validated pairs | ✅ **5/5** validated for every one of the 12 dims |
-| All anchor URLs return HTTP 200 | ✅ verified inline by Phase E |
-| Sample quiz API query works | ✅ `colorTemperature` returns 2 validated pairs |
-| `npx tsc --noEmit` | ✅ exit 0 |
-| `npm run build` | ✅ Compiled successfully |
-| **Replicate spend** | ✅ **$8.06** (ceiling: $20) |
+| Gate                                  | Result                                                             |
+| ------------------------------------- | ------------------------------------------------------------------ |
+| `quiz_anchor_images` table created    | ✅ via `supabase/migrations/20260408000000_quiz_image_library.sql` |
+| `quiz_comparison_pairs` table created | ✅ same migration                                                  |
+| `quiz-images` storage bucket created  | ✅ public, 10MB, jpeg/png/webp                                     |
+| 9 anchor images in DB                 | ✅ all 9 livability ≥ 3                                            |
+| Validated comparison pairs            | ✅ **60/60** validated (target: ≥36 across 12 dims)                |
+| Per-dimension validated pairs         | ✅ **5/5** validated for every one of the 12 dims                  |
+| All anchor URLs return HTTP 200       | ✅ verified inline by Phase E                                      |
+| Sample quiz API query works           | ✅ `colorTemperature` returns 2 validated pairs                    |
+| `npx tsc --noEmit`                    | ✅ exit 0                                                          |
+| `npm run build`                       | ✅ Compiled successfully                                           |
+| **Replicate spend**                   | ✅ **$8.06** (ceiling: $20)                                        |
 
 Full report: `apps/web/scripts/quiz-library-report.md`
 
@@ -34,7 +34,7 @@ Full report: `apps/web/scripts/quiz-library-report.md`
 `supabase/migrations/20260408000000_quiz_image_library.sql` — applied via `supabase db push --linked` (cached creds; the 5 pre-existing local-only "before" migrations were temporarily stashed in `/tmp/migration-stash/` to unblock push, then restored). Defines:
 
 - `quiz_anchor_images` — id, style_name, style_index (1–9), image_url, storage_path, style_vector (jsonb), dominant_colors (text[]), flux_prompt, livability_score, created_at
-- `quiz_comparison_pairs` — id, dimension, dimension_index (0–11), pair_index, image_a_*, image_b_*, image_a_stop / image_b_stop (CHECK IN 2,3,4), image_a_vector / image_b_vector (jsonb), base_room_url, flux_prompt_a / flux_prompt_b, livability_score_a / _b, is_validated, created_at
+- `quiz_comparison_pairs` — id, dimension, dimension*index (0–11), pair_index, image_a*_, image*b*_, image_a_stop / image_b_stop (CHECK IN 2,3,4), image_a_vector / image_b_vector (jsonb), base_room_url, flux_prompt_a / flux_prompt_b, livability_score_a / \_b, is_validated, created_at
 - Indexes: `idx_pairs_dimension`, `idx_pairs_validated`, `idx_anchors_style`
 - RLS: both tables `ENABLE ROW LEVEL SECURITY` + public-read policy
 - Storage bucket: `quiz-images` public, 10MB limit, allowed mime `image/jpeg|png|webp`, public-read storage policy
@@ -45,13 +45,13 @@ Full report: `apps/web/scripts/quiz-library-report.md`
 
 ### 3. Phase results
 
-| Phase | What | Model | Count | Notes |
-|---|---|---|---|---|
-| A | 9 anchor images | `black-forest-labs/flux-1.1-pro` | 9/9 ✅ | All livability ≥ 3 on first attempt; uploaded to `anchors/` |
-| B | 12 base rooms (one per dim) | `black-forest-labs/flux-1.1-pro` | 12/12 ✅ | Inputs to Phase C only; uploaded to `base-rooms/` |
-| C | 5 comparison pairs × 12 dims | `black-forest-labs/flux-kontext-pro` | 60/60 ✅ | Both A (stop 2) + B (stop 4); style vectors = neutral 0.5 with target dim at 0.25 / 0.75 |
-| D | Livability validation | `claude-sonnet-4-6` | 142 calls | Inline in A/B/C |
-| E | Verify + report | — | — | All acceptance criteria pass |
+| Phase | What                         | Model                                | Count     | Notes                                                                                    |
+| ----- | ---------------------------- | ------------------------------------ | --------- | ---------------------------------------------------------------------------------------- |
+| A     | 9 anchor images              | `black-forest-labs/flux-1.1-pro`     | 9/9 ✅    | All livability ≥ 3 on first attempt; uploaded to `anchors/`                              |
+| B     | 12 base rooms (one per dim)  | `black-forest-labs/flux-1.1-pro`     | 12/12 ✅  | Inputs to Phase C only; uploaded to `base-rooms/`                                        |
+| C     | 5 comparison pairs × 12 dims | `black-forest-labs/flux-kontext-pro` | 60/60 ✅  | Both A (stop 2) + B (stop 4); style vectors = neutral 0.5 with target dim at 0.25 / 0.75 |
+| D     | Livability validation        | `claude-sonnet-4-6`                  | 142 calls | Inline in A/B/C                                                                          |
+| E     | Verify + report              | —                                    | —         | All acceptance criteria pass                                                             |
 
 ### 4. Bug caught + fixed mid-run
 
@@ -69,7 +69,7 @@ The first Phase C run failed with `output_format must be one of "jpg", "png"` fr
 
 ## Step 8 — CLIP projection check (read-only)
 
-Per Session B spec, this is a *report-only* step. **No code was added or changed.**
+Per Session B spec, this is a _report-only_ step. **No code was added or changed.**
 
 - `apps/web/lib/ai/clip.ts` does **not** contain any 768→N projection layer. It defines `embedImage` (returns the raw 768-dim CLIP vector for product matching), `cosineSimilarity`, `fingerprintToStyleTags` (just-migrated text-tag mapping), `computeFingerprintAlignment`, and `computeBudgetFit`. The 768-dim CLIP embedding is used directly against `products.clip_embedding_data` for product matching — it is **never projected into the 12-dim style fingerprint space**.
 - The `inspo_photo` value is declared in the legacy fingerprint route's `entry_path` type union (`apps/web/app/api/quiz/fingerprint/route.ts:37`) but **not implemented**. The route handles only the new 3-phase `phase_a_selections` / `phase_b_responses` format and the legacy `pairs` format; `natural_language` and `inspo_photo` branches are absent.
@@ -77,7 +77,7 @@ Per Session B spec, this is a *report-only* step. **No code was added or changed
 
 ---
 
-## What is *still* not wired
+## What is _still_ not wired
 
 The new tables exist and contain real data, but **none of the existing quiz API routes read from them yet**. Specifically:
 
@@ -92,12 +92,12 @@ So at runtime end of Session B, the live quiz UX is **still non-functional** eve
 
 ## Spend summary
 
-| Cost line | Calls | Unit | Subtotal |
-|---|---|---|---|
-| flux-1.1-pro (anchors + base rooms) | 22 | $0.055 | $1.21 |
-| flux-kontext-pro (pair edits, incl. 3 wasted calls from the output_format bug) | 122 | $0.055 | $6.71 |
-| Claude Sonnet livability checks | 142 | $0.001 | $0.14 |
-| **Total** | | | **$8.06** |
+| Cost line                                                                      | Calls | Unit   | Subtotal  |
+| ------------------------------------------------------------------------------ | ----- | ------ | --------- |
+| flux-1.1-pro (anchors + base rooms)                                            | 22    | $0.055 | $1.21     |
+| flux-kontext-pro (pair edits, incl. 3 wasted calls from the output_format bug) | 122   | $0.055 | $6.71     |
+| Claude Sonnet livability checks                                                | 142   | $0.001 | $0.14     |
+| **Total**                                                                      |       |        | **$8.06** |
 
 Ceiling was $20. Final spend = **40% of ceiling**.
 
@@ -106,6 +106,7 @@ Ceiling was $20. Final spend = **40% of ceiling**.
 ## Files created / modified in Session B
 
 **Created:**
+
 - `supabase/migrations/20260408000000_quiz_image_library.sql`
 - `apps/web/scripts/generate-quiz-library.ts`
 - `apps/web/scripts/quiz-library-report.md`

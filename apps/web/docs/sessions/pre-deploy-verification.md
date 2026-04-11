@@ -21,7 +21,7 @@ One non-blocking compile warning in `lib/errors.ts` (unused export pattern). Doe
 
 ## CHECK 3: No hardcoded hex colors
 
-⚠️  WARNING — Hardcoded hex values found in the following files. These are NOT bugs — they match the established codebase pattern (local `colors` constant objects used throughout step pages and components). No CSS variables system exists in this project; inline styles with literal hex values is the intentional design pattern.
+⚠️ WARNING — Hardcoded hex values found in the following files. These are NOT bugs — they match the established codebase pattern (local `colors` constant objects used throughout step pages and components). No CSS variables system exists in this project; inline styles with literal hex values is the intentional design pattern.
 
 **Files with hardcoded hex values:**
 
@@ -45,13 +45,13 @@ One non-blocking compile warning in `lib/errors.ts` (unused export pattern). Doe
 
 ✅ PASS — All required env vars are read via `process.env.*`:
 
-| Variable | Location | Method |
-|---|---|---|
-| `SERPER_API_KEY` | `lib/ai/serper.ts:3` | `process.env.SERPER_API_KEY` |
-| `REPLICATE_API_TOKEN` | `lib/ai/flux.ts`, `clip.ts`, `grounding.ts`, `depth.ts`, `app/api/match/route.ts` | `process.env.REPLICATE_API_TOKEN` |
-| `ANTHROPIC_API_KEY` | `app/api/chat/route.ts:109` | `process.env.ANTHROPIC_API_KEY` (explicit); `app/api/render/route.ts` uses `new Anthropic()` which reads it automatically via SDK |
-| `NEXT_PUBLIC_SUPABASE_URL` | `lib/supabase/admin.ts`, `client.ts`, `server.ts`, `storage.ts`, multiple API routes | `process.env.NEXT_PUBLIC_SUPABASE_URL` |
-| `SUPABASE_SERVICE_ROLE_KEY` | `lib/supabase/admin.ts:8`, `app/api/pipeline/start/route.ts:92` | `process.env.SUPABASE_SERVICE_ROLE_KEY` |
+| Variable                    | Location                                                                             | Method                                                                                                                            |
+| --------------------------- | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| `SERPER_API_KEY`            | `lib/ai/serper.ts:3`                                                                 | `process.env.SERPER_API_KEY`                                                                                                      |
+| `REPLICATE_API_TOKEN`       | `lib/ai/flux.ts`, `clip.ts`, `grounding.ts`, `depth.ts`, `app/api/match/route.ts`    | `process.env.REPLICATE_API_TOKEN`                                                                                                 |
+| `ANTHROPIC_API_KEY`         | `app/api/chat/route.ts:109`                                                          | `process.env.ANTHROPIC_API_KEY` (explicit); `app/api/render/route.ts` uses `new Anthropic()` which reads it automatically via SDK |
+| `NEXT_PUBLIC_SUPABASE_URL`  | `lib/supabase/admin.ts`, `client.ts`, `server.ts`, `storage.ts`, multiple API routes | `process.env.NEXT_PUBLIC_SUPABASE_URL`                                                                                            |
+| `SUPABASE_SERVICE_ROLE_KEY` | `lib/supabase/admin.ts:8`, `app/api/pipeline/start/route.ts:92`                      | `process.env.SUPABASE_SERVICE_ROLE_KEY`                                                                                           |
 
 No hardcoded credentials found anywhere.
 
@@ -61,16 +61,16 @@ No hardcoded credentials found anywhere.
 
 ✅ PASS — All 9 files confirmed present:
 
-| File | Status |
-|---|---|
-| `app/api/match/coherence/route.ts` | ✅ EXISTS |
+| File                                 | Status    |
+| ------------------------------------ | --------- |
+| `app/api/match/coherence/route.ts`   | ✅ EXISTS |
 | `app/api/match/accessories/route.ts` | ✅ EXISTS |
-| `lib/ai/serper.ts` | ✅ EXISTS |
-| `lib/ai/renderCrop.ts` | ✅ EXISTS |
-| `lib/ai/inpainting.ts` | ✅ EXISTS |
-| `lib/ai/budget.ts` | ✅ EXISTS |
-| `lib/ai/fit.ts` | ✅ EXISTS |
-| `lib/measureBridge.ts` | ✅ EXISTS |
+| `lib/ai/serper.ts`                   | ✅ EXISTS |
+| `lib/ai/renderCrop.ts`               | ✅ EXISTS |
+| `lib/ai/inpainting.ts`               | ✅ EXISTS |
+| `lib/ai/budget.ts`                   | ✅ EXISTS |
+| `lib/ai/fit.ts`                      | ✅ EXISTS |
+| `lib/measureBridge.ts`               | ✅ EXISTS |
 | `components/capture/RoomMeasure.tsx` | ✅ EXISTS |
 
 ---
@@ -91,12 +91,13 @@ No hardcoded credentials found anywhere.
 
 ✅ PASS — Both files use bucket `room-photos` consistently:
 
-| File | Bucket used |
-|---|---|
+| File                           | Bucket used   |
+| ------------------------------ | ------------- |
 | `lib/ai/inpainting.ts:159,171` | `room-photos` |
 | `lib/ai/renderCrop.ts:100,111` | `room-photos` |
 
-⚠️  WARNING — CLAUDE.md specifies the storage bucket should be `room-videos` (for video uploads). The `room-photos` bucket is used for inpainting masks and render crops, which is a separate bucket. Both must exist in Supabase:
+⚠️ WARNING — CLAUDE.md specifies the storage bucket should be `room-videos` (for video uploads). The `room-photos` bucket is used for inpainting masks and render crops, which is a separate bucket. Both must exist in Supabase:
+
 - `room-videos` — for video uploads (with RLS — users can INSERT/SELECT own videos only)
 - `room-photos` — for inpainting masks and render crops (used by server-side pipeline, admin access)
 
@@ -106,13 +107,13 @@ Ensure both buckets are created in the Supabase dashboard before deploying.
 
 ## Summary of Actions Taken
 
-| Check | Result | Action |
-|---|---|---|
-| TypeScript | ✅ PASS | None |
-| Build | ✅ PASS | None |
-| Hex colors | ⚠️  WARNING | None — codebase convention |
-| 'any' types | ✅ PASS | None |
-| Env vars | ✅ PASS | None |
-| File existence | ✅ PASS | None |
-| Sharp config | ✅ FIXED | Added `serverExternalPackages: ['sharp']` to next.config.mjs |
-| Storage bucket | ✅ PASS (⚠️  WARNING) | None — confirm both buckets exist at deploy time |
+| Check          | Result               | Action                                                       |
+| -------------- | -------------------- | ------------------------------------------------------------ |
+| TypeScript     | ✅ PASS              | None                                                         |
+| Build          | ✅ PASS              | None                                                         |
+| Hex colors     | ⚠️ WARNING           | None — codebase convention                                   |
+| 'any' types    | ✅ PASS              | None                                                         |
+| Env vars       | ✅ PASS              | None                                                         |
+| File existence | ✅ PASS              | None                                                         |
+| Sharp config   | ✅ FIXED             | Added `serverExternalPackages: ['sharp']` to next.config.mjs |
+| Storage bucket | ✅ PASS (⚠️ WARNING) | None — confirm both buckets exist at deploy time             |

@@ -23,6 +23,7 @@ Date: 2026-04-08
 
 All Replicate calls in `lib/ai/flux.ts` switched from `output_format: 'jpg'`
 to `output_format: 'png'`:
+
 - `submitSchnellRender`
 - `submitRender`
 - `submitMultiImageRender`
@@ -91,14 +92,14 @@ was brittle against live Serper variation. Relaxed to:
 
 ## Cost per render (estimate)
 
-| Stage                                        | Model                                      | Cost     |
-| -------------------------------------------- | ------------------------------------------ | -------- |
-| Schnell preview (optional)                   | black-forest-labs/flux-schnell             | ~$0.003  |
-| Pass 1 — multi-image style transform         | flux-kontext-apps/multi-image-kontext-pro  | ~$0.040  |
-| Pass 2 — architecture correction             | black-forest-labs/flux-kontext-pro         | ~$0.040  |
-| Post — Clarity Upscaler                      | philz1337x/clarity-upscaler (pinned)       | ~$0.012  |
-| Room analyzer                                | Gemini 2.5 Flash                           | <$0.001  |
-| **Total**                                    |                                            | **~$0.095** |
+| Stage                                | Model                                     | Cost        |
+| ------------------------------------ | ----------------------------------------- | ----------- |
+| Schnell preview (optional)           | black-forest-labs/flux-schnell            | ~$0.003     |
+| Pass 1 — multi-image style transform | flux-kontext-apps/multi-image-kontext-pro | ~$0.040     |
+| Pass 2 — architecture correction     | black-forest-labs/flux-kontext-pro        | ~$0.040     |
+| Post — Clarity Upscaler              | philz1337x/clarity-upscaler (pinned)      | ~$0.012     |
+| Room analyzer                        | Gemini 2.5 Flash                          | <$0.001     |
+| **Total**                            |                                           | **~$0.095** |
 
 (Single-pass, single-image fallback path: ~$0.055 when no style
 reference is available.)

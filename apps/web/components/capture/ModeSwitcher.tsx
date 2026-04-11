@@ -1,20 +1,26 @@
-"use client"
+"use client";
 
-export type CaptureMode = "phone" | "upload"
+export type CaptureMode = "phone" | "upload";
 
 interface ModeSwitcherProps {
-  mode: CaptureMode
-  onModeChange: (mode: CaptureMode) => void
+  mode: CaptureMode;
+  onModeChange: (mode: CaptureMode) => void;
 }
 
 const modes: { value: CaptureMode; label: string }[] = [
   { value: "phone", label: "Scan QR" },
   { value: "upload", label: "Upload Photo" },
-]
+];
 
 export function ModeSwitcher({ mode, onModeChange }: ModeSwitcherProps) {
   return (
-    <div className="inline-flex rounded-full p-1" style={{ background: "var(--navy-card)", border: "1px solid var(--gold-dim)" }}>
+    <div
+      className="inline-flex rounded-full p-1"
+      style={{
+        background: "var(--navy-card)",
+        border: "1px solid var(--gold-dim)",
+      }}
+    >
       {modes.map((m) => (
         <button
           key={m.value}
@@ -29,5 +35,5 @@ export function ModeSwitcher({ mode, onModeChange }: ModeSwitcherProps) {
         </button>
       ))}
     </div>
-  )
+  );
 }

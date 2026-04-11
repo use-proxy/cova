@@ -1,6 +1,7 @@
 import Replicate from "replicate";
 import type { StyleFingerprint } from "@/types/fingerprint";
 import type { RoomAnalysis } from "@/lib/store/room";
+import type { DetectedObject, RequestedProduct } from "@/lib/types/area2";
 import {
   buildPreservationInstructions,
   type RoomArchitecture,
@@ -103,7 +104,7 @@ const DESCRIPTORS: Record<DimKey, { lo: string; hi: string }> = {
 // than NEUTRAL_BAND (i.e. v < 0.35 or v > 0.65). Values inside the neutral
 // band produce no descriptor text.
 const NEUTRAL_MIDPOINT = 0.5;
-const NEUTRAL_BAND = 0.10;
+const NEUTRAL_BAND = 0.1;
 
 const BUDGET_MODIFIERS: Record<string, string> = {
   budget: "affordable accessible pieces, high-street furniture",
@@ -269,10 +270,7 @@ function dominantDescriptors(
 // This reduces the lossiness of the prior dominantDescriptors() approach
 // which only kept the top 3-4 dimensions and dropped the rest.
 
-const FINGERPRINT_PHRASE_MAP: Record<
-  DimKey,
-  { high: string; low: string }
-> = {
+const FINGERPRINT_PHRASE_MAP: Record<DimKey, { high: string; low: string }> = {
   colorTemperature: {
     high: "warm amber undertones, honey oak, terracotta accents",
     low: "cool grey undertones, slate, bleached wood",
@@ -397,7 +395,10 @@ export function sanitizeForbiddenStyleNames(prompt: string): string {
 function sanitizeUserText(text: string): string {
   let result = text;
   for (const name of FORBIDDEN_STYLE_NAMES) {
-    result = result.replace(new RegExp(name, "gi"), "").replace(/\s{2,}/g, " ").trim();
+    result = result
+      .replace(new RegExp(name, "gi"), "")
+      .replace(/\s{2,}/g, " ")
+      .trim();
   }
   // Strip HTML tags — user text goes to image models, not browsers,
   // but keeping tags adds noise and could confuse the model.
@@ -416,12 +417,16 @@ export function buildFluxPrompt(params: BuildFluxPromptParams): string {
     quizPreviewMode,
     anchorPrompt: rawAnchorPrompt,
   } = params;
-  const anchorPrompt = rawAnchorPrompt ? sanitizeUserText(rawAnchorPrompt) : '';
-  const anchorBlock = anchorPrompt ? `${anchorPrompt}. ` : '';
+  const anchorPrompt = rawAnchorPrompt ? sanitizeUserText(rawAnchorPrompt) : "";
+  const anchorBlock = anchorPrompt ? `${anchorPrompt}. ` : "";
   // Sanitize all user-provided text inputs
   const inclusions = rawInclusions.map(sanitizeUserText).filter(Boolean);
-  const constraints = (rawConstraints ?? []).map(sanitizeUserText).filter(Boolean);
-  const keptItemLabels = rawKeptItemLabels.map(sanitizeUserText).filter(Boolean);
+  const constraints = (rawConstraints ?? [])
+    .map(sanitizeUserText)
+    .filter(Boolean);
+  const keptItemLabels = rawKeptItemLabels
+    .map(sanitizeUserText)
+    .filter(Boolean);
   const d = fingerprint.dimensions;
   const roomTypeStr = roomType.replace(/_/g, " ");
 
@@ -798,6 +803,251 @@ export async function runFluxRender(
   throw new Error("Unexpected output format from Kontext render");
 }
 
+// ── buildAnchorFallbackPrompt ────────────────────────────────────────────────
+//
+// Anchor-strategy fallback used by the redesign route when the Claude prompt
+// compiler returns null. Unlike the generic buildFluxPrompt, this always
+// frames kept items as ANCHORS (never "preserve the X"), removed items as
+// VACATED ZONES with a style-direction replacement, and ends with a Rule-4
+// final constraint. Target: 200-300 words.
+//
+// Must stay in lockstep with the Claude system prompt in prompt-compiler.ts.
+
+const STYLE_DIRECTION_MAP: Record<string, string> = {
+  "warm japandi": "japandi-appropriate",
+  "pure minimal white": "minimalist",
+  "coastal bright": "coastal",
+  "biophilic jungle": "biophilic",
+  "dark moody glam": "moody glam",
+  "heritage traditional": "heritage traditional",
+  "industrial loft": "industrial",
+  "maximalist eclectic": "maximalist eclectic",
+  "retro mid-century": "mid-century",
+};
+
+function deriveReplacementDirection(
+  blend: Record<string, number> | null | undefined,
+): string {
+  if (!blend) return "contemporary";
+  const top = Object.entries(blend)
+    .sort((a, b) => b[1] - a[1])[0]?.[0]
+    ?.toLowerCase();
+  if (!top) return "contemporary";
+  return STYLE_DIRECTION_MAP[top] ?? "contemporary";
+}
+
+export interface AnchorFallbackParams {
+  fingerprint: StyleFingerprint;
+  roomType: string;
+  context: RenderContext | null;
+  styleBlend: Record<string, number> | null;
+  anchorPrompt?: string | null;
+  cameraAngle?: string;
+  focalLength?: string;
+}
+
+export function buildAnchorFallbackPrompt(
+  params: AnchorFallbackParams,
+): string {
+  const {
+    roomType,
+    context,
+    styleBlend,
+    anchorPrompt: rawAnchor,
+    cameraAngle: rawCamera,
+    focalLength: rawFocal,
+  } = params;
+  void params.fingerprint; // reserved for future descriptor weighting
+
+  const direction = deriveReplacementDirection(styleBlend);
+  const kept = (context?.keepMask?.objects ?? []).filter(
+    (o) => o.keep || o.immovable,
+  );
+  const removed = (context?.keepMask?.objects ?? []).filter(
+    (o) => !o.keep && !o.immovable,
+  );
+
+  const describeKept = (o: DetectedObject): string => {
+    const bits: string[] = [];
+    const label = sanitizeUserText(o.type ?? "item");
+    const color = o.dominantColor ? sanitizeUserText(o.dominantColor) : null;
+    const material = o.material ? sanitizeUserText(o.material) : null;
+    const size = o.sizeInRoom ? String(o.sizeInRoom) : null;
+    const descriptors: string[] = Array.isArray(o.styleDescriptors)
+      ? o.styleDescriptors
+          .map((s: string) => sanitizeUserText(s))
+          .filter(Boolean)
+      : [];
+    const note = o.userNote ? sanitizeUserText(o.userNote) : null;
+
+    const enriched: string[] = [];
+    if (color) enriched.push(color);
+    if (material) enriched.push(material);
+    if (descriptors.length) enriched.push(descriptors.slice(0, 3).join(", "));
+    if (size) enriched.push(size);
+
+    if (enriched.length === 0) {
+      bits.push(
+        `• The existing ${label} is an anchor — do not alter its color, material, form, or position.`,
+      );
+    } else {
+      bits.push(
+        `• The existing ${color ? color + " " : ""}${label}${material ? " in " + material : ""}${descriptors.length ? " — " + descriptors.slice(0, 3).join(", ") : ""}${size ? ` (${size})` : ""}${note ? ` (${note})` : ""} is a fixed anchor. Do not alter its color, material, form, or position.`,
+      );
+    }
+    return bits.join(" ");
+  };
+
+  const keptLabels = kept.map((o) => sanitizeUserText(o.type));
+  const removedLabels = removed.map((o) => sanitizeUserText(o.type));
+
+  const transformationLine =
+    removedLabels.length > 0
+      ? `Transform the ${removedLabels.map((l) => `${l} zone`).join(", ")} into a ${direction} ${roomType}. Introduce new pieces that work with the anchoring ${keptLabels.length > 0 ? keptLabels.join(" and ") : "architecture"}.`
+      : `Transform this ${roomType} into a ${direction} space, working around the anchoring ${keptLabels.join(" and ") || "architecture"}.`;
+
+  const anchorsBlock =
+    kept.length > 0
+      ? [
+          "Anchoring pieces — treat these as fixed. Do not alter their color, material, form, or position:",
+          ...kept.map(describeKept),
+        ].join("\n")
+      : "";
+
+  const vacatedBlock =
+    removed.length > 0
+      ? [
+          "Vacated zones — redesign these areas completely:",
+          ...removed.map(
+            (o) =>
+              `• ${sanitizeUserText(o.type)} zone: introduce a ${direction} replacement that harmonizes with the anchors.`,
+          ),
+        ].join("\n")
+      : "";
+
+  // Structural context
+  const rc = context?.roomContext;
+  const cons = context?.roomConstraints;
+  const structural: string[] = [];
+  if (rc?.ceilingHeight) {
+    const detail = rc.ceilingDetail ? ` with ${rc.ceilingDetail}` : "";
+    structural.push(`Ceiling: ${rc.ceilingHeight}${detail}.`);
+  }
+  if (cons?.physicalConstraints && cons.physicalConstraints.length > 0) {
+    structural.push(
+      `Structural fixtures: ${cons.physicalConstraints.join(", ")}.`,
+    );
+  }
+  if (rc?.floorMaterial) {
+    const keepFloor = (cons?.physicalConstraints ?? [])
+      .join(" ")
+      .toLowerCase()
+      .includes("replace existing flooring")
+      ? "Replace"
+      : "Keep";
+    structural.push(`Existing flooring: ${rc.floorMaterial}. ${keepFloor} it.`);
+  }
+  if (cons?.bestLightTime && rc?.windowCount) {
+    structural.push(
+      `Natural light: brightest in the ${cons.bestLightTime}. ${rc.windowCount} windows.`,
+    );
+  }
+
+  // Requested products
+  const requested = (context?.requestedProducts ?? [])
+    .filter((p: RequestedProduct) => p.confirmedByUser)
+    .slice(0, 4);
+  const requestedLine =
+    requested.length > 0
+      ? `Specific products requested: ${requested
+          .map((p: RequestedProduct) =>
+            sanitizeUserText(
+              `${p.scrapedData?.name ?? p.originalInput} — ${p.fluxDescription ?? ""}`,
+            ),
+          )
+          .join("; ")}.`
+      : "";
+
+  // User notes
+  const notesLine = rc?.userNotes
+    ? `Special requirements: ${sanitizeUserText(rc.userNotes)}.`
+    : "";
+
+  // Style reference directive
+  const anchorPrompt = rawAnchor ? sanitizeUserText(rawAnchor) : "";
+  const styleRefLine = anchorPrompt
+    ? `Apply the aesthetic from the reference image to the vacated zones only — not to the anchoring pieces. Reference direction: ${anchorPrompt}.`
+    : "";
+
+  // Budget
+  const budget = context?.budget;
+  let budgetLine = "";
+  if (
+    budget &&
+    (budget.rangeMin !== undefined || budget.rangeMax !== undefined)
+  ) {
+    const min = budget.rangeMin ?? 0;
+    const max = budget.rangeMax;
+    const tier =
+      max === undefined || max === null
+        ? "mid"
+        : max <= 2000
+          ? "budget"
+          : max <= 5000
+            ? "mid"
+            : max <= 10000
+              ? "premium"
+              : "luxury";
+    const rangeStr =
+      max !== undefined && max !== null ? `$${min}–$${max}` : `$${min}+`;
+    budgetLine = `Budget: ${rangeStr} (${tier} tier).`;
+  }
+
+  // Final constraint (Rule 4)
+  const finalConstraint =
+    keptLabels.length > 0
+      ? `Final constraint: ${keptLabels.join(", ")} must appear identical to the input image — same position, color, material, and form. Only the vacated zones are to be redesigned.`
+      : `Final constraint: the walls, floor, ceiling, windows, doors, and camera angle must appear identical to the input image. Only the furniture and decor in the vacated zones are to be redesigned.`;
+
+  const cameraAngle =
+    rawCamera ?? context?.roomContext?.cameraAngle ?? "straight-on view";
+  const focalLength = rawFocal ?? context?.roomContext?.focalLength ?? "24mm";
+
+  const closer = `Photorealistic interior photograph, ${cameraAngle}, ${focalLength}, f/8. No people, no text.`;
+
+  const sections = [
+    transformationLine,
+    anchorsBlock,
+    vacatedBlock,
+    structural.join(" "),
+    requestedLine,
+    notesLine,
+    styleRefLine,
+    budgetLine,
+    finalConstraint,
+    closer,
+  ].filter(Boolean);
+
+  const prompt = sections.join("\n\n");
+
+  // Target 200-300 words. If over, trim structural/requested lines
+  // gently while keeping anchors, vacated zones, final constraint, and closer.
+  const wordCount = prompt.split(/\s+/).filter(Boolean).length;
+  if (wordCount > 400) {
+    const trimmed = [
+      transformationLine,
+      anchorsBlock,
+      vacatedBlock,
+      finalConstraint,
+      closer,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+    return sanitizeForbiddenStyleNames(trimmed);
+  }
+  return sanitizeForbiddenStyleNames(prompt);
+}
+
 // ── buildFluxPromptFromContext ────────────────────────────────────────────────
 //
 // Area 2 — consumes the unified RenderContext (screens A/B/C + tabbed chat +
@@ -889,25 +1139,30 @@ export function buildFluxPromptFromContext(context: RenderContext): string {
     const ceilFtNormalized = ceilFt < 5 ? ceilFt * 3.28 : ceilFt;
 
     if (ceilFtNormalized >= 10) {
-      s3 += " Grand vertical space — artwork scaled to full wall height, tall bookcases or statement pendant lighting, vertical emphasis throughout.";
+      s3 +=
+        " Grand vertical space — artwork scaled to full wall height, tall bookcases or statement pendant lighting, vertical emphasis throughout.";
     } else if (ceilFtNormalized <= 8) {
-      s3 += " Intimate human-scale proportions — horizontal emphasis, low-profile furniture, no tall vertical elements.";
+      s3 +=
+        " Intimate human-scale proportions — horizontal emphasis, low-profile furniture, no tall vertical elements.";
     }
 
     if (cons?.physicalConstraints?.length > 0) {
       // Fixtures are HIGH impact if they include fireplace/built-ins/brick
       const fixtures = cons.physicalConstraints.join(" ").toLowerCase();
       const hasFireplace = fixtures.includes("fireplace");
-      const hasBuiltIns = fixtures.includes("built-in") || fixtures.includes("built in");
+      const hasBuiltIns =
+        fixtures.includes("built-in") || fixtures.includes("built in");
       const hasExposedBrick = fixtures.includes("brick");
 
       s3 += ` Fixed elements: ${cons.physicalConstraints.join(", ")}.`;
 
       if (hasFireplace) {
-        s3 += " Fireplace MUST be visible and lit in the render — render a fire or glowing embers.";
+        s3 +=
+          " Fireplace MUST be visible and lit in the render — render a fire or glowing embers.";
       }
       if (hasBuiltIns) {
-        s3 += " Built-in shelving MUST be preserved and styled — populate with books, art, and objects.";
+        s3 +=
+          " Built-in shelving MUST be preserved and styled — populate with books, art, and objects.";
       }
       if (hasExposedBrick) {
         s3 += " Exposed brick texture MUST be preserved exactly.";
@@ -921,13 +1176,18 @@ export function buildFluxPromptFromContext(context: RenderContext): string {
   // Treat it as a non-negotiable structural directive, not additive.
   if (rc) {
     const lightMap: Record<string, string> = {
-      morning: "LIGHTING DIRECTIVE: Warm 5600K eastern morning light, energizing golden hour quality, long horizontal shadows raking east-to-west across floor and furniture, supplemented by 2700K ambient. Direction: from east.",
-      afternoon: "LIGHTING DIRECTIVE: Productive 3200K western afternoon light, magic hour quality, diffuse warm amber fill, medium shadows, complementary 2700K accent lighting. Direction: from west.",
-      evening: "LIGHTING DIRECTIVE: Intimate 2200K evening scene, dramatic pools of warm incandescent light, deep shadows between lit zones, no daylight visible. Mood: candlelit, lamp-lit.",
-      "always-dim": "LIGHTING DIRECTIVE: Soft 2700K ambient interior lighting only, no directional light source shown, layered pools of warm light from lamps, no harsh overhead. Mood: cocooned.",
+      morning:
+        "LIGHTING DIRECTIVE: Warm 5600K eastern morning light, energizing golden hour quality, long horizontal shadows raking east-to-west across floor and furniture, supplemented by 2700K ambient. Direction: from east.",
+      afternoon:
+        "LIGHTING DIRECTIVE: Productive 3200K western afternoon light, magic hour quality, diffuse warm amber fill, medium shadows, complementary 2700K accent lighting. Direction: from west.",
+      evening:
+        "LIGHTING DIRECTIVE: Intimate 2200K evening scene, dramatic pools of warm incandescent light, deep shadows between lit zones, no daylight visible. Mood: candlelit, lamp-lit.",
+      "always-dim":
+        "LIGHTING DIRECTIVE: Soft 2700K ambient interior lighting only, no directional light source shown, layered pools of warm light from lamps, no harsh overhead. Mood: cocooned.",
     };
     const lightBase =
-      lightMap[cons?.bestLightTime ?? ""] ?? "Natural ambient light, balanced exposure, soft fill.";
+      lightMap[cons?.bestLightTime ?? ""] ??
+      "Natural ambient light, balanced exposure, soft fill.";
     const s4 = `${lightBase} ${rc.windowCount} ${rc.windowSize} windows from ${rc.naturalLightDirection}.`;
     core.push(s4);
   }
@@ -935,8 +1195,10 @@ export function buildFluxPromptFromContext(context: RenderContext): string {
   // ─── SECTION 5 — MATERIALS (flooring is a hard preservation constraint) ─
   if (rc) {
     const floorLower = rc.floorMaterial.toLowerCase();
-    const isHardwood = floorLower.includes("hardwood") || floorLower.includes("wood");
-    const keepFlooring = cons?.wallPermanence !== "renting-no-paint" ? true : true; // default keep
+    const isHardwood =
+      floorLower.includes("hardwood") || floorLower.includes("wood");
+    const keepFlooring =
+      cons?.wallPermanence !== "renting-no-paint" ? true : true; // default keep
     let floorDesc: string;
     if (isHardwood && keepFlooring) {
       floorDesc = `PRESERVE existing ${rc.floorMaterial} flooring exactly — do not replace or cover the ${rc.floorColor} hardwood, natural patina retained`;
@@ -1217,7 +1479,7 @@ export function buildFluxPromptFromContext(context: RenderContext): string {
   };
   const focalMap: Record<string, string> = {
     "wide-angle": "Carl Zeiss 21mm f/2.8 lens",
-    "standard": "24mm f/8 lens",
+    standard: "24mm f/8 lens",
     "slight-telephoto": "35mm f/4 lens",
   };
   const cameraAngle = rc?.cameraAngle ?? "eye-level";

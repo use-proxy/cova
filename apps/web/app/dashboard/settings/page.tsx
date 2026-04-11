@@ -336,16 +336,18 @@ export default function SettingsPage() {
     document.documentElement.classList.add("dark");
     document.body.classList.add("settings-page-body");
     const checkAuth = async () => {
-      const { createBrowserClient } = await import('@/lib/supabase/client')
-      const supabase = createBrowserClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      const { createBrowserClient } = await import("@/lib/supabase/client");
+      const supabase = createBrowserClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
-        router.push('/auth')
-        return
+        router.push("/auth");
+        return;
       }
-      setAuthChecked(true)
-    }
-    checkAuth()
+      setAuthChecked(true);
+    };
+    checkAuth();
     return () => {
       document.body.classList.remove("settings-page-body");
     };
@@ -372,8 +374,9 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
+    const timers = autoSaveTimers.current;
     return () => {
-      autoSaveTimers.current.forEach((timer) => window.clearTimeout(timer));
+      timers.forEach((timer) => window.clearTimeout(timer));
     };
   }, []);
 
@@ -518,9 +521,9 @@ export default function SettingsPage() {
   const handleConfirmDeleteAccount = () => {
     setIsDeletingAccount(true);
     window.setTimeout(async () => {
-      const { createBrowserClient } = await import('@/lib/supabase/client')
-      const supabase = createBrowserClient()
-      await supabase.auth.signOut()
+      const { createBrowserClient } = await import("@/lib/supabase/client");
+      const supabase = createBrowserClient();
+      await supabase.auth.signOut();
       setIsDeletingAccount(false);
       setShowDeleteModal(false);
       setDeleteConfirmText("");

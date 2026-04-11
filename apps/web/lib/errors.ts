@@ -6,45 +6,48 @@ export class CovaError extends Error {
   constructor(
     message: string,
     public readonly code: string,
-    public readonly context?: Record<string, unknown>
+    public readonly context?: Record<string, unknown>,
   ) {
-    super(message)
-    this.name = 'CovaError'
+    super(message);
+    this.name = "CovaError";
   }
 }
 
 export class RenderError extends CovaError {
   constructor(message: string, context?: Record<string, unknown>) {
-    super(message, 'RENDER_FAILED', context)
-    this.name = 'RenderError'
+    super(message, "RENDER_FAILED", context);
+    this.name = "RenderError";
   }
 }
 
 export class MatchError extends CovaError {
   constructor(message: string, context?: Record<string, unknown>) {
-    super(message, 'MATCH_FAILED', context)
-    this.name = 'MatchError'
+    super(message, "MATCH_FAILED", context);
+    this.name = "MatchError";
   }
 }
 
 export class DetectError extends CovaError {
   constructor(message: string, context?: Record<string, unknown>) {
-    super(message, 'DETECT_FAILED', context)
-    this.name = 'DetectError'
+    super(message, "DETECT_FAILED", context);
+    this.name = "DetectError";
   }
 }
 
 export class AuthError extends CovaError {
-  constructor(message: string = 'Authentication required') {
-    super(message, 'AUTH_REQUIRED')
-    this.name = 'AuthError'
+  constructor(message: string = "Authentication required") {
+    super(message, "AUTH_REQUIRED");
+    this.name = "AuthError";
   }
 }
 
 export class RateLimitError extends CovaError {
-  constructor(message: string = 'Rate limit exceeded', retryAfterSeconds?: number) {
-    super(message, 'RATE_LIMITED', { retry_after: retryAfterSeconds })
-    this.name = 'RateLimitError'
+  constructor(
+    message: string = "Rate limit exceeded",
+    retryAfterSeconds?: number,
+  ) {
+    super(message, "RATE_LIMITED", { retry_after: retryAfterSeconds });
+    this.name = "RateLimitError";
   }
 }
 
@@ -53,20 +56,20 @@ export class RateLimitError extends CovaError {
  */
 export async function captureError(
   error: unknown,
-  context?: Record<string, unknown>
+  context?: Record<string, unknown>,
 ): Promise<void> {
-  const err = error instanceof Error ? error : new Error(String(error))
+  const err = error instanceof Error ? error : new Error(String(error));
 
-  if (process.env.NODE_ENV !== 'production') {
-    console.error('[CovaError]', err.message, context ?? '')
-    return
+  if (process.env.NODE_ENV !== "production") {
+    console.error("[CovaError]", err.message, context ?? "");
+    return;
   }
 
   try {
-    const Sentry = await import('@sentry/nextjs')
-    Sentry.captureException(err, { extra: context })
+    const Sentry = await import("@sentry/nextjs");
+    Sentry.captureException(err, { extra: context });
   } catch {
     // Sentry not configured — fail silently
-    console.error('[CovaError]', err.message)
+    console.error("[CovaError]", err.message);
   }
 }

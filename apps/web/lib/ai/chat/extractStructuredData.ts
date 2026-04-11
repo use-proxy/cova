@@ -12,18 +12,18 @@
  * stalls.
  */
 
-import Anthropic from '@anthropic-ai/sdk'
-import type { TabId } from '@/lib/types/area2'
+import Anthropic from "@anthropic-ai/sdk";
+import type { TabId } from "@/lib/types/area2";
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-export type LooseTabExtracted = Record<string, unknown>
+export type LooseTabExtracted = Record<string, unknown>;
 
 export interface ExtractionResult {
-  extractedData: LooseTabExtracted
-  tabComplete: boolean
-  shouldGenerateArt: boolean
-  artPrompt: string | null
+  extractedData: LooseTabExtracted;
+  tabComplete: boolean;
+  shouldGenerateArt: boolean;
+  artPrompt: string | null;
 }
 
 const TAB_SCHEMAS: Record<TabId, string> = {
@@ -34,18 +34,18 @@ const TAB_SCHEMAS: Record<TabId, string> = {
   tech: `{ hasTV?: boolean, tvSizeInches?: number, tvMountType?: string, tvPlacementWall?: string, audioSetup?: string, smartLighting?: boolean, lightingType?: string, hasWorkFromHome?: boolean, wfhSetup?: string, hasGamingSetup?: boolean, gamingSetup?: string, otherTech?: string }`,
   sensory: `{ throwCushionDensity?: 1|2|3|4|5, throwStyle?: string, plantPresence?: string, plantSpecies?: string[], hasCandles?: boolean, candleStyle?: string, hasRug?: boolean, rugSize?: string, rugStyle?: string, rugColor?: string, windowTreatments?: string, windowTreatmentColor?: string, hasDiffuser?: boolean, overallDensity?: "minimal"|"balanced"|"maximalist" }`,
   identity: `{ culturalReference?: string, culturalReferenceIntensity?: "subtle"|"moderate"|"prominent", fandoms?: string[], fandomTreatment?: string, interests?: string[], moodTarget?: string, moodKeywords?: string[], personalityTags?: string[] }`,
-}
+};
 
 function parseArtPrompt(reply: string): string | null {
-  const match = reply.match(/\[GENERATE_ART:\s*([^\]]+)\]/i)
-  return match ? match[1]!.trim() : null
+  const match = reply.match(/\[GENERATE_ART:\s*([^\]]+)\]/i);
+  return match ? match[1]!.trim() : null;
 }
 
 function stripSentinels(text: string): string {
   return text
-    .replace(/\[TAB_COMPLETE\]/gi, '')
-    .replace(/\[GENERATE_ART:[^\]]+\]/gi, '')
-    .trim()
+    .replace(/\[TAB_COMPLETE\]/gi, "")
+    .replace(/\[GENERATE_ART:[^\]]+\]/gi, "")
+    .trim();
 }
 
 export async function extractStructuredData(
@@ -53,18 +53,23 @@ export async function extractStructuredData(
   aiReply: string,
   userMessage: string,
   currentExtracted: LooseTabExtracted,
-  _urlInput?: string
+  _urlInput?: string,
 ): Promise<ExtractionResult> {
-  const tabComplete = /\[TAB_COMPLETE\]/i.test(aiReply)
-  const artPrompt = parseArtPrompt(aiReply)
-  const shouldGenerateArt = artPrompt !== null
+  const tabComplete = /\[TAB_COMPLETE\]/i.test(aiReply);
+  const artPrompt = parseArtPrompt(aiReply);
+  const shouldGenerateArt = artPrompt !== null;
 
   // Only extract on completion — saves ~60 Claude calls per session
   if (!tabComplete) {
-    return { extractedData: currentExtracted, tabComplete: false, shouldGenerateArt, artPrompt }
+    return {
+      extractedData: currentExtracted,
+      tabComplete: false,
+      shouldGenerateArt,
+      artPrompt,
+    };
   }
 
-  const schema = TAB_SCHEMAS[tab]
+  const schema = TAB_SCHEMAS[tab];
   const extractionPrompt = `You are a silent data-extraction worker. Read the conversation exchange and return ONLY a JSON object matching this schema for the "${tab}" tab:
 
 ${schema}
@@ -72,34 +77,34 @@ ${schema}
 Only include fields whose values were explicitly communicated in THIS exchange. Do not invent data. If nothing new was communicated, return {}. Return ONLY the JSON object. No prose, no markdown fences.
 
 CONVERSATION:
-User: ${userMessage || '(opening)'}
+User: ${userMessage || "(opening)"}
 Assistant: ${stripSentinels(aiReply)}
 
 CURRENTLY ACCUMULATED:
-${JSON.stringify(currentExtracted)}`
+${JSON.stringify(currentExtracted)}`;
 
   try {
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: "claude-sonnet-4-6",
       max_tokens: 400,
-      messages: [{ role: 'user', content: extractionPrompt }],
-    })
+      messages: [{ role: "user", content: extractionPrompt }],
+    });
     const text =
-      response.content[0]?.type === 'text' ? response.content[0].text : '{}'
-    const clean = text.replace(/```json|```/g, '').trim()
-    const parsed = JSON.parse(clean) as LooseTabExtracted
+      response.content[0]?.type === "text" ? response.content[0].text : "{}";
+    const clean = text.replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(clean) as LooseTabExtracted;
     return {
       extractedData: { ...currentExtracted, ...parsed },
       tabComplete,
       shouldGenerateArt,
       artPrompt,
-    }
+    };
   } catch {
     return {
       extractedData: currentExtracted,
       tabComplete,
       shouldGenerateArt,
       artPrompt,
-    }
+    };
   }
 }

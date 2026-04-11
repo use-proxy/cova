@@ -3,18 +3,18 @@
    ============================================================ */
 
 /* ---------- Fonts ---------- */
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap");
 
 /* ---------- CSS Variables ---------- */
 :root {
   --bg: #091829;
   --bg-deep: #060f1d;
-  --gold: #C9A84C;
+  --gold: #c9a84c;
   --gold-light: #e0c56a;
   --gold-pale: #f0dfa0;
   --gold-glow: rgba(201, 168, 76, 0.35);
   --gold-glow-strong: rgba(201, 168, 76, 0.55);
-  --ivory: #F5F0E8;
+  --ivory: #f5f0e8;
   --ivory-bright: #faf7f2;
   --muted: rgba(245, 240, 232, 0.45);
   --muted-soft: rgba(245, 240, 232, 0.25);
@@ -24,8 +24,8 @@
   --border: rgba(201, 168, 76, 0.12);
   --border-hover: rgba(201, 168, 76, 0.35);
   --border-active: rgba(201, 168, 76, 0.6);
-  --font-heading: 'Playfair Display', Georgia, serif;
-  --font-ui: 'DM Sans', system-ui, -apple-system, sans-serif;
+  --font-heading: "Playfair Display", Georgia, serif;
+  --font-ui: "DM Sans", system-ui, -apple-system, sans-serif;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-smooth: cubic-bezier(0.25, 0.46, 0.45, 0.94);
@@ -55,26 +55,34 @@
 
 /* Ambient background glow */
 .step7b-page::before {
-  content: '';
+  content: "";
   position: fixed;
   top: -30%;
   left: 50%;
   transform: translateX(-50%);
   width: 800px;
   height: 800px;
-  background: radial-gradient(circle, rgba(201, 168, 76, 0.04) 0%, transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(201, 168, 76, 0.04) 0%,
+    transparent 70%
+  );
   pointer-events: none;
   z-index: 0;
 }
 
 .step7b-page::after {
-  content: '';
+  content: "";
   position: fixed;
   bottom: -20%;
   right: -10%;
   width: 600px;
   height: 600px;
-  background: radial-gradient(circle, rgba(201, 168, 76, 0.025) 0%, transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(201, 168, 76, 0.025) 0%,
+    transparent 70%
+  );
   pointer-events: none;
   z-index: 0;
 }
@@ -95,7 +103,9 @@
   backdrop-filter: blur(40px) saturate(1.8);
   -webkit-backdrop-filter: blur(40px) saturate(1.8);
   border-bottom: 1px solid rgba(201, 168, 76, 0.08);
-  transition: background 0.4s ease, box-shadow 0.4s ease;
+  transition:
+    background 0.4s ease,
+    box-shadow 0.4s ease;
 }
 
 .step7b-nav.scrolled {
@@ -122,7 +132,7 @@
 }
 
 .step7b-nav-back::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   border-radius: 50%;
@@ -292,19 +302,24 @@
 
 /* Subtle inner glow at top of card */
 .step7b-card::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 20%;
   right: 20%;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(201, 168, 76, 0.25), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(201, 168, 76, 0.25),
+    transparent
+  );
   z-index: 1;
 }
 
 /* Ambient glow behind card on hover */
 .step7b-card::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: -1px;
   border-radius: 20px;
@@ -329,10 +344,18 @@
 }
 
 /* Staggered delays for cards */
-.step7b-card:nth-child(2) { transition-delay: 0.06s; }
-.step7b-card:nth-child(3) { transition-delay: 0.12s; }
-.step7b-card:nth-child(4) { transition-delay: 0.18s; }
-.step7b-card:nth-child(5) { transition-delay: 0.24s; }
+.step7b-card:nth-child(2) {
+  transition-delay: 0.06s;
+}
+.step7b-card:nth-child(3) {
+  transition-delay: 0.12s;
+}
+.step7b-card:nth-child(4) {
+  transition-delay: 0.18s;
+}
+.step7b-card:nth-child(5) {
+  transition-delay: 0.24s;
+}
 
 .step7b-card-title {
   font-family: var(--font-heading);
@@ -350,7 +373,11 @@
   width: 32px;
   height: 32px;
   border-radius: 10px;
-  background: linear-gradient(135deg, rgba(201, 168, 76, 0.15), rgba(201, 168, 76, 0.05));
+  background: linear-gradient(
+    135deg,
+    rgba(201, 168, 76, 0.15),
+    rgba(201, 168, 76, 0.05)
+  );
   border: 1px solid rgba(201, 168, 76, 0.15);
   display: flex;
   align-items: center;
@@ -420,7 +447,9 @@
 .step7b-toggle.active {
   background: linear-gradient(135deg, var(--gold), var(--gold-light));
   border-color: transparent;
-  box-shadow: 0 0 20px rgba(201, 168, 76, 0.2), 0 2px 8px rgba(201, 168, 76, 0.15);
+  box-shadow:
+    0 0 20px rgba(201, 168, 76, 0.2),
+    0 2px 8px rgba(201, 168, 76, 0.15);
 }
 
 .step7b-toggle-knob {
@@ -431,13 +460,17 @@
   height: 26px;
   border-radius: 50%;
   background: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.1);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.2),
+    0 1px 2px rgba(0, 0, 0, 0.1);
   transition: transform 0.4s var(--ease-spring);
 }
 
 .step7b-toggle.active .step7b-toggle-knob {
   transform: translateX(24px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), 0 0 12px rgba(201, 168, 76, 0.1);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.15),
+    0 0 12px rgba(201, 168, 76, 0.1);
 }
 
 /* ---------- Slider (Premium) ---------- */
@@ -503,18 +536,22 @@
     0 2px 8px rgba(0, 0, 0, 0.25);
   transform: translate(-50%, -50%);
   cursor: grab;
-  transition: box-shadow 0.3s ease, transform 0.2s var(--ease-spring);
+  transition:
+    box-shadow 0.3s ease,
+    transform 0.2s var(--ease-spring);
   z-index: 2;
 }
 
 .step7b-slider-orb::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: -6px;
   border-radius: 50%;
   border: 1px solid rgba(201, 168, 76, 0.15);
   opacity: 0;
-  transition: opacity 0.3s ease, inset 0.3s var(--ease-spring);
+  transition:
+    opacity 0.3s ease,
+    inset 0.3s var(--ease-spring);
 }
 
 .step7b-slider-orb:hover,
@@ -568,13 +605,18 @@
 
 /* Shimmer on hover */
 .step7b-pill::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(201, 168, 76, 0.06), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(201, 168, 76, 0.06),
+    transparent
+  );
   transition: left 0.5s ease;
 }
 
@@ -591,10 +633,16 @@
 
 .step7b-pill.selected {
   border-color: var(--gold);
-  background: linear-gradient(135deg, rgba(201, 168, 76, 0.18), rgba(201, 168, 76, 0.08));
+  background: linear-gradient(
+    135deg,
+    rgba(201, 168, 76, 0.18),
+    rgba(201, 168, 76, 0.08)
+  );
   color: var(--gold);
   transform: scale(1.04);
-  box-shadow: 0 0 16px rgba(201, 168, 76, 0.1), 0 2px 8px rgba(201, 168, 76, 0.08);
+  box-shadow:
+    0 0 16px rgba(201, 168, 76, 0.1),
+    0 2px 8px rgba(201, 168, 76, 0.08);
 }
 
 /* ---------- Icon Card Selector ---------- */
@@ -622,7 +670,7 @@
 
 /* Top edge glow on selected */
 .step7b-icon-card::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 20%;
@@ -644,9 +692,15 @@
 
 .step7b-icon-card.selected {
   border-color: var(--gold);
-  background: linear-gradient(165deg, rgba(201, 168, 76, 0.1), rgba(201, 168, 76, 0.03));
+  background: linear-gradient(
+    165deg,
+    rgba(201, 168, 76, 0.1),
+    rgba(201, 168, 76, 0.03)
+  );
   transform: translateY(-4px);
-  box-shadow: 0 8px 32px rgba(201, 168, 76, 0.1), 0 0 0 1px rgba(201, 168, 76, 0.15);
+  box-shadow:
+    0 8px 32px rgba(201, 168, 76, 0.1),
+    0 0 0 1px rgba(201, 168, 76, 0.15);
 }
 
 .step7b-icon-card.selected::before {
@@ -687,7 +741,9 @@
   height: 34px;
   position: relative;
   opacity: 0.35;
-  transition: opacity 0.35s ease, transform 0.35s var(--ease-out-expo);
+  transition:
+    opacity 0.35s ease,
+    transform 0.35s var(--ease-out-expo);
 }
 
 .step7b-icon-card:hover .floor-icon {
@@ -714,8 +770,13 @@
   background: var(--gold);
 }
 
-.floor-hardwood-plank:nth-child(odd) { width: 100%; }
-.floor-hardwood-plank:nth-child(even) { width: 65%; margin-left: 35%; }
+.floor-hardwood-plank:nth-child(odd) {
+  width: 100%;
+}
+.floor-hardwood-plank:nth-child(even) {
+  width: 65%;
+  margin-left: 35%;
+}
 
 /* Tile */
 .floor-tile {
@@ -738,13 +799,19 @@
   height: 100%;
   border-radius: 5px;
   background: repeating-linear-gradient(
-    0deg, transparent, transparent 3px, var(--gold) 3px, var(--gold) 4px
+    0deg,
+    transparent,
+    transparent 3px,
+    var(--gold) 3px,
+    var(--gold) 4px
   );
   opacity: 0.6;
 }
 
 .step7b-icon-card:hover .floor-carpet,
-.step7b-icon-card.selected .floor-carpet { opacity: 0.9; }
+.step7b-icon-card.selected .floor-carpet {
+  opacity: 0.9;
+}
 
 /* Concrete */
 .floor-concrete {
@@ -756,7 +823,7 @@
 }
 
 .floor-concrete::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 30%;
   left: 20%;
@@ -768,7 +835,7 @@
 }
 
 .floor-concrete::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 60%;
   left: 10%;
@@ -791,7 +858,11 @@
 .floor-mixed-a {
   border-radius: 3px;
   background: repeating-linear-gradient(
-    0deg, transparent, transparent 4px, var(--gold) 4px, var(--gold) 5px
+    0deg,
+    transparent,
+    transparent 4px,
+    var(--gold) 4px,
+    var(--gold) 5px
   );
 }
 
@@ -829,7 +900,7 @@
 }
 
 .step7b-stepper-btn::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   border-radius: 50%;
@@ -883,7 +954,10 @@
   line-height: 1.7;
   resize: vertical;
   outline: none;
-  transition: border-color 0.4s ease, box-shadow 0.4s ease, background 0.4s ease;
+  transition:
+    border-color 0.4s ease,
+    box-shadow 0.4s ease,
+    background 0.4s ease;
   letter-spacing: 0.1px;
 }
 
@@ -894,7 +968,9 @@
 
 .step7b-textarea:focus {
   border-color: var(--gold);
-  box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.08), 0 0 24px rgba(201, 168, 76, 0.06);
+  box-shadow:
+    0 0 0 3px rgba(201, 168, 76, 0.08),
+    0 0 24px rgba(201, 168, 76, 0.06);
   background: rgba(255, 255, 255, 0.045);
 }
 
@@ -910,7 +986,11 @@
   align-items: center;
   gap: 16px;
   padding: 20px 24px 28px;
-  background: linear-gradient(to top, rgba(6, 15, 29, 0.98) 0%, rgba(9, 24, 41, 0.9) 100%);
+  background: linear-gradient(
+    to top,
+    rgba(6, 15, 29, 0.98) 0%,
+    rgba(9, 24, 41, 0.9) 100%
+  );
   backdrop-filter: blur(40px) saturate(1.6);
   -webkit-backdrop-filter: blur(40px) saturate(1.6);
   border-top: 1px solid rgba(201, 168, 76, 0.08);
@@ -941,13 +1021,18 @@
 
 /* Shimmer sweep on CTA */
 .step7b-cta::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: -100%;
   width: 60%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
   transition: left 0.6s ease;
 }
 

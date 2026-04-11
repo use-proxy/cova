@@ -135,13 +135,13 @@ This is intentional and safe — there are no production users. The TypeScript a
 
 ## Verification gates passed
 
-| Gate | Result |
-|---|---|
-| `npx tsc --noEmit` | ✅ exit 0, zero errors |
-| `npm run build` | ✅ Compiled successfully, no Failed-to-compile |
-| Replicate spend | ✅ $0 (per Session A scope) |
-| `quiz_anchor_images` / `quiz_comparison_pairs` schema | ⏸ deferred to Session B |
-| Quiz library generation | ⏸ deferred to Session B |
+| Gate                                                  | Result                                         |
+| ----------------------------------------------------- | ---------------------------------------------- |
+| `npx tsc --noEmit`                                    | ✅ exit 0, zero errors                         |
+| `npm run build`                                       | ✅ Compiled successfully, no Failed-to-compile |
+| Replicate spend                                       | ✅ $0 (per Session A scope)                    |
+| `quiz_anchor_images` / `quiz_comparison_pairs` schema | ⏸ deferred to Session B                        |
+| Quiz library generation                               | ⏸ deferred to Session B                        |
 
 ---
 

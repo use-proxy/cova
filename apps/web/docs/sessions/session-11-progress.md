@@ -9,6 +9,7 @@ in local React state, sent them to the server via PATCH, but never persisted to 
 fingerprint store. Step-6 had hard-coded `inclusions: []`, `constraints: []`.
 
 **Fix:**
+
 - Added `inclusions: string[]`, `constraints: string[]`, `roomDimension: 'small' | 'medium' | 'large' | null`
   to `FingerprintState` in `lib/store/fingerprint.ts`
 - Added setters: `setInclusions`, `setConstraints`, `setRoomDimension`
@@ -27,6 +28,7 @@ Step-6 already sends `fingerprint_vector` which matches the render route's
 was tracked anywhere. Status route never returned `preview_url`.
 
 **Fix:**
+
 - `lib/ai/flux.ts`: Added `submitSchnellRender(prompt)` — fires `black-forest-labs/flux-schnell`
   (text-to-image, no input_images)
 - `app/api/render/route.ts`: Fires Schnell in parallel (non-fatal if it fails). Stores
@@ -66,6 +68,7 @@ CHAR COUNT: 680
 
 Old: `buildFluxPrompt(fingerprint, roomType, budgetTier, inclusions, keptItems?)`  
 New: `buildFluxPrompt(params: BuildFluxPromptParams)` where params includes:
+
 - `fingerprint`, `roomType`, `budgetTier`, `inclusions`, `constraints`, `keptItemLabels`, `roomAnalysis`
 
 Note: JSON format NOT used. Kept natural language — FLUX diffusion models don't parse JSON.
@@ -95,6 +98,7 @@ japandi archetype dimension_labels.
 ## Render pipeline test evidence
 
 Pipeline_cost_log for single-stage render now includes `schnell_prediction_id`:
+
 ```json
 {
   "positive_prompt": "A bedroom,. bright airy...",
@@ -109,18 +113,18 @@ Pipeline_cost_log for single-stage render now includes `schnell_prediction_id`:
 
 ## Files changed
 
-| File | Change |
-|---|---|
-| `lib/store/fingerprint.ts` | +inclusions, constraints, roomDimension state + setters |
-| `app/design/step-5/page.tsx` | Calls store setters in handleDesignMyRoom |
-| `app/design/step-6/page.tsx` | Uses store inclusions/constraints; passes schnell param |
-| `lib/ai/flux.ts` | params object signature; +constraints/roomAnalysis; +submitSchnellRender |
-| `app/api/render/route.ts` | Updated buildFluxPrompt call; fires Schnell; stores schnell ID |
-| `app/api/render/status/route.ts` | Checks Schnell; returns preview_url |
-| `scripts/seed-style-references.ts` | NEW — seeds 15 style references |
-| `app/api/style-references/match/route.ts` | NEW — cosine sim match API |
-| `middleware.ts` | +/api/style-references/match to public routes |
-| `tests/ai/flux.test.ts` | Updated to use new params object signature |
+| File                                      | Change                                                                   |
+| ----------------------------------------- | ------------------------------------------------------------------------ |
+| `lib/store/fingerprint.ts`                | +inclusions, constraints, roomDimension state + setters                  |
+| `app/design/step-5/page.tsx`              | Calls store setters in handleDesignMyRoom                                |
+| `app/design/step-6/page.tsx`              | Uses store inclusions/constraints; passes schnell param                  |
+| `lib/ai/flux.ts`                          | params object signature; +constraints/roomAnalysis; +submitSchnellRender |
+| `app/api/render/route.ts`                 | Updated buildFluxPrompt call; fires Schnell; stores schnell ID           |
+| `app/api/render/status/route.ts`          | Checks Schnell; returns preview_url                                      |
+| `scripts/seed-style-references.ts`        | NEW — seeds 15 style references                                          |
+| `app/api/style-references/match/route.ts` | NEW — cosine sim match API                                               |
+| `middleware.ts`                           | +/api/style-references/match to public routes                            |
+| `tests/ai/flux.test.ts`                   | Updated to use new params object signature                               |
 
 ## Commit
 

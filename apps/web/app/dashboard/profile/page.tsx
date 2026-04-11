@@ -1,38 +1,38 @@
-import Link from 'next/link'
-import { redirect } from 'next/navigation'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { getUserFingerprint } from '@/lib/dashboard/queries'
-import { generateSwatchesFromFingerprint } from '@/lib/dashboard/colorUtils'
-import { CovaCard } from '@/components/cova/CovaCard'
-import { CovaButton } from '@/components/cova/CovaButton'
-import { GoldDivider } from '@/components/cova/GoldDivider'
-import { DeleteAccountButton } from '@/components/dashboard/DeleteAccountButton'
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getUserFingerprint } from "@/lib/dashboard/queries";
+import { generateSwatchesFromFingerprint } from "@/lib/dashboard/colorUtils";
+import { CovaCard } from "@/components/cova/CovaCard";
+import { CovaButton } from "@/components/cova/CovaButton";
+import { GoldDivider } from "@/components/cova/GoldDivider";
+import { DeleteAccountButton } from "@/components/dashboard/DeleteAccountButton";
 
 export default async function ProfilePage() {
-  const supabase = await createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect('/')
+    redirect("/");
   }
 
-  const fingerprint = await getUserFingerprint(user.id)
+  const fingerprint = await getUserFingerprint(user.id);
 
-  const memberSince = new Intl.DateTimeFormat('en-US', {
-    month: 'long',
-    year: 'numeric',
-  }).format(new Date(user.created_at))
+  const memberSince = new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    year: "numeric",
+  }).format(new Date(user.created_at));
 
-  const provider = user.app_metadata?.provider ?? 'email'
+  const provider = user.app_metadata?.provider ?? "email";
   const providerLabel =
-    provider === 'google' ? 'Google' : provider === 'apple' ? 'Apple' : 'Email'
+    provider === "google" ? "Google" : provider === "apple" ? "Apple" : "Email";
 
   const swatches = fingerprint
     ? generateSwatchesFromFingerprint(fingerprint.dimensions)
-    : []
-  const styleTags = fingerprint?.style_tags?.slice(0, 4) ?? []
+    : [];
+  const styleTags = fingerprint?.style_tags?.slice(0, 4) ?? [];
 
   return (
     <>
@@ -40,7 +40,9 @@ export default async function ProfilePage() {
 
       {/* Account section */}
       <section className="mb-8">
-        <h2 className="mb-4 text-lg font-semibold text-cova-ivory-dim">Account</h2>
+        <h2 className="mb-4 text-lg font-semibold text-cova-ivory-dim">
+          Account
+        </h2>
         <CovaCard variant="default">
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
@@ -65,13 +67,15 @@ export default async function ProfilePage() {
 
       {/* Your Style section */}
       <section className="mb-8">
-        <h2 className="mb-4 text-lg font-semibold text-cova-ivory-dim">Your Style</h2>
+        <h2 className="mb-4 text-lg font-semibold text-cova-ivory-dim">
+          Your Style
+        </h2>
         <CovaCard variant="elevated">
           {fingerprint ? (
             <>
               <div className="flex items-center justify-between">
                 <p className="font-serif text-2xl text-cova-gold">
-                  {fingerprint.style_name ?? 'Your Style'}
+                  {fingerprint.style_name ?? "Your Style"}
                 </p>
                 <Link
                   href="/design/step-3"
@@ -123,11 +127,15 @@ export default async function ProfilePage() {
 
       {/* Danger Zone */}
       <section>
-        <h2 className="mb-4 text-lg font-semibold text-cova-ivory-dim">Danger Zone</h2>
+        <h2 className="mb-4 text-lg font-semibold text-cova-ivory-dim">
+          Danger Zone
+        </h2>
         <CovaCard variant="default" className="border-cova-error/30">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-cova-ivory">Delete Account</p>
+              <p className="text-sm font-medium text-cova-ivory">
+                Delete Account
+              </p>
               <p className="mt-1 text-xs text-cova-muted">
                 Permanently remove your account and all data
               </p>
@@ -137,5 +145,5 @@ export default async function ProfilePage() {
         </CovaCard>
       </section>
     </>
-  )
+  );
 }

@@ -1,55 +1,59 @@
-import { create } from 'zustand'
-import { persist, createJSONStorage } from 'zustand/middleware'
-import type { StyleFingerprint } from '@/types/fingerprint'
+import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+import type { StyleFingerprint } from "@/types/fingerprint";
 
-export type { StyleFingerprint }
+export type { StyleFingerprint };
 
 export interface PairwiseResponse {
   /** Single id from quiz_comparison_pairs.id (Session C). */
-  pairId: string
+  pairId: string;
   /** Which side of the pair the user chose. 'skip' is reserved for a future
    *  UI session — the current step-3 quiz only emits 'A' or 'B'. */
-  chosenSide: 'A' | 'B' | 'skip'
-  responseTimeMs: number
+  chosenSide: "A" | "B" | "skip";
+  responseTimeMs: number;
 }
 
 export interface ShowcasePrediction {
-  predictionId: string
-  label: string
+  predictionId: string;
+  label: string;
 }
 
-type BudgetTier = 'budget' | 'mid' | 'premium' | 'luxury'
+type BudgetTier = "budget" | "mid" | "premium" | "luxury";
 
 interface FingerprintState {
-  roomType: string | null
-  budgetTier: BudgetTier | null
-  budgetRange: [number, number] | null
-  isGiftMode: boolean
-  phaseASelections: string[]
-  phaseBResponses: PairwiseResponse[]
-  fingerprint: StyleFingerprint | null
-  styleName: string | null
-  styleTags: string[]
-  styleExplanation: string | null
-  showcasePredictionIds: ShowcasePrediction[]
+  roomType: string | null;
+  budgetTier: BudgetTier | null;
+  budgetRange: [number, number] | null;
+  isGiftMode: boolean;
+  phaseASelections: string[];
+  phaseBResponses: PairwiseResponse[];
+  fingerprint: StyleFingerprint | null;
+  styleName: string | null;
+  styleTags: string[];
+  styleExplanation: string | null;
+  showcasePredictionIds: ShowcasePrediction[];
   // Step-5 space details — persisted so render route receives them
-  inclusions: string[]
-  constraints: string[]
-  roomDimension: 'small' | 'medium' | 'large' | null
+  inclusions: string[];
+  constraints: string[];
+  roomDimension: "small" | "medium" | "large" | null;
 
-  setRoomType: (roomType: string) => void
-  setBudget: (tier: BudgetTier, range: [number, number]) => void
-  setGiftMode: (enabled: boolean) => void
-  addPhaseASelection: (imageId: string) => void
-  removePhaseASelection: (imageId: string) => void
-  addPhaseBResponse: (response: PairwiseResponse) => void
-  setFingerprint: (fingerprint: StyleFingerprint, styleName: string, styleTags: string[]) => void
-  setStyleExplanation: (explanation: string) => void
-  setShowcasePredictionIds: (ids: ShowcasePrediction[]) => void
-  setInclusions: (inclusions: string[]) => void
-  setConstraints: (constraints: string[]) => void
-  setRoomDimension: (dimension: 'small' | 'medium' | 'large') => void
-  resetFingerprint: () => void
+  setRoomType: (roomType: string) => void;
+  setBudget: (tier: BudgetTier, range: [number, number]) => void;
+  setGiftMode: (enabled: boolean) => void;
+  addPhaseASelection: (imageId: string) => void;
+  removePhaseASelection: (imageId: string) => void;
+  addPhaseBResponse: (response: PairwiseResponse) => void;
+  setFingerprint: (
+    fingerprint: StyleFingerprint,
+    styleName: string,
+    styleTags: string[],
+  ) => void;
+  setStyleExplanation: (explanation: string) => void;
+  setShowcasePredictionIds: (ids: ShowcasePrediction[]) => void;
+  setInclusions: (inclusions: string[]) => void;
+  setConstraints: (constraints: string[]) => void;
+  setRoomDimension: (dimension: "small" | "medium" | "large") => void;
+  resetFingerprint: () => void;
 }
 
 /**
@@ -67,7 +71,7 @@ interface FingerprintState {
  * successful session establishment and persists the fingerprint to Supabase
  * style_fingerprints under the newly authenticated user, then clears the cookie.
  */
-const COOKIE_NAME = 'cova_anon_fingerprint'
+const COOKIE_NAME = "cova_anon_fingerprint";
 
 /**
  * Custom storage adapter that writes fingerprint state to a cookie so it
@@ -78,52 +82,52 @@ const COOKIE_NAME = 'cova_anon_fingerprint'
 const fingerprintCookieStorage = {
   getItem: (_name: string): string | null => {
     try {
-      if (typeof document === 'undefined') return null
+      if (typeof document === "undefined") return null;
       // Primary: read from cookie
-      const cookies = document.cookie.split('; ')
+      const cookies = document.cookie.split("; ");
       for (const cookie of cookies) {
-        const eqIdx = cookie.indexOf('=')
-        if (eqIdx === -1) continue
-        const key = cookie.slice(0, eqIdx)
+        const eqIdx = cookie.indexOf("=");
+        if (eqIdx === -1) continue;
+        const key = cookie.slice(0, eqIdx);
         if (key === COOKIE_NAME) {
-          const encoded = cookie.slice(eqIdx + 1)
+          const encoded = cookie.slice(eqIdx + 1);
           try {
-            return decodeURIComponent(atob(encoded))
+            return decodeURIComponent(atob(encoded));
           } catch {
-            return null
+            return null;
           }
         }
       }
       // Secondary: sessionStorage read fallback (same-tab, pre-redirect)
       try {
-        return sessionStorage.getItem(COOKIE_NAME) ?? null
+        return sessionStorage.getItem(COOKIE_NAME) ?? null;
       } catch {
-        return null
+        return null;
       }
     } catch {
-      return null
+      return null;
     }
   },
 
   setItem: (_name: string, value: string): void => {
     try {
-      if (typeof document === 'undefined') return
-      const encoded = btoa(encodeURIComponent(value))
+      if (typeof document === "undefined") return;
+      const encoded = btoa(encodeURIComponent(value));
       if (encoded.length > 3800) {
         console.warn(
-          '[fingerprint-store] Cookie value exceeds 3800 bytes — falling back to sessionStorage'
-        )
+          "[fingerprint-store] Cookie value exceeds 3800 bytes — falling back to sessionStorage",
+        );
         try {
-          sessionStorage.setItem(COOKIE_NAME, value)
+          sessionStorage.setItem(COOKIE_NAME, value);
         } catch {
           /* ignore */
         }
-        return
+        return;
       }
       const isProduction =
-        typeof process !== 'undefined' && process.env.NODE_ENV === 'production'
-      const secure = isProduction ? '; Secure' : ''
-      document.cookie = `${COOKIE_NAME}=${encoded}; Path=/; SameSite=Lax; Max-Age=3600${secure}`
+        typeof process !== "undefined" && process.env.NODE_ENV === "production";
+      const secure = isProduction ? "; Secure" : "";
+      document.cookie = `${COOKIE_NAME}=${encoded}; Path=/; SameSite=Lax; Max-Age=3600${secure}`;
     } catch {
       // Cookie access can fail in restrictive iframe / privacy contexts — ignore silently
     }
@@ -131,13 +135,13 @@ const fingerprintCookieStorage = {
 
   removeItem: (_name: string): void => {
     try {
-      if (typeof document === 'undefined') return
-      document.cookie = `${COOKIE_NAME}=; Path=/; Max-Age=0; SameSite=Lax`
+      if (typeof document === "undefined") return;
+      document.cookie = `${COOKIE_NAME}=; Path=/; Max-Age=0; SameSite=Lax`;
     } catch {
       /* ignore */
     }
   },
-}
+};
 
 const INITIAL_STATE = {
   roomType: null,
@@ -153,8 +157,8 @@ const INITIAL_STATE = {
   showcasePredictionIds: [],
   inclusions: [] as string[],
   constraints: [] as string[],
-  roomDimension: null as 'small' | 'medium' | 'large' | null,
-}
+  roomDimension: null as "small" | "medium" | "large" | null,
+};
 
 export const useFingerprintStore = create<FingerprintState>()(
   persist(
@@ -169,7 +173,9 @@ export const useFingerprintStore = create<FingerprintState>()(
         })),
       removePhaseASelection: (imageId) =>
         set((state) => ({
-          phaseASelections: state.phaseASelections.filter((id) => id !== imageId),
+          phaseASelections: state.phaseASelections.filter(
+            (id) => id !== imageId,
+          ),
         })),
       addPhaseBResponse: (response) =>
         set((state) => ({
@@ -186,7 +192,7 @@ export const useFingerprintStore = create<FingerprintState>()(
       resetFingerprint: () => set(INITIAL_STATE),
     }),
     {
-      name: 'cova-fingerprint-v1',
+      name: "cova-fingerprint-v1",
       // createJSONStorage wraps our cookie adapter so Zustand gets the
       // PersistStorage<T> interface it expects (parse/stringify handled for us).
       storage: createJSONStorage(() => fingerprintCookieStorage),
@@ -206,6 +212,6 @@ export const useFingerprintStore = create<FingerprintState>()(
         constraints: state.constraints,
         roomDimension: state.roomDimension,
       }),
-    }
-  )
-)
+    },
+  ),
+);

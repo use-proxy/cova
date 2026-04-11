@@ -1,33 +1,68 @@
 /* Step 6 — Room Photo Upload. Keyframes and animated utility classes. */
 
 @keyframes step6DotPulse {
-  0%, 80%, 100% { transform: scale(0.7); opacity: 0.4; }
-  40% { transform: scale(1.1); opacity: 1; }
+  0%,
+  80%,
+  100% {
+    transform: scale(0.7);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
 }
 
 @keyframes step6PopIn {
-  from { transform: scale(0); opacity: 0; }
-  to   { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 @keyframes step6UploadZonePulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(201,168,76,0.18); }
-  50%      { box-shadow: 0 0 0 8px rgba(201,168,76,0.04); }
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(201, 168, 76, 0.18);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(201, 168, 76, 0.04);
+  }
 }
 
 @keyframes step6PhotoEnter {
-  from { opacity: 0; transform: scale(1.04); }
-  to   { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 @keyframes step6CameraBob {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-4px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
 }
 
 @keyframes step6BtnPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(201,168,76,0); }
-  50%      { box-shadow: 0 0 0 10px rgba(201,168,76,0.12); }
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(201, 168, 76, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(201, 168, 76, 0.12);
+  }
 }
 
 .upload-zone-pulse {

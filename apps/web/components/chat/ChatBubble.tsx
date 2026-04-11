@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
 interface ChatBubbleProps {
-  onClick: () => void
-  hasUnread: boolean
+  onClick: () => void;
+  hasUnread: boolean;
 }
 
 export function ChatBubble({ onClick, hasUnread }: ChatBubbleProps) {
@@ -18,7 +18,13 @@ export function ChatBubble({ onClick, hasUnread }: ChatBubbleProps) {
     >
       {/* Cova arch mark */}
       <svg width="20" height="14" viewBox="0 0 32 20" fill="none">
-        <path d="M2 18Q16 2 30 18" stroke="white" strokeWidth="3" strokeLinecap="round" fill="none" />
+        <path
+          d="M2 18Q16 2 30 18"
+          stroke="white"
+          strokeWidth="3"
+          strokeLinecap="round"
+          fill="none"
+        />
       </svg>
 
       {/* Unread badge */}
@@ -29,5 +35,5 @@ export function ChatBubble({ onClick, hasUnread }: ChatBubbleProps) {
         />
       )}
     </button>
-  )
+  );
 }

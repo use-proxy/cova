@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 import {
   CSSProperties,
@@ -469,12 +469,14 @@ export default function Home() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const { createBrowserClient } = await import('@/lib/supabase/client')
-      const supabase = createBrowserClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) router.push('/auth')
-    }
-    checkAuth()
+      const { createBrowserClient } = await import("@/lib/supabase/client");
+      const supabase = createBrowserClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) router.push("/auth");
+    };
+    checkAuth();
   }, [router]);
 
   useEffect(() => {
@@ -577,12 +579,16 @@ export default function Home() {
             Start New Room <ArrowLink />
           </button>
           <div className="cova-remaining">3 rooms remaining</div>
-          <button className="cova-sign-out" onClick={async () => {
-            const { createBrowserClient } = await import('@/lib/supabase/client')
-            const supabase = createBrowserClient()
-            await supabase.auth.signOut()
-            router.push('/')
-          }}>
+          <button
+            className="cova-sign-out"
+            onClick={async () => {
+              const { createBrowserClient } =
+                await import("@/lib/supabase/client");
+              const supabase = createBrowserClient();
+              await supabase.auth.signOut();
+              router.push("/");
+            }}
+          >
             Sign out
           </button>
         </div>

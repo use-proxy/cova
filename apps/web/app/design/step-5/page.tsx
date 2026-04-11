@@ -920,9 +920,7 @@ export default function BudgetSetup() {
 
   return (
     <>
-            
-      
-            
+                   
       <ParticleField />
             
       <BgDecor />
@@ -1149,34 +1147,39 @@ export default function BudgetSetup() {
               <button
                 onClick={async () => {
                   // Write budget to area2Store
-                  const tierBudget = TIER_TO_BUDGET[active] ?? TIER_TO_BUDGET[0]!;
+                  const tierBudget =
+                    TIER_TO_BUDGET[active] ?? TIER_TO_BUDGET[0]!;
                   setBudget({
                     rangeMin: tierBudget.rangeMin,
                     rangeMax: tierBudget.rangeMax,
-                    strategy: 'even-quality',
+                    strategy: "even-quality",
                     hardCeiling: false,
                   });
 
                   // Persist to Supabase render_context.budget if roomId exists
                   if (roomId) {
                     try {
-                      const { createBrowserClient } = await import("@/lib/supabase/client");
+                      const { createBrowserClient } =
+                        await import("@/lib/supabase/client");
                       const supabase = createBrowserClient();
                       await supabase
-                        .from('rooms')
+                        .from("rooms")
                         .update({
                           render_context: {
                             budget: {
                               rangeMin: tierBudget.rangeMin,
                               rangeMax: tierBudget.rangeMax,
-                              strategy: 'even-quality',
+                              strategy: "even-quality",
                               hardCeiling: false,
                             },
                           },
                         })
-                        .eq('id', roomId);
+                        .eq("id", roomId);
                     } catch (e) {
-                      console.warn('[step-5] Failed to persist budget to Supabase:', e);
+                      console.warn(
+                        "[step-5] Failed to persist budget to Supabase:",
+                        e,
+                      );
                     }
                   }
 

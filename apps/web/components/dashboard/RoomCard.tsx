@@ -1,11 +1,11 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import Image from 'next/image'
-import { useRouter } from 'next/navigation'
-import { Home, MoreHorizontal } from 'lucide-react'
-import { CovaCard } from '@/components/cova/CovaCard'
-import { CovaButton } from '@/components/cova/CovaButton'
+import { useState } from "react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { Home, MoreHorizontal } from "lucide-react";
+import { CovaCard } from "@/components/cova/CovaCard";
+import { CovaButton } from "@/components/cova/CovaButton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,36 +16,37 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from '@/components/ui/alert-dialog'
-import type { DashboardRoom } from '@/lib/dashboard/queries'
+} from "@/components/ui/alert-dialog";
+import type { DashboardRoom } from "@/lib/dashboard/queries";
 
 interface RoomCardProps {
-  room: DashboardRoom
-  onDelete: (roomId: string) => void
+  room: DashboardRoom;
+  onDelete: (roomId: string) => void;
 }
 
 export function RoomCard({ room, onDelete }: RoomCardProps) {
-  const router = useRouter()
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [deleting, setDeleting] = useState(false)
+  const router = useRouter();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  const imageUrl = room.latest_render_url ?? room.render_url ?? room.original_photo_url
+  const imageUrl =
+    room.latest_render_url ?? room.render_url ?? room.original_photo_url;
 
-  const formattedDate = new Intl.DateTimeFormat('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(new Date(room.created_at))
+  const formattedDate = new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(room.created_at));
 
   async function handleDelete() {
-    setDeleting(true)
+    setDeleting(true);
     try {
-      const res = await fetch(`/api/rooms/${room.id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/rooms/${room.id}`, { method: "DELETE" });
       if (res.ok) {
-        onDelete(room.id)
+        onDelete(room.id);
       }
     } finally {
-      setDeleting(false)
+      setDeleting(false);
     }
   }
 
@@ -70,7 +71,7 @@ export function RoomCard({ room, onDelete }: RoomCardProps) {
         {/* Room type badge */}
         <div className="absolute right-2 top-2 rounded-full bg-cova-bg/80 px-2 py-1 backdrop-blur-sm">
           <span className="text-xs capitalize text-cova-ivory-dim">
-            {room.room_type.replace(/_/g, ' ')}
+            {room.room_type.replace(/_/g, " ")}
           </span>
         </div>
 
@@ -80,8 +81,8 @@ export function RoomCard({ room, onDelete }: RoomCardProps) {
             <div className="relative">
               <button
                 onClick={(e) => {
-                  e.stopPropagation()
-                  setMenuOpen(!menuOpen)
+                  e.stopPropagation();
+                  setMenuOpen(!menuOpen);
                 }}
                 className="flex h-7 w-7 items-center justify-center rounded-full bg-cova-bg/80 text-cova-ivory-dim backdrop-blur-sm transition-colors hover:text-cova-ivory"
                 aria-label="Room options"
@@ -110,13 +111,14 @@ export function RoomCard({ room, onDelete }: RoomCardProps) {
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete this room?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will permanently delete your room and all its renders. This action cannot be undone.
+                  This will permanently delete your room and all its renders.
+                  This action cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction onClick={handleDelete} disabled={deleting}>
-                  {deleting ? 'Deleting…' : 'Delete'}
+                  {deleting ? "Deleting…" : "Delete"}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -153,5 +155,5 @@ export function RoomCard({ room, onDelete }: RoomCardProps) {
         </div>
       </div>
     </CovaCard>
-  )
+  );
 }

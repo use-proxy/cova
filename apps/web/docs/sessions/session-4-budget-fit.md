@@ -1,10 +1,13 @@
 # Session 4 — Budget Allocation, Fit Scoring, Fit Labels on Product Cards
 
 ## Date
+
 2026-04-05
 
 ## Summary
+
 Five features that make product recommendations smarter and safer:
+
 1. Per-item budget allocation — designer ratios per room type
 2. Room-level budget optimizer — swap over-budget items, upgrade under-budget ones
 3. Dimension extraction — regex parser for product titles
@@ -14,11 +17,13 @@ Five features that make product recommendations smarter and safer:
 ## Files Created
 
 ### `lib/ai/budget.ts`
+
 - `BUDGET_ALLOCATION` — professional designer ratios by room type (sofa=35% living room, bed=30% bedroom, etc.)
 - `getItemBudgetTarget(itemLabel, roomType, totalBudgetRange): [number, number]` — fuzzy label→key match, returns [target*0.75, target*1.15]
 - `optimizeRoomSelection(productsByItem, budgetRange)` — greedy over-budget swap + under-budget upgrade loop
 
 ### `lib/ai/fit.ts`
+
 - `ProductDimensions` — `{widthInches, depthInches, heightInches, source, confidence}`
 - `FitLabel` — `'Perfect Fit' | 'Good Fit' | 'Tight Fit' | 'Dimensions Unconfirmed'`
 - `CLEARANCE_RULES` — per-category minimum clearances and maxWidthRatio
@@ -31,6 +36,7 @@ Five features that make product recommendations smarter and safer:
 ## Files Modified
 
 ### `app/api/match/route.ts`
+
 - Added imports: `getItemBudgetTarget`, `extractDimensionsFromText`, `getDimensionsForCategory`, `scoreFit`, `FitScore`
 - Added `primary_wall_usable_inches?: number` to `MatchRequestBody`
 - Added `primary_wall_usable_inches` to body destructuring
@@ -43,6 +49,7 @@ Five features that make product recommendations smarter and safer:
 - CLIP fallback and zero-detection fallback both return `fit_label: 'Dimensions Unconfirmed'`
 
 ### `app/design/step-10/page.tsx`
+
 - Added `roomLength, roomWidth` to `useFingerprintStore()` destructuring
 - Computed `primaryWallUsableInches = Math.max(roomLength, roomWidth) * 12` (undefined when missing)
 - Added `primary_wall_usable_inches: primaryWallUsableInches` to zero-detection fetch body
@@ -50,6 +57,7 @@ Five features that make product recommendations smarter and safer:
 - Added `primaryWallUsableInches` to `useEffect` deps array
 
 ### `components/cova/ShopRoom.tsx`
+
 - Added `fit_label?: string` and `fit_reason?: string` to `MatchedProduct` interface
 - In `ProductCard`, added fit indicator row after retailer+match dot row:
   - Only renders when `fit_label` is set AND is not `'Dimensions Unconfirmed'`
@@ -58,6 +66,7 @@ Five features that make product recommendations smarter and safer:
   - Orange `#D4801A` for "Tight Fit"
 
 ## Acceptance Criteria Check
+
 - [x] `npx tsc --noEmit` passes, zero errors
 - [x] `npm run build` passes
 - [x] `getItemBudgetTarget` returns per-item range (not total room budget)

@@ -1,57 +1,59 @@
-import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import Anthropic from '@anthropic-ai/sdk'
-import { runFluxRender } from '@/lib/ai/flux'
-import { NextResponse } from 'next/server'
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import Anthropic from "@anthropic-ai/sdk";
+import { runFluxRender } from "@/lib/ai/flux";
+import { NextResponse } from "next/server";
 
-const anthropic = new Anthropic()
+const anthropic = new Anthropic();
 
 interface RefineRequestBody {
-  current_render_url: string
-  refinement_text: string
-  room_id: string
-  current_prompt: string
-  style_strength?: number
+  current_render_url: string;
+  refinement_text: string;
+  room_id: string;
+  current_prompt: string;
+  style_strength?: number;
 }
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createServerSupabaseClient()
+    const supabase = await createServerSupabaseClient();
     const {
       data: { user },
-    } = await supabase.auth.getUser()
+    } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = (await request.json()) as RefineRequestBody
+    const body = (await request.json()) as RefineRequestBody;
     const {
       current_render_url,
       refinement_text,
       room_id,
       current_prompt: providedPrompt,
       style_strength = 0.85,
-    } = body
+    } = body;
 
     // Load current prompt from Supabase if not provided by the client
-    let current_prompt = providedPrompt
+    let current_prompt = providedPrompt;
     if (!current_prompt) {
       const { data: roomRow } = await supabase
-        .from('rooms')
-        .select('render_context')
-        .eq('id', room_id)
-        .eq('user_id', user.id)
-        .single()
-      current_prompt = (roomRow?.render_context as { fluxPrompt?: string } | null)?.fluxPrompt ?? ''
+        .from("rooms")
+        .select("render_context")
+        .eq("id", room_id)
+        .eq("user_id", user.id)
+        .single();
+      current_prompt =
+        (roomRow?.render_context as { fluxPrompt?: string } | null)
+          ?.fluxPrompt ?? "";
     }
 
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: "claude-sonnet-4-6",
       max_tokens: 1024,
       messages: [
         {
-          role: 'user',
+          role: "user",
           content: `You are a FLUX image generation prompt engineer for an interior design app.
 
             Current render prompt: "${current_prompt}"
@@ -63,35 +65,55 @@ export async function POST(request: Request) {
             Return only the modified prompt text, nothing else.`,
         },
       ],
-    })
+    });
 
     const modifiedPrompt =
-      message.content[0].type === 'text' ? message.content[0].text.trim() : current_prompt
+      message.content[0].type === "text"
+        ? message.content[0].text.trim()
+        : current_prompt;
 
     const renderUrl = await runFluxRender(
       current_render_url,
-      '',
+      "",
       modifiedPrompt,
-      'distorted walls, wrong perspective, AI artifacts, blurry',
-      style_strength
-    )
+      "distorted walls, wrong perspective, AI artifacts, blurry",
+      style_strength,
+    );
 
-    const admin = createAdminSupabaseClient()
+    const admin = createAdminSupabaseClient();
+
+    // Server-side enforcement: count completed refinements for this room.
+    // Refinement 1 = iteration 2, 2 = iteration 3, 3 = iteration 4 → max iteration = 4.
+    const { count: sessionCount } = await admin
+      .from("render_sessions")
+      .select("id", { count: "exact", head: true })
+      .eq("room_id", room_id);
+    const completedRefinements = Math.max(0, (sessionCount ?? 0) - 1); // subtract initial render
+    const MAX_REFINEMENTS = 3;
+    if (completedRefinements >= MAX_REFINEMENTS) {
+      return NextResponse.json(
+        {
+          error:
+            "Maximum refinements reached. You have used all 3 refinements.",
+        },
+        { status: 403 },
+      );
+    }
 
     const { data: existingSessions } = await admin
-      .from('render_sessions')
-      .select('iteration')
-      .eq('room_id', room_id)
-      .order('iteration', { ascending: false })
-      .limit(1)
+      .from("render_sessions")
+      .select("iteration")
+      .eq("room_id", room_id)
+      .order("iteration", { ascending: false })
+      .limit(1);
 
     const nextIteration =
       existingSessions && existingSessions.length > 0
         ? (existingSessions[0]!.iteration ?? 1) + 1
-        : 2
+        : 2;
 
     const { data: renderSession } = await admin
-      .from('render_sessions')
+      .from("render_sessions")
       .insert({
         room_id,
         render_url: renderUrl,
@@ -99,18 +121,22 @@ export async function POST(request: Request) {
         style_strength,
         iteration: nextIteration,
       })
-      .select('id')
-      .single()
+      .select("id")
+      .single();
 
-    await admin.from('rooms').update({ render_url: renderUrl }).eq('id', room_id)
+    await admin
+      .from("rooms")
+      .update({ render_url: renderUrl })
+      .eq("id", room_id);
 
     return NextResponse.json({
       render_url: renderUrl,
       render_session_id: renderSession?.id,
       modified_prompt: modifiedPrompt,
-    })
+    });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Internal server error'
-    return NextResponse.json({ error: message }, { status: 500 })
+    const message =
+      error instanceof Error ? error.message : "Internal server error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

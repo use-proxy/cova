@@ -9,75 +9,75 @@
  * Output: { items: Array<{ label, boundingBox: { x, y, width, height }, confidence }> }
  */
 
-import { NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import Anthropic from '@anthropic-ai/sdk'
+import { NextResponse } from "next/server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import Anthropic from "@anthropic-ai/sdk";
 
-export const maxDuration = 60
+export const maxDuration = 60;
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 interface DetectedItem {
-  label: string
-  boundingBox: { x: number; y: number; width: number; height: number }
-  confidence: number
+  label: string;
+  boundingBox: { x: number; y: number; width: number; height: number };
+  confidence: number;
 }
 
 export async function POST(request: Request) {
-  const serviceKey = request.headers.get('x-service-key')
+  const serviceKey = request.headers.get("x-service-key");
   const isServiceCall =
-    !!serviceKey && serviceKey === process.env.SUPABASE_SERVICE_ROLE_KEY
+    !!serviceKey && serviceKey === process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   const supabase = isServiceCall
     ? createAdminSupabaseClient()
-    : await createServerSupabaseClient()
+    : await createServerSupabaseClient();
 
-  let userId: string | null = null
+  let userId: string | null = null;
   if (!isServiceCall) {
     const {
       data: { user },
-    } = await supabase.auth.getUser()
+    } = await supabase.auth.getUser();
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    userId = user.id
+    userId = user.id;
   }
 
-  const body = (await request.json()) as { roomId?: string; room_id?: string }
-  const roomId = body.roomId ?? body.room_id
+  const body = (await request.json()) as { roomId?: string; room_id?: string };
+  const roomId = body.roomId ?? body.room_id;
   if (!roomId) {
-    return NextResponse.json({ error: 'roomId required' }, { status: 400 })
+    return NextResponse.json({ error: "roomId required" }, { status: 400 });
   }
 
   // Fetch the rendered image URL
   const query = supabase
-    .from('rooms')
-    .select('redesign_pano_url, perspective_render_url')
-    .eq('id', roomId)
+    .from("rooms")
+    .select("redesign_pano_url, perspective_render_url")
+    .eq("id", roomId);
   const { data: room } = await (userId
-    ? query.eq('user_id', userId).single()
-    : query.single())
+    ? query.eq("user_id", userId).single()
+    : query.single());
 
-  const renderUrl = room?.perspective_render_url ?? room?.redesign_pano_url
+  const renderUrl = room?.perspective_render_url ?? room?.redesign_pano_url;
   if (!renderUrl) {
-    return NextResponse.json({ error: 'No render URL found' }, { status: 404 })
+    return NextResponse.json({ error: "No render URL found" }, { status: 404 });
   }
 
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: "claude-sonnet-4-6",
       max_tokens: 2048,
       messages: [
         {
-          role: 'user',
+          role: "user",
           content: [
             {
-              type: 'image',
-              source: { type: 'url', url: renderUrl },
+              type: "image",
+              source: { type: "url", url: renderUrl },
             },
             {
-              type: 'text',
+              type: "text",
               text: `Analyze this interior room photograph and identify every visible furniture item and decor piece.
 
 For each item, return:
@@ -97,16 +97,16 @@ Be precise with bounding boxes — they should tightly contain each item. Do not
           ],
         },
       ],
-    })
+    });
 
     const text =
-      response.content[0]?.type === 'text' ? response.content[0].text : '{}'
-    let parsed: { items: DetectedItem[] }
+      response.content[0]?.type === "text" ? response.content[0].text : "{}";
+    let parsed: { items: DetectedItem[] };
     try {
-      const clean = text.replace(/```json|```/g, '').trim()
-      parsed = JSON.parse(clean)
+      const clean = text.replace(/```json|```/g, "").trim();
+      parsed = JSON.parse(clean);
     } catch {
-      parsed = { items: [] }
+      parsed = { items: [] };
     }
 
     // Validate and clamp bounding boxes
@@ -115,39 +115,40 @@ Be precise with bounding boxes — they should tightly contain each item. Do not
         (item) =>
           item.label &&
           item.boundingBox &&
-          typeof item.boundingBox.x === 'number' &&
-          typeof item.boundingBox.y === 'number' &&
-          typeof item.boundingBox.width === 'number' &&
-          typeof item.boundingBox.height === 'number'
+          typeof item.boundingBox.x === "number" &&
+          typeof item.boundingBox.y === "number" &&
+          typeof item.boundingBox.width === "number" &&
+          typeof item.boundingBox.height === "number",
       )
       .map((item) => {
-        const { x, y, width, height } = item.boundingBox
-        const cx = Math.max(0, Math.min(100, x))
-        const cy = Math.max(0, Math.min(100, y))
-        const cw = Math.max(1, Math.min(100, width))
-        const ch = Math.max(1, Math.min(100, height))
+        const { x, y, width, height } = item.boundingBox;
+        const cx = Math.max(0, Math.min(100, x));
+        const cy = Math.max(0, Math.min(100, y));
+        const cw = Math.max(1, Math.min(100, width));
+        const ch = Math.max(1, Math.min(100, height));
         if (cx !== x || cy !== y || cw !== width || ch !== height) {
           console.warn(
-            `[detect/render] OOB bbox clamped for "${item.label}": x=${x} y=${y} w=${width} h=${height} → x=${cx} y=${cy} w=${cw} h=${ch}`
-          )
+            `[detect/render] OOB bbox clamped for "${item.label}": x=${x} y=${y} w=${width} h=${height} → x=${cx} y=${cy} w=${cw} h=${ch}`,
+          );
         }
         return {
           label: item.label,
           boundingBox: { x: cx, y: cy, width: cw, height: ch },
           confidence: Math.max(0, Math.min(1, item.confidence ?? 0.5)),
-        }
-      })
+        };
+      });
 
-    // Write to Supabase
-    await supabase
-      .from('rooms')
+    // Write to Supabase — defense in depth: scope by user for non-service calls.
+    const updateQ = supabase
+      .from("rooms")
       .update({ render_detection_result: { items: validatedItems } })
-      .eq('id', roomId)
+      .eq("id", roomId);
+    await (userId ? updateQ.eq("user_id", userId) : updateQ);
 
-    return NextResponse.json({ items: validatedItems })
+    return NextResponse.json({ items: validatedItems });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    console.error('[detect/render] Claude Vision failed:', message)
-    return NextResponse.json({ error: message }, { status: 500 })
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[detect/render] Claude Vision failed:", message);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

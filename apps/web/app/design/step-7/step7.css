@@ -2,11 +2,11 @@
 
 .step7-root {
   --bg: #080f1a;
-  --gold: #C9A84C;
+  --gold: #c9a84c;
   --gold-soft: rgba(201, 168, 76, 0.55);
   --gold-faint: rgba(201, 168, 76, 0.12);
-  --ivory: #F5F0E8;
-  --muted: rgba(245, 240, 232, 0.40);
+  --ivory: #f5f0e8;
+  --muted: rgba(245, 240, 232, 0.4);
   --muted2: rgba(245, 240, 232, 0.18);
 
   position: fixed;
@@ -16,7 +16,7 @@
   overflow: hidden;
   background: var(--bg);
   color: var(--ivory);
-  font-family: 'DM Sans', sans-serif;
+  font-family: "DM Sans", sans-serif;
 }
 
 .step7-root *,
@@ -86,7 +86,7 @@
 .step7-headline {
   position: absolute;
   inset: 0;
-  font-family: 'Playfair Display', serif;
+  font-family: "Playfair Display", serif;
   font-size: clamp(24px, 3.2vw, 32px);
   font-weight: 400;
   font-style: italic;
@@ -124,8 +124,12 @@
 }
 
 @keyframes step7RoomRotate {
-  from { transform: rotateX(-14deg) rotateY(0deg); }
-  to   { transform: rotateX(-14deg) rotateY(360deg); }
+  from {
+    transform: rotateX(-14deg) rotateY(0deg);
+  }
+  to {
+    transform: rotateX(-14deg) rotateY(360deg);
+  }
 }
 
 .step7-wall {
@@ -270,7 +274,7 @@
 
 /* ─── FLOOR REFLECTION ─── */
 .step7-room-stage::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: 12%;
   left: 50%;
@@ -279,7 +283,7 @@
   margin-left: -100px;
   background: radial-gradient(
     ellipse,
-    rgba(201, 168, 76, 0.10) 0%,
+    rgba(201, 168, 76, 0.1) 0%,
     transparent 70%
   );
   filter: blur(12px);
@@ -309,10 +313,21 @@
 }
 
 @keyframes step7ScanDown {
-  0%   { top: 15%; opacity: 0; }
-  5%   { opacity: 1; }
-  85%  { top: 80%; opacity: 1; }
-  100% { top: 80%; opacity: 0; }
+  0% {
+    top: 15%;
+    opacity: 0;
+  }
+  5% {
+    opacity: 1;
+  }
+  85% {
+    top: 80%;
+    opacity: 1;
+  }
+  100% {
+    top: 80%;
+    opacity: 0;
+  }
 }
 
 /* ─── DETECTION DOTS ─── */
@@ -325,7 +340,9 @@
   gap: 6px;
   opacity: 0;
   transform: translateY(6px);
-  transition: opacity 0.6s ease, transform 0.6s ease;
+  transition:
+    opacity 0.6s ease,
+    transform 0.6s ease;
 }
 
 .step7-dot-wrap.visible {
@@ -352,13 +369,23 @@
 }
 
 @keyframes step7DotSoftPulse {
-  0%, 100% { box-shadow: 0 0 6px 2px rgba(201, 168, 76, 0.4); }
-  50%      { box-shadow: 0 0 10px 4px rgba(201, 168, 76, 0.55); }
+  0%,
+  100% {
+    box-shadow: 0 0 6px 2px rgba(201, 168, 76, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 10px 4px rgba(201, 168, 76, 0.55);
+  }
 }
 
 @keyframes step7LabelFloat {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-3px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
 }
 
 /* ─── PROGRESS ─── */
@@ -392,7 +419,7 @@
 }
 
 .step7-progress-fill::after {
-  content: '';
+  content: "";
   position: absolute;
   right: 0;
   top: 50%;
@@ -479,7 +506,7 @@
 }
 
 .step7-cta-label {
-  font-family: 'Playfair Display', serif;
+  font-family: "Playfair Display", serif;
   font-size: 26px;
   font-weight: 400;
   font-style: italic;
@@ -502,7 +529,7 @@
   border: none;
   padding: 0;
   cursor: pointer;
-  font-family: 'Playfair Display', serif;
+  font-family: "Playfair Display", serif;
   font-size: 22px;
   font-weight: 600;
   color: var(--gold);
@@ -516,7 +543,7 @@
   border: 1px solid rgba(201, 168, 76, 0.5);
   background: transparent;
   color: var(--gold);
-  font-family: 'DM Sans', sans-serif;
+  font-family: "DM Sans", sans-serif;
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.18em;
@@ -540,7 +567,7 @@
   border: none;
   cursor: pointer;
   color: var(--gold);
-  font-family: 'DM Sans', sans-serif;
+  font-family: "DM Sans", sans-serif;
   font-size: 12px;
   letter-spacing: 0.06em;
   z-index: 80;
@@ -583,28 +610,76 @@
 
 .step7-cm::before,
 .step7-cm::after {
-  content: '';
+  content: "";
   position: absolute;
   background: rgba(201, 168, 76, 0.12);
 }
 
-.step7-cm-tl { top: 28px; left: 28px; }
-.step7-cm-tl::before { width: 24px; height: 1px; }
-.step7-cm-tl::after  { width: 1px; height: 24px; }
+.step7-cm-tl {
+  top: 28px;
+  left: 28px;
+}
+.step7-cm-tl::before {
+  width: 24px;
+  height: 1px;
+}
+.step7-cm-tl::after {
+  width: 1px;
+  height: 24px;
+}
 
-.step7-cm-tr { top: 28px; right: 28px; }
-.step7-cm-tr::before { width: 24px; height: 1px; right: 0; }
-.step7-cm-tr::after  { width: 1px; height: 24px; right: 0; }
+.step7-cm-tr {
+  top: 28px;
+  right: 28px;
+}
+.step7-cm-tr::before {
+  width: 24px;
+  height: 1px;
+  right: 0;
+}
+.step7-cm-tr::after {
+  width: 1px;
+  height: 24px;
+  right: 0;
+}
 
-.step7-cm-bl { bottom: 28px; left: 28px; }
-.step7-cm-bl::before { width: 24px; height: 1px; bottom: 0; }
-.step7-cm-bl::after  { width: 1px; height: 24px; bottom: 0; }
+.step7-cm-bl {
+  bottom: 28px;
+  left: 28px;
+}
+.step7-cm-bl::before {
+  width: 24px;
+  height: 1px;
+  bottom: 0;
+}
+.step7-cm-bl::after {
+  width: 1px;
+  height: 24px;
+  bottom: 0;
+}
 
-.step7-cm-br { bottom: 28px; right: 28px; }
-.step7-cm-br::before { width: 24px; height: 1px; right: 0; bottom: 0; }
-.step7-cm-br::after  { width: 1px; height: 24px; right: 0; bottom: 0; }
+.step7-cm-br {
+  bottom: 28px;
+  right: 28px;
+}
+.step7-cm-br::before {
+  width: 24px;
+  height: 1px;
+  right: 0;
+  bottom: 0;
+}
+.step7-cm-br::after {
+  width: 1px;
+  height: 24px;
+  right: 0;
+  bottom: 0;
+}
 
 @keyframes step7FadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }

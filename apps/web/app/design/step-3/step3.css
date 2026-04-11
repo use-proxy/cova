@@ -15,10 +15,14 @@
   min-height: 100vh;
   overflow: hidden;
   background:
-    radial-gradient(circle at 50% 18%, rgba(201, 168, 76, 0.14) 0%, rgba(201, 168, 76, 0) 32%),
+    radial-gradient(
+      circle at 50% 18%,
+      rgba(201, 168, 76, 0.14) 0%,
+      rgba(201, 168, 76, 0) 32%
+    ),
     linear-gradient(180deg, #12253a 0%, #0b192a 48%, #091829 100%);
   color: var(--cova-text);
-  font-family: 'DM Sans', system-ui, sans-serif;
+  font-family: "DM Sans", system-ui, sans-serif;
 }
 
 .cova-noise,
@@ -32,16 +36,39 @@
   opacity: 0.07;
   mix-blend-mode: soft-light;
   background-image:
-    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.14) 0 1px, transparent 1px),
-    radial-gradient(circle at 80% 30%, rgba(255, 255, 255, 0.12) 0 1px, transparent 1px),
-    radial-gradient(circle at 50% 70%, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px);
-  background-size: 18px 18px, 22px 22px, 26px 26px;
+    radial-gradient(
+      circle at 20% 20%,
+      rgba(255, 255, 255, 0.14) 0 1px,
+      transparent 1px
+    ),
+    radial-gradient(
+      circle at 80% 30%,
+      rgba(255, 255, 255, 0.12) 0 1px,
+      transparent 1px
+    ),
+    radial-gradient(
+      circle at 50% 70%,
+      rgba(255, 255, 255, 0.08) 0 1px,
+      transparent 1px
+    );
+  background-size:
+    18px 18px,
+    22px 22px,
+    26px 26px;
 }
 
 .cova-glow {
   background:
-    radial-gradient(circle at 50% 0%, rgba(201, 168, 76, 0.12) 0%, rgba(201, 168, 76, 0) 36%),
-    radial-gradient(circle at 50% 100%, rgba(201, 168, 76, 0.09) 0%, rgba(201, 168, 76, 0) 34%);
+    radial-gradient(
+      circle at 50% 0%,
+      rgba(201, 168, 76, 0.12) 0%,
+      rgba(201, 168, 76, 0) 36%
+    ),
+    radial-gradient(
+      circle at 50% 100%,
+      rgba(201, 168, 76, 0.09) 0%,
+      rgba(201, 168, 76, 0) 34%
+    );
 }
 
 .cova-page {
@@ -57,7 +84,7 @@
 
 .cova-page::before,
 .cova-page::after {
-  content: '';
+  content: "";
   position: absolute;
   left: 50%;
   width: min(100vw, 1600px);
@@ -70,8 +97,17 @@
   top: 0;
   height: 10.5rem;
   background:
-    radial-gradient(circle at 50% 0%, rgba(201, 168, 76, 0.2) 0%, rgba(201, 168, 76, 0) 58%),
-    linear-gradient(180deg, rgba(24, 43, 66, 0.96) 0%, rgba(15, 31, 49, 0.88) 56%, rgba(9, 24, 41, 0) 100%);
+    radial-gradient(
+      circle at 50% 0%,
+      rgba(201, 168, 76, 0.2) 0%,
+      rgba(201, 168, 76, 0) 58%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(24, 43, 66, 0.96) 0%,
+      rgba(15, 31, 49, 0.88) 56%,
+      rgba(9, 24, 41, 0) 100%
+    );
   box-shadow: inset 0 -1px 0 rgba(201, 168, 76, 0.12);
 }
 
@@ -79,8 +115,17 @@
   bottom: 0;
   height: 8.5rem;
   background:
-    radial-gradient(circle at 50% 100%, rgba(201, 168, 76, 0.18) 0%, rgba(201, 168, 76, 0) 62%),
-    linear-gradient(0deg, rgba(22, 40, 61, 0.94) 0%, rgba(12, 27, 44, 0.84) 56%, rgba(9, 24, 41, 0) 100%);
+    radial-gradient(
+      circle at 50% 100%,
+      rgba(201, 168, 76, 0.18) 0%,
+      rgba(201, 168, 76, 0) 62%
+    ),
+    linear-gradient(
+      0deg,
+      rgba(22, 40, 61, 0.94) 0%,
+      rgba(12, 27, 44, 0.84) 56%,
+      rgba(9, 24, 41, 0) 100%
+    );
   box-shadow: inset 0 1px 0 rgba(201, 168, 76, 0.1);
 }
 
@@ -107,10 +152,17 @@
   justify-content: center;
   border: 1px solid rgba(225, 201, 132, 0.12);
   border-radius: 999px;
-  background: linear-gradient(180deg, rgba(15, 31, 49, 0.9) 0%, rgba(17, 35, 55, 0.72) 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(15, 31, 49, 0.9) 0%,
+    rgba(17, 35, 55, 0.72) 100%
+  );
   color: var(--cova-text);
   cursor: pointer;
-  transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+  transition:
+    transform 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease;
 }
 
 .cova-back-button:hover {
@@ -139,7 +191,7 @@
 .cova-brand-wordmark,
 .cova-editorial-intro h1,
 .cova-completion-copy {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: "Playfair Display", Georgia, serif;
 }
 
 .cova-brand-wordmark {
@@ -191,7 +243,7 @@
 
 .cova-eyebrow {
   margin: 0;
-  color: #C9A84C;
+  color: #c9a84c;
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.25em;
@@ -204,7 +256,7 @@
   font-size: clamp(42px, 4vw, 58px);
   line-height: 1.05;
   letter-spacing: -0.03em;
-  color: #F5F0E8;
+  color: #f5f0e8;
 }
 
 .cova-subcopy {
@@ -229,7 +281,9 @@
   justify-content: center;
   align-items: start;
   gap: 24px;
-  transition: opacity 540ms cubic-bezier(0.22, 1, 0.36, 1), transform 540ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition:
+    opacity 540ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 540ms cubic-bezier(0.22, 1, 0.36, 1);
   animation: covaSlideIn 620ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -271,7 +325,7 @@
   background: none;
   box-shadow: none;
   color: var(--cova-gold);
-  font-family: 'DM Sans', system-ui, sans-serif;
+  font-family: "DM Sans", system-ui, sans-serif;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.3em;
@@ -308,7 +362,9 @@
 
 .cova-choice-card:hover {
   border: 1px solid rgba(201, 168, 76, 0.7);
-  box-shadow: 0 0 24px rgba(201, 168, 76, 0.18), 0 0 8px rgba(201, 168, 76, 0.12);
+  box-shadow:
+    0 0 24px rgba(201, 168, 76, 0.18),
+    0 0 8px rgba(201, 168, 76, 0.12);
 }
 
 .cova-choice-card.is-selected {
@@ -347,7 +403,12 @@
   width: 44px;
   height: 44px;
   border-radius: 999px;
-  background: radial-gradient(circle at 35% 35%, #f4e8b3 0%, #d3b45d 58%, #b28d38 100%);
+  background: radial-gradient(
+    circle at 35% 35%,
+    #f4e8b3 0%,
+    #d3b45d 58%,
+    #b28d38 100%
+  );
   color: #08111d;
   font-size: 1.15rem;
   box-shadow: 0 0 28px rgba(201, 168, 76, 0.5);
@@ -357,7 +418,7 @@
 .cova-choice-label {
   display: block;
   margin-top: 12px;
-  font-family: 'DM Sans', system-ui, sans-serif;
+  font-family: "DM Sans", system-ui, sans-serif;
   font-size: 13px;
   font-weight: 500;
   letter-spacing: 0.18em;
@@ -374,8 +435,14 @@
   gap: 0.9rem;
   padding: 1rem 1.25rem 0.8rem;
   border-radius: 1.5rem;
-  background: linear-gradient(180deg, rgba(13, 29, 46, 0.34) 0%, rgba(20, 38, 58, 0.68) 100%);
-  box-shadow: inset 0 1px 0 rgba(225, 201, 132, 0.08), 0 -18px 36px rgba(4, 11, 20, 0.14);
+  background: linear-gradient(
+    180deg,
+    rgba(13, 29, 46, 0.34) 0%,
+    rgba(20, 38, 58, 0.68) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(225, 201, 132, 0.08),
+    0 -18px 36px rgba(4, 11, 20, 0.14);
   backdrop-filter: blur(14px);
   color: rgba(245, 240, 232, 0.45);
   font-size: 0.9rem;
@@ -398,8 +465,13 @@
   height: 8px;
   border-radius: 999px;
   background: rgba(201, 168, 76, 0.34);
-  box-shadow: inset 0 0 0 1px rgba(225, 201, 132, 0.28), 0 0 10px rgba(201, 168, 76, 0.14);
-  transition: transform 220ms ease, background 220ms ease, box-shadow 220ms ease;
+  box-shadow:
+    inset 0 0 0 1px rgba(225, 201, 132, 0.28),
+    0 0 10px rgba(201, 168, 76, 0.14);
+  transition:
+    transform 220ms ease,
+    background 220ms ease,
+    box-shadow 220ms ease;
 }
 
 .cova-progress-dot.is-complete {

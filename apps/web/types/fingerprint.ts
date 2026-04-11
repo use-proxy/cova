@@ -13,19 +13,19 @@
  */
 export interface StyleFingerprint {
   dimensions: {
-    colorTemperature:  number  // [0, 1]  cool slate → warm amber
-    colorSaturation:   number  // [0, 1]  achromatic greige → vivid bold
-    density:           number  // [0, 1]  sparse void → richly layered
-    formality:         number  // [0, 1]  casual relaxed → formal structured
-    era:               number  // [0, 1]  ultra-contemporary → heritage classic
-    material:          number  // [0, 1]  synthetic manufactured → natural organic
-    texture:           number  // [0, 1]  mirror-smooth → tactile rich
-    pattern:           number  // [0, 1]  pattern-free → pattern-rich
-    lineQuality:       number  // [0, 1]  hard geometric → organic curves
-    lightPreference:   number  // [0, 1]  cozy warm lamps → bright daylight
-    nature:            number  // [0, 1]  urban no plants → biophilic abundant
-    culturalInfluence: number  // [0, 1]  pure western → globally eclectic
-  }
-  covariance: number[][]  // 12×12 covariance matrix
-  confidence: number      // [0, 1] — how confident the system is in this fingerprint
+    colorTemperature: number; // [0, 1]  cool slate → warm amber
+    colorSaturation: number; // [0, 1]  achromatic greige → vivid bold
+    density: number; // [0, 1]  sparse void → richly layered
+    formality: number; // [0, 1]  casual relaxed → formal structured
+    era: number; // [0, 1]  ultra-contemporary → heritage classic
+    material: number; // [0, 1]  synthetic manufactured → natural organic
+    texture: number; // [0, 1]  mirror-smooth → tactile rich
+    pattern: number; // [0, 1]  pattern-free → pattern-rich
+    lineQuality: number; // [0, 1]  hard geometric → organic curves
+    lightPreference: number; // [0, 1]  cozy warm lamps → bright daylight
+    nature: number; // [0, 1]  urban no plants → biophilic abundant
+    culturalInfluence: number; // [0, 1]  pure western → globally eclectic
+  };
+  covariance: number[][]; // 12×12 covariance matrix
+  confidence: number; // [0, 1] — how confident the system is in this fingerprint
 }

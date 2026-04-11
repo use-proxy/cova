@@ -2307,8 +2307,8 @@ function StyleGallery() {
               fontWeight: 300,
             }}
           >
-            From quiet warmth to maximalist Art Deco, our style engine
-            finds the perfect match for your personality.
+            From quiet warmth to maximalist Art Deco, our style engine finds the
+            perfect match for your personality.
           </p>
         </FadeUp>
 

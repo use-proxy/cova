@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useFingerprintStore, type StyleFingerprint } from "@/lib/store/fingerprint";
+import {
+  useFingerprintStore,
+  type StyleFingerprint,
+} from "@/lib/store/fingerprint";
 import "../step-1/step1.css";
 import "./step3.css";
 
@@ -73,7 +76,9 @@ export default function CovaStyleQuizPage() {
 
   // Validation state
   const [validationLoading, setValidationLoading] = useState(false);
-  const [validationRenders, setValidationRenders] = useState<ValidationRender[]>([]);
+  const [validationRenders, setValidationRenders] = useState<
+    ValidationRender[]
+  >([]);
   const [refinementCount, setRefinementCount] = useState(0);
 
   // Phase C state
@@ -170,7 +175,9 @@ export default function CovaStyleQuizPage() {
         setCurrentPair(pair);
         pairStartRef.current = Date.now();
       } catch (err: unknown) {
-        setPairError(err instanceof Error ? err.message : "Failed to load pair");
+        setPairError(
+          err instanceof Error ? err.message : "Failed to load pair",
+        );
       }
     } finally {
       setPairLoading(false);
@@ -231,7 +238,11 @@ export default function CovaStyleQuizPage() {
       const fpResult = (await fpRes.json()) as FingerprintResult;
       useFingerprintStore
         .getState()
-        .setFingerprint(fpResult.fingerprint, fpResult.style_name, fpResult.style_tags);
+        .setFingerprint(
+          fpResult.fingerprint,
+          fpResult.style_name,
+          fpResult.style_tags,
+        );
 
       const vrRes = await fetch("/api/quiz/validation-renders", {
         method: "POST",
@@ -291,7 +302,11 @@ export default function CovaStyleQuizPage() {
       });
       if (!res.ok) throw new Error(`fingerprint ${res.status}`);
       const result = (await res.json()) as FingerprintResult;
-      store.setFingerprint(result.fingerprint, result.style_name, result.style_tags);
+      store.setFingerprint(
+        result.fingerprint,
+        result.style_name,
+        result.style_tags,
+      );
       router.push(COMPLETION_ROUTE);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Unknown error";
@@ -325,7 +340,10 @@ export default function CovaStyleQuizPage() {
           className="cova-progress-rail"
           aria-label={`Progress ${Math.round(progressValue)} percent`}
         >
-          <div className="cova-progress-fill" style={{ width: `${progressValue}%` }} />
+          <div
+            className="cova-progress-fill"
+            style={{ width: `${progressValue}%` }}
+          />
         </div>
 
         <header className="cova-header">
@@ -335,7 +353,11 @@ export default function CovaStyleQuizPage() {
             aria-label="Go back"
             onClick={() => router.push("/design/step-2")}
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true" className="cova-back-icon">
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              className="cova-back-icon"
+            >
               <path
                 d="M15.5 19 8.5 12l7-7"
                 fill="none"
@@ -407,7 +429,9 @@ export default function CovaStyleQuizPage() {
           />
         )}
 
-        {phase === "compute" && <ComputePhase error={computeError} onRetry={runCompute} />}
+        {phase === "compute" && (
+          <ComputePhase error={computeError} onRetry={runCompute} />
+        )}
       </section>
     </main>
   );
@@ -458,7 +482,8 @@ function AnchorsPhase({
           >
             {anchors.map((a) => {
               const isSelected = selectedIds.includes(a.id);
-              const disabled = !isSelected && selectedIds.length >= MAX_ANCHOR_PICKS;
+              const disabled =
+                !isSelected && selectedIds.length >= MAX_ANCHOR_PICKS;
               return (
                 <button
                   key={a.id}
@@ -536,7 +561,9 @@ function PairsPhase({
     <>
       <section className="cova-editorial-intro">
         <h1>Which feels more like you?</h1>
-        <p className="cova-subcopy">Go with your gut — there&apos;s no wrong answer.</p>
+        <p className="cova-subcopy">
+          Go with your gut — there&apos;s no wrong answer.
+        </p>
       </section>
       <section className="cova-comparison-stage" aria-live="polite">
         {loading && <p style={{ textAlign: "center" }}>Loading next pair...</p>}
@@ -682,7 +709,9 @@ function ValidationPhase({
         )}
       </section>
       <footer className="cova-footer">
-        <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center" }}>
+        <div
+          style={{ display: "flex", gap: "0.75rem", justifyContent: "center" }}
+        >
           <button
             type="button"
             onClick={onConfirm}
@@ -713,7 +742,8 @@ function ValidationPhase({
               color: "#f4efe6",
               fontFamily: "inherit",
               fontSize: "1rem",
-              cursor: loading || refinementsLeft <= 0 ? "not-allowed" : "pointer",
+              cursor:
+                loading || refinementsLeft <= 0 ? "not-allowed" : "pointer",
             }}
           >
             Not quite

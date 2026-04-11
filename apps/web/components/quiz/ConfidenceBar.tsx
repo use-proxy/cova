@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
 interface ConfidenceBarProps {
-  confidence: number
-  complete: boolean
+  confidence: number;
+  complete: boolean;
 }
 
 export function ConfidenceBar({ confidence, complete }: ConfidenceBarProps) {
@@ -10,11 +10,14 @@ export function ConfidenceBar({ confidence, complete }: ConfidenceBarProps) {
     ? "Style captured \u2713"
     : confidence > 75
       ? "Almost there..."
-      : "Learning your style..."
+      : "Learning your style...";
 
   return (
     <div className="px-5 py-3">
-      <div className="relative w-full h-2 rounded-full overflow-hidden" style={{ background: "#0d1f3c" }}>
+      <div
+        className="relative w-full h-2 rounded-full overflow-hidden"
+        style={{ background: "#0d1f3c" }}
+      >
         <div
           className="absolute inset-y-0 left-0 rounded-full"
           style={{
@@ -24,9 +27,11 @@ export function ConfidenceBar({ confidence, complete }: ConfidenceBarProps) {
           }}
         />
       </div>
-      <p className={`mt-2 text-xs font-sans uppercase tracking-[0.15em] ${complete ? "text-[#C9A84C]" : "text-white/50"}`}>
+      <p
+        className={`mt-2 text-xs font-sans uppercase tracking-[0.15em] ${complete ? "text-[#C9A84C]" : "text-white/50"}`}
+      >
         {label}
       </p>
     </div>
-  )
+  );
 }

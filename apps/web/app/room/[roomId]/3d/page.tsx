@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { ProductPanel } from "@/components/product/ProductPanel"
-import { ChatBubble } from "@/components/chat/ChatBubble"
-import { ChatPanel } from "@/components/chat/ChatPanel"
-import type { Product } from "@/components/product/ProductCard"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { ProductPanel } from "@/components/product/ProductPanel";
+import { ChatBubble } from "@/components/chat/ChatBubble";
+import { ChatPanel } from "@/components/chat/ChatPanel";
+import type { Product } from "@/components/product/ProductCard";
 
-export const dynamic = "force-dynamic"
+export const dynamic = "force-dynamic";
 
 // ─────────────────────────────────────────────────────────────────
 // Mock data — mirrored from /product-panel test page
@@ -26,9 +26,27 @@ const MOCK_PRODUCTS: Product[] = [
     dimensions: ['94"W', "Linen", "Ivory"],
     affiliateUrl: "https://article.com",
     similarItems: [
-      { id: "s1", name: "Haven Sofa", price: 999, image: "https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?w=300" },
-      { id: "s2", name: "Luna Sectional", price: 1599, image: "https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e?w=300" },
-      { id: "s3", name: "Arc Loveseat", price: 849, image: "https://images.unsplash.com/photo-1550254478-ead40cc54513?w=300" },
+      {
+        id: "s1",
+        name: "Haven Sofa",
+        price: 999,
+        image:
+          "https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?w=300",
+      },
+      {
+        id: "s2",
+        name: "Luna Sectional",
+        price: 1599,
+        image:
+          "https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e?w=300",
+      },
+      {
+        id: "s3",
+        name: "Arc Loveseat",
+        price: 849,
+        image:
+          "https://images.unsplash.com/photo-1550254478-ead40cc54513?w=300",
+      },
     ],
   },
   {
@@ -44,8 +62,20 @@ const MOCK_PRODUCTS: Product[] = [
     dimensions: ['48"W', "Oak", "Natural"],
     affiliateUrl: "https://cb2.com",
     similarItems: [
-      { id: "s4", name: "Slab Table", price: 449, image: "https://images.unsplash.com/photo-1530018607912-eff2daa1bac4?w=300" },
-      { id: "s5", name: "Marble Round", price: 799, image: "https://images.unsplash.com/photo-1549187774-b4e9b0445b41?w=300" },
+      {
+        id: "s4",
+        name: "Slab Table",
+        price: 449,
+        image:
+          "https://images.unsplash.com/photo-1530018607912-eff2daa1bac4?w=300",
+      },
+      {
+        id: "s5",
+        name: "Marble Round",
+        price: 799,
+        image:
+          "https://images.unsplash.com/photo-1549187774-b4e9b0445b41?w=300",
+      },
     ],
   },
   {
@@ -61,25 +91,49 @@ const MOCK_PRODUCTS: Product[] = [
     dimensions: ["8'x10'", "Jute", "Natural"],
     affiliateUrl: "https://westelm.com",
     similarItems: [
-      { id: "s6", name: "Wool Flatweave", price: 299, image: "https://images.unsplash.com/photo-1615971677499-5467cbab01c0?w=300" },
+      {
+        id: "s6",
+        name: "Wool Flatweave",
+        price: 299,
+        image:
+          "https://images.unsplash.com/photo-1615971677499-5467cbab01c0?w=300",
+      },
     ],
   },
-]
+];
 
 interface Hotspot {
-  id: string
-  label: string
-  x: number
-  y: number
-  products: Product[]
+  id: string;
+  label: string;
+  x: number;
+  y: number;
+  products: Product[];
 }
 
 const MOCK_HOTSPOTS: Hotspot[] = [
-  { id: "1", label: "Linen Sofa",        x: 48, y: 58, products: MOCK_PRODUCTS },
-  { id: "2", label: "Oak Coffee Table",  x: 52, y: 72, products: MOCK_PRODUCTS.slice(1) },
-  { id: "3", label: "Floor Lamp",        x: 72, y: 45, products: MOCK_PRODUCTS.slice(0, 2) },
-  { id: "4", label: "Area Rug",          x: 50, y: 80, products: MOCK_PRODUCTS.slice(2) },
-]
+  { id: "1", label: "Linen Sofa", x: 48, y: 58, products: MOCK_PRODUCTS },
+  {
+    id: "2",
+    label: "Oak Coffee Table",
+    x: 52,
+    y: 72,
+    products: MOCK_PRODUCTS.slice(1),
+  },
+  {
+    id: "3",
+    label: "Floor Lamp",
+    x: 72,
+    y: 45,
+    products: MOCK_PRODUCTS.slice(0, 2),
+  },
+  {
+    id: "4",
+    label: "Area Rug",
+    x: 50,
+    y: 80,
+    products: MOCK_PRODUCTS.slice(2),
+  },
+];
 
 // ─────────────────────────────────────────────────────────────────
 // Hotspot component — same visual as /product-panel test page
@@ -89,9 +143,9 @@ function HotspotPin({
   isActive,
   onClick,
 }: {
-  hotspot: Hotspot
-  isActive: boolean
-  onClick: () => void
+  hotspot: Hotspot;
+  isActive: boolean;
+  onClick: () => void;
 }) {
   return (
     <div
@@ -118,7 +172,9 @@ function HotspotPin({
         className="group relative w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer"
         style={{
           border: `2px solid ${isActive ? "#C9A84C" : "rgba(201,168,76,0.7)"}`,
-          background: isActive ? "rgba(201,168,76,0.25)" : "rgba(201,168,76,0.15)",
+          background: isActive
+            ? "rgba(201,168,76,0.25)"
+            : "rgba(201,168,76,0.15)",
           boxShadow: isActive
             ? "0 0 30px rgba(201,168,76,0.5)"
             : "0 0 20px rgba(201,168,76,0.3)",
@@ -149,16 +205,16 @@ function HotspotPin({
         )}
       </button>
     </div>
-  )
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────
 // Main page
 // ─────────────────────────────────────────────────────────────────
 export default function ThreeDRoomPage() {
-  const router = useRouter()
-  const [activeHotspot, setActiveHotspot] = useState<Hotspot | null>(null)
-  const [chatOpen, setChatOpen] = useState(false)
+  const router = useRouter();
+  const [activeHotspot, setActiveHotspot] = useState<Hotspot | null>(null);
+  const [chatOpen, setChatOpen] = useState(false);
 
   return (
     <>
@@ -184,7 +240,6 @@ export default function ThreeDRoomPage() {
         className="fixed inset-0 overflow-hidden"
         style={{ animation: "pageEnter 600ms ease-out both" }}
       >
-
         {/* ── Deep space background ── */}
         <div className="absolute inset-0" style={{ background: "#091829" }}>
           {/* Blob 1 — deep teal, top-left drift */}
@@ -195,7 +250,8 @@ export default function ThreeDRoomPage() {
               height: "60vh",
               top: "5%",
               left: "-10%",
-              background: "radial-gradient(ellipse 80% 60% at 30% 40%, rgba(20,50,80,0.45), transparent)",
+              background:
+                "radial-gradient(ellipse 80% 60% at 30% 40%, rgba(20,50,80,0.45), transparent)",
               animation: "blob1Drift 12s ease-in-out infinite",
             }}
           />
@@ -207,7 +263,8 @@ export default function ThreeDRoomPage() {
               height: "80vh",
               bottom: "-10%",
               right: "-5%",
-              background: "radial-gradient(ellipse 60% 80% at 70% 60%, rgba(40,20,60,0.35), transparent)",
+              background:
+                "radial-gradient(ellipse 60% 80% at 70% 60%, rgba(40,20,60,0.35), transparent)",
               animation: "blob2Drift 12s ease-in-out infinite",
               animationDelay: "4s",
             }}
@@ -295,5 +352,5 @@ export default function ThreeDRoomPage() {
         />
       </div>
     </>
-  )
+  );
 }

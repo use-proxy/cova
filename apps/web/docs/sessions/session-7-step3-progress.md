@@ -33,6 +33,7 @@ Updated all three API routes. Build passes. 72/72 Playwright tests pass.
 ## API Routes
 
 ### `/api/quiz/next-card` (replaced)
+
 - Uses `swipe_cards` table with `phase='baseline'`
 - Filters by `room_type`, `active=true`, `dimension_labels IS NOT NULL`
 - Falls back to all room types if fewer than 9 results for specific room
@@ -40,12 +41,14 @@ Updated all three API routes. Build passes. 72/72 Playwright tests pass.
 - **Live test result:** `cards: 9, url: https://xdeacbmkdwqrwxonqaqh.supabase.co/..., dims: 10, style: bohemian` ✅
 
 ### `/api/quiz/next-pair` (new)
+
 - Uses `swipe_cards` table with `phase='pairwise'`
 - Finds highest-variance dimension from fingerprint covariance diagonal
 - Groups by `pair_id`, computes contrast per dimension, picks highest
 - **Live test result:** `No pairs available` (404) — expected, Phase B not seeded yet
 
 ### `/api/quiz/fingerprint` (updated)
+
 - Detects request format: `phase_a_selections` in body → new format, else → legacy
 - New format: averages Phase A selections, applies Phase B Bayesian updates
 - Style name from dominant dimensions (10 named styles including defaults)
@@ -60,6 +63,7 @@ Added `/api/quiz/next-card` to `PUBLIC_API_ROUTES` in `middleware.ts`.
 ## Step-3 UI — 3-Phase Architecture
 
 ### Phase A (3 rounds, 9 cards each)
+
 - Loads from `/api/quiz/next-card` per round
 - Select 2–3 images, max 3 (oldest removed if new tap)
 - Gold ring + checkmark on selection with Framer Motion spring
@@ -67,10 +71,12 @@ Added `/api/quiz/next-card` to `PUBLIC_API_ROUTES` in `middleware.ts`.
 - Headings change per round
 
 ### Transition Screen
+
 - Gold spinner + serif heading
 - 1400ms before Phase B mounts
 
 ### Phase B (12 pairs)
+
 - Loads from `/api/quiz/next-pair` with live fingerprint
 - Bayesian update after each choice (lambda = 1 + 500/responseTimeMs)
 - `AnimatePresence` slide transition between pairs
@@ -78,6 +84,7 @@ Added `/api/quiz/next-card` to `PUBLIC_API_ROUTES` in `middleware.ts`.
 - Progress bar updates in real-time
 
 ### Phase C (3 questions)
+
 - Household composition (Solo/Couple/Family/Roommates)
 - Budget confirmation (pre-filled from store)
 - Optional free text
@@ -86,18 +93,18 @@ Added `/api/quiz/next-card` to `PUBLIC_API_ROUTES` in `middleware.ts`.
 
 ## Checks Status
 
-| Check | Status | Notes |
-|---|---|---|
-| Phase A labels | ✅ PASS | 423/423 baseline cards labeled |
-| Phase B seeded | ❌ BLOCKED | Gemini free tier quota exhausted |
-| next-card live test | ✅ PASS | 9 cards, Supabase URLs, 10 dims |
-| next-pair live test | ⚠️ SKIP | No pairs in DB yet |
-| fingerprint live test | ✅ PASS | 10 dims, style_name, 4 tags, in_range |
-| TypeScript | ✅ PASS | Zero errors |
-| Build | ✅ PASS | Zero errors, 64 pages |
-| Zero hardcoded colors | ✅ PASS | All hex values behind var() fallbacks |
-| Supabase in next.config | ✅ PASS | `*.supabase.co` already present |
-| Playwright suite | ✅ PASS | 72/72 passing, no regressions |
+| Check                   | Status     | Notes                                 |
+| ----------------------- | ---------- | ------------------------------------- |
+| Phase A labels          | ✅ PASS    | 423/423 baseline cards labeled        |
+| Phase B seeded          | ❌ BLOCKED | Gemini free tier quota exhausted      |
+| next-card live test     | ✅ PASS    | 9 cards, Supabase URLs, 10 dims       |
+| next-pair live test     | ⚠️ SKIP    | No pairs in DB yet                    |
+| fingerprint live test   | ✅ PASS    | 10 dims, style_name, 4 tags, in_range |
+| TypeScript              | ✅ PASS    | Zero errors                           |
+| Build                   | ✅ PASS    | Zero errors, 64 pages                 |
+| Zero hardcoded colors   | ✅ PASS    | All hex values behind var() fallbacks |
+| Supabase in next.config | ✅ PASS    | `*.supabase.co` already present       |
+| Playwright suite        | ✅ PASS    | 72/72 passing, no regressions         |
 
 ## Deviations from Spec
 

@@ -15,16 +15,16 @@
 // `useFingerprintStore.styleName` are both safe.
 
 export const STYLE_DISPLAY_NAMES: Record<string, string> = {
-  'Warm Japandi':         'Warm Japandi',
-  'Pure Minimal White':   'Pure Minimal',
-  'Coastal Bright':       'Coastal Bright',
-  'Biophilic Jungle':     'Biophilic',
-  'Dark Moody Glam':      'Dark & Moody',
-  'Heritage Traditional': 'Heritage',
-  'Industrial Loft':      'Industrial',
-  'Maximalist Eclectic':  'Maximalist',
-  'Retro Mid-Century':    'Retro Modern',
-}
+  "Warm Japandi": "Warm Japandi",
+  "Pure Minimal White": "Pure Minimal",
+  "Coastal Bright": "Coastal Bright",
+  "Biophilic Jungle": "Biophilic",
+  "Dark Moody Glam": "Dark & Moody",
+  "Heritage Traditional": "Heritage",
+  "Industrial Loft": "Industrial",
+  "Maximalist Eclectic": "Maximalist",
+  "Retro Mid-Century": "Retro Modern",
+};
 
 /**
  * Translate an internal anchor name to a user-facing display label.
@@ -32,6 +32,6 @@ export const STYLE_DISPLAY_NAMES: Record<string, string> = {
  * (e.g. the "Your Unique Style" placeholder).
  */
 export function toDisplayName(styleName: string | null | undefined): string {
-  if (!styleName) return ''
-  return STYLE_DISPLAY_NAMES[styleName] ?? styleName
+  if (!styleName) return "";
+  return STYLE_DISPLAY_NAMES[styleName] ?? styleName;
 }

@@ -409,13 +409,15 @@ export default function SavedItemsPage() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const { createBrowserClient } = await import('@/lib/supabase/client')
-      const supabase = createBrowserClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) router.push('/auth')
-      else setHydrated(true)
-    }
-    checkAuth()
+      const { createBrowserClient } = await import("@/lib/supabase/client");
+      const supabase = createBrowserClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) router.push("/auth");
+      else setHydrated(true);
+    };
+    checkAuth();
   }, [router]);
 
   useEffect(() => {

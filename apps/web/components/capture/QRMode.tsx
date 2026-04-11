@@ -1,18 +1,24 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import QRCode from "react-qr-code"
-import { createBrowserClient } from "@/lib/supabase/client"
+import { useState, useEffect } from "react";
+import QRCode from "react-qr-code";
+import { createBrowserClient } from "@/lib/supabase/client";
 
 interface QRModeProps {
-  roomId: string
-  onSwitchToUpload: () => void
+  roomId: string;
+  onSwitchToUpload: () => void;
 }
 
 // Arch Logo SVG
 function ArchLogo() {
   return (
-    <svg width="48" height="32" viewBox="0 0 32 20" fill="none" className="mx-auto mb-6">
+    <svg
+      width="48"
+      height="32"
+      viewBox="0 0 32 20"
+      fill="none"
+      className="mx-auto mb-6"
+    >
       <path
         d="M2 18Q16 2 30 18"
         stroke="var(--gold)"
@@ -21,90 +27,92 @@ function ArchLogo() {
         fill="none"
       />
     </svg>
-  )
+  );
 }
 
 export function QRMode({ roomId, onSwitchToUpload }: QRModeProps) {
-  const [captureUrl, setCaptureUrl] = useState<string | null>(null)
-  const [connected, setConnected] = useState(false)
+  const [captureUrl, setCaptureUrl] = useState<string | null>(null);
+  const [connected, setConnected] = useState(false);
 
   // Generate token + build phone-reachable URL with auth session on mount
   useEffect(() => {
     const buildCaptureUrl = async () => {
-      const supabase = createBrowserClient()
+      const supabase = createBrowserClient();
 
       // Step 1: get the JWT capture token from the API
-      let captureToken: string | null = null
+      let captureToken: string | null = null;
       try {
         const res = await fetch("/api/capture/generate-token", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ roomId }),
-        })
+        });
         if (res.ok) {
-          const data = await res.json()
-          const urlObj = new URL(data.url)
-          captureToken = urlObj.searchParams.get("token")
+          const data = await res.json();
+          const urlObj = new URL(data.url);
+          captureToken = urlObj.searchParams.get("token");
         }
       } catch (err) {
-        console.error("Token generation failed:", err)
+        console.error("Token generation failed:", err);
       }
 
       // Step 2: get the current user's access token so phone is pre-authenticated
-      let accessToken = ""
+      let accessToken = "";
       try {
-        const { data: { session } } = await supabase.auth.getSession()
-        accessToken = session?.access_token ?? ""
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        accessToken = session?.access_token ?? "";
       } catch {
         // Proceed without access token
       }
 
       // Step 3: build a phone-reachable base URL
-      let baseUrl: string
+      let baseUrl: string;
       if (process.env.NEXT_PUBLIC_VERCEL_URL) {
-        baseUrl = `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+        baseUrl = `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`;
       } else {
         try {
-          const ipRes = await fetch("/api/local-ip")
-          const { ip } = await ipRes.json()
-          baseUrl = `http://${ip}:3000`
+          const ipRes = await fetch("/api/local-ip");
+          const { ip } = await ipRes.json();
+          baseUrl = `http://${ip}:3000`;
         } catch {
-          baseUrl = window.location.origin
+          baseUrl = window.location.origin;
         }
       }
 
       // Build URL: /capture/mobile with both tokens
-      const params = new URLSearchParams()
-      if (captureToken) params.set("token", captureToken)
-      if (accessToken) params.set("access_token", accessToken)
-      setCaptureUrl(`${baseUrl}/capture/mobile?${params.toString()}`)
-    }
+      const params = new URLSearchParams();
+      if (captureToken) params.set("token", captureToken);
+      if (accessToken) params.set("access_token", accessToken);
+      setCaptureUrl(`${baseUrl}/capture/mobile?${params.toString()}`);
+    };
 
-    buildCaptureUrl()
-  }, [roomId])
+    buildCaptureUrl();
+  }, [roomId]);
 
   // Poll for upload from mobile — runs independently of QR render
   useEffect(() => {
-    const supabase = createBrowserClient()
+    const supabase = createBrowserClient();
     const interval = setInterval(async () => {
       try {
         const { data } = await supabase
           .from("rooms")
           .select("status")
           .eq("id", roomId)
-          .single()
+          .single();
 
         if (data?.status === "processing" || data?.status === "complete") {
-          setConnected(true)
-          clearInterval(interval)
+          setConnected(true);
+          clearInterval(interval);
         }
       } catch {
         // Ignore polling errors
       }
-    }, 3000)
+    }, 3000);
 
-    return () => clearInterval(interval)
-  }, [roomId])
+    return () => clearInterval(interval);
+  }, [roomId]);
 
   return (
     <div className="flex flex-col items-center animate-[slideUp_300ms_ease-out]">
@@ -148,7 +156,9 @@ export function QRMode({ roomId, onSwitchToUpload }: QRModeProps) {
 
         {/* Connection status */}
         <div className="flex items-center gap-2 mb-6">
-          <div className={`w-2 h-2 rounded-full ${connected ? "bg-green-500" : "bg-[var(--gold)] animate-pulse"}`} />
+          <div
+            className={`w-2 h-2 rounded-full ${connected ? "bg-green-500" : "bg-[var(--gold)] animate-pulse"}`}
+          />
           <span className="text-xs font-sans uppercase tracking-[0.15em] text-[var(--ivory)]/50">
             {connected ? "Connected" : "Waiting for connection..."}
           </span>
@@ -172,5 +182,5 @@ export function QRMode({ roomId, onSwitchToUpload }: QRModeProps) {
         </button>
       </div>
     </div>
-  )
+  );
 }

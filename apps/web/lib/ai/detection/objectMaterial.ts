@@ -16,21 +16,21 @@
  * - Falls back to neutral values on any failure — never throws.
  */
 
-import Anthropic from '@anthropic-ai/sdk'
+import Anthropic from "@anthropic-ai/sdk";
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export interface ObjectMaterial {
-  material: string
-  dominantColor: string
-  dominantColorHex: string
+  material: string;
+  dominantColor: string;
+  dominantColorHex: string;
 }
 
 const FALLBACK: ObjectMaterial = {
-  material: 'unknown material',
-  dominantColor: 'neutral',
-  dominantColorHex: '#888888',
-}
+  material: "unknown material",
+  dominantColor: "neutral",
+  dominantColorHex: "#888888",
+};
 
 const SYSTEM = `You are a materials and color analyst. Given a room photo and a normalized bounding box (x,y,w,h in [0..1] — left, top, width, height) identifying a single piece of furniture or decor, describe ONLY that object's primary material and dominant color.
 
@@ -40,48 +40,47 @@ Rules:
 - If you cannot see the object clearly, still return your best guess — do not refuse.
 - Return ONLY valid JSON, no markdown fences, no preamble.
 
-Schema: {"material": string, "dominantColor": string, "dominantColorHex": "#RRGGBB"}`
+Schema: {"material": string, "dominantColor": string, "dominantColorHex": "#RRGGBB"}`;
 
 export async function extractObjectMaterial(
   imageUrl: string,
   bbox: [number, number, number, number],
-  label: string
+  label: string,
 ): Promise<ObjectMaterial> {
   try {
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: "claude-sonnet-4-6",
       max_tokens: 200,
       system: SYSTEM,
       messages: [
         {
-          role: 'user',
+          role: "user",
           content: [
             {
-              type: 'image',
-              source: { type: 'url', url: imageUrl },
+              type: "image",
+              source: { type: "url", url: imageUrl },
             },
             {
-              type: 'text',
+              type: "text",
               text: `Object label: "${label}". Normalized bbox: [${bbox
                 .map((v) => v.toFixed(3))
-                .join(', ')}]. Describe ONLY the object inside this bbox.`,
+                .join(", ")}]. Describe ONLY the object inside this bbox.`,
             },
           ],
         },
       ],
-    })
+    });
 
     const text =
-      response.content[0]?.type === 'text' ? response.content[0].text : ''
-    const clean = text.replace(/```json|```/g, '').trim()
-    const parsed = JSON.parse(clean) as Partial<ObjectMaterial>
+      response.content[0]?.type === "text" ? response.content[0].text : "";
+    const clean = text.replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(clean) as Partial<ObjectMaterial>;
     return {
       material: parsed.material ?? FALLBACK.material,
       dominantColor: parsed.dominantColor ?? FALLBACK.dominantColor,
-      dominantColorHex:
-        parsed.dominantColorHex ?? FALLBACK.dominantColorHex,
-    }
+      dominantColorHex: parsed.dominantColorHex ?? FALLBACK.dominantColorHex,
+    };
   } catch {
-    return FALLBACK
+    return FALLBACK;
   }
 }

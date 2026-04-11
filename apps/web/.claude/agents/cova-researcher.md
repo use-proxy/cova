@@ -18,6 +18,7 @@ RESEARCH TARGET 1: Grounded-SAM-2 on Replicate
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 What to find:
+
 1. Fetch https://replicate.com/collections/ai-detect-objects — find the Grounded-SAM-2 model
 2. Fetch the specific model page for the Grounded-SAM-2 model
 3. Get the exact model string (format: "owner/model-name:version_hash")
@@ -28,6 +29,7 @@ What to find:
 8. Find a working code example
 
 Critical questions to answer:
+
 - What is the exact Replicate model string including version hash?
 - What is the exact parameter name for the text prompt? (could be "prompt", "text_prompt", "classes", etc.)
 - What is the exact parameter name for the input image? (could be "image", "image_url", "input_image")
@@ -38,6 +40,7 @@ Critical questions to answer:
 - What is the output structure for multiple detected objects?
 
 Fallback: if Grounded-SAM-2 is not on Replicate, find:
+
 - Best alternative that returns segmentation masks (not just boxes) for text-prompted object detection
 - Check: schananas/grounded-sam, any other grounded-sam models
 
@@ -46,6 +49,7 @@ RESEARCH TARGET 2: FLUX.2 [pro] on Replicate
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 What to find:
+
 1. Fetch https://replicate.com/black-forest-labs — find flux-2-pro model
 2. Get exact model string with version hash
 3. Verify it accepts multiple input images (multi-reference)
@@ -57,6 +61,7 @@ What to find:
 9. Check if it's available on Replicate yet or only on fal.ai/BFL direct
 
 Also research FLUX Schnell:
+
 1. Fetch https://replicate.com/black-forest-labs/flux-schnell
 2. Get exact model string with version hash
 3. Confirm it's text-to-image (NOT image-to-image)
@@ -65,6 +70,7 @@ Also research FLUX Schnell:
 6. Confirm output is FileOutput requiring .url()
 
 Also research FLUX Depth Pro:
+
 1. Find on Replicate or BFL docs
 2. Get model string
 3. Verify it accepts: input image + depth map
@@ -75,6 +81,7 @@ RESEARCH TARGET 3: SearchApi.io Google Lens API
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 What to find:
+
 1. Fetch https://www.searchapi.io/docs/google-lens — full documentation
 2. Get the exact endpoint URL
 3. Get all required and optional parameters
@@ -87,6 +94,7 @@ What to find:
 10. Fetch https://www.searchapi.io/pricing for plan details
 
 Also check SerpApi as alternative:
+
 1. Fetch https://serpapi.com/google-lens-api
 2. Compare pricing per request
 3. Compare response structure
@@ -97,6 +105,7 @@ RESEARCH TARGET 4: DINOv2 + SigLIP2 on Replicate or HuggingFace
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 For DINOv2:
+
 1. Search Replicate for DINOv2 models: https://replicate.com/explore?query=dinov2
 2. Find the ViT-L/14 variant (768-dim embeddings)
 3. Get exact model string with version hash
@@ -106,6 +115,7 @@ For DINOv2:
 7. If not on Replicate: find how to call via HuggingFace Inference API
 
 For SigLIP2:
+
 1. Search Replicate for SigLIP2: https://replicate.com/explore?query=siglip
 2. Find siglip2-large-patch16-384 or similar
 3. Get exact model string and version hash
@@ -120,6 +130,7 @@ RESEARCH TARGET 5: DepthFlow
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 What to find:
+
 1. Fetch https://github.com/BrokenSource/DepthFlow — full README
 2. Is there a Replicate model for DepthFlow? Search replicate.com
 3. If not Replicate: how to use the Python library (installation, API)
@@ -135,6 +146,7 @@ RESEARCH TARGET 6: BoTorch PairwiseGP for style quiz
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 What to find:
+
 1. Fetch https://botorch.org/docs/tutorials/preference_bo/
 2. Get the exact Python classes needed: PairwiseGP, PairwiseLaplace, etc.
 3. Is BoTorch a Python-only library? Can it run in Node.js?
@@ -150,6 +162,7 @@ YOUR PROCESS
 ═══════════════════════════════════════════════════════════════
 
 For each research target:
+
 1. Fetch the primary documentation URL
 2. If the page doesn't have what you need, find links to API reference docs
 3. Look for code examples — extract exact parameter names from them
@@ -161,21 +174,25 @@ YOUR OUTPUT FORMAT (mandatory)
 ═══════════════════════════════════════════════════════════════
 
 ## Research Report: [Topic]
+
 **Date verified:** [today]
 **Sources:** [URLs fetched]
 
 ### Model/API Identifier
+
 ```
 Exact string to use in code:
 [paste exact identifier including version hash if applicable]
 ```
 
 ### Input Parameters
-| Parameter | Type | Required | Description | Example |
-|-----------|------|----------|-------------|---------|
-| param_name | string | yes | what it does | "value" |
+
+| Parameter  | Type   | Required | Description  | Example |
+| ---------- | ------ | -------- | ------------ | ------- |
+| param_name | string | yes      | what it does | "value" |
 
 ### Output Format
+
 ```typescript
 // Exact TypeScript interface for the response
 interface ModelOutput {
@@ -184,6 +201,7 @@ interface ModelOutput {
 ```
 
 ### Output Parsing Code
+
 ```typescript
 // Exact code needed to extract the useful value from the response
 const result = await replicate.run(MODEL_ID, { input: { ... } })
@@ -192,28 +210,28 @@ const value = result.field_name?.url?.()?.href ?? result.field_name as string
 ```
 
 ### Pricing
+
 - Per request: $X.XXX
 - Per 1,000 requests: $X.XX
 - Plan needed for [100 requests/day]: [plan name, $X/month]
 
 ### Critical Gotchas
+
 - [Thing that will break if you don't know it]
 - [Output format difference from what you'd expect]
 - [Rate limits or concurrency restrictions]
 
 ### Minimal Working Example
+
 ```typescript
 // Paste exactly what goes in the API call, verified from docs
-import Replicate from 'replicate'
-const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN })
-const output = await replicate.run(
-  'exact/model:exact_version_hash',
-  {
-    input: {
-      exact_param_name: value,
-    }
-  }
-)
+import Replicate from "replicate";
+const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
+const output = await replicate.run("exact/model:exact_version_hash", {
+  input: {
+    exact_param_name: value,
+  },
+});
 ```
 
 ═══════════════════════════════════════════════════════════════

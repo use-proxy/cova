@@ -1,33 +1,33 @@
-'use client'
+"use client";
 
-import { useRouter } from 'next/navigation'
-import { createBrowserClient } from '@supabase/ssr'
+import { useRouter } from "next/navigation";
+import { createBrowserClient } from "@supabase/ssr";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { GoldDivider } from '@/components/cova/GoldDivider'
+} from "@/components/ui/dropdown-menu";
+import { GoldDivider } from "@/components/cova/GoldDivider";
 
 interface AvatarDropdownProps {
-  email: string | null
+  email: string | null;
 }
 
 export function AvatarDropdown({ email }: AvatarDropdownProps) {
-  const router = useRouter()
+  const router = useRouter();
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  );
 
-  const initials = email ? email[0].toUpperCase() : 'U'
+  const initials = email ? email[0].toUpperCase() : "U";
 
   async function handleSignOut() {
-    await supabase.auth.signOut()
-    router.push('/')
-    router.refresh()
+    await supabase.auth.signOut();
+    router.push("/");
+    router.refresh();
   }
 
   return (
@@ -47,10 +47,10 @@ export function AvatarDropdown({ email }: AvatarDropdownProps) {
           </div>
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => router.push('/dashboard/profile')}>
+        <DropdownMenuItem onClick={() => router.push("/dashboard/profile")}>
           Profile
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push('/dashboard/settings')}>
+        <DropdownMenuItem onClick={() => router.push("/dashboard/settings")}>
           Settings
         </DropdownMenuItem>
         <div className="px-1 py-1">
@@ -64,5 +64,5 @@ export function AvatarDropdown({ email }: AvatarDropdownProps) {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }

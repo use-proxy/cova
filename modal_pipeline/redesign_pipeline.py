@@ -1,7 +1,11 @@
 """
 Cova M7/M8 — FLUX Redesign Pipeline with Depth Conditioning
-Takes marble_pano_url from rooms table, generates style prompt via Claude,
-runs FLUX Kontext Pro (panorama) + FLUX Depth Pro (perspective), stores results.
+Takes the user's uploaded room photo from rooms.original_photo_url (falling
+back to original_image_url / photo_url for legacy rows), generates a style
+prompt via Claude (or uses the TS-compiled prompt when provided), and runs
+FLUX Kontext Pro + FLUX Depth Pro in parallel. Output is a single flat 2D
+image written to rooms.redesign_pano_url (column name is legacy — it now
+stores a flat image, not a panorama).
 
 Depth conditioning preserves room geometry (walls, windows, ceiling) while
 allowing furniture and decor to be restyled.
@@ -165,11 +169,10 @@ def generate_prompt_with_claude(blend: dict, room_type: str, anthropic_key: str)
         "qualities — mood, materials, light, forms — never the style label.\n\n"
         "Your prompts must:\n"
         "1. Be extremely specific about furniture pieces with materials and colors\n"
-        "2. Explicitly preserve walls, floors, windows, ceiling, doors\n"
-        "3. Specify photorealistic result\n"
-        "4. Include 'equirectangular panorama, 360 degree view'\n"
-        "5. Stay under 280 words\n"
-        "6. Sound like directing a real interior designer, not an AI"
+        "2. Explicitly preserve walls, floors, windows, ceiling, doors, and camera angle\n"
+        "3. Specify photorealistic result — a flat interior photograph, NOT a panorama\n"
+        "4. Stay under 280 words\n"
+        "5. Sound like directing a real interior designer, not an AI"
     )
 
     user_message = (
@@ -224,8 +227,7 @@ def generate_prompt_fallback(blend: dict, room_type: str) -> str:
         f"Keep all walls, floors, windows, ceiling, doors, and architectural "
         f"features exactly as they are. Preserve all room dimensions, "
         f"proportions, and existing lighting. The result must look like a "
-        f"photorealistic interior design photograph. "
-        f"Equirectangular panorama, 360 degree view."
+        f"photorealistic interior design photograph."
     )
     return sanitize_style_names(prompt)
 
@@ -242,10 +244,24 @@ def run_flux_kontext(
     print(f"[kontext] Starting prediction...")
     print(f"[kontext] Prompt: {prompt[:120]}...")
 
+    # FLUX Kontext Pro parameters tuned for maximum preservation fidelity:
+    #   - guidance 3.5: strong prompt adherence while letting the model keep
+    #     structural content from the input image.
+    #   - steps 28: quality floor; below this produces visible artifacts on
+    #     the anchoring pieces.
+    #   - prompt_upsampling False: upsampling rewrites the prompt and strips
+    #     our anchor/vacated-zone framing, which destroys preservation.
+    #   - aspect_ratio "match_input_image": any other value crops or reframes
+    #     the input image and the kept items drift out of the frame.
     input_params = {
         "input_image": pano_url,
         "prompt": prompt,
         "guidance": 3.5,
+        "steps": 28,
+        "prompt_upsampling": False,
+        "aspect_ratio": "match_input_image",
+        "output_format": "png",
+        "safety_tolerance": 2,
     }
     if style_reference_url:
         input_params["input_image_2"] = style_reference_url
@@ -587,7 +603,8 @@ def redesign_room(
 
     try:
         room = client.table("rooms").select(
-            "marble_pano_url, style_blend, room_type, user_id, render_context"
+            "original_photo_url, original_image_url, photo_url, style_blend, "
+            "room_type, user_id, render_context"
         ).eq("id", room_id).single().execute().data
 
         if not room:
@@ -599,16 +616,25 @@ def redesign_room(
         if schema_version < "2.0":
             print(f"[kontext] WARNING: render_context schema_version={schema_version} (< 2.0), using safe defaults")
 
-        pano_url = room.get("marble_pano_url")
+        # Input image: prefer original_photo_url (step-6 writes this), fall
+        # back to original_image_url / photo_url for legacy rows.
+        pano_url = (
+            room.get("original_photo_url")
+            or room.get("original_image_url")
+            or room.get("photo_url")
+        )
         if not pano_url:
-            raise RuntimeError(f"Room {room_id} has no marble_pano_url")
+            raise RuntimeError(
+                f"Room {room_id} has no input image "
+                f"(original_photo_url / original_image_url / photo_url)"
+            )
 
         style_blend = room.get("style_blend") or {
             "warm japandi": 0.5,
             "pure minimal white": 0.3,
             "coastal bright": 0.2,
         }
-        room_type = room.get("room_type", "living room")
+        room_type = room.get("room_type") or "room"  # never assume room type; "room" is a safe generic fallback
 
         print(f"[kontext] Room: {room_type}, styles: {get_dominant_styles(style_blend)}")
 

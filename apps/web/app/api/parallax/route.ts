@@ -1,84 +1,93 @@
-import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { NextRequest, NextResponse } from 'next/server'
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { NextRequest, NextResponse } from "next/server";
 
-const DEPTHFLOW_WEBHOOK_URL = process.env.DEPTHFLOW_WEBHOOK_URL
+const DEPTHFLOW_WEBHOOK_URL = process.env.DEPTHFLOW_WEBHOOK_URL;
 
 export async function POST(req: NextRequest) {
   // Auth check — protected route
-  const supabase = await createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient();
   const {
     data: { session },
-  } = await supabase.auth.getSession()
+  } = await supabase.auth.getSession();
 
   if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   // Validate request body
-  let body: { render_url?: string; depth_map_url?: string; room_id?: string }
+  let body: { render_url?: string; depth_map_url?: string; room_id?: string };
   try {
     body = (await req.json()) as {
-      render_url?: string
-      depth_map_url?: string
-      room_id?: string
-    }
+      render_url?: string;
+      depth_map_url?: string;
+      room_id?: string;
+    };
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { render_url, depth_map_url, room_id } = body
+  const { render_url, depth_map_url, room_id } = body;
   if (!render_url || !depth_map_url || !room_id) {
     return NextResponse.json(
-      { error: 'render_url, depth_map_url, and room_id are required' },
-      { status: 400 }
-    )
+      { error: "render_url, depth_map_url, and room_id are required" },
+      { status: 400 },
+    );
   }
 
   // If Modal DepthFlow endpoint is not configured, skip gracefully
   // step-7 UI handles null video_url by showing before/after comparison directly
   if (!DEPTHFLOW_WEBHOOK_URL) {
-    console.warn('[parallax] DEPTH_VIDEO_WEBHOOK_URL not set — skipping parallax generation')
-    return NextResponse.json({ video_url: null })
+    console.warn(
+      "[parallax] DEPTH_VIDEO_WEBHOOK_URL not set — skipping parallax generation",
+    );
+    return NextResponse.json({ video_url: null });
   }
 
   try {
     const response = await fetch(DEPTHFLOW_WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ render_url, depth_map_url, room_id }),
-      signal: AbortSignal.timeout(170_000),  // 170s — Modal function timeout is 180s
-    })
+      signal: AbortSignal.timeout(170_000), // 170s — Modal function timeout is 180s
+    });
 
     if (!response.ok) {
-      const text = await response.text().catch(() => response.statusText)
-      console.error('[parallax] Modal function returned error:', response.status, text)
-      return NextResponse.json({ video_url: null })
+      const text = await response.text().catch(() => response.statusText);
+      console.error(
+        "[parallax] Modal function returned error:",
+        response.status,
+        text,
+      );
+      return NextResponse.json({ video_url: null });
     }
 
-    const result = await response.json() as { video_url?: string | null; error?: string }
+    const result = (await response.json()) as {
+      video_url?: string | null;
+      error?: string;
+    };
 
     if (result.error) {
-      console.error('[parallax] DepthFlow error:', result.error)
-      return NextResponse.json({ video_url: null })
+      console.error("[parallax] DepthFlow error:", result.error);
+      return NextResponse.json({ video_url: null });
     }
 
-    const videoUrl = result.video_url ?? null
+    const videoUrl = result.video_url ?? null;
 
     // Store in rooms table if we got a video URL
     if (videoUrl && room_id) {
-      const admin = createAdminSupabaseClient()
+      const admin = createAdminSupabaseClient();
       await admin
-        .from('rooms')
+        .from("rooms")
         .update({ parallax_video_url: videoUrl } as Record<string, unknown>)
-        .eq('id', room_id)
+        .eq("id", room_id);
     }
 
-    return NextResponse.json({ video_url: videoUrl })
+    return NextResponse.json({ video_url: videoUrl });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    console.error('[parallax] Unexpected error:', message)
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[parallax] Unexpected error:", message);
     // Non-fatal: step-7 skips to comparison mode
-    return NextResponse.json({ video_url: null })
+    return NextResponse.json({ video_url: null });
   }
 }

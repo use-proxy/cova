@@ -14,6 +14,7 @@ AR measurement component for Android Chrome WebXR. Dynamically imported with `ss
 **XR types:** No `@types/webxr` in the project. Defined a minimal local `XRSession` type and `XRNavigator` type rather than depending on an external package.
 
 **Flow:**
+
 - `startAR()` effect: requests `immersive-ar` session with `hit-test` + optional `dom-overlay`
 - Shows "Starting AR camera..." loading state while session initializes
 - Shows error state with "Enter dimensions manually" fallback on any failure (WebXR unavailable, permission denied, session ended)

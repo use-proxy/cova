@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 /**
  * Design reminder for Step 8A:
@@ -8,8 +8,8 @@
 import type { CSSProperties, MouseEvent as ReactMouseEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useRoomStore } from '@/lib/store/room'
-import { useFingerprintStore } from '@/lib/store/fingerprint'
+import { useRoomStore } from "@/lib/store/room";
+import { useFingerprintStore } from "@/lib/store/fingerprint";
 import "../step-1/step1.css";
 import "./step8a.css";
 
@@ -31,20 +31,22 @@ export default function RevealStep8A() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Store values — read on mount, used as primary source
-  const storeRenderUrl = useRoomStore((s) => s.renderUrl)
-  const storeRenderSessions = useRoomStore((s) => s.renderSessions)
-  const storeRoomId = useRoomStore((s) => s.roomId)
-  const storeStyleName = useFingerprintStore((s) => s.styleName)
-  const storeStyleTags = useFingerprintStore((s) => s.styleTags)
+  const storeRenderUrl = useRoomStore((s) => s.renderUrl);
+  const storeRenderSessions = useRoomStore((s) => s.renderSessions);
+  const storeRoomId = useRoomStore((s) => s.roomId);
+  const storeStyleName = useFingerprintStore((s) => s.styleName);
+  const storeStyleTags = useFingerprintStore((s) => s.styleTags);
 
   // Dynamic state replacing hardcoded constants
-  const [heroImage, setHeroImage] = useState<string | null>(null)
-  const [styleName, setStyleName] = useState<string>('')
-  const [styleTags, setStyleTags] = useState<string[]>([])
-  const [remainingRenders, setRemainingRenders] = useState(DEFAULT_RENDER_COUNT)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [pipelineStatus, setPipelineStatus] = useState<string>('')
+  const [heroImage, setHeroImage] = useState<string | null>(null);
+  const [styleName, setStyleName] = useState<string>("");
+  const [styleTags, setStyleTags] = useState<string[]>([]);
+  const [remainingRenders, setRemainingRenders] =
+    useState(DEFAULT_RENDER_COUNT);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [pipelineStatus, setPipelineStatus] = useState<string>("");
+  const [retryTick, setRetryTick] = useState(0);
 
   const [pointer, setPointer] = useState<PointerState>({
     x: 0,
@@ -55,164 +57,172 @@ export default function RevealStep8A() {
 
   useEffect(() => {
     const checkAuthAndLoadData = async () => {
-      const { createBrowserClient } = await import('@/lib/supabase/client')
-      const supabase = createBrowserClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      const { createBrowserClient } = await import("@/lib/supabase/client");
+      const supabase = createBrowserClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
-        router.push('/auth?next=/design/step-8a')
-        return
+        router.push("/auth?next=/design/step-8a");
+        return;
       }
 
       // 1. Try Zustand store first (fastest — already in memory)
-      const resolvedRenderUrl = storeRenderUrl ?? null
-      const resolvedStyleName = storeStyleName ?? ''
-      const resolvedStyleTags = storeStyleTags ?? []
+      const resolvedRenderUrl = storeRenderUrl ?? null;
+      const resolvedStyleName = storeStyleName ?? "";
+      const resolvedStyleTags = storeStyleTags ?? [];
 
       // Refinement count: DEFAULT minus sessions already used
-      const usedSessions = storeRenderSessions?.length ?? 0
-      const resolvedRemainingRenders = Math.max(0, DEFAULT_RENDER_COUNT - usedSessions)
+      const usedSessions = storeRenderSessions?.length ?? 0;
+      const resolvedRemainingRenders = Math.max(
+        0,
+        DEFAULT_RENDER_COUNT - usedSessions,
+      );
 
       if (resolvedRenderUrl) {
         // Store had everything we need
-        setHeroImage(resolvedRenderUrl)
-        setStyleName(resolvedStyleName)
-        setStyleTags(resolvedStyleTags)
-        setRemainingRenders(resolvedRemainingRenders)
-        setLoading(false)
-        return
+        setHeroImage(resolvedRenderUrl);
+        setStyleName(resolvedStyleName);
+        setStyleTags(resolvedStyleTags);
+        setRemainingRenders(resolvedRemainingRenders);
+        setLoading(false);
+        return;
       }
 
       // 2. Store had no render URL — query Supabase for most recent room
       try {
         const urlRoomId =
-          typeof window !== 'undefined'
-            ? new URLSearchParams(window.location.search).get('roomId')
-            : null
-        const resolvedRoomId = storeRoomId ?? urlRoomId ?? null
+          typeof window !== "undefined"
+            ? new URLSearchParams(window.location.search).get("roomId")
+            : null;
+        const resolvedRoomId = storeRoomId ?? urlRoomId ?? null;
         let roomQuery = supabase
-          .from('rooms')
-          .select('render_url, redesign_pano_url, fingerprint_id, created_at')
-          .eq('user_id', user.id)
+          .from("rooms")
+          .select("render_url, redesign_pano_url, fingerprint_id, created_at")
+          .eq("user_id", user.id);
         if (resolvedRoomId) {
-          roomQuery = roomQuery.eq('id', resolvedRoomId)
+          roomQuery = roomQuery.eq("id", resolvedRoomId);
         }
         const { data: rooms, error: roomsError } = await roomQuery
-          .order('created_at', { ascending: false })
-          .limit(1)
+          .order("created_at", { ascending: false })
+          .limit(1);
 
-        if (roomsError) throw roomsError
+        if (roomsError) throw roomsError;
 
-        const room = rooms?.[0] ?? null
+        const room = rooms?.[0] ?? null;
         // Prefer redesign_pano_url (set by redesign pipeline) over legacy render_url
-        const resolvedUrl = room?.redesign_pano_url ?? room?.render_url
+        const resolvedUrl = room?.redesign_pano_url ?? room?.render_url;
 
         if (!resolvedUrl) {
           // No URL yet — don't error, let the polling effect handle it
-          setLoading(false)
-          return
+          setLoading(false);
+          return;
         }
 
-        setHeroImage(resolvedUrl)
+        setHeroImage(resolvedUrl);
 
         // 3. Try to load style name/tags from style_fingerprints via fingerprint_id
-        if (room.fingerprint_id && (!resolvedStyleName || resolvedStyleTags.length === 0)) {
+        if (
+          room.fingerprint_id &&
+          (!resolvedStyleName || resolvedStyleTags.length === 0)
+        ) {
           const { data: fp } = await supabase
-            .from('style_fingerprints')
-            .select('style_name')
-            .eq('id', room.fingerprint_id)
-            .single()
+            .from("style_fingerprints")
+            .select("style_name")
+            .eq("id", room.fingerprint_id)
+            .single();
 
           if (fp?.style_name) {
-            setStyleName(fp.style_name)
+            setStyleName(fp.style_name);
           } else {
-            setStyleName(resolvedStyleName)
+            setStyleName(resolvedStyleName);
           }
         } else {
-          setStyleName(resolvedStyleName)
+          setStyleName(resolvedStyleName);
         }
 
-        setStyleTags(resolvedStyleTags)
-        setRemainingRenders(resolvedRemainingRenders)
+        setStyleTags(resolvedStyleTags);
+        setRemainingRenders(resolvedRemainingRenders);
       } catch {
-        setError('Unable to load your room. Please try again.')
+        setError("Unable to load your room. Please try again.");
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    checkAuthAndLoadData()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    checkAuthAndLoadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   // Poll for redesign pipeline completion if no hero image loaded yet.
-  // The redesign pipeline writes redesign_pano_url directly to Supabase,
-  // and also fires the depth video pipeline when the redesign is done.
-  const roomId = useRoomStore((s) => s.roomId)
+  // The redesign pipeline writes redesign_pano_url directly to Supabase.
+  const roomId = useRoomStore((s) => s.roomId);
   useEffect(() => {
-    if (heroImage || !roomId) return
-    let cancelled = false
+    if (heroImage || !roomId) return;
+    let cancelled = false;
     const poll = setInterval(async () => {
-      if (cancelled) return
+      if (cancelled) return;
       try {
-        const res = await fetch(`/api/rooms/status?roomId=${encodeURIComponent(roomId)}`)
-        if (!res.ok) return
-        const data = await res.json() as {
-          redesign_status?: string
-          redesignPanoUrl?: string | null
-          flythrough_video_url?: string | null
-          perspective_render_url?: string | null
-        }
+        const res = await fetch(
+          `/api/rooms/status?roomId=${encodeURIComponent(roomId)}`,
+        );
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          redesign_status?: string;
+          redesignPanoUrl?: string | null;
+          perspective_render_url?: string | null;
+        };
         // Update pipeline status for loading UI
         if (data.redesign_status) {
-          setPipelineStatus(data.redesign_status)
+          setPipelineStatus(data.redesign_status);
         }
-        const panoUrl = data.redesignPanoUrl ?? data.perspective_render_url
+        const panoUrl = data.redesignPanoUrl ?? data.perspective_render_url;
         if (panoUrl && !cancelled) {
-          setHeroImage(panoUrl)
-          setLoading(false)
-          clearInterval(poll)
-
-          // Fire depth video pipeline (non-blocking)
-          fetch('/api/pipeline/depth-video', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              room_id: roomId,
-              pano_url: panoUrl,
-              style_blend: {},
-              hotspot_azimuths: [],
-            }),
-          }).catch((err) => console.warn('[step-8a] Depth video trigger failed:', err))
+          setHeroImage(panoUrl);
+          setLoading(false);
+          clearInterval(poll);
 
           // Fire render detection for zone bounding boxes (non-blocking)
-          fetch('/api/detect/render', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+          fetch("/api/detect/render", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ roomId }),
-          }).catch((err) => console.warn('[step-8a] Render detection trigger failed:', err))
+          }).catch((err) =>
+            console.warn("[step-8a] Render detection trigger failed:", err),
+          );
         }
-        if ((data.redesign_status === 'error' || data.redesign_status === 'failed') && !cancelled) {
-          setError('Something went wrong with your render. Please try again or contact support.')
-          setLoading(false)
-          clearInterval(poll)
+        if (
+          (data.redesign_status === "error" ||
+            data.redesign_status === "failed") &&
+          !cancelled
+        ) {
+          setError(
+            "Something went wrong with your render. Please try again or contact support.",
+          );
+          setLoading(false);
+          clearInterval(poll);
         }
-      } catch { /* silent */ }
-    }, 3000)
+      } catch {
+        /* silent */
+      }
+    }, 3000);
     // 5-minute timeout
     const timeout = setTimeout(() => {
       if (!cancelled) {
-        clearInterval(poll)
-        setError('Your redesign is taking longer than expected. Please try again.')
-        setLoading(false)
+        clearInterval(poll);
+        setError(
+          "Your redesign is taking longer than expected. Please try again.",
+        );
+        setLoading(false);
       }
-    }, 300_000)
+    }, 300_000);
     return () => {
-      cancelled = true
-      clearInterval(poll)
-      clearTimeout(timeout)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [heroImage, roomId])
+      cancelled = true;
+      clearInterval(poll);
+      clearTimeout(timeout);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [heroImage, roomId, retryTick]);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -376,61 +386,63 @@ export default function RevealStep8A() {
   // Loading state — sequential pipeline progress steps
   if (loading) {
     const steps = [
-      { key: 'analyzing_room', label: 'Analyzing your space...' },
-      { key: 'applying_style', label: 'Applying your style preferences...' },
-      { key: 'rendering', label: 'Rendering your redesign...' },
-      { key: 'finalizing', label: 'Almost ready...' },
-    ]
-    const currentIdx = steps.findIndex((s) => s.key === pipelineStatus)
-    const effectiveIdx = currentIdx === -1 ? 0 : currentIdx
+      { key: "analyzing_room", label: "Analyzing your space..." },
+      { key: "applying_style", label: "Applying your style preferences..." },
+      { key: "rendering", label: "Rendering your redesign..." },
+      { key: "finalizing", label: "Almost ready..." },
+    ];
+    const currentIdx = steps.findIndex((s) => s.key === pipelineStatus);
+    const effectiveIdx = currentIdx === -1 ? 0 : currentIdx;
 
     return (
       <div
         style={{
-          minHeight: '100dvh',
-          background: '#0A1628',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '24px',
-          padding: '0 24px',
+          minHeight: "100dvh",
+          background: "#0A1628",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "24px",
+          padding: "0 24px",
         }}
       >
         <div
           style={{
-            display: 'flex',
-            flexDirection: 'column',
+            display: "flex",
+            flexDirection: "column",
             gap: 16,
             minWidth: 280,
           }}
         >
           {steps.map((step, i) => {
-            const isCompleted = i < effectiveIdx
-            const isActive = i === effectiveIdx
+            const isCompleted = i < effectiveIdx;
+            const isActive = i === effectiveIdx;
             return (
               <div
                 key={step.key}
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
+                  display: "flex",
+                  alignItems: "center",
                   gap: 12,
                   opacity: isCompleted || isActive ? 1 : 0.4,
-                  transition: 'opacity 0.3s ease',
+                  transition: "opacity 0.3s ease",
                 }}
               >
                 <div
                   style={{
                     width: 20,
                     height: 20,
-                    borderRadius: '50%',
-                    border: `2px solid ${isCompleted ? '#4A9B7F' : isActive ? '#C9A84C' : '#1E3A5F'}`,
-                    background: isCompleted ? '#4A9B7F' : 'transparent',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                    borderRadius: "50%",
+                    border: `2px solid ${isCompleted ? "#4A9B7F" : isActive ? "#C9A84C" : "#1E3A5F"}`,
+                    background: isCompleted ? "#4A9B7F" : "transparent",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                     flexShrink: 0,
-                    animation: isActive ? 'pulse 1.5s ease-in-out infinite' : 'none',
+                    animation: isActive
+                      ? "pulse 1.5s ease-in-out infinite"
+                      : "none",
                   }}
                   aria-hidden="true"
                 >
@@ -448,10 +460,10 @@ export default function RevealStep8A() {
                 </div>
                 <p
                   style={{
-                    fontFamily: 'Inter, sans-serif',
-                    color: isActive ? '#F8F6F1' : '#8BA3C0',
+                    fontFamily: "Inter, sans-serif",
+                    color: isActive ? "#F8F6F1" : "#8BA3C0",
                     fontSize: 14,
-                    letterSpacing: '0.02em',
+                    letterSpacing: "0.02em",
                     fontWeight: isActive ? 600 : 400,
                     margin: 0,
                   }}
@@ -459,7 +471,7 @@ export default function RevealStep8A() {
                   {step.label}
                 </p>
               </div>
-            )
+            );
           })}
         </div>
         <style>{`
@@ -467,7 +479,7 @@ export default function RevealStep8A() {
           @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
         `}</style>
       </div>
-    )
+    );
   }
 
   // Error state — no render found after loading
@@ -475,76 +487,99 @@ export default function RevealStep8A() {
     return (
       <div
         style={{
-          minHeight: '100dvh',
-          background: '#0A1628',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '20px',
-          padding: '0 24px',
-          textAlign: 'center',
+          minHeight: "100dvh",
+          background: "#0A1628",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "20px",
+          padding: "0 24px",
+          textAlign: "center",
         }}
       >
         <p
           style={{
-            fontFamily: 'Inter, sans-serif',
-            color: '#F8F6F1',
-            fontSize: '16px',
+            fontFamily: "Inter, sans-serif",
+            color: "#F8F6F1",
+            fontSize: "16px",
           }}
         >
-          {error ?? 'No rendered room found.'}
+          {error ?? "No rendered room found."}
         </p>
-        <div style={{ display: 'flex', gap: 12 }}>
+        <div style={{ display: "flex", gap: 12 }}>
           <button
             type="button"
-            onClick={() => {
-              if (!roomId) return
-              setError(null)
-              setLoading(true)
+            onClick={async () => {
+              if (!roomId) return;
+              setError(null);
+              setLoading(true);
+              // Reset redesign_status so the Modal pipeline doesn't hit an
+              // in-flight/idempotency guard on retry.
+              try {
+                const { createBrowserClient } =
+                  await import("@/lib/supabase/client");
+                const supabase = createBrowserClient();
+                const {
+                  data: { user: u },
+                } = await supabase.auth.getUser();
+                if (u) {
+                  await supabase
+                    .from("rooms")
+                    .update({ redesign_status: "failed" })
+                    .eq("id", roomId)
+                    .eq("user_id", u.id);
+                }
+              } catch (err) {
+                console.warn("[step-8a] status reset failed:", err);
+              }
               // Re-fire redesign pipeline
-              fetch('/api/pipeline/redesign', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+              fetch("/api/pipeline/redesign", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ room_id: roomId }),
-              }).catch((err) => console.warn('[step-8a] Retry failed:', err))
+              }).catch((err) => console.warn("[step-8a] Retry failed:", err));
+              // Restart polling
+              setRetryTick((n) => n + 1);
             }}
             style={{
-              fontFamily: 'Inter, sans-serif',
-              background: '#C9A84C',
-              color: '#0A1628',
-              border: 'none',
-              borderRadius: '24px',
-              padding: '12px 28px',
-              fontSize: '14px',
+              fontFamily: "Inter, sans-serif",
+              background: "#C9A84C",
+              color: "#0A1628",
+              border: "none",
+              borderRadius: "24px",
+              padding: "12px 28px",
+              fontSize: "14px",
               fontWeight: 600,
-              cursor: 'pointer',
-              letterSpacing: '0.04em',
+              cursor: "pointer",
+              letterSpacing: "0.04em",
             }}
           >
             Retry
           </button>
           <button
             type="button"
-            onClick={() => window.open('mailto:hello@covainterior.com', '_blank')}
+            onClick={() =>
+              window.open("mailto:hello@covainterior.com", "_blank")
+            }
             style={{
-              fontFamily: 'Inter, sans-serif',
-              background: 'transparent',
-              color: '#F8F6F1',
-              border: '1px solid rgba(201,168,76,0.4)',
-              borderRadius: '24px',
-              padding: '12px 28px',
-              fontSize: '14px',
+              fontFamily: "Inter, sans-serif",
+              background: "transparent",
+              color: "#F8F6F1",
+              border: "1px solid rgba(201,168,76,0.4)",
+              borderRadius: "24px",
+              padding: "12px 28px",
+              fontSize: "14px",
               fontWeight: 600,
-              cursor: 'pointer',
-              letterSpacing: '0.04em',
+              cursor: "pointer",
+              letterSpacing: "0.04em",
             }}
           >
             Contact Support
           </button>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -577,7 +612,11 @@ export default function RevealStep8A() {
       </div>
 
       <header className="reveal-brand">
-        <button type="button" onClick={() => router.push('/')} className="reveal-wordmark">
+        <button
+          type="button"
+          onClick={() => router.push("/")}
+          className="reveal-wordmark"
+        >
           COVA
         </button>
       </header>
@@ -586,9 +625,7 @@ export default function RevealStep8A() {
         className="reveal-style-plaque"
         aria-label="Selected style details"
       >
-        {styleName ? (
-          <p className="reveal-style-name">{styleName}</p>
-        ) : null}
+        {styleName ? <p className="reveal-style-name">{styleName}</p> : null}
         {styleTags.length > 0 ? (
           <div className="reveal-tags">
             {styleTags.map((tag) => (

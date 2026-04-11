@@ -2,8 +2,8 @@
 
 .step4-wrapper {
   --bg: #091829;
-  --gold: #C9A84C;
-  --ivory: #F5F0E8;
+  --gold: #c9a84c;
+  --ivory: #f5f0e8;
   --muted: rgba(245, 240, 232, 0.45);
   --surface: rgba(255, 255, 255, 0.04);
   --surface-border: rgba(201, 168, 76, 0.15);
@@ -14,7 +14,7 @@
   min-height: 100vh;
   background: var(--bg);
   color: var(--ivory);
-  font-family: 'DM Sans', system-ui, sans-serif;
+  font-family: "DM Sans", system-ui, sans-serif;
   overflow-x: hidden;
 }
 
@@ -55,7 +55,7 @@
 }
 
 .step4-wrapper .wordmark {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: "Playfair Display", Georgia, serif;
   font-size: 22px;
   letter-spacing: 2px;
   color: var(--ivory);
@@ -69,14 +69,16 @@
   background: none;
   border: 1px solid var(--surface-border);
   color: var(--muted);
-  font-family: 'DM Sans', sans-serif;
+  font-family: "DM Sans", sans-serif;
   font-size: 12px;
   letter-spacing: 1.5px;
   text-transform: uppercase;
   padding: 10px 20px;
   border-radius: 100px;
   cursor: pointer;
-  transition: color 0.3s ease, border-color 0.3s ease;
+  transition:
+    color 0.3s ease,
+    border-color 0.3s ease;
 }
 
 .step4-wrapper .back-btn:hover {
@@ -94,7 +96,7 @@
 }
 
 .step4-wrapper .eyebrow {
-  font-family: 'DM Sans', sans-serif;
+  font-family: "DM Sans", sans-serif;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 4px;
@@ -107,7 +109,7 @@
 }
 
 .step4-wrapper .headline {
-  font-family: 'Playfair Display', serif;
+  font-family: "Playfair Display", serif;
   font-size: clamp(36px, 5vw, 56px);
   font-weight: 400;
   line-height: 1.15;
@@ -181,7 +183,9 @@
   height: 40px;
   border-radius: 50%;
   border: 2px solid rgba(201, 168, 76, 0.2);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 .step4-wrapper .swatch-circle:hover {
@@ -211,9 +215,9 @@
   align-items: center;
   gap: 10px;
   padding: 18px 48px;
-  background: linear-gradient(135deg, var(--gold), #D4B85A);
+  background: linear-gradient(135deg, var(--gold), #d4b85a);
   color: var(--bg);
-  font-family: 'DM Sans', sans-serif;
+  font-family: "DM Sans", sans-serif;
   font-size: 16px;
   font-weight: 600;
   letter-spacing: 0.5px;
@@ -238,7 +242,7 @@
   transition: color 0.3s ease;
   background: none;
   border: none;
-  font-family: 'DM Sans', sans-serif;
+  font-family: "DM Sans", sans-serif;
 }
 
 .step4-wrapper .cta-secondary:hover {
@@ -278,7 +282,7 @@
 }
 
 .step4-wrapper .radar-title {
-  font-family: 'Playfair Display', serif;
+  font-family: "Playfair Display", serif;
   font-size: clamp(28px, 3.5vw, 40px);
   font-weight: 400;
   color: var(--ivory);
@@ -344,7 +348,7 @@
 }
 
 .step4-wrapper .rooms-title {
-  font-family: 'Playfair Display', serif;
+  font-family: "Playfair Display", serif;
   font-size: clamp(28px, 3.5vw, 40px);
   font-weight: 400;
   color: var(--ivory);
@@ -382,7 +386,9 @@
 .step4-wrapper .room-card:hover {
   transform: translateY(-10px) scale(1.02);
   border-color: rgba(201, 168, 76, 0.5);
-  box-shadow: 0 20px 60px rgba(201, 168, 76, 0.15), 0 0 0 1px rgba(201, 168, 76, 0.1);
+  box-shadow:
+    0 20px 60px rgba(201, 168, 76, 0.15),
+    0 0 0 1px rgba(201, 168, 76, 0.1);
 }
 
 .step4-wrapper .room-card img {
@@ -403,7 +409,12 @@
   left: 0;
   right: 0;
   padding: 32px 20px 20px;
-  background: linear-gradient(to top, rgba(9, 24, 41, 0.95) 0%, rgba(9, 24, 41, 0.6) 60%, transparent 100%);
+  background: linear-gradient(
+    to top,
+    rgba(9, 24, 41, 0.95) 0%,
+    rgba(9, 24, 41, 0.6) 60%,
+    transparent 100%
+  );
   text-align: left;
 }
 
@@ -417,7 +428,7 @@
 }
 
 .step4-wrapper .room-card-name {
-  font-family: 'Playfair Display', serif;
+  font-family: "Playfair Display", serif;
   font-size: 20px;
   font-weight: 600;
   color: var(--ivory);
@@ -461,7 +472,7 @@
 }
 
 .step4-wrapper .tweak-title {
-  font-family: 'Playfair Display', serif;
+  font-family: "Playfair Display", serif;
   font-size: clamp(28px, 3.5vw, 40px);
   font-weight: 400;
   color: var(--ivory);
@@ -488,7 +499,7 @@
   background: var(--surface);
   border: 1px solid var(--surface-border);
   border-radius: 100px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: "DM Sans", sans-serif;
   font-size: 15px;
   color: var(--ivory);
   outline: none;
@@ -503,7 +514,9 @@
 
 .step4-wrapper .tweak-input:focus {
   border-color: var(--gold);
-  box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.1), 0 8px 32px rgba(201, 168, 76, 0.1);
+  box-shadow:
+    0 0 0 3px rgba(201, 168, 76, 0.1),
+    0 8px 32px rgba(201, 168, 76, 0.1);
 }
 
 .step4-wrapper .tweak-submit {
@@ -512,9 +525,9 @@
   top: 50%;
   transform: translateY(-50%);
   padding: 14px 28px;
-  background: linear-gradient(135deg, var(--gold), #D4B85A);
+  background: linear-gradient(135deg, var(--gold), #d4b85a);
   color: var(--bg);
-  font-family: 'DM Sans', sans-serif;
+  font-family: "DM Sans", sans-serif;
   font-size: 14px;
   font-weight: 600;
   border: none;
@@ -567,7 +580,7 @@
 }
 
 .step4-wrapper .tweak-result-name {
-  font-family: 'Playfair Display', serif;
+  font-family: "Playfair Display", serif;
   font-size: 24px;
   color: var(--ivory);
   margin-bottom: 12px;
@@ -651,7 +664,8 @@
 }
 
 @keyframes step4HoloTilt {
-  0%, 100% {
+  0%,
+  100% {
     transform: rotateY(-4deg) rotateX(2deg);
   }
   25% {

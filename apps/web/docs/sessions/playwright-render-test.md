@@ -6,33 +6,37 @@ Two tests that verify the render pipeline works end-to-end without human interac
 
 ## Files Created
 
-| File | Purpose |
-|------|---------|
-| `tests/e2e/helpers/auth.ts` | Injects Supabase session cookies into Playwright browser context |
-| `tests/e2e/render-pipeline.spec.ts` | Two E2E tests for the render pipeline |
-| `tests/fixtures/test-room.jpg` | Auto-downloaded on first run from Unsplash |
-| `playwright.config.ts` | Updated: loads `.env.local`, port 3001, serial workers |
+| File                                | Purpose                                                          |
+| ----------------------------------- | ---------------------------------------------------------------- |
+| `tests/e2e/helpers/auth.ts`         | Injects Supabase session cookies into Playwright browser context |
+| `tests/e2e/render-pipeline.spec.ts` | Two E2E tests for the render pipeline                            |
+| `tests/fixtures/test-room.jpg`      | Auto-downloaded on first run from Unsplash                       |
+| `playwright.config.ts`              | Updated: loads `.env.local`, port 3001, serial workers           |
 
 ## Key Design Decisions
 
 ### Auth Injection
+
 - Uses `@supabase/supabase-js` `signInWithPassword` in Node.js (test runner context)
 - Extracts project ref from `NEXT_PUBLIC_SUPABASE_URL` to build cookie name: `sb-<ref>-auth-token`
 - Handles cookie chunking per `@supabase/ssr` v0.10.0 spec (chunks at 3180 bytes URL-encoded)
 - Cookie value = `JSON.stringify(session)` — matches what `createServerClient` reads
 
 ### sessionStorage Injection
+
 - Fingerprint store key: `cova-fingerprint-v1` (uses sessionStorage, not localStorage)
 - Room store key: `cova-room-v1` (uses sessionStorage, not localStorage)
 - Format: `{ state: {...}, version: 0 }` matching Zustand persist middleware
 - Navigate → inject → reload → Zustand re-hydrates from sessionStorage
 
 ### Step-6 Bypass
+
 - `keepMask: []` (empty array, NOT null) triggers `showFallback = true` in step-6
 - Fallback shows "Design My Room →" button directly without waiting for detection
 - No detection dots clicked — verifies the zero-items path works
 
 ### Test 1 — Full Render
+
 1. Create room via `/api/rooms/create`
 2. Upload photo via `/api/rooms/capture` (multipart, field name `photo`)
 3. Navigate to `/design/step-6` → inject sessionStorage → reload
@@ -42,6 +46,7 @@ Two tests that verify the render pipeline works end-to-end without human interac
 7. Assert `render_url` starts with `https://`, `pipeline_cost_log.two_stage` is falsy
 
 ### Test 2 — Inpainting Gate
+
 1. Create room via API
 2. POST `/api/render` with `keep_mask: []` (no `showcase_mode`)
 3. Assert `prediction_id` returned (render started single-stage)

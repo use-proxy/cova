@@ -50,7 +50,9 @@ export default function CovaLoginPage() {
       window.location.assign("/design/step-1");
     } catch (err) {
       setErrorMessage(
-        err instanceof Error ? err.message : "Sign-in failed. Please try again."
+        err instanceof Error
+          ? err.message
+          : "Sign-in failed. Please try again.",
       );
       setIsEmailLoading(false);
     }
@@ -76,7 +78,7 @@ export default function CovaLoginPage() {
       // we intentionally leave isGoogleLoading=true.
     } catch (err) {
       setErrorMessage(
-        err instanceof Error ? err.message : "Google sign-in failed."
+        err instanceof Error ? err.message : "Google sign-in failed.",
       );
       setIsGoogleLoading(false);
     }

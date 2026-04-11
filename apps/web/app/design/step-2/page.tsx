@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useFingerprintStore } from '@/lib/store/fingerprint';
-import '../step-1/step1.css';
-import './step2.css';
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useFingerprintStore } from "@/lib/store/fingerprint";
+import "../step-1/step1.css";
+import "./step2.css";
 
 type StyleCard = {
   id: string;
@@ -20,74 +20,74 @@ type FetchedAnchorCard = {
 
 const STYLES: StyleCard[] = [
   {
-    id: 'japandi',
-    dbId: '16989535-60e8-429a-bdf3-344b3e753bbc',
-    label: 'Warm Japandi',
-    image: 'https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/anchors/1-warm-japandi.webp',
+    id: "japandi",
+    dbId: "16989535-60e8-429a-bdf3-344b3e753bbc",
+    label: "Warm Japandi",
+    image: "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/anchors/1-warm-japandi.webp",
   },
   {
-    id: 'modern-luxe',
-    dbId: 'ddd966a3-fa8c-4e1c-a463-d0d5e6149ea5',
-    label: 'Dark Moody Glam',
-    image: 'https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/anchors/2-dark-moody-glam.webp',
+    id: "modern-luxe",
+    dbId: "ddd966a3-fa8c-4e1c-a463-d0d5e6149ea5",
+    label: "Dark Moody Glam",
+    image: "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/anchors/2-dark-moody-glam.webp",
   },
   {
-    id: 'coastal',
-    dbId: '158b0361-e738-499e-88a9-b2663dfd78c9',
-    label: 'Coastal Bright',
-    image: 'https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/anchors/3-coastal-bright.webp',
+    id: "coastal",
+    dbId: "158b0361-e738-499e-88a9-b2663dfd78c9",
+    label: "Coastal Bright",
+    image: "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/anchors/3-coastal-bright.webp",
   },
   {
-    id: 'industrial',
-    dbId: 'd96b7dcc-1af0-47c9-bd51-52eabe8e80f9',
-    label: 'Industrial Loft',
-    image: 'https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/anchors/4-industrial-loft.webp',
+    id: "industrial",
+    dbId: "d96b7dcc-1af0-47c9-bd51-52eabe8e80f9",
+    label: "Industrial Loft",
+    image: "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/anchors/4-industrial-loft.webp",
   },
   {
-    id: 'maximalist',
-    dbId: '39ee6902-ea23-4510-a215-ab844ff60ebf',
-    label: 'Maximalist Eclectic',
-    image: 'https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/anchors/5-maximalist-eclectic.webp',
+    id: "maximalist",
+    dbId: "39ee6902-ea23-4510-a215-ab844ff60ebf",
+    label: "Maximalist Eclectic",
+    image: "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/anchors/5-maximalist-eclectic.webp",
   },
   {
-    id: 'art-deco',
-    dbId: '59ed05f8-d478-4e46-8b70-f4a4157c2713',
-    label: 'Heritage Traditional',
-    image: 'https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/anchors/6-heritage-traditional.webp',
+    id: "art-deco",
+    dbId: "59ed05f8-d478-4e46-8b70-f4a4157c2713",
+    label: "Heritage Traditional",
+    image: "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/anchors/6-heritage-traditional.webp",
   },
   {
-    id: 'scandinavian',
-    dbId: 'd47f61e9-51fc-4c77-a027-3dadf20f2f4a',
-    label: 'Pure Minimal White',
-    image: 'https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/anchors/7-pure-minimal-white.webp',
+    id: "scandinavian",
+    dbId: "d47f61e9-51fc-4c77-a027-3dadf20f2f4a",
+    label: "Pure Minimal White",
+    image: "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/anchors/7-pure-minimal-white.webp",
   },
   {
-    id: 'bohemian',
-    dbId: '0ec5d295-2680-4497-8c91-4f20243ef907',
-    label: 'Biophilic Jungle',
-    image: 'https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/anchors/8-biophilic-jungle.webp',
+    id: "bohemian",
+    dbId: "0ec5d295-2680-4497-8c91-4f20243ef907",
+    label: "Biophilic Jungle",
+    image: "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/anchors/8-biophilic-jungle.webp",
   },
   {
-    id: 'mid-century',
-    dbId: '80572b6a-9506-4a03-80da-8ff738af2276',
-    label: 'Retro Mid-Century',
-    image: 'https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/anchors/9-retro-mid-century.webp',
+    id: "mid-century",
+    dbId: "80572b6a-9506-4a03-80da-8ff738af2276",
+    label: "Retro Mid-Century",
+    image: "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/anchors/9-retro-mid-century.webp",
   },
 ];
 
 const ROOM_TYPES: { id: string; label: string }[] = [
-  { id: 'living_room', label: 'Living Room' },
-  { id: 'bedroom', label: 'Bedroom' },
-  { id: 'dining_room', label: 'Dining Room' },
-  { id: 'home_office', label: 'Home Office' },
-  { id: 'kitchen', label: 'Kitchen' },
-  { id: 'bathroom', label: 'Bathroom' },
+  { id: "living_room", label: "Living Room" },
+  { id: "bedroom", label: "Bedroom" },
+  { id: "dining_room", label: "Dining Room" },
+  { id: "home_office", label: "Home Office" },
+  { id: "kitchen", label: "Kitchen" },
+  { id: "bathroom", label: "Bathroom" },
 ];
 
 export default function CovaStyleSelectionPage() {
   const router = useRouter();
   const roomType = useFingerprintStore((s) => s.roomType);
-  const [phase, setPhase] = useState<'room' | 'anchors'>(roomType ? 'anchors' : 'room');
+  const [phase, setPhase] = useState<"room" | "anchors">(roomType ? "anchors" : "room");
   const [selected, setSelected] = useState<string[]>([]);
   const [burstCard, setBurstCard] = useState<string | null>(null);
   const [pointer, setPointer] = useState({ x: 50, y: 28 });
@@ -95,21 +95,27 @@ export default function CovaStyleSelectionPage() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const { createBrowserClient } = await import('@/lib/supabase/client');
+      const { createBrowserClient } = await import("@/lib/supabase/client");
       const supabase = createBrowserClient();
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) router.push('/auth?next=/design/step-2');
+      if (!user) router.push("/auth?next=/design/step-2");
     };
     checkAuth();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Fetch room_images from the API so cards can show room-type-specific images
   useEffect(() => {
-    fetch('/api/quiz/next-card')
-      .then((res) => res.json() as Promise<{ cards: FetchedAnchorCard[] }>)
+    let cancelled = false;
+    fetch("/api/quiz/next-card")
+      .then((res) => {
+        if (!res.ok) throw new Error(`next-card ${res.status}`);
+        return res.json() as Promise<{ cards: FetchedAnchorCard[] }>;
+      })
       .then((json) => {
+        if (cancelled) return;
         const map: Record<string, Record<string, string>> = {};
         for (const card of json.cards ?? []) {
           if (card.room_images) map[card.id] = card.room_images;
@@ -117,6 +123,9 @@ export default function CovaStyleSelectionPage() {
         setRoomImageMap(map);
       })
       .catch(() => { /* fall back to static images */ });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const progressWidth = useMemo(() => {
@@ -135,7 +144,10 @@ export default function CovaStyleSelectionPage() {
 
       if (next.length === 2) {
         setBurstCard(id);
-        window.setTimeout(() => setBurstCard((active) => (active === id ? null : active)), 650);
+        window.setTimeout(
+          () => setBurstCard((active) => (active === id ? null : active)),
+          650,
+        );
       }
 
       return next;
@@ -145,14 +157,16 @@ export default function CovaStyleSelectionPage() {
   const handleContinue = () => {
     if (selected.length === 2) {
       // Sync selections to fingerprint store (cookie-persisted, survives OAuth redirects)
-      const fpStore = useFingerprintStore.getState()
+      const fpStore = useFingerprintStore.getState();
       // Clear any previous phase-A selections before adding new ones
-      fpStore.phaseASelections.forEach((id) => fpStore.removePhaseASelection(id))
+      fpStore.phaseASelections.forEach((id) =>
+        fpStore.removePhaseASelection(id),
+      );
       selected.forEach((id) => {
-        const style = STYLES.find((s) => s.id === id)
-        if (style) fpStore.addPhaseASelection(style.dbId)
-      })
-      router.push('/design/step-3');
+        const style = STYLES.find((s) => s.id === id);
+        if (style) fpStore.addPhaseASelection(style.dbId);
+      });
+      router.push("/design/step-3");
     }
   };
 
@@ -183,27 +197,30 @@ export default function CovaStyleSelectionPage() {
             className="cova-icon-button"
             aria-label="Go back"
             onClick={() => {
-              if (phase === 'anchors') {
-                setPhase('room');
+              if (phase === "anchors") {
+                setPhase("room");
               } else {
-                router.push('/design/step-1');
+                router.push("/design/step-1");
               }
             }}
           >
-            <span aria-hidden="true">‹</span>
+            <span aria-hidden="true">&lsaquo;</span>
           </button>
 
           <div className="cova-header-center">
             <button
               type="button"
               className="cova-wordmark"
-              onClick={() => router.push('/')}
+              onClick={() => router.push("/")}
               aria-label="Cova home"
             >
               Cova
             </button>
             <div className="cova-progress-rail">
-              <div className="cova-progress-fill" style={{ width: progressWidth }} />
+              <div
+                className="cova-progress-fill"
+                style={{ width: progressWidth }}
+              />
             </div>
           </div>
 
@@ -213,7 +230,7 @@ export default function CovaStyleSelectionPage() {
           </div>
         </header>
 
-        {phase === 'room' && (
+        {phase === "room" && (
           <>
             <section className="cova-hero">
               <p className="cova-eyebrow">Before We Begin</p>
@@ -224,12 +241,12 @@ export default function CovaStyleSelectionPage() {
               className="cova-grid"
               aria-label="Room type selection"
               style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                gap: '1rem',
-                padding: '1.5rem',
-                maxWidth: '900px',
-                margin: '0 auto',
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                gap: "1rem",
+                padding: "1.5rem",
+                maxWidth: "900px",
+                margin: "0 auto",
               }}
             >
               {ROOM_TYPES.map((room) => (
@@ -238,18 +255,18 @@ export default function CovaStyleSelectionPage() {
                   type="button"
                   onClick={() => {
                     useFingerprintStore.getState().setRoomType(room.id);
-                    setPhase('anchors');
+                    setPhase("anchors");
                   }}
                   style={{
-                    padding: '2rem 1rem',
-                    borderRadius: '12px',
-                    border: '1px solid rgba(225, 201, 132, 0.22)',
-                    background: 'rgba(17, 35, 55, 0.54)',
-                    color: '#f4efe6',
-                    fontSize: '1.1rem',
-                    fontFamily: 'inherit',
-                    cursor: 'pointer',
-                    transition: 'all 200ms ease-out',
+                    padding: "2rem 1rem",
+                    borderRadius: "12px",
+                    border: "1px solid rgba(225, 201, 132, 0.22)",
+                    background: "rgba(17, 35, 55, 0.54)",
+                    color: "#f4efe6",
+                    fontSize: "1.1rem",
+                    fontFamily: "inherit",
+                    cursor: "pointer",
+                    transition: "all 200ms ease-out",
                   }}
                 >
                   {room.label}
@@ -259,7 +276,7 @@ export default function CovaStyleSelectionPage() {
           </>
         )}
 
-        {phase === 'anchors' && (
+        {phase === "anchors" && (
           <>
             <section className="cova-hero">
               <p className="cova-eyebrow">Your Style Anchors</p>
@@ -276,7 +293,7 @@ export default function CovaStyleSelectionPage() {
                   <button
                     key={style.id}
                     type="button"
-                    className={`cova-card ${isSelected ? 'is-selected' : ''}`}
+                    className={`cova-card ${isSelected ? "is-selected" : ""}`}
                     onClick={() => toggleSelection(style.id)}
                     aria-pressed={isSelected}
                     aria-label={style.label}
@@ -293,7 +310,7 @@ export default function CovaStyleSelectionPage() {
 
                     {isSelected ? (
                       <div className="cova-check" aria-hidden="true">
-                        ✦
+                        &#10022;
                       </div>
                     ) : null}
 
@@ -303,8 +320,8 @@ export default function CovaStyleSelectionPage() {
                           <span
                             key={particleIndex}
                             style={{
-                              ['--angle' as string]: `${particleIndex * 36}deg`,
-                              ['--distance' as string]: `${38 + (particleIndex % 3) * 12}px`,
+                              ["--angle" as string]: `${particleIndex * 36}deg`,
+                              ["--distance" as string]: `${38 + (particleIndex % 3) * 12}px`,
                             }}
                           />
                         ))}
@@ -317,18 +334,18 @@ export default function CovaStyleSelectionPage() {
 
             <footer className="cova-footer-panel">
               <div className="cova-selection-copy">
-                <span className={selected.length === 2 ? 'is-complete' : ''}>
+                <span className={selected.length === 2 ? "is-complete" : ""}>
                   {selected.length} of 2 selected
                 </span>
               </div>
 
               <button
                 type="button"
-                className={`cova-cta ${selected.length === 2 ? 'is-ready' : ''}`}
+                className={`cova-cta ${selected.length === 2 ? "is-ready" : ""}`}
                 disabled={selected.length !== 2}
                 onClick={handleContinue}
               >
-                See Your Matches →
+                See Your Matches &rarr;
               </button>
             </footer>
           </>
