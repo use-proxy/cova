@@ -1,0 +1,18 @@
+---
+alwaysApply: true
+---
+
+You are building Cova, an AI interior design app.
+Design system:
+- Background: #091829 (use this, not #0a1628 — Daksh's spec)
+- Gold: #C9A84C
+- Text: #F5F0E8 ivory
+- Card: #0d1f3c
+- Fonts: EB Garamond for headlines, Inter uppercase tracked for labels
+- No white backgrounds ever
+- Gold accent only for interactive elements and emphasis
+- All screens match existing Cova aesthetic: dark navy, gold, luxury editorial
+- Skill file at: /Users/pranav/Desktop/cova/.claude/skills/ui-ux-pro-max/SKILL.md
+Read the skill file before building any screen.
+Project: Next.js 14, TypeScript, Tailwind, Supabase
+Repo: /Users/pranav/Desktop/cova

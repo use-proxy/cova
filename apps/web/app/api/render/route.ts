@@ -228,7 +228,12 @@ Modify the prompt to incorporate the user's instruction while preserving the cor
         .from('rooms')
         .update({
           inpainting_mask_url: inpaintingMaskUrl,
-          render_context: { fingerprint: fingerprint_vector?.dimensions ?? null },
+          render_context: {
+            fingerprint: fingerprint_vector?.dimensions ?? null,
+            roomType: room_type,
+            budget: budget ?? null,
+            assembledAt: new Date().toISOString(),
+          },
           pipeline_cost_log: {
             two_stage: true,
             stage1_prediction_id: predictionId,
@@ -258,7 +263,12 @@ Modify the prompt to incorporate the user's instruction while preserving the cor
       await supabase
         .from('rooms')
         .update({
-          render_context: { fingerprint: fingerprint_vector?.dimensions ?? null },
+          render_context: {
+            fingerprint: fingerprint_vector?.dimensions ?? null,
+            roomType: room_type,
+            budget: budget ?? null,
+            assembledAt: new Date().toISOString(),
+          },
           pipeline_cost_log: {
             two_pass: true,
             pass1_prediction_id: predictionId,

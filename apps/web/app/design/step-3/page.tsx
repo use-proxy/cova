@@ -6,7 +6,7 @@ import { useFingerprintStore, type StyleFingerprint } from "@/lib/store/fingerpr
 import "../step-1/step1.css";
 import "./step3.css";
 
-type Phase = "room" | "anchors" | "pairs" | "validation" | "compute";
+type Phase = "anchors" | "pairs" | "validation" | "compute";
 
 type ValidationRender = {
   url: string | null;
@@ -25,9 +25,23 @@ type AnchorCard = {
 type ComparisonPair = {
   id: string;
   dimension: string;
+  dimension_index: number;
   image_a_url: string;
   image_b_url: string;
 };
+
+const SUPABASE_STORAGE =
+  "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images";
+
+function getPairImageUrl(
+  dimension: string,
+  pole: "low" | "high",
+  roomType: string,
+  pairIndex: number,
+): string {
+  const round = pairIndex + 1;
+  return `${SUPABASE_STORAGE}/comparisons/${dimension}/${dimension}-${pole}-${roomType}-r${round}.webp`;
+}
 
 type FingerprintResult = {
   fingerprint: StyleFingerprint;
@@ -35,22 +49,14 @@ type FingerprintResult = {
   style_tags: string[];
 };
 
-const ROOM_TYPES: { id: string; label: string }[] = [
-  { id: "living_room", label: "Living Room" },
-  { id: "bedroom", label: "Bedroom" },
-  { id: "dining_room", label: "Dining Room" },
-  { id: "home_office", label: "Home Office" },
-  { id: "kitchen", label: "Kitchen" },
-  { id: "bathroom", label: "Bathroom" },
-];
-
 const TOTAL_PAIRS = 12;
 const MAX_ANCHOR_PICKS = 3;
 const COMPLETION_ROUTE = "/design/step-4";
 
 export default function CovaStyleQuizPage() {
   const router = useRouter();
-  const [phase, setPhase] = useState<Phase>("room");
+  const roomType = useFingerprintStore((s) => s.roomType);
+  const [phase, setPhase] = useState<Phase>("pairs");
 
   // Phase A state
   const [anchors, setAnchors] = useState<AnchorCard[]>([]);
@@ -86,12 +92,6 @@ export default function CovaStyleQuizPage() {
     checkAuth();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // ── Phase 0 — Room type ───────────────────────────────────────────────────
-  const handleRoomSelect = (roomType: string) => {
-    useFingerprintStore.getState().setRoomType(roomType);
-    setPhase("anchors");
-  };
 
   // ── Phase A — Anchor selection ────────────────────────────────────────────
   useEffect(() => {
@@ -307,15 +307,13 @@ export default function CovaStyleQuizPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   const progressValue =
-    phase === "room"
-      ? 0
-      : phase === "anchors"
-        ? 10
-        : phase === "pairs"
-          ? 20 + (pairsAnswered / TOTAL_PAIRS) * 70
-          : phase === "validation"
-            ? 92
-            : 100;
+    phase === "anchors"
+      ? 10
+      : phase === "pairs"
+        ? 20 + (pairsAnswered / TOTAL_PAIRS) * 70
+        : phase === "validation"
+          ? 92
+          : 100;
 
   return (
     <main className="cova-shell">
@@ -351,7 +349,6 @@ export default function CovaStyleQuizPage() {
 
           <div className="cova-brand-lockup">
             <div className="cova-progress-copy">
-              {phase === "room" && "Pick a room"}
               {phase === "anchors" && "Choose what resonates"}
               {phase === "pairs" && `${pairsAnswered} of ${TOTAL_PAIRS}`}
               {phase === "validation" && "Does this feel like you?"}
@@ -376,8 +373,6 @@ export default function CovaStyleQuizPage() {
           <div className="cova-divider-gold" aria-hidden="true" />
         </div>
 
-        {phase === "room" && <RoomTypePhase onSelect={handleRoomSelect} />}
-
         {phase === "anchors" && (
           <AnchorsPhase
             anchors={anchors}
@@ -395,6 +390,7 @@ export default function CovaStyleQuizPage() {
             loading={pairLoading}
             error={pairError}
             pairsAnswered={pairsAnswered}
+            roomType={roomType}
             onChoice={handlePairChoice}
             onSkip={handleSkipPair}
             onRetry={() => void fetchNextPair()}
@@ -414,51 +410,6 @@ export default function CovaStyleQuizPage() {
         {phase === "compute" && <ComputePhase error={computeError} onRetry={runCompute} />}
       </section>
     </main>
-  );
-}
-
-// ── Phase 0: Room Type ───────────────────────────────────────────────────────
-
-function RoomTypePhase({ onSelect }: { onSelect: (id: string) => void }) {
-  return (
-    <>
-      <section className="cova-editorial-intro">
-        <h1>Which room are we designing?</h1>
-        <p className="cova-subcopy">Pick one to get started.</p>
-      </section>
-      <section
-        className="cova-comparison-stage"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: "1rem",
-          padding: "1.5rem",
-          maxWidth: "900px",
-          margin: "0 auto",
-        }}
-      >
-        {ROOM_TYPES.map((room) => (
-          <button
-            key={room.id}
-            type="button"
-            onClick={() => onSelect(room.id)}
-            style={{
-              padding: "2rem 1rem",
-              borderRadius: "12px",
-              border: "1px solid rgba(225, 201, 132, 0.22)",
-              background: "rgba(17, 35, 55, 0.54)",
-              color: "#f4efe6",
-              fontSize: "1.1rem",
-              fontFamily: "inherit",
-              cursor: "pointer",
-              transition: "all 200ms ease-out",
-            }}
-          >
-            {room.label}
-          </button>
-        ))}
-      </section>
-    </>
   );
 }
 
@@ -567,6 +518,7 @@ function PairsPhase({
   loading,
   error,
   pairsAnswered,
+  roomType,
   onChoice,
   onSkip,
   onRetry,
@@ -575,6 +527,7 @@ function PairsPhase({
   loading: boolean;
   error: string | null;
   pairsAnswered: number;
+  roomType: string | null;
   onChoice: (side: "A" | "B") => void;
   onSkip: () => void;
   onRetry: () => void;
@@ -606,7 +559,13 @@ function PairsPhase({
                 className="cova-choice-card"
                 onClick={() => onChoice("A")}
                 aria-label="Choose left"
-                style={{ backgroundImage: `url(${pair.image_a_url})` }}
+                style={{
+                  backgroundImage: `url(${
+                    roomType
+                      ? getPairImageUrl(pair.dimension, "low", roomType, pair.dimension_index)
+                      : pair.image_a_url
+                  })`,
+                }}
               />
             </div>
             <div className="cova-or-divider" aria-hidden="true">
@@ -620,7 +579,13 @@ function PairsPhase({
                 className="cova-choice-card"
                 onClick={() => onChoice("B")}
                 aria-label="Choose right"
-                style={{ backgroundImage: `url(${pair.image_b_url})` }}
+                style={{
+                  backgroundImage: `url(${
+                    roomType
+                      ? getPairImageUrl(pair.dimension, "high", roomType, pair.dimension_index)
+                      : pair.image_b_url
+                  })`,
+                }}
               />
             </div>
           </div>

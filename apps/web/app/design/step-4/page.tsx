@@ -265,7 +265,11 @@ export default function StepFourPage() {
         const res = await fetch('/api/quiz/fingerprint', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ responses: phaseBResponses }),
+          body: JSON.stringify({
+            phase_a_selections: useFingerprintStore.getState().phaseASelections,
+            phase_b_responses: phaseBResponses,
+            room_type: useFingerprintStore.getState().roomType ?? 'living_room',
+          }),
         })
         if (res.ok) {
           const data = await res.json()

@@ -389,15 +389,28 @@ export async function POST(request: Request) {
         styleTags = result.styleTags
       }
 
-      // Guard: require authenticated user before attempting any DB insert.
-      // Do not silently skip the save — return 401 so the client knows
-      // the fingerprint was not persisted. The cookie-based pre-auth flow
-      // (cova_anon_fingerprint) handles the unauthenticated case.
+      // Pre-auth path: if no authenticated user, allow fingerprint computation
+      // if the client provides a session token (any non-empty string). The
+      // fingerprint is returned but NOT written to DB (requires real user.id).
+      // The client stores it in the cova_anon_fingerprint cookie, and the OAuth
+      // callback persists it after login.
       if (!user) {
-        return NextResponse.json(
-          { success: false, error: 'unauthenticated' },
-          { status: 401 }
-        )
+        const sessionToken =
+          request.headers.get('x-cova-session-token') ??
+          (rawBody as Record<string, unknown>).session_token
+        if (!sessionToken || (typeof sessionToken === 'string' && sessionToken.trim() === '')) {
+          return NextResponse.json(
+            { success: false, error: 'unauthenticated' },
+            { status: 401 }
+          )
+        }
+        // Return computed fingerprint without DB persistence
+        return NextResponse.json({
+          fingerprint,
+          style_name: styleName,
+          style_tags: styleTags,
+          persisted: false,
+        })
       }
 
       // Save to DB. NOTE: the supabase-js query builder is a thenable, NOT
