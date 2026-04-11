@@ -1,7 +1,7 @@
-'use client'
+"use client";
 
-import { useEffect } from 'react'
-import { usePathname } from 'next/navigation'
+import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 
 /**
  * Lazy-initializes PostHog and tracks page views on route change.
@@ -9,14 +9,14 @@ import { usePathname } from 'next/navigation'
  * Add once to the root layout, wrapping children.
  */
 export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
+  const pathname = usePathname();
 
   useEffect(() => {
     // Lazy import so PostHog only loads client-side, never SSR
-    import('@/lib/analytics').then(({ trackPageView }) => {
-      trackPageView(pathname)
-    })
-  }, [pathname])
+    import("@/lib/analytics").then(({ trackPageView }) => {
+      trackPageView(pathname);
+    });
+  }, [pathname]);
 
-  return <>{children}</>
+  return <>{children}</>;
 }

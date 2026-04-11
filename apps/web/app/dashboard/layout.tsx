@@ -1,20 +1,20 @@
-import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { AvatarDropdown } from '@/components/dashboard/AvatarDropdown'
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { AvatarDropdown } from "@/components/dashboard/AvatarDropdown";
 
 export default async function DashboardLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
-  const supabase = await createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect('/')
+    redirect("/");
   }
 
   return (
@@ -48,5 +48,5 @@ export default async function DashboardLayout({
         <div className="mx-auto max-w-6xl px-6 py-10">{children}</div>
       </main>
     </div>
-  )
+  );
 }

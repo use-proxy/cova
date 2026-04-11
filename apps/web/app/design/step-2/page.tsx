@@ -1,10 +1,11 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useFingerprintStore } from '@/lib/store/fingerprint';
-import '../step-1/step1.css';
-import './step2.css';
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useFingerprintStore } from "@/lib/store/fingerprint";
+import { toDisplayName } from "@/lib/ai/anchor-display";
+import "../step-1/step1.css";
+import "./step2.css";
 
 type StyleCard = {
   id: string;
@@ -12,80 +13,55 @@ type StyleCard = {
   image: string;
 };
 
-const STYLES: StyleCard[] = [
-  {
-    id: 'japandi',
-    label: 'Clean lines with natural warmth',
-    image:
-      'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    id: 'modern-luxe',
-    label: 'Sleek surfaces and refined detail',
-    image:
-      'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80&sat=-10&brightness=5',
-  },
-  {
-    id: 'industrial',
-    label: 'Raw textures and exposed structure',
-    image:
-      'https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    id: 'coastal',
-    label: 'Light and breezy seaside feel',
-    image:
-      'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80&hue=15&brightness=8',
-  },
-  {
-    id: 'maximalist',
-    label: 'Bold color and daring layers',
-    image:
-      'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80&sat=20&contrast=10',
-  },
-  {
-    id: 'scandinavian',
-    label: 'Bright woods and soft neutrals',
-    image:
-      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    id: 'mid-century',
-    label: 'Retro curves and warm wood tones',
-    image:
-      'https://images.unsplash.com/photo-1460317442991-0ec209397118?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    id: 'bohemian',
-    label: 'Layered textures and rich color',
-    image:
-      'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80&sat=25&hue=18',
-  },
-  {
-    id: 'art-deco',
-    label: 'Geometric glamour and metallic shine',
-    image:
-      'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80&contrast=18&hue=-5',
-  },
-];
-
 export default function CovaStyleSelectionPage() {
   const router = useRouter();
   const [selected, setSelected] = useState<string[]>([]);
   const [burstCard, setBurstCard] = useState<string | null>(null);
   const [pointer, setPointer] = useState({ x: 50, y: 28 });
+  const [styles, setStyles] = useState<StyleCard[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
-      const { createBrowserClient } = await import('@/lib/supabase/client');
+      const { createBrowserClient } = await import("@/lib/supabase/client");
       const supabase = createBrowserClient();
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) router.push('/auth?next=/design/step-2');
+      if (!user) router.push("/auth?next=/design/step-2");
     };
     checkAuth();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fetch the 9 anchors from quiz_anchor_images via /api/quiz/next-card.
+  // IDs returned here are the real quiz_anchor_images.id UUIDs — the
+  // fingerprint route keys phase_a_selections off these exact IDs.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/quiz/next-card")
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`next-card ${res.status}`);
+        return res.json() as Promise<{
+          cards: Array<{ id: string; style_name: string; image_url: string }>;
+        }>;
+      })
+      .then((json) => {
+        if (cancelled) return;
+        const cards: StyleCard[] = (json.cards ?? []).map((c) => ({
+          id: c.id,
+          label: toDisplayName(c.style_name),
+          image: c.image_url,
+        }));
+        setStyles(cards);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setLoadError(err instanceof Error ? err.message : "Failed to load");
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const progressWidth = useMemo(() => {
@@ -104,7 +80,10 @@ export default function CovaStyleSelectionPage() {
 
       if (next.length === 2) {
         setBurstCard(id);
-        window.setTimeout(() => setBurstCard((active) => (active === id ? null : active)), 650);
+        window.setTimeout(
+          () => setBurstCard((active) => (active === id ? null : active)),
+          650,
+        );
       }
 
       return next;
@@ -114,11 +93,13 @@ export default function CovaStyleSelectionPage() {
   const handleContinue = () => {
     if (selected.length === 2) {
       // Sync selections to fingerprint store (cookie-persisted, survives OAuth redirects)
-      const fpStore = useFingerprintStore.getState()
+      const fpStore = useFingerprintStore.getState();
       // Clear any previous phase-A selections before adding new ones
-      fpStore.phaseASelections.forEach((id) => fpStore.removePhaseASelection(id))
-      selected.forEach((id) => fpStore.addPhaseASelection(id))
-      router.push('/design/step-3');
+      fpStore.phaseASelections.forEach((id) =>
+        fpStore.removePhaseASelection(id),
+      );
+      selected.forEach((id) => fpStore.addPhaseASelection(id));
+      router.push("/design/step-3");
     }
   };
 
@@ -148,7 +129,7 @@ export default function CovaStyleSelectionPage() {
             type="button"
             className="cova-icon-button"
             aria-label="Go back"
-            onClick={() => router.push('/design/step-1')}
+            onClick={() => router.push("/design/step-1")}
           >
             <span aria-hidden="true">‹</span>
           </button>
@@ -157,13 +138,16 @@ export default function CovaStyleSelectionPage() {
             <button
               type="button"
               className="cova-wordmark"
-              onClick={() => router.push('/')}
+              onClick={() => router.push("/")}
               aria-label="Cova home"
             >
               Cova
             </button>
             <div className="cova-progress-rail">
-              <div className="cova-progress-fill" style={{ width: progressWidth }} />
+              <div
+                className="cova-progress-fill"
+                style={{ width: progressWidth }}
+              />
             </div>
           </div>
 
@@ -176,11 +160,27 @@ export default function CovaStyleSelectionPage() {
         <section className="cova-hero">
           <p className="cova-eyebrow">Your Style Anchors</p>
           <h1>What draws you in?</h1>
-          <p className="cova-subtext">Choose 2 spaces that feel like home. We&apos;ll do the rest.</p>
+          <p className="cova-subtext">
+            Choose 2 spaces that feel like home. We&apos;ll do the rest.
+          </p>
         </section>
 
-        <section className="cova-grid" aria-label="Interior design style selection">
-          {STYLES.map((style, index) => {
+        {loadError && (
+          <p style={{ textAlign: "center", color: "#C0504A", padding: "1rem" }}>
+            Failed to load: {loadError}
+          </p>
+        )}
+        {!loadError && styles.length === 0 && (
+          <p style={{ textAlign: "center", color: "#8BA3C0", padding: "1rem" }}>
+            Loading style anchors…
+          </p>
+        )}
+
+        <section
+          className="cova-grid"
+          aria-label="Interior design style selection"
+        >
+          {styles.map((style, index) => {
             const isSelected = selected.includes(style.id);
             const isBursting = burstCard === style.id;
 
@@ -188,7 +188,7 @@ export default function CovaStyleSelectionPage() {
               <button
                 key={style.id}
                 type="button"
-                className={`cova-card ${isSelected ? 'is-selected' : ''}`}
+                className={`cova-card ${isSelected ? "is-selected" : ""}`}
                 onClick={() => toggleSelection(style.id)}
                 aria-pressed={isSelected}
                 aria-label={style.label}
@@ -215,8 +215,8 @@ export default function CovaStyleSelectionPage() {
                       <span
                         key={particleIndex}
                         style={{
-                          ['--angle' as string]: `${particleIndex * 36}deg`,
-                          ['--distance' as string]: `${38 + (particleIndex % 3) * 12}px`,
+                          ["--angle" as string]: `${particleIndex * 36}deg`,
+                          ["--distance" as string]: `${38 + (particleIndex % 3) * 12}px`,
                         }}
                       />
                     ))}
@@ -229,14 +229,14 @@ export default function CovaStyleSelectionPage() {
 
         <footer className="cova-footer-panel">
           <div className="cova-selection-copy">
-            <span className={selected.length === 2 ? 'is-complete' : ''}>
+            <span className={selected.length === 2 ? "is-complete" : ""}>
               {selected.length} of 2 selected
             </span>
           </div>
 
           <button
             type="button"
-            className={`cova-cta ${selected.length === 2 ? 'is-ready' : ''}`}
+            className={`cova-cta ${selected.length === 2 ? "is-ready" : ""}`}
             disabled={selected.length !== 2}
             onClick={handleContinue}
           >

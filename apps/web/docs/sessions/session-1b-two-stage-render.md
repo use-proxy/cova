@@ -62,6 +62,7 @@ safety_tolerance: 2
 ```
 
 Mask convention from `lib/ai/inpainting.ts`:
+
 - Black (0) = preserve (kept items)
 - White (255) = regenerate
 

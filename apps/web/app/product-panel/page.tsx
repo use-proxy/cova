@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { ProductPanel } from "@/components/product/ProductPanel"
-import type { Product } from "@/components/product/ProductCard"
+import { useState } from "react";
+import { ProductPanel } from "@/components/product/ProductPanel";
+import type { Product } from "@/components/product/ProductCard";
 
 const MOCK_PRODUCTS: Product[] = [
   {
@@ -18,9 +18,27 @@ const MOCK_PRODUCTS: Product[] = [
     dimensions: ['94"W', "Linen", "Ivory"],
     affiliateUrl: "https://article.com",
     similarItems: [
-      { id: "s1", name: "Haven Sofa", price: 999, image: "https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?w=300" },
-      { id: "s2", name: "Luna Sectional", price: 1599, image: "https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e?w=300" },
-      { id: "s3", name: "Arc Loveseat", price: 849, image: "https://images.unsplash.com/photo-1550254478-ead40cc54513?w=300" },
+      {
+        id: "s1",
+        name: "Haven Sofa",
+        price: 999,
+        image:
+          "https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?w=300",
+      },
+      {
+        id: "s2",
+        name: "Luna Sectional",
+        price: 1599,
+        image:
+          "https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e?w=300",
+      },
+      {
+        id: "s3",
+        name: "Arc Loveseat",
+        price: 849,
+        image:
+          "https://images.unsplash.com/photo-1550254478-ead40cc54513?w=300",
+      },
     ],
   },
   {
@@ -36,8 +54,20 @@ const MOCK_PRODUCTS: Product[] = [
     dimensions: ['48"W', "Oak", "Natural"],
     affiliateUrl: "https://cb2.com",
     similarItems: [
-      { id: "s4", name: "Slab Table", price: 449, image: "https://images.unsplash.com/photo-1530018607912-eff2daa1bac4?w=300" },
-      { id: "s5", name: "Marble Round", price: 799, image: "https://images.unsplash.com/photo-1549187774-b4e9b0445b41?w=300" },
+      {
+        id: "s4",
+        name: "Slab Table",
+        price: 449,
+        image:
+          "https://images.unsplash.com/photo-1530018607912-eff2daa1bac4?w=300",
+      },
+      {
+        id: "s5",
+        name: "Marble Round",
+        price: 799,
+        image:
+          "https://images.unsplash.com/photo-1549187774-b4e9b0445b41?w=300",
+      },
     ],
   },
   {
@@ -53,28 +83,52 @@ const MOCK_PRODUCTS: Product[] = [
     dimensions: ["8'x10'", "Jute", "Natural"],
     affiliateUrl: "https://westelm.com",
     similarItems: [
-      { id: "s6", name: "Wool Flatweave", price: 299, image: "https://images.unsplash.com/photo-1615971677499-5467cbab01c0?w=300" },
+      {
+        id: "s6",
+        name: "Wool Flatweave",
+        price: 299,
+        image:
+          "https://images.unsplash.com/photo-1615971677499-5467cbab01c0?w=300",
+      },
     ],
   },
-]
+];
 
 interface Hotspot {
-  id: string
-  label: string
-  x: number
-  y: number
-  products: Product[]
+  id: string;
+  label: string;
+  x: number;
+  y: number;
+  products: Product[];
 }
 
 const MOCK_HOTSPOTS: Hotspot[] = [
   { id: "1", label: "Linen Sofa", x: 48, y: 58, products: MOCK_PRODUCTS },
-  { id: "2", label: "Oak Coffee Table", x: 52, y: 72, products: MOCK_PRODUCTS.slice(1) },
-  { id: "3", label: "Floor Lamp", x: 72, y: 45, products: MOCK_PRODUCTS.slice(0, 2) },
-  { id: "4", label: "Area Rug", x: 50, y: 80, products: MOCK_PRODUCTS.slice(2) },
-]
+  {
+    id: "2",
+    label: "Oak Coffee Table",
+    x: 52,
+    y: 72,
+    products: MOCK_PRODUCTS.slice(1),
+  },
+  {
+    id: "3",
+    label: "Floor Lamp",
+    x: 72,
+    y: 45,
+    products: MOCK_PRODUCTS.slice(0, 2),
+  },
+  {
+    id: "4",
+    label: "Area Rug",
+    x: 50,
+    y: 80,
+    products: MOCK_PRODUCTS.slice(2),
+  },
+];
 
 export default function ProductPanelTestPage() {
-  const [activeHotspot, setActiveHotspot] = useState<Hotspot | null>(null)
+  const [activeHotspot, setActiveHotspot] = useState<Hotspot | null>(null);
 
   return (
     <div className="fixed inset-0 bg-[#0a1628]">
@@ -90,7 +144,7 @@ export default function ProductPanelTestPage() {
 
       {/* Hotspots */}
       {MOCK_HOTSPOTS.map((hotspot) => {
-        const isActive = activeHotspot?.id === hotspot.id
+        const isActive = activeHotspot?.id === hotspot.id;
         return (
           <div
             key={hotspot.id}
@@ -117,7 +171,9 @@ export default function ProductPanelTestPage() {
               className="group relative w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200"
               style={{
                 border: `2px solid ${isActive ? "#C9A84C" : "rgba(201,168,76,0.7)"}`,
-                background: isActive ? "rgba(201,168,76,0.25)" : "rgba(201,168,76,0.15)",
+                background: isActive
+                  ? "rgba(201,168,76,0.25)"
+                  : "rgba(201,168,76,0.15)",
                 boxShadow: isActive
                   ? "0 0 30px rgba(201,168,76,0.5)"
                   : "0 0 20px rgba(201,168,76,0.3)",
@@ -137,14 +193,17 @@ export default function ProductPanelTestPage() {
               {!isActive && (
                 <span
                   className="absolute -top-8 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full text-[9px] font-sans uppercase tracking-[0.08em] text-[#C9A84C] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
-                  style={{ background: "rgba(13,31,60,0.9)", border: "1px solid rgba(201,168,76,0.3)" }}
+                  style={{
+                    background: "rgba(13,31,60,0.9)",
+                    border: "1px solid rgba(201,168,76,0.3)",
+                  }}
                 >
                   {hotspot.label}
                 </span>
               )}
             </button>
           </div>
-        )
+        );
       })}
 
       {/* Product Panel */}
@@ -156,5 +215,5 @@ export default function ProductPanelTestPage() {
         initialMatchIndex={0}
       />
     </div>
-  )
+  );
 }

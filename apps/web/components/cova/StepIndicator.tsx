@@ -1,12 +1,15 @@
-'use client'
+"use client";
 
 interface StepIndicatorProps {
-  currentStep: number
-  totalSteps?: number
+  currentStep: number;
+  totalSteps?: number;
 }
 
-export function StepIndicator({ currentStep, totalSteps = 9 }: StepIndicatorProps) {
-  const percentage = (currentStep / totalSteps) * 100
+export function StepIndicator({
+  currentStep,
+  totalSteps = 9,
+}: StepIndicatorProps) {
+  const percentage = (currentStep / totalSteps) * 100;
 
   return (
     <div className="w-full">
@@ -22,5 +25,5 @@ export function StepIndicator({ currentStep, totalSteps = 9 }: StepIndicatorProp
         Step {currentStep} of {totalSteps}
       </p>
     </div>
-  )
+  );
 }

@@ -4,34 +4,39 @@
  */
 
 export const STORAGE_BUCKETS = {
-  ROOM_VIDEOS: 'room-videos',
-  ROOM_PHOTOS: 'room-photos',
-  RENDERS: 'renders',
-  DEPTH_MAPS: 'depth-maps',
-} as const
+  ROOM_VIDEOS: "room-videos",
+  ROOM_PHOTOS: "room-photos",
+  RENDERS: "renders",
+  DEPTH_MAPS: "depth-maps",
+} as const;
 
-export type StorageBucket = (typeof STORAGE_BUCKETS)[keyof typeof STORAGE_BUCKETS]
+export type StorageBucket =
+  (typeof STORAGE_BUCKETS)[keyof typeof STORAGE_BUCKETS];
 
 /**
  * Build a public CDN URL for a Supabase storage file.
  * Only use for public buckets.
  */
 export function getPublicUrl(bucket: StorageBucket, path: string): string {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  if (!supabaseUrl) return ''
-  return `${supabaseUrl}/storage/v1/object/public/${bucket}/${path}`
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!supabaseUrl) return "";
+  return `${supabaseUrl}/storage/v1/object/public/${bucket}/${path}`;
 }
 
 /**
  * Parse a Supabase storage URL to extract bucket and path.
  */
-export function parseStorageUrl(url: string): { bucket: string; path: string } | null {
+export function parseStorageUrl(
+  url: string,
+): { bucket: string; path: string } | null {
   try {
-    const match = url.match(/\/storage\/v1\/object\/(?:public|authenticated)\/([^/]+)\/(.+)$/)
-    if (!match) return null
-    return { bucket: match[1] ?? '', path: match[2] ?? '' }
+    const match = url.match(
+      /\/storage\/v1\/object\/(?:public|authenticated)\/([^/]+)\/(.+)$/,
+    );
+    if (!match) return null;
+    return { bucket: match[1] ?? "", path: match[2] ?? "" };
   } catch {
-    return null
+    return null;
   }
 }
 
@@ -42,8 +47,8 @@ export function parseStorageUrl(url: string): { bucket: string; path: string } |
 export function buildStoragePath(
   userId: string,
   roomId: string,
-  assetType: 'photo' | 'video' | 'render' | 'depth',
-  filename: string
+  assetType: "photo" | "video" | "render" | "depth",
+  filename: string,
 ): string {
-  return `${userId}/${roomId}/${assetType}/${filename}`
+  return `${userId}/${roomId}/${assetType}/${filename}`;
 }

@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import './step1.css';
+import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import "./step1.css";
 
 export default function StepOnePage() {
   const router = useRouter();
@@ -13,10 +13,10 @@ export default function StepOnePage() {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const GOLD = '201,168,76';
+    const GOLD = "201,168,76";
     const COUNT = 65;
     let W = 0;
     let H = 0;
@@ -96,35 +96,35 @@ export default function StepOnePage() {
 
     init();
     loop();
-    window.addEventListener('resize', onResize);
+    window.addEventListener("resize", onResize);
 
     return () => {
       cancelAnimationFrame(raf);
-      window.removeEventListener('resize', onResize);
+      window.removeEventListener("resize", onResize);
     };
   }, []);
 
   // Staggered entrance
   useEffect(() => {
     const stages: Array<[string, number]> = [
-      ['nav-wordmark', 0],
-      ['nav-right', 80],
-      ['eyebrow', 220],
-      ['headline', 340],
-      ['subtext', 460],
-      ['cta-wrap', 580],
-      ['hero-right', 500],
-      ['steps-label', 720],
-      ['step-1', 780],
-      ['step-2', 880],
-      ['step-3', 980],
+      ["nav-wordmark", 0],
+      ["nav-right", 80],
+      ["eyebrow", 220],
+      ["headline", 340],
+      ["subtext", 460],
+      ["cta-wrap", 580],
+      ["hero-right", 500],
+      ["steps-label", 720],
+      ["step-1", 780],
+      ["step-2", 880],
+      ["step-3", 980],
     ];
     const timers: number[] = [];
     stages.forEach(([id, d]) => {
       const el = document.getElementById(id);
       if (el) {
         timers.push(
-          window.setTimeout(() => el.classList.add('visible'), d + 80)
+          window.setTimeout(() => el.classList.add("visible"), d + 80),
         );
       }
     });
@@ -166,7 +166,7 @@ export default function StepOnePage() {
             type="button"
             className="nav-wordmark"
             id="nav-wordmark"
-            onClick={() => router.push('/')}
+            onClick={() => router.push("/")}
           >
             Cova
           </button>
@@ -207,7 +207,7 @@ export default function StepOnePage() {
               <button
                 type="button"
                 className="cta-btn"
-                onClick={() => router.push('/design/step-2')}
+                onClick={() => router.push("/design/step-2")}
               >
                 Begin Your Design
                 <span className="cta-arrow">→</span>
@@ -222,9 +222,9 @@ export default function StepOnePage() {
                 className="room-frame"
                 ref={roomFrameRef}
                 style={{
-                  position: 'relative',
-                  borderRadius: '18px',
-                  overflow: 'hidden',
+                  position: "relative",
+                  borderRadius: "18px",
+                  overflow: "hidden",
                 }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -234,51 +234,51 @@ export default function StepOnePage() {
                 />
                 <div
                   style={{
-                    position: 'absolute',
+                    position: "absolute",
                     bottom: 0,
                     left: 0,
                     right: 0,
-                    background: 'rgba(9,24,41,0.82)',
-                    backdropFilter: 'blur(16px)',
-                    WebkitBackdropFilter: 'blur(16px)',
-                    borderTop: '1px solid rgba(201,168,76,0.2)',
-                    padding: '14px 24px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
+                    background: "rgba(9,24,41,0.82)",
+                    backdropFilter: "blur(16px)",
+                    WebkitBackdropFilter: "blur(16px)",
+                    borderTop: "1px solid rgba(201,168,76,0.2)",
+                    padding: "14px 24px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
                   }}
                 >
                   <div className="badge-dot" />
                   <span
                     style={{
-                      fontSize: '10px',
+                      fontSize: "10px",
                       fontWeight: 600,
-                      letterSpacing: '0.14em',
-                      textTransform: 'uppercase',
-                      color: '#8BA3C0',
+                      letterSpacing: "0.14em",
+                      textTransform: "uppercase",
+                      color: "#8BA3C0",
                     }}
                   >
                     Items detected
                   </span>
                   <span
                     style={{
-                      fontSize: '14px',
+                      fontSize: "14px",
                       fontWeight: 500,
-                      color: '#F8F6F1',
+                      color: "#F8F6F1",
                     }}
                   >
                     24 shoppable pieces
                   </span>
                   <span
                     style={{
-                      marginLeft: 'auto',
-                      fontSize: '12px',
+                      marginLeft: "auto",
+                      fontSize: "12px",
                       fontWeight: 500,
-                      color: '#C9A84C',
-                      letterSpacing: '0.04em',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
+                      color: "#C9A84C",
+                      letterSpacing: "0.04em",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
                     }}
                   >
                     <span>✦</span>

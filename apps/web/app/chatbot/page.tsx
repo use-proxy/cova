@@ -1,17 +1,27 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { ChatBubble } from "@/components/chat/ChatBubble"
-import { ChatPanel, type Message } from "@/components/chat/ChatPanel"
+import { useState } from "react";
+import { ChatBubble } from "@/components/chat/ChatBubble";
+import { ChatPanel, type Message } from "@/components/chat/ChatPanel";
 
 const MOCK_CONTEXT = {
-  styleFingerprint: { primary: "warm-serene", secondary: "retro-organic", tertiary: "clean-essential" },
+  styleFingerprint: {
+    primary: "warm-serene",
+    secondary: "retro-organic",
+    tertiary: "clean-essential",
+  },
   budgetTier: 3,
   budgetRange: "$2,000 \u2013 $5,000",
   roomType: "living room",
-  furniture: ["linen sofa", "oak coffee table", "floor lamp", "area rug", "side chair"],
+  furniture: [
+    "linen sofa",
+    "oak coffee table",
+    "floor lamp",
+    "area rug",
+    "side chair",
+  ],
   totalCost: 3240,
-}
+};
 
 const PRELOADED_MESSAGES: Message[] = [
   { id: "m1", role: "user", content: "What's my total room cost?" },
@@ -28,10 +38,10 @@ const PRELOADED_MESSAGES: Message[] = [
     content:
       'Here are three floor lamps that would complement your space perfectly.\n\n<products>\n[{"name":"Oda Floor Lamp","price":349,"retailer":"Article","image":"https://images.unsplash.com/photo-1507473885765-e6ed057ab3fe?w=300","url":"#"},{"name":"Arc Brass Lamp","price":289,"retailer":"CB2","image":"https://images.unsplash.com/photo-1543198126-a8ad8e47fb22?w=300","url":"#"},{"name":"Stick Floor Light","price":199,"retailer":"West Elm","image":"https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?w=300","url":"#"}]\n</products>',
   },
-]
+];
 
 export default function ChatbotTestPage() {
-  const [chatOpen, setChatOpen] = useState(false)
+  const [chatOpen, setChatOpen] = useState(false);
 
   return (
     <div className="fixed inset-0 bg-[#0a1628]">
@@ -59,5 +69,5 @@ export default function ChatbotTestPage() {
         context={MOCK_CONTEXT}
       />
     </div>
-  )
+  );
 }

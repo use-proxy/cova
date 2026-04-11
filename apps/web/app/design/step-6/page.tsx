@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import QRCode from "react-qr-code";
 import { useRouter } from "next/navigation";
+import { useRoomStore } from "@/lib/store/room";
 import "../step-1/step1.css";
 import "./step6.css";
 
@@ -852,6 +853,8 @@ export default function RoomPhotoUpload() {
   const [activeTab, setActiveTab] = useState<"upload" | "qr">("upload");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [baseUrl, setBaseUrl] = useState("");
+  const setRoom = useRoomStore((s) => s.setRoom);
+  const setPhotoUrl = useRoomStore((s) => s.setPhotoUrl);
   const inputRef = useRef<HTMLInputElement>(null); // Staggered entrance
 
   useEffect(() => {
@@ -968,9 +971,7 @@ export default function RoomPhotoUpload() {
 
   return (
     <>
-            
-      
-            
+                   
       <div
         style={{
           minHeight: "100vh",
@@ -1483,7 +1484,12 @@ export default function RoomPhotoUpload() {
                       body: fd,
                     });
                     if (uploadRes.ok) {
-                      const uploadData = await uploadRes.json() as { room_id: string; photo_url: string };
+                      const uploadData = (await uploadRes.json()) as {
+                        room_id: string;
+                        photo_url: string;
+                      };
+                      setRoom(uploadData.room_id);
+                      setPhotoUrl(uploadData.photo_url);
                       // Fire pre-detection pipeline (non-blocking)
                       fetch("/api/pipeline/pre-detect", {
                         method: "POST",
@@ -1493,7 +1499,10 @@ export default function RoomPhotoUpload() {
                           photo_url: uploadData.photo_url,
                         }),
                       }).catch((err) =>
-                        console.warn("[step-6] Pre-detection trigger failed:", err)
+                        console.warn(
+                          "[step-6] Pre-detection trigger failed:",
+                          err,
+                        ),
                       );
                     }
                   } catch (err) {

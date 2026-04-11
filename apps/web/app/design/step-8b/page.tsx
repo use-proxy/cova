@@ -485,6 +485,8 @@ export default function Step8B() {
   const roomId = useRoomStore((s) => s.roomId);
   const renderUrl = useRoomStore((s) => s.renderUrl);
   const setRenderUrl = useRoomStore((s) => s.setRenderUrl);
+  const renderSessions = useRoomStore((s) => s.renderSessions);
+  const addRenderSession = useRoomStore((s) => s.addRenderSession);
   const [activePath, setActivePath] = useState<RefinementPath>(null);
   const [specificText, setSpecificText] = useState("");
   const [showPreview, setShowPreview] = useState(false);
@@ -497,7 +499,7 @@ export default function Step8B() {
   });
   const [selectedLayout, setSelectedLayout] = useState<LayoutOption>(null);
   const [selectedVariant, setSelectedVariant] = useState<VariantOption>(null);
-  const [refinementsUsed, setRefinementsUsed] = useState(0);
+  const [refinementsUsed, setRefinementsUsed] = useState(renderSessions.length);
   const [isRendering, setIsRendering] = useState(false);
   const [renderProgress, setRenderProgress] = useState(0);
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
@@ -674,7 +676,6 @@ export default function Step8B() {
 
   async function startRerender() {
     if (refinementsRemaining <= 0 || isRendering || !roomId) return;
-    setRefinementsUsed((current) => clamp(current + 1, 0, MAX_REFINEMENTS));
     setIsRendering(true);
     setRenderError(null);
 
@@ -686,23 +687,30 @@ export default function Step8B() {
       refinementText = vibeSummary;
     } else if (activePath === "layout") {
       const layoutDesc: Record<string, string> = {
-        conversation: "Rearrange furniture into a conversation-first layout with seating facing center",
+        conversation:
+          "Rearrange furniture into a conversation-first layout with seating facing center",
         open: "Push furniture to walls for an open flow layout with maximum floor space",
         cozy: "Group furniture into a cozy corner arrangement for intimate gathering",
         balanced: "Create balanced symmetry with mirrored layout on both sides",
       };
-      refinementText = selectedLayout ? layoutDesc[selectedLayout] ?? "" : "";
+      refinementText = selectedLayout ? (layoutDesc[selectedLayout] ?? "") : "";
     } else if (activePath === "direction") {
       const variantDesc: Record<string, string> = {
-        primary: "Keep the overall direction but refine details — closer to my original style profile",
-        contrast: "Make it more dramatic — higher contrast, sharper lines, moodier atmosphere",
-        twist: "Try an unexpected twist — introduce an unusual color or sculptural element",
+        primary:
+          "Keep the overall direction but refine details — closer to my original style profile",
+        contrast:
+          "Make it more dramatic — higher contrast, sharper lines, moodier atmosphere",
+        twist:
+          "Try an unexpected twist — introduce an unusual color or sculptural element",
       };
-      refinementText = selectedVariant ? variantDesc[selectedVariant] ?? "" : "";
+      refinementText = selectedVariant
+        ? (variantDesc[selectedVariant] ?? "")
+        : "";
     }
 
     if (!refinementText) {
-      refinementText = "Refine the overall design while keeping the same style direction.";
+      refinementText =
+        "Refine the overall design while keeping the same style direction.";
     }
 
     try {
@@ -719,20 +727,33 @@ export default function Step8B() {
       });
 
       if (!res.ok) {
-        const errData = await res.json().catch(() => ({})) as { error?: string };
+        const errData = (await res.json().catch(() => ({}))) as {
+          error?: string;
+        };
         throw new Error(errData.error ?? "Refinement failed");
       }
 
       const data = (await res.json()) as { render_url: string };
+      setRefinementsUsed((current) => clamp(current + 1, 0, MAX_REFINEMENTS));
       if (data.render_url) {
         setRenderUrl(data.render_url);
+        addRenderSession({
+          id: `refine-${Date.now()}`,
+          renderUrl: data.render_url,
+          previewUrl: null,
+          parallaxVideoUrl: null,
+          iteration: refinementsUsed + 1,
+          createdAt: new Date().toISOString(),
+        });
       }
       router.push("/design/step-8a");
     } catch (err) {
-      setRenderError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setRenderError(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong. Please try again.",
+      );
       setIsRendering(false);
-      // Roll back the refinement count on failure
-      setRefinementsUsed((current) => Math.max(0, current - 1));
     }
   }
 
@@ -1125,7 +1146,14 @@ export default function Step8B() {
             <span>Back to Reveal</span>
           </button>
 
-          <button type="button" className="step8b-brand" onClick={() => router.push('/')} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>Cova</button>
+          <button
+            type="button"
+            className="step8b-brand"
+            onClick={() => router.push("/")}
+            style={{ background: "none", border: "none", cursor: "pointer" }}
+          >
+            Cova
+          </button>
 
           <div className="step8b-nav-status">
             {refinementsRemaining} refinements remaining
@@ -1266,7 +1294,13 @@ export default function Step8B() {
           style={{ background: "rgba(10,22,40,0.92)" }}
         >
           <div className="step8b-loading-shell" style={{ gap: "16px" }}>
-            <p style={{ color: "#C0504A", fontFamily: "Inter, sans-serif", fontSize: "15px" }}>
+            <p
+              style={{
+                color: "#C0504A",
+                fontFamily: "Inter, sans-serif",
+                fontSize: "15px",
+              }}
+            >
               {renderError}
             </p>
             <button

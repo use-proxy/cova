@@ -99,7 +99,7 @@ def detect_furniture_with_claude(pano_bytes, anthropic_key, style_blend):
 
     cats_str = ", ".join(PROMPT_CATEGORIES)
 
-    prompt = f"""Analyze this equirectangular 360° panorama of a redesigned room in {style_context} style.
+    prompt = f"""Analyze this redesigned room image in {style_context} style.
 
 Identify up to 8 distinct, purchasable furniture pieces. Focus on large items:
 sofas, chairs, tables, beds, shelves, lamps, rugs, desks.
@@ -108,7 +108,7 @@ For each piece provide:
 1. label: simple descriptive name (e.g. "accent chair", "coffee table", "floor lamp")
 2. description: detailed visual description including material, color, finish, shape, and style
 3. category: MUST be one of these exact values: {cats_str}
-4. azimuth_degrees: horizontal position in panorama, 0-360 clockwise (0=left edge, 180=center, 360=right edge)
+4. azimuth_degrees: horizontal position as a percentage mapped to 0-360 (left edge=0, center=180, right edge=360)
 5. elevation_degrees: vertical position, -90 (floor) to +90 (ceiling), 0 = eye level. Guide:
    - Floor items (rug, coffee table): -30 to -40
    - Seated furniture (sofa, chair, ottoman): -15 to -25
@@ -339,7 +339,11 @@ def detect_furniture(room_id: str, user_id: str, fixed_furniture: list = None) -
     anthropic_key = os.environ["ANTHROPIC_API_KEY"]
 
     client = create_client(supabase_url, supabase_key)
-    client.table("rooms").update({"redesign_status": "detecting_furniture"}).eq("id", room_id).execute()
+    try:
+        client.table("rooms").update({"redesign_status": "detecting_furniture"}).eq("id", room_id).execute()
+    except Exception as e:
+        print(f"[furniture] status lock write failed for {room_id}: {e}")
+        # Non-fatal — continue; the pipeline will still write final status below.
 
     try:
         room = client.table("rooms").select(
@@ -355,14 +359,9 @@ def detect_furniture(room_id: str, user_id: str, fixed_furniture: list = None) -
 
         style_blend = room.get("style_blend") or {"japandi": 0.7, "minimalist": 0.3, "coastal": 0, "bohemian": 0, "mid_century": 0}
 
-        # Download pano
+        # Download render image — fail loudly if unavailable; never substitute a different room's image
         pano_resp = req.get(pano_url, timeout=60)
-        if not pano_resp.ok:
-            pano_resp = req.get(
-                "https://cdn.marble.worldlabs.ai/7f3d51a8-a61d-4e87-a4c0-fcaf96593780/7961e02d-d637-4210-aa34-d68197f46a69_panos/rgb_0.png",
-                timeout=60,
-            )
-            pano_resp.raise_for_status()
+        pano_resp.raise_for_status()
         pano_bytes = pano_resp.content
         print(f"[furniture] Pano: {len(pano_bytes)/1e6:.1f}MB")
 
@@ -430,9 +429,12 @@ def detect_furniture(room_id: str, user_id: str, fixed_furniture: list = None) -
 
     except Exception as e:
         print(f"[furniture] ERROR: {e}")
+        # Matching failure must NOT block the render. Step-8a has already shown
+        # the redesigned image — mark the room 'complete' so the user can still
+        # reach step-9 (which will fall back to an empty/error UI on zero results).
         try:
             client.table("rooms").update({
-                "redesign_status": "failed",
+                "redesign_status": "complete",
                 "redesign_error": str(e)[:2000],
             }).eq("id", room_id).execute()
         except Exception as update_err:

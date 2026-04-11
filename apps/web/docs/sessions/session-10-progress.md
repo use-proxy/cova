@@ -5,6 +5,7 @@
 ### Render route input fields (`/api/render`)
 
 Interface `RenderRequestBody` defines:
+
 - `photo_url: string` — required
 - `depth_map_url: string` — required (but null is passed safely)
 - `keep_mask: Array<{type, bbox, confidence, keep, label}> | null` — accepts full KeepMaskItem[]
@@ -19,21 +20,22 @@ Interface `RenderRequestBody` defines:
 
 ### Store → API field mapping
 
-| Store field | API field | Notes |
-|---|---|---|
-| `fingerprintStore.fingerprint` | `fingerprint_vector` | Critical rename |
-| `fingerprintStore.roomType` | `room_type` | Direct |
-| `fingerprintStore.budgetTier` | `budget` | Direct |
-| `roomStore.keepMask` | `keep_mask` | Direct |
-| `roomStore.depthMapUrl` | `depth_map_url` | Direct |
-| `roomStore.referenceImageUrls` | `reference_image_urls` | Direct |
-| (none) | `inclusions` | Empty array — not in store |
-| (none) | `constraints` | Empty array — not in store |
-| (none) | `room_analysis` | Passed as null — API accepts individual fields |
+| Store field                    | API field              | Notes                                          |
+| ------------------------------ | ---------------------- | ---------------------------------------------- |
+| `fingerprintStore.fingerprint` | `fingerprint_vector`   | Critical rename                                |
+| `fingerprintStore.roomType`    | `room_type`            | Direct                                         |
+| `fingerprintStore.budgetTier`  | `budget`               | Direct                                         |
+| `roomStore.keepMask`           | `keep_mask`            | Direct                                         |
+| `roomStore.depthMapUrl`        | `depth_map_url`        | Direct                                         |
+| `roomStore.referenceImageUrls` | `reference_image_urls` | Direct                                         |
+| (none)                         | `inclusions`           | Empty array — not in store                     |
+| (none)                         | `constraints`          | Empty array — not in store                     |
+| (none)                         | `room_analysis`        | Passed as null — API accepts individual fields |
 
 ### Render status response shape
 
 `/api/render/status` returns:
+
 - `status: 'processing' | 'failed' | 'complete'`
 - `render_url: string` — present when complete
 - `render_session_id: string | null` — present when complete
@@ -47,17 +49,18 @@ The API never returns `preview_url` or `schnell_prediction_id`. The code handles
 
 ## Deviations from spec
 
-| Spec assumption | Reality | How handled |
-|---|---|---|
-| Payload field `fingerprint` | API uses `fingerprint_vector` | Fixed: use `fingerprint_vector` |
-| `inclusions`/`constraints` from store | Store has neither field | Pass empty arrays `[]` |
-| Schnell preview URL returned | Not returned | `preview_url` check kept but always skips; 'preview' stage is unreachable |
-| `room_analysis` object | API uses individual flat fields | Passed as `null`, unused optional fields |
-| `schnell_prediction_id` returned | Not returned | `setPredictionIds` call handles missing arg |
+| Spec assumption                       | Reality                         | How handled                                                               |
+| ------------------------------------- | ------------------------------- | ------------------------------------------------------------------------- |
+| Payload field `fingerprint`           | API uses `fingerprint_vector`   | Fixed: use `fingerprint_vector`                                           |
+| `inclusions`/`constraints` from store | Store has neither field         | Pass empty arrays `[]`                                                    |
+| Schnell preview URL returned          | Not returned                    | `preview_url` check kept but always skips; 'preview' stage is unreachable |
+| `room_analysis` object                | API uses individual flat fields | Passed as `null`, unused optional fields                                  |
+| `schnell_prediction_id` returned      | Not returned                    | `setPredictionIds` call handles missing arg                               |
 
 ## Replicate CDN domains
 
 Already present in `next.config.mjs`:
+
 - `replicate.delivery`
 - `pbxt.replicate.delivery`
 - `*.replicate.com`

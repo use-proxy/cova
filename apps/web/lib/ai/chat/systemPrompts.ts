@@ -18,113 +18,120 @@ import type {
   RoomContext,
   RoomConstraints,
   TabId,
-} from '@/lib/types/area2'
-import type { StyleFingerprint } from '@/types/fingerprint'
+} from "@/lib/types/area2";
+import type { StyleFingerprint } from "@/types/fingerprint";
 
-type LooseTabExtracted = Record<string, unknown>
+type LooseTabExtracted = Record<string, unknown>;
 
 interface RoomRow {
-  room_context: RoomContext | null
-  room_constraints: RoomConstraints | null
-  keep_mask: KeepMask | null
+  room_context: RoomContext | null;
+  room_constraints: RoomConstraints | null;
+  keep_mask: KeepMask | null;
 }
 
 function summarizeRoom(room: RoomRow | null): string {
-  const rc = room?.room_context
-  if (!rc) return 'Room context not available.'
+  const rc = room?.room_context;
+  if (!rc) return "Room context not available.";
   return `ROOM CONTEXT (from photo analysis):
 - Shape: ${rc.roomShape}, ${rc.estimatedDimensions}
-- Ceiling: ${rc.ceilingHeight}${rc.ceilingDetail ? `, ${rc.ceilingDetail}` : ''}
+- Ceiling: ${rc.ceilingHeight}${rc.ceilingDetail ? `, ${rc.ceilingDetail}` : ""}
 - Light: ${rc.naturalLightQuality} from ${rc.naturalLightDirection}
 - Windows: ${rc.windowCount} × ${rc.windowSize}
 - Floor: ${rc.floorMaterial}, ${rc.floorColor}
-- Walls: ${rc.wallColor} (${rc.wallTexture})${rc.hasAccentWall ? `, accent: ${rc.accentWallColor ?? 'unknown'}` : ''}
+- Walls: ${rc.wallColor} (${rc.wallTexture})${rc.hasAccentWall ? `, accent: ${rc.accentWallColor ?? "unknown"}` : ""}
 - Existing feel: ${rc.existingStyleFingerprint}
-- Dominant colors: ${(rc.dominantColors ?? []).join(', ')}`
+- Dominant colors: ${(rc.dominantColors ?? []).join(", ")}`;
 }
 
 function summarizeKept(room: RoomRow | null): string {
-  const objs = room?.keep_mask?.objects ?? []
-  const kept = objs.filter((o) => o.keep)
-  if (kept.length === 0) return 'KEPT OBJECTS: none kept — everything will be redesigned.'
+  const objs = room?.keep_mask?.objects ?? [];
+  const kept = objs.filter((o) => o.keep);
+  if (kept.length === 0)
+    return "KEPT OBJECTS: none kept — everything will be redesigned.";
   const lines = kept.map(
     (o) =>
-      `  • ${o.type} (${o.dominantColor ?? 'color unknown'}, ${
-        o.material ?? 'material unknown'
-      })${o.immovable ? ' [immovable]' : ''}${o.userNote ? ` — note: "${o.userNote}"` : ''}`
-  )
-  return `KEPT OBJECTS:\n${lines.join('\n')}`
+      `  • ${o.type} (${o.dominantColor ?? "color unknown"}, ${
+        o.material ?? "material unknown"
+      })${o.immovable ? " [immovable]" : ""}${o.userNote ? ` — note: "${o.userNote}"` : ""}`,
+  );
+  return `KEPT OBJECTS:\n${lines.join("\n")}`;
 }
 
 function summarizeConstraints(room: RoomRow | null): string {
-  const c = room?.room_constraints
-  if (!c) return ''
+  const c = room?.room_constraints;
+  if (!c) return "";
   return `CONSTRAINTS:
 - Wall permanence: ${c.wallPermanence}
-- Physical: ${c.physicalConstraints.join(', ') || 'none'}
+- Physical: ${c.physicalConstraints.join(", ") || "none"}
 - Best light: ${c.bestLightTime}
 - Room size: ${c.roomSize}
-- Who uses it: ${c.whoUsesRoom.join(', ') || 'unknown'}
-- Primary function: ${c.primaryFunction.join(', ') || 'unknown'}
-- Pets or kids: ${c.hasPetsOrKids ? 'yes' : 'no'}
+- Who uses it: ${c.whoUsesRoom.join(", ") || "unknown"}
+- Primary function: ${c.primaryFunction.join(", ") || "unknown"}
+- Pets or kids: ${c.hasPetsOrKids ? "yes" : "no"}
 - Storage priority: ${c.storagePriority}
-- Off-screen pieces: ${c.offScreenPieces || 'none'}`
+- Off-screen pieces: ${c.offScreenPieces || "none"}`;
 }
 
-function summarizeFingerprint(fingerprint: StyleFingerprint | null | undefined): string {
-  if (!fingerprint) return ''
-  const d = fingerprint.dimensions
-  const hiDims: string[] = []
-  const loDims: string[] = []
+function summarizeFingerprint(
+  fingerprint: StyleFingerprint | null | undefined,
+): string {
+  if (!fingerprint) return "";
+  const d = fingerprint.dimensions;
+  const hiDims: string[] = [];
+  const loDims: string[] = [];
 
   const labels: Record<string, { hi: string; lo: string }> = {
-    colorTemperature:   { hi: 'warm tones',                lo: 'cool tones' },
-    colorSaturation:    { hi: 'bold color',                lo: 'muted palette' },
-    density:            { hi: 'maximalist layering',       lo: 'minimal sparse' },
-    formality:          { hi: 'formal structured',         lo: 'casual relaxed' },
-    era:                { hi: 'vintage character',         lo: 'contemporary' },
-    material:           { hi: 'natural organic materials', lo: 'manufactured surfaces' },
-    texture:            { hi: 'tactile surfaces',          lo: 'smooth polished' },
-    pattern:            { hi: 'pattern-rich',              lo: 'solid plain' },
-    lineQuality:        { hi: 'soft curved forms',         lo: 'sharp geometric' },
-    lightPreference:    { hi: 'bright airy daylight',      lo: 'cozy intimate lighting' },
-    nature:             { hi: 'biophilic plant-filled',    lo: 'urban minimal greenery' },
-    culturalInfluence:  { hi: 'globally eclectic',         lo: 'Western contemporary' },
-  }
+    colorTemperature: { hi: "warm tones", lo: "cool tones" },
+    colorSaturation: { hi: "bold color", lo: "muted palette" },
+    density: { hi: "maximalist layering", lo: "minimal sparse" },
+    formality: { hi: "formal structured", lo: "casual relaxed" },
+    era: { hi: "vintage character", lo: "contemporary" },
+    material: { hi: "natural organic materials", lo: "manufactured surfaces" },
+    texture: { hi: "tactile surfaces", lo: "smooth polished" },
+    pattern: { hi: "pattern-rich", lo: "solid plain" },
+    lineQuality: { hi: "soft curved forms", lo: "sharp geometric" },
+    lightPreference: {
+      hi: "bright airy daylight",
+      lo: "cozy intimate lighting",
+    },
+    nature: { hi: "biophilic plant-filled", lo: "urban minimal greenery" },
+    culturalInfluence: { hi: "globally eclectic", lo: "Western contemporary" },
+  };
 
   for (const [key, desc] of Object.entries(labels)) {
-    const val = d[key as keyof typeof d]
-    if (val > 0.65) hiDims.push(desc.hi)
-    if (val < 0.35) loDims.push(desc.lo)
+    const val = d[key as keyof typeof d];
+    if (val > 0.65) hiDims.push(desc.hi);
+    if (val < 0.35) loDims.push(desc.lo);
   }
 
-  if (hiDims.length === 0 && loDims.length === 0) return ''
+  if (hiDims.length === 0 && loDims.length === 0) return "";
 
-  const lines: string[] = ['STYLE FINGERPRINT (from Area 1 quiz):']
-  if (hiDims.length > 0) lines.push(`  Strong preferences: ${hiDims.join(', ')}`)
-  if (loDims.length > 0) lines.push(`  Avoiding: ${loDims.join(', ')}`)
-  lines.push(`  Confidence: ${(fingerprint.confidence * 100).toFixed(0)}%`)
-  return lines.join('\n')
+  const lines: string[] = ["STYLE FINGERPRINT (from Area 1 quiz):"];
+  if (hiDims.length > 0)
+    lines.push(`  Strong preferences: ${hiDims.join(", ")}`);
+  if (loDims.length > 0) lines.push(`  Avoiding: ${loDims.join(", ")}`);
+  lines.push(`  Confidence: ${(fingerprint.confidence * 100).toFixed(0)}%`);
+  return lines.join("\n");
 }
 
 function summarizeCrossTab(current: LooseTabExtracted | null): string {
-  if (!current || Object.keys(current).length === 0) return ''
-  return `ALREADY COLLECTED FROM OTHER TABS:\n${JSON.stringify(current, null, 2)}`
+  if (!current || Object.keys(current).length === 0) return "";
+  return `ALREADY COLLECTED FROM OTHER TABS:\n${JSON.stringify(current, null, 2)}`;
 }
 
 export function buildSystemPrompt(
   tab: TabId,
   room: RoomRow | null,
   currentExtracted: LooseTabExtracted | null,
-  fingerprint?: StyleFingerprint | null
+  fingerprint?: StyleFingerprint | null,
 ): string {
-  const fingerprintSection = summarizeFingerprint(fingerprint)
+  const fingerprintSection = summarizeFingerprint(fingerprint);
   const base = `You are a skilled interior designer helping a client personalize their room before an AI redesign. You are warm, knowledgeable, and direct. You ask one question at a time — never multiple questions in one message. You make specific product suggestions and recommendations, not generic ones. You know current design trends, specific brands, and real products.
 
 ${summarizeRoom(room)}
 ${summarizeKept(room)}
 ${summarizeConstraints(room)}
-${fingerprintSection ? fingerprintSection + '\n' : ''}${summarizeCrossTab(currentExtracted)}
+${fingerprintSection ? fingerprintSection + "\n" : ""}${summarizeCrossTab(currentExtracted)}
 
 CRITICAL RULES:
 - One question per response, maximum
@@ -134,7 +141,7 @@ CRITICAL RULES:
 - When you have enough information to complete this tab, end your reply with [TAB_COMPLETE] on a new line
 - Keep replies concise — under 80 words unless explaining a complex recommendation
 - Always extract structured data from user responses — you are building a design brief, not just chatting
-- NEVER mention specific interior-design style names like Japandi, Bohemian, Coastal, Mid-Century Modern, or Minimalist. Describe feelings and materials instead.`
+- NEVER mention specific interior-design style names like Japandi, Bohemian, Coastal, Mid-Century Modern, or Minimalist. Describe feelings and materials instead.`;
 
   const tabPrompts: Record<TabId, string> = {
     all: `${base}
@@ -294,7 +301,7 @@ INTERPRET MOOD TARGETS:
 This tab is fully optional. If they say "I don't know" or "just make it nice" — mark complete immediately.
 
 When marking complete, include [TAB_COMPLETE] on its own line.`,
-  }
+  };
 
-  return tabPrompts[tab] ?? base
+  return tabPrompts[tab] ?? base;
 }

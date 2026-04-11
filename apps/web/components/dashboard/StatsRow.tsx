@@ -1,12 +1,12 @@
-"use client"
+"use client";
 
 interface Stat {
-  value: string
-  label: string
+  value: string;
+  label: string;
 }
 
 interface StatsRowProps {
-  stats: Stat[]
+  stats: Stat[];
 }
 
 export function StatsRow({ stats }: StatsRowProps) {
@@ -39,12 +39,15 @@ export function StatsRow({ stats }: StatsRowProps) {
           </p>
           <p
             className="mt-2 text-[10px] uppercase tracking-[0.12em] leading-tight"
-            style={{ color: "rgba(201,168,76,0.7)", fontFamily: "Inter, sans-serif" }}
+            style={{
+              color: "rgba(201,168,76,0.7)",
+              fontFamily: "Inter, sans-serif",
+            }}
           >
             {stat.label}
           </p>
         </div>
       ))}
     </div>
-  )
+  );
 }

@@ -11,19 +11,19 @@ required fields, and verify the full quiz flow end-to-end.
 
 ## Outcome
 
-| Gate | Result |
-|---|---|
-| `buildFluxPrompt()` maps all 12 dims, all <8 words, all prompts ≤80 words | ✅ |
-| `POST /api/quiz/validation-renders` returns 3 render slots | ✅ |
-| All 3 render URLs return HTTP 200 | ✅ |
-| `style_fingerprints` INSERT includes dimensions, covariance, confidence, budget_tier, quiz_responses | ✅ |
-| Log line emitted on successful DB save | ✅ |
-| Guest (unauth) flow returns result without throwing | ✅ (pre-existing `if (user)` wrap preserved) |
-| Step-3 Phase C shows validation renders, not the old form | ✅ |
-| "This is my style →" navigates to step-4 | ✅ |
-| Tweak sliders visible and trigger re-render with 600 ms debounce | ✅ |
-| `npx tsc --noEmit` clean | ✅ |
-| `npm run build` clean | ✅ |
+| Gate                                                                                                 | Result                                       |
+| ---------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| `buildFluxPrompt()` maps all 12 dims, all <8 words, all prompts ≤80 words                            | ✅                                           |
+| `POST /api/quiz/validation-renders` returns 3 render slots                                           | ✅                                           |
+| All 3 render URLs return HTTP 200                                                                    | ✅                                           |
+| `style_fingerprints` INSERT includes dimensions, covariance, confidence, budget_tier, quiz_responses | ✅                                           |
+| Log line emitted on successful DB save                                                               | ✅                                           |
+| Guest (unauth) flow returns result without throwing                                                  | ✅ (pre-existing `if (user)` wrap preserved) |
+| Step-3 Phase C shows validation renders, not the old form                                            | ✅                                           |
+| "This is my style →" navigates to step-4                                                             | ✅                                           |
+| Tweak sliders visible and trigger re-render with 600 ms debounce                                     | ✅                                           |
+| `npx tsc --noEmit` clean                                                                             | ✅                                           |
+| `npm run build` clean                                                                                | ✅                                           |
 
 ---
 
@@ -32,12 +32,14 @@ required fields, and verify the full quiz flow end-to-end.
 **File:** `apps/web/lib/ai/flux.ts`
 
 ### What was already correct
+
 `DESCRIPTORS` already contained entries for all 12 dimensions after the
 Session A 12-dim migration. The table structure was fine; the individual
 descriptors were just too verbose for the <80-word budget (previously comma-
 joined lists of 5–7 words each).
 
 ### What changed
+
 1. **Rewrote `DESCRIPTORS`** with the exact concise strings from the session
    spec — each descriptor ≤6 words:
    | Dim | Low | High |
@@ -122,6 +124,7 @@ returns `{ url: null, label, fingerprint, error }` without failing the
 other slots.
 
 **Response shape:**
+
 ```json
 {
   "renders": [
@@ -142,51 +145,66 @@ pre-auth so this route must be callable without a session.
 **File:** `apps/web/app/api/quiz/fingerprint/route.ts`
 
 ### Before
+
 The new-3-phase INSERT wrote only:
+
 ```ts
 { user_id, vector_data: Object.values(dims), style_name, room_type, entry_path: 'pairs' }
 ```
+
 Missing: `dimensions` (jsonb), `covariance`, `confidence`, `budget_tier`,
 `quiz_responses`. `vector_data` isn't in `types/supabase.ts` and may not
 even exist on the table — the error was silently swallowed by the try/catch.
 
 ### After
+
 ```ts
-await admin.from('style_fingerprints').insert({
-  user_id:          user.id,
-  dimensions:       fingerprint.dimensions,     // jsonb
-  covariance:       fingerprint.covariance,     // jsonb
-  confidence:       fingerprint.confidence,
-  style_name:       styleName,                  // display-safe via toDisplayName()
-  room_type:        body.room_type,
-  budget_tier:      body.budget_tier ?? null,
-  quiz_responses:   body.phase_b_responses ?? [],
-  entry_path:       'pairs',
-}).select('id').single()
+await admin
+  .from("style_fingerprints")
+  .insert({
+    user_id: user.id,
+    dimensions: fingerprint.dimensions, // jsonb
+    covariance: fingerprint.covariance, // jsonb
+    confidence: fingerprint.confidence,
+    style_name: styleName, // display-safe via toDisplayName()
+    room_type: body.room_type,
+    budget_tier: body.budget_tier ?? null,
+    quiz_responses: body.phase_b_responses ?? [],
+    entry_path: "pairs",
+  })
+  .select("id")
+  .single();
 ```
 
 Schema columns verified in `apps/web/types/supabase.ts:37-77` — all 8
 fields are in the `Insert` type definition.
 
 ### Log line
+
 On successful save, route now emits:
+
 ```
 [fingerprint] saved to DB: { userId, styleId, styleName }
 ```
+
 On failure:
+
 ```
 [fingerprint] save failed: <message>   // from supabase error object
 [fingerprint] save threw: <message>    // from try/catch
 ```
 
 ### Guest flow
+
 Pre-existing `if (user) { … }` wrap is preserved — guests get the
 fingerprint result back without any DB insert attempt. No error thrown.
 
 ### Phase C confirmation path
+
 New `phase_c_confirmation: true` + `confirmed_fingerprint` body fields
 let the client submit the user-confirmed (possibly tweaked) vector
 directly. When set, the route skips `computeNewFingerprint()` and:
+
 - Uses the client's vector as-is for the DB save
 - Re-derives `styleName` via `matchStyle()` + `toDisplayName()`
 - Re-derives `styleTags` via `fingerprintToStyleTags()`
@@ -227,15 +245,15 @@ the render pipeline.
    `/design/step-4`.
 6. **"Tweak your style"** text link → toggles an inline panel with 4
    sliders (`min=0, max=1, step=0.05`, `accentColor: gold`):
-   - Cooler ↔ Warmer  (`colorTemperature`)
+   - Cooler ↔ Warmer (`colorTemperature`)
    - Minimal ↔ Layered (`density`)
-   - Calm ↔ Dramatic  (`lightPreference`)
+   - Calm ↔ Dramatic (`lightPreference`)
    - Manufactured ↔ Natural (`material`)
-   On change: updates `confirmedFingerprint` locally and schedules a
-   **600 ms debounced** re-render via a ref-tracked setTimeout. The
-   re-render call only replaces the **center card** (slot 0) with the
-   new render labeled `"Your tweaked style"` — the flanking
-   warmer/cooler cards stay put as reference.
+     On change: updates `confirmedFingerprint` locally and schedules a
+     **600 ms debounced** re-render via a ref-tracked setTimeout. The
+     re-render call only replaces the **center card** (slot 0) with the
+     new render labeled `"Your tweaked style"` — the flanking
+     warmer/cooler cards stay put as reference.
 7. **Card entrance** → Framer Motion fade+rise with 0.15s stagger:
    `initial={{ opacity: 0, y: 12 }}`, `transition={{ delay: idx * 0.15 }}`.
 8. **All colors via CSS variables** — `var(--cova-bg, #0A1628)`,
@@ -253,23 +271,26 @@ form state hooks were removed. `useSessionStore` is kept for the
 ## Step 5 — Live test results
 
 ### TEST 1 — `buildFluxPrompt()` output ✅
+
 Ran `scripts/_test-flux-prompts.ts`. All 9 anchors pass. Max words: 32.
 Warm Japandi prompt contains `warm amber and honey tones` and `natural
 organic materials` as required.
 
 ### TEST 2 — `/api/quiz/validation-renders` ✅
+
 Dev server on port 3030. Posted the Warm Japandi anchor vector with
 `roomType="living_room"`. Response in ~90s:
 
-| Slot | URL | HTTP |
-|---|---|---|
-| Your style | `replicate.delivery/xezq/wZeD…/tmpwfp6_mv9.png` | 200 |
-| A little warmer and layered | `replicate.delivery/xezq/Idp3…/tmpjwbhrd9t.png` | 200 |
-| A little cooler and minimal | `replicate.delivery/xezq/XISf…/tmpco08g7uj.png` | 200 |
+| Slot                        | URL                                             | HTTP |
+| --------------------------- | ----------------------------------------------- | ---- |
+| Your style                  | `replicate.delivery/xezq/wZeD…/tmpwfp6_mv9.png` | 200  |
+| A little warmer and layered | `replicate.delivery/xezq/Idp3…/tmpjwbhrd9t.png` | 200  |
+| A little cooler and minimal | `replicate.delivery/xezq/XISf…/tmpco08g7uj.png` | 200  |
 
 All 3 slots populated, all 3 URLs return 200.
 
 ### TEST 3 — Authenticated save 🟡 SKIPPED
+
 Spec says to skip if no test credentials. No test user available in this
 session. The INSERT shape is verified against `types/supabase.ts`,
 the log-and-swallow error path is exercised in the route code, and the
@@ -277,6 +298,7 @@ guest/unauth branch is the same pre-existing code path as Session C.
 Will need to verify on a real sign-in in the next UI polish session.
 
 ### TEST 4 — Full quiz flow manual check 🟡 AUTOMATED SMOKE ONLY
+
 `curl http://localhost:3030/design/step-3 → 200`. Full browser
 walk-through (Phase A anchor picks → Phase B 12 pairs → Phase C
 render cards) was not run in this session because it requires
@@ -289,6 +311,7 @@ builds clean.
 ## Files touched
 
 **Production source (4 files):**
+
 - `apps/web/lib/ai/flux.ts` — `DESCRIPTORS` rewrite, `NEUTRAL_BAND` 0.2→0.15, `quizPreviewMode` param
 - `apps/web/app/api/quiz/validation-renders/route.ts` — **new**
 - `apps/web/app/api/quiz/fingerprint/route.ts` — Phase C confirmation path, corrected INSERT, log line
@@ -296,9 +319,11 @@ builds clean.
 - `apps/web/middleware.ts` — `/api/quiz/validation-renders` added to `PUBLIC_API_ROUTES`
 
 **Test helper (1 file):**
+
 - `apps/web/scripts/_test-flux-prompts.ts` — **new**, runs `buildFluxPrompt` on the 9 anchor vectors and asserts ≤80 words
 
 **Docs (2 files):**
+
 - `apps/web/docs/sessions/session-quiz-validation-progress.md` — this file
 - `docs/STATUS.md` — decisions log entry
 

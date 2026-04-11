@@ -1,16 +1,21 @@
-import { create } from 'zustand'
+import { create } from "zustand";
 
 interface CameraState {
   /** Camera yaw in radians (rotation around Y axis) */
-  yaw: number
+  yaw: number;
   /** Camera pitch in radians (rotation around X axis) */
-  pitch: number
+  pitch: number;
   /** Camera vertical FOV in radians */
-  fov: number
+  fov: number;
   /** Viewport aspect ratio (width / height) */
-  aspect: number
+  aspect: number;
   /** Update camera orientation from the render loop */
-  setCameraState: (yaw: number, pitch: number, fov: number, aspect: number) => void
+  setCameraState: (
+    yaw: number,
+    pitch: number,
+    fov: number,
+    aspect: number,
+  ) => void;
 }
 
 export const useCameraStore = create<CameraState>((set) => ({
@@ -19,4 +24,4 @@ export const useCameraStore = create<CameraState>((set) => ({
   fov: (60 * Math.PI) / 180,
   aspect: 16 / 9,
   setCameraState: (yaw, pitch, fov, aspect) => set({ yaw, pitch, fov, aspect }),
-}))
+}));

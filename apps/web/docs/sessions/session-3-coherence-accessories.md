@@ -1,10 +1,13 @@
 # Session 3 — Coherence Check, Kept Furniture Context, Accessory Pass
 
 ## Date
+
 2026-04-05
 
 ## Summary
+
 Three features that complete the product matching system:
+
 1. Multi-item coherence check — Claude evaluates the combined product set and swaps outliers
 2. Kept furniture context — `keep === true` items passed as style context to both APIs
 3. Accessory secondary pass — 3–4 "Complete the Look" items in a separate sheet section
@@ -12,6 +15,7 @@ Three features that complete the product matching system:
 ## Files Created
 
 ### `app/api/match/coherence/route.ts`
+
 - Auth-gated POST endpoint
 - Skips evaluation if fewer than 2 items (returns score=8, wasAdjusted=false)
 - Builds top-recommendation-per-item summary, prompts Claude Haiku for coherence scoring
@@ -20,6 +24,7 @@ Three features that complete the product matching system:
 - Falls back gracefully on JSON parse failure (returns unchanged products, score=7)
 
 ### `app/api/match/accessories/route.ts`
+
 - Auth-gated POST endpoint
 - Computes accessory budget: 10% of total budget / 3 items
 - Maps fingerprint dimensions (temperature, texture, nature, era, saturation) → style terms
@@ -30,6 +35,7 @@ Three features that complete the product matching system:
 ## Files Modified
 
 ### `app/design/step-10/page.tsx`
+
 - Added `styleName` to `useFingerprintStore()` destructuring
 - Added `accessories: Accessory[]` state (typed locally as `MatchedProduct & { category }`)
 - Changed `const byItem` → `let byItem` to allow coherence reassignment
@@ -39,6 +45,7 @@ Three features that complete the product matching system:
 - `accessories` passed to `<ShopRoom>` as prop
 
 ### `components/cova/ShopRoom.tsx`
+
 - Defined `AccessoryProduct = MatchedProduct & { category: string }` type alias
 - Added `accessories?: AccessoryProduct[]` to `ShopRoomProps`
 - Expanded state: product grid extracted from `flex-1`, wrapped in `flex-1 overflow-y-auto` div
@@ -47,6 +54,7 @@ Three features that complete the product matching system:
 - Section only renders when `accessories.length > 0`
 
 ## Acceptance Criteria Check
+
 - [x] `npm run build` passes, zero TypeScript errors
 - [x] `npx tsc --noEmit` passes, zero errors
 - [x] `/api/match/coherence` accepts POST, returns adjusted productsByItem

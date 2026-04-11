@@ -36,10 +36,11 @@
 
 ```typescript
 // Before (broken):
-const singleStageValid = await verifyRenderUrl(renderUrl)
+const singleStageValid = await verifyRenderUrl(renderUrl);
 
 // After (fixed):
-const singleStageValid = typeof renderUrl === 'string' && renderUrl.startsWith('http')
+const singleStageValid =
+  typeof renderUrl === "string" && renderUrl.startsWith("http");
 ```
 
 Also removed the retry counter logic (`quality_check_attempts` increment in DB, two extra DB round-trips) since it was only needed to retry the now-removed HEAD request.

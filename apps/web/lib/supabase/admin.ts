@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from "@supabase/supabase-js";
 
 // Admin client uses the service role key — bypasses RLS.
 // Server-side only. Never use in client components.
@@ -6,9 +6,9 @@ export function createAdminClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  )
+    { auth: { autoRefreshToken: false, persistSession: false } },
+  );
 }
 
 // Alias used by session 8+ route handlers
-export const createAdminSupabaseClient = createAdminClient
+export const createAdminSupabaseClient = createAdminClient;

@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { Check } from "lucide-react"
+import { Check } from "lucide-react";
 
 export function CompletionScreen() {
   return (
@@ -18,5 +18,5 @@ export function CompletionScreen() {
         Building your style quiz...
       </p>
     </div>
-  )
+  );
 }

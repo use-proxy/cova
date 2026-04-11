@@ -7,7 +7,7 @@
  * Every interaction should reinforce clarity, tactility, and visual calm rather than dashboard density.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -48,6 +48,8 @@ type Product = {
   retailerUrl: string;
   image: string;
   addedAt: string;
+  rawLabel?: string;
+  isKept?: boolean;
 };
 
 type RoomZone = {
@@ -397,7 +399,8 @@ function mapCategory(raw: string): Exclude<Category, "All"> {
     normalized.includes("fixture")
   )
     return "Lighting";
-  if (normalized.includes("rug") || normalized.includes("carpet")) return "Rugs";
+  if (normalized.includes("rug") || normalized.includes("carpet"))
+    return "Rugs";
   if (
     normalized.includes("art") ||
     normalized.includes("canvas") ||
@@ -428,12 +431,13 @@ function mapCategory(raw: string): Exclude<Category, "All"> {
 // product's furniture_label. Both sources emit short noun-phrase labels
 // (e.g. "sofa", "coffee table", "floor lamp"), so we use case-insensitive
 // token overlap with a substring fallback. Returns null if nothing matches.
-function findZoneIdForLabel(
-  label: string,
-  zones: RoomZone[],
-): number | null {
+function findZoneIdForLabel(label: string, zones: RoomZone[]): number | null {
   if (!label || zones.length === 0) return null;
-  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9\s]/g, "").trim();
+  const norm = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, "")
+      .trim();
   const target = norm(label);
   if (!target) return null;
   const targetTokens = new Set(target.split(/\s+/).filter(Boolean));
@@ -458,6 +462,29 @@ function findZoneIdForLabel(
   return bestScore > 0 ? bestId : null;
 }
 
+// Kept-label fuzzy match — same token logic as findZoneIdForLabel but against
+// a flat list of kept furniture labels from render_context.keepMask.
+function isKeptLabel(label: string, keptLabels: string[]): boolean {
+  if (!label || keptLabels.length === 0) return false;
+  const norm = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, "")
+      .trim();
+  const target = norm(label);
+  if (!target) return false;
+  const targetTokens = new Set(target.split(/\s+/).filter(Boolean));
+  for (const k of keptLabels) {
+    const kn = norm(k);
+    if (!kn) continue;
+    if (kn === target) return true;
+    if (kn.includes(target) || target.includes(kn)) return true;
+    const kTokens = kn.split(/\s+/).filter(Boolean);
+    for (const t of kTokens) if (targetTokens.has(t)) return true;
+  }
+  return false;
+}
+
 const money = (value: number) =>
   new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -477,13 +504,20 @@ export default function Step9Experience() {
   const [zonesLoading, setZonesLoading] = useState(true);
   const [productsLoading, setProductsLoading] = useState(true);
   const [matchingInProgress, setMatchingInProgress] = useState(false);
+  const [matchingError, setMatchingError] = useState<string | null>(null);
+  const [matchRetryTick, setMatchRetryTick] = useState(0);
   const [activeFilter, setActiveFilter] = useState<Category>("All");
   const [sortBy, setSortBy] = useState<SortOption>("Featured");
   const [hoveredProductId, setHoveredProductId] = useState<number | null>(null);
-  const [savedIds, setSavedIds] = useState<number[]>([]);
+  const [savedUrls, setSavedUrls] = useState<Set<string>>(new Set());
   const [tourIndex, setTourIndex] = useState(0);
+  const cardRefs = useRef<Map<number, HTMLElement>>(new Map());
   const [isTouring, setIsTouring] = useState(false);
   const [displayedTotal, setDisplayedTotal] = useState(0);
+  const [budgetRange, setBudgetRange] = useState<{
+    min: number;
+    max: number;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -507,6 +541,64 @@ export default function Step9Experience() {
         setHeroImage(renderUrl);
       }
 
+      // Load budget + keepMask from render_context (set in step-5/step-7c)
+      let keptLabels: string[] = [];
+      if (roomId) {
+        try {
+          const { data: rcRow } = await supabase
+            .from("rooms")
+            .select("render_context")
+            .eq("id", roomId)
+            .eq("user_id", user.id)
+            .single();
+          const rc = (rcRow?.render_context ?? null) as {
+            budget?: { rangeMin?: number; rangeMax?: number };
+            keepMask?: { objects?: Array<{ type?: string; keep?: boolean }> };
+          } | null;
+          if (
+            rc?.budget &&
+            typeof rc.budget.rangeMin === "number" &&
+            typeof rc.budget.rangeMax === "number"
+          ) {
+            if (!cancelled)
+              setBudgetRange({
+                min: rc.budget.rangeMin,
+                max: rc.budget.rangeMax,
+              });
+          }
+          const objs = rc?.keepMask?.objects ?? [];
+          keptLabels = objs
+            .filter((o) => o?.keep === true && typeof o.type === "string")
+            .map((o) => o.type as string);
+        } catch {
+          // non-fatal
+        }
+      }
+
+      // Load saved_products for this user + room so hearts persist across sessions.
+      if (roomId) {
+        try {
+          const { data: savedRows } = await supabase
+            .from("saved_products")
+            .select("product_url")
+            .eq("user_id", user.id)
+            .eq("room_id", roomId);
+          if (!cancelled && Array.isArray(savedRows)) {
+            setSavedUrls(
+              new Set(
+                savedRows
+                  .map((r: { product_url?: string }) => r.product_url)
+                  .filter(
+                    (u): u is string => typeof u === "string" && u.length > 0,
+                  ),
+              ),
+            );
+          }
+        } catch {
+          // non-fatal — heart state starts empty
+        }
+      }
+
       // Load zones from render_detection_result
       let detectedZones: RoomZone[] = [];
       if (roomId) {
@@ -523,14 +615,25 @@ export default function Step9Experience() {
             roomDetection.render_detection_result.items.length > 0
           ) {
             detectedZones = roomDetection.render_detection_result.items.map(
-              (item: { label: string; boundingBox: { x: number; y: number; width: number; height: number } }, i: number) => ({
+              (
+                item: {
+                  label: string;
+                  boundingBox: {
+                    x: number;
+                    y: number;
+                    width: number;
+                    height: number;
+                  };
+                },
+                i: number,
+              ) => ({
                 id: i + 1,
                 label: item.label,
                 top: `${item.boundingBox.y}%`,
                 left: `${item.boundingBox.x}%`,
                 width: `${item.boundingBox.width}%`,
                 height: `${item.boundingBox.height}%`,
-              })
+              }),
             );
           }
         } catch {
@@ -548,71 +651,108 @@ export default function Step9Experience() {
         try {
           const { data: roomProducts } = await supabase
             .from("room_products")
-            .select("id, furniture_label, furniture_description, similarity_score, rank, hotspot_x, hotspot_y, product_id, serp_title, serp_price, serp_retailer, serp_product_url, serp_image_url, match_score, match_label, is_sale")
+            .select(
+              "id, furniture_label, furniture_description, similarity_score, rank, hotspot_x, hotspot_y, product_id, serp_title, serp_price, serp_retailer, serp_product_url, serp_image_url, match_score, match_label, is_sale",
+            )
             .eq("room_id", roomId);
 
           if (cancelled) return;
 
           if (roomProducts && roomProducts.length > 0) {
-            const hasSerpData = roomProducts.some((rp: Record<string, unknown>) => rp.serp_title);
+            const hasSerpData = roomProducts.some(
+              (rp: Record<string, unknown>) => rp.serp_title,
+            );
 
             if (hasSerpData) {
-              const mapped: Product[] = roomProducts.map((rp: Record<string, unknown>, i: number) => {
-                const rawLabel = (rp.furniture_label as string) ?? "";
-                const category = mapCategory(rawLabel);
-                const matchedZoneId = findZoneIdForLabel(rawLabel, detectedZones);
-                if (matchedZoneId === null && rawLabel) {
-                  console.warn(
-                    `[step-9] No zone matched for furniture_label="${rawLabel}" — product will render without hover highlight`
+              const mapped: Product[] = roomProducts.map(
+                (rp: Record<string, unknown>, i: number) => {
+                  const rawLabel = (rp.furniture_label as string) ?? "";
+                  const category = mapCategory(rawLabel);
+                  const matchedZoneId = findZoneIdForLabel(
+                    rawLabel,
+                    detectedZones,
                   );
-                }
-                const zoneId = matchedZoneId ?? 0;
-                return {
-                  id: i + 1,
-                  zone: zoneId,
-                  brand: (rp.serp_retailer as string) || "Unknown",
-                  name: (rp.serp_title as string) || rawLabel || "Product",
-                  category,
-                  price: (rp.serp_price as number) || 0,
-                  retailer: (rp.serp_retailer as string) || "Unknown",
-                  retailerUrl: (rp.serp_product_url as string) || "#",
-                  image: (rp.serp_image_url as string) || FALLBACK_IMAGE,
-                  addedAt: new Date().toISOString(),
-                };
-              });
+                  if (matchedZoneId === null && rawLabel) {
+                    console.warn(
+                      `[step-9] No zone matched for furniture_label="${rawLabel}" — product will render without hover highlight`,
+                    );
+                  }
+                  const zoneId = matchedZoneId ?? 0;
+                  return {
+                    id: i + 1,
+                    zone: zoneId,
+                    brand: (rp.serp_retailer as string) || "Unknown",
+                    name: (rp.serp_title as string) || rawLabel || "Product",
+                    category,
+                    price: (rp.serp_price as number) || 0,
+                    retailer: (rp.serp_retailer as string) || "Unknown",
+                    retailerUrl: (rp.serp_product_url as string) || "#",
+                    image: (rp.serp_image_url as string) || FALLBACK_IMAGE,
+                    addedAt: new Date().toISOString(),
+                    rawLabel,
+                    isKept: isKeptLabel(rawLabel, keptLabels),
+                  };
+                },
+              );
               setProducts(mapped);
             } else {
               // Legacy catalog path
-              const productIds = Array.from(new Set(
-                roomProducts
-                  .map((rp: Record<string, unknown>) => rp.product_id as string)
-                  .filter(Boolean)
-              ));
+              const productIds = Array.from(
+                new Set(
+                  roomProducts
+                    .map(
+                      (rp: Record<string, unknown>) => rp.product_id as string,
+                    )
+                    .filter(Boolean),
+                ),
+              );
               const { data: productDetails } = await supabase
                 .from("products")
-                .select("id, name, brand, category, price, image_url, product_url, retailer, affiliate_url")
+                .select(
+                  "id, name, brand, category, price, image_url, product_url, retailer, affiliate_url",
+                )
                 .in("id", productIds);
               if (cancelled) return;
 
-              const productMap = new Map((productDetails ?? []).map((p: Record<string, unknown>) => [p.id, p]));
-              const mapped: Product[] = roomProducts.map((rp: Record<string, unknown>, i: number) => {
-                const product = productMap.get(rp.product_id) as Record<string, unknown> | undefined;
-                const rawLabel = (rp.furniture_label as string) ?? (product?.category as string) ?? "";
-                const category = mapCategory((product?.category as string) ?? rawLabel);
-                const zoneId = findZoneIdForLabel(rawLabel, detectedZones) ?? 0;
-                return {
-                  id: (product?.id as number) || i + 1,
-                  zone: zoneId,
-                  brand: (product?.brand as string) || "Unknown",
-                  name: (product?.name as string) || rawLabel || "Product",
-                  category,
-                  price: (product?.price as number) || 0,
-                  retailer: (product?.retailer as string) || "Unknown",
-                  retailerUrl: (product?.affiliate_url as string) || (product?.product_url as string) || "#",
-                  image: (product?.image_url as string) || FALLBACK_IMAGE,
-                  addedAt: new Date().toISOString(),
-                };
-              });
+              const productMap = new Map(
+                (productDetails ?? []).map((p: Record<string, unknown>) => [
+                  p.id,
+                  p,
+                ]),
+              );
+              const mapped: Product[] = roomProducts.map(
+                (rp: Record<string, unknown>, i: number) => {
+                  const product = productMap.get(rp.product_id) as
+                    | Record<string, unknown>
+                    | undefined;
+                  const rawLabel =
+                    (rp.furniture_label as string) ??
+                    (product?.category as string) ??
+                    "";
+                  const category = mapCategory(
+                    (product?.category as string) ?? rawLabel,
+                  );
+                  const zoneId =
+                    findZoneIdForLabel(rawLabel, detectedZones) ?? 0;
+                  return {
+                    id: (product?.id as number) || i + 1,
+                    zone: zoneId,
+                    brand: (product?.brand as string) || "Unknown",
+                    name: (product?.name as string) || rawLabel || "Product",
+                    category,
+                    price: (product?.price as number) || 0,
+                    retailer: (product?.retailer as string) || "Unknown",
+                    retailerUrl:
+                      (product?.affiliate_url as string) ||
+                      (product?.product_url as string) ||
+                      "#",
+                    image: (product?.image_url as string) || FALLBACK_IMAGE,
+                    addedAt: new Date().toISOString(),
+                    rawLabel,
+                    isKept: isKeptLabel(rawLabel, keptLabels),
+                  };
+                },
+              );
               setProducts(mapped);
             }
           } else {
@@ -624,24 +764,44 @@ export default function Step9Experience() {
               .single();
             if (cancelled) return;
 
-            if (!error && roomRow?.matched_products && Array.isArray(roomRow.matched_products) && roomRow.matched_products.length > 0) {
-              const dbProducts = roomRow.matched_products as Record<string, unknown>[];
+            if (
+              !error &&
+              roomRow?.matched_products &&
+              Array.isArray(roomRow.matched_products) &&
+              roomRow.matched_products.length > 0
+            ) {
+              const dbProducts = roomRow.matched_products as Record<
+                string,
+                unknown
+              >[];
               const mapped: Product[] = dbProducts.map((p, i) => {
-                const rawLabel = (p.itemLabel as string) ?? (p.category as string) ?? "";
+                const rawLabel =
+                  (p.itemLabel as string) ?? (p.category as string) ?? "";
                 const category = mapCategory(rawLabel);
                 const zoneId = findZoneIdForLabel(rawLabel, detectedZones) ?? 0;
                 return {
                   id: (p.id as number) || i + 1,
                   zone: zoneId,
-                  brand: (p.brand as string) || (p.retailer as string) || "Unknown",
+                  brand:
+                    (p.brand as string) || (p.retailer as string) || "Unknown",
                   name: (p.name as string) || (p.title as string) || "Product",
                   category,
                   price: (p.price as number) || 0,
                   salePrice: (p.sale_price as number) || undefined,
                   retailer: (p.retailer as string) || "Unknown",
-                  retailerUrl: (p.affiliate_url as string) || (p.product_url as string) || (p.productUrl as string) || "#",
-                  image: (p.image_url as string) || (p.thumbnail_url as string) || (p.thumbnailUrl as string) || FALLBACK_IMAGE,
+                  retailerUrl:
+                    (p.affiliate_url as string) ||
+                    (p.product_url as string) ||
+                    (p.productUrl as string) ||
+                    "#",
+                  image:
+                    (p.image_url as string) ||
+                    (p.thumbnail_url as string) ||
+                    (p.thumbnailUrl as string) ||
+                    FALLBACK_IMAGE,
                   addedAt: (p.created_at as string) || new Date().toISOString(),
+                  rawLabel,
+                  isKept: isKeptLabel(rawLabel, keptLabels),
                 };
               });
               setProducts(mapped);
@@ -651,17 +811,23 @@ export default function Step9Experience() {
               setMatchingInProgress(true);
               setProducts([]);
               const alreadyMatching =
-                (roomRow as { redesign_status?: string } | null)?.redesign_status === "matching_products";
+                (roomRow as { redesign_status?: string } | null)
+                  ?.redesign_status === "matching_products";
               if (!alreadyMatching) {
                 fetch("/api/pipeline/furniture-match", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ room_id: roomId }),
                 }).catch((err) =>
-                  console.warn("[step-9] Furniture matching trigger failed:", err)
+                  console.warn(
+                    "[step-9] Furniture matching trigger failed:",
+                    err,
+                  ),
                 );
               }
-              // Poll every 3 s until room_products appear (max 90 s)
+              // Poll every 3 s until room_products appear (max 120 s / 2 min).
+              // On timeout: show explicit error + retry, do NOT reload (reload
+              // would loop the entire poll cycle indefinitely).
               let ticks = 0;
               pollInterval = window.setInterval(async () => {
                 ticks++;
@@ -670,7 +836,7 @@ export default function Step9Experience() {
                     .from("room_products")
                     .select("id", { count: "exact", head: true })
                     .eq("room_id", roomId);
-                  if ((count ?? 0) > 0 || ticks >= 30) {
+                  if ((count ?? 0) > 0) {
                     if (pollInterval !== undefined) {
                       window.clearInterval(pollInterval);
                       pollInterval = undefined;
@@ -678,6 +844,17 @@ export default function Step9Experience() {
                     if (!cancelled) {
                       setMatchingInProgress(false);
                       window.location.reload();
+                    }
+                  } else if (ticks >= 40) {
+                    if (pollInterval !== undefined) {
+                      window.clearInterval(pollInterval);
+                      pollInterval = undefined;
+                    }
+                    if (!cancelled) {
+                      setMatchingInProgress(false);
+                      setMatchingError(
+                        "We're having trouble finding products right now.",
+                      );
                     }
                   }
                 } catch {
@@ -706,7 +883,7 @@ export default function Step9Experience() {
         pollInterval = undefined;
       }
     };
-  }, [router, roomId, renderUrl]);
+  }, [router, roomId, renderUrl, matchRetryTick]);
 
   useEffect(() => {
     if (!isTouring) return;
@@ -741,8 +918,8 @@ export default function Step9Experience() {
   }, [products, activeFilter, sortBy]);
 
   const savedProducts = useMemo(
-    () => products.filter((product) => savedIds.includes(product.id)),
-    [products, savedIds],
+    () => products.filter((product) => savedUrls.has(product.retailerUrl)),
+    [products, savedUrls],
   );
   const savedTotal = useMemo(
     () =>
@@ -760,12 +937,15 @@ export default function Step9Experience() {
       ),
     [products],
   );
-  const progress = maxRoomValue > 0
-    ? Math.min(100, Math.round((savedTotal / maxRoomValue) * 100))
-    : 0;
+  // If the user set a step-5 budget, show progress against that ceiling;
+  // otherwise fall back to "% of all matched products collected".
+  const budgetCeiling = budgetRange?.max ?? maxRoomValue;
+  const progress =
+    budgetCeiling > 0
+      ? Math.min(100, Math.round((savedTotal / budgetCeiling) * 100))
+      : 0;
   const activeZoneId =
-    hoveredProductId ??
-    (isTouring ? (zones[tourIndex]?.id ?? null) : null);
+    hoveredProductId ?? (isTouring ? (zones[tourIndex]?.id ?? null) : null);
 
   useEffect(() => {
     let frame = 0;
@@ -784,14 +964,74 @@ export default function Step9Experience() {
 
     frame = window.requestAnimationFrame(step);
     return () => window.cancelAnimationFrame(frame);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savedTotal]);
 
-  const toggleSaved = (productId: number) => {
-    setSavedIds((current) => {
-      const exists = current.includes(productId);
-      if (exists) return current.filter((id) => id !== productId);
-      return [...current, productId];
+  const toggleSaved = async (product: Product) => {
+    if (!product.retailerUrl || product.retailerUrl === "#") {
+      toast.error("This product has no link to save.");
+      return;
+    }
+    const url = product.retailerUrl;
+    const wasSaved = savedUrls.has(url);
+
+    // Optimistic update
+    setSavedUrls((current) => {
+      const next = new Set(current);
+      if (wasSaved) next.delete(url);
+      else next.add(url);
+      return next;
     });
+
+    try {
+      const { createBrowserClient } = await import("@/lib/supabase/client");
+      const supabase = createBrowserClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        router.push("/auth?next=/design/step-9");
+        return;
+      }
+
+      if (wasSaved) {
+        const { error } = await supabase
+          .from("saved_products")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("product_url", url);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("saved_products").upsert(
+          {
+            user_id: user.id,
+            room_id: roomId ?? null,
+            product_url: url,
+            product_data: {
+              name: product.name,
+              brand: product.brand,
+              category: product.category,
+              price: product.price,
+              salePrice: product.salePrice ?? null,
+              retailer: product.retailer,
+              image: product.image,
+            },
+          },
+          { onConflict: "user_id,product_url" },
+        );
+        if (error) throw error;
+      }
+    } catch (err) {
+      console.error("[step-9] toggleSaved failed:", err);
+      // Roll back optimistic update
+      setSavedUrls((current) => {
+        const next = new Set(current);
+        if (wasSaved) next.add(url);
+        else next.delete(url);
+        return next;
+      });
+      toast.error("Couldn't save that item — try again.");
+    }
   };
 
   const handleShop = (url: string) => {
@@ -848,7 +1088,7 @@ export default function Step9Experience() {
             onClick={() => router.push("/dashboard/saved")}
           >
             <Heart size={14} />
-            <span>{savedIds.length} Saved</span>
+            <span>{savedUrls.size} Saved</span>
           </button>
           <button type="button" className="step9-avatar" aria-label="Profile">
             <User size={16} />
@@ -879,35 +1119,49 @@ export default function Step9Experience() {
             </button>
 
             <div className="step9-hotspots">
-              {zonesLoading ? null : zones.map((zone) => {
-                const isActive = zone.id === activeZoneId;
-                return (
-                  <div
-                    key={zone.id}
-                    className={`step9-zone ${isActive ? "is-active" : ""}`}
-                    style={{
-                      top: zone.top,
-                      left: zone.left,
-                      width: zone.width,
-                      height: zone.height,
-                      pointerEvents: "auto",
-                      cursor: "pointer",
-                      ...(isActive
-                        ? {
-                            opacity: 1,
-                            border: "2px solid rgba(201, 168, 76, 0.85)",
-                            boxShadow:
-                              "0 0 0 1px rgba(201, 168, 76, 0.4), 0 0 28px 4px rgba(201, 168, 76, 0.35), inset 0 0 24px rgba(201, 168, 76, 0.25)",
+              {zonesLoading
+                ? null
+                : zones.map((zone) => {
+                    const isActive = zone.id === activeZoneId;
+                    return (
+                      <div
+                        key={zone.id}
+                        className={`step9-zone ${isActive ? "is-active" : ""}`}
+                        style={{
+                          top: zone.top,
+                          left: zone.left,
+                          width: zone.width,
+                          height: zone.height,
+                          pointerEvents: "auto",
+                          cursor: "pointer",
+                          ...(isActive
+                            ? {
+                                opacity: 1,
+                                border: "2px solid rgba(201, 168, 76, 0.85)",
+                                boxShadow:
+                                  "0 0 0 1px rgba(201, 168, 76, 0.4), 0 0 28px 4px rgba(201, 168, 76, 0.35), inset 0 0 24px rgba(201, 168, 76, 0.25)",
+                              }
+                            : null),
+                        }}
+                        onMouseEnter={() => {
+                          setHoveredProductId(zone.id);
+                          const match = products.find(
+                            (p) => p.zone === zone.id,
+                          );
+                          if (match) {
+                            const el = cardRefs.current.get(match.id);
+                            el?.scrollIntoView({
+                              behavior: "smooth",
+                              block: "nearest",
+                            });
                           }
-                        : null),
-                    }}
-                    onMouseEnter={() => setHoveredProductId(zone.id)}
-                    onMouseLeave={() => setHoveredProductId(null)}
-                  >
-                    <span className="step9-zone-label">{zone.label}</span>
-                  </div>
-                );
-              })}
+                        }}
+                        onMouseLeave={() => setHoveredProductId(null)}
+                      >
+                        <span className="step9-zone-label">{zone.label}</span>
+                      </div>
+                    );
+                  })}
             </div>
 
             <div className="step9-room-meta">
@@ -983,14 +1237,22 @@ export default function Step9Experience() {
 
               <div className="step9-budget-card">
                 <div>
-                  <p>Room total</p>
+                  <p>
+                    {budgetRange
+                      ? `Saved of ${money(budgetRange.min)}–${money(budgetRange.max)} budget`
+                      : "Room total"}
+                  </p>
                   <strong>{money(displayedTotal)}</strong>
                 </div>
                 <div className="step9-budget-progress">
                   <div className="step9-budget-bar">
                     <span style={{ width: `${progress}%` }} />
                   </div>
-                  <small>{progress}% of room collected</small>
+                  <small>
+                    {budgetRange
+                      ? `${progress}% of budget used`
+                      : `${progress}% of room collected`}
+                  </small>
                 </div>
               </div>
             </div>
@@ -1010,7 +1272,8 @@ export default function Step9Experience() {
                         className="step9-product-image-wrap"
                         style={{
                           background: "#0F1F3D",
-                          animation: "step9SkeletonShimmer 1.4s ease-in-out infinite",
+                          animation:
+                            "step9SkeletonShimmer 1.4s ease-in-out infinite",
                         }}
                       />
                       <div className="step9-product-copy" style={{ gap: 8 }}>
@@ -1020,7 +1283,8 @@ export default function Step9Experience() {
                             width: "40%",
                             borderRadius: 4,
                             background: "#1E3A5F",
-                            animation: "step9SkeletonShimmer 1.4s ease-in-out infinite",
+                            animation:
+                              "step9SkeletonShimmer 1.4s ease-in-out infinite",
                           }}
                         />
                         <div
@@ -1029,7 +1293,8 @@ export default function Step9Experience() {
                             width: "70%",
                             borderRadius: 4,
                             background: "#1E3A5F",
-                            animation: "step9SkeletonShimmer 1.4s ease-in-out infinite",
+                            animation:
+                              "step9SkeletonShimmer 1.4s ease-in-out infinite",
                           }}
                         />
                         <div
@@ -1038,13 +1303,53 @@ export default function Step9Experience() {
                             width: "55%",
                             borderRadius: 4,
                             background: "#1E3A5F",
-                            animation: "step9SkeletonShimmer 1.4s ease-in-out infinite",
+                            animation:
+                              "step9SkeletonShimmer 1.4s ease-in-out infinite",
                           }}
                         />
                       </div>
                     </div>
                   ))}
                 </>
+              ) : matchingError ? (
+                <div className="step9-empty-state">
+                  <div className="step9-empty-icon">
+                    <Link2 size={18} />
+                  </div>
+                  <h2>{matchingError}</h2>
+                  <p>Give it another try — the matcher is usually quick.</p>
+                  <button
+                    type="button"
+                    className="step9-shop-button"
+                    style={{ marginTop: 14 }}
+                    onClick={async () => {
+                      setMatchingError(null);
+                      setMatchingInProgress(true);
+                      try {
+                        const { createBrowserClient } =
+                          await import("@/lib/supabase/client");
+                        const sb = createBrowserClient();
+                        const {
+                          data: { user: u },
+                        } = await sb.auth.getUser();
+                        if (u && roomId) {
+                          // Reset status so furniture-match can re-run.
+                          await sb
+                            .from("rooms")
+                            .update({ redesign_status: "complete" })
+                            .eq("id", roomId)
+                            .eq("user_id", u.id);
+                        }
+                      } catch (err) {
+                        console.warn("[step-9] reset failed:", err);
+                      }
+                      setMatchRetryTick((n) => n + 1);
+                    }}
+                  >
+                    <span>Try again</span>
+                    <ArrowUpRight size={15} />
+                  </button>
+                </div>
               ) : matchingInProgress ? (
                 <div className="step9-empty-state">
                   <div className="step9-empty-icon">
@@ -1052,7 +1357,8 @@ export default function Step9Experience() {
                   </div>
                   <h2>Finding your products</h2>
                   <p>
-                    Matching furniture to your room — this takes about 30 seconds.
+                    Matching furniture to your room — this takes about 30
+                    seconds.
                   </p>
                 </div>
               ) : visibleProducts.length === 0 ? (
@@ -1068,13 +1374,17 @@ export default function Step9Experience() {
                 </div>
               ) : (
                 visibleProducts.map((product, index) => {
-                  const isSaved = savedIds.includes(product.id);
+                  const isSaved = savedUrls.has(product.retailerUrl);
                   const activePrice = product.salePrice ?? product.price;
                   const isLinked =
                     activeZoneId !== null && product.zone === activeZoneId;
                   return (
                     <article
                       key={product.id}
+                      ref={(el) => {
+                        if (el) cardRefs.current.set(product.id, el);
+                        else cardRefs.current.delete(product.id);
+                      }}
                       className={`step9-product-card ${isLinked ? "is-linked" : ""}`}
                       style={{
                         animationDelay: `${index * 65}ms`,
@@ -1086,7 +1396,9 @@ export default function Step9Experience() {
                             }
                           : null),
                       }}
-                      onMouseEnter={() => product.zone > 0 && setHoveredProductId(product.zone)}
+                      onMouseEnter={() =>
+                        product.zone > 0 && setHoveredProductId(product.zone)
+                      }
                       onMouseLeave={() => setHoveredProductId(null)}
                     >
                       <div className="step9-product-image-wrap">
@@ -1118,20 +1430,41 @@ export default function Step9Experience() {
                         <button
                           type="button"
                           className={`step9-save-button ${isSaved ? "is-saved" : ""}`}
-                          onClick={() => toggleSaved(product.id)}
+                          onClick={() => toggleSaved(product)}
                           aria-pressed={isSaved}
                         >
                           {isSaved ? <Check size={16} /> : <Heart size={16} />}
                           <span>{isSaved ? "Saved" : "Save"}</span>
                         </button>
-                        <button
-                          type="button"
-                          className="step9-shop-button"
-                          onClick={() => handleShop(product.retailerUrl)}
-                        >
-                          <span>Shop</span>
-                          <ArrowUpRight size={15} />
-                        </button>
+                        {product.isKept ? (
+                          <span
+                            className="step9-kept-badge"
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 6,
+                              padding: "8px 14px",
+                              borderRadius: 999,
+                              border: "1px solid rgba(201, 168, 76, 0.6)",
+                              color: "#C9A84C",
+                              fontSize: 13,
+                              fontWeight: 500,
+                              background: "rgba(201, 168, 76, 0.08)",
+                            }}
+                          >
+                            <Check size={14} />
+                            <span>You kept this</span>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="step9-shop-button"
+                            onClick={() => handleShop(product.retailerUrl)}
+                          >
+                            <span>Shop</span>
+                            <ArrowUpRight size={15} />
+                          </button>
+                        )}
                       </div>
                     </article>
                   );

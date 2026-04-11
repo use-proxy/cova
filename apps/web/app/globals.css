@@ -1,4 +1,4 @@
-@import '../../../styles/tokens.css';
+@import "../../../styles/tokens.css";
 
 @tailwind base;
 @tailwind components;
@@ -9,15 +9,15 @@
   --navy-deep: #0a1628;
   --navy-darker: #091829;
   --navy-card: #0d1f3c;
-  --gold: #C9A84C;
-  --gold-primary: #C9A84C;
-  --gold-light: #D4B460;
-  --gold-dim: rgba(201,168,76,0.3);
-  --gold-glow: rgba(201,168,76,0.15);
-  --ivory: #F5F0E8;
+  --gold: #c9a84c;
+  --gold-primary: #c9a84c;
+  --gold-light: #d4b460;
+  --gold-dim: rgba(201, 168, 76, 0.3);
+  --gold-glow: rgba(201, 168, 76, 0.15);
+  --ivory: #f5f0e8;
 
   --background: #091829;
-  --foreground: #F5F0E8;
+  --foreground: #f5f0e8;
 }
 
 html {
@@ -27,9 +27,10 @@ html {
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'EB Garamond', Georgia, serif;
+  font-family:
+    "Palatino Linotype", "Book Antiqua", Palatino, "EB Garamond", Georgia, serif;
   scrollbar-width: thin;
-  scrollbar-color: #C9A84C20 transparent;
+  scrollbar-color: #c9a84c20 transparent;
 }
 
 body::-webkit-scrollbar {
@@ -41,12 +42,12 @@ body::-webkit-scrollbar-track {
 }
 
 body::-webkit-scrollbar-thumb {
-  background: #C9A84C30;
+  background: #c9a84c30;
   border-radius: 3px;
 }
 
 body::-webkit-scrollbar-thumb:hover {
-  background: #C9A84C50;
+  background: #c9a84c50;
 }
 
 @layer utilities {
@@ -64,177 +65,378 @@ body::-webkit-scrollbar-thumb:hover {
 
 /* Capture page animations */
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes scaleIn {
-  from { opacity: 0; transform: scale(0); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 @keyframes flash {
-  0%, 100% { opacity: 0; }
-  50% { opacity: 0.6; }
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 
 @keyframes sonarPing {
-  0% { transform: scale(1); opacity: 0.8; }
-  100% { transform: scale(2.5); opacity: 0; }
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
 }
 
 @keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 @keyframes shimmerSweep {
-  from { opacity: 0; transform: translateX(-100%); }
-  to { opacity: 1; transform: translateX(100%); }
+  from {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(100%);
+  }
 }
 
 @keyframes slideDown {
-  from { opacity: 0; transform: translateY(-12px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Budget carousel animations */
 @keyframes cardShimmer {
-  0% { background-position: 0% 0%; }
-  50% { background-position: 100% 100%; }
-  100% { background-position: 0% 0%; }
+  0% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
+  100% {
+    background-position: 0% 0%;
+  }
 }
 
 @keyframes cardBounce {
-  0% { transform: translateZ(0) scale(1); }
-  40% { transform: translateZ(10px) scale(1.03); }
-  100% { transform: translateZ(0) scale(1); }
+  0% {
+    transform: translateZ(0) scale(1);
+  }
+  40% {
+    transform: translateZ(10px) scale(1.03);
+  }
+  100% {
+    transform: translateZ(0) scale(1);
+  }
 }
 
 @keyframes ctaPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(201,168,76,0); }
-  50% { box-shadow: 0 0 0 8px rgba(201,168,76,0.15); }
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(201, 168, 76, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(201, 168, 76, 0.15);
+  }
 }
 
 /* Processing screen — "The Forge" */
 @keyframes archDraw {
-  to { stroke-dashoffset: 0; }
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 
 @keyframes archBreathe {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.12); }
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.12);
+  }
 }
 
 @keyframes archGlow {
-  0%, 100% { opacity: 0.4; transform: scale(1); }
-  50% { opacity: 0.8; transform: scale(1.15); }
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.15);
+  }
 }
 
 @keyframes fadeSlideUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes ringRotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes glow1drift {
-  from { transform: translate(-50%, -50%) translate(0px, 0px); }
-  to { transform: translate(-50%, -50%) translate(30px, -20px); }
+  from {
+    transform: translate(-50%, -50%) translate(0px, 0px);
+  }
+  to {
+    transform: translate(-50%, -50%) translate(30px, -20px);
+  }
 }
 
 @keyframes glow2drift {
-  from { transform: translate(0, 0); }
-  to { transform: translate(20px, -30px); }
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(20px, -30px);
+  }
 }
 
 @keyframes glow3drift {
-  from { transform: translate(0, 0); }
-  to { transform: translate(-25px, 15px); }
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(-25px, 15px);
+  }
 }
 
 @keyframes completionFlash {
-  0% { opacity: 0; }
-  50% { opacity: 0.8; }
-  100% { opacity: 0; }
+  0% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 @keyframes dotPulse {
-  0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 rgba(201,168,76,0.4); }
-  50% { opacity: 0.4; transform: scale(0.7); box-shadow: 0 0 0 4px rgba(201,168,76,0); }
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(201, 168, 76, 0.4);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.7);
+    box-shadow: 0 0 0 4px rgba(201, 168, 76, 0);
+  }
 }
 
 /* Product panel animations */
 @keyframes panelFadeUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes matchFill {
-  from { width: 0%; }
+  from {
+    width: 0%;
+  }
 }
 
 @keyframes btnShimmer {
-  from { background-position: -200% center; }
-  to { background-position: 200% center; }
+  from {
+    background-position: -200% center;
+  }
+  to {
+    background-position: 200% center;
+  }
 }
 
-@keyframes wishParticle1 { to { transform: translate(20px, -15px); opacity: 0; } }
-@keyframes wishParticle2 { to { transform: translate(-20px, -15px); opacity: 0; } }
-@keyframes wishParticle3 { to { transform: translate(25px, 5px); opacity: 0; } }
-@keyframes wishParticle4 { to { transform: translate(-25px, 5px); opacity: 0; } }
-@keyframes wishParticle5 { to { transform: translate(10px, 20px); opacity: 0; } }
-@keyframes wishParticle6 { to { transform: translate(-10px, 20px); opacity: 0; } }
+@keyframes wishParticle1 {
+  to {
+    transform: translate(20px, -15px);
+    opacity: 0;
+  }
+}
+@keyframes wishParticle2 {
+  to {
+    transform: translate(-20px, -15px);
+    opacity: 0;
+  }
+}
+@keyframes wishParticle3 {
+  to {
+    transform: translate(25px, 5px);
+    opacity: 0;
+  }
+}
+@keyframes wishParticle4 {
+  to {
+    transform: translate(-25px, 5px);
+    opacity: 0;
+  }
+}
+@keyframes wishParticle5 {
+  to {
+    transform: translate(10px, 20px);
+    opacity: 0;
+  }
+}
+@keyframes wishParticle6 {
+  to {
+    transform: translate(-10px, 20px);
+    opacity: 0;
+  }
+}
 
 /* Chat animations */
 @keyframes bubblePulse {
-  0% { box-shadow: 0 8px 32px rgba(201,168,76,0.4), 0 0 0 0 rgba(201,168,76,0.4); }
-  70% { box-shadow: 0 8px 32px rgba(201,168,76,0.4), 0 0 0 16px rgba(201,168,76,0); }
-  100% { box-shadow: 0 8px 32px rgba(201,168,76,0.4), 0 0 0 0 rgba(201,168,76,0); }
+  0% {
+    box-shadow:
+      0 8px 32px rgba(201, 168, 76, 0.4),
+      0 0 0 0 rgba(201, 168, 76, 0.4);
+  }
+  70% {
+    box-shadow:
+      0 8px 32px rgba(201, 168, 76, 0.4),
+      0 0 0 16px rgba(201, 168, 76, 0);
+  }
+  100% {
+    box-shadow:
+      0 8px 32px rgba(201, 168, 76, 0.4),
+      0 0 0 0 rgba(201, 168, 76, 0);
+  }
 }
 
 @keyframes dotBounce {
-  0%, 60%, 100% { transform: translateY(0); }
-  30% { transform: translateY(-6px); }
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-6px);
+  }
 }
 
 @keyframes msgLeft {
-  from { opacity: 0; transform: translateX(-20px); }
-  to { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 @keyframes msgRight {
-  from { opacity: 0; transform: translateX(20px); }
-  to { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 /* Dashboard animations */
 @keyframes dashCardIn {
-  from { opacity: 0; transform: scale(0.97) translateY(8px); }
-  to   { opacity: 1; transform: scale(1)    translateY(0);   }
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 @keyframes barFill {
-  from { width: 0; }
-  to   { width: var(--pct); }
+  from {
+    width: 0;
+  }
+  to {
+    width: var(--pct);
+  }
 }
 
 @keyframes patternDrift {
-  from { background-position: 0 0; }
-  to   { background-position: 40px 40px; }
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 40px 40px;
+  }
 }
 
 @keyframes archSpin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -245,14 +447,21 @@ body::-webkit-scrollbar-thumb:hover {
 }
 
 /* Chat scrollbar */
-.chat-scrollbar::-webkit-scrollbar { width: 4px; }
-.chat-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.chat-scrollbar::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.2); border-radius: 2px; }
+.chat-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.chat-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.chat-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(201, 168, 76, 0.2);
+  border-radius: 2px;
+}
 
 /* Hotspot sonar rings — used in step-9 shoppable room */
 .hotspot-pulse::before,
 .hotspot-pulse::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -260,7 +469,7 @@ body::-webkit-scrollbar-thumb:hover {
   height: 40px;
   margin-top: -20px;
   margin-left: -20px;
-  border: 2px solid #C9A84C;
+  border: 2px solid #c9a84c;
   border-radius: 50%;
   opacity: 0;
   transform: scale(1);
@@ -270,14 +479,25 @@ body::-webkit-scrollbar-thumb:hover {
   animation-delay: 700ms;
 }
 @keyframes sonar-ring {
-  0%   { transform: scale(1);   opacity: 0.6; }
-  100% { transform: scale(2.5); opacity: 0;   }
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
 }
 
 /* Hint pill subtle pulse */
 @keyframes hint-pulse {
-  0%, 100% { opacity: 0.7; }
-  50%       { opacity: 1;   }
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 .animate-hint-pulse {
   animation: hint-pulse 3s ease-in-out infinite;
@@ -285,17 +505,21 @@ body::-webkit-scrollbar-thumb:hover {
 
 /* Gold shimmer sweep — Buy Now buttons */
 @keyframes shimmer-sweep {
-  0%   { background-position: 200% center; }
-  100% { background-position: -200% center; }
+  0% {
+    background-position: 200% center;
+  }
+  100% {
+    background-position: -200% center;
+  }
 }
 .shimmer-gold:hover {
   background: linear-gradient(
     90deg,
-    #C9A84C 0%,
-    #D4B460 40%,
-    #F0D080 50%,
-    #D4B460 60%,
-    #C9A84C 100%
+    #c9a84c 0%,
+    #d4b460 40%,
+    #f0d080 50%,
+    #d4b460 60%,
+    #c9a84c 100%
   );
   background-size: 200% auto;
   animation: shimmer-sweep 400ms ease-in-out;

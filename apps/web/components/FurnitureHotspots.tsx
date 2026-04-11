@@ -1,44 +1,44 @@
-'use client'
+"use client";
 
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { createBrowserClient } from '@/lib/supabase/client'
-import { useCameraStore } from '@/lib/stores/cameraStore'
+import { useState, useEffect, useRef, useCallback } from "react";
+import { createBrowserClient } from "@/lib/supabase/client";
+import { useCameraStore } from "@/lib/stores/cameraStore";
 
-const DEG2RAD = Math.PI / 180
+const DEG2RAD = Math.PI / 180;
 
 interface FurnitureProduct {
-  id: string
-  name: string
-  price: number
-  category: string
-  retailer: string
-  affiliate_url: string
-  image_url: string
-  style_tags: string[]
+  id: string;
+  name: string;
+  price: number;
+  category: string;
+  retailer: string;
+  affiliate_url: string;
+  image_url: string;
+  style_tags: string[];
 }
 
 interface FurnitureMatch {
-  id: string
-  furniture_label: string
-  furniture_description: string
-  azimuth_degrees: number
-  elevation_degrees: number | null
-  rank: number
-  is_unlocked: boolean
-  similarity_score: number
-  products: FurnitureProduct
+  id: string;
+  furniture_label: string;
+  furniture_description: string;
+  azimuth_degrees: number;
+  elevation_degrees: number | null;
+  rank: number;
+  is_unlocked: boolean;
+  similarity_score: number;
+  products: FurnitureProduct;
 }
 
 interface ProjectedHotspot {
-  match: FurnitureMatch
-  screenX: number
-  screenY: number
-  opacity: number
+  match: FurnitureMatch;
+  screenX: number;
+  screenY: number;
+  opacity: number;
 }
 
 interface FurnitureHotspotsProps {
-  roomId: string
-  onProductSelect: (label: string) => void
+  roomId: string;
+  onProductSelect: (label: string) => void;
 }
 
 /**
@@ -57,93 +57,96 @@ function projectToScreen(
   fovRad: number,
   aspect: number,
   viewW: number,
-  viewH: number
+  viewH: number,
 ): { x: number; y: number; opacity: number } | null {
   // Convert panorama azimuth to world angle (radians)
   // Panorama center (180°) = forward (0 rad)
-  const worldAz = (azimuthDeg - 180) * DEG2RAD
-  const elRad = elevationDeg * DEG2RAD
+  const worldAz = (azimuthDeg - 180) * DEG2RAD;
+  const elRad = elevationDeg * DEG2RAD;
 
   // Furniture direction as unit vector in world space
-  const fx = Math.cos(elRad) * Math.sin(worldAz)
-  const fy = Math.sin(elRad)
-  const fz = Math.cos(elRad) * Math.cos(worldAz)
+  const fx = Math.cos(elRad) * Math.sin(worldAz);
+  const fy = Math.sin(elRad);
+  const fz = Math.cos(elRad) * Math.cos(worldAz);
 
   // Rotate into camera space:
   // Step 1: rotate around Y by -cameraYaw
-  const cosY = Math.cos(-cameraYaw)
-  const sinY = Math.sin(-cameraYaw)
-  const rx = fx * cosY + fz * sinY
-  const ry = fy
-  const rz = -fx * sinY + fz * cosY
+  const cosY = Math.cos(-cameraYaw);
+  const sinY = Math.sin(-cameraYaw);
+  const rx = fx * cosY + fz * sinY;
+  const ry = fy;
+  const rz = -fx * sinY + fz * cosY;
 
   // Step 2: rotate around X by -cameraPitch
-  const cosP = Math.cos(-cameraPitch)
-  const sinP = Math.sin(-cameraPitch)
-  const lx = rx
-  const ly = ry * cosP - rz * sinP
-  const lz = ry * sinP + rz * cosP
+  const cosP = Math.cos(-cameraPitch);
+  const sinP = Math.sin(-cameraPitch);
+  const lx = rx;
+  const ly = ry * cosP - rz * sinP;
+  const lz = ry * sinP + rz * cosP;
 
   // Behind camera — don't render
-  if (lz <= 0.01) return null
+  if (lz <= 0.01) return null;
 
   // Perspective projection
-  const tanHalfFov = Math.tan(fovRad / 2)
-  const ndcX = lx / (lz * tanHalfFov * aspect)
-  const ndcY = ly / (lz * tanHalfFov)
+  const tanHalfFov = Math.tan(fovRad / 2);
+  const ndcX = lx / (lz * tanHalfFov * aspect);
+  const ndcY = ly / (lz * tanHalfFov);
 
   // Angular distance from camera center for edge fade
-  const angularDist = Math.acos(Math.max(-1, Math.min(1, lz)))
-  const maxAngle = 85 * DEG2RAD
-  let opacity = 1
+  const angularDist = Math.acos(Math.max(-1, Math.min(1, lz)));
+  const maxAngle = 85 * DEG2RAD;
+  let opacity = 1;
   if (angularDist > maxAngle) {
-    return null // too far to the edge
+    return null; // too far to the edge
   } else if (angularDist > 70 * DEG2RAD) {
     // Fade between 70° and 85°
-    opacity = 1 - (angularDist - 70 * DEG2RAD) / (15 * DEG2RAD)
+    opacity = 1 - (angularDist - 70 * DEG2RAD) / (15 * DEG2RAD);
   }
 
   // NDC to screen pixels
-  const screenX = ((ndcX + 1) / 2) * viewW
-  const screenY = ((-ndcY + 1) / 2) * viewH
+  const screenX = ((ndcX + 1) / 2) * viewW;
+  const screenY = ((-ndcY + 1) / 2) * viewH;
 
-  return { x: screenX, y: screenY, opacity }
+  return { x: screenX, y: screenY, opacity };
 }
 
-export default function FurnitureHotspots({ roomId, onProductSelect }: FurnitureHotspotsProps) {
-  const [matches, setMatches] = useState<FurnitureMatch[]>([])
-  const [projected, setProjected] = useState<ProjectedHotspot[]>([])
-  const rafRef = useRef<number>(0)
-  const containerRef = useRef<HTMLDivElement>(null)
+export default function FurnitureHotspots({
+  roomId,
+  onProductSelect,
+}: FurnitureHotspotsProps) {
+  const [matches, setMatches] = useState<FurnitureMatch[]>([]);
+  const [projected, setProjected] = useState<ProjectedHotspot[]>([]);
+  const rafRef = useRef<number>(0);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Fetch furniture matches
   useEffect(() => {
-    const supabase = createBrowserClient()
+    const supabase = createBrowserClient();
     supabase
-      .from('room_products')
+      .from("room_products")
       .select(
-        'id, furniture_label, furniture_description, azimuth_degrees, elevation_degrees, rank, is_unlocked, similarity_score, products (id, name, price, category, retailer, affiliate_url, image_url, style_tags)'
+        "id, furniture_label, furniture_description, azimuth_degrees, elevation_degrees, rank, is_unlocked, similarity_score, products (id, name, price, category, retailer, affiliate_url, image_url, style_tags)",
       )
-      .eq('room_id', roomId)
-      .eq('rank', 1)
-      .order('azimuth_degrees')
+      .eq("room_id", roomId)
+      .eq("rank", 1)
+      .order("azimuth_degrees")
       .then(({ data }) => {
-        setMatches((data as unknown as FurnitureMatch[]) ?? [])
-      })
-  }, [roomId])
+        setMatches((data as unknown as FurnitureMatch[]) ?? []);
+      });
+  }, [roomId]);
 
   // Projection loop — runs on every animation frame to track camera
   const updateProjection = useCallback(() => {
-    if (matches.length === 0) return
+    if (matches.length === 0) return;
 
-    const el = containerRef.current
-    const viewW = el?.clientWidth ?? window.innerWidth
-    const viewH = el?.clientHeight ?? window.innerHeight
-    const { yaw, pitch, fov, aspect } = useCameraStore.getState()
+    const el = containerRef.current;
+    const viewW = el?.clientWidth ?? window.innerWidth;
+    const viewH = el?.clientHeight ?? window.innerHeight;
+    const { yaw, pitch, fov, aspect } = useCameraStore.getState();
 
-    const results: ProjectedHotspot[] = []
+    const results: ProjectedHotspot[] = [];
     for (const match of matches) {
-      const elevation = match.elevation_degrees ?? -25 // default mid-floor
+      const elevation = match.elevation_degrees ?? -25; // default mid-floor
       const result = projectToScreen(
         match.azimuth_degrees,
         elevation,
@@ -152,65 +155,73 @@ export default function FurnitureHotspots({ roomId, onProductSelect }: Furniture
         fov,
         aspect,
         viewW,
-        viewH
-      )
+        viewH,
+      );
       if (result) {
         results.push({
           match,
           screenX: result.x,
           screenY: result.y,
           opacity: result.opacity,
-        })
+        });
       }
     }
-    setProjected(results)
-  }, [matches])
+    setProjected(results);
+  }, [matches]);
 
   useEffect(() => {
-    if (matches.length === 0) return
+    if (matches.length === 0) return;
 
     const loop = () => {
-      updateProjection()
-      rafRef.current = requestAnimationFrame(loop)
-    }
-    rafRef.current = requestAnimationFrame(loop)
+      updateProjection();
+      rafRef.current = requestAnimationFrame(loop);
+    };
+    rafRef.current = requestAnimationFrame(loop);
 
-    return () => cancelAnimationFrame(rafRef.current)
-  }, [matches, updateProjection])
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [matches, updateProjection]);
 
-  if (matches.length === 0) return null
+  if (matches.length === 0) return null;
 
   return (
-    <div ref={containerRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 10 }}>
+    <div
+      ref={containerRef}
+      style={{
+        position: "absolute",
+        inset: 0,
+        pointerEvents: "none",
+        zIndex: 10,
+      }}
+    >
       {projected.map(({ match, screenX, screenY, opacity }) => (
         <button
           key={match.id}
           type="button"
           onClick={() => onProductSelect(match.furniture_label)}
           style={{
-            position: 'absolute',
+            position: "absolute",
             left: screenX,
             top: screenY,
-            transform: 'translate(-50%, -50%)',
-            pointerEvents: 'auto',
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
+            transform: "translate(-50%, -50%)",
+            pointerEvents: "auto",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
             padding: 0,
             opacity,
-            transition: 'opacity 150ms ease-out',
-            willChange: 'transform, left, top',
+            transition: "opacity 150ms ease-out",
+            willChange: "transform, left, top",
           }}
         >
-          <div style={{ position: 'relative' }}>
+          <div style={{ position: "relative" }}>
             {/* Pulse ring */}
             <div
               style={{
-                position: 'absolute',
+                position: "absolute",
                 inset: -4,
-                borderRadius: '50%',
-                background: 'rgba(201, 168, 76, 0.3)',
-                animation: 'hotspot-pulse 2s ease-in-out infinite',
+                borderRadius: "50%",
+                background: "rgba(201, 168, 76, 0.3)",
+                animation: "hotspot-pulse 2s ease-in-out infinite",
               }}
             />
             {/* Main dot */}
@@ -218,18 +229,20 @@ export default function FurnitureHotspots({ roomId, onProductSelect }: Furniture
               style={{
                 width: 32,
                 height: 32,
-                borderRadius: '50%',
-                background: 'rgba(255,255,255,0.9)',
-                border: '2px solid #C9A84C',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                position: 'relative',
+                borderRadius: "50%",
+                background: "rgba(255,255,255,0.9)",
+                border: "2px solid #C9A84C",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                position: "relative",
               }}
             >
               {match.is_unlocked ? (
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#0A1628' }}>
+                <span
+                  style={{ fontSize: 10, fontWeight: 700, color: "#0A1628" }}
+                >
                   ${Math.round(match.products?.price ?? 0)}
                 </span>
               ) : (
@@ -244,18 +257,18 @@ export default function FurnitureHotspots({ roomId, onProductSelect }: Furniture
             {/* Label */}
             <div
               style={{
-                position: 'absolute',
-                top: '100%',
-                left: '50%',
-                transform: 'translateX(-50%)',
+                position: "absolute",
+                top: "100%",
+                left: "50%",
+                transform: "translateX(-50%)",
                 marginTop: 4,
-                padding: '2px 8px',
-                background: 'rgba(0,0,0,0.75)',
-                color: '#fff',
+                padding: "2px 8px",
+                background: "rgba(0,0,0,0.75)",
+                color: "#fff",
                 fontSize: 11,
                 borderRadius: 4,
-                whiteSpace: 'nowrap',
-                fontFamily: 'Inter, sans-serif',
+                whiteSpace: "nowrap",
+                fontFamily: "Inter, sans-serif",
               }}
             >
               {match.furniture_label}
@@ -270,5 +283,5 @@ export default function FurnitureHotspots({ roomId, onProductSelect }: Furniture
         }
       `}</style>
     </div>
-  )
+  );
 }

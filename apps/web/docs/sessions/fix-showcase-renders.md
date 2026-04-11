@@ -8,18 +8,21 @@ that fires FLUX Kontext Pro predictions using the user's actual fingerprint vect
 ## Changes
 
 ### lib/store/fingerprint.ts
+
 - Added `showcasePredictionIds: Array<{ predictionId: string; label: string }> | null`
   to `FingerprintState` interface, `INITIAL_STATE`, and store implementation.
 - Added `setShowcasePredictionIds` action.
 - Stored in Zustand (never localStorage — Rule 1 compliance).
 
 ### app/api/render/route.ts
+
 - Added `showcase_mode?: boolean` and `style_name?: string` to `RenderRequestBody`.
 - Validation now allows missing `room_id` when `showcase_mode` is true.
 - Added showcase fast path: builds FLUX prompt from fingerprint, fires prediction,
   returns `{ prediction_id }` immediately — skips inpainting mask and all DB writes.
 
 ### app/api/render/status/route.ts
+
 - Added `isShowcaseMode` flag from `?showcase_mode=true` query param.
 - Validation now allows missing `room_id` when showcase mode is active.
 - Added showcase fast path immediately after auth check: polls Replicate only,
@@ -28,6 +31,7 @@ that fires FLUX Kontext Pro predictions using the user's actual fingerprint vect
   showcase mode returns early, so roomId is always present at those lines).
 
 ### app/design/step-2/page.tsx
+
 - Destructured `budgetTier` and `setShowcasePredictionIds` from `useFingerprintStore`.
 - After fingerprint is set in `completeQuiz`, fires 3 showcase render predictions
   non-blocking using `void Promise.all(...)`.
@@ -35,6 +39,7 @@ that fires FLUX Kontext Pro predictions using the user's actual fingerprint vect
 - Updated `useCallback` dependency array to include new dependencies.
 
 ### app/design/step-3/page.tsx
+
 - Destructured `budgetTier`, `showcasePredictionIds`, `setShowcasePredictionIds`,
   and `setStoreFingerprint` from `useFingerprintStore`.
 - Replaced `loadShowcaseImages` useEffect with a polling-based approach:

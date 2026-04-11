@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
-import { EB_Garamond, Inter, Playfair_Display, DM_Sans } from "next/font/google";
+import {
+  EB_Garamond,
+  Inter,
+  Playfair_Display,
+  DM_Sans,
+} from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 import { AnalyticsProvider } from "@/components/providers/AnalyticsProvider";

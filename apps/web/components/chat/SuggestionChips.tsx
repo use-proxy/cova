@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 const SUGGESTIONS = [
   "What's my total room cost?",
@@ -9,10 +9,10 @@ const SUGGESTIONS = [
   "Find similar items in black",
   "How do I style this sofa?",
   "Show me lighting options",
-]
+];
 
 interface SuggestionChipsProps {
-  onSelect: (text: string) => void
+  onSelect: (text: string) => void;
 }
 
 export function SuggestionChips({ onSelect }: SuggestionChipsProps) {
@@ -33,5 +33,5 @@ export function SuggestionChips({ onSelect }: SuggestionChipsProps) {
         </button>
       ))}
     </div>
-  )
+  );
 }

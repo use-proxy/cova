@@ -14,88 +14,115 @@
  * Timeout: 5 minutes.
  */
 
-export const maxDuration = 300
+export const maxDuration = 300;
 
-import { NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { createAdminSupabaseClient } from '@/lib/supabase/admin'
-import { compilePromptWithClaude } from '@/lib/ai/prompt-compiler'
-import { buildFluxPrompt } from '@/lib/ai/flux'
-import { fetchTopStyleReference } from '@/lib/ai/style-references'
-import { analyzeRoomArchitecture, type RoomArchitecture } from '@/lib/ai/room-analyzer'
-import type { StyleFingerprint } from '@/types/fingerprint'
+import { NextResponse } from "next/server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { compilePromptWithClaude } from "@/lib/ai/prompt-compiler";
+import { buildFluxPrompt, buildAnchorFallbackPrompt } from "@/lib/ai/flux";
+import { fetchTopStyleReference } from "@/lib/ai/style-references";
+import {
+  analyzeRoomArchitecture,
+  type RoomArchitecture,
+} from "@/lib/ai/room-analyzer";
+import type { StyleFingerprint } from "@/types/fingerprint";
+import type { RenderContext } from "@/lib/types/area2";
+
+interface RoomRow {
+  render_context: RenderContext | null;
+  room_type: string | null;
+  style_blend: Record<string, number> | null;
+  original_image_url: string | null;
+  original_photo_url: string | null;
+  user_id: string;
+}
+
+interface UserRow {
+  style_fingerprint: StyleFingerprint | Record<string, number> | null;
+}
 
 interface RedesignBody {
-  room_id?: string
+  room_id?: string;
 }
 
 export async function POST(request: Request) {
-  const supabase = await createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = (await request.json()) as RedesignBody
-  const { room_id } = body
+  const body = (await request.json()) as RedesignBody;
+  const { room_id } = body;
 
   if (!room_id) {
-    return NextResponse.json({ error: 'room_id is required' }, { status: 400 })
+    return NextResponse.json({ error: "room_id is required" }, { status: 400 });
   }
 
-  const webhookUrl = process.env.REDESIGN_PIPELINE_WEBHOOK_URL
+  const webhookUrl = process.env.REDESIGN_PIPELINE_WEBHOOK_URL;
   if (!webhookUrl) {
     return NextResponse.json(
-      { error: 'REDESIGN_PIPELINE_WEBHOOK_URL not configured' },
-      { status: 503 }
-    )
+      { error: "REDESIGN_PIPELINE_WEBHOOK_URL not configured" },
+      { status: 503 },
+    );
   }
 
   // Read personalization data
-  const admin = createAdminSupabaseClient()
+  const admin = createAdminSupabaseClient();
 
-  let room: any = null
-  let userRow: any = null
+  let room: RoomRow | null = null;
+  let userRow: UserRow | null = null;
   try {
     const [roomRes, userRes] = await Promise.all([
       admin
-        .from('rooms')
-        .select('render_context, room_type, style_blend, original_image_url, original_photo_url')
-        .eq('id', room_id)
+        .from("rooms")
+        .select(
+          "user_id, render_context, room_type, style_blend, original_image_url, original_photo_url",
+        )
+        .eq("id", room_id)
+        .eq("user_id", user.id)
         .single(),
       admin
-        .from('users')
-        .select('style_fingerprint')
-        .eq('id', user.id)
+        .from("users")
+        .select("style_fingerprint")
+        .eq("id", user.id)
         .single(),
-    ])
-    room = roomRes.data
-    userRow = userRes.data
+    ]);
+    room = (roomRes.data ?? null) as RoomRow | null;
+    userRow = (userRes.data ?? null) as UserRow | null;
   } catch (err) {
-    console.error('[redesign] DB read failed:', err)
+    console.error("[redesign] DB read failed:", err);
     // continue — compiled_prompt will be null, Modal uses Python fallback
   }
 
-  const renderContext = (room?.render_context as any) ?? null
-  const roomType = room?.room_type ?? 'living room'
+  if (!room) {
+    return NextResponse.json(
+      { error: "Room not found or access denied" },
+      { status: 404 },
+    );
+  }
+
+  const renderContext: RenderContext | null = room?.render_context ?? null;
+  const roomType = room?.room_type ?? "room"; // never assume room type; "room" is a safe generic fallback
 
   // Resolve fingerprint — render_context first, then users fallback
-  let fingerprint: StyleFingerprint | null = null
+  let fingerprint: StyleFingerprint | null = null;
   if (
     renderContext?.fingerprint &&
-    typeof renderContext.fingerprint === 'object' &&
-    'dimensions' in renderContext.fingerprint
+    typeof renderContext.fingerprint === "object" &&
+    "dimensions" in renderContext.fingerprint
   ) {
-    fingerprint = renderContext.fingerprint as StyleFingerprint
+    fingerprint = renderContext.fingerprint as StyleFingerprint;
   } else if (
     userRow?.style_fingerprint &&
-    typeof userRow.style_fingerprint === 'object' &&
-    'dimensions' in (userRow.style_fingerprint as object)
+    typeof userRow.style_fingerprint === "object" &&
+    "dimensions" in (userRow.style_fingerprint as object)
   ) {
-    fingerprint = userRow.style_fingerprint as StyleFingerprint
+    fingerprint = userRow.style_fingerprint as StyleFingerprint;
   }
 
   // Persist the full StyleFingerprint back to rooms.render_context so
@@ -103,46 +130,45 @@ export async function POST(request: Request) {
   // rather than a bare dimensions record. Fire-and-forget.
   if (fingerprint && room_id) {
     void admin
-      .from('rooms')
+      .from("rooms")
       .update({
         render_context: {
           ...(renderContext ?? {}),
           fingerprint,
         },
       } as Record<string, unknown>)
-      .eq('id', room_id)
+      .eq("id", room_id)
       .then(({ error }) => {
-        if (error) console.error('[redesign] render_context write failed:', error)
-      })
+        if (error)
+          console.error("[redesign] render_context write failed:", error);
+      });
   }
 
   // Fetch style reference anchor
-  let anchorPrompt: string | null = null
-  let styleReferenceUrl: string | null = null
+  let anchorPrompt: string | null = null;
+  let styleReferenceUrl: string | null = null;
   if (fingerprint) {
     const styleRef = await fetchTopStyleReference(fingerprint, roomType).catch(
       () => null,
-    )
-    anchorPrompt = styleRef?.flux_prompt ?? null
-    styleReferenceUrl = styleRef?.image_url ?? null
+    );
+    anchorPrompt = styleRef?.flux_prompt ?? null;
+    styleReferenceUrl = styleRef?.image_url ?? null;
   }
 
   // Gemini room architecture analysis (non-blocking)
-  let roomAnalysis: RoomArchitecture | null = null
+  let roomAnalysis: RoomArchitecture | null = null;
   try {
     const originalPhotoUrl =
-      (room as any)?.original_image_url ??
-      (room as any)?.original_photo_url ??
-      null
+      room?.original_image_url ?? room?.original_photo_url ?? null;
     if (originalPhotoUrl) {
-      roomAnalysis = await analyzeRoomArchitecture(originalPhotoUrl)
+      roomAnalysis = await analyzeRoomArchitecture(originalPhotoUrl);
     }
   } catch (err) {
-    console.error('[redesign] Gemini analysis failed:', err)
+    console.error("[redesign] Gemini analysis failed:", err);
   }
 
   // Compile prompt
-  let compiledPrompt: string | null = null
+  let compiledPrompt: string | null = null;
   if (fingerprint) {
     compiledPrompt = await compilePromptWithClaude(
       renderContext,
@@ -150,46 +176,44 @@ export async function POST(request: Request) {
       fingerprint,
       anchorPrompt,
       roomAnalysis,
-    ).catch(() => null)
+    ).catch(() => null);
 
-    // Fallback to buildFluxPrompt if Claude compile fails
+    // Fallback: anchor-strategy prompt if Claude compile fails. This
+    // MUST frame kept items as anchors and removed items as vacated zones,
+    // matching the Rules 1-4 strategy in prompt-compiler.ts. The old
+    // buildFluxPrompt path ignored kept items and over-edited. Do not
+    // route through it.
     if (!compiledPrompt) {
-      const budgetStrategy = renderContext?.budget?.strategy
-      const budgetTier: 'budget' | 'mid' | 'premium' | 'luxury' =
-        budgetStrategy === 'budget' ||
-        budgetStrategy === 'mid' ||
-        budgetStrategy === 'premium' ||
-        budgetStrategy === 'luxury'
-          ? budgetStrategy
-          : 'mid'
-      compiledPrompt = buildFluxPrompt({
+      const styleBlendRaw =
+        renderContext?.styleBlend ?? room?.style_blend ?? null;
+      compiledPrompt = buildAnchorFallbackPrompt({
         fingerprint,
         roomType,
-        budgetTier,
-        inclusions:
-          renderContext?.requestedProducts?.map((p: any) => p.name) ?? [],
-        constraints: renderContext?.roomConstraints
-          ? Object.entries(renderContext.roomConstraints)
-              .filter(([, v]) => v === true)
-              .map(([k]) => k)
-          : [],
-        keptItemLabels: [],
-        roomAnalysis: null,
-        anchorPrompt: anchorPrompt ?? undefined,
-      })
+        context: renderContext,
+        styleBlend: styleBlendRaw,
+        anchorPrompt,
+        cameraAngle: roomAnalysis?.cameraAngle ?? undefined,
+        focalLength: roomAnalysis?.focalLength ?? undefined,
+      });
     }
+    // Silence unused-import warning for legacy buildFluxPrompt until
+    // validation-renders route is re-audited.
+    void buildFluxPrompt;
   }
 
-  console.log('[redesign] compiled_prompt length:', compiledPrompt?.length ?? 0)
-  console.log('[redesign] prompt preview:', compiledPrompt?.slice(0, 120))
+  console.warn(
+    "[redesign] compiled_prompt length:",
+    compiledPrompt?.length ?? 0,
+  );
+  console.warn("[redesign] prompt preview:", compiledPrompt?.slice(0, 120));
 
   try {
     // Fire-and-forget style: send the request to Modal but don't wait for the full
     // pipeline to complete. The Modal function writes directly to Supabase, so the
     // client polls /api/rooms/status for progress.
     const response = await fetch(webhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         room_id,
         user_id: user.id,
@@ -198,33 +222,33 @@ export async function POST(request: Request) {
         style_reference_url: styleReferenceUrl ?? null,
       }),
       signal: AbortSignal.timeout(295_000),
-    })
+    });
 
     if (!response.ok) {
-      const text = await response.text().catch(() => response.statusText)
-      console.error('[redesign] Modal webhook error:', response.status, text)
+      const text = await response.text().catch(() => response.statusText);
+      console.error("[redesign] Modal webhook error:", response.status, text);
       return NextResponse.json(
-        { error: 'Redesign pipeline failed', detail: text },
-        { status: 502 }
-      )
+        { error: "Redesign pipeline failed", detail: text },
+        { status: 502 },
+      );
     }
 
     const result = (await response.json()) as {
-      status: string
-      room_id?: string
-      redesigned_pano_url?: string
-      perspective_render_url?: string | null
-      prompt?: string
-      dominant_styles?: string[]
-      error?: string
-    }
+      status: string;
+      room_id?: string;
+      redesigned_pano_url?: string;
+      perspective_render_url?: string | null;
+      prompt?: string;
+      dominant_styles?: string[];
+      error?: string;
+    };
 
-    if (result.status === 'error') {
-      console.error('[redesign] Pipeline error:', result.error)
+    if (result.status === "error") {
+      console.error("[redesign] Pipeline error:", result.error);
       return NextResponse.json(
-        { error: result.error ?? 'Redesign pipeline failed' },
-        { status: 500 }
-      )
+        { error: result.error ?? "Redesign pipeline failed" },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({
@@ -233,10 +257,10 @@ export async function POST(request: Request) {
       redesigned_pano_url: result.redesigned_pano_url ?? null,
       perspective_render_url: result.perspective_render_url ?? null,
       dominant_styles: result.dominant_styles ?? [],
-    })
+    });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    console.error('[redesign] Unexpected error:', message)
-    return NextResponse.json({ error: message }, { status: 500 })
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[redesign] Unexpected error:", message);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

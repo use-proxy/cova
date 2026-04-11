@@ -15,17 +15,17 @@ The full pipeline (build → tsc → 4 verifier scripts → 8 API contract tests
 
 ## What ran
 
-| # | Stage | Result |
-|---|---|---|
-| 1 | `npm run build` | ✓ |
-| 2 | `npx tsc --noEmit` | ✓ clean |
-| 3 | Production server boot on `:3001` | ✓ |
-| 4 | `verify-depth.ts` (Replicate Depth Anything V2 + DB write-back) | ✓ |
-| 5 | `verify-matching.ts` (Serper Shopping + SearchApi Google Lens) | ✓ |
-| 6 | `verify-quiz-personalization.ts` | ✓ avg dim diff bohemian↔minimalist = **0.720** |
-| 7 | `verify-swap.ts` (FLUX Fill Pro creation) | ✓ |
-| 8 | Playwright `api-contracts` project (8 tests) | ✓ in 14.9s |
-| 9 | Playwright `e2e` project (46 tests, includes real ~3 min FLUX render) | ✓ in 3.1m |
+| #   | Stage                                                                 | Result                                         |
+| --- | --------------------------------------------------------------------- | ---------------------------------------------- |
+| 1   | `npm run build`                                                       | ✓                                              |
+| 2   | `npx tsc --noEmit`                                                    | ✓ clean                                        |
+| 3   | Production server boot on `:3001`                                     | ✓                                              |
+| 4   | `verify-depth.ts` (Replicate Depth Anything V2 + DB write-back)       | ✓                                              |
+| 5   | `verify-matching.ts` (Serper Shopping + SearchApi Google Lens)        | ✓                                              |
+| 6   | `verify-quiz-personalization.ts`                                      | ✓ avg dim diff bohemian↔minimalist = **0.720** |
+| 7   | `verify-swap.ts` (FLUX Fill Pro creation)                             | ✓                                              |
+| 8   | Playwright `api-contracts` project (8 tests)                          | ✓ in 14.9s                                     |
+| 9   | Playwright `e2e` project (46 tests, includes real ~3 min FLUX render) | ✓ in 3.1m                                      |
 
 Final Playwright tally: **46 passed, 0 failed**.
 
@@ -46,6 +46,7 @@ r.from(...).insert(...).catch is not a function
 ```
 
 …and 500'd. The previous test suite never noticed because:
+
 - The unauthenticated curl path skipped the insert and returned 200, so a
   manual smoke test looked fine.
 - The Vitest contract test mocked the supabase client entirely, so the bad
@@ -75,12 +76,12 @@ match. Either signal proves the candidate is a real furniture product.
 
 ## Test architecture
 
-| Layer | File | What it asserts |
-|---|---|---|
-| API contracts | `tests/api/contracts.test.ts` | Auth gates, fingerprint shape, quiz next-card diversity, style references, real `/api/match` returns furniture from allowlisted retailers, Replicate Depth Anything V2 SDK canary. **No mocks.** |
-| Verifier scripts | `scripts/verify-{depth,matching,quiz-personalization,swap}.ts` | Direct SDK / Supabase calls, exit non-zero on any deviation. |
-| Full E2E | `tests/e2e/complete-flow.spec.ts` | Real clicks: landing → step-1 → step-2 (real photo upload) → step-3 (3 Phase A rounds + 12-pair Phase B + Phase C) → fingerprint hard-asserted via response interception → step-4 reveal → step-5 keep/remove → step-6 (real ~3 min FLUX render) → step-7 reveal + slider drag → step-9 hotspot tap → real `/api/match` hard-asserted. |
-| Playwright project graph | `playwright.config.ts` | `e2e` project depends on `api-contracts`, so contract failures short-circuit the slower UI run. |
+| Layer                    | File                                                           | What it asserts                                                                                                                                                                                                                                                                                                                        |
+| ------------------------ | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| API contracts            | `tests/api/contracts.test.ts`                                  | Auth gates, fingerprint shape, quiz next-card diversity, style references, real `/api/match` returns furniture from allowlisted retailers, Replicate Depth Anything V2 SDK canary. **No mocks.**                                                                                                                                       |
+| Verifier scripts         | `scripts/verify-{depth,matching,quiz-personalization,swap}.ts` | Direct SDK / Supabase calls, exit non-zero on any deviation.                                                                                                                                                                                                                                                                           |
+| Full E2E                 | `tests/e2e/complete-flow.spec.ts`                              | Real clicks: landing → step-1 → step-2 (real photo upload) → step-3 (3 Phase A rounds + 12-pair Phase B + Phase C) → fingerprint hard-asserted via response interception → step-4 reveal → step-5 keep/remove → step-6 (real ~3 min FLUX render) → step-7 reveal + slider drag → step-9 hotspot tap → real `/api/match` hard-asserted. |
+| Playwright project graph | `playwright.config.ts`                                         | `e2e` project depends on `api-contracts`, so contract failures short-circuit the slower UI run.                                                                                                                                                                                                                                        |
 
 `vitest.config.ts` excludes `tests/api/**` so the new Playwright contract
 file does not get loaded by Vitest's runner.

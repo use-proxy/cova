@@ -12,17 +12,20 @@ MANDATORY PROCESS FOR EVERY STEP
 ═══════════════════════════════════════════════════════════════
 
 Before editing any file:
-  1. Read the file completely
-  2. Find the exact lines the plan references
-  3. Quote the current code back to confirm you're editing the right thing
-  4. Make the edit
-  5. Read the file again to confirm the edit is present and correct
-  6. Run TypeScript check immediately after
+
+1. Read the file completely
+2. Find the exact lines the plan references
+3. Quote the current code back to confirm you're editing the right thing
+4. Make the edit
+5. Read the file again to confirm the edit is present and correct
+6. Run TypeScript check immediately after
 
 After every single file edit, run:
+
 ```bash
 cd apps/web && npx tsc --noEmit 2>&1 | grep -E "^apps/web|error TS" | head -20
 ```
+
 If new TypeScript errors appear that weren't there before this edit, fix them before moving to the next step.
 
 ═══════════════════════════════════════════════════════════════
@@ -51,6 +54,7 @@ If you encounter any of these, STOP immediately and report:
 - Implementing the plan would break something the plan didn't account for
 
 Report format when stopping:
+
 ```
 🚫 BLOCKED on Step [N]
 File: [path]:[lines]
@@ -65,6 +69,7 @@ AFTER ALL STEPS COMPLETE
 ═══════════════════════════════════════════════════════════════
 
 Run in order:
+
 ```bash
 cd apps/web && npx tsc --noEmit 2>&1 | tail -5
 cd apps/web && npm run build 2>&1 | grep -E "error|Error|✓|✗" | tail -20
@@ -72,6 +77,7 @@ cd apps/web && git diff --stat
 ```
 
 Report:
+
 ```
 ✅ Implementation complete
 TypeScript: PASS/FAIL

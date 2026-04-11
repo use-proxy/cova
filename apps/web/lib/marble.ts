@@ -9,34 +9,34 @@
 // MARBLE_DISABLED — preserved for re-enabling
 // @ts-expect-error MARBLE_DISABLED - preserved for re-enabling
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _MARBLE_BASE_URL = 'https://api.worldlabs.ai/marble/v1' // eslint-disable-line
+const _MARBLE_BASE_URL = "https://api.worldlabs.ai/marble/v1"; // eslint-disable-line
 
 export interface MarbleWorld {
-  world_id: string
-  pano_url: string | null
+  world_id: string;
+  pano_url: string | null;
   spz_urls: {
-    '100k': string
-    '500k': string
-    full_res: string
-  }
-  thumbnail_url: string | null
-  marble_url: string
-  caption: string | null
+    "100k": string;
+    "500k": string;
+    full_res: string;
+  };
+  thumbnail_url: string | null;
+  marble_url: string;
+  caption: string | null;
 }
 
 export interface MarbleGenerateOptions {
-  model: 'Marble 0.1-mini' | 'Marble 0.1-plus'
-  displayName?: string
-  seed?: number
+  model: "Marble 0.1-mini" | "Marble 0.1-plus";
+  displayName?: string;
+  seed?: number;
 }
 
 // MARBLE_DISABLED - not in core pipeline
 export async function uploadMediaAsset(
   _fileBytes: ArrayBuffer,
   _fileName: string,
-  _kind: 'video' | 'image',
+  _kind: "video" | "image",
   _extension: string,
-  _apiKey: string
+  _apiKey: string,
 ): Promise<string> {
   /*
   const prepareResp = await fetch(`${MARBLE_BASE_URL}/media-assets:prepare_upload`, {
@@ -71,15 +71,17 @@ export async function uploadMediaAsset(
 
   return mediaAssetId
   */
-  throw new Error('MARBLE_DISABLED — Marble is not in the core pipeline. Re-enable when ready.')
+  throw new Error(
+    "MARBLE_DISABLED — Marble is not in the core pipeline. Re-enable when ready.",
+  );
 }
 
 // MARBLE_DISABLED - not in core pipeline
 export async function generateWorld(
   _mediaAssetId: string,
-  _kind: 'video' | 'image' | 'pano',
+  _kind: "video" | "image" | "pano",
   _options: MarbleGenerateOptions,
-  _apiKey: string
+  _apiKey: string,
 ): Promise<string> {
   /*
   const worldPrompt =
@@ -117,7 +119,9 @@ export async function generateWorld(
   const data = await resp.json()
   return data.operation_id
   */
-  throw new Error('MARBLE_DISABLED — Marble is not in the core pipeline. Re-enable when ready.')
+  throw new Error(
+    "MARBLE_DISABLED — Marble is not in the core pipeline. Re-enable when ready.",
+  );
 }
 
 // MARBLE_DISABLED - not in core pipeline
@@ -125,7 +129,7 @@ export async function pollOperation(
   _operationId: string,
   _apiKey: string,
   _maxWaitMs = 600000,
-  _pollIntervalMs = 10000
+  _pollIntervalMs = 10000,
 ): Promise<string> {
   /*
   const startTime = Date.now()
@@ -159,7 +163,9 @@ export async function pollOperation(
 
   throw new Error(`Marble operation timed out after ${maxWaitMs / 1000}s`)
   */
-  throw new Error('MARBLE_DISABLED — Marble is not in the core pipeline. Re-enable when ready.')
+  throw new Error(
+    "MARBLE_DISABLED — Marble is not in the core pipeline. Re-enable when ready.",
+  );
 }
 
 // MARBLE_DISABLED - not in core pipeline
@@ -167,7 +173,7 @@ export async function fetchWorld(
   _worldId: string,
   _apiKey: string,
   _retries = 5,
-  _retryDelayMs = 5000
+  _retryDelayMs = 5000,
 ): Promise<MarbleWorld> {
   /*
   let lastError: Error | null = null
@@ -208,14 +214,16 @@ export async function fetchWorld(
 
   throw lastError ?? new Error('Failed to fetch world after retries')
   */
-  throw new Error('MARBLE_DISABLED — Marble is not in the core pipeline. Re-enable when ready.')
+  throw new Error(
+    "MARBLE_DISABLED — Marble is not in the core pipeline. Re-enable when ready.",
+  );
 }
 
 // MARBLE_DISABLED - not in core pipeline
 export async function processVideoToWorld(
   _videoBytes: ArrayBuffer,
   _apiKey: string,
-  _model: 'Marble 0.1-mini' | 'Marble 0.1-plus' = 'Marble 0.1-mini'
+  _model: "Marble 0.1-mini" | "Marble 0.1-plus" = "Marble 0.1-mini",
 ): Promise<MarbleWorld> {
   /*
   const mediaAssetId = await uploadMediaAsset(videoBytes, 'room.mp4', 'video', 'mp4', apiKey)
@@ -224,27 +232,36 @@ export async function processVideoToWorld(
   const world = await fetchWorld(worldId, apiKey)
   return world
   */
-  throw new Error('MARBLE_DISABLED — Marble is not in the core pipeline. Re-enable when ready.')
+  throw new Error(
+    "MARBLE_DISABLED — Marble is not in the core pipeline. Re-enable when ready.",
+  );
 }
 
 // MARBLE_DISABLED - not in core pipeline
-export async function uploadPanoAsset(_panoBytes: ArrayBuffer, _apiKey: string): Promise<string> {
+export async function uploadPanoAsset(
+  _panoBytes: ArrayBuffer,
+  _apiKey: string,
+): Promise<string> {
   /*
   return uploadMediaAsset(panoBytes, 'redesigned_room.png', 'image', 'png', apiKey)
   */
-  throw new Error('MARBLE_DISABLED — Marble is not in the core pipeline. Re-enable when ready.')
+  throw new Error(
+    "MARBLE_DISABLED — Marble is not in the core pipeline. Re-enable when ready.",
+  );
 }
 
 // MARBLE_DISABLED - not in core pipeline
 export async function generateWorldFromPano(
   _mediaAssetId: string,
   _options: MarbleGenerateOptions,
-  _apiKey: string
+  _apiKey: string,
 ): Promise<string> {
   /*
   return generateWorld(mediaAssetId, 'pano', options, apiKey)
   */
-  throw new Error('MARBLE_DISABLED — Marble is not in the core pipeline. Re-enable when ready.')
+  throw new Error(
+    "MARBLE_DISABLED — Marble is not in the core pipeline. Re-enable when ready.",
+  );
 }
 
 // Complete pipeline: download redesigned pano → upload to Marble → generate Plus world
@@ -252,7 +269,7 @@ export async function generateWorldFromPano(
 // MARBLE_DISABLED - not in core pipeline
 export async function processRedesignedPanoToWorld(
   _redesignedPanoUrl: string,
-  _apiKey: string
+  _apiKey: string,
 ): Promise<MarbleWorld> {
   /*
   const panoResp = await fetch(redesignedPanoUrl)
@@ -270,5 +287,7 @@ export async function processRedesignedPanoToWorld(
   const world = await fetchWorld(worldId, apiKey, 8, 10000)
   return world
   */
-  throw new Error('MARBLE_DISABLED — Marble is not in the core pipeline. Re-enable when ready.')
+  throw new Error(
+    "MARBLE_DISABLED — Marble is not in the core pipeline. Re-enable when ready.",
+  );
 }
