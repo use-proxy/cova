@@ -230,6 +230,7 @@ Modify the prompt to incorporate the user's instruction while preserving the cor
           inpainting_mask_url: inpaintingMaskUrl,
           render_context: { fingerprint: fingerprint_vector?.dimensions ?? null },
           pipeline_cost_log: {
+            pipeline: 'two_stage_mask',
             two_stage: true,
             stage1_prediction_id: predictionId,
             stage2_pending: true,

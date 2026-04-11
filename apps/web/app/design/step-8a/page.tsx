@@ -33,6 +33,7 @@ export default function RevealStep8A() {
   // Store values — read on mount, used as primary source
   const storeRenderUrl = useRoomStore((s) => s.renderUrl)
   const storeRenderSessions = useRoomStore((s) => s.renderSessions)
+  const storeRoomId = useRoomStore((s) => s.roomId)
   const storeStyleName = useFingerprintStore((s) => s.styleName)
   const storeStyleTags = useFingerprintStore((s) => s.styleTags)
 
@@ -83,10 +84,19 @@ export default function RevealStep8A() {
 
       // 2. Store had no render URL — query Supabase for most recent room
       try {
-        const { data: rooms, error: roomsError } = await supabase
+        const urlRoomId =
+          typeof window !== 'undefined'
+            ? new URLSearchParams(window.location.search).get('roomId')
+            : null
+        const resolvedRoomId = storeRoomId ?? urlRoomId ?? null
+        let roomQuery = supabase
           .from('rooms')
           .select('render_url, redesign_pano_url, fingerprint_id, created_at')
           .eq('user_id', user.id)
+        if (resolvedRoomId) {
+          roomQuery = roomQuery.eq('id', resolvedRoomId)
+        }
+        const { data: rooms, error: roomsError } = await roomQuery
           .order('created_at', { ascending: false })
           .limit(1)
 

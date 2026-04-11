@@ -42,64 +42,90 @@ ANTHROPIC_API_BASE = "https://api.anthropic.com/v1"
 FLUX_KONTEXT_MODEL = "black-forest-labs/flux-kontext-pro"
 FLUX_DEPTH_PRO_MODEL = "black-forest-labs/flux-depth-pro"
 
+STYLE_NAME_REPLACEMENTS = {
+    "warm japandi": "calm warm naturalism with clean lines",
+    "pure minimal white": "purposeful bright simplicity",
+    "coastal bright": "relaxed sun-drenched natural lightness",
+    "biophilic jungle": "lush nature-immersed organic abundance",
+    "dark moody glam": "rich dramatic atmosphere with luxe finishes",
+    "heritage traditional": "timeless layered craftsmanship",
+    "industrial loft": "raw urban materiality with exposed structure",
+    "maximalist eclectic": "boldly layered pattern-rich eclecticism",
+    "retro mid-century": "warm retro modernism with sculptural furniture",
+}
+
+
+def sanitize_style_names(text: str) -> str:
+    result = text
+    for forbidden, replacement in STYLE_NAME_REPLACEMENTS.items():
+        result = result.replace(forbidden, replacement)
+        result = result.replace(forbidden.title(), replacement.title())
+    return result
+
+
 STYLE_VOCABULARY = {
-    "coastal": {
-        "furniture": [
-            "natural rattan armchair", "whitewashed oak coffee table",
-            "linen upholstered sofa in off-white", "woven seagrass rug",
-            "driftwood side table", "wicker storage basket",
-        ],
-        "materials": ["rattan", "seagrass", "whitewashed oak", "linen"],
-        "colors": ["off-white", "soft blue", "sandy beige", "warm white"],
-        "feel": "breezy light-filled with natural weathered materials",
+    "warm japandi": {
+        "description": "calm warm naturalism with clean lines, wabi-sabi imperfection",
+        "materials": "warm oak, raw linen, handmade ceramic",
+        "mood": "serene, grounded, intentionally simple",
+        "key_elements": "low-profile furniture, natural textures, warm neutrals, minimal decor",
     },
-    "japandi": {
-        "furniture": [
-            "low solid oak platform bed",
-            "clean-lined walnut coffee table with tapered legs",
-            "clean-lined linen sofa in warm grey", "natural jute rug",
-            "simple oak bookshelf", "ceramic accent stool",
-        ],
-        "materials": ["solid oak", "walnut", "natural linen", "ceramic"],
-        "colors": ["warm white", "natural wood tones", "soft grey", "muted sage"],
-        "feel": "calm warm naturalism with clean lines",
+    "pure minimal white": {
+        "description": "purposeful bright simplicity, intentional void, maximum light",
+        "materials": "white plaster, polished concrete, brushed steel",
+        "mood": "crisp, airy, meditative",
+        "key_elements": "near-empty surfaces, white palette, geometric forms, abundant daylight",
     },
-    "bohemian": {
-        "furniture": [
-            "colorful Moroccan rug", "eclectic velvet sofa in jewel tone",
-            "woven pouf ottoman", "rattan peacock chair", "layered kilim rug",
-        ],
-        "materials": ["macrame", "kilim", "velvet", "rattan"],
-        "colors": ["terracotta", "deep teal", "warm mustard", "burnt orange"],
-        "feel": "eclectic layered with rich textural depth",
+    "coastal bright": {
+        "description": "relaxed sun-drenched natural lightness, beach house ease",
+        "materials": "whitewashed wood, natural rattan, linen",
+        "mood": "breezy, casual, sun-filled",
+        "key_elements": "light wood tones, woven textures, soft blues and whites, open airy feel",
     },
-    "minimalist": {
-        "furniture": [
-            "white platform bed", "glass and steel coffee table",
-            "all-white modular sofa", "floating white shelves",
-            "matte black accent chair",
-        ],
-        "materials": ["glass", "steel", "concrete", "matte lacquer"],
-        "colors": ["pure white", "light grey", "matte black", "charcoal"],
-        "feel": "deliberately uncluttered with intentional negative space",
+    "biophilic jungle": {
+        "description": "lush nature-immersed organic abundance, indoor garden sanctuary",
+        "materials": "live-edge wood, terracotta, natural fiber",
+        "mood": "verdant, alive, restorative",
+        "key_elements": "abundant plants, organic shapes, earthy tones, natural materials throughout",
     },
-    "mid_century": {
-        "furniture": [
-            "walnut credenza with tapered legs", "Eames-style lounge chair",
-            "low profile tufted sofa in mustard velvet",
-            "hairpin leg coffee table", "arc floor lamp",
-        ],
-        "materials": ["teak", "walnut", "molded plywood", "brass"],
-        "colors": ["mustard yellow", "burnt orange", "teal", "walnut brown"],
-        "feel": "warm retro curves with teak and brass accents",
+    "dark moody glam": {
+        "description": "rich dramatic atmosphere with luxe finishes, jewel-tone depth",
+        "materials": "velvet, marble, brass",
+        "mood": "seductive, opulent, theatrical",
+        "key_elements": "deep saturated colors, metallic accents, plush textures, dramatic lighting",
+    },
+    "heritage traditional": {
+        "description": "timeless layered craftsmanship, antique-informed elegance",
+        "materials": "dark walnut, silk, aged brass",
+        "mood": "stately, warm, deeply considered",
+        "key_elements": "ornate details, rich wood tones, layered textiles, symmetrical arrangement",
+    },
+    "industrial loft": {
+        "description": "raw urban materiality with exposed structure, factory-converted aesthetic",
+        "materials": "exposed concrete, raw steel, reclaimed wood",
+        "mood": "edgy, honest, utilitarian-cool",
+        "key_elements": "exposed ducts and pipes, concrete surfaces, metal furniture, monochrome palette",
+    },
+    "maximalist eclectic": {
+        "description": "boldly layered pattern-rich eclecticism, collected over time",
+        "materials": "mixed global textiles, lacquered wood, colored glass",
+        "mood": "exuberant, personal, fearlessly layered",
+        "key_elements": "pattern mixing, bold color, abundant objects, global influences",
+    },
+    "retro mid-century": {
+        "description": "warm retro modernism with sculptural furniture, 1950-70s optimism",
+        "materials": "teak, bouclé, enameled steel",
+        "mood": "nostalgic, optimistic, design-forward",
+        "key_elements": "tapered legs, organic curves, warm wood tones, graphic patterns",
     },
 }
 
 
 def get_dominant_styles(blend: dict) -> list:
+    normalized = {k.lower(): v for k, v in (blend or {}).items()}
     return [
         style for style, weight
-        in sorted(blend.items(), key=lambda x: x[1], reverse=True)
+        in sorted(normalized.items(), key=lambda x: x[1], reverse=True)
         if weight > 0.1
     ]
 
@@ -107,33 +133,36 @@ def get_dominant_styles(blend: dict) -> list:
 def generate_prompt_with_claude(blend: dict, room_type: str, anthropic_key: str) -> str:
     import requests
 
+    normalized_blend = {k.lower(): v for k, v in (blend or {}).items()}
     dominant = get_dominant_styles(blend)
-    style_context = "\n".join([
-        f"{s} ({round(blend.get(s, 0) * 100)}%): "
-        f"{STYLE_VOCABULARY.get(s, {}).get('feel', s)}"
-        for s in dominant
-    ])
-
-    furniture_items = []
+    style_context_parts = []
     for s in dominant:
         vocab = STYLE_VOCABULARY.get(s, {})
-        n = max(1, round(blend.get(s, 0) * 5))
-        furniture_items.extend(vocab.get("furniture", [])[:n])
+        pct = round(normalized_blend.get(s, 0) * 100)
+        desc = vocab.get("description", s)
+        mood = vocab.get("mood", "")
+        style_context_parts.append(f"{s} ({pct}%): {desc} — {mood}")
+    style_context = "\n".join(style_context_parts)
+
+    material_hints = []
+    element_hints = []
+    for s in dominant:
+        vocab = STYLE_VOCABULARY.get(s, {})
+        if vocab.get("materials"):
+            material_hints.append(vocab["materials"])
+        if vocab.get("key_elements"):
+            element_hints.append(vocab["key_elements"])
 
     system_prompt = (
         "You are an expert interior designer creating precise image editing "
         "prompts for FLUX Kontext Pro, an AI image editor.\n\n"
         "FLUX Kontext edits existing images. It excels at replacing furniture "
         "while preserving room architecture.\n\n"
-        "CRITICAL: Never use these style names in any output: "
-        "Japandi, Bohemian, Coastal, Mid-Century Modern, Minimalist. "
-        "Instead use descriptive phrases:\n"
-        "- Instead of 'Japandi': 'calm warm naturalism with clean lines'\n"
-        "- Instead of 'Minimalist': 'deliberately uncluttered with negative space'\n"
-        "- Instead of 'Bohemian': 'eclectic layered with rich texture'\n"
-        "- Instead of 'Coastal': 'breezy light-filled with natural materials'\n"
-        "- Instead of 'Mid-Century Modern': 'warm retro curves with teak and brass'\n"
-        "Always describe the visual qualities, never the style label.\n\n"
+        "CRITICAL: Never use internal anchor style names verbatim. Forbidden "
+        "labels: warm japandi, pure minimal white, coastal bright, biophilic "
+        "jungle, dark moody glam, heritage traditional, industrial loft, "
+        "maximalist eclectic, retro mid-century. Instead describe the visual "
+        "qualities — mood, materials, light, forms — never the style label.\n\n"
         "Your prompts must:\n"
         "1. Be extremely specific about furniture pieces with materials and colors\n"
         "2. Explicitly preserve walls, floors, windows, ceiling, doors\n"
@@ -146,7 +175,8 @@ def generate_prompt_with_claude(blend: dict, room_type: str, anthropic_key: str)
     user_message = (
         f"Create a FLUX Kontext prompt to redesign this {room_type}.\n\n"
         f"Style blend:\n{style_context}\n\n"
-        f"Suggested furniture:\n{', '.join(furniture_items[:6])}\n\n"
+        f"Key materials: {'; '.join(material_hints[:3])}\n"
+        f"Key elements: {'; '.join(element_hints[:3])}\n\n"
         "Requirements:\n"
         "- Replace ALL existing furniture and soft furnishings\n"
         "- Keep walls, floors, windows, ceiling, doors exactly as they are\n"
@@ -164,7 +194,7 @@ def generate_prompt_with_claude(blend: dict, room_type: str, anthropic_key: str)
             "Content-Type": "application/json",
         },
         json={
-            "model": "claude-sonnet-4-20250514",
+            "model": "claude-sonnet-4-6",
             "max_tokens": 512,
             "system": system_prompt,
             "messages": [{"role": "user", "content": user_message}],
@@ -172,35 +202,54 @@ def generate_prompt_with_claude(blend: dict, room_type: str, anthropic_key: str)
         timeout=30,
     )
     resp.raise_for_status()
-    return resp.json()["content"][0]["text"].strip()
+    prompt = resp.json()["content"][0]["text"].strip()
+    return sanitize_style_names(prompt)
 
 
 def generate_prompt_fallback(blend: dict, room_type: str) -> str:
     dominant = get_dominant_styles(blend)
     if not dominant:
-        dominant = ["minimalist"]
+        dominant = ["pure minimal white"]
     top = dominant[0]
-    vocab = STYLE_VOCABULARY.get(top, STYLE_VOCABULARY["minimalist"])
-    furniture = ", ".join(vocab["furniture"][:4])
-    materials = ", ".join(vocab["materials"][:3])
-    colors = ", ".join(vocab["colors"][:3])
-    return (
-        f"Redesign this {room_type} in {vocab['feel']} style. "
-        f"Replace all furniture with: {furniture}. "
-        f"Use materials: {materials}. Color palette: {colors}. "
+    vocab = STYLE_VOCABULARY.get(top, STYLE_VOCABULARY["pure minimal white"])
+    description = vocab["description"]
+    materials = vocab["materials"]
+    mood = vocab["mood"]
+    elements = vocab["key_elements"]
+    prompt = (
+        f"Redesign this {room_type} with {description}. "
+        f"Mood: {mood}. Key elements: {elements}. "
+        f"Use materials: {materials}. "
+        f"Replace all furniture and soft furnishings to match this direction. "
         f"Keep all walls, floors, windows, ceiling, doors, and architectural "
         f"features exactly as they are. Preserve all room dimensions, "
         f"proportions, and existing lighting. The result must look like a "
         f"photorealistic interior design photograph. "
         f"Equirectangular panorama, 360 degree view."
     )
+    return sanitize_style_names(prompt)
 
 
-def run_flux_kontext(pano_url: str, prompt: str, replicate_token: str, timeout: int = 120) -> str:
+def run_flux_kontext(
+    pano_url: str,
+    prompt: str,
+    replicate_token: str,
+    timeout: int = 120,
+    style_reference_url: str = None,
+) -> str:
     import requests
 
     print(f"[kontext] Starting prediction...")
     print(f"[kontext] Prompt: {prompt[:120]}...")
+
+    input_params = {
+        "input_image": pano_url,
+        "prompt": prompt,
+        "guidance": 3.5,
+    }
+    if style_reference_url:
+        input_params["input_image_2"] = style_reference_url
+        print(f"[kontext] Using style reference: {style_reference_url[:80]}...")
 
     create_resp = requests.post(
         f"{REPLICATE_API_BASE}/models/{FLUX_KONTEXT_MODEL}/predictions",
@@ -209,13 +258,7 @@ def run_flux_kontext(pano_url: str, prompt: str, replicate_token: str, timeout: 
             "Content-Type": "application/json",
             "Prefer": "wait",
         },
-        json={
-            "input": {
-                "input_image": pano_url,
-                "prompt": prompt,
-                "guidance": 2.5,
-            }
-        },
+        json={"input": input_params},
         timeout=90,
     )
 
@@ -357,6 +400,7 @@ def run_flux_depth_pro(
                 "num_inference_steps": 28,
                 "guidance_scale": 7.5,
                 "output_format": "jpg",
+                "safety_tolerance": 2,
             }
         },
         timeout=90,
@@ -406,14 +450,19 @@ def run_flux_depth_pro(
     raise RuntimeError(f"FLUX Depth Pro timed out after {timeout}s")
 
 
-def generate_perspective_prompt(style_blend: dict) -> str:
+def generate_perspective_prompt(style_blend: dict, compiled_prompt: str = None) -> str:
     """Build the perspective render prompt from style_blend."""
+    if compiled_prompt and compiled_prompt.strip():
+        base = compiled_prompt
+        preserve_idx = base.lower().find('preserve all walls')
+        if preserve_idx > 0:
+            base = base[:preserve_idx].strip()
+        return base + " Wide-angle perspective view. Photorealistic."
     dominant = get_dominant_styles(style_blend)
     style_parts = []
     for s in dominant:
         vocab = STYLE_VOCABULARY.get(s, {})
-        feel = vocab.get("feel", s)
-        style_parts.append(feel)
+        style_parts.append(vocab.get("description", s))
     style_description = " and ".join(style_parts) if style_parts else "clean contemporary"
     return (
         f"Architectural interior photography, eye-level perspective, "
@@ -512,7 +561,13 @@ def store_perspective_render(image_url: str, room_id: str, supabase_url: str, su
         modal.Secret.from_name("anthropic-credentials"),
     ],
 )
-def redesign_room(room_id: str, user_id: str) -> dict:
+def redesign_room(
+    room_id: str,
+    user_id: str,
+    compiled_prompt: str = None,
+    anchor_prompt: str = None,
+    style_reference_url: str = None,
+) -> dict:
     """
     Main pipeline: fetch pano_url → generate style prompt → FLUX Kontext →
     store redesigned pano → update DB.
@@ -549,21 +604,28 @@ def redesign_room(room_id: str, user_id: str) -> dict:
             raise RuntimeError(f"Room {room_id} has no marble_pano_url")
 
         style_blend = room.get("style_blend") or {
-            "coastal": 0.0, "japandi": 0.7, "minimalist": 0.3,
-            "bohemian": 0.0, "mid_century": 0.0,
+            "warm japandi": 0.5,
+            "pure minimal white": 0.3,
+            "coastal bright": 0.2,
         }
         room_type = room.get("room_type", "living room")
 
         print(f"[kontext] Room: {room_type}, styles: {get_dominant_styles(style_blend)}")
 
-        # Generate prompt
-        try:
-            prompt = generate_prompt_with_claude(style_blend, room_type, anthropic_key)
-            prompt_source = "claude"
-        except Exception as e:
-            print(f"[kontext] Claude failed: {e}, using fallback")
-            prompt = generate_prompt_fallback(style_blend, room_type)
-            prompt_source = "fallback"
+        # Generate prompt — prefer TS-compiled prompt from the web app
+        if compiled_prompt and compiled_prompt.strip():
+            prompt = compiled_prompt
+            prompt_source = "ts_compiled"
+            print(f"[redesign] Using TS compiled prompt ({len(prompt)} chars)")
+        else:
+            try:
+                prompt = generate_prompt_with_claude(style_blend, room_type, anthropic_key)
+                prompt_source = "claude"
+            except Exception as e:
+                print(f"[kontext] Claude failed: {e}, using fallback")
+                prompt = generate_prompt_fallback(style_blend, room_type)
+                prompt_source = "fallback"
+            print(f"[redesign] Using Python fallback prompt ({len(prompt)} chars)")
 
         print(f"[kontext] Prompt ({prompt_source}): {prompt[:150]}...")
 
@@ -571,7 +633,9 @@ def redesign_room(room_id: str, user_id: str) -> dict:
         client.table("rooms").update({"redesign_status": "applying_style"}).eq("id", room_id).execute()
 
         # Build perspective prompt
-        perspective_prompt = generate_perspective_prompt(style_blend)
+        perspective_prompt = generate_perspective_prompt(
+            style_blend, compiled_prompt=compiled_prompt
+        )
         print(f"[perspective] Prompt: {perspective_prompt[:120]}...")
 
         # Run both FLUX calls in parallel:
@@ -587,10 +651,24 @@ def redesign_room(room_id: str, user_id: str) -> dict:
         depth_conditioning_method = "none"
 
         def run_pano():
-            try:
-                pano_result[0] = run_flux_kontext(pano_url, prompt, replicate_token)
-            except Exception as e:
-                pano_error[0] = e
+            kontext_result = None
+            last_error = None
+            for attempt in range(2):
+                try:
+                    kontext_result = run_flux_kontext(
+                        pano_url, prompt, replicate_token,
+                        style_reference_url=style_reference_url,
+                    )
+                    break
+                except Exception as e:
+                    last_error = e
+                    print(f"[redesign] Kontext attempt {attempt+1} failed: {e}")
+                    if attempt == 0:
+                        time.sleep(5)
+            if kontext_result is None:
+                pano_error[0] = last_error
+            else:
+                pano_result[0] = kontext_result
 
         def run_perspective_depth():
             """Try FLUX Depth Pro first, fall back to Kontext."""
@@ -701,9 +779,19 @@ def redesign_room(room_id: str, user_id: str) -> dict:
                 print(f"[perspective] Store failed (non-critical): {e}")
 
         # Write data first, status last
-        client.table("rooms").update({
-            "redesign_pano_url": redesigned_url,
-        }).eq("id", room_id).execute()
+        for attempt in range(2):
+            try:
+                client.table("rooms").update({
+                    "redesign_pano_url": redesigned_url,
+                }).eq("id", room_id).execute()
+                break
+            except Exception as e:
+                if attempt == 0:
+                    time.sleep(3)
+                    print(f"[redesign] Supabase write retry: {e}")
+                else:
+                    print(f"[redesign] Supabase write failed after retry: {e}")
+                    raise
 
         # Write perspective URL + depth conditioning method if columns exist
         optional_updates = {}
@@ -717,9 +805,19 @@ def redesign_room(room_id: str, user_id: str) -> dict:
             except Exception as e:
                 print(f"[db] Could not write optional columns (may not exist): {e}")
 
-        client.table("rooms").update({
-            "redesign_status": "complete",
-        }).eq("id", room_id).execute()
+        for attempt in range(2):
+            try:
+                client.table("rooms").update({
+                    "redesign_status": "complete",
+                }).eq("id", room_id).execute()
+                break
+            except Exception as e:
+                if attempt == 0:
+                    time.sleep(3)
+                    print(f"[redesign] Supabase status write retry: {e}")
+                else:
+                    print(f"[redesign] Supabase status write failed after retry: {e}")
+                    raise
 
         print(f"[pipeline] Complete! Depth conditioning: {depth_conditioning_method}")
         return {
@@ -761,10 +859,19 @@ def redesign_webhook(item: dict):
     """HTTP webhook for triggering redesign from Next.js."""
     room_id = item.get("room_id")
     user_id = item.get("user_id", "test-user")
+    compiled_prompt = item.get("compiled_prompt")
+    anchor_prompt = item.get("anchor_prompt")
+    style_reference_url = item.get("style_reference_url")
     if not room_id:
         return {"error": "room_id required"}
     try:
-        result = redesign_room.local(room_id, user_id)
+        result = redesign_room.local(
+            room_id,
+            user_id,
+            compiled_prompt=compiled_prompt,
+            anchor_prompt=anchor_prompt,
+            style_reference_url=style_reference_url,
+        )
         return {"status": "complete", **result}
     except Exception as e:
         return {"status": "error", "error": str(e)}

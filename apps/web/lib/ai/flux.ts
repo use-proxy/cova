@@ -238,9 +238,9 @@ export function getMaterialPalette(d: StyleFingerprint["dimensions"]): string {
 }
 
 function getLightingInstruction(d: StyleFingerprint["dimensions"]): string {
-  if (d.lightPreference > 0.7)
+  if (d.lightPreference >= 0.6)
     return "Maximize natural daylight — open, luminous, airy atmosphere throughout";
-  if (d.lightPreference < 0.3)
+  if (d.lightPreference <= 0.35)
     return "Transform to intimate lamp-lit warmth — pools of warm incandescent light, cozy shadows, no harsh overhead";
   return "Balance natural and ambient light with soft diffused fill";
 }
@@ -359,17 +359,30 @@ export function buildFullFingerprintPhrase(
   return joined;
 }
 
-// Forbidden style names must never appear in user-facing strings (CLAUDE.md rule 8).
-// Strip them from any user-provided text before including in prompts.
-const FORBIDDEN_STYLE_NAMES = ["japandi", "bohemian", "coastal", "mid-century modern", "minimalist"];
+// Internal anchor style names must never appear verbatim in FLUX prompts.
+// Replace with descriptive phrases the model handles better anyway.
+const FORBIDDEN_STYLE_NAMES = [
+  "warm japandi",
+  "pure minimal white",
+  "coastal bright",
+  "biophilic jungle",
+  "dark moody glam",
+  "heritage traditional",
+  "industrial loft",
+  "maximalist eclectic",
+  "retro mid-century",
+];
 
-// Replacement map: forbidden label → descriptive phrase that FLUX understands better anyway.
 const STYLE_NAME_REPLACEMENTS: Record<string, string> = {
-  "japandi": "calm warm naturalism with clean lines",
-  "minimalist": "deliberately uncluttered with intentional negative space",
-  "bohemian": "eclectic layered with rich textural depth",
-  "coastal": "breezy light-filled with natural weathered materials",
-  "mid-century modern": "warm retro curves with teak and brass accents",
+  "warm japandi": "calm warm naturalism with clean lines",
+  "pure minimal white": "purposeful bright simplicity",
+  "coastal bright": "relaxed sun-drenched natural lightness",
+  "biophilic jungle": "lush nature-immersed organic abundance",
+  "dark moody glam": "rich dramatic atmosphere with luxe finishes",
+  "heritage traditional": "timeless layered craftsmanship",
+  "industrial loft": "raw urban materiality with exposed structure",
+  "maximalist eclectic": "boldly layered pattern-rich eclecticism",
+  "retro mid-century": "warm retro modernism with sculptural furniture",
 };
 
 /** Replace forbidden style labels with descriptive phrases in the final prompt. */

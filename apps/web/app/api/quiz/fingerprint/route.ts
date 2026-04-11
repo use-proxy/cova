@@ -406,6 +406,30 @@ export async function POST(request: Request) {
       // Supabase-returned errors (error field on the response) are handled.
       try {
         const admin = createAdminSupabaseClient()
+
+        // Guard against FK violation: style_fingerprints.user_id references
+        // public.users(id). If the auth.users row exists but the public.users
+        // trigger failed or hasn't run yet, create the row here.
+        const { data: userExists } = await admin
+          .from('users')
+          .select('id')
+          .eq('id', user.id)
+          .maybeSingle()
+
+        if (!userExists) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (admin.from('users') as any)
+            .upsert(
+              {
+                id: user.id,
+                email: user.email ?? '',
+                full_name: user.user_metadata?.full_name ?? user.user_metadata?.name ?? '',
+                created_at: new Date().toISOString(),
+              },
+              { onConflict: 'id', ignoreDuplicates: true }
+            )
+        }
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: inserted, error: insertErr } = await (admin.from('style_fingerprints') as any)
           .insert({
@@ -422,7 +446,12 @@ export async function POST(request: Request) {
           .select('id')
           .single()
         if (insertErr) {
-          console.error(`[fingerprint-save] ERROR: ${JSON.stringify(insertErr)}`)
+          console.error(
+            '[fingerprint] style_fingerprints insert failed:',
+            JSON.stringify(insertErr),
+            'user_id:', user.id,
+            'code:', insertErr.code
+          )
           return NextResponse.json(
             { success: false, error: 'fingerprint_save_failed', detail: insertErr.message },
             { status: 500 }
