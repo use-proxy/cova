@@ -12,7 +12,7 @@ import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import Anthropic from "@anthropic-ai/sdk";
 import type { StyleFingerprint } from "@/types/fingerprint";
-import { softmaxStyleMatch } from "@/lib/ai/style-match";
+import { softmaxStyleMatch, STYLES } from "@/lib/ai/style-match";
 import { toDisplayName } from "@/lib/ai/anchor-display";
 
 export const maxDuration = 45;
@@ -40,6 +40,73 @@ function clamp01(v: number): number {
   return Math.max(0, Math.min(1, v));
 }
 
+// Weighted cosine similarity between an adjusted fingerprint vector and a
+// style center vector (both in [0,1]). Mirrors the logic in softmaxStyleMatch.
+function cosineSim(fp: number[], styleCenter: number[]): number {
+  const NEUTRAL = 0.5;
+  const W = [1.5, 1.2, 1.1, 0.9, 1.0, 1.3, 0.9, 1.0, 0.9, 1.4, 1.2, 0.8];
+  const fpc = fp.map((v) => v - NEUTRAL);
+  const sc = styleCenter.map((v) => v - NEUTRAL);
+  let dot = 0, fn = 0, sn = 0;
+  for (let i = 0; i < fpc.length; i++) {
+    const w = W[i] ?? 1.0;
+    dot += (fpc[i] ?? 0) * (sc[i] ?? 0) * w;
+    fn += (fpc[i] ?? 0) ** 2 * w;
+    sn += (sc[i] ?? 0) ** 2 * w;
+  }
+  return fn === 0 || sn === 0 ? 0 : dot / (Math.sqrt(fn) * Math.sqrt(sn));
+}
+
+// Maps user-facing display names back to internal STYLES array names.
+const DISPLAY_TO_INTERNAL: Record<string, string> = {
+  "Japandi": "Warm Japandi",
+  "Dark & Moody": "Dark Moody Glam",
+  "Coastal Light": "Coastal Bright",
+  "Urban Industrial": "Industrial Loft",
+  "Maximalist Eclectic": "Maximalist Eclectic",
+  "Classic Traditional": "Heritage Traditional",
+  "Minimalist": "Pure Minimal White",
+  "Biophilic": "Biophilic Jungle",
+  "Mid-Century Modern": "Retro Mid-Century",
+};
+
+function deriveTraitTags(
+  dimensions: Record<string, number>
+): string[] {
+  const DIM_TAGS: Record<string, [string, string]> = {
+    colorTemperature:  ['Cool Tones',        'Warm Tones'],
+    colorSaturation:   ['Muted Palette',     'Bold Color'],
+    density:           ['Clean & Spare',     'Richly Layered'],
+    formality:         ['Casual & Relaxed',  'Formal & Structured'],
+    era:               ['Ultra-Modern',      'Heritage Craft'],
+    material:          ['Manufactured',      'Natural & Organic'],
+    texture:           ['Sleek Surfaces',    'Tactile Rich'],
+    pattern:           ['Pattern-Free',      'Pattern-Rich'],
+    lineQuality:       ['Geometric Lines',   'Organic Forms'],
+    lightPreference:   ['Dark Drama',        'Sun-Drenched'],
+    nature:            ['Urban Edge',        'Biophilic Warmth'],
+    culturalInfluence: ['Western Modern',    'Globally Eclectic'],
+  }
+
+  // Collect all dimensions with strong signal (>0.65 or <0.35)
+  const strong = Object.entries(dimensions)
+    .map(([key, value]) => ({
+      key,
+      value,
+      deviation: Math.abs(value - 0.5),
+      tag: value >= 0.65
+        ? DIM_TAGS[key]?.[1]
+        : value <= 0.35
+        ? DIM_TAGS[key]?.[0]
+        : null
+    }))
+    .filter(d => d.tag !== null)
+    .sort((a, b) => b.deviation - a.deviation)
+
+  // Return top 4 tags
+  return strong.slice(0, 4).map(d => d.tag as string)
+}
+
 export async function POST(request: Request) {
   const supabase = await createServerSupabaseClient();
   const {
@@ -53,6 +120,7 @@ export async function POST(request: Request) {
   const body = (await request.json()) as {
     fingerprint?: StyleFingerprint;
     tweakText?: string;
+    originalStyleName?: string;
   };
 
   if (!body.fingerprint || !body.tweakText?.trim()) {
@@ -62,7 +130,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { fingerprint, tweakText } = body;
+  const { fingerprint, tweakText, originalStyleName } = body;
 
   // ── Step 1: ask Claude for dimension adjustments ──────────────────────────
   let adjustments: Partial<Record<DimensionKey, number>> = {};
@@ -132,29 +200,64 @@ culturalInfluence: global eclectic(1) vs minimal(0)`,
   // ── Step 3: softmax match → canonical style name ──────────────────────────
   const fpVector = DIMENSION_KEYS.map((k) => newDims[k] ?? 0.5);
   const { primaryStyle } = softmaxStyleMatch(fpVector);
-  const styleName = toDisplayName(primaryStyle.name);
+  const newStyleName = toDisplayName(primaryStyle.name);
 
-  // ── Step 4: generate description + tags ───────────────────────────────────
+  // ── Step 3b: style name stability — keep original name for small tweaks ───
+  // For hybrids like "Biophilic · Japandi", check similarity to ALL component
+  // styles. Keep the original name if the fingerprint is still close to ANY of
+  // the original styles (cosine sim >= 0.25).
+  let styleName = newStyleName;
+  if (originalStyleName) {
+    // Parse all style names from hybrid (e.g. "Biophilic · Japandi" → ["Biophilic", "Japandi"])
+    const originalStyleParts = originalStyleName
+      .split(" · ")
+      .map((s) => s.trim());
+
+    // Find style centers for all parts
+    const originalStyleDefs = originalStyleParts
+      .map((displayName) => {
+        const internalName = DISPLAY_TO_INTERNAL[displayName];
+        return internalName
+          ? STYLES.find((s) => s.name === internalName)
+          : undefined;
+      })
+      .filter(Boolean);
+
+    if (originalStyleDefs.length > 0) {
+      // Keep name if fingerprint is still similar to ANY of the original styles
+      const maxSim = Math.max(
+        ...originalStyleDefs.map((styleDef) =>
+          cosineSim(fpVector, styleDef!.center)
+        )
+      );
+      if (maxSim >= 0.25) {
+        // Still close enough to at least one original style — preserve the name
+        styleName = originalStyleName;
+      }
+      // else: fingerprint moved significantly from all original styles, use the new match
+    }
+  }
+
+  // ── Step 4: generate description; derive tags deterministically ─────────────
   const dimSummary = DIMENSION_KEYS.map(
     (k) => `${k}: ${(newDims[k] ?? 0.5).toFixed(2)}`,
   ).join(", ");
 
   let styleDescription =
     "Your style has evolved with a fresh perspective, blending new nuances into a cohesive aesthetic.";
-  let styleTags: string[] = ["Evolved Taste", "Personal Touch", "Refined Balance"];
+  // Tags derived deterministically from adjusted dimensions — no second Claude call
+  const styleTags: string[] = deriveTraitTags(newDims as Record<string, number>);
 
   try {
     const descRes = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 200,
+      max_tokens: 150,
       messages: [
         {
           role: "user",
           content: `Interior design style fingerprint (dimensions 0-1): ${dimSummary}
 
-Write exactly 2-3 sentences describing this style in evocative, sensory language — materials, light, mood, palette. No jargon. Do not name any specific style (no Japandi, Bohemian, Coastal, Mid-Century, Minimalist, Industrial, Scandinavian, or any other style label). Start directly with the description.
-
-Then on a new line write exactly 3 short descriptive trait tags (2-3 words each), comma-separated. No bullet points, no labels.`,
+Write exactly 2-3 sentences describing this style in evocative, sensory language — materials, light, mood, palette. No jargon. Do not name any specific style (no Japandi, Bohemian, Coastal, Mid-Century, Minimalist, Industrial, Scandinavian, or any other style label). Start directly with the description.`,
         },
       ],
     });
@@ -163,16 +266,7 @@ Then on a new line write exactly 3 short descriptive trait tags (2-3 words each)
       descRes.content[0]?.type === "text" ? descRes.content[0].text.trim() : "";
 
     if (rawDesc) {
-      const lines = rawDesc.split("\n").filter((l) => l.trim());
-      const lastLine = lines[lines.length - 1] ?? "";
-      // Last line should be the comma-separated tags
-      const tagCandidates = lastLine.split(",").map((t) => t.trim()).filter(Boolean);
-      if (tagCandidates.length >= 2 && lastLine.includes(",")) {
-        styleTags = tagCandidates.slice(0, 3);
-        styleDescription = lines.slice(0, -1).join(" ").trim() || rawDesc;
-      } else {
-        styleDescription = rawDesc;
-      }
+      styleDescription = rawDesc;
     }
   } catch (err) {
     console.warn("[quiz/tweak] Claude description call failed:", err);

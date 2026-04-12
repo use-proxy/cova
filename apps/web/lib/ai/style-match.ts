@@ -168,7 +168,7 @@ export function softmaxStyleMatch(fp: number[]): {
       similarity: s.sim,
       weight: s.exp / expSum,
     }))
-    .filter((s) => s.weight > 0.15) // only styles with >15% weight
+    .filter((s) => s.weight > 0.10) // only styles with >10% weight
     .sort((a, b) => b.weight - a.weight);
 
   // All similarities floored to 0 — genuinely neutral fingerprint

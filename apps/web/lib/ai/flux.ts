@@ -158,6 +158,10 @@ export interface BuildFluxPromptParams {
   // ~80 words for a clean text-to-image FLUX 1.1 Pro render.
   quizPreviewMode?: boolean;
   anchorPrompt?: string | null;
+  // Deterministic trait tags derived from fingerprint dimensions (e.g. "Warm
+  // Tones", "Biophilic Warmth"). Added as explicit style direction in the
+  // prompt to reinforce the strongest dimension signals.
+  styleTags?: string[];
 }
 
 // Material palette derived from fingerprint dimensions. Stating materials up
@@ -416,6 +420,7 @@ export function buildFluxPrompt(params: BuildFluxPromptParams): string {
     keptItemLabels: rawKeptItemLabels,
     quizPreviewMode,
     anchorPrompt: rawAnchorPrompt,
+    styleTags,
   } = params;
   const anchorPrompt = rawAnchorPrompt ? sanitizeUserText(rawAnchorPrompt) : "";
   const anchorBlock = anchorPrompt ? `${anchorPrompt}. ` : "";
@@ -450,6 +455,11 @@ export function buildFluxPrompt(params: BuildFluxPromptParams): string {
 
     // 1. Transformation intent (lean)
     core.push(`Redesign this ${roomTypeStr}`);
+
+    // 1b. Style tag direction — deterministic signals from fingerprint dims
+    if (!quizPreviewMode && styleTags && styleTags.length > 0) {
+      core.push(`Style influences: ${styleTags.join(', ')}`);
+    }
 
     // 2. Material palette (concrete names beat abstract style words)
     const palette = getMaterialPalette(d);

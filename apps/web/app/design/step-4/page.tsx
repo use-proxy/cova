@@ -691,7 +691,11 @@ export default function StepFourPage() {
       const res = await fetch("/api/quiz/tweak", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fingerprint, tweakText: val }),
+        body: JSON.stringify({
+          fingerprint,
+          tweakText: val,
+          originalStyleName: storedStyleName ?? undefined,
+        }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as {
@@ -870,13 +874,19 @@ export default function StepFourPage() {
                 <div className="tweak-result-label">Your Updated Style</div>
                 <div className="tweak-result-name">{tweakResult.name}</div>
                 <div className="tweak-result-text">{tweakResult.desc}</div>
-                <div className="tweak-new-traits">
-                  {tweakResult.traits.map((t) => (
-                    <span key={t} className="tweak-new-trait">
-                      {t}
-                    </span>
-                  ))}
-                </div>
+                {tweakResult.traits.length > 0 && (
+                  <>
+                    <div className="tweak-dna-divider">Style DNA</div>
+                    <div className="tweak-dna-tags">
+                      {tweakResult.traits.map((tag) => (
+                        <div className="tweak-dna-tag" key={tag}>
+                          <span className="tweak-dna-dot">✦</span>
+                          <span>{tag}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>

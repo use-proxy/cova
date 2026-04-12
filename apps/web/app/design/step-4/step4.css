@@ -628,6 +628,35 @@
   background: rgba(201, 168, 76, 0.06);
 }
 
+.step4-wrapper .tweak-dna-divider {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin: 16px 0 10px;
+}
+
+.step4-wrapper .tweak-dna-tags {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.step4-wrapper .tweak-dna-tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.step4-wrapper .tweak-dna-dot {
+  color: var(--gold);
+  font-size: 10px;
+}
+
 .step4-wrapper .footer-strip {
   text-align: center;
   padding: 48px 0 0;
