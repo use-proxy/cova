@@ -282,6 +282,7 @@ def run_flux_kontext(
         "input_image": pano_url,
         "prompt": prompt,
         "guidance": 4.5,
+        "prompt_upsampling": False,
         "aspect_ratio": "match_input_image",
         "output_format": "png",
         "output_quality": 100,
@@ -891,7 +892,6 @@ def redesign_room(
         if pano_error[0]:
             raise pano_error[0]
         redesigned_url = pano_result[0]
-        redesigned_url = pano_result[0]
 
         # If canny succeeded, use it as the perspective render (richer geometry)
         if canny_result[0] and not perspective_result[0]:
@@ -1021,6 +1021,460 @@ def redesign_room(
         except Exception as update_err:
             print(f"[kontext] Failed to write error status: {update_err}")
         raise
+
+
+# =============================================================================
+# SESSION 1 HELPERS — low-level HTTP/Replicate/Supabase/PIL utilities
+# =============================================================================
+
+def replicate_models_post_v2(owner_model: str, payload: dict, replicate_token: str) -> dict:
+    """POST to /models/{owner_model}/predictions. Returns prediction dict."""
+    import requests
+    url = f"{REPLICATE_API_BASE}/models/{owner_model}/predictions"
+    resp = requests.post(
+        url,
+        headers={
+            "Authorization": f"Token {replicate_token}",
+            "Content-Type": "application/json",
+        },
+        json=payload,
+        timeout=60,
+    )
+    if not resp.ok:
+        raise RuntimeError(
+            f"[v2][replicate-post] {owner_model} failed: "
+            f"{resp.status_code} {resp.text[:300]}"
+        )
+    result = resp.json()
+    print(f"[v2][replicate-post] {owner_model} → id={result.get('id')} status={result.get('status')}")
+    return result
+
+
+def replicate_poll_v2(
+    prediction_id: str,
+    replicate_token: str,
+    timeout: int = 600,
+    interval: int = 3,
+) -> dict:
+    """Poll until succeeded/failed/timeout. Returns full result dict."""
+    import requests
+    url = f"{REPLICATE_API_BASE}/predictions/{prediction_id}"
+    headers = {"Authorization": f"Token {replicate_token}"}
+    start = time.time()
+    while True:
+        resp = requests.get(url, headers=headers, timeout=30)
+        resp.raise_for_status()
+        result = resp.json()
+        status = result.get("status", "unknown")
+        elapsed = time.time() - start
+        print(f"[v2][poll] {prediction_id[:8]} status={status} ({elapsed:.0f}s)")
+        if status == "succeeded":
+            return result
+        if status in ("failed", "canceled"):
+            raise RuntimeError(
+                f"[v2][poll] Prediction {prediction_id} {status}: "
+                f"{result.get('error', 'no error details')}"
+            )
+        if elapsed > timeout:
+            raise TimeoutError(
+                f"[v2][poll] Prediction {prediction_id} timed out after {timeout}s"
+            )
+        time.sleep(interval)
+
+
+def replicate_output_url_v2(result: dict) -> str:
+    """Extract output URL from Replicate result dict. Handles list or string output."""
+    out = result.get("output")
+    if out is None:
+        raise RuntimeError(f"[v2][output-url] No output in result: {str(result)[:200]}")
+    if isinstance(out, list):
+        if not out:
+            raise RuntimeError("[v2][output-url] Output list is empty")
+        return out[0]
+    return str(out)
+
+
+def download_bytes_v2(url: str) -> bytes:
+    """Download bytes from URL with 60s timeout."""
+    import requests
+    resp = requests.get(url, timeout=60)
+    resp.raise_for_status()
+    data = resp.content
+    print(f"[v2][download] {len(data)/1e6:.2f}MB from {url[:80]}")
+    return data
+
+
+def upload_and_sign_v2(
+    supabase_client,
+    bucket: str,
+    path: str,
+    data: bytes,
+    content_type: str = "image/png",
+) -> str:
+    """Upload bytes to Supabase storage bucket, return 7-day signed URL."""
+    file_opts = {"content-type": content_type}
+    try:
+        supabase_client.storage.from_(bucket).upload(
+            path=path, file=data, file_options=file_opts,
+        )
+        print(f"[v2][upload] Uploaded {len(data)/1e3:.0f}KB to {bucket}/{path}")
+    except Exception as up_err:
+        err_str = str(up_err).lower()
+        if "already exists" in err_str or "duplicate" in err_str or "409" in err_str:
+            supabase_client.storage.from_(bucket).update(
+                path=path, file=data, file_options=file_opts,
+            )
+            print(f"[v2][upload] Updated (upsert) {bucket}/{path}")
+        else:
+            raise RuntimeError(f"[v2][upload] Upload failed for {bucket}/{path}: {up_err}") from up_err
+
+    signed = supabase_client.storage.from_(bucket).create_signed_url(path, 604800)
+    url = signed.get("signedURL") or signed.get("signedUrl") or signed.get("signed_url", "")
+    if not url:
+        raise RuntimeError(f"[v2][upload] No signed URL returned for {bucket}/{path}: {signed}")
+    print(f"[v2][upload] Signed URL: {url[:80]}...")
+    return url
+
+
+def pil_to_png_bytes(img) -> bytes:
+    """Convert PIL image to PNG bytes."""
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def pil_to_jpeg_bytes(img, quality: int = 92) -> bytes:
+    """Convert PIL image to JPEG bytes."""
+    buf = io.BytesIO()
+    img.convert("RGB").save(buf, format="JPEG", quality=quality)
+    return buf.getvalue()
+
+
+# =============================================================================
+# SESSION 1 — Grounding DINO + mask generation
+# =============================================================================
+
+# Grounding DINO model version on Replicate (adirik/grounding-dino)
+_GDINO_VERSION = "efd10a8ddc57ea28773327e881ce95e20cc1d734c589f7dd01d2036921ed78aa"
+
+
+def run_grounding_dino(
+    image_url: str,
+    remove_labels: list,
+    replicate_token: str,
+    timeout: int = 120,
+) -> list:
+    """
+    Run Grounding DINO to detect bounding boxes for items to remove.
+
+    remove_labels: list of strings from keepMask objects where keep=False
+    e.g. ["desk chair", "rolling cabinet", "wall letters"]
+
+    Query string: join remove_labels with ". " — DINO detects each label.
+
+    Returns: list of [x0, y0, x1, y1] pixel boxes. Empty list if none found.
+    Never raises — returns [] on any error.
+    """
+    import requests
+
+    if not remove_labels:
+        print("[v2][dino] No remove_labels — skipping DINO, returning []")
+        return []
+
+    # Build query dynamically from user-supplied labels — never hardcoded
+    query = ". ".join(str(lbl).strip() for lbl in remove_labels if str(lbl).strip())
+    if not query:
+        print("[v2][dino] Empty query after cleaning — returning []")
+        return []
+
+    print(f"[v2][dino] Query ({len(remove_labels)} labels): {query[:200]}")
+
+    try:
+        create_resp = requests.post(
+            f"{REPLICATE_API_BASE}/predictions",
+            headers={
+                "Authorization": f"Token {replicate_token}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "version": _GDINO_VERSION,
+                "input": {
+                    "image": image_url,
+                    "query": query,
+                    "box_threshold": 0.3,
+                    "text_threshold": 0.25,
+                },
+            },
+            timeout=30,
+        )
+        if not create_resp.ok:
+            print(f"[v2][dino] Create failed: {create_resp.status_code} {create_resp.text[:200]}")
+            return []
+
+        pred = create_resp.json()
+        pred_id = pred.get("id")
+        if not pred_id:
+            print(f"[v2][dino] No prediction ID in response: {str(pred)[:200]}")
+            return []
+
+        print(f"[v2][dino] Prediction ID: {pred_id}")
+
+        # Poll
+        poll_url = f"{REPLICATE_API_BASE}/predictions/{pred_id}"
+        headers = {"Authorization": f"Token {replicate_token}"}
+        start = time.time()
+        gdino_output = None
+        while True:
+            r = requests.get(poll_url, headers=headers, timeout=30)
+            r.raise_for_status()
+            result = r.json()
+            status = result.get("status", "unknown")
+            print(f"[v2][dino] {pred_id[:8]} status={status} ({time.time()-start:.0f}s)")
+            if status == "succeeded":
+                gdino_output = result.get("output", {})
+                break
+            if status in ("failed", "canceled"):
+                print(f"[v2][dino] Prediction {status}: {result.get('error', '')}")
+                return []
+            if time.time() - start > timeout:
+                print(f"[v2][dino] Timed out after {timeout}s")
+                return []
+            time.sleep(3)
+
+        # Robust parsing — handles multiple output formats from adirik/grounding-dino
+        # Format 1: {"detections": [{"bbox": [x0,y0,x1,y1], ...}, ...], "result_image": url}
+        # Format 2: {"boxes": [[x0,y0,x1,y1], ...]}
+        # Format 3: list of [x0,y0,x1,y1]
+        # Format 4: list of dicts with "box" or "bbox"
+        boxes = []
+        if isinstance(gdino_output, dict):
+            detections = gdino_output.get("detections", [])
+            for det in detections:
+                if isinstance(det, dict):
+                    b = det.get("bbox") or det.get("box") or det.get("xyxy")
+                    if b and len(b) == 4:
+                        boxes.append([float(v) for v in b])
+                elif isinstance(det, (list, tuple)) and len(det) >= 4:
+                    boxes.append([float(v) for v in det[:4]])
+            # Try top-level "boxes" / "bboxes" key if detections empty
+            if not boxes:
+                raw_boxes = gdino_output.get("boxes") or gdino_output.get("bboxes") or []
+                if isinstance(raw_boxes, list):
+                    for b in raw_boxes:
+                        if isinstance(b, (list, tuple)) and len(b) == 4:
+                            boxes.append([float(v) for v in b])
+                        elif isinstance(b, dict):
+                            bb = b.get("bbox") or b.get("box") or b.get("xyxy")
+                            if bb and len(bb) == 4:
+                                boxes.append([float(v) for v in bb])
+        elif isinstance(gdino_output, list):
+            for item in gdino_output:
+                if isinstance(item, dict):
+                    b = item.get("bbox") or item.get("box") or item.get("xyxy")
+                    if b and len(b) == 4:
+                        boxes.append([float(v) for v in b])
+                elif isinstance(item, (list, tuple)) and len(item) == 4:
+                    boxes.append([float(v) for v in item])
+
+        print(f"[v2][dino] Detected {len(boxes)} boxes from output")
+        if boxes:
+            print(f"[v2][dino] First box: {boxes[0]}")
+        return boxes
+
+    except Exception as e:
+        print(f"[v2][dino] Error (returning []): {e}")
+        return []
+
+
+def build_removal_masks(
+    image_bytes: bytes,
+    boxes: list,
+    pre_detection_result,
+    keep_mask_objects: list,
+    orig_w: int,
+    orig_h: int,
+) -> tuple:
+    """
+    Build dilated mask (for removal) and eroded mask (for generation).
+
+    Priority order:
+    1. If boxes from DINO: use boxes, skip boxes near kept item positions
+    2. If no boxes: use azimuth_degrees/elevation_degrees from pre_detection_result
+       for items where label matches keep_mask_objects where keep=False
+    3. If still no mask: mask bottom 60% of image (safe fallback)
+
+    Kept item exclusion: for each kept item, compute center from azimuth/elevation,
+    exclude any DINO box whose center is within 15% of image diagonal from kept center.
+
+    Returns: (dilated_mask_bytes, eroded_mask_bytes)
+    Both are PNG bytes of grayscale masks (white=replace, black=preserve).
+    Never raises — falls back to bottom-60% mask on any error.
+    """
+    from PIL import Image as _PILImg, ImageDraw as _ImageDraw, ImageFilter as _ImageFilter
+
+    print(f"[v2][masks] Building removal masks — image={orig_w}x{orig_h} "
+          f"dino_boxes={len(boxes)} keep_objects={len(keep_mask_objects or [])}")
+
+    # Compute image diagonal for exclusion radius
+    diag = (orig_w ** 2 + orig_h ** 2) ** 0.5
+    exclusion_radius = diag * 0.15
+
+    def _azimuth_to_pixel(azimuth_deg, elevation_deg):
+        """
+        Convert azimuth/elevation (degrees) to pixel coordinates.
+        azimuth: 0 = image center horizontally, positive = right
+        elevation: 0 = image center vertically, negative = below center
+        """
+        # Map azimuth [-180, 180] to x [0, orig_w]
+        px = orig_w / 2 + (azimuth_deg / 180.0) * (orig_w / 2)
+        # Map elevation [-90, 90] to y [0, orig_h] (inverted: negative = lower)
+        py = orig_h / 2 - (elevation_deg / 90.0) * (orig_h / 2)
+        return (
+            max(0, min(orig_w - 1, int(px))),
+            max(0, min(orig_h - 1, int(py))),
+        )
+
+    # ── Compute kept item pixel positions for exclusion ───────────────────────
+    kept_centers = []
+    for obj in (keep_mask_objects or []):
+        if not isinstance(obj, dict):
+            continue
+        if not (obj.get("keep") or obj.get("immovable")):
+            continue
+        az = obj.get("azimuth_degrees")
+        el = obj.get("elevation_degrees")
+        if az is not None and el is not None:
+            try:
+                cx, cy = _azimuth_to_pixel(float(az), float(el))
+                kept_centers.append((cx, cy))
+                print(f"[v2][masks] Kept '{obj.get('label','')}' center: ({cx},{cy})")
+            except (TypeError, ValueError):
+                pass
+
+    def _box_near_kept(box):
+        """Return True if box center is within exclusion radius of any kept item."""
+        x0, y0, x1, y1 = box
+        bx = (x0 + x1) / 2
+        by = (y0 + y1) / 2
+        for kx, ky in kept_centers:
+            dist = ((bx - kx) ** 2 + (by - ky) ** 2) ** 0.5
+            if dist < exclusion_radius:
+                return True
+        return False
+
+    # ── Build combined mask ───────────────────────────────────────────────────
+    combined = _PILImg.new("L", (orig_w, orig_h), 0)
+    draw = _ImageDraw.Draw(combined)
+    mask_source = "none"
+
+    try:
+        # ── Priority 1: DINO boxes ────────────────────────────────────────────
+        if boxes:
+            accepted = 0
+            skipped = 0
+            for box in boxes:
+                if len(box) < 4:
+                    continue
+                x0, y0, x1, y1 = (
+                    max(0, int(box[0])), max(0, int(box[1])),
+                    min(orig_w, int(box[2])), min(orig_h, int(box[3])),
+                )
+                if x1 <= x0 or y1 <= y0:
+                    continue
+                if _box_near_kept([x0, y0, x1, y1]):
+                    print(f"[v2][masks] Skipping box [{x0},{y0},{x1},{y1}] — near kept item")
+                    skipped += 1
+                    continue
+                draw.rectangle([x0, y0, x1, y1], fill=255)
+                accepted += 1
+            print(f"[v2][masks] DINO boxes: {accepted} accepted, {skipped} skipped (near kept)")
+            mask_source = f"dino_boxes_{accepted}"
+
+        # ── Priority 2: azimuth/elevation from pre_detection_result ──────────
+        if not any(combined.getdata()):  # mask is all black
+            print("[v2][masks] No DINO boxes produced mask — trying azimuth/elevation fallback")
+            items = []
+            if isinstance(pre_detection_result, dict):
+                items = (
+                    pre_detection_result.get("items")
+                    or pre_detection_result.get("detections")
+                    or pre_detection_result.get("objects")
+                    or []
+                )
+            elif isinstance(pre_detection_result, list):
+                items = pre_detection_result
+
+            # Find labels to remove from keep_mask_objects
+            remove_label_set = {
+                str(obj.get("label") or obj.get("type") or "").lower()
+                for obj in (keep_mask_objects or [])
+                if isinstance(obj, dict)
+                and not obj.get("keep", True)
+                and not obj.get("immovable")
+            }
+            print(f"[v2][masks] Removal labels from keepMask: {remove_label_set}")
+
+            az_painted = 0
+            for item in (items or []):
+                if not isinstance(item, dict):
+                    continue
+                label = str(item.get("label") or item.get("category") or "").lower()
+                az = item.get("azimuth_degrees")
+                el = item.get("elevation_degrees")
+                if az is None or el is None:
+                    continue
+                # Only mask items that are flagged for removal
+                if remove_label_set and label not in remove_label_set:
+                    continue
+                try:
+                    cx, cy = _azimuth_to_pixel(float(az), float(el))
+                    # Paint a rectangular region around the estimated center
+                    # Use 20% width × 20% height as default box size
+                    bw = int(orig_w * 0.20)
+                    bh = int(orig_h * 0.20)
+                    x0 = max(0, cx - bw // 2)
+                    y0 = max(0, cy - bh // 2)
+                    x1 = min(orig_w, cx + bw // 2)
+                    y1 = min(orig_h, cy + bh // 2)
+                    draw.rectangle([x0, y0, x1, y1], fill=255)
+                    az_painted += 1
+                    print(f"[v2][masks] az/el item '{label}' → box [{x0},{y0},{x1},{y1}]")
+                except (TypeError, ValueError):
+                    pass
+
+            if az_painted > 0:
+                mask_source = f"azimuth_elevation_{az_painted}"
+            print(f"[v2][masks] Azimuth/elevation painted {az_painted} items")
+
+        # ── Priority 3: fallback — bottom 60% ────────────────────────────────
+        if not any(combined.getdata()):  # still all black
+            print("[v2][masks] No azimuth/elevation data — using bottom-60% fallback")
+            y_start = int(orig_h * 0.4)
+            draw.rectangle([0, y_start, orig_w, orig_h], fill=255)
+            mask_source = "bottom_60pct_fallback"
+
+    except Exception as mask_err:
+        print(f"[v2][masks] Error building mask (using bottom-60% fallback): {mask_err}")
+        combined = _PILImg.new("L", (orig_w, orig_h), 0)
+        draw = _ImageDraw.Draw(combined)
+        y_start = int(orig_h * 0.4)
+        draw.rectangle([0, y_start, orig_w, orig_h], fill=255)
+        mask_source = "bottom_60pct_exception_fallback"
+
+    print(f"[v2][masks] Mask source: {mask_source}")
+
+    # ── Dilation (MaxFilter 31 = 15px expansion) ──────────────────────────────
+    dilated = combined.filter(_ImageFilter.MaxFilter(31))
+
+    # ── Erosion (MinFilter 11 = 5px contraction) ──────────────────────────────
+    eroded = combined.filter(_ImageFilter.MinFilter(11))
+
+    dilated_bytes = pil_to_png_bytes(dilated)
+    eroded_bytes = pil_to_png_bytes(eroded)
+    print(f"[v2][masks] Done — dilated={len(dilated_bytes)/1e3:.0f}KB "
+          f"eroded={len(eroded_bytes)/1e3:.0f}KB source={mask_source}")
+
+    return dilated_bytes, eroded_bytes
 
 
 # =============================================================================
@@ -1244,7 +1698,20 @@ def redesign_room_v2(
         ) or {}
         style_blend = room.get("style_blend") or {}
         room_type = room.get("room_type") or "room"
-        pre_detection_result = room.get("pre_detection_result") or {}
+        # pre_detection_result is a list of detected item dicts in the DB.
+        # Default to [] (not {}) so list-aware code never crashes with AttributeError.
+        pre_detection_result = room.get("pre_detection_result") or []
+
+        # Override room_type with inference from pre-detection furniture labels (more
+        # accurate than the DB field which may be set from the quiz, not detection).
+        # Mirrors the v1 redesign_room logic.
+        _pre_det_list = pre_detection_result if isinstance(pre_detection_result, list) else []
+        _inferred_type = infer_room_type_from_detection(_pre_det_list)
+        if _inferred_type:
+            room_type = _inferred_type
+            print(f"[v2] Room type inferred from detection: {room_type}")
+        else:
+            print(f"[v2] Room type from DB (no override): {room_type}")
 
         # Fingerprint fallback: if missing from render_context, read from users table.
         # Fire-and-forget write in the TS route may not complete before Modal reads.
@@ -1394,13 +1861,19 @@ def redesign_room_v2(
         print(f"[v2] Stage 3: gen_prompt ({len(gen_prompt.split())} words)")
         print(f"[v2] Stage 3: prompt preview: {gen_prompt[:120]}...")
 
-        # Adaptive steps based on room complexity (item count from pre_detection_result)
-        _det_items = (
-            pre_detection_result.get("items")
-            or pre_detection_result.get("detections")
-            or pre_detection_result.get("objects")
-            or []
-        )
+        # Adaptive steps based on room complexity (item count from pre_detection_result).
+        # pre_detection_result may be a list (new format) or dict with nested items.
+        if isinstance(pre_detection_result, list):
+            _det_items = pre_detection_result
+        elif isinstance(pre_detection_result, dict):
+            _det_items = (
+                pre_detection_result.get("items")
+                or pre_detection_result.get("detections")
+                or pre_detection_result.get("objects")
+                or []
+            )
+        else:
+            _det_items = []
         _item_count = len(_det_items) if isinstance(_det_items, list) else 0
         if _item_count < 4:
             _pass_b_steps, _pass_b_guidance = 40, 25
@@ -1538,7 +2011,7 @@ def redesign_webhook(item: dict):
         return {"error": "room_id required"}
 
     try:
-        redesign_room.spawn(
+        redesign_room_v2.spawn(
             room_id,
             user_id,
             compiled_prompt=compiled_prompt,
@@ -1546,7 +2019,7 @@ def redesign_webhook(item: dict):
             style_reference_url=style_reference_url,
             chat_context=chat_context,
         )
-        return {"status": "queued", "room_id": room_id}
+        return {"status": "queued", "room_id": room_id, "pipeline": "v2"}
     except Exception as e:
         print(f"[webhook] v2 spawn failed: {e} — falling back to v1")
         try:

@@ -90,7 +90,9 @@ export default function StepSevenPage() {
 
     let pollIntervalId: ReturnType<typeof setInterval> | null = null;
     let msgIntervalId: ReturnType<typeof setInterval> | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let cancelled = false;
+    const POLL_TIMEOUT_MS = 180_000; // 3-minute ceiling
 
     const runDetection = async () => {
       try {
@@ -102,6 +104,15 @@ export default function StepSevenPage() {
           if (cancelled) return;
           setPollingMsgIdx((i) => (i + 1) % POLLING_MESSAGES.length);
         }, 2500);
+
+        // 3-minute timeout — stop polling, let cosmetic mode handle navigation
+        timeoutId = setTimeout(() => {
+          if (cancelled) return;
+          if (pollIntervalId) clearInterval(pollIntervalId);
+          if (msgIntervalId) clearInterval(msgIntervalId);
+          console.warn("[step-7] Detection polling timed out after 3 minutes");
+          setCompleted(true);
+        }, POLL_TIMEOUT_MS);
 
         // Poll for pre_detection_result completion
         pollIntervalId = setInterval(async () => {
@@ -116,6 +127,7 @@ export default function StepSevenPage() {
             if (data?.pre_detection_result != null) {
               if (pollIntervalId) clearInterval(pollIntervalId);
               if (msgIntervalId) clearInterval(msgIntervalId);
+              if (timeoutId) clearTimeout(timeoutId);
               setDetectionStatus("complete");
               setCompleted(true);
             }
@@ -137,6 +149,7 @@ export default function StepSevenPage() {
       cancelled = true;
       if (pollIntervalId) clearInterval(pollIntervalId);
       if (msgIntervalId) clearInterval(msgIntervalId);
+      if (timeoutId) clearTimeout(timeoutId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

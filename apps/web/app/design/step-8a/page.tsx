@@ -63,6 +63,10 @@ export default function RevealStep8A() {
       ? new URLSearchParams(window.location.search).get("roomId")
       : null,
   );
+  // effectiveRoomId — single source of truth for room polling.
+  // storeRoomId is preferred (set when the user navigates from step-7d),
+  // urlRoomId is the fallback for direct-link or page-refresh scenarios.
+  const effectiveRoomId = storeRoomId ?? urlRoomId;
 
   // Dynamic state replacing hardcoded constants
   const [heroImage, setHeroImage] = useState<string | null>(null);
@@ -157,12 +161,6 @@ export default function RevealStep8A() {
 
   // Poll for redesign pipeline completion if no hero image loaded yet.
   // The redesign pipeline writes redesign_pano_url directly to Supabase.
-  const storeRoomId2 = useRoomStore((s) => s.roomId);
-  const [urlRoomId] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    return new URLSearchParams(window.location.search).get("roomId");
-  });
-  const roomId = storeRoomId2 ?? urlRoomId;
   useEffect(() => {
     if (heroImage || !effectiveRoomId) return;
     let cancelled = false;

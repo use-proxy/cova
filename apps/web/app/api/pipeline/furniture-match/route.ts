@@ -475,10 +475,11 @@ export async function POST(request: Request) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[furniture-match] Unexpected error:", message);
 
-    // Write error status
+    // Matching failure must NOT block the user from seeing their render.
+    // Set status back to 'complete' (the render itself succeeded), not 'error'.
     await supabase
       .from("rooms")
-      .update({ redesign_status: "error" })
+      .update({ redesign_status: "complete" })
       .eq("id", room_id);
 
     return NextResponse.json({ error: message }, { status: 500 });

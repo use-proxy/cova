@@ -28,7 +28,7 @@ Routes live under `apps/web/app/design/step-*`. Quiz/fingerprint state is held i
 - `step-7` — Pre-detection loading screen. Fires `POST /api/pipeline/pre-detect`. Pre-detection writes `rooms.pre_detection_result`. Redesign pipeline fires from step-7d after persistRenderContext() writes rooms.render_context. Deliberately not step-7 — render_context must be populated first.
 - `step-7b` — Room constraints form (dimensions, constraints, preferences). Updates `rooms.render_context`.
 - `step-7c` — Keep/remove detected items. DYNAMIC ONLY: reads `rooms.pre_detection_result`; if that is not yet populated, it shows a loading state. There are no hardcoded default items. Keep/remove decisions are stored locally and folded into the next render call.
-- `step-7d` — Personalization chat. Fires `POST /api/design-chat`. "Design My Room" CTA advances to step-8a; the redesign run is already in flight from step-7.
+- `step-7d` — Personalization chat. Fires `POST /api/design-chat`. "Design My Room" CTA calls `persistRenderContext()`, then fires `POST /api/pipeline/redesign`, then navigates to step-8a.
 - `step-8a` — Render reveal. Polls `GET /api/rooms/status?roomId=…` for `rooms.redesign_pano_url` and `rooms.perspective_render_url`. Displays a single flat 2D image. Offers "Refine This" (→ step-8b) and "Shop This Look" (→ step-9).
 - `step-8b` — Refinement. Up to 3 refinements; 4 options per round.
 - `step-9` — Shoppable room. On load, reads `room_products` for the room. If empty, fires `POST /api/pipeline/furniture-match {room_id}` and polls. Renders hotspots at `hotspot_x` / `hotspot_y` with the matched product cards.
@@ -36,7 +36,7 @@ Routes live under `apps/web/app/design/step-*`. Quiz/fingerprint state is held i
 ═══════════════════════════════════════════════════════════════════ 3. THE RENDER PIPELINE
 ═══════════════════════════════════════════════════════════════════
 
-- Trigger: step-7 fires `POST /api/pipeline/redesign {room_id}`.
+- Trigger: step-7d fires `POST /api/pipeline/redesign {room_id}` after `persistRenderContext()` succeeds.
 - Route: `apps/web/app/api/pipeline/redesign/route.ts`. It loads the room, the user's `style_fingerprint` and `style_blend`, and dispatches to the Modal webhook at env var `REDESIGN_PIPELINE_WEBHOOK_URL`.
 - Modal: `modal_pipeline/redesign_pipeline.py::redesign_webhook`.
   - Gemini 2.5 Flash — room architecture analysis via `lib/ai/room-analyzer.ts` (`analyzeRoomArchitecture`). Non-blocking; best effort.
