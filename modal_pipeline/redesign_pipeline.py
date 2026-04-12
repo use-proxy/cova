@@ -128,7 +128,17 @@ STYLE_VOCABULARY = {
 
 
 def get_dominant_styles(blend: dict) -> list:
-    normalized = {k.lower(): v for k, v in (blend or {}).items()}
+    blend = blend or {}
+    # Handle new-format style_blend: {primaryStyle, description, weights: {dim: val}}
+    if "weights" in blend and isinstance(blend["weights"], dict):
+        blend = blend["weights"]
+    # Filter to only numeric values (skip primaryStyle, description, etc.)
+    normalized = {}
+    for k, v in blend.items():
+        try:
+            normalized[k.lower()] = float(v)
+        except (TypeError, ValueError):
+            continue
     return [
         style for style, weight
         in sorted(normalized.items(), key=lambda x: x[1], reverse=True)
@@ -1551,7 +1561,7 @@ def run_kontext_polish(
     input_params = {
         "input_image": generated_image_url,
         "prompt": polish_prompt,
-        "guidance": 3.5,
+        "guidance": 4.5,
         "steps": 28,
         "aspect_ratio": "match_input_image",
         "output_format": "png",
@@ -1661,7 +1671,7 @@ def redesign_room_v2(
 
         # ── Setup: read room row ──────────────────────────────────────────────
         room = client.table("rooms").select(
-            "original_photo_url, original_image_url, photo_url, "
+            "original_photo_url, original_image_url, "
             "pre_detection_result, render_context, style_blend, room_type"
         ).eq("id", room_id).single().execute().data
 
@@ -1858,6 +1868,21 @@ def redesign_room_v2(
             chat_context=chat_context,
             floor_material=floor_material,
         )
+
+        # CRITICAL FIX A: compiled_prompt is PRIMARY when it has real content.
+        # build_generation_prompt_v2 is FALLBACK only when compiled_prompt is absent.
+        effective_prompt = (
+            compiled_prompt
+            if (compiled_prompt and len(compiled_prompt.split()) > 50)
+            else gen_prompt
+        )
+        _prompt_source = (
+            "COMPILED"
+            if compiled_prompt and len(compiled_prompt.split()) > 50
+            else "GENERATED-FALLBACK"
+        )
+        print(f"[PIPELINE] Prompt source: {_prompt_source} ({len(effective_prompt.split())} words)")
+        print(f"[PIPELINE] Prompt preview: {effective_prompt[:400]}")
         print(f"[v2] Stage 3: gen_prompt ({len(gen_prompt.split())} words)")
         print(f"[v2] Stage 3: prompt preview: {gen_prompt[:120]}...")
 
@@ -1891,7 +1916,7 @@ def redesign_room_v2(
         )
 
         pass_b_url = run_flux_fill_generation(
-            pass_a_stored_url, resized_eroded_url, gen_prompt, replicate_token,
+            pass_a_stored_url, resized_eroded_url, effective_prompt, replicate_token,
             steps=_pass_b_steps,
             guidance=_pass_b_guidance,
             style_reference_url=style_reference_url,
@@ -2803,7 +2828,7 @@ def run_flux_fill_removal(
             "prompt": removal_prompt,
             "guidance": 30,
             "steps": 35,
-            "prompt_upsampling": True,
+            "prompt_upsampling": False,
             "output_format": "png",
             "safety_tolerance": 5,
         }
@@ -2880,7 +2905,7 @@ def run_flux_fill_generation(
         "prompt": final_prompt,
         "guidance": guidance,
         "steps": steps,
-        "prompt_upsampling": True,
+        "prompt_upsampling": False,
         "output_format": "png",
         "safety_tolerance": 5,
     }

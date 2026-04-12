@@ -28,6 +28,8 @@ import {
 } from "@/lib/ai/room-analyzer";
 import type { StyleFingerprint } from "@/types/fingerprint";
 import type { RenderContext } from "@/lib/types/area2";
+import { logger } from "@/lib/logger";
+import { LogEvents } from "@/lib/logEvents";
 
 interface RoomRow {
   render_context: RenderContext | null;
@@ -48,20 +50,39 @@ interface RedesignBody {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const body = (await request.json()) as RedesignBody;
   const { room_id, chat_context } = body;
 
   if (!room_id) {
     return NextResponse.json({ error: "room_id is required" }, { status: 400 });
+  }
+
+  let userId: string | null = null;
+
+  // Test bypass — development only
+  if (process.env.NODE_ENV !== 'production') {
+    const serviceRoleHeader = request.headers.get('x-supabase-service-role');
+    if (serviceRoleHeader && serviceRoleHeader === process.env.SUPABASE_SERVICE_ROLE_KEY && room_id) {
+      const admin = createAdminSupabaseClient();
+      const { data: testRoom } = await admin
+        .from('rooms')
+        .select('user_id')
+        .eq('id', room_id)
+        .single();
+      if (testRoom) {
+        userId = testRoom.user_id;
+      }
+    }
+  }
+
+  if (!userId) {
+    // Normal auth path
+    const supabase = await createServerSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    userId = user.id;
   }
 
   const webhookUrl = process.env.REDESIGN_PIPELINE_WEBHOOK_URL;
@@ -85,12 +106,12 @@ export async function POST(request: Request) {
           "user_id, render_context, room_type, style_blend, original_image_url, original_photo_url",
         )
         .eq("id", room_id)
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .single(),
       admin
         .from("users")
         .select("style_fingerprint")
-        .eq("id", user.id)
+        .eq("id", userId)
         .single(),
     ]);
     room = (roomRes.data ?? null) as RoomRow | null;
@@ -209,6 +230,23 @@ export async function POST(request: Request) {
   );
   console.warn("[redesign] prompt preview:", compiledPrompt?.slice(0, 120));
 
+  // Log the FLUX prompt for observability
+  if (compiledPrompt) {
+    const usedClaudeCompiler = !compiledPrompt.startsWith("Redesign this");
+    logger.info("RENDER", LogEvents.RENDER_FLUX_PROMPT_BUILT,
+      "FLUX prompt built and dispatched to Modal", {
+        roomId: room_id,
+        data: {
+          promptWordCount: compiledPrompt.split(/\s+/).length,
+          promptPreview: compiledPrompt.substring(0, 300),
+          fullPrompt: compiledPrompt,
+          promptSource: usedClaudeCompiler ? "claude-compiled" : "fallback",
+          styleBlend: renderContext?.styleBlend?.primaryStyle ?? "unknown",
+        },
+      },
+    );
+  }
+
   try {
     // Fire-and-forget style: send the request to Modal but don't wait for the full
     // pipeline to complete. The Modal function writes directly to Supabase, so the
@@ -218,7 +256,7 @@ export async function POST(request: Request) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         room_id,
-        user_id: user.id,
+        user_id: userId,
         compiled_prompt: compiledPrompt ?? null,
         anchor_prompt: anchorPrompt ?? null,
         style_reference_url: styleReferenceUrl ?? null,

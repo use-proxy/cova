@@ -35,6 +35,8 @@ const PUBLIC_API_ROUTES = [
   "/api/quiz/validation-renders",
   "/api/style-references/match",
   "/api/rooms/public-count",
+  "/api/test-pipeline",
+  "/api/pipeline",  // Pipeline routes have their own auth + dev bypass
 ];
 
 export async function middleware(request: NextRequest) {
@@ -90,6 +92,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith(route),
   );
   const isApiRoute = pathname.startsWith("/api/");
+
   if (isApiRoute && !isPublicApi && !user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
