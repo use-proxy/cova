@@ -154,6 +154,7 @@ export default function Step7DPage() {
 
   const setRoomContext = useArea2Store((s) => s.setRoomContext);
   const setKeepMask = useArea2Store((s) => s.setKeepMask);
+  const setBudget = useArea2Store((s) => s.setBudget);
   const existingRoomContext = useArea2Store((s) => s.roomContext);
   const roomStoreId = useRoomStore((s) => s.roomId);
   const effectiveRoomId = roomId ?? roomStoreId;
@@ -185,14 +186,14 @@ export default function Step7DPage() {
 
   useEffect(() => setHydrated(true), []);
 
-  // Load roomContext and keepMask from Supabase into Area2Store if missing.
+  // Load roomContext, keepMask, and budget from Supabase into Area2Store if missing.
   useEffect(() => {
     if (existingRoomContext || !effectiveRoomId) return;
     const loadFromSupabase = async () => {
       const supabase = createBrowserClient();
       const { data: room } = await supabase
         .from("rooms")
-        .select("room_context, keep_mask")
+        .select("room_context, keep_mask, render_context")
         .eq("id", effectiveRoomId)
         .single();
       if (room?.room_context) {
@@ -202,6 +203,42 @@ export default function Step7DPage() {
       }
       if (room?.keep_mask) {
         setKeepMask(room.keep_mask as Parameters<typeof setKeepMask>[0]);
+      }
+      // Rehydrate budget from render_context if the store's budget is null
+      const currentBudget = useArea2Store.getState().budget;
+      if (!currentBudget && room?.render_context) {
+        const rc = room.render_context as {
+          budget?: {
+            rangeMin?: number;
+            rangeMax?: number;
+            strategy?: string;
+            hardCeiling?: boolean;
+            tier?: string;
+          };
+        };
+        if (
+          rc.budget &&
+          typeof rc.budget.rangeMin === "number" &&
+          typeof rc.budget.rangeMax === "number"
+        ) {
+          setBudget({
+            rangeMin: rc.budget.rangeMin,
+            rangeMax: rc.budget.rangeMax,
+            strategy:
+              (rc.budget.strategy as "even-quality") ?? "even-quality",
+            hardCeiling: rc.budget.hardCeiling ?? false,
+            ...(rc.budget.tier
+              ? {
+                  tier: rc.budget.tier as
+                    | "essential"
+                    | "elevated"
+                    | "refined"
+                    | "prestige"
+                    | "signature",
+                }
+              : {}),
+          });
+        }
       }
     };
     loadFromSupabase().catch((e) =>

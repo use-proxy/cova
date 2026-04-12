@@ -1154,6 +1154,12 @@ export default function BudgetSetup() {
                     rangeMax: tierBudget.rangeMax,
                     strategy: "even-quality",
                     hardCeiling: false,
+                    tier: TIERS[active].label.toLowerCase() as
+                      | "essential"
+                      | "elevated"
+                      | "refined"
+                      | "prestige"
+                      | "signature",
                   });
 
                   // Persist to Supabase render_context.budget if roomId exists
@@ -1184,6 +1190,7 @@ export default function BudgetSetup() {
                               rangeMax: tierBudget.rangeMax,
                               strategy: "even-quality",
                               hardCeiling: false,
+                              tier: TIERS[active].label.toLowerCase(),
                             },
                           },
                         })

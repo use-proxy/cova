@@ -139,6 +139,7 @@ export interface BudgetProfile {
   };
   hardCeiling: boolean;
   splurgeCategory?: string;
+  tier?: "essential" | "elevated" | "refined" | "prestige" | "signature";
 }
 
 export interface RequestedProduct {
