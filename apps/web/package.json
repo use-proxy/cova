@@ -9,7 +9,11 @@
     "lint": "next lint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "logs:tail": "bash scripts/tail-logs.sh",
+    "logs:errors": "bash scripts/dump-errors.sh",
+    "logs:summary": "bash scripts/session-summary.sh",
+    "logs:clear": "rm -f .dev-logs/*.ndjson && echo Logs cleared"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",

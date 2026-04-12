@@ -43,7 +43,7 @@ const nextConfig = {
       },
     ];
   },
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     // SparkJS uses `new URL("data:application/wasm;base64,...")` which triggers
     // webpack's asset module processing with incompatible generator options.
     // Disable URL dependency parsing for SparkJS files.
@@ -51,6 +51,17 @@ const nextConfig = {
       test: /[\\/]@sparkjsdev[\\/]spark[\\/]dist[\\/]/,
       parser: { url: false },
     });
+
+    // Prevent Node.js-only modules from being bundled for the client.
+    // logger.ts uses require('fs') / require('path') inside IS_SERVER guards,
+    // but webpack's static analysis still tries to resolve them for the browser.
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+      };
+    }
 
     return config;
   },

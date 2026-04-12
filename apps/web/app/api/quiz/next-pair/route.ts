@@ -23,6 +23,31 @@ interface NextPairRequest {
   completedPairIds?: string[];
   currentFingerprint?: Record<string, number> | StyleFingerprint | null;
   responseCount?: number;
+  room_type?: string;
+}
+
+const ROOM_SLUG_MAP: Record<string, string> = {
+  living_room: "living-room",
+  bedroom: "bedroom",
+  dining_room: "dining-room",
+  kitchen: "kitchen",
+  bathroom: "bathroom",
+  home_office: "home-office",
+};
+
+const STORAGE_BASE =
+  "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/comparisons";
+
+function getRoomImageUrls(
+  dimension: string,
+  roomSlug: string,
+): { image_a_url: string; image_b_url: string } {
+  const rA = Math.floor(Math.random() * 5) + 1;
+  const rB = Math.floor(Math.random() * 5) + 1;
+  return {
+    image_a_url: `${STORAGE_BASE}/${dimension}/${dimension}-high-${roomSlug}-r${rA}.webp`,
+    image_b_url: `${STORAGE_BASE}/${dimension}/${dimension}-low-${roomSlug}-r${rB}.webp`,
+  };
 }
 
 interface PairRow {
@@ -64,6 +89,10 @@ export async function POST(request: Request) {
     const completedPairIds = body.completedPairIds ?? [];
     const currentFingerprint = body.currentFingerprint;
     const responseCount = body.responseCount ?? completedPairIds.length;
+    const roomSlug =
+      body.room_type && body.room_type in ROOM_SLUG_MAP
+        ? ROOM_SLUG_MAP[body.room_type]
+        : null;
 
     // Quiz complete by count
     if (responseCount >= TOTAL_PAIRS) {
@@ -168,13 +197,16 @@ export async function POST(request: Request) {
     }
 
     const chosen = pool[Math.floor(Math.random() * pool.length)] as PairRow;
+    const roomUrls = roomSlug
+      ? getRoomImageUrls(chosen.dimension, roomSlug)
+      : null;
     return NextResponse.json({
       pair: {
         id: chosen.id,
         dimension: chosen.dimension,
         dimension_index: chosen.dimension_index,
-        image_a_url: chosen.image_a_url,
-        image_b_url: chosen.image_b_url,
+        image_a_url: roomUrls ? roomUrls.image_a_url : chosen.image_a_url,
+        image_b_url: roomUrls ? roomUrls.image_b_url : chosen.image_b_url,
         image_a_vector: chosen.image_a_vector,
         image_b_vector: chosen.image_b_vector,
       },

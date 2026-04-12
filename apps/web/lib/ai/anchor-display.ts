@@ -15,15 +15,15 @@
 // `useFingerprintStore.styleName` are both safe.
 
 export const STYLE_DISPLAY_NAMES: Record<string, string> = {
-  "Warm Japandi": "Warm Japandi",
-  "Pure Minimal White": "Pure Minimal",
-  "Coastal Bright": "Coastal Bright",
-  "Biophilic Jungle": "Biophilic",
+  "Warm Japandi": "Japandi",
   "Dark Moody Glam": "Dark & Moody",
-  "Heritage Traditional": "Heritage",
-  "Industrial Loft": "Industrial",
-  "Maximalist Eclectic": "Maximalist",
-  "Retro Mid-Century": "Retro Modern",
+  "Coastal Bright": "Coastal Light",
+  "Industrial Loft": "Urban Industrial",
+  "Maximalist Eclectic": "Maximalist Eclectic",
+  "Heritage Traditional": "Classic Traditional",
+  "Pure Minimal White": "Minimalist",
+  "Biophilic Jungle": "Biophilic",
+  "Retro Mid-Century": "Mid-Century Modern",
 };
 
 /**

@@ -15,6 +15,7 @@ type StyleCard = {
 
 type FetchedAnchorCard = {
   id: string;
+  image_url: string;
   room_images: Record<string, string> | null;
 };
 
@@ -87,11 +88,15 @@ const ROOM_TYPES: { id: string; label: string }[] = [
 export default function CovaStyleSelectionPage() {
   const router = useRouter();
   const roomType = useFingerprintStore((s) => s.roomType);
-  const [phase, setPhase] = useState<"room" | "anchors">(roomType ? "anchors" : "room");
+  // Bug 2 fix: always start at "room" phase so returning users are never skipped
+  // past room type selection. Step-3 owns the canonical room type selection (Phase 0)
+  // and resets roomType on mount, so this also prevents stale store values from
+  // bypassing the step-2 room picker.
+  const [phase, setPhase] = useState<"room" | "anchors">("room");
   const [selected, setSelected] = useState<string[]>([]);
   const [burstCard, setBurstCard] = useState<string | null>(null);
   const [pointer, setPointer] = useState({ x: 50, y: 28 });
-  const [roomImageMap, setRoomImageMap] = useState<Record<string, Record<string, string>>>({});
+  const [roomImageMap, setRoomImageMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -106,19 +111,23 @@ export default function CovaStyleSelectionPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fetch room_images from the API so cards can show room-type-specific images
+  // Fetch room_images from the API so cards can show room-type-specific images.
+  // Re-fires when roomType changes so the correct per-room images are loaded.
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/quiz/next-card")
+    const url = roomType
+      ? `/api/quiz/next-card?room_type=${roomType}`
+      : "/api/quiz/next-card";
+    fetch(url)
       .then((res) => {
         if (!res.ok) throw new Error(`next-card ${res.status}`);
         return res.json() as Promise<{ cards: FetchedAnchorCard[] }>;
       })
       .then((json) => {
         if (cancelled) return;
-        const map: Record<string, Record<string, string>> = {};
+        const map: Record<string, string> = {};
         for (const card of json.cards ?? []) {
-          if (card.room_images) map[card.id] = card.room_images;
+          map[card.id] = card.image_url;
         }
         setRoomImageMap(map);
       })
@@ -126,7 +135,7 @@ export default function CovaStyleSelectionPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [roomType]);
 
   const progressWidth = useMemo(() => {
     const base = 26;
@@ -302,7 +311,7 @@ export default function CovaStyleSelectionPage() {
                     <div
                       className="cova-card-image"
                       style={{
-                        backgroundImage: `linear-gradient(180deg, rgba(9,24,41,0.1), rgba(9,24,41,0.42)), url(${(roomType && roomImageMap[style.dbId]?.[roomType]) ?? style.image})`,
+                        backgroundImage: `linear-gradient(180deg, rgba(9,24,41,0.1), rgba(9,24,41,0.42)), url(${roomImageMap[style.dbId] ?? style.image})`,
                       }}
                     />
 

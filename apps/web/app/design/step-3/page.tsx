@@ -6,17 +6,23 @@ import {
   useFingerprintStore,
   type StyleFingerprint,
 } from "@/lib/store/fingerprint";
+import { logger } from "@/lib/logger";
+import { LogEvents } from "@/lib/logEvents";
 import "../step-1/step1.css";
 import "./step3.css";
 
-type Phase = "anchors" | "pairs" | "validation" | "compute";
+const log = logger.child({ stepId: "step-3" });
 
-type ValidationRender = {
-  url: string | null;
-  label: string;
-};
+type Phase = "room_type" | "anchors" | "pairs" | "compute";
 
-const MAX_REFINEMENTS = 2;
+const ROOM_TYPES: { id: string; label: string }[] = [
+  { id: "living_room", label: "Living Room" },
+  { id: "bedroom", label: "Bedroom" },
+  { id: "dining_room", label: "Dining Room" },
+  { id: "home_office", label: "Home Office" },
+  { id: "kitchen", label: "Kitchen" },
+  { id: "bathroom", label: "Bathroom" },
+];
 
 type AnchorCard = {
   id: string;
@@ -33,18 +39,6 @@ type ComparisonPair = {
   image_b_url: string;
 };
 
-const SUPABASE_STORAGE =
-  "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images";
-
-function getPairImageUrl(
-  dimension: string,
-  pole: "low" | "high",
-  roomType: string,
-  pairIndex: number,
-): string {
-  const round = pairIndex + 1;
-  return `${SUPABASE_STORAGE}/comparisons/${dimension}/${dimension}-${pole}-${roomType}-r${round}.webp`;
-}
 
 type FingerprintResult = {
   fingerprint: StyleFingerprint;
@@ -59,7 +53,10 @@ const COMPLETION_ROUTE = "/design/step-4";
 export default function CovaStyleQuizPage() {
   const router = useRouter();
   const roomType = useFingerprintStore((s) => s.roomType);
-  const [phase, setPhase] = useState<Phase>("pairs");
+  const [phase, setPhase] = useState<Phase>(
+    roomType ? "pairs" : "room_type",
+  );
+
 
   // Phase A state
   const [anchors, setAnchors] = useState<AnchorCard[]>([]);
@@ -73,13 +70,6 @@ export default function CovaStyleQuizPage() {
   const [pairLoading, setPairLoading] = useState(false);
   const [pairError, setPairError] = useState<string | null>(null);
   const pairStartRef = useRef<number>(Date.now());
-
-  // Validation state
-  const [validationLoading, setValidationLoading] = useState(false);
-  const [validationRenders, setValidationRenders] = useState<
-    ValidationRender[]
-  >([]);
-  const [refinementCount, setRefinementCount] = useState(0);
 
   // Phase C state
   const [computeError, setComputeError] = useState<string | null>(null);
@@ -98,32 +88,84 @@ export default function CovaStyleQuizPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Phase A — Anchor selection ────────────────────────────────────────────
+  // Clear computed outputs only — preserve Phase A inputs from step-2
+  // (phaseASelections, roomType). Reset phaseBResponses so previous pairwise
+  // answers don't bleed into the new session. DO NOT call resetFingerprint()
+  // here — it wipes phaseASelections that step-2 just stored.
   useEffect(() => {
-    if (phase !== "anchors" || anchors.length > 0) return;
-    let cancelled = false;
-    setAnchorsLoading(true);
-    setAnchorsError(null);
-    fetch("/api/quiz/next-card")
-      .then(async (res) => {
+    useFingerprintStore.setState({
+      fingerprint: null,
+      styleName: null,
+      styleTags: [],
+      styleExplanation: null,
+      phaseBResponses: [],
+    });
+    const existingRoomType = useFingerprintStore.getState().roomType;
+    if (existingRoomType) {
+      setPhase("pairs");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Phase A — Anchor fetch (only used if somehow anchors phase is reached) ───
+  // Guard: anchors phase is skipped when coming from step-2 (phaseASelections
+  // are already in the store). This only fires as a fallback edge case.
+  useEffect(() => {
+    if (phase !== "anchors") return;
+    if (!roomType) return;
+    const controller = new AbortController();
+
+    async function load() {
+      setAnchorsLoading(true);
+      setAnchorsError(null);
+      const url = `/api/quiz/next-card?room_type=${roomType}`;
+      log.info("QUIZ", LogEvents.QUIZ_ANCHOR_FETCH_START,
+        `Fetching: ${url}`,
+        { data: { url, roomType } },
+      );
+      try {
+        const res = await fetch(url, { signal: controller.signal });
         if (!res.ok) throw new Error(`next-card ${res.status}`);
-        return res.json() as Promise<{ cards: AnchorCard[] }>;
-      })
-      .then((json) => {
-        if (cancelled) return;
-        setAnchors(json.cards ?? []);
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
+        const json = (await res.json()) as { cards: AnchorCard[] };
+        if (!controller.signal.aborted) {
+          setAnchors(json.cards ?? []);
+          setAnchorsLoading(false);
+          log.info("QUIZ", LogEvents.QUIZ_ANCHOR_FETCH_SUCCESS,
+            `Loaded ${json.cards?.length ?? 0} anchors`,
+            { data: { count: json.cards?.length ?? 0, roomType } },
+          );
+        }
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === "AbortError") return;
+        log.error("QUIZ", LogEvents.QUIZ_ANCHOR_FETCH_FAILURE,
+          `Anchor fetch failed: ${err instanceof Error ? err.message : "Unknown error"}`,
+          {
+            error: {
+              message: err instanceof Error ? err.message : "Unknown error",
+              name: err instanceof Error ? err.name : "Error",
+              stack: null,
+              code: "FETCH_FAILED",
+              httpStatus: null,
+              retryCount: null,
+            },
+          },
+        );
         setAnchorsError(err instanceof Error ? err.message : "Failed to load");
-      })
-      .finally(() => {
-        if (!cancelled) setAnchorsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [phase, anchors.length]);
+        setAnchorsLoading(false);
+      }
+    }
+
+    void load();
+    return () => controller.abort();
+  }, [phase, roomType]);
+
+  // Called when the user taps a room type button in Phase 0.
+  // roomType is passed directly to fetchAnchors — no useEffect, no store read.
+  function handleRoomTypeSelect(selectedRoomType: string) {
+    useFingerprintStore.getState().setRoomType(selectedRoomType);
+    setPhase("pairs");
+    // anchor phase is step-2 only; go straight to pairwise
+  }
 
   const toggleAnchor = (id: string) => {
     setSelectedAnchorIds((prev) => {
@@ -155,6 +197,7 @@ export default function CovaStyleQuizPage() {
           completedPairIds,
           responseCount: completedPairIds.length,
           currentFingerprint: currentFp?.dimensions ?? null,
+          ...(store.roomType ? { room_type: store.roomType } : {}),
         }),
       });
       if (!res.ok) throw new Error(`next-pair ${res.status}`);
@@ -187,7 +230,7 @@ export default function CovaStyleQuizPage() {
   useEffect(() => {
     if (phase !== "pairs") return;
     if (pairsAnswered >= TOTAL_PAIRS) {
-      setPhase("validation");
+      setPhase("compute");
       return;
     }
     if (currentPair) return;
@@ -216,73 +259,6 @@ export default function CovaStyleQuizPage() {
     setCurrentPair(null);
     setPairError(null);
     setPairsAnswered((n) => n + 1);
-  };
-
-  // ── Validation — render previews + confirm ──────────────────────────────
-  const runValidation = useCallback(async () => {
-    setValidationLoading(true);
-    setValidationRenders([]);
-    const store = useFingerprintStore.getState();
-    try {
-      const fpRes = await fetch("/api/quiz/fingerprint", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phase_a_selections: store.phaseASelections,
-          phase_b_responses: store.phaseBResponses,
-          room_type: store.roomType ?? "living_room",
-          entry_path: "pairs",
-        }),
-      });
-      if (!fpRes.ok) throw new Error(`fingerprint ${fpRes.status}`);
-      const fpResult = (await fpRes.json()) as FingerprintResult;
-      useFingerprintStore
-        .getState()
-        .setFingerprint(
-          fpResult.fingerprint,
-          fpResult.style_name,
-          fpResult.style_tags,
-        );
-
-      const vrRes = await fetch("/api/quiz/validation-renders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fingerprint: fpResult.fingerprint,
-          roomType: store.roomType ?? "living_room",
-        }),
-      });
-      if (!vrRes.ok) throw new Error(`validation-renders ${vrRes.status}`);
-      const vrJson = (await vrRes.json()) as { renders: ValidationRender[] };
-      setValidationRenders(vrJson.renders ?? []);
-      setValidationLoading(false);
-    } catch (err: unknown) {
-      console.error("[step-3] validation failed:", err);
-      setValidationLoading(false);
-      setPhase("compute");
-    }
-  }, []);
-
-  useEffect(() => {
-    if (phase !== "validation") return;
-    void runValidation();
-  }, [phase, runValidation]);
-
-  const handleValidationConfirm = () => {
-    setPhase("compute");
-  };
-
-  const handleValidationRefine = () => {
-    if (refinementCount >= MAX_REFINEMENTS) {
-      setPhase("compute");
-      return;
-    }
-    setRefinementCount((n) => n + 1);
-    setValidationRenders([]);
-    setCurrentPair(null);
-    setPairError(null);
-    setPairsAnswered(6);
-    setPhase("pairs");
   };
 
   // ── Phase C — Compute fingerprint ─────────────────────────────────────────
@@ -322,12 +298,12 @@ export default function CovaStyleQuizPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   const progressValue =
-    phase === "anchors"
-      ? 10
-      : phase === "pairs"
-        ? 20 + (pairsAnswered / TOTAL_PAIRS) * 70
-        : phase === "validation"
-          ? 92
+    phase === "room_type"
+      ? 5
+      : phase === "anchors"
+        ? 10
+        : phase === "pairs"
+          ? 20 + (pairsAnswered / TOTAL_PAIRS) * 80
           : 100;
 
   return (
@@ -371,9 +347,9 @@ export default function CovaStyleQuizPage() {
 
           <div className="cova-brand-lockup">
             <div className="cova-progress-copy">
+              {phase === "room_type" && "Which room are we designing?"}
               {phase === "anchors" && "Choose what resonates"}
               {phase === "pairs" && `${pairsAnswered} of ${TOTAL_PAIRS}`}
-              {phase === "validation" && "Does this feel like you?"}
               {phase === "compute" && "Analyzing your style..."}
             </div>
             <button
@@ -395,6 +371,10 @@ export default function CovaStyleQuizPage() {
           <div className="cova-divider-gold" aria-hidden="true" />
         </div>
 
+        {phase === "room_type" && (
+          <RoomTypePhase onSelect={handleRoomTypeSelect} />
+        )}
+
         {phase === "anchors" && (
           <AnchorsPhase
             anchors={anchors}
@@ -412,20 +392,9 @@ export default function CovaStyleQuizPage() {
             loading={pairLoading}
             error={pairError}
             pairsAnswered={pairsAnswered}
-            roomType={roomType}
             onChoice={handlePairChoice}
             onSkip={handleSkipPair}
             onRetry={() => void fetchNextPair()}
-          />
-        )}
-
-        {phase === "validation" && (
-          <ValidationPhase
-            loading={validationLoading}
-            renders={validationRenders}
-            refinementsLeft={MAX_REFINEMENTS - refinementCount}
-            onConfirm={handleValidationConfirm}
-            onRefine={handleValidationRefine}
           />
         )}
 
@@ -434,6 +403,52 @@ export default function CovaStyleQuizPage() {
         )}
       </section>
     </main>
+  );
+}
+
+// ── Phase 0: Room type selection ─────────────────────────────────────────────
+
+function RoomTypePhase({ onSelect }: { onSelect: (roomType: string) => void }) {
+  return (
+    <>
+      <section className="cova-editorial-intro">
+        <h1>Which room are we designing?</h1>
+        <p className="cova-subcopy">Pick one to get started.</p>
+      </section>
+      <section className="cova-comparison-stage">
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: "1rem",
+            maxWidth: "900px",
+            margin: "0 auto",
+            padding: "1.5rem",
+          }}
+        >
+          {ROOM_TYPES.map((room) => (
+            <button
+              key={room.id}
+              type="button"
+              onClick={() => onSelect(room.id)}
+              style={{
+                padding: "2rem 1rem",
+                borderRadius: "12px",
+                border: "1px solid rgba(225, 201, 132, 0.22)",
+                background: "rgba(17, 35, 55, 0.54)",
+                color: "#f4efe6",
+                fontSize: "1.1rem",
+                fontFamily: "inherit",
+                cursor: "pointer",
+                transition: "all 200ms ease-out",
+              }}
+            >
+              {room.label}
+            </button>
+          ))}
+        </div>
+      </section>
+    </>
   );
 }
 
@@ -463,19 +478,22 @@ function AnchorsPhase({
         </p>
       </section>
       <section className="cova-comparison-stage">
-        {loading && <p style={{ textAlign: "center" }}>Loading...</p>}
-        {error && (
+        {loading && anchors.length === 0 && (
+          <p style={{ textAlign: "center" }}>Loading...</p>
+        )}
+        {error && anchors.length === 0 && (
           <p style={{ textAlign: "center", color: "#C0504A" }}>
             Failed to load: {error}
           </p>
         )}
-        {!loading && !error && (
+        {anchors.length > 0 && (
           <div
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(3, 1fr)",
               gap: "0.75rem",
               maxWidth: "900px",
+              width: "100%",
               margin: "0 auto",
               padding: "1rem",
             }}
@@ -492,6 +510,7 @@ function AnchorsPhase({
                   disabled={disabled}
                   aria-pressed={isSelected}
                   style={{
+                    width: "100%",
                     aspectRatio: "1 / 1",
                     borderRadius: "12px",
                     border: isSelected
@@ -543,7 +562,6 @@ function PairsPhase({
   loading,
   error,
   pairsAnswered,
-  roomType,
   onChoice,
   onSkip,
   onRetry,
@@ -552,7 +570,6 @@ function PairsPhase({
   loading: boolean;
   error: string | null;
   pairsAnswered: number;
-  roomType: string | null;
   onChoice: (side: "A" | "B") => void;
   onSkip: () => void;
   onRetry: () => void;
@@ -587,11 +604,7 @@ function PairsPhase({
                 onClick={() => onChoice("A")}
                 aria-label="Choose left"
                 style={{
-                  backgroundImage: `url(${
-                    roomType
-                      ? getPairImageUrl(pair.dimension, "low", roomType, pair.dimension_index)
-                      : pair.image_a_url
-                  })`,
+                  backgroundImage: `url(${pair.image_a_url})`,
                 }}
               />
             </div>
@@ -607,11 +620,7 @@ function PairsPhase({
                 onClick={() => onChoice("B")}
                 aria-label="Choose right"
                 style={{
-                  backgroundImage: `url(${
-                    roomType
-                      ? getPairImageUrl(pair.dimension, "high", roomType, pair.dimension_index)
-                      : pair.image_b_url
-                  })`,
+                  backgroundImage: `url(${pair.image_b_url})`,
                 }}
               />
             </div>
@@ -629,125 +638,6 @@ function PairsPhase({
               className={`cova-progress-dot ${index < pairsAnswered ? "is-complete" : ""}`}
             />
           ))}
-        </div>
-      </footer>
-    </>
-  );
-}
-
-// ── Validation Phase ─────────────────────────────────────────────────────────
-
-function ValidationPhase({
-  loading,
-  renders,
-  refinementsLeft,
-  onConfirm,
-  onRefine,
-}: {
-  loading: boolean;
-  renders: ValidationRender[];
-  refinementsLeft: number;
-  onConfirm: () => void;
-  onRefine: () => void;
-}) {
-  return (
-    <>
-      <section className="cova-editorial-intro">
-        <h1>Does this feel like your style?</h1>
-        <p className="cova-subcopy">
-          Three previews generated from your answers so far.
-        </p>
-      </section>
-      <section className="cova-comparison-stage" aria-live="polite">
-        {loading && (
-          <p style={{ textAlign: "center" }}>Generating style previews...</p>
-        )}
-        {!loading && (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-              gap: "1rem",
-              maxWidth: "1100px",
-              margin: "0 auto",
-              padding: "1rem",
-            }}
-          >
-            {renders.map((r, idx) => (
-              <div
-                key={idx}
-                style={{
-                  aspectRatio: "1 / 1",
-                  borderRadius: "12px",
-                  border: "1px solid rgba(225, 201, 132, 0.22)",
-                  backgroundImage: r.url ? `url(${r.url})` : undefined,
-                  backgroundColor: "rgba(17, 35, 55, 0.54)",
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
-                  position: "relative",
-                }}
-              >
-                <div
-                  style={{
-                    position: "absolute",
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    padding: "0.5rem 0.75rem",
-                    background: "rgba(10, 22, 40, 0.72)",
-                    color: "#f4efe6",
-                    fontSize: "0.85rem",
-                    borderBottomLeftRadius: "12px",
-                    borderBottomRightRadius: "12px",
-                  }}
-                >
-                  {r.label}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-      <footer className="cova-footer">
-        <div
-          style={{ display: "flex", gap: "0.75rem", justifyContent: "center" }}
-        >
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={loading}
-            style={{
-              padding: "0.875rem 2.25rem",
-              borderRadius: "24px",
-              border: "none",
-              background: loading ? "#445064" : "#C9A84C",
-              color: "#0A1628",
-              fontFamily: "inherit",
-              fontSize: "1rem",
-              fontWeight: 600,
-              cursor: loading ? "not-allowed" : "pointer",
-            }}
-          >
-            Yes, perfect
-          </button>
-          <button
-            type="button"
-            onClick={onRefine}
-            disabled={loading || refinementsLeft <= 0}
-            style={{
-              padding: "0.875rem 2.25rem",
-              borderRadius: "24px",
-              border: "1px solid rgba(225, 201, 132, 0.3)",
-              background: "transparent",
-              color: "#f4efe6",
-              fontFamily: "inherit",
-              fontSize: "1rem",
-              cursor:
-                loading || refinementsLeft <= 0 ? "not-allowed" : "pointer",
-            }}
-          >
-            Not quite
-          </button>
         </div>
       </footer>
     </>

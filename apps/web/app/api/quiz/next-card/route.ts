@@ -1,12 +1,12 @@
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 // ── /api/quiz/next-card ──────────────────────────────────────────────────────
 // Returns the 9 anchor images from quiz_anchor_images. Used by Phase A of the
 // quiz at /design/step-3 — a single round where the user picks exactly 2.
 //
-// Both GET and POST are accepted. Body params (POST) are ignored — there are
-// only 9 anchors, the route always returns all of them.
+// Both GET and POST are accepted. Optional ?room_type= param overrides each
+// card's image_url with a room-specific variant from Supabase Storage.
 //
 // Response shape:
 //   { cards: Array<{
@@ -21,6 +21,30 @@ import { NextResponse } from "next/server";
 // Migrated from swipe_cards (10-dim, wiped in Session A) to quiz_anchor_images
 // in Session C (quiz wiring).
 
+const STYLE_SLUG: Record<number, string> = {
+  1: 'warm-japandi',
+  2: 'dark-moody-glam',
+  3: 'coastal-bright',
+  4: 'industrial-loft',
+  5: 'maximalist-eclectic',
+  6: 'heritage-traditional',
+  7: 'pure-minimal-white',
+  8: 'biophilic-jungle',
+  9: 'retro-mid-century',
+}
+
+const ROOM_SLUG: Record<string, string> = {
+  living_room: 'living-room',
+  bedroom: 'bedroom',
+  dining_room: 'dining-room',
+  kitchen: 'kitchen',
+  bathroom: 'bathroom',
+  home_office: 'home-office',
+}
+
+const ROOM_SPECIFIC_BASE = 'https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/anchors/room-specific'
+
+
 interface AnchorRow {
   id: string;
   style_name: string;
@@ -31,7 +55,7 @@ interface AnchorRow {
   room_images: Record<string, string> | null;
 }
 
-async function loadAnchors() {
+async function loadAnchors(room_type?: string) {
   const admin = createAdminSupabaseClient();
   const { data, error } = await admin
     .from("quiz_anchor_images")
@@ -45,21 +69,35 @@ async function loadAnchors() {
     return NextResponse.json({ cards: [] });
   }
 
-  const cards = (data as AnchorRow[]).map((row) => ({
-    id: row.id,
-    style_name: row.style_name,
-    style_index: row.style_index,
-    image_url: row.image_url,
-    style_vector: row.style_vector,
-    flux_prompt: row.flux_prompt ?? null,
-    room_images: row.room_images ?? null,
-  }));
+  const roomSlug = room_type ? ROOM_SLUG[room_type] : undefined;
+
+  const cards = (data as AnchorRow[]).map((row) => {
+    let image_url = row.image_url;
+
+    if (roomSlug) {
+      const styleSlug = STYLE_SLUG[row.style_index];
+      if (styleSlug) {
+        image_url = `${ROOM_SPECIFIC_BASE}/phase-a-${styleSlug}-${roomSlug}.webp`;
+      }
+    }
+
+    return {
+      id: row.id,
+      style_name: row.style_name,
+      style_index: row.style_index,
+      image_url,
+      style_vector: row.style_vector,
+      flux_prompt: row.flux_prompt ?? null,
+      room_images: row.room_images ?? null,
+    };
+  });
   return NextResponse.json({ cards });
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    return await loadAnchors();
+    const room_type = request.nextUrl.searchParams.get("room_type") ?? undefined;
+    return await loadAnchors(room_type);
   } catch (error: unknown) {
     const message =
       error instanceof Error ? error.message : "Internal server error";
@@ -67,9 +105,17 @@ export async function GET() {
   }
 }
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
-    return await loadAnchors();
+    let room_type: string | undefined;
+    try {
+      const body = await request.json();
+      room_type = body?.room_type;
+    } catch {
+      // no body or invalid JSON — fall back to query param
+      room_type = request.nextUrl.searchParams.get("room_type") ?? undefined;
+    }
+    return await loadAnchors(room_type);
   } catch (error: unknown) {
     const message =
       error instanceof Error ? error.message : "Internal server error";

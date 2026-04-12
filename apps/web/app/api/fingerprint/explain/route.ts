@@ -48,7 +48,7 @@ export async function POST(request: Request) {
           role: "user",
           content: `Given this interior design style fingerprint with scores 0-1: ${summary}
 
-Write exactly 2-3 sentences explaining in plain English what this means for how the person's room will look. Focus on materials, colors, and mood. No jargon. Do not use any specific style names like Japandi, Bohemian, Coastal, Mid-Century Modern, or Minimalist — describe the feel and materials instead.`,
+Write exactly 2-3 sentences explaining in plain English what this means for how the person's room will look. Focus on materials, colors, and mood. No jargon. Do not use any specific style names like Japandi, Bohemian, Coastal, Mid-Century Modern, or Minimalist — describe the feel and materials instead. Do not start with any header, title, or preamble. Start directly with the description sentence.`,
         },
       ],
     });

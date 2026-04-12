@@ -213,6 +213,14 @@ async function computeNewFingerprint(body: NewFingerprintRequest): Promise<{
           meanDims[k] += (sv[k] ?? NEUTRAL_MIDPOINT) / selectedAnchors.length;
         }
       }
+
+      // Change 4 — Amplify Phase A anchor signal: push deviations 40% further
+      // from neutral so strong anchor selections give a warm start that pairwise
+      // can build on rather than having to escape a near-neutral starting point.
+      for (const k of DIMENSION_ORDER) {
+        const deviation = meanDims[k] - NEUTRAL_MIDPOINT;
+        meanDims[k] = clamp(NEUTRAL_MIDPOINT + deviation * 1.4, 0, 1);
+      }
     }
   }
 
@@ -248,6 +256,14 @@ async function computeNewFingerprint(body: NewFingerprintRequest): Promise<{
       });
     }
 
+    // Change 2 — Momentum tracking: consecutive same-direction pushes compound.
+    const dimMomentum: Record<DimKey, number> = Object.fromEntries(
+      DIMENSION_ORDER.map((d) => [d, 0]),
+    ) as Record<DimKey, number>;
+    const dimLastDirection: Record<DimKey, number> = Object.fromEntries(
+      DIMENSION_ORDER.map((d) => [d, 0]),
+    ) as Record<DimKey, number>;
+
     for (const resp of phase_b_responses) {
       if (resp.chosenSide === "skip") continue;
       const pair = pairsById.get(resp.pairId);
@@ -258,15 +274,32 @@ async function computeNewFingerprint(body: NewFingerprintRequest): Promise<{
       const rejectedVec =
         resp.chosenSide === "A" ? pair.image_b_vector : pair.image_a_vector;
 
-      const lambda = Math.min(3, 1 + 500 / Math.max(resp.responseTimeMs, 100));
+      // Change 3 — Wider lambda range: fast/confident choices (< 200ms) get ≈4
+      const lambda = Math.min(4, 1 + 600 / Math.max(resp.responseTimeMs, 100));
 
       for (const k of DIMENSION_ORDER) {
-        const delta =
-          ((chosenVec[k] ?? NEUTRAL_MIDPOINT) -
-            (rejectedVec[k] ?? NEUTRAL_MIDPOINT)) *
-          0.15 *
-          lambda;
-        meanDims[k] = clamp(meanDims[k] + delta, 0, 1);
+        // Change 1 — Stronger base learning rate: 0.25 instead of 0.15
+        const rawDelta =
+          (chosenVec[k] ?? NEUTRAL_MIDPOINT) -
+          (rejectedVec[k] ?? NEUTRAL_MIDPOINT);
+
+        // Change 2 — Apply momentum multiplier for consecutive same-direction pushes
+        const direction = Math.sign(rawDelta);
+        if (direction !== 0) {
+          if (direction === Math.sign(dimLastDirection[k])) {
+            dimMomentum[k] = Math.min(dimMomentum[k] + 1, 5);
+          } else {
+            dimMomentum[k] = 0;
+          }
+          dimLastDirection[k] = direction;
+        }
+        const momentumMultiplier = 1.0 + dimMomentum[k] * 0.15;
+
+        meanDims[k] = clamp(
+          meanDims[k] + rawDelta * 0.25 * lambda * momentumMultiplier,
+          0,
+          1,
+        );
       }
 
       // Increment per-dim response counter for the pair's primary dimension.
@@ -354,18 +387,36 @@ async function computeNewFingerprint(body: NewFingerprintRequest): Promise<{
 
 // ── Style matching ────────────────────────────────────────────────────────────
 
+// Change 5 — Weighted cosine similarity (centered around 0.5) replaces
+// Euclidean distance. A fingerprint that strongly points in the direction of
+// a style matches it even at moderate magnitude — Euclidean penalised
+// mid-strength fingerprints and pulled them toward moderate styles.
 function matchStyle(fp: number[]): StyleDefinition {
+  const fpCentered = fp.map((v) => v - NEUTRAL_MIDPOINT);
+
   let bestStyle = STYLES[0]!;
-  let bestDist = Infinity;
+  let bestSim = -Infinity;
+
   for (const style of STYLES) {
-    const dist = Math.sqrt(
-      fp.reduce((sum, val, i) => {
-        const diff = val - (style.center[i] ?? NEUTRAL_MIDPOINT);
-        return sum + diff * diff * (DIMENSION_MATCH_WEIGHTS[i] ?? 1.0);
-      }, 0),
-    );
-    if (dist < bestDist) {
-      bestDist = dist;
+    const styleCentered = style.center.map((v) => v - NEUTRAL_MIDPOINT);
+
+    let dot = 0;
+    let fpNorm = 0;
+    let styleNorm = 0;
+    for (let i = 0; i < fpCentered.length; i++) {
+      const w = DIMENSION_MATCH_WEIGHTS[i] ?? 1.0;
+      dot += fpCentered[i]! * styleCentered[i]! * w;
+      fpNorm += fpCentered[i]! * fpCentered[i]! * w;
+      styleNorm += styleCentered[i]! * styleCentered[i]! * w;
+    }
+
+    const sim =
+      fpNorm === 0 || styleNorm === 0
+        ? 0
+        : dot / (Math.sqrt(fpNorm) * Math.sqrt(styleNorm));
+
+    if (sim > bestSim) {
+      bestSim = sim;
       bestStyle = style;
     }
   }

@@ -71,36 +71,6 @@ const DEFAULT_VARIATION: StyleVariation = {
   traits: ["Evolved Taste", "Personal Touch", "Refined Balance"],
 };
 
-const ROOMS = [
-  {
-    id: 1,
-    src: "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=600&h=750&fit=crop&q=80",
-    alt: "Living room",
-    match: "96% Match",
-    label: "Living Room",
-    name: "Serene Living",
-    desc: "Low-profile furniture, warm wood tones, and curated negative space",
-  },
-  {
-    id: 2,
-    src: "https://images.unsplash.com/photo-1617325247661-675ab4b64ae2?w=600&h=750&fit=crop&q=80",
-    alt: "Bedroom",
-    match: "94% Match",
-    label: "Bedroom",
-    name: "Restful Retreat",
-    desc: "Organic linens, muted palette, and intentional simplicity",
-  },
-  {
-    id: 3,
-    src: "https://images.unsplash.com/photo-1600585152220-90363fe7e115?w=600&h=750&fit=crop&q=80",
-    alt: "Kitchen",
-    match: "91% Match",
-    label: "Kitchen",
-    name: "Everyday Ritual",
-    desc: "Clean surfaces, natural stone, and functional elegance",
-  },
-];
-
 const PALETTE = [
   { color: "#F5F0E8", label: "#F5F0E8" },
   { color: "#A8B5A0", label: "#A8B5A0" },
@@ -119,6 +89,17 @@ const DIMENSIONS = [
   { name: "Playfulness", score: 22 },
   { name: "Vintage", score: 40 },
 ];
+
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/^(Room Design Profile|Interior Design Profile|Design Profile|Interior Design|Room Profile)[:\s]*/i, '')
+    .replace(/^#+\s*/gm, '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/^\s*[-*]\s/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
 
 export default function StepFourPage() {
   const router = useRouter();
@@ -722,18 +703,6 @@ export default function StepFourPage() {
     };
   }, [computedDimensions]);
 
-  const handleRoomMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const card = e.currentTarget;
-    const rect = card.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width - 0.5;
-    const y = (e.clientY - rect.top) / rect.height - 0.5;
-    card.style.transform = `translateY(-10px) scale(1.02) rotateY(${x * 10}deg) rotateX(${-y * 10}deg)`;
-  };
-
-  const handleRoomMouseLeave = (e: React.MouseEvent<HTMLDivElement>) => {
-    e.currentTarget.style.transform = "";
-  };
-
   const submitTweak = () => {
     const val = tweakInput.trim();
     if (!val || tweakLoading) return;
@@ -789,7 +758,7 @@ export default function StepFourPage() {
               className="style-description"
               style={{ fontStyle: "italic", opacity: 0.85, marginBottom: 12 }}
             >
-              {styleExplanation}
+              {stripMarkdown(styleExplanation)}
             </p>
           )}
           <p className="style-description">{displayDescription}</p>
@@ -850,39 +819,23 @@ export default function StepFourPage() {
             </div>
             <div className="radar-tooltip" ref={radarTooltipRef} />
           </div>
+          {storedStyleName && (
+            <>
+              <div className="radar-style-name">{storedStyleName}</div>
+              {storedStyleTags.length > 0 && (
+                <div className="radar-style-pills">
+                  {storedStyleTags.map((tag) => (
+                    <span key={tag} className="trait-pill">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </section>
 
         <div className="section-divider section-divider-late" />
-
-        <section className="rooms-section">
-          <div className="eyebrow">Rooms Like Yours</div>
-          <h2 className="rooms-title">Your Style, Three Ways</h2>
-          <p className="rooms-subtitle">
-            See how your style fingerprint translates across different spaces —
-            each room curated to match your exact aesthetic DNA.
-          </p>
-          <div className="rooms-grid">
-            {ROOMS.map((room) => (
-              <div
-                key={room.id}
-                className="room-card"
-                onMouseMove={handleRoomMouseMove}
-                onMouseLeave={handleRoomMouseLeave}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={room.src} alt={room.alt} loading="lazy" />
-                <div className="room-match-badge">✦ {room.match}</div>
-                <div className="room-card-overlay">
-                  <div className="room-card-label">{room.label}</div>
-                  <div className="room-card-name">{room.name}</div>
-                  <div className="room-card-desc">{room.desc}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <div className="section-divider section-divider-latest" />
 
         <section className="tweak-section">
           <div className="eyebrow">Personalize Further</div>
