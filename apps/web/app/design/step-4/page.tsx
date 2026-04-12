@@ -12,58 +12,6 @@ type StyleVariation = {
   traits: string[];
 };
 
-const STYLE_VARIATIONS: Record<string, StyleVariation> = {
-  warm: {
-    name: "Warm Naturalist",
-    desc: "Your core sensibility now glows with added warmth — think amber-toned woods, terracotta accents, and soft candlelight atmospheres. The calm remains, but the palette shifts toward sunset earth tones.",
-    traits: ["Warm Earth Tones", "Amber Light", "Organic Comfort"],
-  },
-  earth: {
-    name: "Earthy Naturalist",
-    desc: "Grounded and organic. Your style deepens with raw clay textures, undyed linen, and sun-baked terracotta. Spaces feel like they emerged from the earth itself — rooted, honest, and deeply tactile.",
-    traits: ["Clay Textures", "Raw Materials", "Grounded Palette"],
-  },
-  bold: {
-    name: "Bold Naturalist",
-    desc: "Your restrained foundation now carries confident contrast — deep charcoal walls meet warm wood, with strategic pops of muted indigo or forest green. Restraint meets conviction.",
-    traits: ["High Contrast", "Confident Color", "Dramatic Calm"],
-  },
-  vintage: {
-    name: "Vintage Naturalist",
-    desc: "A beautiful tension between old and new. Wabi-sabi imperfections meet heritage silhouettes. Patina-rich surfaces, hand-thrown ceramics, and furniture with stories to tell.",
-    traits: ["Wabi-Sabi", "Patina Surfaces", "Timeless Pieces"],
-  },
-  luxur: {
-    name: "Luxe Naturalist",
-    desc: "Elevated restraint at its finest. Marble meets light oak, brass hardware catches the light, and every surface whispers quality. This is quiet luxury — understated but unmistakably refined.",
-    traits: ["Quiet Luxury", "Premium Materials", "Refined Detail"],
-  },
-  color: {
-    name: "Chromatic Naturalist",
-    desc: "Your clean-lined aesthetic now embraces muted color — dusty rose, sage green, and soft terracotta join the neutral palette. Color is used sparingly but with purpose, like art on a gallery wall.",
-    traits: ["Muted Palette", "Purposeful Color", "Gallery Feel"],
-  },
-  modern: {
-    name: "Contemporary Naturalist",
-    desc: "Precision meets zen. Sharper lines, integrated technology, and a cooler palette push your style toward the contemporary edge. Think smart home meets tea ceremony.",
-    traits: ["Sharp Lines", "Cool Tones", "Tech-Integrated"],
-  },
-  natur: {
-    name: "Biophilic Naturalist",
-    desc: "Nature doesn't just inspire your space — it inhabits it. Living walls, abundant natural light, and organic forms blur the boundary between indoors and out. Every room feels like a garden pavilion.",
-    traits: ["Living Greenery", "Natural Light", "Indoor-Outdoor Flow"],
-  },
-  coast: {
-    name: "Seaside Naturalist",
-    desc: "Sea-washed restraint. Your clean aesthetic meets ocean-inspired calm — bleached woods, soft blues, and the texture of woven rope and linen. Spaces feel like a seaside retreat.",
-    traits: ["Ocean Calm", "Bleached Wood", "Soft Blues"],
-  },
-  dark: {
-    name: "Moody Naturalist",
-    desc: "Dramatic and contemplative. Deep charcoals, midnight blues, and rich walnut create spaces that envelop you. The restraint is still there, but it's wrapped in shadow and mystery.",
-    traits: ["Deep Tones", "Contemplative", "Shadow Play"],
-  },
-};
 
 const DEFAULT_VARIATION: StyleVariation = {
   name: "Evolved Naturalist",
@@ -122,6 +70,17 @@ export default function StepFourPage() {
     styleExplanation,
   } = useFingerprintStore();
   const setStyleExplanation = useFingerprintStore((s) => s.setStyleExplanation);
+  const setFingerprint = useFingerprintStore((s) => s.setFingerprint);
+
+  const [originalFingerprint] = useState(() =>
+    useFingerprintStore.getState().fingerprint
+  );
+  const [originalStyleName] = useState(() =>
+    useFingerprintStore.getState().styleName
+  );
+  const [originalStyleTags] = useState(() =>
+    useFingerprintStore.getState().styleTags
+  );
 
   // Map 12-dim fingerprint to 8 display dimensions
   const computedDimensions = useMemo(() => {
@@ -703,22 +662,56 @@ export default function StepFourPage() {
     };
   }, [computedDimensions]);
 
-  const submitTweak = () => {
+  const RESET_PHRASES = [
+    "go back", "original", "reset", "start over",
+    "my original", "undo", "restore", "first style",
+    "quiz result", "what i got",
+  ];
+
+  const submitTweak = async () => {
     const val = tweakInput.trim();
-    if (!val || tweakLoading) return;
-    setTweakLoading(true);
-    setTimeout(() => {
-      const lower = val.toLowerCase();
-      let picked: StyleVariation = DEFAULT_VARIATION;
-      for (const [key, variation] of Object.entries(STYLE_VARIATIONS)) {
-        if (lower.includes(key)) {
-          picked = variation;
-          break;
-        }
+    if (!val || tweakLoading || !fingerprint) return;
+
+    // Check for reset intent before calling the API
+    const lower = val.toLowerCase();
+    if (RESET_PHRASES.some((phrase) => lower.includes(phrase))) {
+      if (originalFingerprint) {
+        setFingerprint(originalFingerprint, originalStyleName ?? "", originalStyleTags);
+        setTweakResult({
+          name: originalStyleName || "Your Original Style",
+          desc: "Restored to your original style",
+          traits: originalStyleTags.length > 0 ? originalStyleTags : ["Original", "Quiz Result", "Your Style"],
+        });
       }
-      setTweakResult(picked);
+      return;
+    }
+
+    setTweakLoading(true);
+    try {
+      const res = await fetch("/api/quiz/tweak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fingerprint, tweakText: val }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as {
+        updatedFingerprint: typeof fingerprint;
+        styleName: string;
+        styleDescription: string;
+        styleTags: string[];
+      };
+      setFingerprint(data.updatedFingerprint, data.styleName, data.styleTags);
+      setTweakResult({
+        name: data.styleName,
+        desc: data.styleDescription,
+        traits: data.styleTags,
+      });
+    } catch (err) {
+      console.warn("[step-4] Tweak API failed:", err);
+      setTweakResult(DEFAULT_VARIATION);
+    } finally {
       setTweakLoading(false);
-    }, 1200);
+    }
   };
 
   return (
@@ -852,6 +845,7 @@ export default function StepFourPage() {
               placeholder="e.g. Make it warmer with more earth tones..."
               autoComplete="off"
               value={tweakInput}
+              disabled={tweakLoading}
               onChange={(e) => setTweakInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") submitTweak();
@@ -863,7 +857,11 @@ export default function StepFourPage() {
               onClick={submitTweak}
               disabled={tweakLoading}
             >
-              {tweakLoading ? "..." : "Reimagine"}
+              {tweakLoading ? (
+                <div className="tweak-loading-dots">
+                  <span /><span /><span />
+                </div>
+              ) : "Reimagine"}
             </button>
           </div>
           <div className={`tweak-result${tweakResult ? " visible" : ""}`}>

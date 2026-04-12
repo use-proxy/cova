@@ -1,0 +1,374 @@
+{
+  "colorSaturation": {
+    "high_avg": {
+      "colorSaturation": 0.77,
+      "colorTemperature": 0.43166666666666664,
+      "culturalInfluence": 0.47733333333333333,
+      "density": 0.5223333333333333,
+      "era": 0.48833333333333334,
+      "formality": 0.781,
+      "lightPreference": 0.6493333333333333,
+      "lineQuality": 0.4016666666666666,
+      "material": 0.6293333333333334,
+      "nature": 0.4433333333333333,
+      "pattern": 0.5816666666666667,
+      "texture": 0.6549999999999999
+    },
+    "low_avg": {
+      "colorSaturation": 0.17666666666666667,
+      "colorTemperature": 0.5333333333333333,
+      "culturalInfluence": 0.26666666666666666,
+      "density": 0.27166666666666667,
+      "era": 0.38666666666666666,
+      "formality": 0.6956666666666668,
+      "lightPreference": 0.8490000000000001,
+      "lineQuality": 0.42933333333333334,
+      "material": 0.7000000000000001,
+      "nature": 0.5083333333333333,
+      "pattern": 0.161,
+      "texture": 0.5926666666666667
+    },
+    "high_low_separation": 0.5933333333333334
+  },
+  "colorTemperature": {
+    "high_avg": {
+      "colorSaturation": 0.6263333333333333,
+      "colorTemperature": 0.8766666666666666,
+      "culturalInfluence": 0.308,
+      "density": 0.3833333333333333,
+      "era": 0.5093333333333333,
+      "formality": 0.7120000000000001,
+      "lightPreference": 0.802,
+      "lineQuality": 0.449,
+      "material": 0.7263333333333334,
+      "nature": 0.4630000000000001,
+      "pattern": 0.29933333333333334,
+      "texture": 0.6709999999999999
+    },
+    "low_avg": {
+      "colorSaturation": 0.13833333333333334,
+      "colorTemperature": 0.275,
+      "culturalInfluence": 0.21333333333333335,
+      "density": 0.22333333333333336,
+      "era": 0.2233333333333333,
+      "formality": 0.725,
+      "lightPreference": 0.8266666666666667,
+      "lineQuality": 0.3133333333333333,
+      "material": 0.5283333333333334,
+      "nature": 0.33166666666666667,
+      "pattern": 0.15,
+      "texture": 0.44
+    },
+    "high_low_separation": 0.6016666666666666
+  },
+  "culturalInfluence": {
+    "high_avg": {
+      "colorSaturation": 0.5653333333333334,
+      "colorTemperature": 0.7456666666666667,
+      "culturalInfluence": 0.6739999999999999,
+      "density": 0.5596666666666668,
+      "era": 0.648,
+      "formality": 0.7596666666666666,
+      "lightPreference": 0.7793333333333333,
+      "lineQuality": 0.5506666666666667,
+      "material": 0.7603333333333334,
+      "nature": 0.598,
+      "pattern": 0.6533333333333332,
+      "texture": 0.722
+    },
+    "low_avg": {
+      "colorSaturation": 0.19499999999999998,
+      "colorTemperature": 0.6,
+      "culturalInfluence": 0.259,
+      "density": 0.25666666666666665,
+      "era": 0.2883333333333334,
+      "formality": 0.6456666666666666,
+      "lightPreference": 0.8793333333333334,
+      "lineQuality": 0.40933333333333327,
+      "material": 0.73,
+      "nature": 0.539,
+      "pattern": 0.16,
+      "texture": 0.576
+    },
+    "high_low_separation": 0.4149999999999999
+  },
+  "density": {
+    "high_avg": {
+      "colorSaturation": 0.5066666666666667,
+      "colorTemperature": 0.694,
+      "culturalInfluence": 0.5650000000000001,
+      "density": 0.757,
+      "era": 0.65,
+      "formality": 0.6143333333333333,
+      "lightPreference": 0.7810000000000001,
+      "lineQuality": 0.5203333333333333,
+      "material": 0.7963333333333332,
+      "nature": 0.7926666666666667,
+      "pattern": 0.573,
+      "texture": 0.7493333333333333
+    },
+    "low_avg": {
+      "colorSaturation": 0.15,
+      "colorTemperature": 0.4400000000000001,
+      "culturalInfluence": 0.21666666666666667,
+      "density": 0.17833333333333332,
+      "era": 0.24166666666666667,
+      "formality": 0.68,
+      "lightPreference": 0.9066666666666667,
+      "lineQuality": 0.3666666666666667,
+      "material": 0.63,
+      "nature": 0.35666666666666663,
+      "pattern": 0.10333333333333333,
+      "texture": 0.4383333333333333
+    },
+    "high_low_separation": 0.5786666666666667
+  },
+  "era": {
+    "high_avg": {
+      "colorSaturation": 0.48066666666666674,
+      "colorTemperature": 0.7283333333333335,
+      "culturalInfluence": 0.3773333333333333,
+      "density": 0.5216666666666667,
+      "era": 0.7206666666666667,
+      "formality": 0.7263333333333334,
+      "lightPreference": 0.7120000000000001,
+      "lineQuality": 0.4983333333333333,
+      "material": 0.7483333333333334,
+      "nature": 0.44366666666666665,
+      "pattern": 0.48666666666666664,
+      "texture": 0.682
+    },
+    "low_avg": {
+      "colorSaturation": 0.25333333333333335,
+      "colorTemperature": 0.5516666666666667,
+      "culturalInfluence": 0.24,
+      "density": 0.27,
+      "era": 0.17,
+      "formality": 0.7633333333333333,
+      "lightPreference": 0.7983333333333332,
+      "lineQuality": 0.3316666666666667,
+      "material": 0.5833333333333334,
+      "nature": 0.35333333333333333,
+      "pattern": 0.20333333333333328,
+      "texture": 0.49833333333333335
+    },
+    "high_low_separation": 0.5506666666666666
+  },
+  "formality": {
+    "high_avg": {
+      "colorSaturation": 0.255,
+      "colorTemperature": 0.5983333333333333,
+      "culturalInfluence": 0.24733333333333332,
+      "density": 0.35600000000000004,
+      "era": 0.5626666666666668,
+      "formality": 0.8073333333333333,
+      "lightPreference": 0.8076666666666666,
+      "lineQuality": 0.3693333333333333,
+      "material": 0.669,
+      "nature": 0.3940000000000001,
+      "pattern": 0.24933333333333332,
+      "texture": 0.5593333333333335
+    },
+    "low_avg": {
+      "colorSaturation": 0.32666666666666666,
+      "colorTemperature": 0.6433333333333333,
+      "culturalInfluence": 0.36766666666666664,
+      "density": 0.4633333333333333,
+      "era": 0.4323333333333333,
+      "formality": 0.5743333333333334,
+      "lightPreference": 0.8210000000000001,
+      "lineQuality": 0.5183333333333334,
+      "material": 0.7616666666666667,
+      "nature": 0.6623333333333333,
+      "pattern": 0.2526666666666667,
+      "texture": 0.691
+    },
+    "high_low_separation": 0.23299999999999998
+  },
+  "lightPreference": {
+    "high_avg": {
+      "colorSaturation": 0.22166666666666668,
+      "colorTemperature": 0.52,
+      "culturalInfluence": 0.27666666666666667,
+      "density": 0.26666666666666666,
+      "era": 0.35166666666666674,
+      "formality": 0.6683333333333333,
+      "lightPreference": 0.9266666666666667,
+      "lineQuality": 0.40833333333333327,
+      "material": 0.6983333333333333,
+      "nature": 0.6633333333333332,
+      "pattern": 0.19833333333333336,
+      "texture": 0.5650000000000001
+    },
+    "low_avg": {
+      "colorSaturation": 0.16333333333333333,
+      "colorTemperature": 0.5716666666666667,
+      "culturalInfluence": 0.2816666666666667,
+      "density": 0.2883333333333334,
+      "era": 0.38666666666666666,
+      "formality": 0.705,
+      "lightPreference": 0.17166666666666666,
+      "lineQuality": 0.385,
+      "material": 0.6083333333333334,
+      "nature": 0.26666666666666666,
+      "pattern": 0.14166666666666666,
+      "texture": 0.5800000000000001
+    },
+    "high_low_separation": 0.7550000000000001
+  },
+  "lineQuality": {
+    "high_avg": {
+      "colorSaturation": 0.21166666666666667,
+      "colorTemperature": 0.5416666666666666,
+      "culturalInfluence": 0.211,
+      "density": 0.27499999999999997,
+      "era": 0.17166666666666666,
+      "formality": 0.7806666666666667,
+      "lightPreference": 0.8116666666666666,
+      "lineQuality": 0.3033333333333333,
+      "material": 0.5593333333333333,
+      "nature": 0.3106666666666667,
+      "pattern": 0.20166666666666666,
+      "texture": 0.511
+    },
+    "low_avg": {
+      "colorSaturation": 0.22833333333333336,
+      "colorTemperature": 0.6649999999999999,
+      "culturalInfluence": 0.2833333333333334,
+      "density": 0.26666666666666666,
+      "era": 0.26,
+      "formality": 0.7516666666666666,
+      "lightPreference": 0.8566666666666666,
+      "lineQuality": 0.6766666666666667,
+      "material": 0.66,
+      "nature": 0.43999999999999995,
+      "pattern": 0.155,
+      "texture": 0.5716666666666667
+    },
+    "high_low_separation": 0.37333333333333346
+  },
+  "material": {
+    "high_avg": {
+      "colorSaturation": 0.25999999999999995,
+      "colorTemperature": 0.7733333333333334,
+      "culturalInfluence": 0.39166666666666666,
+      "density": 0.33666666666666667,
+      "era": 0.5366666666666667,
+      "formality": 0.6406666666666666,
+      "lightPreference": 0.8083333333333335,
+      "lineQuality": 0.559,
+      "material": 0.8293333333333334,
+      "nature": 0.5866666666666668,
+      "pattern": 0.21333333333333335,
+      "texture": 0.7200000000000001
+    },
+    "low_avg": {
+      "colorSaturation": 0.27166666666666667,
+      "colorTemperature": 0.4933333333333334,
+      "culturalInfluence": 0.22666666666666666,
+      "density": 0.2916666666666667,
+      "era": 0.18333333333333335,
+      "formality": 0.7873333333333332,
+      "lightPreference": 0.8366666666666668,
+      "lineQuality": 0.29000000000000004,
+      "material": 0.5033333333333334,
+      "nature": 0.35833333333333334,
+      "pattern": 0.20499999999999996,
+      "texture": 0.42333333333333334
+    },
+    "high_low_separation": 0.32599999999999996
+  },
+  "nature": {
+    "high_avg": {
+      "colorSaturation": 0.4766666666666666,
+      "colorTemperature": 0.6116666666666667,
+      "culturalInfluence": 0.4703333333333333,
+      "density": 0.6816666666666666,
+      "era": 0.3833333333333333,
+      "formality": 0.5256666666666666,
+      "lightPreference": 0.8173333333333334,
+      "lineQuality": 0.6036666666666667,
+      "material": 0.798,
+      "nature": 0.935,
+      "pattern": 0.4556666666666667,
+      "texture": 0.7426666666666667
+    },
+    "low_avg": {
+      "colorSaturation": 0.2733333333333334,
+      "colorTemperature": 0.525,
+      "culturalInfluence": 0.305,
+      "density": 0.37000000000000005,
+      "era": 0.22666666666666666,
+      "formality": 0.6656666666666666,
+      "lightPreference": 0.8283333333333335,
+      "lineQuality": 0.38833333333333336,
+      "material": 0.6573333333333332,
+      "nature": 0.6676666666666665,
+      "pattern": 0.23666666666666666,
+      "texture": 0.5583333333333332
+    },
+    "high_low_separation": 0.26733333333333353
+  },
+  "pattern": {
+    "high_avg": {
+      "colorSaturation": 0.6579999999999999,
+      "colorTemperature": 0.66,
+      "culturalInfluence": 0.5990000000000001,
+      "density": 0.633,
+      "era": 0.6133333333333333,
+      "formality": 0.742,
+      "lightPreference": 0.774,
+      "lineQuality": 0.5073333333333333,
+      "material": 0.6806666666666666,
+      "nature": 0.56,
+      "pattern": 0.8463333333333334,
+      "texture": 0.6853333333333333
+    },
+    "low_avg": {
+      "colorSaturation": 0.36000000000000004,
+      "colorTemperature": 0.6083333333333334,
+      "culturalInfluence": 0.26166666666666666,
+      "density": 0.2916666666666667,
+      "era": 0.359,
+      "formality": 0.6996666666666668,
+      "lightPreference": 0.8300000000000001,
+      "lineQuality": 0.4316666666666667,
+      "material": 0.6743333333333333,
+      "nature": 0.4633333333333333,
+      "pattern": 0.18499999999999997,
+      "texture": 0.5616666666666666
+    },
+    "high_low_separation": 0.6613333333333334
+  },
+  "texture": {
+    "high_avg": {
+      "colorSaturation": 0.2816666666666667,
+      "colorTemperature": 0.7683333333333334,
+      "culturalInfluence": 0.49833333333333335,
+      "density": 0.36000000000000004,
+      "era": 0.5443333333333334,
+      "formality": 0.6323333333333334,
+      "lightPreference": 0.809,
+      "lineQuality": 0.604,
+      "material": 0.806,
+      "nature": 0.6116666666666667,
+      "pattern": 0.3066666666666667,
+      "texture": 0.7533333333333333
+    },
+    "low_avg": {
+      "colorSaturation": 0.21999999999999997,
+      "colorTemperature": 0.5366666666666667,
+      "culturalInfluence": 0.22333333333333336,
+      "density": 0.26666666666666666,
+      "era": 0.23666666666666666,
+      "formality": 0.8116666666666666,
+      "lightPreference": 0.8483333333333333,
+      "lineQuality": 0.305,
+      "material": 0.5750000000000001,
+      "nature": 0.35000000000000003,
+      "pattern": 0.20666666666666667,
+      "texture": 0.5
+    },
+    "high_low_separation": 0.2533333333333333
+  }
+}

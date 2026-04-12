@@ -3,6 +3,7 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import type { StyleFingerprint } from "@/types/fingerprint";
 import { toDisplayName } from "@/lib/ai/anchor-display";
+import { NEUTRAL_MIDPOINT, softmaxStyleMatch } from "@/lib/ai/style-match";
 
 // ── 12-dimension system ───────────────────────────────────────────────────────
 // All dimensions are in [0, 1] with 0.5 as the neutral midpoint.
@@ -54,114 +55,7 @@ type DimKey = (typeof DIMENSION_ORDER)[number];
 
 const DIM_COUNT = DIMENSION_ORDER.length; // 12
 
-const NEUTRAL_MIDPOINT = 0.5;
 const STRONG_BAND = 0.2; // |v - 0.5| > 0.2 → directional
-
-// ── 9 named anchor styles ─────────────────────────────────────────────────────
-// Vectors in DIMENSION_ORDER. Sourced from the quiz library spec — these are
-// the same vectors used to generate the quiz_anchor_images library. Style
-// names are INTERNAL ONLY and never surfaced to user-facing UI strings
-// (CLAUDE.md hard rule #8).
-
-interface StyleDefinition {
-  name: string;
-  chips: string[];
-  center: number[];
-}
-
-const STYLES: StyleDefinition[] = [
-  {
-    name: "Warm Japandi",
-    chips: [
-      "warm neutrals",
-      "organic textures",
-      "natural materials",
-      "minimal layers",
-    ],
-    center: [0.8, 0.25, 0.3, 0.4, 0.45, 0.85, 0.55, 0.1, 0.75, 0.65, 0.6, 0.25],
-  },
-  {
-    name: "Dark Moody Glam",
-    chips: [
-      "dramatic depth",
-      "velvet richness",
-      "brass accents",
-      "jewel tones",
-    ],
-    center: [0.25, 0.8, 0.65, 0.85, 0.35, 0.25, 0.8, 0.55, 0.2, 0.1, 0.05, 0.3],
-  },
-  {
-    name: "Coastal Bright",
-    chips: [
-      "airy whites",
-      "natural rattan",
-      "sea breeze palette",
-      "sun-filled",
-    ],
-    center: [0.5, 0.2, 0.35, 0.25, 0.4, 0.7, 0.3, 0.2, 0.6, 0.95, 0.75, 0.2],
-  },
-  {
-    name: "Industrial Loft",
-    chips: ["raw concrete", "aged leather", "matte black steel", "urban grit"],
-    center: [
-      0.15, 0.3, 0.55, 0.5, 0.3, 0.05, 0.45, 0.05, 0.05, 0.5, 0.05, 0.15,
-    ],
-  },
-  {
-    name: "Maximalist Eclectic",
-    chips: [
-      "bold pattern",
-      "layered color",
-      "global influences",
-      "curated chaos",
-    ],
-    center: [0.6, 0.9, 0.95, 0.3, 0.5, 0.6, 0.85, 0.95, 0.7, 0.6, 0.65, 0.9],
-  },
-  {
-    name: "Heritage Traditional",
-    chips: ["mahogany panel", "tufted leather", "ornate detail", "old library"],
-    center: [
-      0.55, 0.45, 0.7, 0.95, 0.95, 0.8, 0.8, 0.85, 0.25, 0.45, 0.2, 0.35,
-    ],
-  },
-  {
-    name: "Pure Minimal White",
-    chips: [
-      "architectural calm",
-      "pristine white",
-      "zero clutter",
-      "silent space",
-    ],
-    center: [0.3, 0.05, 0.05, 0.55, 0.1, 0.2, 0.05, 0.0, 0.1, 0.9, 0.15, 0.1],
-  },
-  {
-    name: "Biophilic Jungle",
-    chips: [
-      "floor-to-ceiling plants",
-      "natural stone",
-      "wood beams",
-      "living walls",
-    ],
-    center: [0.65, 0.55, 0.75, 0.2, 0.25, 0.95, 0.7, 0.3, 0.8, 0.7, 1.0, 0.5],
-  },
-  {
-    name: "Retro Mid-Century",
-    chips: [
-      "walnut tapered legs",
-      "avocado and ochre",
-      "sunburst motif",
-      "1960s vibe",
-    ],
-    center: [0.7, 0.65, 0.45, 0.6, 0.75, 0.65, 0.4, 0.7, 0.35, 0.65, 0.35, 0.3],
-  },
-];
-
-// Per-dimension weights for weighted Euclidean style matching. Tuned so that
-// the most discriminative anchor dimensions (color, light, material, era)
-// dominate the distance metric.
-const DIMENSION_MATCH_WEIGHTS: number[] = [
-  1.5, 1.2, 1.1, 0.9, 1.0, 1.3, 0.9, 1.0, 0.9, 1.4, 1.2, 0.8,
-];
 
 // ── New 3-phase fingerprint computation ───────────────────────────────────────
 
@@ -325,8 +219,9 @@ async function computeNewFingerprint(body: NewFingerprintRequest): Promise<{
     confidence,
   };
 
-  // ── Step 3 — Style name from weighted distance to anchors ─────────────────
+  // ── Step 3 — Style name from softmax-weighted blend ──────────────────────
   const d = fingerprint.dimensions;
+  const fpVec = DIMENSION_ORDER.map((k) => d[k]);
   const strongDims = DIMENSION_ORDER.filter(
     (k) => Math.abs(d[k] - NEUTRAL_MIDPOINT) > STRONG_BAND,
   );
@@ -335,8 +230,16 @@ async function computeNewFingerprint(body: NewFingerprintRequest): Promise<{
   if (strongDims.length === 0) {
     styleName = "Your Unique Style";
   } else {
-    const fpVec = DIMENSION_ORDER.map((k) => d[k]);
-    styleName = toDisplayName(matchStyle(fpVec).name);
+    const result = softmaxStyleMatch(fpVec);
+    if (result.isNeutral) {
+      styleName = "Your Unique Style";
+    } else if (result.blendRatio >= 0.60 || result.secondaryStyle === null) {
+      styleName = toDisplayName(result.primaryStyle.name);
+    } else {
+      const primaryName = toDisplayName(result.primaryStyle.name);
+      const secondaryName = toDisplayName(result.secondaryStyle.name);
+      styleName = `${primaryName} · ${secondaryName}`;
+    }
   }
 
   // ── Step 4 — Style tags (only directional dimensions) ─────────────────────
@@ -383,44 +286,6 @@ async function computeNewFingerprint(body: NewFingerprintRequest): Promise<{
   }
 
   return { fingerprint, styleName, styleTags };
-}
-
-// ── Style matching ────────────────────────────────────────────────────────────
-
-// Change 5 — Weighted cosine similarity (centered around 0.5) replaces
-// Euclidean distance. A fingerprint that strongly points in the direction of
-// a style matches it even at moderate magnitude — Euclidean penalised
-// mid-strength fingerprints and pulled them toward moderate styles.
-function matchStyle(fp: number[]): StyleDefinition {
-  const fpCentered = fp.map((v) => v - NEUTRAL_MIDPOINT);
-
-  let bestStyle = STYLES[0]!;
-  let bestSim = -Infinity;
-
-  for (const style of STYLES) {
-    const styleCentered = style.center.map((v) => v - NEUTRAL_MIDPOINT);
-
-    let dot = 0;
-    let fpNorm = 0;
-    let styleNorm = 0;
-    for (let i = 0; i < fpCentered.length; i++) {
-      const w = DIMENSION_MATCH_WEIGHTS[i] ?? 1.0;
-      dot += fpCentered[i]! * styleCentered[i]! * w;
-      fpNorm += fpCentered[i]! * fpCentered[i]! * w;
-      styleNorm += styleCentered[i]! * styleCentered[i]! * w;
-    }
-
-    const sim =
-      fpNorm === 0 || styleNorm === 0
-        ? 0
-        : dot / (Math.sqrt(fpNorm) * Math.sqrt(styleNorm));
-
-    if (sim > bestSim) {
-      bestSim = sim;
-      bestStyle = style;
-    }
-  }
-  return bestStyle;
 }
 
 function fingerprintToStyleTags(fp: StyleFingerprint): string[] {
@@ -482,7 +347,16 @@ export async function POST(request: Request) {
           styleName = "Your Unique Style";
         } else {
           const fpVec = DIMENSION_ORDER.map((k) => d[k] ?? NEUTRAL_MIDPOINT);
-          styleName = toDisplayName(matchStyle(fpVec).name);
+          const result = softmaxStyleMatch(fpVec);
+          if (result.isNeutral) {
+            styleName = "Your Unique Style";
+          } else if (result.blendRatio >= 0.60 || result.secondaryStyle === null) {
+            styleName = toDisplayName(result.primaryStyle.name);
+          } else {
+            const primaryName = toDisplayName(result.primaryStyle.name);
+            const secondaryName = toDisplayName(result.secondaryStyle.name);
+            styleName = `${primaryName} · ${secondaryName}`;
+          }
         }
         styleTags = fingerprintToStyleTags(fingerprint).slice(0, 4);
       } else {
