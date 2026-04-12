@@ -148,7 +148,7 @@ export default function Step7cKeepOrRemove() {
       const { data: rooms } = await supabase
         .from("rooms")
         .select(
-          "id, pre_detection_result, photo_url, original_image_url, original_photo_url",
+          "id, pre_detection_result, original_image_url, original_photo_url",
         )
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
@@ -158,10 +158,7 @@ export default function Step7cKeepOrRemove() {
 
       const room = rooms?.[0];
       const photo =
-        room?.photo_url ??
-        room?.original_image_url ??
-        room?.original_photo_url ??
-        null;
+        room?.original_image_url ?? room?.original_photo_url ?? null;
       if (photo) setRoomPhotoUrl(photo);
 
       const raw = room?.pre_detection_result;
@@ -327,6 +324,43 @@ export default function Step7cKeepOrRemove() {
           await supabase
             .from("rooms")
             .update({ keep_remove_decisions: decisions })
+            .eq("id", roomId);
+
+          // Fix 9: persist keepMask into render_context
+          const { data: existingRoom } = await supabase
+            .from("rooms")
+            .select("render_context")
+            .eq("id", roomId)
+            .single();
+
+          const existingCtx =
+            (existingRoom?.render_context as Record<string, unknown>) ?? {};
+
+          await supabase
+            .from("rooms")
+            .update({
+              render_context: {
+                ...existingCtx,
+                keepMask: {
+                  objects: items.map((item) => ({
+                    id: String(item.id),
+                    type: item.name,
+                    bbox: [0, 0, 0, 0],
+                    confidence: 1,
+                    confidenceTier: "show-user",
+                    keep: item.decision === "keep",
+                    immovable: !!item.isFixed,
+                    material: item.material,
+                    dominantColor: item.dominantColor,
+                    sizeInRoom: item.sizeInRoom,
+                    styleDescriptors: item.styleDescriptors,
+                  })),
+                  depthMapUrl: "",
+                  rawDetectionCount: items.length,
+                  detectionModelVersion: "user-selection",
+                },
+              },
+            })
             .eq("id", roomId);
         }
       }

@@ -867,7 +867,33 @@ export function buildAnchorFallbackPrompt(
     cameraAngle: rawCamera,
     focalLength: rawFocal,
   } = params;
-  void params.fingerprint; // reserved for future descriptor weighting
+  const fp = params.fingerprint?.dimensions;
+  const fingerprintClause = fp
+    ? [
+        fp.colorTemperature > 0.7
+          ? "warm amber color palette"
+          : fp.colorTemperature < 0.3
+            ? "cool slate color palette"
+            : "",
+        fp.material > 0.6
+          ? "natural organic materials"
+          : fp.material < 0.4
+            ? "sleek manufactured materials"
+            : "",
+        fp.lightPreference > 0.6
+          ? "bright daylight lighting"
+          : fp.lightPreference < 0.4
+            ? "cozy warm lighting"
+            : "",
+        fp.density > 0.6
+          ? "richly layered atmosphere"
+          : fp.density < 0.4
+            ? "sparse minimal atmosphere"
+            : "",
+      ]
+        .filter(Boolean)
+        .join(", ")
+    : "";
 
   const direction = deriveReplacementDirection(styleBlend);
   const kept = (context?.keepMask?.objects ?? []).filter(
@@ -1027,6 +1053,7 @@ export function buildAnchorFallbackPrompt(
 
   const sections = [
     transformationLine,
+    fingerprintClause,
     anchorsBlock,
     vacatedBlock,
     structural.join(" "),
@@ -1046,6 +1073,7 @@ export function buildAnchorFallbackPrompt(
   if (wordCount > 400) {
     const trimmed = [
       transformationLine,
+      fingerprintClause,
       anchorsBlock,
       vacatedBlock,
       finalConstraint,
@@ -1204,7 +1232,7 @@ export function buildFluxPromptFromContext(context: RenderContext): string {
 
   // ─── SECTION 5 — MATERIALS (flooring is a hard preservation constraint) ─
   if (rc) {
-    const floorLower = rc.floorMaterial.toLowerCase();
+    const floorLower = (rc.floorMaterial ?? "").toLowerCase();
     const isHardwood =
       floorLower.includes("hardwood") || floorLower.includes("wood");
     const keepFlooring =

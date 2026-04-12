@@ -44,59 +44,108 @@ function deriveReplacementDirection(
   return STYLE_DIRECTION_MAP[top] ?? "contemporary";
 }
 
-const SYSTEM_PROMPT_TEMPLATE = `You are a FLUX Kontext Pro prompt engineer specializing in interior design transformations.
+function deriveReplacementDirectionFromDimensions(
+  dimensions: Record<string, number>,
+): string {
+  const parts: string[] = [];
+  const colorTemp = dimensions.colorTemperature ?? 0.5;
+  const density = dimensions.density ?? 0.5;
+  const era = dimensions.era ?? 0.5;
+  const pattern = dimensions.pattern ?? 0.5;
+  const material = dimensions.material ?? 0.5;
+  const culturalInfluence = dimensions.culturalInfluence ?? 0.5;
 
-FLUX Kontext Pro is an image EDIT model. It receives the user's actual room photo as input_image and edits it according to your prompt. Its default behavior is PRESERVATION — it only changes what the prompt explicitly targets. The failure mode is over-editing caused by vague prompts that fail to frame kept items as anchors. Your job is to prevent that.
+  // Color temperature — mutually exclusive
+  if (colorTemp < 0.35) parts.push("cool slate and sage toned");
+  else if (colorTemp > 0.65) parts.push("warm amber and terracotta toned");
 
-THE FOUR RULES (apply in order, every time):
+  // Density
+  if (density > 0.7) parts.push("richly layered");
+  else if (density < 0.3) parts.push("spare and minimal");
+
+  // Pattern
+  if (pattern > 0.7) parts.push("pattern-rich");
+  else if (pattern < 0.3) parts.push("pattern-free");
+
+  // Era
+  if (era < 0.35) parts.push("heritage and vintage-inflected");
+  else if (era > 0.65) parts.push("contemporary clean-lined");
+
+  // Material
+  if (material > 0.65) parts.push("natural organic");
+  else if (material < 0.35) parts.push("sleek manufactured");
+
+  // Cultural
+  if (culturalInfluence > 0.65) parts.push("globally eclectic");
+
+  return parts.length > 0 ? parts.join(", ") : "contemporary";
+}
+
+const SYSTEM_PROMPT_TEMPLATE = `You are an elite FLUX Kontext Pro prompt engineer specializing in photorealistic interior design transformations.
+
+FLUX Kontext Pro is an image EDIT model. It receives the user's actual room photo as input_image and edits it in-place. Its default behavior is PRESERVATION — it only changes what the prompt explicitly targets. CRITICAL: Never instruct FLUX to change the camera angle, viewpoint, focal length, or room perspective. The camera is always locked to the original photo exactly.
+
+THE FOUR RULES (mandatory, every time):
 
 RULE 1 — KEPT ITEMS ARE ANCHORS (never "preserve the X").
 After the transformation sentence, emit a block titled exactly:
   "Anchoring pieces — treat these as fixed. Do not alter their color, material, form, or position:"
-List each kept item as ONE bullet that uses EVERY available enriched field for that item (label, dominantColor, material, sizeInRoom, styleDescriptors, userNote). Build sentences like:
+List each kept item as ONE bullet using ALL enriched fields (dominantColor, material, sizeInRoom, styleDescriptors, userNote). Example:
   • The existing cream linen sofa — low-profile silhouette, tufted back, tapered oak legs, large — is the primary anchor. Every new element must complement it.
-If an enriched field is null for a given item, omit that field silently. If only the label is present, fall back to: "• The existing [label] is an anchor — do not alter its color, material, form, or position." Never invent descriptors.
+Never invent descriptors. If only label is known: "• The existing [label] is an anchor — do not alter its color, material, form, or position."
+For large kept items (sizeInRoom === "large"), append: "[label] is the PRIMARY ANCHOR and the most important fixed element in this room. Every design decision must harmonize with it."
+If floorMaterial is present in roomContext, add a floor anchor bullet: "• The existing [floorMaterial] flooring is a fixed anchor — do not replace it with hardwood, tile, or any other material."
+ALWAYS add a wall anchor bullet: "• The existing wall color and wall surfaces are fixed anchors — do not repaint, recolor, add wallpaper, or change wall texture in any zone." If wallColor is provided in roomContext or roomAnalysis, name the specific color.
 
 RULE 2 — REMOVED ITEMS ARE VACATED ZONES (never just "remove the X").
 After anchors, emit a block titled exactly:
   "Vacated zones — redesign these areas completely:"
-For each removed item, name the zone and give a specific replacement direction derived from the provided _replacementDirection field:
-  • Coffee table zone (center of seating area): introduce a low japandi-appropriate replacement.
-  • Floor lamp zone: redesign this corner's lighting entirely with a warm intimate lamp-lit mood.
-  • Accent chair zone: introduce japandi-appropriate seating here.
+For EACH vacated zone write 2-3 sentences specifying: (a) exact replacement piece with specific material and finish name, (b) spatial relationship to anchors, (c) one layered styling detail. Example:
+  • Desk zone: introduce a solid white oak writing desk with hairpin legs — positioned flush against the wall. Style with a ceramic table lamp in warm terracotta, a stack of 3 linen-spined art books, and a trailing pothos in a matte black pot.
+  • Office chair zone: replace with a curved bouclé accent chair in warm ivory with a chunky knit throw in oatmeal draped over one arm.
 
-RULE 3 — TRANSFORMATION INSTRUCTION IS CHANGE-FOCUSED.
-The opening sentence names what CHANGES, not what stays. Example:
-  "Transform the coffee table zone, floor lamp zone, and accent chair zone into a japandi-appropriate living room. Introduce new pieces that work with the anchoring sofa and rug."
-Never write "Redesign while preserving the X."
+RULE 3 — TRANSFORMATION SENTENCE IS CHANGE-FOCUSED.
+Open with what CHANGES. Name every vacated zone explicitly. Never write "redesign while preserving."
 
-RULE 4 — FINAL ANCHOR REMINDER (last sentence, always).
-End with exactly:
-  "Final constraint: [comma-separated list of kept item labels] must appear identical to the input image — same position, color, material, and form. Only the vacated zones are to be redesigned."
+RULE 4 — FINAL ANCHOR CONSTRAINT (last sentence always).
+"Final constraint: [kept item labels] must appear identical to the input image — same position, color, material, and form. Only the vacated zones are to be redesigned."
 
 OUTPUT CONTRACT (strictly enforced):
-- 100-400 words.
+- 100-1400 words.
 - Section order:
-  1. Transformation sentence [Rule 3].
-  2. Anchoring pieces block [Rule 1].
-  3. Vacated zones block [Rule 2].
-  4. Structural context — ceiling height (parsed from roomContext.ceilingDetail), architectural fixtures from architecturalFeatures + roomConstraints.physicalConstraints, flooring keep/replace from floorMaterial + the "keep existing flooring"/"replace existing flooring" entry, natural light time + window count.
-  5. Requested products — one line per confirmedByUser requestedProduct.
-  6. Protected areas and special requirements (only if present).
-  7. Style reference directive: "Apply the aesthetic from the reference image to the vacated zones only — not to the anchoring pieces."
-  8. Art direction / tech spec / sensory profile lines, only if those objects are present.
-  9. Budget line — exact "Budget: $X–$Y (tier tier)" string from budgetReconciled.
-  10. Rule 4 final constraint sentence.
-  11. Closer: "Photorealistic interior photograph, __CAMERA_ANGLE__, __FOCAL_LENGTH__, f/8. No people, no text."
+  1. Transformation sentence [Rule 3]
+  2. Anchoring pieces block [Rule 1]
+  3. Vacated zones block [Rule 2] — for EACH vacated zone write exactly:
+     (a) Primary furniture piece — name, exact material with trade name, finish, approximate dimensions
+     (b) One secondary accent piece
+     (c) Decor cluster — 3+ objects with species/material names (e.g. fiddle leaf fig, hand-thrown stoneware, linen-spined books)
+     (d) Spatial relationship to anchors
+     Fewer than 4 elements per zone = failure. Be generous. More is more.
+  4. Materials line: "New materials: [3-5 specific trade-name materials e.g. rift-sawn white oak, honed travertine, bouclé, brushed brass, jute]"
+  5. Decor layering: "Layer with: [specific decorative objects — ceramic vessels, art books, plants with species, textiles, trays]" — always include at least one plant, one textile, one vessel
+  6. Structural context — ceiling, fixtures, flooring, natural light. Always include: "Wall color: [wallColor] — fixed, do not alter."
+  7. Requested products (if present)
+  8. Tech spec / art / sensory (if present)
+  9. Budget line (if present)
+  10. Style reference directive (if anchorPrompt present)
+  11. Rule 4 final constraint
+  12. Closer: "Photorealistic interior photograph, same camera angle as the input image. No people, no text."
 
 HARD RULES:
-1. Every style adjective must be traceable to a fingerprint dimension value, a keepMask enriched field, or an explicit user input. Zero filler, zero invented descriptors.
-2. Fingerprint dimensions with |value - 0.5| < 0.15 contribute NOTHING.
-3. Dimensions with |value - 0.5| >= 0.15 MUST appear.
-4. Use specific material names — never abstract words like "modern", "cozy", "stylish".
-5. Never use internal anchor labels verbatim: warm japandi, pure minimal white, coastal bright, biophilic jungle, dark moody glam, heritage traditional, industrial loft, maximalist eclectic, retro mid-century. Use the provided _replacementDirection field instead.
-6. If a data field is null or an object is absent, omit that line entirely. Never fabricate.
-7. Return ONLY the prompt. No preamble, no explanation, no markdown, no quotes.`;
+1. Use SPECIFIC material names — "hand-knotted wool kilim" not "rug", "rattan cane-back" not "chair", "smoked oak veneer" not "wood", "aged brass" not "metal", "crinkled linen" not "fabric".
+2. Every fingerprint dimension with |value - 0.5| >= 0.15 MUST appear as a concrete material, pattern, or object choice. High density (>0.7) means at least 10 distinct objects in the render. High pattern (>0.7) means visible textile patterns, wallpaper, or printed cushions.
+3. MINIMUM DECOR REQUIREMENT: Every render must contain — at minimum — 3 plants (name species: fiddle leaf fig, trailing pothos, snake plant, olive tree, etc.), 2 textile layers (throw + cushions or curtains + rug), 1 vessel cluster (3 objects of graduated height), 1 stack of books, 1 piece of wall art. If the user's density dimension > 0.7, double all of these.
+4. NEVER change the floor material. State it explicitly as an anchor in the anchoring pieces block.
+5. NEVER use camera model names. NEVER change viewpoint.
+6. NEVER use forbidden style names verbatim: warm japandi, pure minimal white, coastal bright, biophilic jungle, dark moody glam, heritage traditional, industrial loft, maximalist eclectic, retro mid-century. Use _replacementDirection instead.
+7. Never fabricate kept item descriptors.
+8. Return ONLY the prompt. No preamble, no markdown.
+9. NEVER include camera brand names (Canon, Sony, Nikon, Leica) or lens specs (35mm f/1.8) — these cause FLUX to reframe the shot.
+10. NEVER change the floor material — state it explicitly as a fixed anchor.
+11. The bed (or primary large kept item) is the PRIMARY ANCHOR — state this prominently and repeat it in the final constraint.
+12. Specify warm 2700K lamp lighting if lightPreference < 0.4, bright diffused daylight if lightPreference > 0.6.
+13. NEVER change wall color, wall texture, or ceiling color. These are always fixed anchors regardless of the fingerprint color direction. Color direction applies ONLY to furniture, textiles, and decorative objects.
+14. NEVER suggest painting walls or adding wallpaper unless roomConstraints.wallPermanence === "own-anything-goes" AND the user explicitly requested it in chat_context.`;
 
 export async function compilePromptWithClaude(
   context: RenderContext | null,
@@ -104,6 +153,7 @@ export async function compilePromptWithClaude(
   fingerprint: StyleFingerprint,
   anchorPrompt: string | null = null,
   roomAnalysis: RoomArchitecture | null = null,
+  chatContext: Record<string, Array<{ role: string; content: string }>> | null = null,
 ): Promise<string | null> {
   try {
     const fp = fingerprint;
@@ -113,9 +163,10 @@ export async function compilePromptWithClaude(
       ? `\n\nAnchor style reference prompt (high priority): ${anchorPrompt}\nWeight this heavily — it captures the user's confirmed visual preference, but apply it only to the vacated zones, never to the anchoring pieces.`
       : "";
 
-    const replacementDirection = deriveReplacementDirection(
-      context?.styleBlend ?? context?.style_blend ?? null,
-    );
+    // Derive replacement direction from real fingerprint dimensions (more accurate than style_blend)
+    const replacementDirection = fp.dimensions
+      ? deriveReplacementDirectionFromDimensions(fp.dimensions)
+      : deriveReplacementDirection(context?.styleBlend ?? context?.style_blend ?? null);
 
     const keptObjects =
       context?.keepMask?.objects?.filter((o) => o.keep || o.immovable) ?? [];
@@ -154,6 +205,8 @@ export async function compilePromptWithClaude(
             windowCount: context?.roomContext.windowCount,
             architecturalFeatures: context?.roomContext.architecturalFeatures,
             floorMaterial: context?.roomContext.floorMaterial,
+            wallColor: context?.roomContext.wallColor,
+            hasAccentWall: context?.roomContext.hasAccentWall,
             userNotes: context?.roomContext.userNotes,
           }
         : null,
@@ -285,24 +338,28 @@ export async function compilePromptWithClaude(
       roomAnalysis?.cameraAngle ??
       context?.roomContext?.cameraAngle ??
       "straight-on view";
-    const focalLength =
-      roomAnalysis?.focalLength ?? context?.roomContext?.focalLength ?? "24mm";
 
-    const resolvedSystemPrompt = SYSTEM_PROMPT_TEMPLATE.replace(
-      "__CAMERA_ANGLE__",
-      String(cameraAngle),
-    ).replace("__FOCAL_LENGTH__", String(focalLength));
+    const resolvedSystemPrompt = SYSTEM_PROMPT_TEMPLATE;
+    const chatSuffix = chatContext
+      ? `\n\nAdditional user preferences from chat (extract any TV, plant, lighting, density, or material mentions and incorporate):\n${JSON.stringify(chatContext, null, 2)}`
+      : "";
 
-    const userContent = `Compile a FLUX Kontext Pro edit prompt from this design profile. Apply Rules 1-4 strictly. Use _replacementDirection="${replacementDirection}" wherever a style direction is needed in vacated zone bullets.\n\n${JSON.stringify(
-      compressedContext,
-      null,
-      2,
-    )}`;
+    const dims = fp.dimensions;
+    const dimensionInterpretation = [
+      `COLOR DIRECTION (applies to furniture and objects ONLY, never walls): ${dims.colorTemperature < 0.35 ? "COOL — use slate grey, dusty sage, dove white, stone blue for new furniture and objects. NO warm tones." : dims.colorTemperature > 0.65 ? "WARM — use amber, terracotta, warm oak, cream for new furniture and objects. NO cool tones." : "NEUTRAL GREIGE — warm whites and natural tones"}`,
+      `LIGHT: ${dims.lightPreference < 0.35 ? "COZY LAMP-LIT — warm pools of 2700K light, no overhead harshness, candles" : dims.lightPreference > 0.65 ? "BRIGHT DAYLIGHT — white surfaces, diffused natural light, sheer curtains" : "MIXED AMBIENT"}`,
+      `DENSITY: ${dims.density > 0.75 ? "MAXIMALLY LAYERED — pile on objects, books, plants, textiles. 12+ distinct design elements mandatory" : dims.density < 0.3 ? "MINIMAL — 4-5 elements, breathing room, negative space" : "BALANCED LAYERING"}`,
+      `PATTERN: ${dims.pattern > 0.7 ? "PATTERN-RICH — printed cushions, patterned kilim rug, textured wallcovering or tapestry mandatory" : dims.pattern < 0.3 ? "SOLID COLORS ONLY — no prints, no patterns" : "SUBTLE TEXTURE ONLY"}`,
+      `ERA: ${dims.era < 0.35 ? "HERITAGE/VINTAGE — aged brass, antique frames, distressed leather, heirloom objects, wabi-sabi imperfection" : dims.era > 0.65 ? "CONTEMPORARY CLEAN — minimal ornament, geometric forms" : "TRANSITIONAL"}`,
+      `MATERIAL: ${dims.material > 0.65 ? "NATURAL ORGANIC — rattan, jute, linen, raw terracotta, hand-thrown ceramics, live-edge wood" : dims.material < 0.35 ? "MANUFACTURED — lacquer, powder-coat steel, glass, resin, polished concrete" : "MIX OF NATURAL AND MANUFACTURED"}`,
+      `CULTURAL: ${dims.culturalInfluence > 0.6 ? "GLOBALLY ECLECTIC — intentionally mix Moroccan, Japanese wabi-sabi, Scandinavian hygge, or African textile elements" : "WESTERN CONTEMPORARY"}`,
+    ].join("\n");
 
+    const userContent = `${dimensionInterpretation}\n\nCompile a FLUX Kontext Pro edit prompt from this design profile. Apply all rules and the full quality formula strictly. Use _replacementDirection="${replacementDirection}" for vacated zone styling. Camera angle: ${cameraAngle}.\n\n${JSON.stringify(compressedContext, null, 2)}${chatSuffix}`;
     const callClaude = async (): Promise<string | null> => {
       const response = await anthropic.messages.create({
         model: "claude-sonnet-4-6",
-        max_tokens: 700,
+        max_tokens: 1500,
         messages: [{ role: "user", content: userContent }],
         system: resolvedSystemPrompt + anchorSystem,
       });
@@ -316,15 +373,18 @@ export async function compilePromptWithClaude(
       const candidate = await callClaude();
       const count = candidate ? candidate.split(/\s+/).length : 0;
       console.warn(`[compiler] attempt ${attempt} word count:`, count);
-      if (candidate && count >= 100 && count <= 400) {
+      if (candidate && count >= 100 && count <= 1400) {
         compiled = candidate;
         break;
       }
     }
 
     if (!compiled) {
+      // Log the last candidate's details for debugging
+      const lastCandidate = await callClaude().catch(() => null);
+      const lastCount = lastCandidate ? lastCandidate.split(/\s+/).length : 0;
       console.warn(
-        `[prompt-compiler] Claude output outside 100-400 range after 2 attempts, falling back`,
+        `[prompt-compiler] Claude output outside 100-1400 range after 2 attempts, falling back. Last word count: ${lastCount}, preview: ${lastCandidate?.slice(0, 200) ?? "null"}`,
       );
       return null;
     }

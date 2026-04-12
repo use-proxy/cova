@@ -390,13 +390,17 @@ export const useArea2Store = create<Area2Store>()(
       // Assembly
       assembleRenderContext: (userId) => {
         const s = get();
-        if (
-          !s.roomId ||
-          !s.roomContext ||
-          !s.roomConstraints ||
-          !s.keepMask ||
-          !s.budget
-        ) {
+        console.log(
+          "[assemble] roomId:",
+          s.roomId,
+          "roomContext:",
+          !!s.roomContext,
+          "roomConstraints:",
+          !!s.roomConstraints,
+          "keepMask:",
+          !!s.keepMask,
+        );
+        if (!s.roomId || !s.roomConstraints || !s.keepMask) {
           return null;
         }
         const tabsComplete = s.tabStates
@@ -415,10 +419,15 @@ export const useArea2Store = create<Area2Store>()(
           roomId: s.roomId,
           userId,
           assembledAt: new Date().toISOString(),
-          roomContext: s.roomContext,
+          roomContext: s.roomContext ?? ({} as RoomContext),
           roomConstraints: s.roomConstraints,
           keepMask: s.keepMask,
-          budget: s.budget,
+          budget: s.budget ?? {
+            rangeMin: 0,
+            rangeMax: 5000,
+            strategy: "even-quality" as const,
+            hardCeiling: false,
+          },
           requestedProducts: s.requestedProducts,
           artBrief: s.artBrief ?? defaultArtBrief(),
           techSpec: s.techSpec ?? defaultTechSpec(),

@@ -44,6 +44,7 @@ interface UserRow {
 
 interface RedesignBody {
   room_id?: string;
+  chat_context?: Record<string, Array<{ role: string; content: string }>> | null;
 }
 
 export async function POST(request: Request) {
@@ -57,7 +58,7 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json()) as RedesignBody;
-  const { room_id } = body;
+  const { room_id, chat_context } = body;
 
   if (!room_id) {
     return NextResponse.json({ error: "room_id is required" }, { status: 400 });
@@ -176,6 +177,7 @@ export async function POST(request: Request) {
       fingerprint,
       anchorPrompt,
       roomAnalysis,
+      chat_context ?? null,
     ).catch(() => null);
 
     // Fallback: anchor-strategy prompt if Claude compile fails. This

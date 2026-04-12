@@ -98,7 +98,7 @@ export default function RevealStep8A() {
         const resolvedRoomId = storeRoomId ?? urlRoomId ?? null;
         let roomQuery = supabase
           .from("rooms")
-          .select("render_url, redesign_pano_url, fingerprint_id, created_at")
+          .select("render_url, redesign_pano_url, created_at")
           .eq("user_id", user.id);
         if (resolvedRoomId) {
           roomQuery = roomQuery.eq("id", resolvedRoomId);
@@ -114,38 +114,16 @@ export default function RevealStep8A() {
         const resolvedUrl = room?.redesign_pano_url ?? room?.render_url;
 
         if (!resolvedUrl) {
-          // No URL yet — don't error, let the polling effect handle it
-          setLoading(false);
+          // No URL yet — keep loading=true; polling effect will handle it
           return;
         }
 
         setHeroImage(resolvedUrl);
-
-        // 3. Try to load style name/tags from style_fingerprints via fingerprint_id
-        if (
-          room.fingerprint_id &&
-          (!resolvedStyleName || resolvedStyleTags.length === 0)
-        ) {
-          const { data: fp } = await supabase
-            .from("style_fingerprints")
-            .select("style_name")
-            .eq("id", room.fingerprint_id)
-            .single();
-
-          if (fp?.style_name) {
-            setStyleName(fp.style_name);
-          } else {
-            setStyleName(resolvedStyleName);
-          }
-        } else {
-          setStyleName(resolvedStyleName);
-        }
-
         setStyleTags(resolvedStyleTags);
         setRemainingRenders(resolvedRemainingRenders);
+        setLoading(false);
       } catch {
         setError("Unable to load your room. Please try again.");
-      } finally {
         setLoading(false);
       }
     };
@@ -156,7 +134,12 @@ export default function RevealStep8A() {
 
   // Poll for redesign pipeline completion if no hero image loaded yet.
   // The redesign pipeline writes redesign_pano_url directly to Supabase.
-  const roomId = useRoomStore((s) => s.roomId);
+  const storeRoomId2 = useRoomStore((s) => s.roomId);
+  const [urlRoomId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("roomId");
+  });
+  const roomId = storeRoomId2 ?? urlRoomId;
   useEffect(() => {
     if (heroImage || !roomId) return;
     let cancelled = false;
@@ -483,7 +466,7 @@ export default function RevealStep8A() {
   }
 
   // Error state — no render found after loading
-  if (!heroImage) {
+  if (!heroImage && !loading) {
     return (
       <div
         style={{
@@ -596,7 +579,7 @@ export default function RevealStep8A() {
           <div className="reveal-image-fade">
             <img
               className="reveal-image"
-              src={heroImage}
+              src={heroImage ?? undefined}
               alt="A redesigned luxury living room reveal"
             />
           </div>

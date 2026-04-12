@@ -6,13 +6,17 @@ import sharp from "sharp";
 // Auto-rotate based on EXIF orientation data.
 // Fixes sideways images from phone cameras before upload to Supabase Storage.
 async function correctImageOrientation(buffer: Buffer): Promise<Buffer> {
+  console.log("[capture] input buffer size:", buffer.length);
   try {
-    return await sharp(buffer)
-      .rotate() // honors EXIF orientation tag
+    const result = await sharp(buffer)
+      .rotate()
       .jpeg({ quality: 90, progressive: true })
       .toBuffer();
-  } catch {
-    return buffer; // return original if sharp fails
+    console.log("[capture] sharp output size:", result.length);
+    return result;
+  } catch (err) {
+    console.warn("[capture] sharp failed:", err);
+    return buffer;
   }
 }
 
@@ -30,6 +34,7 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const photo = formData.get("photo") as File | null;
     const roomId = formData.get("room_id") as string | null;
+    const roomType = (formData.get("room_type") as string | null) || null;
 
     if (!photo) {
       return NextResponse.json({ error: "photo is required" }, { status: 400 });
@@ -76,6 +81,7 @@ export async function POST(request: Request) {
         .insert({
           user_id: user.id,
           original_photo_url: photoUrl,
+          ...(roomType ? { room_type: roomType } : {}),
         })
         .select("id")
         .single();
@@ -88,7 +94,10 @@ export async function POST(request: Request) {
     } else {
       await admin
         .from("rooms")
-        .update({ original_photo_url: photoUrl })
+        .update({
+          original_photo_url: photoUrl,
+          ...(roomType ? { room_type: roomType } : {}),
+        })
         .eq("id", finalRoomId);
     }
 

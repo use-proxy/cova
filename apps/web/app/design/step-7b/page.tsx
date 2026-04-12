@@ -497,6 +497,37 @@ export default function Step7b() {
             );
             return;
           }
+
+          // Fire-and-forget: merge floorMaterial into render_context so the
+          // prompt compiler sees it even before persistRenderContext() runs.
+          if (selectedFlooring) {
+            supabase
+              .from("rooms")
+              .select("render_context")
+              .eq("id", roomId)
+              .eq("user_id", user.id)
+              .single()
+              .then(({ data }) => {
+                const existing = (data?.render_context as Record<string, unknown>) ?? {};
+                const existingRoomContext = (existing.roomContext as Record<string, unknown>) ?? {};
+                return supabase
+                  .from("rooms")
+                  .update({
+                    render_context: {
+                      ...existing,
+                      roomContext: {
+                        ...existingRoomContext,
+                        floorMaterial: selectedFlooring.toLowerCase(),
+                      },
+                    },
+                  })
+                  .eq("id", roomId)
+                  .eq("user_id", user.id);
+              })
+              .catch((err) =>
+                console.error("[step-7b] render_context floor merge failed:", err),
+              );
+          }
         }
       } catch (err) {
         console.error("[step-7b] constraint persist threw:", err);

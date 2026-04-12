@@ -16,6 +16,7 @@ import { ArrowRight } from "lucide-react";
 import { createBrowserClient } from "@/lib/supabase/client";
 import { useArea2Store } from "@/lib/stores/area2Store";
 import { persistRenderContext } from "@/lib/ai/renderContext/persist";
+import { useRoomStore } from "@/lib/store/room";
 import type {
   TabId,
   TechSpec,
@@ -154,6 +155,8 @@ export default function Step7DPage() {
   const setRoomContext = useArea2Store((s) => s.setRoomContext);
   const setKeepMask = useArea2Store((s) => s.setKeepMask);
   const existingRoomContext = useArea2Store((s) => s.roomContext);
+  const roomStoreId = useRoomStore((s) => s.roomId);
+  const effectiveRoomId = roomId ?? roomStoreId;
 
   // Active tab — ephemeral UI state, not Zustand
   const [activeTab, setActiveTab] = useState<ChatTabId>("all");
@@ -184,13 +187,13 @@ export default function Step7DPage() {
 
   // Load roomContext and keepMask from Supabase into Area2Store if missing.
   useEffect(() => {
-    if (existingRoomContext || !roomId) return;
+    if (existingRoomContext || !effectiveRoomId) return;
     const loadFromSupabase = async () => {
       const supabase = createBrowserClient();
       const { data: room } = await supabase
         .from("rooms")
         .select("room_context, keep_mask")
-        .eq("id", roomId)
+        .eq("id", effectiveRoomId)
         .single();
       if (room?.room_context) {
         setRoomContext(
@@ -205,17 +208,17 @@ export default function Step7DPage() {
       console.warn("[step-7d] Failed to load room context:", e),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomId, existingRoomContext]);
+  }, [effectiveRoomId, existingRoomContext]);
 
   // Load design_chat_history from Supabase on mount
   useEffect(() => {
-    if (!roomId) return;
+    if (!effectiveRoomId) return;
     const loadChatHistory = async () => {
       const supabase = createBrowserClient();
       const { data: room } = await supabase
         .from("rooms")
         .select("design_chat_history")
-        .eq("id", roomId)
+        .eq("id", effectiveRoomId)
         .single();
       if (
         room?.design_chat_history &&
@@ -241,23 +244,23 @@ export default function Step7DPage() {
       console.warn("[step-7d] Failed to load chat history:", e),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomId]);
+  }, [effectiveRoomId]);
 
   // Save tabMessages to Supabase
   const persistChatHistory = useCallback(
     async (messages: TabMessages) => {
-      if (!roomId) return;
+      if (!effectiveRoomId) return;
       const supabase = createBrowserClient();
       await supabase
         .from("rooms")
         .update({ design_chat_history: messages })
-        .eq("id", roomId)
+        .eq("id", effectiveRoomId)
         .then(({ error }) => {
           if (error)
             console.warn("[step-7d] Failed to persist chat history:", error);
         });
     },
-    [roomId],
+    [effectiveRoomId],
   );
 
   // Poll for art generation results.
@@ -393,7 +396,7 @@ export default function Step7DPage() {
         body: JSON.stringify({
           message: effectiveText,
           activeTab,
-          roomId,
+          roomId: effectiveRoomId,
           tabHistory: tabStates,
           currentExtracted: activeExtracted,
           urlInput: detectedUrl,
@@ -476,7 +479,7 @@ export default function Step7DPage() {
       // Persist to Supabase after every assistant response
       persistChatHistory(withReply);
 
-      if (data.shouldGenerateArt && roomId) {
+      if (data.shouldGenerateArt && effectiveRoomId) {
         const nextIndex = activeHistory.length + 1;
         const tabKey = activeTab;
         setInlineArt((prev) => ({
@@ -486,7 +489,11 @@ export default function Step7DPage() {
             { messageIndex: nextIndex, urls: [] },
           ],
         }));
-        setArtPolling({ roomId, tabKey, messageIndex: nextIndex });
+        setArtPolling({
+          roomId: effectiveRoomId,
+          tabKey,
+          messageIndex: nextIndex,
+        });
       }
     } catch {
       const errorMsg =
@@ -522,7 +529,7 @@ export default function Step7DPage() {
 
   const handleDesignMyRoom = async () => {
     setCtaError(null);
-    if (!minimumThresholdMet || !roomId) return;
+    if (!minimumThresholdMet || !effectiveRoomId) return;
     const supabase = createBrowserClient();
     const {
       data: { user },
@@ -635,7 +642,7 @@ export default function Step7DPage() {
       setCtaError("Complete the All tab to continue.");
       return;
     }
-    const result = await persistRenderContext(roomId, ctx, user.id);
+    const result = await persistRenderContext(effectiveRoomId, ctx, user.id);
     if (!result.success) {
       console.error("[Step 7d] persistRenderContext failed:", result.error);
       setCtaError(
@@ -644,17 +651,35 @@ export default function Step7DPage() {
       return;
     }
 
+    // Collect chat messages for context injection into the prompt compiler
+    const tabStatesSnapshot = useArea2Store.getState().tabStates;
+    const chatContext: Record<
+      string,
+      Array<{ role: string; content: string }>
+    > = {};
+    for (const tab of tabStatesSnapshot) {
+      if (tab.messages && tab.messages.length > 0) {
+        chatContext[tab.tabId] = tab.messages.map((m) => ({
+          role: m.role,
+          content: m.content,
+        }));
+      }
+    }
+
     // Fire redesign pipeline (non-blocking — pipeline writes directly to Supabase,
     // step-8a polls /api/rooms/status for progress)
     fetch("/api/pipeline/redesign", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ room_id: roomId }),
+      body: JSON.stringify({
+        room_id: effectiveRoomId,
+        chat_context: Object.keys(chatContext).length > 0 ? chatContext : null,
+      }),
     }).catch((err) =>
       console.warn("[step-7d] Redesign pipeline trigger failed:", err),
     );
 
-    router.push("/design/step-8a");
+    router.push(`/design/step-8a?roomId=${effectiveRoomId}`);
   };
 
   if (!hydrated) return null;

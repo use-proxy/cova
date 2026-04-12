@@ -12,6 +12,9 @@ import { useRouter } from "next/navigation";
 import { useRoomStore } from "@/lib/store/room";
 import "../step-1/step1.css";
 import "./step6.css";
+import { useArea2Store } from "@/lib/stores/area2Store";
+import { useFingerprintStore } from "@/lib/store/fingerprint";
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Particle {
@@ -855,6 +858,7 @@ export default function RoomPhotoUpload() {
   const [baseUrl, setBaseUrl] = useState("");
   const setRoom = useRoomStore((s) => s.setRoom);
   const setPhotoUrl = useRoomStore((s) => s.setPhotoUrl);
+  const roomType = useFingerprintStore((s) => s.roomType);
   const inputRef = useRef<HTMLInputElement>(null); // Staggered entrance
 
   useEffect(() => {
@@ -1426,7 +1430,7 @@ export default function RoomPhotoUpload() {
             <input
               ref={inputRef}
               type="file"
-              accept=".jpg,.jpeg,.png,.heic,.heif,image/jpeg,image/png,image/heic,image/heif"
+              accept=".jpg,.jpeg,.png,image/jpeg,image/png"
               capture="environment"
               style={{ display: "none" }}
               onChange={onInputChange}
@@ -1479,6 +1483,7 @@ export default function RoomPhotoUpload() {
                     // Upload photo to Supabase via /api/rooms/capture
                     const fd = new FormData();
                     fd.append("photo", file);
+                    if (roomType) fd.append("room_type", roomType);
                     const uploadRes = await fetch("/api/rooms/capture", {
                       method: "POST",
                       body: fd,
@@ -1489,6 +1494,10 @@ export default function RoomPhotoUpload() {
                         photo_url: string;
                       };
                       setRoom(uploadData.room_id);
+                      useArea2Store
+                        .getState()
+                        .setRoom(uploadData.room_id, uploadData.photo_url);
+
                       setPhotoUrl(uploadData.photo_url);
                       // Fire pre-detection pipeline (non-blocking)
                       fetch("/api/pipeline/pre-detect", {

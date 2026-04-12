@@ -86,6 +86,8 @@ Example: [{"label":"sofa","azimuth_degrees":-15,"elevation_degrees":-25,"is_fixe
     media_type = "image/jpeg"
     if photo_url.lower().endswith(".png"):
         media_type = "image/png"
+    elif photo_url.lower().endswith(".webp"):
+        media_type = "image/webp"
 
     # Call Claude Vision with one retry for transient failures.
     response = None

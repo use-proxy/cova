@@ -1162,10 +1162,23 @@ export default function BudgetSetup() {
                       const { createBrowserClient } =
                         await import("@/lib/supabase/client");
                       const supabase = createBrowserClient();
+                      const { data: existingRoom } = await supabase
+                        .from("rooms")
+                        .select("render_context")
+                        .eq("id", roomId)
+                        .single();
+
+                      const existingCtx =
+                        (existingRoom?.render_context as Record<
+                          string,
+                          unknown
+                        >) ?? {};
+
                       await supabase
                         .from("rooms")
                         .update({
                           render_context: {
+                            ...existingCtx,
                             budget: {
                               rangeMin: tierBudget.rangeMin,
                               rangeMax: tierBudget.rangeMax,

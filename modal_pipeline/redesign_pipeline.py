@@ -45,6 +45,8 @@ REPLICATE_API_BASE = "https://api.replicate.com/v1"
 ANTHROPIC_API_BASE = "https://api.anthropic.com/v1"
 FLUX_KONTEXT_MODEL = "black-forest-labs/flux-kontext-pro"
 FLUX_DEPTH_PRO_MODEL = "black-forest-labs/flux-depth-pro"
+FLUX_CANNY_PRO_MODEL = "black-forest-labs/flux-canny-pro"
+
 
 STYLE_NAME_REPLACEMENTS = {
     "warm japandi": "calm warm naturalism with clean lines",
@@ -240,32 +242,53 @@ def run_flux_kontext(
     style_reference_url: str = None,
 ) -> str:
     import requests
+    from PIL import Image as PILImage
 
     print(f"[kontext] Starting prediction...")
     print(f"[kontext] Prompt: {prompt[:120]}...")
 
+    # Pre-check: detect input image dimensions and warn on non-standard aspect ratios.
+    # FLUX may silently crop portrait or unusual ratios even with match_input_image.
+    try:
+        img_resp = requests.get(pano_url, timeout=15, stream=True)
+        img_resp.raise_for_status()
+        img = PILImage.open(img_resp.raw)
+        w, h = img.size
+        ratio = w / h if h else 1.0
+        print(f"[kontext] Input image: {w}x{h} (ratio {ratio:.3f})")
+        if ratio < 0.5 or ratio > 2.5:
+            print(
+                f"[kontext] WARNING: non-standard aspect ratio {ratio:.3f} — "
+                f"FLUX may crop or reframe despite match_input_image. "
+                f"Consider padding to 4:3 or 16:9 before submission."
+            )
+    except Exception as e:
+        print(f"[kontext] WARNING: could not pre-check image dimensions: {e}")
+
     # FLUX Kontext Pro parameters tuned for maximum preservation fidelity:
-    #   - guidance 3.5: strong prompt adherence while letting the model keep
-    #     structural content from the input image.
-    #   - steps 28: quality floor; below this produces visible artifacts on
-    #     the anchoring pieces.
+    #   - guidance 4.5: more creative, design-forward results while still
+    #     respecting anchors. (Raised from 3.5 for production quality.)
     #   - prompt_upsampling False: upsampling rewrites the prompt and strips
     #     our anchor/vacated-zone framing, which destroys preservation.
     #   - aspect_ratio "match_input_image": any other value crops or reframes
     #     the input image and the kept items drift out of the frame.
+    #   - output_format "png": avoids downstream content-type detection
+    #     issues with Supabase storage that webp occasionally causes.
+    KONTEXT_SINGLE = "black-forest-labs/flux-kontext-pro"
+    KONTEXT_MULTI = "flux-kontext-apps/multi-image-kontext-pro"
+
+    model = KONTEXT_MULTI if style_reference_url else KONTEXT_SINGLE
     input_params = {
         "input_image": pano_url,
         "prompt": prompt,
-        "guidance": 3.5,
-        "steps": 28,
-        "prompt_upsampling": False,
+        "guidance": 4.5,
         "aspect_ratio": "match_input_image",
         "output_format": "png",
+        "output_quality": 100,
         "safety_tolerance": 2,
     }
     if style_reference_url:
         input_params["input_image_2"] = style_reference_url
-        print(f"[kontext] Using style reference: {style_reference_url[:80]}...")
 
     create_resp = requests.post(
         f"{REPLICATE_API_BASE}/models/{FLUX_KONTEXT_MODEL}/predictions",
@@ -413,8 +436,8 @@ def run_flux_depth_pro(
             "input": {
                 "control_image": control_image_url,
                 "prompt": prompt,
-                "num_inference_steps": 28,
-                "guidance_scale": 7.5,
+                "num_inference_steps": 50,
+                "guidance_scale": 30,
                 "output_format": "jpg",
                 "safety_tolerance": 2,
             }
@@ -465,6 +488,79 @@ def run_flux_depth_pro(
 
     raise RuntimeError(f"FLUX Depth Pro timed out after {timeout}s")
 
+def run_flux_canny_pro(
+    control_image_url: str, prompt: str, replicate_token: str, timeout: int = 180
+) -> str:
+    """Run FLUX Canny Pro on Replicate for edge-conditioned generation.
+    Preserves structural features like walls, doors, windows, furniture outlines.
+    """
+    import requests
+
+    print(f"[canny-pro] Starting prediction...")
+    print(f"[canny-pro] Prompt: {prompt[:120]}...")
+
+    create_resp = requests.post(
+        f"{REPLICATE_API_BASE}/models/{FLUX_CANNY_PRO_MODEL}/predictions",
+        headers={
+            "Authorization": f"Token {replicate_token}",
+            "Content-Type": "application/json",
+            "Prefer": "wait",
+        },
+        json={
+            "input": {
+                "control_image": control_image_url,
+                "prompt": prompt,
+                "num_inference_steps": 50,
+                "guidance_scale": 30,
+                "output_format": "jpg",
+                "safety_tolerance": 2,
+            }
+        },
+        timeout=90,
+    )
+
+    if not create_resp.ok:
+        raise RuntimeError(
+            f"Replicate create failed: {create_resp.status_code} "
+            f"{create_resp.text[:300]}"
+        )
+
+    prediction = create_resp.json()
+    prediction_id = prediction["id"]
+    print(f"[canny-pro] Prediction ID: {prediction_id}")
+
+    if prediction.get("status") == "succeeded":
+        output = prediction.get("output", [])
+        url = output[0] if isinstance(output, list) else output
+        print("[canny-pro] Succeeded synchronously!")
+        return url
+
+    start = time.time()
+    while time.time() - start < timeout:
+        time.sleep(3)
+        poll_resp = requests.get(
+            f"{REPLICATE_API_BASE}/predictions/{prediction_id}",
+            headers={"Authorization": f"Token {replicate_token}"},
+            timeout=30,
+        )
+        poll_resp.raise_for_status()
+        prediction = poll_resp.json()
+        status = prediction.get("status")
+        print(f"[canny-pro] Status: {status} ({time.time() - start:.0f}s)")
+
+        if status == "succeeded":
+            output = prediction.get("output", [])
+            url = output[0] if isinstance(output, list) else output
+            if not url:
+                raise RuntimeError("Prediction succeeded but no output URL")
+            return url
+
+        if status in ("failed", "canceled"):
+            raise RuntimeError(
+                f"Prediction {status}: {prediction.get('error', 'unknown')}"
+            )
+
+    raise RuntimeError(f"FLUX Canny Pro timed out after {timeout}s")
 
 def generate_perspective_prompt(style_blend: dict, compiled_prompt: str = None) -> str:
     """Build the perspective render prompt from style_blend."""
@@ -569,6 +665,32 @@ def store_perspective_render(image_url: str, room_id: str, supabase_url: str, su
     return f"{supabase_url}/storage/v1/object/room-videos/{storage_path}"
 
 
+def infer_room_type_from_detection(pre_detection_result):
+    """Infer room type from detected furniture labels in pre_detection_result.
+
+    pre_detection_result is a list of dicts, e.g.:
+      [{"label": "bed", "category": "bed", "is_fixed": false, ...}, ...]
+    """
+    if not pre_detection_result:
+        return None
+    items = pre_detection_result if isinstance(pre_detection_result, list) else []
+    label_list = [
+        str(item.get("label") or "").lower()
+        for item in items
+        if isinstance(item, dict)
+    ]
+    labels = " ".join(label_list)
+    if any(k in labels for k in ("bed", "nightstand", "dresser", "wardrobe", "duvet", "headboard")):
+        return "bedroom"
+    if any(k in labels for k in ("dining table", "dining chair")):
+        return "dining room"
+    if any(k in labels for k in ("desk", "office chair", "monitor")):
+        return "home office"
+    if any(k in labels for k in ("sofa", "couch", "coffee table")):
+        return "living room"
+    return None
+
+
 @app.function(
     timeout=300,
     secrets=[
@@ -603,8 +725,8 @@ def redesign_room(
 
     try:
         room = client.table("rooms").select(
-            "original_photo_url, original_image_url, photo_url, style_blend, "
-            "room_type, user_id, render_context"
+            "original_photo_url, original_image_url, style_blend, "
+            "room_type, user_id, render_context, pre_detection_result"
         ).eq("id", room_id).single().execute().data
 
         if not room:
@@ -630,11 +752,17 @@ def redesign_room(
             )
 
         style_blend = room.get("style_blend") or {
-            "warm japandi": 0.5,
-            "pure minimal white": 0.3,
-            "coastal bright": 0.2,
+            "contemporary": 0.5,
+            "minimalist": 0.3,
+            "natural": 0.2,
         }
         room_type = room.get("room_type") or "room"  # never assume room type; "room" is a safe generic fallback
+        # Override with type inferred from pre-detection furniture labels (more accurate)
+        pre_detection_result = room.get("pre_detection_result")
+        inferred_type = infer_room_type_from_detection(pre_detection_result) if pre_detection_result else None
+        if inferred_type:
+            room_type = inferred_type
+            print(f"[kontext] Room type inferred from detection: {room_type}")
 
         print(f"[kontext] Room: {room_type}, styles: {get_dominant_styles(style_blend)}")
 
@@ -674,6 +802,8 @@ def redesign_room(
         depth_map_result = [None]
         pano_error = [None]
         perspective_error = [None]
+        canny_result = [None]
+        canny_error = [None]
         depth_conditioning_method = "none"
 
         def run_pano():
@@ -730,14 +860,26 @@ def redesign_room(
             except Exception as e:
                 print(f"[depth] Depth extraction failed (non-critical): {e}")
 
+        def run_canny():
+            """Run FLUX Canny Pro for edge-conditioned generation (non-critical)."""
+            try:
+                canny_result[0] = run_flux_canny_pro(
+                    pano_url, prompt, replicate_token,
+                )
+                print("[canny] Canny Pro succeeded")
+            except Exception as e:
+                canny_error[0] = e
+                print(f"[canny] Canny Pro failed (non-critical): {e}")
+
         # Status: rendering
         client.table("rooms").update({"redesign_status": "rendering"}).eq("id", room_id).execute()
 
-        with ThreadPoolExecutor(max_workers=3) as executor:
+        with ThreadPoolExecutor(max_workers=4) as executor:
             futures = [
                 executor.submit(run_pano),
                 executor.submit(run_perspective_depth),
                 executor.submit(run_depth_extraction),
+                executor.submit(run_canny),
             ]
             for f in as_completed(futures):
                 pass  # Wait for all
@@ -749,6 +891,13 @@ def redesign_room(
         if pano_error[0]:
             raise pano_error[0]
         redesigned_url = pano_result[0]
+        redesigned_url = pano_result[0]
+
+        # If canny succeeded, use it as the perspective render (richer geometry)
+        if canny_result[0] and not perspective_result[0]:
+            perspective_result[0] = canny_result[0]
+            depth_conditioning_method = "flux_canny_pro"
+            print("[canny] Using Canny result as perspective render")
 
         # Store pano
         dominant_styles = get_dominant_styles(style_blend)
@@ -762,7 +911,7 @@ def redesign_room(
         )
 
         signed = client.storage.from_("room-videos").create_signed_url(
-            storage_path, 86400,
+            storage_path, 604800,
         )
         redesign_signed_url = signed.get("signedURL", redesigned_url)
 
@@ -808,7 +957,7 @@ def redesign_room(
         for attempt in range(2):
             try:
                 client.table("rooms").update({
-                    "redesign_pano_url": redesigned_url,
+                    "redesign_pano_url": redesign_signed_url,
                 }).eq("id", room_id).execute()
                 break
             except Exception as e:
@@ -891,14 +1040,14 @@ def redesign_webhook(item: dict):
     if not room_id:
         return {"error": "room_id required"}
     try:
-        result = redesign_room.local(
+        redesign_room.spawn(
             room_id,
             user_id,
             compiled_prompt=compiled_prompt,
             anchor_prompt=anchor_prompt,
             style_reference_url=style_reference_url,
         )
-        return {"status": "complete", **result}
+        return {"status": "queued", "room_id": room_id}
     except Exception as e:
         return {"status": "error", "error": str(e)}
 
