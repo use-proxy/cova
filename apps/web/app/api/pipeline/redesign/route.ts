@@ -222,6 +222,7 @@ export async function POST(request: Request) {
         compiled_prompt: compiledPrompt ?? null,
         anchor_prompt: anchorPrompt ?? null,
         style_reference_url: styleReferenceUrl ?? null,
+        chat_context: renderContext?.tabStates ?? null,
       }),
       signal: AbortSignal.timeout(295_000),
     });

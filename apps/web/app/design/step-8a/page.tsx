@@ -35,7 +35,34 @@ export default function RevealStep8A() {
   const storeRenderSessions = useRoomStore((s) => s.renderSessions);
   const storeRoomId = useRoomStore((s) => s.roomId);
   const storeStyleName = useFingerprintStore((s) => s.styleName);
-  const storeStyleTags = useFingerprintStore((s) => s.styleTags);
+  const storeStyleTagsRaw = useFingerprintStore((s) => s.styleTags);
+  const storeFingerprint = useFingerprintStore((s) => s.fingerprint);
+
+  // Derive style tags from fingerprint dimensions when the store has none.
+  // This ensures tags always display even on page refresh.
+  const storeStyleTags = useMemo(() => {
+    if (storeStyleTagsRaw && storeStyleTagsRaw.length > 0) return storeStyleTagsRaw;
+    const dims = storeFingerprint?.dimensions;
+    if (!dims) return [];
+    const derived: string[] = [];
+    if (dims.density > 0.7) derived.push("Richly Layered");
+    if (dims.pattern > 0.7) derived.push("Pattern Rich");
+    if (dims.colorTemperature < 0.35) derived.push("Cool Tones");
+    if (dims.colorTemperature > 0.65) derived.push("Warm Tones");
+    if (dims.material > 0.65) derived.push("Natural & Organic");
+    if (dims.material < 0.35) derived.push("Sleek & Modern");
+    if (dims.era < 0.35) derived.push("Heritage");
+    if (dims.lightPreference < 0.35) derived.push("Cozy & Moody");
+    if (dims.culturalInfluence > 0.65) derived.push("Globally Eclectic");
+    return derived.slice(0, 4);
+  }, [storeStyleTagsRaw, storeFingerprint]);
+
+  // urlRoomId — read synchronously so polling can use it when store roomId is null
+  const [urlRoomId] = useState<string | null>(() =>
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("roomId")
+      : null,
+  );
 
   // Dynamic state replacing hardcoded constants
   const [heroImage, setHeroImage] = useState<string | null>(null);
@@ -91,10 +118,6 @@ export default function RevealStep8A() {
 
       // 2. Store had no render URL — query Supabase for most recent room
       try {
-        const urlRoomId =
-          typeof window !== "undefined"
-            ? new URLSearchParams(window.location.search).get("roomId")
-            : null;
         const resolvedRoomId = storeRoomId ?? urlRoomId ?? null;
         let roomQuery = supabase
           .from("rooms")
@@ -141,13 +164,13 @@ export default function RevealStep8A() {
   });
   const roomId = storeRoomId2 ?? urlRoomId;
   useEffect(() => {
-    if (heroImage || !roomId) return;
+    if (heroImage || !effectiveRoomId) return;
     let cancelled = false;
     const poll = setInterval(async () => {
       if (cancelled) return;
       try {
         const res = await fetch(
-          `/api/rooms/status?roomId=${encodeURIComponent(roomId)}`,
+          `/api/rooms/status?roomId=${encodeURIComponent(effectiveRoomId)}`,
         );
         if (!res.ok) return;
         const data = (await res.json()) as {
@@ -169,7 +192,7 @@ export default function RevealStep8A() {
           fetch("/api/detect/render", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ roomId }),
+            body: JSON.stringify({ roomId: effectiveRoomId }),
           }).catch((err) =>
             console.warn("[step-8a] Render detection trigger failed:", err),
           );
@@ -205,7 +228,7 @@ export default function RevealStep8A() {
       clearTimeout(timeout);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [heroImage, roomId, retryTick]);
+  }, [heroImage, effectiveRoomId, retryTick]);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -494,11 +517,14 @@ export default function RevealStep8A() {
           <button
             type="button"
             onClick={async () => {
-              if (!roomId) return;
+              const targetRoomId = effectiveRoomId;
+              if (!targetRoomId) return;
               setError(null);
               setLoading(true);
-              // Reset redesign_status so the Modal pipeline doesn't hit an
-              // in-flight/idempotency guard on retry.
+              setPipelineStatus("");
+              // Reset redesign_status to "pending" so Modal's idempotency guard
+              // does not block the re-run (setting "failed" would still block
+              // some guard paths).
               try {
                 const { createBrowserClient } =
                   await import("@/lib/supabase/client");
@@ -509,8 +535,8 @@ export default function RevealStep8A() {
                 if (u) {
                   await supabase
                     .from("rooms")
-                    .update({ redesign_status: "failed" })
-                    .eq("id", roomId)
+                    .update({ redesign_status: "pending" })
+                    .eq("id", targetRoomId)
                     .eq("user_id", u.id);
                 }
               } catch (err) {
@@ -520,7 +546,7 @@ export default function RevealStep8A() {
               fetch("/api/pipeline/redesign", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ room_id: roomId }),
+                body: JSON.stringify({ room_id: targetRoomId }),
               }).catch((err) => console.warn("[step-8a] Retry failed:", err));
               // Restart polling
               setRetryTick((n) => n + 1);
