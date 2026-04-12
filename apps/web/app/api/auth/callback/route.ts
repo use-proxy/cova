@@ -80,7 +80,7 @@ export async function GET(request: Request) {
             if (insertErr) {
               console.error("[auth-callback] fingerprint insert error:", insertErr.message);
             } else {
-              console.log("[auth-callback] fingerprint persisted for user:", user.id);
+              console.log("[auth-callback] fingerprint persisted for user:", user.id); // eslint-disable-line no-console
             }
 
             // Mirror onto users row for downstream /api/render fallback

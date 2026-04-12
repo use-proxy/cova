@@ -6,13 +6,13 @@ import sharp from "sharp";
 // Auto-rotate based on EXIF orientation data.
 // Fixes sideways images from phone cameras before upload to Supabase Storage.
 async function correctImageOrientation(buffer: Buffer): Promise<Buffer> {
-  console.log("[capture] input buffer size:", buffer.length);
+  console.log("[capture] input buffer size:", buffer.length); // eslint-disable-line no-console
   try {
     const result = await sharp(buffer)
       .rotate()
       .jpeg({ quality: 90, progressive: true })
       .toBuffer();
-    console.log("[capture] sharp output size:", result.length);
+    console.log("[capture] sharp output size:", result.length); // eslint-disable-line no-console
     return result;
   } catch (err) {
     console.warn("[capture] sharp failed:", err);

@@ -1004,9 +1004,25 @@ export function buildAnchorFallbackPrompt(
           .join("; ")}.`
       : "";
 
+  // Materials palette
+  const materialsLine = fp
+    ? `New materials: ${getMaterialPalette(params.fingerprint.dimensions) || "natural materials"}.`
+    : "";
+
+  // Decor layering (Rule 5) — plants by species when nature dimension is high
+  const densityVal = fp?.density ?? 0.5;
+  const natureVal = fp?.nature ?? 0.5;
+  const plantNames = natureVal > 0.7
+    ? "fiddle leaf fig, trailing pothos, snake plant, monstera"
+    : natureVal > 0.5
+      ? "fiddle leaf fig, trailing pothos"
+      : "a potted plant";
+  const minDecor = densityVal > 0.7 ? 10 : 8;
+  const decorLine = `Layer with: ${plantNames}, ceramic vessels, art books, chunky knit throw, jute rug. Minimum ${minDecor} decorative objects.`;
+
   // User notes
   const notesLine = rc?.userNotes
-    ? `Special requirements: ${sanitizeUserText(rc.userNotes)}.`
+    ? `Special requirements: "${sanitizeUserText(rc.userNotes)}".`
     : "";
 
   // Style reference directive
@@ -1056,6 +1072,8 @@ export function buildAnchorFallbackPrompt(
     fingerprintClause,
     anchorsBlock,
     vacatedBlock,
+    materialsLine,
+    decorLine,
     structural.join(" "),
     requestedLine,
     notesLine,
@@ -1076,6 +1094,8 @@ export function buildAnchorFallbackPrompt(
       fingerprintClause,
       anchorsBlock,
       vacatedBlock,
+      decorLine,
+      budgetLine,
       finalConstraint,
       closer,
     ]

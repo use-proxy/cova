@@ -133,7 +133,7 @@ export async function POST(request: Request) {
   const { fingerprint, tweakText, originalStyleName } = body;
 
   // ── Step 1: ask Claude for dimension adjustments ──────────────────────────
-  let adjustments: Partial<Record<DimensionKey, number>> = {};
+  const adjustments: Partial<Record<DimensionKey, number>> = {};
   try {
     const adjustRes = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",

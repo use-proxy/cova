@@ -255,7 +255,10 @@ function BackArrow() {
 export default function Step7b() {
   const router = useRouter();
 
-  /* ---- Auth gate ---- */
+  /* ---- Area2Store budget rehydration ---- */
+  const setBudget = useArea2Store((s) => s.setBudget);
+
+  /* ---- Auth gate + budget rehydration from DB ---- */
   useEffect(() => {
     const checkAuth = async () => {
       const { createBrowserClient } = await import("@/lib/supabase/client");
@@ -263,10 +266,50 @@ export default function Step7b() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) router.push("/auth?next=/design/step-7b");
+      if (!user) {
+        router.push("/auth?next=/design/step-7b");
+        return;
+      }
+
+      // Rehydrate budget from DB if sessionStorage lost it (e.g. page refresh)
+      const currentBudget = useArea2Store.getState().budget;
+      const currentRoomId = useArea2Store.getState().roomId;
+      if (!currentBudget && currentRoomId) {
+        try {
+          const { data: rcRow } = await supabase
+            .from("rooms")
+            .select("render_context")
+            .eq("id", currentRoomId)
+            .eq("user_id", user.id)
+            .single();
+          const rc = rcRow?.render_context as {
+            budget?: {
+              rangeMin?: number;
+              rangeMax?: number;
+              strategy?: string;
+              hardCeiling?: boolean;
+            };
+          } | null;
+          if (
+            rc?.budget &&
+            typeof rc.budget.rangeMin === "number" &&
+            typeof rc.budget.rangeMax === "number"
+          ) {
+            setBudget({
+              rangeMin: rc.budget.rangeMin,
+              rangeMax: rc.budget.rangeMax,
+              strategy:
+                (rc.budget.strategy as "even-quality") ?? "even-quality",
+              hardCeiling: rc.budget.hardCeiling ?? false,
+            });
+          }
+        } catch {
+          // non-fatal — budget stays null until user re-selects
+        }
+      }
     };
     checkAuth();
-  }, [router]);
+  }, [router, setBudget]);
 
   /* ---- State ---- */
   const [removeWalls, setRemoveWalls] = useState(false);
@@ -498,9 +541,10 @@ export default function Step7b() {
             return;
           }
 
-          // Fire-and-forget: merge floorMaterial into render_context so the
-          // prompt compiler sees it even before persistRenderContext() runs.
-          if (selectedFlooring) {
+          // Fire-and-forget: merge ALL step-7b fields into render_context
+          // so the prompt compiler and step-7d hydration see them even after
+          // a page refresh (area2Store uses sessionStorage which can be lost).
+          void Promise.resolve(
             supabase
               .from("rooms")
               .select("render_context")
@@ -510,24 +554,39 @@ export default function Step7b() {
               .then(({ data }) => {
                 const existing = (data?.render_context as Record<string, unknown>) ?? {};
                 const existingRoomContext = (existing.roomContext as Record<string, unknown>) ?? {};
+                const updatedRoomContext: Record<string, unknown> = {
+                  ...existingRoomContext,
+                  ceilingHeight: ceilingLabel,
+                  ceilingDetail: `${ceilingHeight}ft${selectedFixtures.size > 0 ? `, ${Array.from(selectedFixtures).join(", ")}` : ""}`,
+                  windowCount,
+                };
+                if (selectedFlooring) {
+                  updatedRoomContext.floorMaterial = selectedFlooring.toLowerCase();
+                }
+                if (notes) {
+                  updatedRoomContext.userNotes = notes;
+                }
+                // Include budget from store so it survives page refreshes
+                const currentBudget = useArea2Store.getState().budget;
+                const budgetPatch = currentBudget
+                  ? { budget: currentBudget }
+                  : {};
                 return supabase
                   .from("rooms")
                   .update({
                     render_context: {
                       ...existing,
-                      roomContext: {
-                        ...existingRoomContext,
-                        floorMaterial: selectedFlooring.toLowerCase(),
-                      },
+                      roomContext: updatedRoomContext,
+                      roomConstraints: mergedConstraints,
+                      ...budgetPatch,
                     },
                   })
                   .eq("id", roomId)
                   .eq("user_id", user.id);
-              })
-              .catch((err) =>
-                console.error("[step-7b] render_context floor merge failed:", err),
-              );
-          }
+              }),
+          ).catch((err: unknown) =>
+            console.error("[step-7b] render_context merge failed:", err),
+          );
         }
       } catch (err) {
         console.error("[step-7b] constraint persist threw:", err);

@@ -89,264 +89,8 @@ const SORT_OPTIONS: SortOption[] = [
 ];
 const TOUR_INTERVAL_MS = 2000;
 
-const DEFAULT_ZONES: RoomZone[] = [
-  {
-    id: 1,
-    label: "Cloud Modular Sofa",
-    top: "57%",
-    left: "14%",
-    width: "35%",
-    height: "24%",
-  },
-  {
-    id: 2,
-    label: "Travertine Cocktail Table",
-    top: "61%",
-    left: "38%",
-    width: "16%",
-    height: "12%",
-  },
-  {
-    id: 3,
-    label: "Bronze Floor Lamp",
-    top: "26%",
-    left: "52%",
-    width: "8%",
-    height: "33%",
-  },
-  {
-    id: 4,
-    label: "Handwoven Rug",
-    top: "70%",
-    left: "24%",
-    width: "46%",
-    height: "17%",
-  },
-  {
-    id: 5,
-    label: "Walnut Accent Chair",
-    top: "55%",
-    left: "63%",
-    width: "19%",
-    height: "24%",
-  },
-  {
-    id: 6,
-    label: "Marble Side Table",
-    top: "60%",
-    left: "57%",
-    width: "11%",
-    height: "15%",
-  },
-  {
-    id: 7,
-    label: "Brass Mirror",
-    top: "20%",
-    left: "68%",
-    width: "13%",
-    height: "20%",
-  },
-  {
-    id: 8,
-    label: "Textured Linen Drapes",
-    top: "9%",
-    left: "6%",
-    width: "15%",
-    height: "48%",
-  },
-  {
-    id: 9,
-    label: "Ceramic Vessel Duo",
-    top: "41%",
-    left: "31%",
-    width: "9%",
-    height: "11%",
-  },
-  {
-    id: 10,
-    label: "Abstract Canvas",
-    top: "16%",
-    left: "29%",
-    width: "19%",
-    height: "19%",
-  },
-  {
-    id: 11,
-    label: "Bouclé Ottoman",
-    top: "69%",
-    left: "52%",
-    width: "14%",
-    height: "11%",
-  },
-  {
-    id: 12,
-    label: "Sculptural Pendant",
-    top: "6%",
-    left: "43%",
-    width: "12%",
-    height: "14%",
-  },
-];
-
-const DEFAULT_PRODUCTS: Product[] = [
-  {
-    id: 1,
-    zone: 1,
-    brand: "Atelier Cova",
-    name: "Cloud Modular Sofa",
-    category: "Seating",
-    price: 4890,
-    retailer: "Ligne Edit",
-    retailerUrl: "https://www.example.com/products/cloud-modular-sofa",
-    image:
-      "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=320&q=80",
-    addedAt: "2026-03-29",
-  },
-  {
-    id: 2,
-    zone: 2,
-    brand: "Monarch Studio",
-    name: "Travertine Cocktail Table",
-    category: "Tables",
-    price: 2380,
-    retailer: "House Form",
-    retailerUrl: "https://www.example.com/products/travertine-cocktail-table",
-    image:
-      "https://images.unsplash.com/photo-1538688525198-9b88f6f53126?auto=format&fit=crop&w=320&q=80",
-    addedAt: "2026-04-03",
-  },
-  {
-    id: 3,
-    zone: 3,
-    brand: "Nocturne",
-    name: "Bronze Floor Lamp",
-    category: "Lighting",
-    price: 1290,
-    retailer: "Light Archive",
-    retailerUrl: "https://www.example.com/products/bronze-floor-lamp",
-    image:
-      "https://images.unsplash.com/photo-1549187774-b4e9b0445b41?auto=format&fit=crop&w=320&q=80",
-    addedAt: "2026-03-18",
-  },
-  {
-    id: 4,
-    zone: 4,
-    brand: "Serein Loom",
-    name: "Handwoven Rug",
-    category: "Rugs",
-    price: 3150,
-    retailer: "Grounded Objects",
-    retailerUrl: "https://www.example.com/products/handwoven-rug",
-    image:
-      "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=320&q=80&sat=-30",
-    addedAt: "2026-02-28",
-  },
-  {
-    id: 5,
-    zone: 5,
-    brand: "Aurelian",
-    name: "Walnut Accent Chair",
-    category: "Seating",
-    price: 1670,
-    salePrice: 1480,
-    retailer: "Studio Moderne",
-    retailerUrl: "https://www.example.com/products/walnut-accent-chair",
-    image:
-      "https://images.unsplash.com/photo-1517705008128-361805f42e86?auto=format&fit=crop&w=320&q=80",
-    addedAt: "2026-04-07",
-  },
-  {
-    id: 6,
-    zone: 6,
-    brand: "Pietra Casa",
-    name: "Marble Side Table",
-    category: "Tables",
-    price: 980,
-    retailer: "Mason & Field",
-    retailerUrl: "https://www.example.com/products/marble-side-table",
-    image:
-      "https://images.unsplash.com/photo-1499933374294-4584851497cc?auto=format&fit=crop&w=320&q=80",
-    addedAt: "2026-03-25",
-  },
-  {
-    id: 7,
-    zone: 7,
-    brand: "Verre Maison",
-    name: "Brass Mirror",
-    category: "Decor",
-    price: 840,
-    retailer: "Archetype Living",
-    retailerUrl: "https://www.example.com/products/brass-mirror",
-    image:
-      "https://images.unsplash.com/photo-1519710164239-da123dc03ef4?auto=format&fit=crop&w=320&q=80",
-    addedAt: "2026-03-11",
-  },
-  {
-    id: 8,
-    zone: 8,
-    brand: "Quiet Thread",
-    name: "Textured Linen Drapes",
-    category: "Decor",
-    price: 1190,
-    retailer: "Soft House",
-    retailerUrl: "https://www.example.com/products/textured-linen-drapes",
-    image:
-      "https://images.unsplash.com/photo-1484101403633-562f891dc89a?auto=format&fit=crop&w=320&q=80",
-    addedAt: "2026-02-14",
-  },
-  {
-    id: 9,
-    zone: 9,
-    brand: "Forme",
-    name: "Ceramic Vessel Duo",
-    category: "Decor",
-    price: 420,
-    retailer: "Shelf Ritual",
-    retailerUrl: "https://www.example.com/products/ceramic-vessel-duo",
-    image:
-      "https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?auto=format&fit=crop&w=320&q=80",
-    addedAt: "2026-04-05",
-  },
-  {
-    id: 10,
-    zone: 10,
-    brand: "Sunday Atelier",
-    name: "Abstract Canvas",
-    category: "Art",
-    price: 1540,
-    retailer: "North Gallery",
-    retailerUrl: "https://www.example.com/products/abstract-canvas",
-    image:
-      "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?auto=format&fit=crop&w=320&q=80",
-    addedAt: "2026-03-31",
-  },
-  {
-    id: 11,
-    zone: 11,
-    brand: "Maison Bouclé",
-    name: "Bouclé Ottoman",
-    category: "Seating",
-    price: 860,
-    retailer: "Cove Edit",
-    retailerUrl: "https://www.example.com/products/boucle-ottoman",
-    image:
-      "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=320&q=80&crop=entropy",
-    addedAt: "2026-04-01",
-  },
-  {
-    id: 12,
-    zone: 12,
-    brand: "Luma Atelier",
-    name: "Sculptural Pendant",
-    category: "Lighting",
-    price: 2210,
-    retailer: "Light Archive",
-    retailerUrl: "https://www.example.com/products/sculptural-pendant",
-    image:
-      "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=320&q=80",
-    addedAt: "2026-03-21",
-  },
-];
+// No hardcoded zones or products — all data comes from Supabase room_products
+// and rooms.render_detection_result. Empty arrays while loading.
 
 // Maps a raw DB category string to the closest display category.
 // Unknown labels fall through to "Furniture" (a catch-all that is rendered
@@ -500,7 +244,7 @@ export default function Step9Experience() {
   const [authReady, setAuthReady] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [heroImage, setHeroImage] = useState<string>(DEFAULT_HERO_IMAGE);
-  const [zones, setZones] = useState<RoomZone[]>(DEFAULT_ZONES);
+  const [zones, setZones] = useState<RoomZone[]>([]);
   const [zonesLoading, setZonesLoading] = useState(true);
   const [productsLoading, setProductsLoading] = useState(true);
   const [matchingInProgress, setMatchingInProgress] = useState(false);
@@ -868,8 +612,9 @@ export default function Step9Experience() {
           setZones([]);
         }
       } else {
-        setProducts(DEFAULT_PRODUCTS);
-        setZones(DEFAULT_ZONES);
+        // No room ID — show empty state, no fake/placeholder data
+        setProducts([]);
+        setZones([]);
       }
 
       if (!cancelled) setProductsLoading(false);
@@ -1042,7 +787,7 @@ export default function Step9Experience() {
     const shareUrl =
       typeof window !== "undefined"
         ? window.location.href
-        : "https://www.example.com/design/step-9";
+        : "https://covainterior.com/design/step-9";
 
     try {
       await navigator.clipboard.writeText(shareUrl);
@@ -1364,13 +1109,43 @@ export default function Step9Experience() {
               ) : visibleProducts.length === 0 ? (
                 <div className="step9-empty-state">
                   <div className="step9-empty-icon">
-                    <Link2 size={18} />
+                    <Sparkles size={18} />
                   </div>
-                  <h2>Nothing here</h2>
+                  <h2>We&apos;re still finding products</h2>
                   <p>
-                    Try a different category or sort to reveal more items from
-                    this room.
+                    Check back shortly — product matching may still be in
+                    progress.
                   </p>
+                  <button
+                    type="button"
+                    className="step9-shop-button"
+                    style={{ marginTop: 14 }}
+                    onClick={async () => {
+                      setMatchingError(null);
+                      setMatchingInProgress(true);
+                      try {
+                        const { createBrowserClient } =
+                          await import("@/lib/supabase/client");
+                        const sb = createBrowserClient();
+                        const {
+                          data: { user: u },
+                        } = await sb.auth.getUser();
+                        if (u && roomId) {
+                          await sb
+                            .from("rooms")
+                            .update({ redesign_status: "complete" })
+                            .eq("id", roomId)
+                            .eq("user_id", u.id);
+                        }
+                      } catch (err) {
+                        console.warn("[step-9] reset failed:", err);
+                      }
+                      setMatchRetryTick((n) => n + 1);
+                    }}
+                  >
+                    <span>Try again</span>
+                    <ArrowUpRight size={15} />
+                  </button>
                 </div>
               ) : (
                 visibleProducts.map((product, index) => {

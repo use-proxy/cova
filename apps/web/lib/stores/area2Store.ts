@@ -390,7 +390,7 @@ export const useArea2Store = create<Area2Store>()(
       // Assembly
       assembleRenderContext: (userId) => {
         const s = get();
-        console.log(
+        console.log( // eslint-disable-line no-console
           "[assemble] roomId:",
           s.roomId,
           "roomContext:",
