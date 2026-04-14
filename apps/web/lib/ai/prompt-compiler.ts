@@ -15,6 +15,7 @@ import {
   buildFullFingerprintPhrase,
   sanitizeForbiddenStyleNames,
 } from "@/lib/ai/flux";
+import { expandForPrompt } from "@/lib/ai/style-match";
 import type { RoomArchitecture } from "@/lib/ai/room-analyzer";
 
 const anthropic = new Anthropic();
@@ -157,15 +158,17 @@ export async function compilePromptWithClaude(
 ): Promise<string | null> {
   try {
     const fp = fingerprint;
-    const materialPalette = getMaterialPalette(fp.dimensions);
-    const fingerprintPhrase = buildFullFingerprintPhrase(fp.dimensions);
+    // V2 fingerprints store merged dims — expand for prompt generation
+    const promptDims = expandForPrompt(fp) as StyleFingerprint["dimensions"];
+    const materialPalette = getMaterialPalette(promptDims);
+    const fingerprintPhrase = buildFullFingerprintPhrase(promptDims);
     const anchorSystem = anchorPrompt
       ? `\n\nAnchor style reference prompt (high priority): ${anchorPrompt}\nWeight this heavily — it captures the user's confirmed visual preference, but apply it only to the vacated zones, never to the anchoring pieces.`
       : "";
 
     // Derive replacement direction from real fingerprint dimensions (more accurate than style_blend)
-    const replacementDirection = fp.dimensions
-      ? deriveReplacementDirectionFromDimensions(fp.dimensions)
+    const replacementDirection = promptDims
+      ? deriveReplacementDirectionFromDimensions(promptDims)
       : deriveReplacementDirection(context?.styleBlend ?? context?.style_blend ?? null);
 
     const keptObjects =

@@ -27,9 +27,12 @@ LABEL_TO_CATEGORY = {
     "settee": "sofa",
     # Chairs
     "accent chair": "accent_chair", "armchair": "accent_chair", "lounge chair": "accent_chair",
-    "chair": "accent_chair",
+    "chair": "accent_chair", "rattan chair": "accent_chair", "wingback chair": "accent_chair",
     "dining chair": "dining_chair", "side chair": "dining_chair",
     "office chair": "office_chair", "desk chair": "office_chair",
+    # Benches
+    "bench": "ottoman", "entryway bench": "ottoman", "bedroom bench": "ottoman",
+    "upholstered bench": "ottoman",
     # Tables
     "coffee table": "coffee_table", "cocktail table": "coffee_table",
     "side table": "side_table", "end table": "side_table", "accent table": "side_table",
@@ -38,25 +41,45 @@ LABEL_TO_CATEGORY = {
     "nightstand": "nightstand", "bedside table": "nightstand", "night stand": "nightstand",
     # Beds
     "bed": "bed", "bed frame": "bed", "platform bed": "bed",
+    "headboard": "bed", "bed frame with headboard": "bed",
     # Storage
     "bookshelf": "bookshelf", "bookcase": "bookshelf",
-    "shelving unit": "storage", "shelf": "storage", "cabinet": "storage",
+    "shelving unit": "bookshelf", "shelf": "bookshelf", "cabinet": "storage",
     "wardrobe": "wardrobe", "closet": "wardrobe",
     "dresser": "dresser", "chest of drawers": "dresser",
     "media console": "media_unit", "tv stand": "media_unit", "entertainment center": "media_unit",
+    "tv": "media_unit", "television": "media_unit",
     "storage": "storage",
     # Lighting
     "floor lamp": "floor_lamp", "standing lamp": "floor_lamp",
     "table lamp": "table_lamp", "desk lamp": "table_lamp",
     "pendant light": "ceiling_light", "chandelier": "ceiling_light",
     "ceiling light": "ceiling_light", "hanging lamp": "ceiling_light",
+    "ceiling fan": "ceiling_light", "fan": "ceiling_light",
+    "wall sconce": "ceiling_light", "sconce": "ceiling_light",
+    "swing arm sconce": "ceiling_light", "wall lamp": "ceiling_light",
     "lamp": "floor_lamp",
     # Rugs
-    "rug": "rug", "area rug": "rug", "carpet": "rug",
+    "rug": "rug", "area rug": "rug", "carpet": "rug", "flatweave rug": "rug",
+    "layered rug": "rug", "jute rug": "rug", "wool rug": "rug",
+    # Soft furnishings
+    "throw pillow": "soft_furnishing", "pillow": "soft_furnishing",
+    "throw blanket": "soft_furnishing", "blanket": "soft_furnishing",
+    "cushion": "soft_furnishing",
+    # Window treatments
+    "curtains": "window_treatment", "drapes": "window_treatment",
+    "curtain": "window_treatment", "drape": "window_treatment",
+    "roman shade": "window_treatment", "blind": "window_treatment",
+    # Decor / plants
+    "plant": "decor", "plant pot": "decor", "potted plant": "decor",
+    "vase": "decor", "planter": "decor",
+    # Wall art
+    "wall art": "wall_art", "art": "wall_art", "poster": "wall_art",
+    "painting": "wall_art", "print": "wall_art", "framed art": "wall_art",
+    "mirror": "mirror", "wall mirror": "mirror",
     # Other
     "desk": "desk", "office desk": "desk", "writing desk": "desk",
     "ottoman": "ottoman", "pouf": "ottoman", "footstool": "ottoman",
-    "mirror": "mirror", "wall mirror": "mirror",
 }
 
 # All category values that actually exist in the products table
@@ -69,9 +92,8 @@ VALID_CATEGORIES = [
     "wall_art", "soft_furnishing", "window_treatment", "other",
 ]
 
-# Categories Claude Vision should use in prompts (excludes non-furniture categories)
-PROMPT_CATEGORIES = [c for c in VALID_CATEGORIES
-                     if c not in {"wall_art", "soft_furnishing", "window_treatment", "other"}]
+# Categories Claude Vision should use in prompts
+PROMPT_CATEGORIES = [c for c in VALID_CATEGORIES if c not in {"other"}]
 
 # Category groups for broader matching when exact category has few results
 CATEGORY_GROUPS = {
@@ -99,26 +121,74 @@ def detect_furniture_with_claude(pano_bytes, anthropic_key, style_blend):
 
     cats_str = ", ".join(PROMPT_CATEGORIES)
 
-    prompt = f"""Analyze this redesigned room image in {style_context} style.
+    prompt = f"""You are a furniture detection AI for an interior design shopping app. Analyze this redesigned room image and identify ALL purchasable items visible.
 
-Identify up to 8 distinct, purchasable furniture pieces. Focus on large items:
-sofas, chairs, tables, beds, shelves, lamps, rugs, desks.
+TARGET: 10-14 distinct items. Be thorough — scan every surface, wall, floor, and ceiling.
 
-For each piece provide:
-1. label: simple descriptive name (e.g. "accent chair", "coffee table", "floor lamp")
-2. description: detailed visual description including material, color, finish, shape, and style
-3. category: MUST be one of these exact values: {cats_str}
-4. azimuth_degrees: horizontal position as a percentage mapped to 0-360 (left edge=0, center=180, right edge=360)
-5. elevation_degrees: vertical position, -90 (floor) to +90 (ceiling), 0 = eye level. Guide:
-   - Floor items (rug, coffee table): -30 to -40
-   - Seated furniture (sofa, chair, ottoman): -15 to -25
-   - Standing furniture (shelving, dresser, side table): -5 to +10
-   - Wall art, mirrors: +5 to +20
-   - Floor lamps (base on floor, shade near eye level): -5 to +5
-   - Pendant/ceiling lights: +50 to +75
-6. search_query: 8-15 word descriptive shopping query. MUST include: material (wood/metal/fabric/leather), primary color, style ({style_context}), specific furniture type, and 2-3 shape/detail descriptors. Example: "mid-century walnut round coffee table with tapered splayed legs minimalist"
+ITEM TYPES TO DETECT (look for ALL of these, not just large pieces):
+- Seating: sofa, loveseat, sectional, accent chair, armchair, bench, ottoman, dining chair
+- Beds: bed frame + headboard (list as one item), nightstand/bedside table
+- Tables: coffee table, side table, end table, console table, dining table
+- Storage: dresser, bookshelf, shelving unit, media console, TV stand, cabinet
+- Lighting: floor lamp, table lamp, wall sconce, pendant light, ceiling fan, chandelier
+- Rugs/Carpet: area rug (if two rugs are layered or visually distinct, list EACH separately), carpet
+- Soft furnishings: throw pillow set, throw blanket, bedding set
+- Window treatments: identify EXACTLY what type — horizontal blinds, vertical blinds, roller shade, roman shade, sheer curtain, blackout curtain, linen drape. List these if visible.
+- Decor: plant + pot together as ONE item (specify plant type if identifiable), vase, mirror, wall art/print, TV
+- Small surface decor: small potted plant, decorative tray, candle holder, ceramic vase on tables/shelves/nightstands — DETECT THESE even if small
+- Desk (if present)
 
-Return ONLY a JSON array. No explanation, no markdown."""
+SEPARATION RULES:
+- Bed frame and headboard = ONE item (not two)
+- Two visually distinct rugs = TWO items
+- Pair of matching sconces = ONE item labeled "wall sconces"
+- Throw pillows = ONE item even if multiple
+
+For each item return these fields:
+1. label: concise name. ALWAYS include the color when the furniture has a distinctive non-natural paint color (e.g. "green captain's bed", "sage green nightstand", "navy dresser", "terracotta planter"). For natural materials use the material instead: "oak coffee table", "linen sofa", "jute rug".
+2. description: physical description — shape, construction, leg style, frame type, material, color, finish
+3. category: MUST be one of: {cats_str}
+4. azimuth_degrees: 0-360 horizontal position (left edge=0, center=180, right edge=360)
+5. elevation_degrees: -90 (floor) to +90 (ceiling). Guidelines:
+   - Rug, coffee table: -35 to -45
+   - Sofa, chair, bed: -15 to -25
+   - Standing shelves, dresser, side table: -5 to +10
+   - Wall art, mirror, sconce: +5 to +25
+   - Floor lamp: -5 to +5
+   - Pendant, chandelier, ceiling fan: +55 to +80
+6. size_hint: visible size estimate as a string. Examples: "queen", "king", "8x10 ft", "5x8 ft", "52 inch", "55 inch", "60 inch", "standard". Use "" if not estimable.
+7. search_query: 10-16 word Google Shopping query following STRICT rules below.
+
+SEARCH QUERY STRICT RULES — violations will break product matching:
+- NEVER use style words: no "boho", "coastal", "japandi", "minimalist", "scandinavian", "mid-century" — Google Shopping ignores them
+- START with material + color as the first two words: "cream linen", "dark walnut", "brass gold", "natural jute", "white oak"
+- ALWAYS name the specific furniture type: "wingback headboard", "swing arm sconce", "flatweave rug", "platform bed frame"
+- ALWAYS describe physical form: shape, construction method, leg style, frame type, silhouette
+- INCLUDE size_hint in the query when it is not empty
+- FOR COLORS: use searchable standard colors, NOT paint-chip names. sage green is ok; dusty terracotta becomes terracotta; warm putty becomes beige. Never use paint brand names.
+- FOR TVs AND TELEVISIONS: use "55 inch 4K smart TV black slim bezel flat screen LED" format. NEVER use "wall-mounted tv" because that returns mounting hardware, not TVs.
+- FOR WALL ART: include content + medium + color palette: "abstract beige brown canvas wall art print large framed"
+- FOR WINDOW TREATMENTS: distinguish the exact type visible — "white horizontal wood venetian blinds", "linen sheer curtain panel white rod pocket", "roman shade ivory textured woven"
+
+BAD examples (do NOT do this):
+  "japandi minimalist sofa living room"
+  "boho rattan chair bedroom accent"
+  "coastal blue throw pillow set"
+  "wall-mounted tv living room"
+  "television"
+
+GOOD examples (follow this format exactly):
+  "queen platform bed cream linen tall wingback headboard panel no tufting upholstered"
+  "rattan cane accent chair natural wood legs round back striped cotton seat cushion"
+  "brass gold swing arm wall sconce adjustable arm linen drum shade"
+  "natural jute flatweave area rug 8x10 hand-woven reversible"
+  "dark walnut solid wood floating bookshelf wall-mounted invisible bracket"
+  "white oak round coffee table tapered angled legs low profile"
+  "55 inch 4K smart TV black slim bezel flat screen LED"
+  "sage green platform bed frame storage drawers solid wood queen"
+  "abstract warm neutral canvas wall art large framed modern"
+
+Return ONLY a valid JSON array. No markdown, no explanation, no code fences."""
 
     resp = requests.post(
         f"{ANTHROPIC_API_BASE}/messages",
@@ -129,7 +199,7 @@ Return ONLY a JSON array. No explanation, no markdown."""
         },
         json={
             "model": "claude-sonnet-4-20250514",
-            "max_tokens": 2048,
+            "max_tokens": 4096,
             "messages": [{
                 "role": "user",
                 "content": [
@@ -165,23 +235,32 @@ Return ONLY a JSON array. No explanation, no markdown."""
                         break
             if not category:
                 category = "decor"
+        size_hint = item.get("size_hint", "").strip()
         search_query = item.get("search_query", "").strip()
+        # Append size_hint to search query if not already present (check base part without "ft"/"in" units)
+        size_core = size_hint.replace(" ft", "").replace(" inch", "").strip()
+        if size_hint and size_core and size_core not in search_query:
+            search_query = f"{search_query} {size_hint}".strip()
         if len(search_query.split()) < 6:
-            # Enrich thin search queries with description + style
+            # Enrich thin search queries with description (no style words)
             desc = item.get("description", label)
-            search_query = f"{desc} {style_context} style"
+            search_query = f"{desc}"
         validated.append({
             "label": label,
             "description": item.get("description", label),
             "category": category,
             "azimuth_degrees": float(item.get("azimuth_degrees", 180)),
             "elevation_degrees": float(item.get("elevation_degrees", -25)),
+            "size_hint": size_hint,
             "search_query": search_query,
         })
 
     print(f"[furniture] Detected {len(validated)} pieces via Claude Vision")
     for f in validated:
-        print(f"  - {f['label']} ({f['category']}) @ az={f['azimuth_degrees']}° el={f['elevation_degrees']}°")
+        size = f.get("size_hint", "")
+        size_str = f" [{size}]" if size else ""
+        print(f"  - {f['label']} ({f['category']}){size_str} @ az={f['azimuth_degrees']}° el={f['elevation_degrees']}°")
+        print(f"    query: {f['search_query'][:80]}")
     return validated
 
 
@@ -347,13 +426,13 @@ def detect_furniture(room_id: str, user_id: str, fixed_furniture: list = None) -
 
     try:
         room = client.table("rooms").select(
-            "redesign_pano_url, marble_plus_pano_url, marble_pano_url, perspective_render_url, style_blend, room_type, fixed_furniture"
+            "redesign_pano_url, perspective_render_url, style_blend, room_type, fixed_furniture"
         ).eq("id", room_id).single().execute().data
 
         if not room:
             raise RuntimeError(f"Room {room_id} not found")
 
-        pano_url = room.get("redesign_pano_url") or room.get("marble_plus_pano_url") or room.get("marble_pano_url")
+        pano_url = room.get("redesign_pano_url")
         if not pano_url:
             raise RuntimeError("No panorama URL found")
 

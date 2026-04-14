@@ -6,6 +6,7 @@ import {
   buildPreservationInstructions,
   type RoomArchitecture,
 } from "./room-analyzer";
+import { expandForPrompt } from "./style-match";
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
@@ -432,7 +433,9 @@ export function buildFluxPrompt(params: BuildFluxPromptParams): string {
   const keptItemLabels = rawKeptItemLabels
     .map(sanitizeUserText)
     .filter(Boolean);
-  const d = fingerprint.dimensions;
+  // V2 fingerprints store merged dims in non-semantic DB slots — expand to
+  // semantically correct 12-dim values for prompt generation.
+  const d = expandForPrompt(fingerprint) as StyleFingerprint["dimensions"];
   const roomTypeStr = roomType.replace(/_/g, " ");
 
   // Research findings incorporated here (2026-04-08):
@@ -1006,7 +1009,7 @@ export function buildAnchorFallbackPrompt(
 
   // Materials palette
   const materialsLine = fp
-    ? `New materials: ${getMaterialPalette(params.fingerprint.dimensions) || "natural materials"}.`
+    ? `New materials: ${getMaterialPalette(expandForPrompt(params.fingerprint) as StyleFingerprint["dimensions"]) || "natural materials"}.`
     : "";
 
   // Decor layering (Rule 5) — plants by species when nature dimension is high
@@ -1156,8 +1159,9 @@ export function buildFluxPromptFromContext(context: RenderContext): string {
     let s1 = `Interior design makeover: redesign this ${shapeStr}${roomType}.`;
     if (fingerprint) {
       const descriptorCount = fingerprint.confidence > 0.4 ? 3 : 2;
+      const expandedDims = expandForPrompt(fingerprint) as StyleFingerprint["dimensions"];
       const descriptors = dominantDescriptors(
-        fingerprint.dimensions,
+        expandedDims,
         descriptorCount,
       );
       if (descriptors.length > 0) {
@@ -1172,13 +1176,15 @@ export function buildFluxPromptFromContext(context: RenderContext): string {
   // ─── SECTION 1b — FULL FINGERPRINT PHRASE (all 12 dimensions) ────────
   // Ensures dimensions beyond the top-3 still contribute to the prompt.
   if (fingerprint) {
-    const fullPhrase = buildFullFingerprintPhrase(fingerprint.dimensions);
+    const expDims = expandForPrompt(fingerprint) as StyleFingerprint["dimensions"];
+    const fullPhrase = buildFullFingerprintPhrase(expDims);
     if (fullPhrase) core.push(fullPhrase + ".");
   }
 
   // ─── SECTION 2 — MATERIAL PALETTE ─────────────────────────────────────
   if (fingerprint) {
-    const palette = getMaterialPalette(fingerprint.dimensions);
+    const expDims2 = expandForPrompt(fingerprint) as StyleFingerprint["dimensions"];
+    const palette = getMaterialPalette(expDims2);
     if (palette) core.push(palette + ".");
   }
 

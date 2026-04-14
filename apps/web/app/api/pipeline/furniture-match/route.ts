@@ -50,6 +50,69 @@ interface SerpMatchedProduct {
   matchScore: number;
 }
 
+/** Fix known Serper query failure patterns before sending to Google Shopping. */
+function normalizeSearchQuery(label: string, query: string): string {
+  const lowerLabel = label.toLowerCase();
+  let q = query;
+
+  // TV/television: "wall-mounted tv" returns mounting hardware, not TVs.
+  // Rewrite to a direct TV product query.
+  if (lowerLabel.includes("tv") || lowerLabel.includes("television")) {
+    // Extract size hint if present (e.g. "55 inch", "65 inch")
+    const sizeMatch = q.match(/(\d{2,3})\s*(?:inch|")/i);
+    const size = sizeMatch ? `${sizeMatch[1]} inch` : "55 inch";
+    // Extract color if present
+    const colorMatch = q.match(/\b(black|white|silver|gray|grey)\b/i);
+    const color = colorMatch ? colorMatch[1] : "black";
+    return `${size} 4K smart TV ${color} slim bezel flat screen LED`;
+  }
+
+  // Wall art: overly generic queries like "wall art" return bad results.
+  // Ensure content descriptor + medium are present.
+  if (
+    (lowerLabel.includes("wall art") ||
+      lowerLabel.includes("framed art") ||
+      lowerLabel.includes("painting") ||
+      lowerLabel.includes("print")) &&
+    q.split(" ").length < 5
+  ) {
+    return `${q} large framed canvas print neutral tones modern`;
+  }
+
+  // Paint-chip color names severely limit Google Shopping results.
+  // Replace them with their base searchable color so we get more products
+  // while still filtering for the right color family.
+  q = q
+    .replace(/\bsage green\b/gi, "green")
+    .replace(/\bdusty rose\b/gi, "pink")
+    .replace(/\bdusty blue\b/gi, "blue")
+    .replace(/\bolive green\b/gi, "green")
+    .replace(/\bforest green\b/gi, "green")
+    .replace(/\bslate blue\b/gi, "blue")
+    .replace(/\bburnt orange\b/gi, "orange")
+    .replace(/\bterracotta\b/gi, "terracotta") // terracotta is actually searchable
+    .replace(/\bwarm putty\b/gi, "beige")
+    .replace(/\bwarm white\b/gi, "white");
+
+  // For beds, nightstands, dressers: if no recognizable color remains after substitution,
+  // the form/construction should be the primary search driver.
+  const colorTerms = /\b(white|black|gray|grey|brown|beige|cream|natural|oak|walnut|green|blue|pink|orange|terracotta)\b/i;
+  if (
+    (lowerLabel.includes("bed") || lowerLabel.includes("nightstand") || lowerLabel.includes("dresser")) &&
+    !colorTerms.test(q)
+  ) {
+    // No recognizable color — leave query as-is (form-only is fine)
+  }
+
+  // Strip style words that slip through despite prompt rules
+  q = q
+    .replace(/\b(japandi|scandinavian|mid-century|coastal|bohemian|boho|minimalist)\b/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+  return q;
+}
+
 export async function POST(request: Request) {
   const serviceKey = request.headers.get("x-service-key");
   const isServiceCall =
@@ -331,11 +394,14 @@ export async function POST(request: Request) {
     for (const item of furnitureItems) {
       // Always enrich query with style tag — Modal's search_query often omits it.
       const baseQuery = item.search_query || `${item.label} buy`;
-      const searchQuery =
+      let searchQuery =
         dominantStyleTag &&
         !baseQuery.toLowerCase().includes(dominantStyleTag.toLowerCase())
           ? `${baseQuery} ${dominantStyleTag}`.trim()
           : baseQuery.trim();
+
+      // Post-process known failure patterns before sending to Serper
+      searchQuery = normalizeSearchQuery(item.label, searchQuery);
 
       let products: SerperProduct[] = [];
       let rawResults: SerperProduct[] = [];
@@ -343,6 +409,26 @@ export async function POST(request: Request) {
         const result = await searchProducts(searchQuery, 10);
         rawResults = result.products;
         products = rawResults.filter(isFurnitureProduct);
+
+        // Color-specific furniture fallback: if the label has a color but the query returns
+        // < 3 products, retry with the color stripped so construction drives results.
+        // This handles specialty painted furniture (sage green beds, etc.) where the exact
+        // color narrows results too aggressively.
+        if (products.length < 3) {
+          const colorStripped = searchQuery
+            .replace(/\b(green|blue|pink|orange|red|yellow|purple|teal|navy|sage|olive|mint|terracotta|gold|ivory|cream)\b/gi, "")
+            .replace(/\s{2,}/g, " ")
+            .trim();
+          if (colorStripped !== searchQuery && colorStripped.split(" ").length >= 3) {
+            console.warn(`[furniture-match] "${item.label}" color-fallback: "${colorStripped}"`);
+            const fallbackResult = await searchProducts(colorStripped, 10);
+            const fallbackFiltered = fallbackResult.products.filter(isFurnitureProduct);
+            if (fallbackFiltered.length > products.length) {
+              products = fallbackFiltered;
+              rawResults = fallbackResult.products;
+            }
+          }
+        }
       } catch (err) {
         console.warn(
           `[furniture-match] Serper search failed for "${item.label}":`,

@@ -20,12 +20,19 @@ export interface ShowcasePrediction {
 
 type BudgetTier = "budget" | "mid" | "premium" | "luxury";
 
+export interface GridSelection {
+  styleIndex: number;
+  styleName: string;
+  round: number;
+}
+
 interface FingerprintState {
   roomType: string | null;
   budgetTier: BudgetTier | null;
   budgetRange: [number, number] | null;
   isGiftMode: boolean;
   phaseASelections: string[];
+  gridSelections: GridSelection[];
   phaseBResponses: PairwiseResponse[];
   fingerprint: StyleFingerprint | null;
   styleName: string | null;
@@ -36,12 +43,20 @@ interface FingerprintState {
   inclusions: string[];
   constraints: string[];
   roomDimension: "small" | "medium" | "large" | null;
+  /** Direct V2 6-dim adjustments from tie-breaker Q1. Null if no tie was detected. */
+  tiebreakerDeltas: number[] | null;
+  /** Top-2 style names competing after step-2, used to target pairwise in step-3. */
+  competingStyles: string[];
+  /** Primary style blend ratio from step-2 softmax. <0.65 = ambiguous, run pairwise. */
+  blendRatio: number;
 
   setRoomType: (roomType: string) => void;
   setBudget: (tier: BudgetTier, range: [number, number]) => void;
   setGiftMode: (enabled: boolean) => void;
   addPhaseASelection: (imageId: string) => void;
   removePhaseASelection: (imageId: string) => void;
+  addGridSelection: (selection: GridSelection) => void;
+  clearGridSelections: () => void;
   addPhaseBResponse: (response: PairwiseResponse) => void;
   setFingerprint: (
     fingerprint: StyleFingerprint,
@@ -53,6 +68,8 @@ interface FingerprintState {
   setInclusions: (inclusions: string[]) => void;
   setConstraints: (constraints: string[]) => void;
   setRoomDimension: (dimension: "small" | "medium" | "large") => void;
+  setTiebreakerDeltas: (deltas: number[] | null) => void;
+  setCompetingStyles: (styles: string[], blendRatio: number) => void;
   resetFingerprint: () => void;
 }
 
@@ -149,6 +166,7 @@ const INITIAL_STATE = {
   budgetRange: null,
   isGiftMode: false,
   phaseASelections: [],
+  gridSelections: [] as GridSelection[],
   phaseBResponses: [],
   fingerprint: null,
   styleName: null,
@@ -158,6 +176,9 @@ const INITIAL_STATE = {
   inclusions: [] as string[],
   constraints: [] as string[],
   roomDimension: null as "small" | "medium" | "large" | null,
+  tiebreakerDeltas: null as number[] | null,
+  competingStyles: [] as string[],
+  blendRatio: 1.0,
 };
 
 export const useFingerprintStore = create<FingerprintState>()(
@@ -177,6 +198,11 @@ export const useFingerprintStore = create<FingerprintState>()(
             (id) => id !== imageId,
           ),
         })),
+      addGridSelection: (selection) =>
+        set((state) => ({
+          gridSelections: [...state.gridSelections, selection],
+        })),
+      clearGridSelections: () => set({ gridSelections: [] }),
       addPhaseBResponse: (response) =>
         set((state) => ({
           phaseBResponses: [...state.phaseBResponses, response],
@@ -189,6 +215,8 @@ export const useFingerprintStore = create<FingerprintState>()(
       setInclusions: (inclusions) => set({ inclusions }),
       setConstraints: (constraints) => set({ constraints }),
       setRoomDimension: (roomDimension) => set({ roomDimension }),
+      setTiebreakerDeltas: (tiebreakerDeltas) => set({ tiebreakerDeltas }),
+      setCompetingStyles: (competingStyles, blendRatio) => set({ competingStyles, blendRatio }),
       resetFingerprint: () => set(INITIAL_STATE),
     }),
     {
@@ -202,15 +230,26 @@ export const useFingerprintStore = create<FingerprintState>()(
         budgetRange: state.budgetRange,
         isGiftMode: state.isGiftMode,
         phaseASelections: state.phaseASelections,
-        phaseBResponses: state.phaseBResponses,
-        fingerprint: state.fingerprint,
+        gridSelections: state.gridSelections.map(s => ({
+          styleIndex: s.styleIndex,
+          round: s.round,
+          styleName: '',
+        })),
+        // phaseBResponses: omitted — transient, rebuilt each session
+        fingerprint: state.fingerprint ? {
+          ...state.fingerprint,
+          covariance: undefined,
+        } : null,
         styleName: state.styleName,
         styleTags: state.styleTags,
         styleExplanation: state.styleExplanation,
-        showcasePredictionIds: state.showcasePredictionIds,
+        // showcasePredictionIds: omitted — not needed in quiz flow
         inclusions: state.inclusions,
         constraints: state.constraints,
         roomDimension: state.roomDimension,
+        // tiebreakerDeltas: omitted — in-session only, step-2 is single page load
+        competingStyles: state.competingStyles,
+        blendRatio: state.blendRatio,
       }),
     },
   ),

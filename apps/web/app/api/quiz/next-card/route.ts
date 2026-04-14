@@ -53,13 +53,14 @@ interface AnchorRow {
   style_vector: Record<string, number>;
   flux_prompt: string | null;
   room_images: Record<string, string> | null;
+  round_images: Record<string, Record<string, string>> | null;
 }
 
-async function loadAnchors(room_type?: string) {
+async function loadAnchors(room_type?: string, round?: number) {
   const admin = createAdminSupabaseClient();
   const { data, error } = await admin
     .from("quiz_anchor_images")
-    .select("id, style_name, style_index, image_url, style_vector, flux_prompt, room_images")
+    .select("id, style_name, style_index, image_url, style_vector, flux_prompt, room_images, round_images")
     .order("style_index", { ascending: true });
 
   if (error) {
@@ -70,11 +71,18 @@ async function loadAnchors(room_type?: string) {
   }
 
   const roomSlug = room_type ? ROOM_SLUG[room_type] : undefined;
+  const roundKey = round ? `r${round}` : undefined;
 
   const cards = (data as AnchorRow[]).map((row) => {
     let image_url = row.image_url;
 
-    if (roomSlug) {
+    // Try round_images first (per-room, per-round), fall back to room-specific URL
+    if (roomSlug && roundKey && row.round_images) {
+      const roomRounds = row.round_images[roomSlug];
+      if (roomRounds && roomRounds[roundKey]) {
+        image_url = roomRounds[roundKey];
+      }
+    } else if (roomSlug) {
       const styleSlug = STYLE_SLUG[row.style_index];
       if (styleSlug) {
         image_url = `${ROOM_SPECIFIC_BASE}/phase-a-${styleSlug}-${roomSlug}.webp`;
@@ -89,6 +97,7 @@ async function loadAnchors(room_type?: string) {
       style_vector: row.style_vector,
       flux_prompt: row.flux_prompt ?? null,
       room_images: row.room_images ?? null,
+      round_images: row.round_images ?? null,
     };
   });
   return NextResponse.json({ cards });
@@ -97,7 +106,9 @@ async function loadAnchors(room_type?: string) {
 export async function GET(request: NextRequest) {
   try {
     const room_type = request.nextUrl.searchParams.get("room_type") ?? undefined;
-    return await loadAnchors(room_type);
+    const roundParam = request.nextUrl.searchParams.get("round");
+    const round = roundParam ? parseInt(roundParam, 10) : undefined;
+    return await loadAnchors(room_type, round);
   } catch (error: unknown) {
     const message =
       error instanceof Error ? error.message : "Internal server error";
@@ -108,14 +119,18 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     let room_type: string | undefined;
+    let round: number | undefined;
     try {
       const body = await request.json();
       room_type = body?.room_type;
+      round = body?.round ? parseInt(String(body.round), 10) : undefined;
     } catch {
-      // no body or invalid JSON — fall back to query param
+      // no body or invalid JSON — fall back to query params
       room_type = request.nextUrl.searchParams.get("room_type") ?? undefined;
+      const roundParam = request.nextUrl.searchParams.get("round");
+      round = roundParam ? parseInt(roundParam, 10) : undefined;
     }
-    return await loadAnchors(room_type);
+    return await loadAnchors(room_type, round);
   } catch (error: unknown) {
     const message =
       error instanceof Error ? error.message : "Internal server error";

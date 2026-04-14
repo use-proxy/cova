@@ -1,31 +1,41 @@
 /**
- * StyleFingerprint — 12-dimensional style representation
+ * StyleFingerprint — style representation
  *
  * All dimension values are in the range [0, 1].
  * Neutral midpoint is 0.5. Values within 0.2 of the midpoint
  * (i.e. 0.3 ≤ v ≤ 0.7) are considered stylistically neutral and do not
  * generate directional descriptor text in prompts.
  *
- * Migrated from the previous 10-dim [-1, 1] system on 2026-04-08.
- * The 12 dimensions correspond 1:1 (in this order) to the vectors used by
- * the quiz anchor library and quiz_anchor_images / quiz_comparison_pairs
- * tables. Do not reorder.
+ * V2 (2026-04-12): Collapsed from 12 dims to 6 merged dims for better
+ * quiz signal-to-noise. The interface still uses the original 12 field names
+ * for DB compatibility. In V2, slots 7-12 (texture through culturalInfluence)
+ * are set to 0.5 (neutral) and should be ignored.
+ *
+ * V2 dimension mapping (stored in existing field names):
+ *   colorTemperature → warmth         (0.6*colorTemp + 0.4*lightPref)
+ *   colorSaturation  → visual_complexity (0.5*colorSat + 0.5*pattern)
+ *   density          → density        (unchanged)
+ *   formality        → organicness    (0.4*material + 0.3*texture + 0.3*nature)
+ *   era              → traditionalism (0.5*formality + 0.5*era)
+ *   material         → character      (0.6*lineQuality + 0.4*culturalInfluence)
+ *   texture-culturalInfluence → 0.5 (unused in V2)
  */
 export interface StyleFingerprint {
   dimensions: {
-    colorTemperature: number; // [0, 1]  cool slate → warm amber
-    colorSaturation: number; // [0, 1]  achromatic greige → vivid bold
-    density: number; // [0, 1]  sparse void → richly layered
-    formality: number; // [0, 1]  casual relaxed → formal structured
-    era: number; // [0, 1]  ultra-contemporary → heritage classic
-    material: number; // [0, 1]  synthetic manufactured → natural organic
-    texture: number; // [0, 1]  mirror-smooth → tactile rich
-    pattern: number; // [0, 1]  pattern-free → pattern-rich
-    lineQuality: number; // [0, 1]  hard geometric → organic curves
-    lightPreference: number; // [0, 1]  cozy warm lamps → bright daylight
-    nature: number; // [0, 1]  urban no plants → biophilic abundant
-    culturalInfluence: number; // [0, 1]  pure western → globally eclectic
+    colorTemperature: number; // V1: cool→warm | V2: warmth
+    colorSaturation: number; // V1: muted→bold | V2: visual_complexity
+    density: number; // [0, 1]  sparse → layered (same in V1/V2)
+    formality: number; // V1: casual→formal | V2: organicness
+    era: number; // V1: modern→heritage | V2: traditionalism
+    material: number; // V1: manufactured→natural | V2: character
+    texture: number; // V2: 0.5 (unused)
+    pattern: number; // V2: 0.5 (unused)
+    lineQuality: number; // V2: 0.5 (unused)
+    lightPreference: number; // V2: 0.5 (unused)
+    nature: number; // V2: 0.5 (unused)
+    culturalInfluence: number; // V2: 0.5 (unused)
   };
-  covariance: number[][]; // 12×12 covariance matrix
-  confidence: number; // [0, 1] — how confident the system is in this fingerprint
+  covariance: number[][]; // V1: 12×12 | V2: 6×6
+  confidence: number; // [0, 1]
+  fingerprint_version?: "v1" | "v2";
 }
