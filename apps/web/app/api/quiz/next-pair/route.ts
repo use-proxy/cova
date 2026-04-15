@@ -6,26 +6,28 @@ import {
   V2_DIM_TO_OLD_DIMS,
   V2_DIMENSION_MATCH_WEIGHTS,
   STYLES,
-  NEUTRAL_MIDPOINT,
   mergeToV2,
 } from "@/lib/ai/style-match";
 
-// ── /api/quiz/next-pair ────────���─────────────────────────────────────────────
+// ── /api/quiz/next-pair ──────────────────────────────────────────────────────
 // Phase B selector (V2). Returns one validated comparison pair from
-// quiz_comparison_pairs, or quizComplete=true when responseCount >= 18.
+// quiz_comparison_pairs, or quizComplete=true when responseCount >= TOTAL_PAIRS.
 //
 // V2 uses 6 merged dimensions. Pairs in the DB are tagged with old 12-dim
 // names. The selector maps V2 target dims to old dim names to find pairs.
 //
 // Selection logic:
-//   • responses 1-4: spread across V2 dims where Phase A signal is STRONG
-//     (|val-0.5| >= 0.2), sorted by deviation descending. Confirms/corrects
-//     the Phase A signal before exploring weak dims.
-//   • responses 5-18: pick the V2 dim with highest "correction urgency"
-//     (distance from leading style's v2Center × dim weight), capped at 4
-//     responses per dim. Falls back to lowest count when all dims are equal.
+//   • responses 0-3: spread across V2 dims where Phase A signal is STRONG
+//     (or where competing styles most disagree). Confirms/corrects the
+//     Phase A signal before exploring weak dims.
+//   • responses 4+: Bayesian entropy-minimizing selector — pick the V2 dim
+//     with the highest weighted entropy (most uncertain), capped at
+//     MAX_PER_DIM responses per dim. Resolved dims (entropy below
+//     RESOLVED_ENTROPY_THRESHOLD) are only chosen if every other dim is
+//     also resolved.
 //   • Always exclude any id in completedPairIds.
-//   • Return null + quizComplete=true when responseCount >= 18 or library exhausted.
+//   • Return null + quizComplete=true when responseCount >= TOTAL_PAIRS
+//     or library exhausted.
 
 interface NextPairRequest {
   completedPairIds?: string[];
@@ -33,30 +35,6 @@ interface NextPairRequest {
   responseCount?: number;
   room_type?: string;
   competing_styles?: string[]; // raw style names from softmaxStyleMatch e.g. ["biophilic_jungle", "coastal_bright"]
-}
-
-const ROOM_SLUG_MAP: Record<string, string> = {
-  living_room: "living-room",
-  bedroom: "bedroom",
-  dining_room: "dining-room",
-  kitchen: "kitchen",
-  bathroom: "bathroom",
-  home_office: "home-office",
-};
-
-const STORAGE_BASE =
-  "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/quiz-images/comparisons";
-
-function getRoomImageUrls(
-  dimension: string,
-  roomSlug: string,
-): { image_a_url: string; image_b_url: string } {
-  const rA = Math.floor(Math.random() * 5) + 1;
-  const rB = Math.floor(Math.random() * 5) + 1;
-  return {
-    image_a_url: `${STORAGE_BASE}/${dimension}/${dimension}-high-${roomSlug}-r${rA}.webp`,
-    image_b_url: `${STORAGE_BASE}/${dimension}/${dimension}-low-${roomSlug}-r${rB}.webp`,
-  };
 }
 
 interface PairRow {
@@ -69,7 +47,27 @@ interface PairRow {
   image_b_vector: Record<string, number>;
 }
 
-const TOTAL_PAIRS = 6; // 4 targeted pairs after NLP questions in step-2
+// ── Upgrade 4: swipe budget ─────────────────────────────────────────────
+// Raised from 12 → 24 so each V2 dimension can receive the full 4 responses
+// required to drive its per-dim confidence (count/4) to 1.0. 6 dims × 4 = 24.
+const TOTAL_PAIRS = 24;
+// Per-dim response cap. Matches TOTAL_PAIRS / V2_DIM_COUNT so a fully
+// balanced quiz gives every dim exactly MAX_PER_DIM responses.
+const MAX_PER_DIM = 4;
+
+// ── Upgrade 2: entropy-based refinement ─────────────────────────────────
+// When |fpValue - 0.5| is small, the dimension is uncertain — entropy is
+// near its maximum of 1.0 at p=0.5. As the value pins toward 0 or 1 the
+// entropy collapses, signalling a resolved dim that no longer needs
+// additional swipes. A resolved-threshold of 0.3 corresponds to p ≈ 0.05
+// or p ≈ 0.95, i.e. a strongly committed signal.
+const RESOLVED_ENTROPY_THRESHOLD = 0.3;
+const REFINEMENT_MIN_RESPONSES = 4;
+
+function dimEntropy(fpValue: number): number {
+  const p = Math.max(0.001, Math.min(0.999, fpValue));
+  return -p * Math.log2(p) - (1 - p) * Math.log2(1 - p);
+}
 
 /** Extract V2 dims from a fingerprint (which may be V1 or V2 format). */
 function extractV2Dims(
@@ -142,11 +140,6 @@ export async function POST(request: Request) {
         contestedV2Dims = null; // let normal flow handle it
       }
     }
-    const roomSlug =
-      body.room_type && body.room_type in ROOM_SLUG_MAP
-        ? ROOM_SLUG_MAP[body.room_type]
-        : null;
-
     // Quiz complete by count
     if (responseCount >= TOTAL_PAIRS) {
       return NextResponse.json({ pair: null, quizComplete: true });
@@ -162,11 +155,15 @@ export async function POST(request: Request) {
       }
     }
     const coveredOldDims = new Set<string>();
+    // Improvement 5: track which pair_index (dimension_index) has already
+    // been shown for each old-dim so the selector avoids redundant pairs
+    // that cover the same sub-aspect of a dimension.
+    const usedDimIndicesByDim: Record<string, Set<number>> = {};
 
     if (completedPairIds.length > 0) {
       const { data: completedRows, error: completedErr } = await admin
         .from("quiz_comparison_pairs")
-        .select("dimension")
+        .select("dimension, dimension_index")
         .in("id", completedPairIds);
       if (completedErr) {
         return NextResponse.json(
@@ -178,6 +175,11 @@ export async function POST(request: Request) {
         const d = r.dimension as string;
         coveredOldDims.add(d);
         oldDimCounts[d] = (oldDimCounts[d] ?? 0) + 1;
+        const di = r.dimension_index as number | null;
+        if (di !== null && di !== undefined) {
+          if (!usedDimIndicesByDim[d]) usedDimIndicesByDim[d] = new Set();
+          usedDimIndicesByDim[d]!.add(di);
+        }
       }
     }
 
@@ -192,53 +194,41 @@ export async function POST(request: Request) {
     const hasFingerprint =
       currentFingerprint != null && typeof currentFingerprint === "object";
 
-    if (hasFingerprint && responseCount >= TOTAL_PAIRS) {
-      // Adaptive refine phase: prioritize V2 dims that most DISAGREE with
-      // the leading style's v2Center, weighted by dimension importance.
-      // This corrects dimensions that Phase A got wrong (e.g. warmth stuck
-      // HIGH when the leading style needs warmth LOW).
+    if (hasFingerprint && responseCount >= REFINEMENT_MIN_RESPONSES) {
+      // Adaptive refine phase: pick the V2 dim with the highest Bayesian
+      // entropy, i.e. the dim where the fingerprint is most uncertain.
+      // Entropy peaks at p=0.5 (maximum information gain from a swipe) and
+      // collapses toward 0 as the dim pins to 0 or 1. Dimensions below the
+      // RESOLVED_ENTROPY_THRESHOLD are considered determined and are only
+      // selected if every other dim is also resolved.
       const v2Dims = currentFingerprint ? extractV2Dims(currentFingerprint) : null;
       let chosenV2Idx = 0;
 
       if (v2Dims) {
-        // Find leading style via lightweight cosine similarity (same math as softmaxStyleMatch)
-        const fpCentered = v2Dims.map((v) => v - NEUTRAL_MIDPOINT);
-        let bestSim = -Infinity;
-        let leadingCenter: number[] = STYLES[0]!.v2Center;
+        const dimInfo = Array.from({ length: V2_DIM_COUNT }, (_, i) => {
+          const rawEntropy = dimEntropy(v2Dims[i] ?? 0.5);
+          return {
+            idx: i,
+            rawEntropy,
+            weightedEntropy:
+              rawEntropy * (V2_DIMENSION_MATCH_WEIGHTS[i] ?? 1.0),
+            count: v2DimCounts[i] ?? 0,
+          };
+        }).filter((d) => d.count < MAX_PER_DIM);
 
-        for (const style of STYLES) {
-          const sc = style.v2Center.map((v) => v - NEUTRAL_MIDPOINT);
-          let dot = 0, fpN = 0, sN = 0;
-          for (let i = 0; i < fpCentered.length; i++) {
-            const w = V2_DIMENSION_MATCH_WEIGHTS[i] ?? 1.0;
-            dot += (fpCentered[i] ?? 0) * (sc[i] ?? 0) * w;
-            fpN += (fpCentered[i] ?? 0) ** 2 * w;
-            sN += (sc[i] ?? 0) ** 2 * w;
-          }
-          const sim = fpN === 0 || sN === 0 ? 0 : dot / (Math.sqrt(fpN) * Math.sqrt(sN));
-          if (sim > bestSim) {
-            bestSim = sim;
-            leadingCenter = style.v2Center;
-          }
-        }
+        // Prefer unresolved dims; only touch resolved ones if nothing else
+        // has room.
+        const unresolved = dimInfo.filter(
+          (d) => d.rawEntropy >= RESOLVED_ENTROPY_THRESHOLD,
+        );
+        const pool = unresolved.length > 0 ? unresolved : dimInfo;
 
-        // Compute correction urgency per V2 dim:
-        //   urgency = |currentFp[i] - leadingStyle.v2Center[i]| × weight
-        // Only consider dims that still have room (count < 4)
-        const MAX_PER_DIM = 4;
-        const urgencies = Array.from({ length: V2_DIM_COUNT }, (_, i) => ({
-          idx: i,
-          urgency:
-            Math.abs((v2Dims[i] ?? 0.5) - (leadingCenter[i] ?? 0.5)) *
-            (V2_DIMENSION_MATCH_WEIGHTS[i] ?? 1.0),
-          count: v2DimCounts[i] ?? 0,
-        })).filter((d) => d.count < MAX_PER_DIM);
-
-        if (urgencies.length > 0) {
-          // Pick the highest-urgency dim; break ties randomly
-          urgencies.sort((a, b) => b.urgency - a.urgency);
-          const topUrgency = urgencies[0]!.urgency;
-          const tied = urgencies.filter((d) => Math.abs(d.urgency - topUrgency) < 0.01);
+        if (pool.length > 0) {
+          pool.sort((a, b) => b.weightedEntropy - a.weightedEntropy);
+          const top = pool[0]!.weightedEntropy;
+          const tied = pool.filter(
+            (d) => Math.abs(d.weightedEntropy - top) < 0.01,
+          );
           chosenV2Idx = tied[Math.floor(Math.random() * tied.length)]!.idx;
         } else {
           // All dims at cap — fall back to lowest count
@@ -316,15 +306,36 @@ export async function POST(request: Request) {
         "id, dimension, dimension_index, image_a_url, image_b_url, image_a_vector, image_b_vector",
       )
       .in("dimension", targetOldDims)
-      .eq("is_validated", true);
+      .eq("is_validated", true)
+      .ilike("image_a_url", "%new-pairs%")
+      .or('room_type.eq.' + (body.room_type ?? 'any') + ',room_type.eq.any');
 
     if (candErr) {
       return NextResponse.json({ error: candErr.message }, { status: 500 });
     }
 
-    let pool = (candidates ?? []).filter(
-      (c) => !completedPairIds.includes(c.id as string),
-    );
+    // Improvement 5: first attempt — exclude pairs already shown by id AND
+    // pairs whose dimension_index was already used for that old-dim in this
+    // session. This pushes the selector toward a new sub-aspect of the dim.
+    const filterCandidates = (
+      rows: PairRow[],
+      respectDimIndex: boolean,
+    ): PairRow[] =>
+      rows.filter((c) => {
+        if (completedPairIds.includes(c.id)) return false;
+        if (respectDimIndex) {
+          const used = usedDimIndicesByDim[c.dimension];
+          if (used && used.has(c.dimension_index)) return false;
+        }
+        return true;
+      });
+
+    let pool = filterCandidates((candidates ?? []) as PairRow[], true);
+    // If the strict dim-index filter exhausted the pool, fall back to the
+    // classic completedPairIds-only filter so the quiz still progresses.
+    if (pool.length === 0) {
+      pool = filterCandidates((candidates ?? []) as PairRow[], false);
+    }
 
     // 4. Fallback: if target dims are exhausted, pick from ANY validated pair
     if (pool.length === 0) {
@@ -333,13 +344,16 @@ export async function POST(request: Request) {
         .select(
           "id, dimension, dimension_index, image_a_url, image_b_url, image_a_vector, image_b_vector",
         )
-        .eq("is_validated", true);
+        .eq("is_validated", true)
+        .ilike("image_a_url", "%new-pairs%")
+        .or('room_type.eq.' + (body.room_type ?? 'any') + ',room_type.eq.any');
       if (anyErr) {
         return NextResponse.json({ error: anyErr.message }, { status: 500 });
       }
-      pool = (anyValidated ?? []).filter(
-        (c) => !completedPairIds.includes(c.id as string),
-      );
+      pool = filterCandidates((anyValidated ?? []) as PairRow[], true);
+      if (pool.length === 0) {
+        pool = filterCandidates((anyValidated ?? []) as PairRow[], false);
+      }
     }
 
     if (pool.length === 0) {
@@ -347,16 +361,13 @@ export async function POST(request: Request) {
     }
 
     const chosen = pool[Math.floor(Math.random() * pool.length)] as PairRow;
-    const roomUrls = roomSlug
-      ? getRoomImageUrls(chosen.dimension, roomSlug)
-      : null;
     return NextResponse.json({
       pair: {
         id: chosen.id,
         dimension: chosen.dimension,
         dimension_index: chosen.dimension_index,
-        image_a_url: roomUrls ? roomUrls.image_a_url : chosen.image_a_url,
-        image_b_url: roomUrls ? roomUrls.image_b_url : chosen.image_b_url,
+        image_a_url: chosen.image_a_url,
+        image_b_url: chosen.image_b_url,
         image_a_vector: chosen.image_a_vector,
         image_b_vector: chosen.image_b_vector,
       },

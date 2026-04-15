@@ -26,7 +26,7 @@ import {
   analyzeRoomArchitecture,
   type RoomArchitecture,
 } from "@/lib/ai/room-analyzer";
-import { runDesignDirector } from "@/lib/ai/design-director";
+import { runDesignDirector, type DesignDirectorOutput } from "@/lib/ai/design-director";
 import { assembleDifferentialMap } from "@/lib/ai/mask-assembly";
 import { fetchScoredStyleReferences } from "@/lib/unsplash";
 import { getCuratedReferences } from "@/lib/ai/curated-references";
@@ -279,6 +279,7 @@ export async function POST(request: Request) {
   let negativePrompt: string | null = null;
   let promptSource: "design-director" | "claude-compiled" | "fallback" = "fallback";
   let unsplashReferences: string[] = [];
+  let designDirectorResult: DesignDirectorOutput | null = null;
 
   // Extract keep/remove labels from step-7c user decisions
   const keepRemoveDecisions = (room?.keep_remove_decisions ?? []) as KeepRemoveDecision[];
@@ -331,6 +332,24 @@ export async function POST(request: Request) {
         roomId: room_id,
       });
 
+      // Merge required_objects with any previously identified ones (refinement runs).
+      // Never discard prior named products — only add new ones.
+      const priorRequired = (room.design_brief?.required_objects ?? []) as string[];
+      const freshRequired = ddResult.stagingJson.required_objects ?? [];
+      if (priorRequired.length > 0 || freshRequired.length > 0) {
+        const seen = new Set<string>();
+        const merged: string[] = [];
+        for (const o of [...priorRequired, ...freshRequired]) {
+          const key = o.trim().toLowerCase();
+          if (key && !seen.has(key)) {
+            seen.add(key);
+            merged.push(o);
+          }
+        }
+        ddResult.stagingJson.required_objects = merged;
+      }
+
+      designDirectorResult = ddResult;
       compiledPrompt = ddResult.fluxPrompt;
       negativePrompt = ddResult.negativePrompt;
       promptSource = "design-director";
@@ -682,10 +701,14 @@ export async function POST(request: Request) {
     }
   }
 
-  // Extract wall_change_requested from design brief (populated by design director).
-  // design_brief is now included in the SELECT query so this reads from the DB-fetched row.
-  // If wall_change_requested is explicitly false → preserve walls. Anything else → allow change.
-  const wallChangeRequested = room.design_brief?.wall_change_requested !== false;
+  // Read wall/floor change preferences from the *fresh* Design Director result.
+  // The previous implementation read from room.design_brief, which was fetched
+  // before the Design Director ran — on first render that snapshot is null,
+  // so walls always changed. Reading from designDirectorResult uses the brief
+  // produced by the current run.
+  const freshBrief = designDirectorResult?.stagingJson ?? null;
+  const wallChangeRequested = freshBrief?.wall_change_requested !== false;
+  const floorChangeRequested = freshBrief?.floor_change_requested === true;
 
   try {
     // Fire-and-forget style: send the request to Modal but don't wait for the full
@@ -715,6 +738,7 @@ export async function POST(request: Request) {
         change_map_url: changeMapUrl ?? null,
         kept_item_mask_urls: keptItemMaskUrls.length > 0 ? keptItemMaskUrls : null,
         wall_change_requested: wallChangeRequested,
+        floor_change_requested: floorChangeRequested,
       }),
       signal: AbortSignal.timeout(295_000),
     });

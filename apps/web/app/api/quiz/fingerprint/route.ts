@@ -72,6 +72,102 @@ interface NewFingerprintRequest {
 // Raised from 0.2 → 0.28: tighter threshold reduces noise
 const STRONG_BAND = 0.28;
 
+// ── Improvement 1: response time weighting ──────────────────────────────────
+// Fast decisive swipes carry more genuine signal than slow hesitant ones.
+// Weight scales linearly between fast and slow thresholds; clamps outside.
+const RESPONSE_TIME_FAST_MS = 800;
+const RESPONSE_TIME_SLOW_MS = 3000;
+const RESPONSE_TIME_WEIGHT_FAST = 1.8;
+const RESPONSE_TIME_WEIGHT_SLOW = 0.5;
+const RESPONSE_TIME_WEIGHT_NORMAL = 1.0;
+
+function responseTimeWeight(ms: number): number {
+  if (ms < RESPONSE_TIME_FAST_MS) return RESPONSE_TIME_WEIGHT_FAST;
+  if (ms > RESPONSE_TIME_SLOW_MS) return RESPONSE_TIME_WEIGHT_SLOW;
+  const t =
+    (ms - RESPONSE_TIME_FAST_MS) /
+    (RESPONSE_TIME_SLOW_MS - RESPONSE_TIME_FAST_MS);
+  return (
+    RESPONSE_TIME_WEIGHT_FAST +
+    t * (RESPONSE_TIME_WEIGHT_SLOW - RESPONSE_TIME_WEIGHT_FAST)
+  );
+}
+void RESPONSE_TIME_WEIGHT_NORMAL;
+
+// ── Improvement 2: repeated phase A style bonus ─────────────────────────────
+// A user who picks the same style across rounds 1 and 2 sends a stronger
+// signal than a one-off pick — boost that style's contribution.
+const PHASE_A_REPEATED_STYLE_MULTIPLIER = 1.5;
+
+// ── Improvement 3: non-visual question weight ───────────────────────────────
+// Non-visual answers are less reliable than visual swipes — apply at 0.4 of
+// the raw delta magnitude.
+const NON_VISUAL_WEIGHT = 0.4;
+
+// ── Improvement 4: contradiction penalty ────────────────────────────────────
+const CONTRADICTION_CONFIDENCE_PENALTY = 0.15;
+const CONTRADICTION_RATIO_THRESHOLD = 0.3;
+// Only apply contradiction penalty when overall per-dim consistency is also
+// low — genuine "mixed but coherent" users keep the floor on dims they
+// actually care about.
+const CONTRADICTION_OVERALL_GATE = 0.65;
+
+// ── Improvement 6: randomness detection ─────────────────────────────────────
+const RANDOMNESS_BALANCE_THRESHOLD = 0.40;
+const RANDOMNESS_MAX_PENALTY = 0.35;
+// Skip the randomness penalty for users whose per-dim consistency is high
+// (mixed but coherent) — only randomly-balanced users with no per-dim
+// agreement should be penalised.
+const RANDOMNESS_CONSISTENCY_GATE = 0.60;
+
+// ── Upgrade 1: strong Phase A prior initialization ──────────────────────────
+// Phase A signal is blended with neutral midpoint at a 75/25 weight so the
+// anchor/grid selections set a strong starting point that Phase B refines.
+// Previously Phase A contributed ~40% of the final fingerprint — with this
+// prior Phase A contributes 75%, giving Phase B a meaningful position to
+// refine from rather than a near-neutral vector.
+const PHASE_A_PRIOR_WEIGHT = 0.75;
+const PHASE_A_NEUTRAL_WEIGHT = 1 - PHASE_A_PRIOR_WEIGHT;
+
+// Initial confidence derived from Phase A anchor compatibility. A higher
+// compatibility score means the user's Phase A picks agree on more V2 dims,
+// which warrants a higher starting confidence before Phase B even begins.
+function initialConfidenceFromCompatibility(compat: number): number {
+  if (compat >= 0.90) return 0.85;
+  if (compat >= 0.70) return 0.65;
+  if (compat >= 0.50) return 0.60;
+  if (compat >= 0.30) return 0.40;
+  return 0.30;
+}
+
+// ── Upgrade 3: blended confidence formula ───────────────────────────────────
+// Final confidence is a weighted blend of Phase A (initial anchor-compat
+// derived value) and Phase B (per-dim response coverage). With many
+// responses Phase B dominates; early in the quiz Phase A carries more weight.
+const PHASE_A_CONF_WEIGHT_LOW_RESPONSES = 0.40;
+const PHASE_A_CONF_WEIGHT_HIGH_RESPONSES = 0.30;
+const PHASE_B_DOMINANCE_RESPONSE_THRESHOLD = 16;
+
+// Maximum lift Phase B can deliver above the Phase A anchor confidence
+// before any consistency/randomness adjustments. Prevents a weak anchor
+// (compat 0.5) from piggybacking on a perfectly-correlated phase B run
+// and producing decisive-user-level confidence.
+const PHASE_B_MAX_LIFT_OVER_A = 0.22;
+
+// Phase B per-dim consistency scoring. Raw response count alone doesn't
+// tell us whether the user's swipes actually agreed on a direction for a
+// given V2 dim — a well-covered but oscillating dim has just as many
+// responses as a well-covered decisive one. We measure consistency by
+// summing the sign of each response's rawDelta on dim i (only counting
+// responses where |rawDelta_i| exceeds PHASE_B_INFORMATIVE_DELTA_THRESHOLD,
+// so uninformative off-axis updates don't pollute the signal) and taking
+// |sum| / count. A perfectly consistent dim scores 1.0; a perfectly split
+// one scores 0.0.
+const PHASE_B_INFORMATIVE_DELTA_THRESHOLD = 0.1;
+// Floor for per-dim consistency so a single stray disagreement doesn't
+// completely zero out a dim's contribution.
+const PHASE_B_CONSISTENCY_FLOOR = 0.2;
+
 function clamp(v: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, v));
 }
@@ -168,6 +264,11 @@ async function computeNewFingerprint(
   styleTags: string[];
   competingStyles: string[];
   blendRatio: number;
+  styleBlend: Record<string, number>;
+  primaryStyle: string | null;
+  secondaryStyle: string | null;
+  primaryWeight: number;
+  secondaryWeight: number;
   debug?: DebugData;
 }> {
   const { phase_b_responses } = body;
@@ -178,6 +279,7 @@ async function computeNewFingerprint(
   const covariance = identityCov6(0.5);
   let confidence = 0.3;
   let anchorCompatibility = 0;
+  let hasPhaseASignal = false;
 
   // ── Phase A: smart merge from grid selections ─────────────────────
   if (body.grid_selections && body.grid_selections.length > 0) {
@@ -188,11 +290,19 @@ async function computeNewFingerprint(
     }
 
     const totalPicks = body.grid_selections.length; // always 6
-    const pickedStyles = Object.entries(pickCounts).map(([idxStr, count]) => ({
-      style: STYLES[Number(idxStr)]!,
-      count,
-      weight: count / totalPicks,
-    })).filter(x => x.style);
+    const pickedStyles = Object.entries(pickCounts)
+      .map(([idxStr, count]) => {
+        // Improvement 2: a style picked across multiple rounds is a stronger
+        // signal than a one-off pick — boost its blend weight.
+        const repeatBonus =
+          count >= 2 ? PHASE_A_REPEATED_STYLE_MULTIPLIER : 1.0;
+        return {
+          style: STYLES[Number(idxStr)]!,
+          count,
+          weight: (count / totalPicks) * repeatBonus,
+        };
+      })
+      .filter((x) => x.style);
 
     // For each V2 dim, use pick-count-weighted max-deviation merge:
     // - Find the value furthest from neutral among all chosen styles
@@ -219,9 +329,11 @@ async function computeNewFingerprint(
         : clamp(NEUTRAL_MIDPOINT + (weightedSum / totalWeight), 0, 1);
     }
 
-    // Confidence: higher when picks are concentrated on fewer styles
+    // Compatibility proxy for grid selections: concentration of picks on a
+    // single dominant style. 1.0 when all 6 picks go to one style.
     const maxPickShare = Math.max(...Object.values(pickCounts)) / totalPicks;
-    confidence = 0.5 + 0.5 * maxPickShare;
+    anchorCompatibility = maxPickShare;
+    hasPhaseASignal = true;
   } else if (phaseAIds.length > 0) {
     const admin = createAdminSupabaseClient();
     const { data: selectedAnchors } = await admin
@@ -231,6 +343,7 @@ async function computeNewFingerprint(
       .not("style_vector", "is", null);
 
     if (selectedAnchors && selectedAnchors.length > 0) {
+      hasPhaseASignal = true;
       // Merge each 12-dim anchor to 6-dim V2
       const anchorV2s = selectedAnchors.map((a) =>
         mergeToV2(a.style_vector as Record<string, number>),
@@ -239,6 +352,8 @@ async function computeNewFingerprint(
       if (anchorV2s.length === 1) {
         const sv = anchorV2s[0]!;
         for (let i = 0; i < V2_DIM_COUNT; i++) v2Dims[i] = sv[i]!;
+        // Single anchor — fully self-consistent by definition.
+        anchorCompatibility = 1.0;
       } else {
         // Two anchors — max-deviation merge per V2 dimension
         const vecA = anchorV2s[0]!;
@@ -271,6 +386,26 @@ async function computeNewFingerprint(
     }
   }
 
+  // ── Upgrade 1: apply strong Phase A prior blend ─────────────────────────
+  // Only applies when Phase A produced some signal — otherwise v2Dims is
+  // already the neutral midpoint and the blend would be a no-op.
+  if (hasPhaseASignal) {
+    for (let i = 0; i < V2_DIM_COUNT; i++) {
+      v2Dims[i] = clamp(
+        PHASE_A_PRIOR_WEIGHT * v2Dims[i]! +
+          PHASE_A_NEUTRAL_WEIGHT * NEUTRAL_MIDPOINT,
+        0,
+        1,
+      );
+    }
+    // Initial confidence from anchor compatibility — used both as the pre-B
+    // confidence and as the Phase A contribution to the blended final score.
+    confidence = initialConfidenceFromCompatibility(anchorCompatibility);
+  }
+
+  // Phase A confidence snapshot for Upgrade 3 blend.
+  const phaseAConfidence = confidence;
+
   const debugData: DebugData | undefined = collectDebug
     ? {
         fingerprintVersion: "v2",
@@ -302,7 +437,13 @@ async function computeNewFingerprint(
       const choice = adjustments[nvr.choiceIndex];
       if (!choice) continue;
       for (const adj of choice) {
-        v2Dims[adj.dim] = clamp(v2Dims[adj.dim]! + adj.delta, 0, 1);
+        // Improvement 3: non-visual answers are less reliable than visual
+        // swipes — apply at a discounted weight.
+        v2Dims[adj.dim] = clamp(
+          v2Dims[adj.dim]! + adj.delta * NON_VISUAL_WEIGHT,
+          0,
+          1,
+        );
       }
     }
   }
@@ -344,6 +485,21 @@ async function computeNewFingerprint(
     // Momentum tracking per V2 dim
     const dimMomentum: number[] = Array(V2_DIM_COUNT).fill(0) as number[];
     const dimLastDirection: number[] = Array(V2_DIM_COUNT).fill(0) as number[];
+    // Per-dim consistency tracking (Upgrade 3): sum of rawDelta signs and
+    // count of informative responses, used to weight per-dim phase B conf.
+    // With Improvement 1 these are weighted by response-time weight so slow
+    // hesitant swipes contribute less effective coverage than fast ones.
+    const dimSignSum: number[] = Array(V2_DIM_COUNT).fill(0) as number[];
+    const dimInformativeCount: number[] = Array(V2_DIM_COUNT).fill(0) as number[];
+    // Per-dim coverage tracking (Improvement 1): effective coverage scales
+    // with response-time weight — slow swipes count as fewer units of cov.
+    // Fast → ~1.32 per swipe, slow → ~0.8 per swipe.
+    const dimEffCoverage: number[] = Array(V2_DIM_COUNT).fill(0) as number[];
+    // Raw (unweighted) counts for Improvement 4 contradiction detection.
+    // Using raw counts here keeps the contradiction ratio interpretable
+    // even when rtWeights vary across responses.
+    const dimRawSignSum: number[] = Array(V2_DIM_COUNT).fill(0) as number[];
+    const dimRawCount: number[] = Array(V2_DIM_COUNT).fill(0) as number[];
 
     for (const resp of phase_b_responses) {
       if (resp.chosenSide === "skip") continue;
@@ -356,6 +512,10 @@ async function computeNewFingerprint(
         resp.chosenSide === "A" ? pair.image_b_vector : pair.image_a_vector;
 
       const lambda = Math.min(4, 1 + 600 / Math.max(resp.responseTimeMs, 100));
+      // Improvement 1: fast decisive swipes carry more signal than slow
+      // hesitant ones. This multiplier is applied to dim-delta updates AND
+      // to effective-coverage tracking so slow users see reduced confidence.
+      const rtWeight = responseTimeWeight(resp.responseTimeMs);
 
       // Merge chosen/rejected to V2 and compute delta in V2 space
       const chosenV2 = mergeToV2(chosenVec);
@@ -363,6 +523,22 @@ async function computeNewFingerprint(
 
       for (let i = 0; i < V2_DIM_COUNT; i++) {
         const rawDelta = chosenV2[i]! - rejectedV2[i]!;
+
+        // Consistency tracking — only count responses where the pair
+        // actually carries signal on dim i, so off-axis noise doesn't
+        // wash out the direction-agreement signal.
+        if (Math.abs(rawDelta) >= PHASE_B_INFORMATIVE_DELTA_THRESHOLD) {
+          dimSignSum[i]! += Math.sign(rawDelta) * rtWeight;
+          dimInformativeCount[i]! += rtWeight;
+          // Scaled effective coverage: a fast swipe contributes more to
+          // coverage than a slow one, but even a slow swipe counts for
+          // ~0.8 so Profile 6-style hesitant-but-consistent users still
+          // accumulate meaningful confidence.
+          dimEffCoverage[i]! += 0.6 + 0.4 * rtWeight;
+          // Raw (unweighted) counts for contradiction detection.
+          dimRawSignSum[i]! += Math.sign(rawDelta);
+          dimRawCount[i]! += 1;
+        }
 
         // Momentum
         const direction = Math.sign(rawDelta);
@@ -377,7 +553,12 @@ async function computeNewFingerprint(
         const momentumMultiplier = 1.0 + dimMomentum[i]! * 0.15;
 
         v2Dims[i] = clamp(
-          v2Dims[i]! + rawDelta * (Math.abs((v2Dims[i] ?? 0.5) - 0.5) > 0.25 ? 0.04 : 0.25) * lambda * momentumMultiplier,
+          v2Dims[i]! +
+            rawDelta *
+              (Math.abs((v2Dims[i] ?? 0.5) - 0.5) > 0.25 ? 0.04 : 0.25) *
+              lambda *
+              momentumMultiplier *
+              rtWeight,
           0,
           1,
         );
@@ -414,14 +595,125 @@ async function computeNewFingerprint(
       }
     }
 
-    // Confidence encoding: cov[i][i] = 1 - min(1, count / 4)
+    // Per-dim confidence: coverage × consistency.
+    //   coverage    = min(1, effectiveCoverage / 4)    — weighted coverage
+    //   consistency = |weighted sign sum| / weighted informed count
+    // Dims with no informative responses fall back to the bare coverage
+    // number so we don't over-penalize dims that simply weren't probed.
+    //
+    // Improvement 4: dims with contradictory rawDelta history (e.g. user
+    // chose B twice and A twice) get a confidence penalty, but only when
+    // the user is OVERALL not consistent — a genuinely "mixed but coherent"
+    // user who contradicts on 1-2 dims shouldn't be penalized.
+    // First pass: compute overall consistency across all informed dims so
+    // the contradiction gate knows whether to fire.
+    let globalAbsSign = 0;
+    let globalInformed = 0;
+    for (let i = 0; i < V2_DIM_COUNT; i++) {
+      const informed = dimInformativeCount[i] ?? 0;
+      if (informed > 0) {
+        globalAbsSign += Math.abs(dimSignSum[i] ?? 0);
+        globalInformed += informed;
+      }
+    }
+    const overallConsistency =
+      globalInformed > 0 ? globalAbsSign / globalInformed : 0;
+
     let confSum = 0;
     for (let i = 0; i < V2_DIM_COUNT; i++) {
-      const dimConfidence = Math.min(1, (responsesPerV2Dim[i] ?? 0) / 4);
-      covariance[i]![i] = 1 - dimConfidence;
-      confSum += dimConfidence;
+      const effCov = dimEffCoverage[i] ?? 0;
+      const coverage = Math.min(1, effCov / 4);
+      covariance[i]![i] = 1 - coverage;
+      const informed = dimInformativeCount[i] ?? 0;
+      const consistency =
+        informed > 0
+          ? Math.max(
+              PHASE_B_CONSISTENCY_FLOOR,
+              Math.abs(dimSignSum[i] ?? 0) / informed,
+            )
+          : 1.0;
+      let dimConf = coverage * consistency;
+
+      // Improvement 4: contradiction penalty, gated by overall consistency.
+      const rawInformed = dimRawCount[i] ?? 0;
+      if (rawInformed >= 2 && overallConsistency < CONTRADICTION_OVERALL_GATE) {
+        const rs = dimRawSignSum[i] ?? 0;
+        const up = (rawInformed + rs) / 2;
+        const down = (rawInformed - rs) / 2;
+        const contradictionRatio = Math.min(up, down) / rawInformed;
+        if (contradictionRatio > CONTRADICTION_RATIO_THRESHOLD) {
+          dimConf -= CONTRADICTION_CONFIDENCE_PENALTY;
+        }
+      }
+
+      confSum += Math.max(0, dimConf);
     }
-    confidence = confSum / V2_DIM_COUNT;
+    const phaseBConfidence = confSum / V2_DIM_COUNT;
+
+    // ── Upgrade 3: blended Phase A / Phase B confidence ───────────────────
+    const totalResponses = phase_b_responses.length;
+    const phaseAWeight =
+      totalResponses >= PHASE_B_DOMINANCE_RESPONSE_THRESHOLD
+        ? PHASE_A_CONF_WEIGHT_HIGH_RESPONSES
+        : PHASE_A_CONF_WEIGHT_LOW_RESPONSES;
+    const phaseBWeight = 1 - phaseAWeight;
+    confidence =
+      phaseAWeight * phaseAConfidence + phaseBWeight * phaseBConfidence;
+
+    // Cap the pre-boost confidence relative to Phase A. A weak Phase A
+    // anchor (e.g. mixed grid picks with compat 0.5) should not be able
+    // to reach decisive-user confidence purely because Phase B happened
+    // to be internally consistent — users with genuinely clear single-
+    // style preferences are what earn the top end of the range.
+    const phaseALiftCeiling = phaseAConfidence + PHASE_B_MAX_LIFT_OVER_A;
+    if (confidence > phaseALiftCeiling) confidence = phaseALiftCeiling;
+
+    // Consistency boost: if the user strongly favored one side across responses,
+    // that reflects a decisive preference — raise confidence accordingly.
+    // Applied AFTER the Phase A/B blend so both signals are rewarded.
+    let sideACount = 0;
+    let sideBCount = 0;
+    for (const resp of phase_b_responses) {
+      if (resp.chosenSide === "A") sideACount++;
+      else if (resp.chosenSide === "B") sideBCount++;
+    }
+    const totalDecisive = sideACount + sideBCount;
+    if (totalDecisive > 0) {
+      const maxShare = Math.max(sideACount, sideBCount) / totalDecisive;
+      if (maxShare > 0.7) {
+        confidence = Math.min(1.0, confidence * 1.4);
+      }
+    }
+
+    // ── Improvement 6: randomness detection ───────────────────────────────
+    // If the user's global A/B choices are nearly balanced AND their per-dim
+    // consistency is low, they're behaving randomly — scale confidence down.
+    // The per-dim consistency gate prevents penalizing genuinely mixed but
+    // coherent users (Profile 5) who happen to pick ~50/50 because their
+    // preferred target crosses the neutral axis on several dims.
+    if (phase_b_responses.length >= 8 && totalDecisive > 0) {
+      const balanceRatio =
+        Math.min(sideACount, sideBCount) / totalDecisive;
+      if (balanceRatio > RANDOMNESS_BALANCE_THRESHOLD) {
+        let totalCons = 0;
+        let dimsWithSignal = 0;
+        for (let i = 0; i < V2_DIM_COUNT; i++) {
+          const informed = dimInformativeCount[i] ?? 0;
+          if (informed > 0) {
+            totalCons += Math.abs(dimSignSum[i] ?? 0) / informed;
+            dimsWithSignal++;
+          }
+        }
+        const avgCons = dimsWithSignal > 0 ? totalCons / dimsWithSignal : 0;
+        if (avgCons < RANDOMNESS_CONSISTENCY_GATE) {
+          const randomnessPenalty = Math.min(
+            1,
+            (balanceRatio - RANDOMNESS_BALANCE_THRESHOLD) / 0.1,
+          );
+          confidence = confidence * (1 - RANDOMNESS_MAX_PENALTY * randomnessPenalty);
+        }
+      }
+    }
   }
 
   if (debugData) {
@@ -446,21 +738,38 @@ async function computeNewFingerprint(
   let styleName: string;
   let competingStyles: string[] = [];
   let blendRatio = 1.0;
+  let styleBlend: Record<string, number> = {};
+  let primaryStyleName: string | null = null;
+  let secondaryStyleName: string | null = null;
+  let primaryWeight = 0;
+  let secondaryWeight = 0;
   if (strongV2Dims.length === 0) {
     styleName = "Your Unique Style";
   } else {
     const result = softmaxStyleMatch(v2Dims, "v2");
     blendRatio = result.blendRatio;
+    // Build styleBlend as {styleDisplayName: weight} keeping only matches > 0.05
+    for (const m of result.matches) {
+      if (m.weight > 0.05) {
+        styleBlend[toDisplayName(m.style.name)] = Math.round(m.weight * 100) / 100;
+      }
+    }
     if (result.isNeutral) {
       styleName = "Your Unique Style";
     } else if (result.blendRatio >= 0.60 || result.secondaryStyle === null) {
       styleName = toDisplayName(result.primaryStyle.name);
       competingStyles = [result.primaryStyle.name]; // raw internal name for next-pair matching
+      primaryStyleName = toDisplayName(result.primaryStyle.name);
+      primaryWeight = result.matches[0]?.weight ?? result.blendRatio;
     } else {
       const primaryName = toDisplayName(result.primaryStyle.name);
       const secondaryName = toDisplayName(result.secondaryStyle.name);
       styleName = `${primaryName} · ${secondaryName}`;
       competingStyles = [result.primaryStyle.name, result.secondaryStyle.name]; // raw internal names
+      primaryStyleName = primaryName;
+      secondaryStyleName = secondaryName;
+      primaryWeight = result.matches[0]?.weight ?? result.blendRatio;
+      secondaryWeight = result.matches[1]?.weight ?? 0;
     }
   }
 
@@ -533,7 +842,19 @@ async function computeNewFingerprint(
     }));
   }
 
-  return { fingerprint, styleName, styleTags, competingStyles, blendRatio, debug: debugData };
+  return {
+    fingerprint,
+    styleName,
+    styleTags,
+    competingStyles,
+    blendRatio,
+    styleBlend,
+    primaryStyle: primaryStyleName,
+    secondaryStyle: secondaryStyleName,
+    primaryWeight,
+    secondaryWeight,
+    debug: debugData,
+  };
 }
 
 function fingerprintToStyleTags(fp: StyleFingerprint): string[] {
@@ -585,6 +906,11 @@ export async function POST(request: Request) {
       let styleTags: string[];
       let competingStyles: string[] = [];
       let blendRatio = 1.0;
+      let styleBlend: Record<string, number> = {};
+      let primaryStyleName: string | null = null;
+      let secondaryStyleName: string | null = null;
+      let primaryWeight = 0;
+      let secondaryWeight = 0;
 
       if (body.phase_c_confirmation && body.confirmed_fingerprint) {
         fingerprint = body.confirmed_fingerprint;
@@ -592,32 +918,40 @@ export async function POST(request: Request) {
         const d = fingerprint.dimensions;
 
         // For V2, use the first 6 slots for style matching
+        let confirmResult;
         if (version === "v2") {
           const v2Vec = [
             d.colorTemperature, d.colorSaturation, d.formality,
             d.density, d.era, d.material,
           ];
-          const result = softmaxStyleMatch(v2Vec, "v2");
-          if (result.isNeutral) {
-            styleName = "Your Unique Style";
-          } else if (result.blendRatio >= 0.60 || result.secondaryStyle === null) {
-            styleName = toDisplayName(result.primaryStyle.name);
-          } else {
-            styleName = `${toDisplayName(result.primaryStyle.name)} · ${toDisplayName(result.secondaryStyle.name)}`;
-          }
+          confirmResult = softmaxStyleMatch(v2Vec, "v2");
         } else {
           const fpVec = OLD_DIM_ORDER_KEYS.map(
             (k) => (d as Record<string, number>)[k] ?? NEUTRAL_MIDPOINT,
           );
-          const result = softmaxStyleMatch(fpVec, "v1");
-          if (result.isNeutral) {
-            styleName = "Your Unique Style";
-          } else if (result.blendRatio >= 0.60 || result.secondaryStyle === null) {
-            styleName = toDisplayName(result.primaryStyle.name);
-          } else {
-            styleName = `${toDisplayName(result.primaryStyle.name)} · ${toDisplayName(result.secondaryStyle.name)}`;
+          confirmResult = softmaxStyleMatch(fpVec, "v1");
+        }
+
+        for (const m of confirmResult.matches) {
+          if (m.weight > 0.05) {
+            styleBlend[toDisplayName(m.style.name)] = Math.round(m.weight * 100) / 100;
           }
         }
+
+        if (confirmResult.isNeutral) {
+          styleName = "Your Unique Style";
+        } else if (confirmResult.blendRatio >= 0.60 || confirmResult.secondaryStyle === null) {
+          styleName = toDisplayName(confirmResult.primaryStyle.name);
+          primaryStyleName = toDisplayName(confirmResult.primaryStyle.name);
+          primaryWeight = confirmResult.matches[0]?.weight ?? confirmResult.blendRatio;
+        } else {
+          styleName = `${toDisplayName(confirmResult.primaryStyle.name)} · ${toDisplayName(confirmResult.secondaryStyle.name)}`;
+          primaryStyleName = toDisplayName(confirmResult.primaryStyle.name);
+          secondaryStyleName = toDisplayName(confirmResult.secondaryStyle.name);
+          primaryWeight = confirmResult.matches[0]?.weight ?? confirmResult.blendRatio;
+          secondaryWeight = confirmResult.matches[1]?.weight ?? 0;
+        }
+        blendRatio = confirmResult.blendRatio ?? 1.0;
         styleTags = fingerprintToStyleTags(fingerprint).slice(0, 4);
       } else {
         const result = await computeNewFingerprint(body, isDebug);
@@ -626,6 +960,11 @@ export async function POST(request: Request) {
         styleTags = result.styleTags;
         competingStyles = result.competingStyles ?? [];
         blendRatio = result.blendRatio ?? 1.0;
+        styleBlend = result.styleBlend ?? {};
+        primaryStyleName = result.primaryStyle ?? null;
+        secondaryStyleName = result.secondaryStyle ?? null;
+        primaryWeight = result.primaryWeight ?? 0;
+        secondaryWeight = result.secondaryWeight ?? 0;
         if (isDebug && result.debug) {
           (body as unknown as Record<string, unknown>).__debug = result.debug;
         }
@@ -727,7 +1066,11 @@ export async function POST(request: Request) {
         const { error: userErr } = await (admin.from("users") as any)
           .update({
             style_fingerprint: fingerprint,
-            style_blend: fingerprint.dimensions,
+            style_blend: styleBlend,
+            primary_style: primaryStyleName,
+            secondary_style: secondaryStyleName,
+            primary_weight: primaryWeight,
+            secondary_weight: secondaryWeight,
           })
           .eq("id", user.id);
         if (userErr) {

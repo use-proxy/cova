@@ -51,7 +51,7 @@ type FingerprintResult = {
   style_tags: string[];
 };
 
-const TOTAL_PAIRS = 6;
+const TOTAL_PAIRS = 24;
 const MAX_ANCHOR_PICKS = 3;
 const COMPLETION_ROUTE = "/design/step-4";
 

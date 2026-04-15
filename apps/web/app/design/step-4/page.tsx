@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useFingerprintStore } from "@/lib/store/fingerprint";
+import type { StyleFingerprint } from "@/types/fingerprint";
 import "../step-1/step1.css";
 import "./step4.css";
 
@@ -59,6 +60,11 @@ export default function StepFourPage() {
   const [tweakInput, setTweakInput] = useState("");
   const [tweakResult, setTweakResult] = useState<StyleVariation | null>(null);
   const [tweakLoading, setTweakLoading] = useState(false);
+
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState(false);
+  const [actualBlend, setActualBlend] = useState<Record<string, number> | null>(null);
 
   const {
     fingerprint,
@@ -203,6 +209,32 @@ export default function StepFourPage() {
     checkAuth();
   }, [router]);
 
+  useEffect(() => {
+    const fetchActualBlend = async () => {
+      try {
+        const { createBrowserClient } = await import("@/lib/supabase/client");
+        const supabase = createBrowserClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data: userData } = await supabase
+          .from("users")
+          .select(
+            "style_blend, primary_style, secondary_style, primary_weight, secondary_weight",
+          )
+          .eq("id", user.id)
+          .single();
+        if (userData?.style_blend && typeof userData.style_blend === "object") {
+          setActualBlend(userData.style_blend as Record<string, number>);
+        }
+      } catch (e) {
+        console.warn("[step-4] Could not fetch actual blend:", e);
+      }
+    };
+    fetchActualBlend();
+  }, []);
+
   // Fetch fingerprint from API if not yet in store but quiz responses exist
   useEffect(() => {
     if (fingerprint) return; // already computed
@@ -237,6 +269,121 @@ export default function StepFourPage() {
     };
     computeFingerprint();
   }, [fingerprint, phaseBResponses]);
+
+  // Build a {styleName: weight} blend from a (possibly hybrid) display name.
+  const blendFromStyleName = useCallback(
+    (name: string | null | undefined): Record<string, number> => {
+      const blend: Record<string, number> = {};
+      if (!name || !name.trim()) {
+        blend["Warm & Grounded"] = 1.0;
+        return blend;
+      }
+      const parts = name.split(" · ").map((s) => s.trim()).filter(Boolean);
+      if (parts.length === 1) {
+        blend[parts[0]!] = 1.0;
+      } else {
+        blend[parts[0]!] = 0.65;
+        blend[parts[1]!] = 0.35;
+      }
+      return blend;
+    },
+    [],
+  );
+
+  // Fire a single style-preview render and poll until completion.
+  const firePreview = useCallback(
+    async (
+      _fp: StyleFingerprint,
+      blend: Record<string, number>,
+    ): Promise<void> => {
+      setPreviewLoading(true);
+      setPreviewError(false);
+      setPreviewUrl(null);
+
+      try {
+        const roomType =
+          useFingerprintStore.getState().roomType ?? "living_room";
+
+        const res = await fetch("/api/quiz/style-preview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fingerprint: _fp,
+            room_type: roomType,
+            style_blend: blend,
+          }),
+        });
+
+        if (!res.ok) throw new Error("Preview request failed");
+        const { prediction_id } = (await res.json()) as {
+          prediction_id?: string;
+        };
+        if (!prediction_id) throw new Error("No prediction_id returned");
+
+        let attempts = 0;
+        const maxAttempts = 40; // 40 * 1.5s ≈ 60s
+
+        const poll = async (): Promise<void> => {
+          if (attempts >= maxAttempts) {
+            setPreviewError(true);
+            setPreviewLoading(false);
+            return;
+          }
+          attempts++;
+
+          try {
+            const statusRes = await fetch(
+              `/api/render/status?prediction_id=${encodeURIComponent(prediction_id)}&showcase_mode=true`,
+            );
+            if (!statusRes.ok) {
+              setTimeout(poll, 1500);
+              return;
+            }
+            const status = (await statusRes.json()) as {
+              status?: string;
+              render_url?: string;
+              error?: string;
+            };
+
+            if (status.status === "complete" && status.render_url) {
+              setPreviewUrl(status.render_url);
+              setPreviewLoading(false);
+            } else if (status.status === "failed") {
+              setPreviewError(true);
+              setPreviewLoading(false);
+            } else {
+              setTimeout(poll, 1500);
+            }
+          } catch {
+            setTimeout(poll, 1500);
+          }
+        };
+
+        setTimeout(poll, 2000);
+      } catch (e) {
+        console.warn("[step-4] Preview generation failed:", e);
+        setPreviewError(true);
+        setPreviewLoading(false);
+      }
+    },
+    [],
+  );
+
+  // Fire preview as soon as fingerprint is available — only once.
+  useEffect(() => {
+    if (!fingerprint) return;
+    if (previewUrl !== null || previewLoading) return;
+    const blendToUse = actualBlend ?? blendFromStyleName(storedStyleName);
+    void firePreview(fingerprint, blendToUse);
+  }, [
+    fingerprint,
+    storedStyleName,
+    blendFromStyleName,
+    firePreview,
+    previewUrl,
+    previewLoading,
+    actualBlend,
+  ]);
 
   // Fetch plain-English style explanation (cached in store)
   useEffect(() => {
@@ -680,6 +827,7 @@ export default function StepFourPage() {
         styleName: string;
         styleDescription: string;
         styleTags: string[];
+        styleBlend?: Record<string, number>;
       };
       setFingerprint(data.updatedFingerprint, data.styleName, data.styleTags);
       setTweakResult({
@@ -687,6 +835,12 @@ export default function StepFourPage() {
         desc: data.styleDescription,
         traits: data.styleTags,
       });
+      setTweakInput("");
+      const blendForPreview =
+        data.styleBlend && Object.keys(data.styleBlend).length > 0
+          ? data.styleBlend
+          : blendFromStyleName(data.styleName);
+      void firePreview(data.updatedFingerprint, blendForPreview);
     } catch (err) {
       console.warn("[step-4] Tweak API failed:", err);
       setTweakResult(DEFAULT_VARIATION);
@@ -782,6 +936,85 @@ export default function StepFourPage() {
             taste. Each axis reveals how strongly you lean into a particular
             aesthetic quality — from calm to drama, nature to luxury.
           </p>
+
+          <style>{`@keyframes step4-spin { to { transform: rotate(360deg); } }`}</style>
+          <div
+            style={{
+              width: "100%",
+              aspectRatio: "16 / 9",
+              borderRadius: "16px",
+              overflow: "hidden",
+              marginBottom: "24px",
+              background: "#0a1628",
+              position: "relative",
+            }}
+          >
+            {previewLoading && !previewUrl && (
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexDirection: "column",
+                  gap: "12px",
+                }}
+              >
+                <div
+                  style={{
+                    width: "40px",
+                    height: "40px",
+                    border: "3px solid rgba(201,168,76,0.3)",
+                    borderTopColor: "#C9A84C",
+                    borderRadius: "50%",
+                    animation: "step4-spin 1s linear infinite",
+                  }}
+                />
+                <p
+                  style={{
+                    color: "rgba(245,240,232,0.6)",
+                    fontSize: "14px",
+                  }}
+                >
+                  Generating your style preview...
+                </p>
+              </div>
+            )}
+            {previewUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={previewUrl}
+                alt="Your style preview"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                }}
+              />
+            )}
+            {previewError && !previewUrl && (
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <p
+                  style={{
+                    color: "rgba(245,240,232,0.5)",
+                    fontSize: "14px",
+                  }}
+                >
+                  Preview unavailable
+                </p>
+              </div>
+            )}
+          </div>
+
           <div className="radar-container" ref={radarContainerRef}>
             <div className="radar-wrapper">
               <canvas

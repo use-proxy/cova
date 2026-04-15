@@ -46,10 +46,32 @@ export const CURATED_STYLE_REFERENCES: Record<string, string[]> = {
     "https://images.unsplash.com/photo-1558618666-fcd25c85cd64",
   ],
   "cvlux": [
-    "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6",
     "https://images.unsplash.com/photo-1631049307264-da0ec9d70304",
     "https://images.unsplash.com/photo-1560448204-603b3fc33ddc",
     "https://images.unsplash.com/photo-1616047006789-b7af5afb8c20",
+    "https://images.unsplash.com/photo-1615529328331-f8917597711f",
+    "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af",
+  ],
+  "cvcst": [
+    "https://images.unsplash.com/photo-1499793983690-e29da59ef1c2",
+    "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4",
+    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d",
+    "https://images.unsplash.com/photo-1533090481720-856c6e3c1fdc",
+    "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1",
+  ],
+  "cvboh": [
+    "https://images.unsplash.com/photo-1617806118233-18e1de247200",
+    "https://images.unsplash.com/photo-1522444195799-478538b28823",
+    "https://images.unsplash.com/photo-1504199367641-aba8151af406",
+    "https://images.unsplash.com/photo-1485955900006-10f4d324d411",
+    "https://images.unsplash.com/photo-1540539234-c14a20fb7c7b",
+  ],
+  "cvdco": [
+    "https://images.unsplash.com/photo-1618221469555-7f3ad97540d6",
+    "https://images.unsplash.com/photo-1600121848594-d8644e57abab",
+    "https://images.unsplash.com/photo-1583847268964-b28dc8f51f92",
+    "https://images.unsplash.com/photo-1600566752355-35792bedcfea",
+    "https://images.unsplash.com/photo-1493809842364-78817add7ffb",
   ],
 };
 

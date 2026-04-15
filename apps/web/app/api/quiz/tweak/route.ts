@@ -246,6 +246,7 @@ culturalInfluence: global eclectic(1) vs minimal(0)`,
     // ── Step 3: softmax match → canonical style name ──────────────────────────
     const fpVector = DIMENSION_KEYS.map((k) => newDims[k] ?? 0.5);
     let newStyleName: string;
+    const styleBlend: Record<string, number> = {};
     if (isV2) {
       const v2Vec = [
         newDims.colorTemperature, // warmth
@@ -256,6 +257,12 @@ culturalInfluence: global eclectic(1) vs minimal(0)`,
         newDims.material,         // character
       ];
       const result = softmaxStyleMatch(v2Vec, "v2");
+      for (const match of result.matches) {
+        if (match.weight > 0.05) {
+          styleBlend[toDisplayName(match.style.name)] =
+            Math.round(match.weight * 100) / 100;
+        }
+      }
       if (result.isNeutral) {
         newStyleName = "Your Unique Style";
       } else if (result.blendRatio >= 0.60 || result.secondaryStyle === null) {
@@ -264,8 +271,14 @@ culturalInfluence: global eclectic(1) vs minimal(0)`,
         newStyleName = `${toDisplayName(result.primaryStyle.name)} · ${toDisplayName(result.secondaryStyle.name)}`;
       }
     } else {
-      const { primaryStyle } = softmaxStyleMatch(fpVector, "v1");
-      newStyleName = toDisplayName(primaryStyle.name);
+      const result = softmaxStyleMatch(fpVector, "v1");
+      for (const match of result.matches) {
+        if (match.weight > 0.05) {
+          styleBlend[toDisplayName(match.style.name)] =
+            Math.round(match.weight * 100) / 100;
+        }
+      }
+      newStyleName = toDisplayName(result.primaryStyle.name);
     }
 
   // ── Step 3b: style name stability — keep original name for small tweaks ───
@@ -344,7 +357,7 @@ Write exactly 2-3 sentences describing this style in evocative, sensory language
       const admin = createAdminSupabaseClient();
       await (admin.from("users") as any).update({
         style_fingerprint: updatedFingerprint,
-        style_blend: updatedFingerprint.dimensions,
+        style_blend: styleBlend,
       }).eq("id", user.id);
     } catch (dbErr) {
       console.warn("[quiz/tweak] DB persist failed (non-fatal):", dbErr);
@@ -355,5 +368,6 @@ Write exactly 2-3 sentences describing this style in evocative, sensory language
     styleName,
     styleDescription,
     styleTags,
+    styleBlend,
   });
 }

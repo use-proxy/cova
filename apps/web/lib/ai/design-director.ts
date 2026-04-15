@@ -13,6 +13,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { StyleFingerprint } from "@/types/fingerprint";
 import type { RenderContext } from "@/lib/types/area2";
+import { mergeToV2 } from "@/lib/ai/style-match";
 
 const anthropic = new Anthropic();
 
@@ -61,8 +62,10 @@ export interface DesignBrief {
   budgetTier: "ikea" | "west-elm" | "designer";
   totalObjectCount: number;
   wall_change_requested?: boolean;
+  floor_change_requested?: boolean;
   wall_color?: string;
   removal_targets?: string[];   // specific visible objects to remove (clutter, dated fixtures, visual harm)
+  required_objects?: string[];
 }
 
 export interface DesignDirectorInput {
@@ -104,8 +107,10 @@ Rules that are ABSOLUTE when client directives are present:
 1. Named products MUST appear verbatim in your JSON output.
    "65 inch Samsung Frame TV" → appears as "65 inch Samsung Frame TV wall-mounted"
    in the appropriate depthLayers objects array. Never paraphrase or generalize named products.
-2. "keep the carpet/walls/floor" → set wall_change_requested: false AND
+2. "keep the carpet/walls/floor" → set wall_change_requested: false AND/OR floor_change_requested: false AND
    the kept element MUST be noted in the compensations array with its current material/color preserved.
+   Default wall_change_requested = true (allow change).
+   Default floor_change_requested = false (preserve unless the user explicitly asked to change the floor material or color).
 3. Material preferences ("dark sleek wood") override the style anchor's defaults for that category.
 
 ━━━ INTERIOR DESIGN PRINCIPLES (apply only when not overridden by client) ━━━
@@ -455,6 +460,7 @@ No markdown fences, no explanation, no preamble. Only the JSON.
   "budgetTier": "ikea" | "west-elm" | "designer",
   "totalObjectCount": number,
   "wall_change_requested": boolean,
+  "floor_change_requested": boolean,
   "wall_color": "new wall color and finish description — only populated if wall_change_requested is true, empty string otherwise",
   "removal_targets": [
     "specific visible object name (ceiling fan, wall decal, power cord, etc.)",
@@ -650,87 +656,89 @@ function resolveBudgetTier(
   return "designer";
 }
 
+// V2 6-dimension descriptive bands.
+// Order: warmth, visual_complexity, organicness, density, traditionalism, character
+type V2Band = "low" | "moderate" | "high";
+
+const V2_DIM_DESCRIPTIONS: Record<string, Record<V2Band, string>> = {
+  warmth: {
+    low: "cool tones, grey-blue palette, crisp whites",
+    moderate: "balanced warm-cool, neutral base",
+    high: "warm amber tones, honey oak, terracotta accents",
+  },
+  visual_complexity: {
+    low: "minimal, clean surfaces, restrained decoration",
+    moderate: "some layering, curated objects",
+    high: "richly layered, many patterns, gallery walls",
+  },
+  organicness: {
+    low: "industrial materials, concrete, steel, glass",
+    moderate: "mix of natural and manufactured materials",
+    high: "natural wood, linen, plants, organic textures",
+  },
+  density: {
+    low: "sparse, generous negative space, few pieces",
+    moderate: "comfortable amount of furniture and objects",
+    high: "fully furnished, layered, maximalist arrangement",
+  },
+  traditionalism: {
+    low: "contemporary, forward-looking, unconventional",
+    moderate: "timeless balance of old and new",
+    high: "classic forms, traditional details, heritage materials",
+  },
+  character: {
+    low: "quiet, understated, lets materials speak",
+    moderate: "some personality without being loud",
+    high: "strong personal expression, cultural references, art",
+  },
+};
+
+const V2_DIM_ORDER = [
+  "warmth",
+  "visual_complexity",
+  "organicness",
+  "density",
+  "traditionalism",
+  "character",
+] as const;
+
+function bandFor(value: number): V2Band {
+  if (value < 0.35) return "low";
+  if (value > 0.65) return "high";
+  return "moderate";
+}
+
+/** Extract 6-dim V2 vector from a fingerprint that may be V1 or V2. */
+function extractV2Vector(fp: StyleFingerprint): number[] {
+  const d = fp.dimensions as Record<string, number>;
+  if (fp.fingerprint_version === "v2") {
+    // V2 fingerprints store dims in the first 6 legacy slots:
+    // colorTemperature=warmth, colorSaturation=visual_complexity,
+    // formality=organicness, density=density, era=traditionalism, material=character
+    return [
+      d.colorTemperature ?? 0.5,
+      d.colorSaturation ?? 0.5,
+      d.formality ?? 0.5,
+      d.density ?? 0.5,
+      d.era ?? 0.5,
+      d.material ?? 0.5,
+    ];
+  }
+  // V1 — merge to V2
+  return mergeToV2(d);
+}
+
 function buildFingerprintContext(fp: StyleFingerprint): string {
-  const d = fp.dimensions;
-  const lines: string[] = [];
-
-  // colorTemperature (warmth)
-  if (d.colorTemperature > 0.7) {
-    lines.push(
-      `colorTemperature=${d.colorTemperature.toFixed(2)} → warm amber/honey palette, 2700K Edison lighting`,
-    );
-  } else if (d.colorTemperature >= 0.4) {
-    lines.push(
-      `colorTemperature=${d.colorTemperature.toFixed(2)} → balanced neutrals, 3000K warm-white lighting`,
-    );
-  } else {
-    lines.push(
-      `colorTemperature=${d.colorTemperature.toFixed(2)} → cool crisp slate palette, 5000K blue-white lighting`,
-    );
+  const v2 = extractV2Vector(fp);
+  const parts: string[] = [];
+  for (let i = 0; i < V2_DIM_ORDER.length; i++) {
+    const dimName = V2_DIM_ORDER[i]!;
+    const value = v2[i] ?? 0.5;
+    const band = bandFor(value);
+    const description = V2_DIM_DESCRIPTIONS[dimName]![band];
+    parts.push(`${description} (${dimName}: ${band})`);
   }
-
-  // density
-  if (d.density > 0.7) {
-    lines.push(
-      `density=${d.density.toFixed(2)} → 10-12 named objects, richly layered scene`,
-    );
-  } else if (d.density >= 0.4) {
-    lines.push(
-      `density=${d.density.toFixed(2)} → 6-8 objects, balanced presence`,
-    );
-  } else {
-    lines.push(
-      `density=${d.density.toFixed(2)} → 3-4 objects max, negative space emphasized`,
-    );
-  }
-
-  // nature (biophilic / plant presence)
-  if (d.nature > 0.7) {
-    lines.push(
-      `nature=${d.nature.toFixed(2)} → 3+ named plant species, natural materials dominate`,
-    );
-  }
-
-  // texture (tactile richness)
-  if (d.texture > 0.7) {
-    lines.push(
-      `texture=${d.texture.toFixed(2)} → woven, rough, handcraft materials throughout`,
-    );
-  }
-
-  // material (natural vs synthetic — proxy for material refinement)
-  if (d.material > 0.7) {
-    lines.push(
-      `material=${d.material.toFixed(2)} → designer-quality natural materials only`,
-    );
-  }
-
-  // spatial_openness derived from low density + organic lineQuality
-  const spatialOpenness = (1 - d.density) * 0.6 + d.lineQuality * 0.4;
-  if (spatialOpenness > 0.7) {
-    lines.push(
-      `spatial_openness=${spatialOpenness.toFixed(2)} (derived) → furniture floats, generous breathing room`,
-    );
-  }
-
-  // Additional influential dimensions
-  if (d.colorSaturation > 0.7) {
-    lines.push(
-      `colorSaturation=${d.colorSaturation.toFixed(2)} → bold saturated accent colors`,
-    );
-  }
-  if (d.formality > 0.7) {
-    lines.push(
-      `formality=${d.formality.toFixed(2)} → structured, formal arrangement`,
-    );
-  }
-  if (d.era > 0.7) {
-    lines.push(
-      `era=${d.era.toFixed(2)} → heritage classic details, vintage references`,
-    );
-  }
-
-  return lines.join("\n");
+  return `User style preferences: ${parts.join(", ")}`;
 }
 
 // ── Call 1: Vision analysis → staging JSON ───────────────────────────────────
@@ -1139,6 +1147,10 @@ export async function runDesignDirector(
   if (requiredObjects.length > 0) {
     console.log(`[design-director] Required objects extracted from chat: ${requiredObjects.join(", ")}`);
   }
+
+  // Persist required_objects on the staging brief so the redesign route can
+  // merge with prior runs and so the design_brief JSONB carries them forward.
+  stagingJson.required_objects = requiredObjects;
 
   // Call 2: staging JSON → flux_prompt (additive) + negative_prompt
   const { fluxPrompt, negativePrompt } = await callFluxScriptFromBrief(
