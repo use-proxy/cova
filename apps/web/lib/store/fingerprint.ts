@@ -20,12 +20,19 @@ export interface ShowcasePrediction {
 
 type BudgetTier = "budget" | "mid" | "premium" | "luxury";
 
+export interface GridSelection {
+  styleIndex: number;
+  styleName: string;
+  round: number;
+}
+
 interface FingerprintState {
   roomType: string | null;
   budgetTier: BudgetTier | null;
   budgetRange: [number, number] | null;
   isGiftMode: boolean;
   phaseASelections: string[];
+  gridSelections: GridSelection[];
   phaseBResponses: PairwiseResponse[];
   fingerprint: StyleFingerprint | null;
   styleName: string | null;
@@ -36,12 +43,20 @@ interface FingerprintState {
   inclusions: string[];
   constraints: string[];
   roomDimension: "small" | "medium" | "large" | null;
+  /** Direct V2 6-dim adjustments from tie-breaker Q1. Null if no tie was detected. */
+  tiebreakerDeltas: number[] | null;
+  /** Top-2 style names competing after step-2, used to target pairwise in step-3. */
+  competingStyles: string[];
+  /** Primary style blend ratio from step-2 softmax. <0.65 = ambiguous, run pairwise. */
+  blendRatio: number;
 
   setRoomType: (roomType: string) => void;
   setBudget: (tier: BudgetTier, range: [number, number]) => void;
   setGiftMode: (enabled: boolean) => void;
   addPhaseASelection: (imageId: string) => void;
   removePhaseASelection: (imageId: string) => void;
+  addGridSelection: (selection: GridSelection) => void;
+  clearGridSelections: () => void;
   addPhaseBResponse: (response: PairwiseResponse) => void;
   setFingerprint: (
     fingerprint: StyleFingerprint,
@@ -53,20 +68,21 @@ interface FingerprintState {
   setInclusions: (inclusions: string[]) => void;
   setConstraints: (constraints: string[]) => void;
   setRoomDimension: (dimension: "small" | "medium" | "large") => void;
+  setTiebreakerDeltas: (deltas: number[] | null) => void;
+  setCompetingStyles: (styles: string[], blendRatio: number) => void;
   resetFingerprint: () => void;
 }
 
 /**
  * Cookie name used to persist fingerprint state across OAuth redirects.
  *
- * Single-layer persistence strategy:
- *   COOKIE — `cova_anon_fingerprint` (Path=/, SameSite=Lax, Max-Age=86400).
- *            Survives cross-origin OAuth redirects where sessionStorage is wiped.
- *            Base64url-encoded JSON. Covariance matrix is intentionally excluded
- *            from the cookie payload (12×12 = 144 floats ≈ 1.4 KB saved) so the
- *            cookie stays well under 3800 bytes without any fallback needed.
- *            Covariance is preserved in the in-memory Zustand store and written to
- *            Supabase style_fingerprints by /api/quiz/fingerprint on completion.
+ * Two-layer persistence strategy:
+ *   PRIMARY   — cookie `cova_anon_fingerprint` (Path=/, SameSite=Lax, Max-Age=3600).
+ *               Survives cross-origin OAuth redirects where sessionStorage is wiped.
+ *               Base64url-encoded JSON. If the encoded value exceeds 3800 bytes
+ *               (cookie size headroom), falls back to sessionStorage with a warning.
+ *   SECONDARY — sessionStorage, read-only fallback for same-tab reads before any
+ *               redirect occurs. Never written to directly (except the size overflow case).
  *
  * The OAuth callback route (app/auth/callback/route.ts) reads this cookie after
  * successful session establishment and persists the fingerprint to Supabase
@@ -84,6 +100,7 @@ const fingerprintCookieStorage = {
   getItem: (_name: string): string | null => {
     try {
       if (typeof document === "undefined") return null;
+      // Primary: read from cookie
       const cookies = document.cookie.split("; ");
       for (const cookie of cookies) {
         const eqIdx = cookie.indexOf("=");
@@ -98,7 +115,12 @@ const fingerprintCookieStorage = {
           }
         }
       }
-      return null;
+      // Secondary: sessionStorage read fallback (same-tab, pre-redirect)
+      try {
+        return sessionStorage.getItem(COOKIE_NAME) ?? null;
+      } catch {
+        return null;
+      }
     } catch {
       return null;
     }
@@ -108,13 +130,21 @@ const fingerprintCookieStorage = {
     try {
       if (typeof document === "undefined") return;
       const encoded = btoa(encodeURIComponent(value));
-      // Covariance is stripped from the serialized state (see partialize below),
-      // so encoded size is reliably under 3000 bytes. No sessionStorage fallback needed.
+      if (encoded.length > 3800) {
+        console.warn(
+          "[fingerprint-store] Cookie value exceeds 3800 bytes — falling back to sessionStorage",
+        );
+        try {
+          sessionStorage.setItem(COOKIE_NAME, value);
+        } catch {
+          /* ignore */
+        }
+        return;
+      }
       const isProduction =
         typeof process !== "undefined" && process.env.NODE_ENV === "production";
       const secure = isProduction ? "; Secure" : "";
-      // 86400 = 24 hours — long enough to survive overnight OAuth flows
-      document.cookie = `${COOKIE_NAME}=${encoded}; Path=/; SameSite=Lax; Max-Age=86400${secure}`;
+      document.cookie = `${COOKIE_NAME}=${encoded}; Path=/; SameSite=Lax; Max-Age=3600${secure}`;
     } catch {
       // Cookie access can fail in restrictive iframe / privacy contexts — ignore silently
     }
@@ -136,6 +166,7 @@ const INITIAL_STATE = {
   budgetRange: null,
   isGiftMode: false,
   phaseASelections: [],
+  gridSelections: [] as GridSelection[],
   phaseBResponses: [],
   fingerprint: null,
   styleName: null,
@@ -145,6 +176,9 @@ const INITIAL_STATE = {
   inclusions: [] as string[],
   constraints: [] as string[],
   roomDimension: null as "small" | "medium" | "large" | null,
+  tiebreakerDeltas: null as number[] | null,
+  competingStyles: [] as string[],
+  blendRatio: 1.0,
 };
 
 export const useFingerprintStore = create<FingerprintState>()(
@@ -164,6 +198,11 @@ export const useFingerprintStore = create<FingerprintState>()(
             (id) => id !== imageId,
           ),
         })),
+      addGridSelection: (selection) =>
+        set((state) => ({
+          gridSelections: [...state.gridSelections, selection],
+        })),
+      clearGridSelections: () => set({ gridSelections: [] }),
       addPhaseBResponse: (response) =>
         set((state) => ({
           phaseBResponses: [...state.phaseBResponses, response],
@@ -176,6 +215,8 @@ export const useFingerprintStore = create<FingerprintState>()(
       setInclusions: (inclusions) => set({ inclusions }),
       setConstraints: (constraints) => set({ constraints }),
       setRoomDimension: (roomDimension) => set({ roomDimension }),
+      setTiebreakerDeltas: (tiebreakerDeltas) => set({ tiebreakerDeltas }),
+      setCompetingStyles: (competingStyles, blendRatio) => set({ competingStyles, blendRatio }),
       resetFingerprint: () => set(INITIAL_STATE),
     }),
     {
@@ -189,20 +230,26 @@ export const useFingerprintStore = create<FingerprintState>()(
         budgetRange: state.budgetRange,
         isGiftMode: state.isGiftMode,
         phaseASelections: state.phaseASelections,
-        phaseBResponses: state.phaseBResponses,
-        // Covariance matrix (12×12 = 144 floats ≈ 1.4 KB) is excluded from the
-        // cookie. It remains in the in-memory store and is persisted to Supabase
-        // by /api/quiz/fingerprint. Omitting it keeps the cookie under 3000 bytes.
-        fingerprint: state.fingerprint
-          ? { ...state.fingerprint, covariance: undefined }
-          : null,
+        gridSelections: state.gridSelections.map(s => ({
+          styleIndex: s.styleIndex,
+          round: s.round,
+          styleName: '',
+        })),
+        // phaseBResponses: omitted — transient, rebuilt each session
+        fingerprint: state.fingerprint ? {
+          ...state.fingerprint,
+          covariance: undefined,
+        } : null,
         styleName: state.styleName,
         styleTags: state.styleTags,
         styleExplanation: state.styleExplanation,
-        showcasePredictionIds: state.showcasePredictionIds,
+        // showcasePredictionIds: omitted — not needed in quiz flow
         inclusions: state.inclusions,
         constraints: state.constraints,
         roomDimension: state.roomDimension,
+        // tiebreakerDeltas: omitted — in-session only, step-2 is single page load
+        competingStyles: state.competingStyles,
+        blendRatio: state.blendRatio,
       }),
     },
   ),

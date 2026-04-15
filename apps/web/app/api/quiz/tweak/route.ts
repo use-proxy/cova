@@ -184,23 +184,89 @@ culturalInfluence: global eclectic(1) vs minimal(0)`,
     // Fall through with empty adjustments — will still return current best match
   }
 
-  // ── Step 2: apply adjustments, clamp to [0, 1] ───────────────────────────
-  const oldDims = fingerprint.dimensions;
-  const newDims = { ...oldDims };
-  for (const key of DIMENSION_KEYS) {
-    const delta = adjustments[key] ?? 0;
-    newDims[key] = clamp01((oldDims[key] ?? 0.5) + delta);
-  }
+    // ── Step 2: apply adjustments in V2 semantic space ───────────────────────
+    // V2 slot mapping (what each DB field actually stores in V2):
+    //   colorTemperature → warmth
+    //   colorSaturation  → visual_complexity
+    //   formality        → organicness   (NOTE: swapped from V1 meaning)
+    //   density          → density
+    //   era              → traditionalism
+    //   material         → character
+    //   texture/pattern/lineQuality/lightPreference/nature/culturalInfluence → 0.5 unused
+    //
+    // Claude returns deltas using V1 semantic names. We map them to V2 slots.
+    const V1_TO_V2_SLOT: Record<string, keyof typeof oldDims> = {
+      colorTemperature: "colorTemperature", // warmth slot
+      lightPreference:  "colorTemperature", // also warmth — average contribution
+      colorSaturation:  "colorSaturation",  // visual_complexity slot
+      pattern:          "colorSaturation",  // also visual_complexity
+      material:         "formality",        // organicness slot (V2 stores in formality)
+      texture:          "formality",        // also organicness
+      nature:           "formality",        // also organicness
+      density:          "density",          // density slot (unchanged)
+      formality:        "era",              // traditionalism slot (V2 stores in era)
+      era:              "era",              // also traditionalism
+      lineQuality:      "material",         // character slot (V2 stores in material)
+      culturalInfluence:"material",         // also character
+    };
 
-  const updatedFingerprint: StyleFingerprint = {
-    ...fingerprint,
-    dimensions: newDims,
-  };
+    const isV2 = fingerprint.fingerprint_version === "v2";
+    const oldDims = fingerprint.dimensions;
+    const newDims = { ...oldDims };
 
-  // ── Step 3: softmax match → canonical style name ──────────────────────────
-  const fpVector = DIMENSION_KEYS.map((k) => newDims[k] ?? 0.5);
-  const { primaryStyle } = softmaxStyleMatch(fpVector);
-  const newStyleName = toDisplayName(primaryStyle.name);
+    if (isV2) {
+      // Accumulate deltas per V2 slot (multiple V1 keys may map to same slot)
+      const slotDeltas: Record<string, number[]> = {};
+      for (const key of DIMENSION_KEYS) {
+        const delta = adjustments[key] ?? 0;
+        if (delta === 0) continue;
+        const slot = V1_TO_V2_SLOT[key] ?? key;
+        if (!slotDeltas[slot]) slotDeltas[slot] = [];
+        slotDeltas[slot].push(delta);
+      }
+      // Apply mean delta per slot
+      for (const [slot, deltas] of Object.entries(slotDeltas)) {
+        const meanDelta = deltas.reduce((a, b) => a + b, 0) / deltas.length;
+        const currentVal = (oldDims as Record<string, number>)[slot] ?? 0.5;
+        (newDims as Record<string, number>)[slot] = clamp01(currentVal + meanDelta);
+      }
+    } else {
+      // V1: apply directly
+      for (const key of DIMENSION_KEYS) {
+        const delta = adjustments[key] ?? 0;
+        newDims[key] = clamp01((oldDims[key] ?? 0.5) + delta);
+      }
+    }
+
+    const updatedFingerprint: StyleFingerprint = {
+      ...fingerprint,
+      dimensions: newDims,
+    };
+
+    // ── Step 3: softmax match → canonical style name ──────────────────────────
+    const fpVector = DIMENSION_KEYS.map((k) => newDims[k] ?? 0.5);
+    let newStyleName: string;
+    if (isV2) {
+      const v2Vec = [
+        newDims.colorTemperature, // warmth
+        newDims.colorSaturation,  // visual_complexity
+        newDims.formality,        // organicness
+        newDims.density,          // density
+        newDims.era,              // traditionalism
+        newDims.material,         // character
+      ];
+      const result = softmaxStyleMatch(v2Vec, "v2");
+      if (result.isNeutral) {
+        newStyleName = "Your Unique Style";
+      } else if (result.blendRatio >= 0.60 || result.secondaryStyle === null) {
+        newStyleName = toDisplayName(result.primaryStyle.name);
+      } else {
+        newStyleName = `${toDisplayName(result.primaryStyle.name)} · ${toDisplayName(result.secondaryStyle.name)}`;
+      }
+    } else {
+      const { primaryStyle } = softmaxStyleMatch(fpVector, "v1");
+      newStyleName = toDisplayName(primaryStyle.name);
+    }
 
   // ── Step 3b: style name stability — keep original name for small tweaks ───
   // For hybrids like "Biophilic · Japandi", check similarity to ALL component
@@ -271,6 +337,18 @@ Write exactly 2-3 sentences describing this style in evocative, sensory language
   } catch (err) {
     console.warn("[quiz/tweak] Claude description call failed:", err);
   }
+
+    // ── Step 5: persist tweaked fingerprint to DB ─────────────────────────────
+    try {
+      const { createAdminSupabaseClient } = await import("@/lib/supabase/admin");
+      const admin = createAdminSupabaseClient();
+      await (admin.from("users") as any).update({
+        style_fingerprint: updatedFingerprint,
+        style_blend: updatedFingerprint.dimensions,
+      }).eq("id", user.id);
+    } catch (dbErr) {
+      console.warn("[quiz/tweak] DB persist failed (non-fatal):", dbErr);
+    }
 
   return NextResponse.json({
     updatedFingerprint,

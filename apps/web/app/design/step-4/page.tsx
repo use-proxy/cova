@@ -28,14 +28,12 @@ const PALETTE = [
 ];
 
 const DIMENSIONS = [
-  { name: "Calm", score: 87 },
-  { name: "Warmth", score: 72 },
-  { name: "Texture", score: 65 },
-  { name: "Drama", score: 28 },
-  { name: "Nature", score: 81 },
-  { name: "Luxury", score: 55 },
-  { name: "Playfulness", score: 22 },
-  { name: "Vintage", score: 40 },
+  { name: "Warmth",     score: 50 },
+  { name: "Complexity", score: 50 },
+  { name: "Organic",    score: 50 },
+  { name: "Layered",    score: 50 },
+  { name: "Heritage",   score: 50 },
+  { name: "Character",  score: 50 },
 ];
 
 function stripMarkdown(text: string): string {
@@ -82,61 +80,37 @@ export default function StepFourPage() {
     useFingerprintStore.getState().styleTags
   );
 
-  // Map 12-dim fingerprint to 8 display dimensions
+  // Map V2 6-dim fingerprint to 6 radar axes (pure V2 — no stub dims)
+  // V2 slot mapping: colorTemperature=warmth, colorSaturation=complexity,
+  // formality=organicness, density=density, era=traditionalism, material=character
   const computedDimensions = useMemo(() => {
     if (!fingerprint) return DIMENSIONS; // fallback to defaults
     const d = fingerprint.dimensions;
     return [
-      {
-        name: "Calm",
-        score: Math.round(
-          (1 - d.density) * 50 +
-            (1 - d.colorSaturation) * 25 +
-            d.lineQuality * 25,
-        ),
-      },
-      { name: "Warmth", score: Math.round(d.colorTemperature * 100) },
-      { name: "Texture", score: Math.round(d.texture * 100) },
-      {
-        name: "Drama",
-        score: Math.round(
-          d.colorSaturation * 50 +
-            d.formality * 25 +
-            (1 - d.lightPreference) * 25,
-        ),
-      },
-      { name: "Nature", score: Math.round(d.nature * 100) },
-      {
-        name: "Luxury",
-        score: Math.round(
-          d.formality * 40 + d.material * 30 + (1 - d.density) * 30,
-        ),
-      },
-      {
-        name: "Playfulness",
-        score: Math.round(
-          d.pattern * 40 + d.culturalInfluence * 30 + d.colorSaturation * 30,
-        ),
-      },
-      { name: "Vintage", score: Math.round(d.era * 100) },
+      { name: "Warmth",       score: Math.round(d.colorTemperature * 100) },
+      { name: "Complexity",   score: Math.round(d.colorSaturation * 100) },
+      { name: "Organic",      score: Math.round(d.formality * 100) },
+      { name: "Layered",      score: Math.round(d.density * 100) },
+      { name: "Heritage",     score: Math.round(d.era * 100) },
+      { name: "Character",    score: Math.round(d.material * 100) },
     ];
   }, [fingerprint]);
 
   const displayStyleName = useMemo(() => {
     if (storedStyleName) return storedStyleName;
     if (!fingerprint) return "Quiet Naturalist"; // fallback
+    // Pure V2 dims only
     const d = fingerprint.dimensions;
-    // Map to descriptive names based on dominant dimensions
     const calm = (1 - d.density) * 0.5 + (1 - d.colorSaturation) * 0.5;
-    if (d.colorTemperature > 0.7 && d.nature > 0.7) return "Organic Warmth";
-    if (d.formality > 0.7 && d.colorSaturation > 0.7) return "Luxe Drama";
-    if (calm > 0.75 && d.texture < 0.4) return "Pure Quiet";
-    if (d.pattern > 0.7 || d.culturalInfluence > 0.7) return "Eclectic Spirit";
-    if (d.nature > 0.75 && d.colorTemperature > 0.6) return "Warm Naturalist";
+    if (d.colorTemperature > 0.7 && d.formality > 0.7) return "Organic Warmth";
+    if (d.colorSaturation > 0.7 && d.density > 0.7) return "Luxe Drama";
+    if (calm > 0.75 && d.material < 0.4) return "Pure Quiet";
+    if (d.colorSaturation > 0.7 && d.material > 0.7) return "Eclectic Spirit";
+    if (d.formality > 0.75 && d.colorTemperature > 0.6) return "Warm Naturalist";
     if (d.era > 0.7) return "Heritage Soul";
-    if (d.material > 0.7 && d.texture > 0.6) return "Tactile Artisan";
-    if (d.lightPreference > 0.7 && calm > 0.6) return "Sunlit Purist";
-    if (d.formality > 0.6 && d.material < 0.4) return "Modern Edge";
+    if (d.material > 0.7 && d.density > 0.6) return "Tactile Artisan";
+    if (d.colorTemperature > 0.7 && calm > 0.6) return "Sunlit Purist";
+    if (d.era < 0.35 && d.material < 0.4) return "Modern Edge";
     if (d.colorTemperature < 0.35) return "Cool Curator";
     return "Evolved Naturalist";
   }, [fingerprint, storedStyleName]);
@@ -144,18 +118,19 @@ export default function StepFourPage() {
   const displayDescription = useMemo(() => {
     if (!fingerprint)
       return "You gravitate toward spaces that breathe. Clean lines, natural materials, and deliberate calm define your aesthetic. Every object earns its place — nothing is accidental, everything is intentional.";
+    // V2 dims: colorTemperature=warmth, colorSaturation=complexity,
+    // formality=organicness, density=density, era=traditionalism, material=character
     const d = fingerprint.dimensions;
     const parts: string[] = [];
     if (d.colorTemperature > 0.6) parts.push("warm, inviting tones");
     else if (d.colorTemperature < 0.4) parts.push("cool, composed tones");
-    if (d.nature > 0.65) parts.push("natural materials and organic forms");
-    if (d.texture > 0.65) parts.push("rich tactile surfaces");
+    if (d.formality > 0.65) parts.push("natural materials and organic forms");
+    if (d.material > 0.65) parts.push("crafted pieces with distinctive character");
     if (d.density < 0.35) parts.push("deliberate calm and breathing room");
-    if (d.formality > 0.65) parts.push("structured elegance");
+    else if (d.density > 0.65) parts.push("richly layered spaces full of story");
     if (d.era > 0.65) parts.push("heritage character and timeless pieces");
-    if (d.pattern > 0.65) parts.push("expressive pattern and detail");
-    if (parts.length === 0)
-      parts.push("balanced design with personal character");
+    if (d.colorSaturation > 0.65) parts.push("bold visual complexity and drama");
+    if (parts.length === 0) parts.push("balanced design with personal character");
     return `Your design DNA draws you toward ${parts.join(", ")}. Every space you create reflects this unique sensibility.`;
   }, [fingerprint]);
 
@@ -163,21 +138,23 @@ export default function StepFourPage() {
     if (storedStyleTags.length > 0) return storedStyleTags;
     if (!fingerprint)
       return ["Calm · Intentional", "Natural Materials", "Negative Space"];
+    // Pure V2 dims only
     const d = fingerprint.dimensions;
     const traits: string[] = [];
     if (d.colorTemperature > 0.65) traits.push("Warm Tones");
     if (d.colorTemperature < 0.35) traits.push("Cool Palette");
-    if (d.nature > 0.65) traits.push("Natural Materials");
-    if (d.texture > 0.65) traits.push("Rich Textures");
+    if (d.colorSaturation > 0.65) traits.push("Bold & Complex");
+    if (d.colorSaturation < 0.35) traits.push("Visual Simplicity");
+    if (d.formality > 0.65) traits.push("Natural & Organic");
+    if (d.formality < 0.35) traits.push("Clean & Structured");
+    if (d.density > 0.65) traits.push("Richly Layered");
     if (d.density < 0.35) traits.push("Negative Space");
-    if (d.formality > 0.65) traits.push("Refined Structure");
-    if (d.era > 0.65) traits.push("Vintage Character");
-    if (d.pattern > 0.65) traits.push("Bold Patterns");
-    if (d.lightPreference > 0.65) traits.push("Natural Light");
-    if (d.culturalInfluence > 0.65) traits.push("Global Influence");
-    return traits.slice(0, 3).length > 0
-      ? traits.slice(0, 3)
-      : ["Evolved Taste", "Personal Touch", "Refined Balance"];
+    if (d.era > 0.65) traits.push("Heritage Character");
+    if (d.era < 0.35) traits.push("Ultra-Modern");
+    if (d.material > 0.65) traits.push("Crafted & Distinctive");
+    return traits.slice(0, 4).length > 0
+      ? traits.slice(0, 4)
+      : ["Balanced Style", "Personal Touch", "Refined Taste"];
   }, [fingerprint, storedStyleTags]);
 
   const displayPalette = useMemo(() => {

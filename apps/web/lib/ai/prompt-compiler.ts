@@ -1,425 +1,398 @@
 /**
  * Claude-powered prompt compiler for FLUX Kontext Pro.
  *
- * Architecture (v2 — skeleton + synthesizer):
- *
- * Part A — Fixed skeleton: TypeScript-assembled geometry/preservation
- * directives (~60 tokens). Never modified by Claude.
- *
- * Part B — Claude synthesizer: style + material + lighting +
- * personalization (~380-420 tokens). All step-7d fields wired in.
- *
- * Combined target: ~480 tokens total, within FLUX Kontext Pro's 512-token
- * prompt limit. The synthesizer uses claude-sonnet-4-5 specifically.
- *
- * Target output quality: Architectural Digest editorial photography —
- * rooms look idealized and slightly enhanced, every surface specific,
- * lighting dramatic and purposeful.
+ * Strategy: kept items are framed as ANCHORS (not "preserve the X"),
+ * removed items are framed as VACATED ZONES, and the main instruction
+ * is change-focused. Every prompt ends with an explicit final anchor
+ * constraint. See Rules 1-4 in SYSTEM_PROMPT_TEMPLATE.
  */
 
 import Anthropic from "@anthropic-ai/sdk";
 import type { RenderContext, RequestedProduct } from "@/lib/types/area2";
 import type { StyleFingerprint } from "@/types/fingerprint";
-import { sanitizeForbiddenStyleNames } from "@/lib/ai/flux";
+import {
+  getMaterialPalette,
+  buildFullFingerprintPhrase,
+  sanitizeForbiddenStyleNames,
+} from "@/lib/ai/flux";
+import { expandForPrompt } from "@/lib/ai/style-match";
 import type { RoomArchitecture } from "@/lib/ai/room-analyzer";
 
 const anthropic = new Anthropic();
 
-// ── Token estimation ──────────────────────────────────────────────────────────
-// More accurate for descriptive English prose.
-// Accounts for punctuation tokens and subword splits.
-function estimateTokens(text: string): number {
-  const words = text.trim().split(/\s+/).length;
-  const chars = text.length;
-  // Words tend to tokenize at ~1.3 tokens/word for descriptive prose
-  // with compound adjectives and punctuation overhead.
-  return Math.ceil((words * 1.3 + chars * 0.05) / 2);
-}
-
-const MAX_DYNAMIC_TOKENS = 380;
-const COMPRESSION_TARGET = 360;
-
-// ── Style anchor derivation ───────────────────────────────────────────────────
-// Maps internal style blend keys → human-readable anchor labels used in the
-// Claude synthesizer's reference quality examples.
-const ANCHOR_DISPLAY_NAMES: Record<string, string> = {
-  "warm japandi": "Warm & Grounded",
-  "pure minimal white": "Pure & Calm",
-  "coastal bright": "Light & Airy",
-  "biophilic jungle": "Nature & Abundance",
-  "dark moody glam": "Bold & Dramatic",
-  "heritage traditional": "Classic & Layered",
-  "industrial loft": "Raw & Urban",
-  "maximalist eclectic": "Bold & Eclectic",
-  "retro mid-century": "Vintage Modern",
+// Map internal anchor style labels → safe "replacement direction" adjective
+// used to seed vacated-zone bullets (Rule 2) without leaking forbidden names.
+const STYLE_DIRECTION_MAP: Record<string, string> = {
+  "warm japandi": "japandi-appropriate",
+  "pure minimal white": "minimalist",
+  "coastal bright": "coastal",
+  "biophilic jungle": "biophilic",
+  "dark moody glam": "moody glam",
+  "heritage traditional": "heritage traditional",
+  "industrial loft": "industrial",
+  "maximalist eclectic": "maximalist eclectic",
+  "retro mid-century": "mid-century",
 };
 
-function deriveStyleAnchor(
-  fingerprint: StyleFingerprint,
-  styleBlend: Record<string, number> | null | undefined,
+function deriveReplacementDirection(
+  blend: Record<string, number> | null | undefined,
 ): string {
-  // Try style blend primary key first (most accurate)
-  if (styleBlend) {
-    const top = Object.entries(styleBlend)
-      .filter(([, v]) => typeof v === "number")
-      .sort(([, a], [, b]) => (b as number) - (a as number))[0]?.[0]
-      ?.toLowerCase();
-    if (top && ANCHOR_DISPLAY_NAMES[top]) return ANCHOR_DISPLAY_NAMES[top]!;
-  }
-  // Derive from fingerprint dimensions as fallback
-  const d = fingerprint.dimensions;
-  const dense = (d.density ?? 0.5) > 0.7;
-  const natural = (d.material ?? 0.5) > 0.65;
-  const warm = (d.colorTemperature ?? 0.5) > 0.65;
-  const minimal =
-    (d.density ?? 0.5) < 0.3 && (d.colorTemperature ?? 0.5) < 0.4;
-  if (dense && natural) return "Bold & Eclectic";
-  if (warm && natural) return "Warm & Grounded";
-  if (minimal) return "Pure & Calm";
-  return "Balanced Contemporary";
+  if (!blend) return "contemporary";
+  const top = Object.entries(blend)
+    .sort((a, b) => b[1] - a[1])[0]?.[0]
+    ?.toLowerCase();
+  if (!top) return "contemporary";
+  return STYLE_DIRECTION_MAP[top] ?? "contemporary";
 }
 
-// ── Claude synthesizer system prompt ─────────────────────────────────────────
-// This system prompt drives the style/material/lighting/personalization segment.
-// The forbidden word list mirrors CLAUDE.md Hard Rule #8 plus common style labels
-// that must never appear in user-facing renders.
-const CLAUDE_SYNTHESIZER_SYSTEM = `You are a world-class interior design prompt engineer for FLUX Kontext Pro, a state-of-the-art AI image editing model. Your output will be injected directly into a FLUX prompt that transforms a real room photo into a professional interior design render. The target aesthetic is: Architectural Digest editorial photography. Rooms should look idealized and slightly enhanced compared to reality — perfectly styled, dramatically lit, every surface rich and specific — like a magazine photoshoot of the room at its absolute best. This enhanced quality is intentional.
+function deriveReplacementDirectionFromDimensions(
+  dimensions: Record<string, number>,
+): string {
+  const parts: string[] = [];
+  const colorTemp = dimensions.colorTemperature ?? 0.5;
+  const density = dimensions.density ?? 0.5;
+  const era = dimensions.era ?? 0.5;
+  const pattern = dimensions.pattern ?? 0.5;
+  const material = dimensions.material ?? 0.5;
+  const culturalInfluence = dimensions.culturalInfluence ?? 0.5;
 
-Your output must cover, in this order:
+  // Color temperature — mutually exclusive
+  if (colorTemp < 0.35) parts.push("cool slate and sage toned");
+  else if (colorTemp > 0.65) parts.push("warm amber and terracotta toned");
 
-STYLE MOOD — the emotional atmosphere and color temperature of the space. Be evocative and specific.
+  // Density
+  if (density > 0.7) parts.push("richly layered");
+  else if (density < 0.3) parts.push("spare and minimal");
 
-MATERIAL PALETTE — name every material specifically. Never say "wood" — say "warm teak with visible grain" or "whitewashed oak." Never say "fabric" — say "bouclé," "linen," "cashmere," "velvet." Never say "stone" — say "honed Carrara marble" or "raw concrete." Derive materials from the style anchor and fingerprint naturalism/texture dimensions.
+  // Pattern
+  if (pattern > 0.7) parts.push("pattern-rich");
+  else if (pattern < 0.3) parts.push("pattern-free");
 
-LIGHTING — name the light source, its quality, and its color temperature. Examples: "warm Edison pendant casting amber pools," "raked afternoon sunlight through sheer linen curtains," "soft north-facing diffused daylight, no harsh shadows." Derive from fingerprint warmth and contrast dimensions.
+  // Era
+  if (era < 0.35) parts.push("heritage and vintage-inflected");
+  else if (era > 0.65) parts.push("contemporary clean-lined");
 
-DECORATION DENSITY AND OBJECTS — derive from the fingerprint density dimension:
-- High density (>0.7): name 8-10 specific decorative objects placed intentionally throughout the space
-- Medium density (0.4-0.7): name 4-6 specific objects
-- Low density (<0.4): name 2-3 objects maximum, each described with precision, negative space emphasized
-Objects should feel styled and intentional, not random. Think: how would an AD photographer style this room?
+  // Material
+  if (material > 0.65) parts.push("natural organic");
+  else if (material < 0.35) parts.push("sleek manufactured");
 
-BUDGET QUALITY TIER — translate the user's budget into material quality signals:
-- Under $500: accessible but thoughtfully styled, IKEA and Target-level pieces elevated with good lighting and styling
-- $500-2000: mid-market quality, West Elm and CB2 aesthetic, investment pieces mixed with accessible items
-- Over $2000: designer quality, named brands implied, bespoke details, luxury materials throughout
+  // Cultural
+  if (culturalInfluence > 0.65) parts.push("globally eclectic");
 
-PERSONALIZATION — incorporate every user input from their 7d tabs. Nothing is dropped. If a field is empty or null, skip it silently. If a field has content, translate it into design language. Examples:
-- Art preference "abstract" → "large-scale abstract canvas in [palette-appropriate colors], floating above [furniture]"
-- Tech "smart home" → "integrated smart lighting, concealed cable management, minimalist tech presence"
-- Sensory "calm, low stimulation" → "muted palette, soft diffused light, no pattern mixing, quiet materiality"
-- Identity "avid reader" → "curated book collection on floating shelves, reading nook with task lighting"
-- Gaming setup → "discrete gaming station with cable management, accent RGB lighting blended into the room palette"
+  return parts.length > 0 ? parts.join(", ") : "contemporary";
+}
 
-QUALITY CLOSER — end with exactly: "ultra-detailed, 8K resolution, global illumination, PBR materials, physically accurate shadows and reflections, professional interior staging, slightly idealized and enhanced beyond reality"
+const SYSTEM_PROMPT_TEMPLATE = `You are an elite FLUX Kontext Pro prompt engineer specializing in photorealistic interior design transformations.
 
-Hard rules:
-- Output ONLY the prompt text. No explanation, no preamble, no JSON, no section headers. Just the prompt segment.
-- Use comma-separated phrases, not full sentences. This is more token-efficient and how diffusion models read prompts.
-- Never use these forbidden words: Japandi, Bohemian, Coastal, Minimalist, Mid-Century Modern, Maximalist, Scandinavian, Industrial, Art Deco. Describe the aesthetic with material and sensory language instead.
-- Target 380-420 tokens in your output. Count carefully. The skeleton prepended to your output uses ~60 tokens. Stay under 420 to leave margin.
-- Every fingerprint dimension above 0.5 must influence the output in some visible way.
-- Every non-empty 7d field must appear in the output.
-- Never mention camera brands, lens specs, or camera angles — the skeleton handles geometry.
-- Never change wall color, wall texture, or floor material — these are fixed anchors in the skeleton.`;
+FLUX Kontext Pro is an image EDIT model. It receives the user's actual room photo as input_image and edits it in-place. Its default behavior is PRESERVATION — it only changes what the prompt explicitly targets. CRITICAL: Never instruct FLUX to change the camera angle, viewpoint, focal length, or room perspective. The camera is always locked to the original photo exactly.
 
-// ── Main compiler ─────────────────────────────────────────────────────────────
+THE FOUR RULES (mandatory, every time):
+
+RULE 1 — KEPT ITEMS ARE ANCHORS (never "preserve the X").
+After the transformation sentence, emit a block titled exactly:
+  "Anchoring pieces — treat these as fixed. Do not alter their color, material, form, or position:"
+List each kept item as ONE bullet using ALL enriched fields (dominantColor, material, sizeInRoom, styleDescriptors, userNote). Example:
+  • The existing cream linen sofa — low-profile silhouette, tufted back, tapered oak legs, large — is the primary anchor. Every new element must complement it.
+Never invent descriptors. If only label is known: "• The existing [label] is an anchor — do not alter its color, material, form, or position."
+For large kept items (sizeInRoom === "large"), append: "[label] is the PRIMARY ANCHOR and the most important fixed element in this room. Every design decision must harmonize with it."
+If floorMaterial is present in roomContext, add a floor anchor bullet: "• The existing [floorMaterial] flooring is a fixed anchor — do not replace it with hardwood, tile, or any other material."
+ALWAYS add a wall anchor bullet: "• The existing wall color and wall surfaces are fixed anchors — do not repaint, recolor, add wallpaper, or change wall texture in any zone." If wallColor is provided in roomContext or roomAnalysis, name the specific color.
+
+RULE 2 — REMOVED ITEMS ARE VACATED ZONES (never just "remove the X").
+After anchors, emit a block titled exactly:
+  "Vacated zones — redesign these areas completely:"
+For EACH vacated zone write 2-3 sentences specifying: (a) exact replacement piece with specific material and finish name, (b) spatial relationship to anchors, (c) one layered styling detail. Example:
+  • Desk zone: introduce a solid white oak writing desk with hairpin legs — positioned flush against the wall. Style with a ceramic table lamp in warm terracotta, a stack of 3 linen-spined art books, and a trailing pothos in a matte black pot.
+  • Office chair zone: replace with a curved bouclé accent chair in warm ivory with a chunky knit throw in oatmeal draped over one arm.
+
+RULE 3 — TRANSFORMATION SENTENCE IS CHANGE-FOCUSED.
+Open with what CHANGES. Name every vacated zone explicitly. Never write "redesign while preserving."
+
+RULE 4 — FINAL ANCHOR CONSTRAINT (last sentence always).
+"Final constraint: [kept item labels] must appear identical to the input image — same position, color, material, and form. Only the vacated zones are to be redesigned."
+
+OUTPUT CONTRACT (strictly enforced):
+- 100-1400 words.
+- Section order:
+  1. Transformation sentence [Rule 3]
+  2. Anchoring pieces block [Rule 1]
+  3. Vacated zones block [Rule 2] — for EACH vacated zone write exactly:
+     (a) Primary furniture piece — name, exact material with trade name, finish, approximate dimensions
+     (b) One secondary accent piece
+     (c) Decor cluster — 3+ objects with species/material names (e.g. fiddle leaf fig, hand-thrown stoneware, linen-spined books)
+     (d) Spatial relationship to anchors
+     Fewer than 4 elements per zone = failure. Be generous. More is more.
+  4. Materials line: "New materials: [3-5 specific trade-name materials e.g. rift-sawn white oak, honed travertine, bouclé, brushed brass, jute]"
+  5. Decor layering: "Layer with: [specific decorative objects — ceramic vessels, art books, plants with species, textiles, trays]" — always include at least one plant, one textile, one vessel
+  6. Structural context — ceiling, fixtures, flooring, natural light. Always include: "Wall color: [wallColor] — fixed, do not alter."
+  7. Requested products (if present)
+  8. Tech spec / art / sensory (if present)
+  9. Budget line (if present)
+  10. Style reference directive (if anchorPrompt present)
+  11. Rule 4 final constraint
+  12. Closer: "Photorealistic interior photograph, same camera angle as the input image. No people, no text."
+
+HARD RULES:
+1. Use SPECIFIC material names — "hand-knotted wool kilim" not "rug", "rattan cane-back" not "chair", "smoked oak veneer" not "wood", "aged brass" not "metal", "crinkled linen" not "fabric".
+2. Every fingerprint dimension with |value - 0.5| >= 0.15 MUST appear as a concrete material, pattern, or object choice. High density (>0.7) means at least 10 distinct objects in the render. High pattern (>0.7) means visible textile patterns, wallpaper, or printed cushions.
+3. MINIMUM DECOR REQUIREMENT: Every render must contain — at minimum — 3 plants (name species: fiddle leaf fig, trailing pothos, snake plant, olive tree, etc.), 2 textile layers (throw + cushions or curtains + rug), 1 vessel cluster (3 objects of graduated height), 1 stack of books, 1 piece of wall art. If the user's density dimension > 0.7, double all of these.
+4. NEVER change the floor material. State it explicitly as an anchor in the anchoring pieces block.
+5. NEVER use camera model names. NEVER change viewpoint.
+6. NEVER use forbidden style names verbatim: warm japandi, pure minimal white, coastal bright, biophilic jungle, dark moody glam, heritage traditional, industrial loft, maximalist eclectic, retro mid-century. Use _replacementDirection instead.
+7. Never fabricate kept item descriptors.
+8. Return ONLY the prompt. No preamble, no markdown.
+9. NEVER include camera brand names (Canon, Sony, Nikon, Leica) or lens specs (35mm f/1.8) — these cause FLUX to reframe the shot.
+10. NEVER change the floor material — state it explicitly as a fixed anchor.
+11. The bed (or primary large kept item) is the PRIMARY ANCHOR — state this prominently and repeat it in the final constraint.
+12. Specify warm 2700K lamp lighting if lightPreference < 0.4, bright diffused daylight if lightPreference > 0.6.
+13. NEVER change wall color, wall texture, or ceiling color. These are always fixed anchors regardless of the fingerprint color direction. Color direction applies ONLY to furniture, textiles, and decorative objects.
+14. NEVER suggest painting walls or adding wallpaper unless roomConstraints.wallPermanence === "own-anything-goes" AND the user explicitly requested it in chat_context.`;
 
 export async function compilePromptWithClaude(
   context: RenderContext | null,
   roomType: string,
   fingerprint: StyleFingerprint,
   anchorPrompt: string | null = null,
-  _roomAnalysis: RoomArchitecture | null = null,
+  roomAnalysis: RoomArchitecture | null = null,
   chatContext: Record<string, Array<{ role: string; content: string }>> | null = null,
 ): Promise<string | null> {
   try {
-    // ── PART A — Fixed skeleton (~60 tokens) ──────────────────────────────
-    // Assembled entirely in TypeScript. Never modified by Claude.
-    // Contains: photographic framing, geometry preservation, keep/remove directives.
-    const keepItems =
-      context?.keepMask?.objects
-        ?.filter((o) => o.keep || o.immovable)
-        .map((o) => o.type) ?? [];
-    const removeItems =
-      context?.keepMask?.objects
-        ?.filter((o) => !o.keep && !o.immovable)
-        .map((o) => o.type) ?? [];
+    const fp = fingerprint;
+    // V2 fingerprints store merged dims — expand for prompt generation
+    const promptDims = expandForPrompt(fp) as StyleFingerprint["dimensions"];
+    const materialPalette = getMaterialPalette(promptDims);
+    const fingerprintPhrase = buildFullFingerprintPhrase(promptDims);
+    const anchorSystem = anchorPrompt
+      ? `\n\nAnchor style reference prompt (high priority): ${anchorPrompt}\nWeight this heavily — it captures the user's confirmed visual preference, but apply it only to the vacated zones, never to the anchoring pieces.`
+      : "";
 
-    const skeleton = [
-      `Interior design photography, Sony A7R V 24mm f/2.8 lens, architectural perspective, ${roomType}.`,
-      `Keep exact room geometry, window positions, ceiling height, floor material, walls, and camera angle from the original photo.`,
-      keepItems.length > 0
-        ? `Keep exactly as-is: ${keepItems.join(", ")}.`
-        : "",
-      removeItems.length > 0
-        ? `Remove: ${removeItems.join(", ")}. Replace with style-appropriate alternatives.`
-        : "",
-    ]
-      .filter(Boolean)
-      .join(" ");
+    // Derive replacement direction from real fingerprint dimensions (more accurate than style_blend)
+    const replacementDirection = promptDims
+      ? deriveReplacementDirectionFromDimensions(promptDims)
+      : deriveReplacementDirection(context?.styleBlend ?? context?.style_blend ?? null);
 
-    // ── PART B — Claude synthesizer ───────────────────────────────────────
-    // Build userContext with ALL step-7d fields wired in.
-    // Previously-dropped fields (art.colorPalette, tech.gamingSetup, sensory.hasCandles,
-    // identity.interests, budget.strategy, etc.) are now included.
-    const styleAnchor = deriveStyleAnchor(
-      fingerprint,
-      context?.styleBlend ?? context?.style_blend,
-    );
+    const keptObjects =
+      context?.keepMask?.objects?.filter((o) => o.keep || o.immovable) ?? [];
+    const removedObjects =
+      context?.keepMask?.objects?.filter((o) => !o.keep && !o.immovable) ?? [];
 
-    const userContext = {
+    const compressedContext = {
       roomType,
-      styleAnchor,
+      _replacementDirection: replacementDirection,
       fingerprint: {
-        dimensions: fingerprint.dimensions,
-        confidence: fingerprint.confidence,
+        dimensions: fp.dimensions,
+        confidence: fp.confidence,
+        _materialPalette: materialPalette,
+        _fingerprintPhrase: fingerprintPhrase,
       },
-      keepItems,
-      removeItems,
+      roomConstraints: context?.roomConstraints
+        ? {
+            primaryFunction: context?.roomConstraints.primaryFunction,
+            hasPetsOrKids: context?.roomConstraints.hasPetsOrKids,
+            storagePriority: context?.roomConstraints.storagePriority,
+            wallPermanence: context?.roomConstraints.wallPermanence,
+            bestLightTime: context?.roomConstraints.bestLightTime,
+            styleDirectionDelta: context?.roomConstraints.styleDirectionDelta,
+            offScreenPieces: context?.roomConstraints.offScreenPieces,
+            physicalConstraints: context?.roomConstraints.physicalConstraints,
+            whoUsesRoom: context?.roomConstraints.whoUsesRoom,
+          }
+        : null,
+      roomContext: context?.roomContext
+        ? {
+            ceilingHeight: context?.roomContext.ceilingHeight,
+            ceilingDetail: context?.roomContext.ceilingDetail,
+            cameraAngle: context?.roomContext.cameraAngle,
+            focalLength: context?.roomContext.focalLength,
+            naturalLightDirection: context?.roomContext.naturalLightDirection,
+            windowCount: context?.roomContext.windowCount,
+            architecturalFeatures: context?.roomContext.architecturalFeatures,
+            floorMaterial: context?.roomContext.floorMaterial,
+            wallColor: context?.roomContext.wallColor,
+            hasAccentWall: context?.roomContext.hasAccentWall,
+            userNotes: context?.roomContext.userNotes,
+          }
+        : null,
+      keepMask: {
+        anchoringPieces: keptObjects.map((o) => ({
+          label: o.type,
+          dominantColor: o.dominantColor ?? null,
+          material: o.material ?? null,
+          sizeInRoom: o.sizeInRoom ?? null,
+          styleDescriptors: o.styleDescriptors ?? null,
+          userNote: o.userNote ?? null,
+          immovable: o.immovable,
+        })),
+        vacatedZones: removedObjects.map((o) => ({
+          label: o.type,
+          zoneHint: `${o.type} zone`,
+          replacementDirection,
+        })),
+        keptItemLabelList: keptObjects.map((o) => o.type),
+      },
       budget: context?.budget
         ? {
-            min: context.budget.rangeMin,
-            max: context.budget.rangeMax,
-            strategy: context.budget.strategy,
-            splurgeCategory: context.budget.splurgeCategory ?? null,
-            tier: context.budget.tier ?? null,
+            rangeMin: context?.budget.rangeMin,
+            rangeMax: context?.budget.rangeMax,
+            strategy: context?.budget.strategy,
           }
         : null,
-      // ALL Art tab fields — previously: colorPalette, mood, abstractionLevel,
-      // subjectMatter, placement, includesPersonalPhotos were dropped
-      art: context?.artBrief
-        ? {
-            hasArtDirection: context.artBrief.hasArtDirection,
-            visualDirection: context.artBrief.visualDirection || null,
-            colorPalette: context.artBrief.colorPalette?.length
-              ? context.artBrief.colorPalette
-              : null,
-            mood: context.artBrief.mood || null,
-            abstractionLevel: context.artBrief.abstractionLevel || null,
-            subjectMatter: context.artBrief.subjectMatter || null,
-            frameStyle: context.artBrief.frameStyle || null,
-            placement: context.artBrief.placement || null,
-            galleryWall: context.artBrief.galleryWall,
-            hasVinylCollection: context.artBrief.hasVinylCollection,
-            hasBookCollection: context.artBrief.hasBookCollection,
-            includesPersonalPhotos:
-              context.artBrief.includesPersonalPhotos || null,
-          }
-        : null,
-      // ALL Tech tab fields — previously: hasGamingSetup, gamingSetup, otherTech were dropped
-      tech: context?.techSpec
-        ? {
-            hasTV: context.techSpec.hasTV,
-            tvSizeInches: context.techSpec.tvSizeInches ?? null,
-            tvMountType: context.techSpec.tvMountType ?? null,
-            tvPlacementWall: context.techSpec.tvPlacementWall ?? null,
-            audioSetup: context.techSpec.audioSetup ?? null,
-            smartLighting: context.techSpec.smartLighting,
-            lightingType: context.techSpec.lightingType ?? null,
-            hasWorkFromHome: context.techSpec.hasWorkFromHome,
-            wfhSetup: context.techSpec.wfhSetup ?? null,
-            hasGamingSetup: context.techSpec.hasGamingSetup,
-            gamingSetup: context.techSpec.gamingSetup ?? null,
-            otherTech: context.techSpec.otherTech ?? null,
-          }
-        : null,
-      // ALL Sensory tab fields — previously: throwStyle, hasCandles, candleStyle,
-      // hasDiffuser were dropped
-      sensory: context?.sensoryProfile
-        ? {
-            throwCushionDensity: context.sensoryProfile.throwCushionDensity,
-            throwStyle: context.sensoryProfile.throwStyle ?? null,
-            plantPresence: context.sensoryProfile.plantPresence,
-            plantSpecies: context.sensoryProfile.plantSpecies?.length
-              ? context.sensoryProfile.plantSpecies
-              : null,
-            hasCandles: context.sensoryProfile.hasCandles,
-            candleStyle: context.sensoryProfile.candleStyle ?? null,
-            hasRug: context.sensoryProfile.hasRug,
-            rugSize: context.sensoryProfile.rugSize ?? null,
-            rugStyle: context.sensoryProfile.rugStyle ?? null,
-            rugColor: context.sensoryProfile.rugColor ?? null,
-            windowTreatments: context.sensoryProfile.windowTreatments,
-            windowTreatmentColor:
-              context.sensoryProfile.windowTreatmentColor ?? null,
-            hasDiffuser: context.sensoryProfile.hasDiffuser,
-            overallDensity: context.sensoryProfile.overallDensity,
-          }
-        : null,
-      // ALL Identity tab fields — previously: fandomTreatment, interests,
-      // personalityTags were dropped
-      identity: context?.identityBrief
-        ? {
-            culturalReference:
-              context.identityBrief.culturalReference ?? null,
-            culturalReferenceIntensity:
-              context.identityBrief.culturalReferenceIntensity ?? null,
-            fandoms: context.identityBrief.fandoms?.length
-              ? context.identityBrief.fandoms
-              : null,
-            fandomTreatment: context.identityBrief.fandomTreatment ?? null,
-            interests: context.identityBrief.interests?.length
-              ? context.identityBrief.interests
-              : null,
-            sentimentalObjects:
-              context.identityBrief.sentimentalObjects?.length
-                ? context.identityBrief.sentimentalObjects
-                : null,
-            moodTarget: context.identityBrief.moodTarget || null,
-            moodKeywords: context.identityBrief.moodKeywords?.length
-              ? context.identityBrief.moodKeywords
-              : null,
-            personalityTags: context.identityBrief.personalityTags?.length
-              ? context.identityBrief.personalityTags
-              : null,
-          }
-        : null,
-      products:
+      budgetReconciled: (() => {
+        const explicit = context?.budget;
+        const tierFromRange = (max: number | undefined): string | null => {
+          if (max === undefined || max === null) return null;
+          if (max <= 2000) return "budget";
+          if (max <= 5000) return "mid";
+          if (max <= 10000) return "premium";
+          return "luxury";
+        };
+        if (
+          explicit &&
+          (explicit.rangeMin !== undefined || explicit.rangeMax !== undefined)
+        ) {
+          const min = explicit.rangeMin ?? 0;
+          const max = explicit.rangeMax;
+          const tier = tierFromRange(max ?? undefined);
+          const rangeStr =
+            max !== undefined && max !== null ? `$${min}–$${max}` : `$${min}+`;
+          return tier
+            ? `Budget: ${rangeStr} (${tier} tier)`
+            : `Budget: ${rangeStr}`;
+        }
+        return null;
+      })(),
+      requestedProducts:
         context?.requestedProducts
           ?.filter((p) => p.confirmedByUser)
-          .slice(0, 4)
-          .map((p: RequestedProduct) => ({
+          ?.slice(0, 4)
+          ?.map((p: RequestedProduct & { priority?: string }) => ({
             name: p.scrapedData?.name ?? p.originalInput,
             description: p.fluxDescription,
             placement: p.placementIntent,
-            placementHint: p.placementHint ?? null,
+            priority: p.priority,
           })) ?? [],
-      roomConstraints: context?.roomConstraints
+      artBrief:
+        context?.artBrief?.hasArtDirection ||
+        context?.artBrief?.colorPalette?.length ||
+        context?.artBrief?.mood ||
+        context?.artBrief?.subjectMatter ||
+        context?.artBrief?.artUrl
+          ? {
+              visualDirection: context?.artBrief?.visualDirection,
+              frameStyle: context?.artBrief?.frameStyle,
+              galleryWall: context?.artBrief?.galleryWall,
+              hasVinylCollection: context?.artBrief?.hasVinylCollection,
+              hasBookCollection: context?.artBrief?.hasBookCollection,
+            }
+          : null,
+      techSpec:
+        context?.techSpec?.hasTV ||
+        context?.techSpec?.hasWorkFromHome ||
+        context?.techSpec?.hasGamingSetup ||
+        context?.techSpec?.smartLighting ||
+        context?.techSpec?.audioSetup
+          ? {
+              hasTV: context?.techSpec?.hasTV,
+              tvSizeInches: context?.techSpec?.tvSizeInches,
+              tvMountType: context?.techSpec?.tvMountType,
+              tvPlacementWall: context?.techSpec?.tvPlacementWall,
+              hasWorkFromHome: context?.techSpec?.hasWorkFromHome,
+              wfhSetup: context?.techSpec?.wfhSetup,
+            }
+          : null,
+      roomAnalysis: roomAnalysis
         ? {
-            wallPermanence: context.roomConstraints.wallPermanence,
-            physicalConstraints:
-              context.roomConstraints.physicalConstraints ?? [],
-            bestLightTime: context.roomConstraints.bestLightTime,
-            roomSize: context.roomConstraints.roomSize,
-            whoUsesRoom: context.roomConstraints.whoUsesRoom ?? [],
-            primaryFunction: context.roomConstraints.primaryFunction ?? [],
-            hasPetsOrKids: context.roomConstraints.hasPetsOrKids,
-            storagePriority: context.roomConstraints.storagePriority,
-            offScreenPieces: context.roomConstraints.offScreenPieces || null,
-            styleDirectionDelta:
-              context.roomConstraints.styleDirectionDelta ?? null,
+            wallColor: roomAnalysis.wallColors ?? null,
+            floorType: roomAnalysis.floorType ?? null,
+            cameraAngle: roomAnalysis.cameraAngle ?? null,
+            focalLength: roomAnalysis.focalLength ?? null,
+            fixedElements: roomAnalysis.fixedElements ?? [],
+          }
+        : null,
+      sensoryProfile: context?.sensoryProfile
+        ? {
+            throwCushionDensity: context?.sensoryProfile.throwCushionDensity,
+            plantPresence: context?.sensoryProfile.plantPresence,
+            plantSpecies: context?.sensoryProfile.plantSpecies,
+            hasRug: context?.sensoryProfile.hasRug,
+            rugStyle: context?.sensoryProfile.rugStyle,
+            rugSize: context?.sensoryProfile.rugSize,
+            rugColor: context?.sensoryProfile.rugColor,
+            windowTreatments: context?.sensoryProfile.windowTreatments,
+            windowTreatmentColor: context?.sensoryProfile.windowTreatmentColor,
+            overallDensity: context?.sensoryProfile.overallDensity,
+          }
+        : null,
+      identityBrief: context?.identityBrief
+        ? {
+            culturalReference: context?.identityBrief.culturalReference,
+            culturalReferenceIntensity:
+              context?.identityBrief.culturalReferenceIntensity,
+            fandoms: context?.identityBrief.fandoms?.slice(0, 2),
+            moodKeywords: context?.identityBrief.moodKeywords?.slice(0, 3),
+            moodTarget: context?.identityBrief.moodTarget,
+            sentimentalObjects:
+              context?.identityBrief.sentimentalObjects?.slice(0, 1),
           }
         : null,
     };
 
-    // Inner callClaude helper — returns the text content or null on failure
-    const callClaude = async (
-      system: string,
-      userMessage: string,
-    ): Promise<string | null> => {
+    const cameraAngle =
+      roomAnalysis?.cameraAngle ??
+      context?.roomContext?.cameraAngle ??
+      "straight-on view";
+
+    const resolvedSystemPrompt = SYSTEM_PROMPT_TEMPLATE;
+    const chatSuffix = chatContext
+      ? `\n\nAdditional user preferences from chat (extract any TV, plant, lighting, density, or material mentions and incorporate):\n${JSON.stringify(chatContext, null, 2)}`
+      : "";
+
+    const dims = fp.dimensions;
+    const dimensionInterpretation = [
+      `COLOR DIRECTION (applies to furniture and objects ONLY, never walls): ${dims.colorTemperature < 0.35 ? "COOL — use slate grey, dusty sage, dove white, stone blue for new furniture and objects. NO warm tones." : dims.colorTemperature > 0.65 ? "WARM — use amber, terracotta, warm oak, cream for new furniture and objects. NO cool tones." : "NEUTRAL GREIGE — warm whites and natural tones"}`,
+      `LIGHT: ${dims.lightPreference < 0.35 ? "COZY LAMP-LIT — warm pools of 2700K light, no overhead harshness, candles" : dims.lightPreference > 0.65 ? "BRIGHT DAYLIGHT — white surfaces, diffused natural light, sheer curtains" : "MIXED AMBIENT"}`,
+      `DENSITY: ${dims.density > 0.75 ? "MAXIMALLY LAYERED — pile on objects, books, plants, textiles. 12+ distinct design elements mandatory" : dims.density < 0.3 ? "MINIMAL — 4-5 elements, breathing room, negative space" : "BALANCED LAYERING"}`,
+      `PATTERN: ${dims.pattern > 0.7 ? "PATTERN-RICH — printed cushions, patterned kilim rug, textured wallcovering or tapestry mandatory" : dims.pattern < 0.3 ? "SOLID COLORS ONLY — no prints, no patterns" : "SUBTLE TEXTURE ONLY"}`,
+      `ERA: ${dims.era < 0.35 ? "HERITAGE/VINTAGE — aged brass, antique frames, distressed leather, heirloom objects, wabi-sabi imperfection" : dims.era > 0.65 ? "CONTEMPORARY CLEAN — minimal ornament, geometric forms" : "TRANSITIONAL"}`,
+      `MATERIAL: ${dims.material > 0.65 ? "NATURAL ORGANIC — rattan, jute, linen, raw terracotta, hand-thrown ceramics, live-edge wood" : dims.material < 0.35 ? "MANUFACTURED — lacquer, powder-coat steel, glass, resin, polished concrete" : "MIX OF NATURAL AND MANUFACTURED"}`,
+      `CULTURAL: ${dims.culturalInfluence > 0.6 ? "GLOBALLY ECLECTIC — intentionally mix Moroccan, Japanese wabi-sabi, Scandinavian hygge, or African textile elements" : "WESTERN CONTEMPORARY"}`,
+    ].join("\n");
+
+    const userContent = `${dimensionInterpretation}\n\nCompile a FLUX Kontext Pro edit prompt from this design profile. Apply all rules and the full quality formula strictly. Use _replacementDirection="${replacementDirection}" for vacated zone styling. Camera angle: ${cameraAngle}.\n\n${JSON.stringify(compressedContext, null, 2)}${chatSuffix}`;
+    const callClaude = async (): Promise<string | null> => {
       const response = await anthropic.messages.create({
-        model: "claude-sonnet-4-5",
-        max_tokens: 700,
-        system,
-        messages: [{ role: "user", content: userMessage }],
+        model: "claude-sonnet-4-6",
+        max_tokens: 1500,
+        messages: [{ role: "user", content: userContent }],
+        system: resolvedSystemPrompt + anchorSystem,
       });
       const block = response.content[0];
       if (!block || block.type !== "text" || !block.text.trim()) return null;
       return block.text.trim();
     };
 
-    // Reference quality examples for the synthesizer.
-    // Uses anchorPrompt (fetched style reference) when available;
-    // otherwise provides curated examples to calibrate quality level.
-    const referenceSection = anchorPrompt
-      ? `Style reference anchor (incorporate this visual direction, apply to vacated zones only): ${anchorPrompt}`
-      : `Reference quality target — choose the closest match to the user's styleAnchor and produce a prompt at that quality level:
-
-Dark moody office: navy walls with deep shadow pooling, warm brass desk lamp catching light precisely, tufted green leather chair, Persian rug, stacked books, editorial photoshoot quality, every object placed with intent
-Warm naturalistic bedroom: platform bed in white oak, single washi paper pendant, cherry blossom branch in ceramic vase, sheer linen curtains diffusing warm afternoon light, serenity through absence, 2-3 objects maximum
-Biophilic bathroom: cascading live tropical plants from ceiling and walls, wabi-sabi concrete surfaces, round teak-framed mirror, freestanding stone resin tub, diffused overhead light through plant canopy
-Raw urban office: exposed brick with visible mortar detail, concrete floor with matte sheen, matte black steel shelving, warm Edison bulb against cool daylight from factory windows, sparse but deliberate — 4-5 purposeful objects
-Victorian bedroom: carved mahogany four-poster bed, Persian rug with visible weave, candelabra wall sconces casting warm amber light, oil painting above fireplace, rich layered textiles, every surface textured and specific
-Coastal kitchen: brilliant white shiplap, powder blue cabinetry, brass farmhouse fixtures, marble counters, abundant potted herbs and greenery, crisp overexposed natural light, open shelving with styled dishware`;
-
-    // Optional chat context injection
-    const chatSuffix =
-      chatContext && Object.keys(chatContext).length > 0
-        ? `\n\nAdditional user preferences from chat (extract any TV, plant, lighting, density, or material mentions and incorporate):\n${JSON.stringify(chatContext, null, 2)}`
-        : "";
-
-    const userMessage = `Here is the complete user context for this render. Produce the FLUX prompt segment now.
-
-User context:
-${JSON.stringify(userContext, null, 2)}
-
-${referenceSection}${chatSuffix}
-
-Produce the prompt segment now. No preamble.`;
-
-    // First synthesis pass
-    let claudeOutput = await callClaude(CLAUDE_SYNTHESIZER_SYSTEM, userMessage);
-    if (!claudeOutput) {
-      console.warn("[prompt-compiler] Claude synthesizer returned empty output");
-      return null;
-    }
-
-    // Iterative refinement loop — max 2 passes if over token budget
-    let refinementPasses = 0;
-    while (
-      estimateTokens(claudeOutput) > MAX_DYNAMIC_TOKENS &&
-      refinementPasses < 2
-    ) {
-      refinementPasses++;
-      console.warn(
-        `[prompt-compiler] Refinement pass ${refinementPasses} — estimated ${estimateTokens(claudeOutput)} tokens, target ${MAX_DYNAMIC_TOKENS}`,
-      );
-
-      const compressionSystem = `You are a token-reduction engine for FLUX diffusion prompts.
-Rules — no exceptions:
-1. Output ONLY comma-separated noun phrases and adjective pairs. Zero full sentences. Zero bridging words like 'with', 'featuring', 'showcasing', 'creating', 'providing', 'offering'.
-2. Every comma-separated item must be 4 words or fewer.
-   BAD: 'teak platform bed with pronounced grain patterns hand-rubbed oil finish luminous depth'
-   GOOD: 'teak platform bed, pronounced grain, hand-rubbed oil finish, luminous depth'
-3. Remove ALL of these word categories:
-   - Present participles ending in -ing used as filler (casting, transitioning, accentuating, prioritizing)
-   - Abstract nouns: atmosphere, methodology, precision, refinement, character, behavior, development
-   - Redundant qualifiers: 'slightly', 'deeply', 'truly', 'carefully', 'intentional'
-4. Preserve every named object, every named material, every named color, every piece of user personalization. Nothing that encodes user intent is removable.
-5. Target: ${COMPRESSION_TARGET} tokens. Count words × 1.3 to estimate. Stop adding content when you hit target.`;
-
-      const compressed = await callClaude(
-        compressionSystem,
-        `Rewrite this FLUX prompt segment to ${COMPRESSION_TARGET} tokens using only comma-separated phrases of 4 words or fewer. Preserve every named object and material. Remove all filler language.
-
-Current segment:
-${claudeOutput}
-
-Output only the rewritten prompt. No explanation.`,
-      );
-
-      if (compressed) {
-        claudeOutput = compressed;
-      } else {
+    let compiled: string | null = null;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const candidate = await callClaude();
+      const count = candidate ? candidate.split(/\s+/).length : 0;
+      console.warn(`[compiler] attempt ${attempt} word count:`, count);
+      if (candidate && count >= 100 && count <= 1400) {
+        compiled = candidate;
         break;
       }
     }
 
-    // Log warning if still over after refinement — a slightly long prompt
-    // is better than a truncated one; FLUX handles slight overages gracefully
-    if (estimateTokens(claudeOutput) > MAX_DYNAMIC_TOKENS) {
+    if (!compiled) {
+      // Log the last candidate's details for debugging
+      const lastCandidate = await callClaude().catch(() => null);
+      const lastCount = lastCandidate ? lastCandidate.split(/\s+/).length : 0;
       console.warn(
-        `[prompt-compiler] Prompt still ~${estimateTokens(claudeOutput)} tokens after ${refinementPasses} refinement pass(es). Proceeding — slight overage acceptable.`,
+        `[prompt-compiler] Claude output outside 100-1400 range after 2 attempts, falling back. Last word count: ${lastCount}, preview: ${lastCandidate?.slice(0, 200) ?? "null"}`,
       );
+      return null;
     }
 
-    // Assemble final prompt: skeleton (Part A) + synthesizer output (Part B)
-    const finalPrompt = `${skeleton} ${claudeOutput}`;
-
-    // Development mode: log the full assembled prompt for inspection
-    if (process.env.NODE_ENV !== "production") {
-      const skelTokens = estimateTokens(skeleton);
-      const dynTokens = estimateTokens(claudeOutput);
-      const totalTokens = estimateTokens(finalPrompt);
-      console.log("[prompt-compiler] ── FULL ASSEMBLED PROMPT ──");
-      console.log(finalPrompt);
-      console.log(
-        `[prompt-compiler] Token estimate — skeleton: ${skelTokens} | dynamic: ${dynTokens} | total: ${totalTokens}`,
-      );
-    }
-
-    return sanitizeForbiddenStyleNames(finalPrompt);
+    return sanitizeForbiddenStyleNames(compiled);
   } catch (err) {
     console.error("[prompt-compiler] Claude compilation failed:", err);
     return null;

@@ -477,3 +477,434 @@
     width: 100%;
   }
 }
+
+/* ── 3-Round Grid System ─────────────────────────────── */
+
+.cova-round-header {
+  text-align: center;
+  padding: 0 24px 32px;
+}
+
+.cova-round-eyebrow {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--cova-gold);
+  margin-bottom: 10px;
+  opacity: 0.85;
+}
+
+.cova-round-title {
+  font-family: var(--font-serif);
+  font-size: clamp(22px, 5vw, 30px);
+  font-weight: 400;
+  color: var(--cova-ivory);
+  line-height: 1.25;
+  margin-bottom: 8px;
+}
+
+.cova-round-subtitle {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--cova-muted);
+  line-height: 1.5;
+}
+
+/* Round progress pip track */
+.cova-round-pips {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 28px;
+}
+
+.cova-round-pip {
+  width: 28px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--cova-border);
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.cova-round-pip.is-active {
+  width: 44px;
+  background: linear-gradient(90deg, var(--cova-gold), var(--cova-gold-light));
+  box-shadow: 0 0 8px rgba(201, 168, 76, 0.5);
+}
+
+.cova-round-pip.is-done {
+  background: var(--cova-gold);
+  opacity: 0.5;
+}
+
+/* Style grid — 3×3 */
+.cova-style-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 0 12px;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+/* Individual style card */
+.cova-style-card {
+  position: relative;
+  aspect-ratio: 2/3;
+  border-radius: 14px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 1.5px solid var(--cova-border);
+  background: var(--cova-surface);
+  transition:
+    transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.25s ease,
+    border-color 0.2s ease,
+    opacity 0.3s ease;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+/* 3D tilt on hover (applied via JS) */
+.cova-style-card:hover:not(.is-disabled) {
+  transform: translateY(-4px) scale(1.03);
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(201, 168, 76, 0.15);
+}
+
+.cova-style-card.is-selected {
+  border-color: var(--cova-gold);
+  box-shadow:
+    0 0 0 2px var(--cova-gold),
+    0 0 24px rgba(201, 168, 76, 0.3),
+    0 16px 40px rgba(0, 0, 0, 0.5);
+  transform: translateY(-6px) scale(1.04);
+}
+
+.cova-style-card.is-disabled {
+  opacity: 0.38;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Card image */
+.cova-style-card__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.cova-style-card:hover:not(.is-disabled) .cova-style-card__image {
+  transform: scale(1.06);
+}
+
+/* Gradient overlay — always present, darkens bottom */
+.cova-style-card__overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    transparent 40%,
+    rgba(10, 22, 40, 0.55) 70%,
+    rgba(10, 22, 40, 0.88) 100%
+  );
+  pointer-events: none;
+}
+
+/* Style name label */
+.cova-style-card__label {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 8px 8px 10px;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cova-ivory);
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* Selected checkmark */
+.cova-style-card__check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--cova-gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0.5) rotate(-20deg);
+  transition:
+    opacity 0.25s ease,
+    transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 2px 8px rgba(201, 168, 76, 0.5);
+}
+
+.cova-style-card.is-selected .cova-style-card__check {
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
+}
+
+/* Gold shimmer on selected card — animated border glow */
+.cova-style-card.is-selected::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 14px;
+  background: linear-gradient(
+    135deg,
+    rgba(201, 168, 76, 0.6) 0%,
+    rgba(240, 208, 128, 0.2) 40%,
+    rgba(201, 168, 76, 0.6) 100%
+  );
+  background-size: 200% 200%;
+  animation: goldShimmer 2s ease infinite;
+  z-index: -1;
+  pointer-events: none;
+}
+
+@keyframes goldShimmer {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Card entrance animation */
+@keyframes cardEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.cova-style-card {
+  animation: cardEntrance 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Stagger each card's entrance */
+.cova-style-card:nth-child(1) { animation-delay: 0.03s; }
+.cova-style-card:nth-child(2) { animation-delay: 0.06s; }
+.cova-style-card:nth-child(3) { animation-delay: 0.09s; }
+.cova-style-card:nth-child(4) { animation-delay: 0.12s; }
+.cova-style-card:nth-child(5) { animation-delay: 0.15s; }
+.cova-style-card:nth-child(6) { animation-delay: 0.18s; }
+.cova-style-card:nth-child(7) { animation-delay: 0.21s; }
+.cova-style-card:nth-child(8) { animation-delay: 0.24s; }
+.cova-style-card:nth-child(9) { animation-delay: 0.27s; }
+
+/* Round transition — grid slides out left, new grid slides in right */
+@keyframes gridExit {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(-32px); }
+}
+
+@keyframes gridEnter {
+  from { opacity: 0; transform: translateX(32px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.cova-style-grid.is-exiting {
+  animation: gridExit 0.28s ease forwards;
+  pointer-events: none;
+}
+
+.cova-style-grid.is-entering {
+  animation: gridEnter 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* CTA button for "Next Round" / "See My Style" */
+.cova-round-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 24px 24px 16px;
+}
+
+.cova-round-btn {
+  position: relative;
+  width: 100%;
+  max-width: 280px;
+  padding: 16px 32px;
+  border-radius: 50px;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #0A1628;
+  background: linear-gradient(135deg, var(--cova-gold) 0%, var(--cova-gold-light) 50%, var(--cova-gold) 100%);
+  background-size: 200% 100%;
+  box-shadow:
+    0 4px 20px rgba(201, 168, 76, 0.35),
+    0 1px 0 rgba(255,255,255,0.15) inset;
+  transition:
+    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.2s ease,
+    background-position 0.4s ease,
+    opacity 0.3s ease;
+  overflow: hidden;
+}
+
+.cova-round-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50px;
+  background: linear-gradient(
+    135deg,
+    rgba(255,255,255,0.25) 0%,
+    transparent 60%
+  );
+  pointer-events: none;
+}
+
+.cova-round-btn:not(:disabled):hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow:
+    0 8px 28px rgba(201, 168, 76, 0.5),
+    0 1px 0 rgba(255,255,255,0.2) inset;
+  background-position: 100% 0;
+}
+
+.cova-round-btn:not(:disabled):active {
+  transform: translateY(0) scale(0.98);
+}
+
+.cova-round-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Pick counter badge */
+.cova-pick-counter {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--cova-muted);
+  letter-spacing: 0.04em;
+  transition: color 0.2s ease;
+}
+
+.cova-pick-counter.is-ready {
+  color: var(--cova-gold);
+}
+
+/* Grid phase layout wrapper — fills viewport vertically */
+.cova-grid-phase {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+
+.cova-grid-phase .cova-style-grid {
+  flex: 1;
+  align-content: start;
+}
+
+/* Taller cards on large screens */
+@media (min-height: 800px) {
+  .cova-style-card {
+    aspect-ratio: 3/4;
+  }
+}
+
+@media (min-width: 420px) {
+  .cova-style-grid {
+    max-width: 600px;
+    gap: 10px;
+  }
+}
+
+/* ── NLP question phase ─────────────────────────────── */
+
+.cova-nlp-phase {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 0 24px 32px;
+}
+
+.cova-nlp-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 520px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 0 24px;
+}
+
+.cova-nlp-option {
+  width: 100%;
+  padding: 20px 24px;
+  border-radius: 14px;
+  border: 1px solid rgba(201, 168, 76, 0.22);
+  background: rgba(15, 31, 61, 0.6);
+  color: var(--cova-ivory, #f5f0e8);
+  font-family: var(--font-sans, "DM Sans", sans-serif);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.2s ease;
+  backdrop-filter: blur(12px);
+}
+
+.cova-nlp-option:hover {
+  border-color: rgba(201, 168, 76, 0.55);
+  background: rgba(201, 168, 76, 0.08);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3), 0 0 20px rgba(201, 168, 76, 0.12);
+}
+
+.cova-nlp-option:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Round transition overlay — full-screen gold flash between rounds */
+.cova-round-flash {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(201, 168, 76, 0.12) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+  opacity: 0;
+  z-index: 50;
+  transition: opacity 0.3s ease;
+}
+
+.cova-round-flash.is-active {
+  opacity: 1;
+}

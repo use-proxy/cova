@@ -13,7 +13,12 @@ import "./step3.css";
 
 const log = logger.child({ stepId: "step-3" });
 
-type Phase = "room_type" | "anchors" | "pairs" | "compute";
+type Phase = "room_type" | "anchors" | "non_visual" | "pairs" | "compute";
+
+type NonVisualAnswer = {
+  questionId: "surfaces" | "materials" | "color";
+  choiceIndex: number;
+};
 
 const ROOM_TYPES: { id: string; label: string }[] = [
   { id: "living_room", label: "Living Room" },
@@ -46,17 +51,28 @@ type FingerprintResult = {
   style_tags: string[];
 };
 
-const TOTAL_PAIRS = 12;
+const TOTAL_PAIRS = 6;
 const MAX_ANCHOR_PICKS = 3;
 const COMPLETION_ROUTE = "/design/step-4";
 
 export default function CovaStyleQuizPage() {
   const router = useRouter();
   const roomType = useFingerprintStore((s) => s.roomType);
-  const [phase, setPhase] = useState<Phase>(
-    roomType ? "pairs" : "room_type",
-  );
+  // Start at "pairs" when step-2 already ran NLP and set a fingerprint.
+  // Start at "non_visual" as fallback for direct navigation without step-2.
+  const [phase, setPhase] = useState<Phase>(() => {
+    const store = useFingerprintStore.getState();
+    if (!store.roomType) return "room_type";
+    if (store.fingerprint) {
+      const isConfident = store.blendRatio >= 0.72 && store.competingStyles.length <= 1;
+      if (isConfident) return "compute";
+      return "pairs";
+    }
+    return "non_visual";
+  });
 
+  // Non-visual questions state
+  const [nonVisualAnswers, setNonVisualAnswers] = useState<NonVisualAnswer[]>([]);
 
   // Phase A state
   const [anchors, setAnchors] = useState<AnchorCard[]>([]);
@@ -88,10 +104,10 @@ export default function CovaStyleQuizPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Clear computed outputs only — preserve Phase A inputs from step-2
-  // (phaseASelections, roomType). Reset phaseBResponses so previous pairwise
-  // answers don't bleed into the new session. DO NOT call resetFingerprint()
-  // here — it wipes phaseASelections that step-2 just stored.
+  // Reset computed outputs so previous pair answers don't bleed into the new
+  // session. DO NOT wipe roomType or gridSelections (set by step-2).
+  // Phase was already set correctly by the useState initializer above —
+  // do NOT call setPhase here; that would override the "pairs" fast-path.
   useEffect(() => {
     useFingerprintStore.setState({
       fingerprint: null,
@@ -100,10 +116,6 @@ export default function CovaStyleQuizPage() {
       styleExplanation: null,
       phaseBResponses: [],
     });
-    const existingRoomType = useFingerprintStore.getState().roomType;
-    if (existingRoomType) {
-      setPhase("pairs");
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -163,8 +175,7 @@ export default function CovaStyleQuizPage() {
   // roomType is passed directly to fetchAnchors — no useEffect, no store read.
   function handleRoomTypeSelect(selectedRoomType: string) {
     useFingerprintStore.getState().setRoomType(selectedRoomType);
-    setPhase("pairs");
-    // anchor phase is step-2 only; go straight to pairwise
+    setPhase("non_visual");
   }
 
   const toggleAnchor = (id: string) => {
@@ -194,6 +205,7 @@ export default function CovaStyleQuizPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          competing_styles: store.competingStyles ?? [],
           completedPairIds,
           responseCount: completedPairIds.length,
           currentFingerprint: currentFp?.dimensions ?? null,
@@ -271,8 +283,11 @@ export default function CovaStyleQuizPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           phase_a_selections: store.phaseASelections,
+          grid_selections: store.gridSelections,
           phase_b_responses: store.phaseBResponses,
+          non_visual_responses: nonVisualAnswers,
           room_type: store.roomType ?? "living_room",
+          tiebreaker_deltas: store.tiebreakerDeltas ?? null,
           entry_path: "pairs",
         }),
       });
@@ -289,7 +304,7 @@ export default function CovaStyleQuizPage() {
       console.error("[step-3] fingerprint compute failed:", msg);
       setComputeError(msg);
     }
-  }, [router]);
+  }, [router, nonVisualAnswers]);
 
   useEffect(() => {
     if (phase !== "compute") return;
@@ -302,9 +317,11 @@ export default function CovaStyleQuizPage() {
       ? 5
       : phase === "anchors"
         ? 10
-        : phase === "pairs"
-          ? 20 + (pairsAnswered / TOTAL_PAIRS) * 80
-          : 100;
+        : phase === "non_visual"
+          ? 15
+          : phase === "pairs"
+            ? 20 + (pairsAnswered / TOTAL_PAIRS) * 80
+            : 100;
 
   return (
     <main className="cova-shell">
@@ -349,6 +366,7 @@ export default function CovaStyleQuizPage() {
             <div className="cova-progress-copy">
               {phase === "room_type" && "Which room are we designing?"}
               {phase === "anchors" && "Choose what resonates"}
+              {phase === "non_visual" && "A few quick questions"}
               {phase === "pairs" && `${pairsAnswered} of ${TOTAL_PAIRS}`}
               {phase === "compute" && "Analyzing your style..."}
             </div>
@@ -383,6 +401,16 @@ export default function CovaStyleQuizPage() {
             selectedIds={selectedAnchorIds}
             onToggle={toggleAnchor}
             onContinue={handleAnchorsContinue}
+          />
+        )}
+
+        {phase === "non_visual" && (
+          <NonVisualPhase
+            answers={nonVisualAnswers}
+            onAnswer={(answer) => {
+              setNonVisualAnswers((prev) => [...prev, answer]);
+            }}
+            onComplete={() => setPhase("pairs")}
           />
         )}
 
@@ -551,6 +579,113 @@ function AnchorsPhase({
           Continue
         </button>
       </footer>
+    </>
+  );
+}
+
+// ── Non-Visual Questions Phase ────────────────────────────────────────────────
+
+const NON_VISUAL_QUESTIONS: Array<{
+  id: "surfaces" | "materials" | "color";
+  question: string;
+  choices: string[];
+}> = [
+  {
+    id: "surfaces",
+    question: "How do you prefer your surfaces?",
+    choices: [
+      "Clear and minimal",
+      "Some thoughtful objects",
+      "Layered with things I love",
+    ],
+  },
+  {
+    id: "materials",
+    question: "What materials feel most like home?",
+    choices: [
+      "Natural wood, stone, plants",
+      "Clean white, glass, metal",
+      "Rich fabrics, velvet, brass",
+      "Mix of everything",
+    ],
+  },
+  {
+    id: "color",
+    question: "What\u2019s your relationship with color?",
+    choices: [
+      "Neutrals only",
+      "One accent color, rest neutral",
+      "Bold color as a statement",
+      "Color everywhere",
+    ],
+  },
+];
+
+function NonVisualPhase({
+  answers,
+  onAnswer,
+  onComplete,
+}: {
+  answers: NonVisualAnswer[];
+  onAnswer: (answer: NonVisualAnswer) => void;
+  onComplete: () => void;
+}) {
+  const currentQ = NON_VISUAL_QUESTIONS[answers.length];
+
+  // All questions answered — auto-advance
+  useEffect(() => {
+    if (answers.length >= NON_VISUAL_QUESTIONS.length) {
+      const timer = setTimeout(onComplete, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [answers.length, onComplete]);
+
+  if (!currentQ) return null;
+
+  return (
+    <>
+      <section className="cova-editorial-intro">
+        <h1>{currentQ.question}</h1>
+        <p className="cova-subcopy">
+          Question {answers.length + 1} of {NON_VISUAL_QUESTIONS.length}
+        </p>
+      </section>
+      <section className="cova-comparison-stage">
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "0.75rem",
+            maxWidth: "480px",
+            margin: "0 auto",
+            padding: "1.5rem",
+          }}
+        >
+          {currentQ.choices.map((choice, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() =>
+                onAnswer({ questionId: currentQ.id, choiceIndex: idx })
+              }
+              style={{
+                padding: "1.25rem 1.5rem",
+                borderRadius: "12px",
+                border: "1px solid rgba(225, 201, 132, 0.22)",
+                background: "rgba(17, 35, 55, 0.54)",
+                color: "#f4efe6",
+                fontSize: "1rem",
+                fontFamily: "inherit",
+                cursor: "pointer",
+                transition: "all 200ms ease-out",
+                textAlign: "left",
+              }}
+            >
+              {choice}
+            </button>
+          ))}
+        </div>
+      </section>
     </>
   );
 }
