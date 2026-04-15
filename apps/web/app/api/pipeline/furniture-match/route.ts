@@ -437,6 +437,28 @@ export async function POST(request: Request) {
             }
           }
         }
+
+        // Size-qualifier fallback: queries like "cream shag area rug 8×10" return 0 results,
+        // but "cream shag area rug" returns 5+. Strip dimension patterns and retry if < 3 products.
+        if (products.length < 3) {
+          const sizeStripped = searchQuery
+            .replace(/\b\d+\s*[x×]\s*\d+\b/gi, "")          // "8x10", "8×10"
+            .replace(/\b\d+\s*(?:inch|inches|in|ft|feet)\b/gi, "") // "52 inch", "8 ft"
+            .replace(/\b\d+-inch\b/gi, "")                    // "52-inch"
+            .replace(/\s{2,}/g, " ")
+            .trim();
+          if (sizeStripped !== searchQuery && sizeStripped.split(" ").length >= 3) {
+            const sizeResult = await searchProducts(sizeStripped, 10);
+            const sizeFiltered = sizeResult.products.filter(isFurnitureProduct);
+            console.warn(
+              `[furniture-match] zero-result fallback: original=${products.length}, retry=${sizeFiltered.length} for query: "${sizeStripped}"`,
+            );
+            if (sizeFiltered.length > products.length) {
+              products = sizeFiltered;
+              rawResults = sizeResult.products;
+            }
+          }
+        }
       } catch (err) {
         console.warn(
           `[furniture-match] Serper search failed for "${item.label}":`,
