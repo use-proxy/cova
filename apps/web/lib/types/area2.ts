@@ -334,6 +334,10 @@ export interface RenderContext {
   fluxPrompt?: string;
   fluxPromptVersion?: string;
 
+  // Wall color change preference (from step-7d or user preferences)
+  wall_change_requested?: boolean;
+  wall_color_preference?: string | null;
+
   // Completion tracking
   minimumThresholdMet: boolean;
   tabsComplete: string[];

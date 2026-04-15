@@ -1,0 +1,21 @@
+{
+  "total": 1,
+  "ok": 1,
+  "restored": 1,
+  "skipped_quality_ok": 0,
+  "error": 0,
+  "dry_run": 0,
+  "results": [
+    {
+      "index": 1,
+      "room_id": "test-restore-01-566783",
+      "photo_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/test/room_converted.jpeg",
+      "status": "ok",
+      "skipped": false,
+      "preprocessed_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/preprocessed/test-restore-01-566783_opencv.jpg",
+      "restored_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/restored/test-restore-01-566783_restored.jpg",
+      "elapsed_s": 27.1,
+      "restore_elapsed_s": 15.5
+    }
+  ]
+}

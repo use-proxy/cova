@@ -125,10 +125,18 @@ export async function POST(request: Request) {
       console.warn(
         `[furniture-match] Room ${room_id} skipped — current status: ${currentStatus}`,
       );
+      // Distinguish between in-flight and already-done so step-9 can act correctly:
+      //   "matching_products" → still running, client should poll
+      //   "complete"          → already done, client should refetch room_products
+      const disambiguatedStatus =
+        currentStatus === "complete" ? "complete" : "matching_products";
       return NextResponse.json({
-        status: "in_progress",
+        status: disambiguatedStatus,
         room_id,
-        message: "Product matching already in progress or complete",
+        message:
+          disambiguatedStatus === "complete"
+            ? "Product matching already complete — refetch room_products"
+            : "Product matching already in progress — poll for completion",
         current_status: currentStatus,
       });
     }
@@ -427,24 +435,64 @@ export async function POST(request: Request) {
       }
     }
 
-    // ── Step 3: Write to Supabase ──────────────────────────────────────
+    // ── Step 3: Stage-then-swap write to Supabase ─────────────────────
+    //
+    // NEVER delete existing room_products before confirming new data is ready.
+    // If newProducts.length === 0, return a specific error so step-9 keeps
+    // showing existing hotspots rather than blanking the panel.
 
-    // Clear existing room_products for this room
-    await supabase.from("room_products").delete().eq("room_id", room_id);
+    if (roomProductRecords.length === 0) {
+      // Release the lock without deleting existing data
+      await supabase
+        .from("rooms")
+        .update({ redesign_status: "complete" })
+        .eq("id", room_id);
+      console.warn(
+        "[furniture-match] No products found after SERP search — existing room_products preserved",
+      );
+      return NextResponse.json({
+        status: "no_products_found",
+        room_id,
+        furniture_count: furnitureItems.length,
+        products_matched: 0,
+        message:
+          "No matching products found. Existing panel data is preserved.",
+      });
+    }
 
+    // New records are ready — delete existing rows then insert new ones.
     // bbox (hotspot_x/y/width/height) is intentionally not stored here.
     // step-9 reads zones directly from rooms.render_detection_result JSONB
-    // and matches to products by label via findZoneIdForLabel(). No schema
-    // change needed.
-    // Insert new SERP-matched products
-    if (roomProductRecords.length > 0) {
-      const { error: insertError } = await supabase
-        .from("room_products")
-        .insert(roomProductRecords);
+    // and matches to products by label via findZoneIdForLabel(). No schema change needed.
+    const { error: deleteError } = await supabase
+      .from("room_products")
+      .delete()
+      .eq("room_id", room_id);
 
-      if (insertError) {
-        console.error("[furniture-match] Insert error:", insertError);
-      }
+    if (deleteError) {
+      console.error("[furniture-match] Delete error (before insert):", deleteError);
+      // Do not proceed with insert if delete failed — existing data is still intact
+      await supabase
+        .from("rooms")
+        .update({ redesign_status: "complete" })
+        .eq("id", room_id);
+      return NextResponse.json(
+        { error: "Failed to clear previous matches: " + deleteError.message },
+        { status: 500 },
+      );
+    }
+
+    const { error: insertError } = await supabase
+      .from("room_products")
+      .insert(roomProductRecords);
+
+    if (insertError) {
+      // Existing rows were deleted but insert failed — data loss occurred.
+      // Log clearly so the team can investigate.
+      console.error(
+        "[furniture-match] DATA LOSS: delete succeeded but insert failed.",
+        { room_id, recordCount: roomProductRecords.length, insertError },
+      );
     }
 
     // Write matched_products JSONB to rooms table

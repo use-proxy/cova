@@ -15,6 +15,10 @@ import "./step8a.css";
 
 const DEFAULT_RENDER_COUNT = 3;
 
+// Named constants for polling — do not inline magic numbers in effects
+const POLL_INTERVAL_MS = 3_000;   // how often to check redesign_status
+const RENDER_TIMEOUT_MS = 180_000; // 3 min — after this show error state with Retry CTA
+
 type PointerState = {
   x: number;
   y: number;
@@ -209,17 +213,16 @@ export default function RevealStep8A() {
       } catch {
         /* silent */
       }
-    }, 3000);
-    // 5-minute timeout
+    }, POLL_INTERVAL_MS);
     const timeout = setTimeout(() => {
       if (!cancelled) {
         clearInterval(poll);
         setError(
-          "Your redesign is taking longer than expected. Please try again.",
+          "Your redesign is taking longer than expected.",
         );
         setLoading(false);
       }
-    }, 300_000);
+    }, RENDER_TIMEOUT_MS);
     return () => {
       cancelled = true;
       clearInterval(poll);
@@ -567,7 +570,7 @@ export default function RevealStep8A() {
           <button
             type="button"
             onClick={() =>
-              window.open("mailto:hello@covainterior.com", "_blank")
+              window.open("mailto:support@covainterior.com", "_blank")
             }
             style={{
               fontFamily: "Inter, sans-serif",

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import Replicate from "replicate";
-import type { TablesInsert as InsertTables } from "@/types/supabase";
+import type { TablesInsert as InsertTables } from "@/lib/types/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { submitArchitectureCorrection, runUpscale } from "@/lib/ai/flux";
 import { upscaleRender } from "@/lib/ai/upscaler";
@@ -216,7 +216,6 @@ export async function GET(request: NextRequest) {
     original_photo_url?: string;
   } | null;
   const costLog = roomMeta?.pipeline_cost_log as CostLog | null;
-  const maskUrl = roomMeta?.inpainting_mask_url ?? null;
   const schnellIdForPreview =
     schnellPredictionId ?? costLog?.schnell_prediction_id ?? null;
 
@@ -476,136 +475,6 @@ export async function GET(request: NextRequest) {
   }
 
   if (status === "succeeded") {
-    // Stage 2 orchestration: Stage 1 just completed — fire Stage 2
-    if (
-      costLog?.two_stage &&
-      costLog?.stage2_pending &&
-      !costLog?.stage2_prediction_id
-    ) {
-      const stage1Output = prediction.output;
-      const stage1OutputUrl = Array.isArray(stage1Output)
-        ? (stage1Output[0] as string)
-        : (stage1Output as string);
-
-      const stage2 = await replicate.predictions.create({
-        model: "black-forest-labs/flux-fill-pro",
-        input: {
-          image: stage1OutputUrl,
-          mask: maskUrl,
-          prompt: costLog.positive_prompt ?? "",
-          steps: 28,
-          guidance: 30,
-          output_format: "jpg",
-          output_quality: 90,
-          safety_tolerance: 2,
-        },
-      });
-
-      await admin
-        .from("rooms")
-        .update({
-          pipeline_cost_log: {
-            ...costLog,
-            stage2_pending: false,
-            stage2_prediction_id: stage2.id,
-          },
-        } as Record<string, unknown>)
-        .eq("id", roomId);
-
-      return NextResponse.json({ status: "processing" });
-    }
-
-    // Stage 2 orchestration: poll Stage 2 prediction
-    if (costLog?.two_stage && costLog?.stage2_prediction_id) {
-      const stage2Prediction = await replicate.predictions.get(
-        costLog.stage2_prediction_id,
-      );
-
-      if (
-        stage2Prediction.status === "failed" ||
-        stage2Prediction.status === "canceled"
-      ) {
-        return NextResponse.json({
-          status: "failed",
-          error: "Stage 2 render failed",
-        });
-      }
-
-      if (stage2Prediction.status !== "succeeded") {
-        return NextResponse.json({ status: "processing" });
-      }
-
-      // Stage 2 succeeded — extract final render URL
-      const stage2Output = stage2Prediction.output;
-      let finalRenderUrl: string | null = null;
-      if (Array.isArray(stage2Output) && stage2Output.length > 0) {
-        finalRenderUrl = stage2Output[0] as string;
-      } else if (typeof stage2Output === "string") {
-        finalRenderUrl = stage2Output;
-      }
-
-      if (!finalRenderUrl) {
-        return NextResponse.json({
-          status: "failed",
-          error: "No output URL from Stage 2 render",
-        });
-      }
-
-      // Quality gate — URL existence check (CDN HEAD requests are not reliably requestable from server)
-      const stage2Valid =
-        typeof finalRenderUrl === "string" && finalRenderUrl.startsWith("http");
-      if (!stage2Valid) {
-        return NextResponse.json({
-          status: "failed",
-          error: "No valid output URL from Stage 2 render",
-        });
-      }
-
-      const prompt = costLog.positive_prompt ?? "";
-      const styleStrength = costLog.style_strength ?? 0.85;
-
-      const stage2SessionInsert: InsertTables<"render_sessions"> = {
-        room_id: roomId!,
-        render_url: finalRenderUrl,
-        prompt,
-        style_strength: styleStrength,
-        iteration: renderIteration,
-      };
-
-      const { data: stage2Session, error: stage2SessionError } = await admin
-        .from("render_sessions")
-        .insert(stage2SessionInsert)
-        .select("id")
-        .single();
-
-      if (stage2SessionError) {
-        console.error(
-          "Failed to save render session (stage 2):",
-          stage2SessionError.message,
-        );
-      }
-
-      await admin
-        .from("rooms")
-        .update({ render_url: finalRenderUrl })
-        .eq("id", roomId);
-      await admin
-        .from("rooms")
-        .update({ redesign_status: "complete" })
-        .eq("id", roomId!)
-        .or("redesign_status.eq.pending,redesign_status.is.null");
-
-      // Re-detect on the rendered image (async — don't block response)
-      void triggerRenderDetection(finalRenderUrl, roomId!, admin);
-      triggerDetectionThenMatching(roomId!, finalRenderUrl);
-
-      return NextResponse.json({
-        status: "complete",
-        render_url: finalRenderUrl,
-        render_session_id: stage2Session?.id ?? null,
-      });
-    }
-
     // SINGLE STAGE: extract render URL from prediction output
     const output = prediction.output;
     let renderUrl: string | null = null;

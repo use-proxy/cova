@@ -111,6 +111,10 @@ function CloseIcon() {
   );
 }
 
+// Named constants — do not inline magic numbers in polling logic
+const POLL_INTERVAL_MS = 2_000; // how often to check pre_detection_result
+const POLL_TIMEOUT_MS = 60_000;  // 60 s — after this, show timeout UI with skip option
+
 type LoadState = "loading" | "empty" | "ready" | "timeout";
 
 export default function Step7cKeepOrRemove() {
@@ -118,6 +122,7 @@ export default function Step7cKeepOrRemove() {
   const [items, setItems] = useState<RoomItem[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [roomPhotoUrl, setRoomPhotoUrl] = useState<string | null>(null);
+  const [retryTick, setRetryTick] = useState(0);
   const [editingLabelId, setEditingLabelId] = useState<number | null>(null);
   const [activeItemId, setActiveItemId] = useState<number | null>(null);
   const [flashAction, setFlashAction] = useState<
@@ -131,8 +136,6 @@ export default function Step7cKeepOrRemove() {
     let cancelled = false;
     let pollTimer: ReturnType<typeof setTimeout> | null = null;
     const startedAt = Date.now();
-    // 3-minute ceiling. After this we stop polling and show the timeout UI.
-    const POLL_TIMEOUT_MS = 180_000;
 
     const loadOnce = async () => {
       const { createBrowserClient } = await import("@/lib/supabase/client");
@@ -167,8 +170,8 @@ export default function Step7cKeepOrRemove() {
           if (!cancelled) setLoadState("timeout");
           return;
         }
-        // Still waiting on pipeline. Poll again in 2s.
-        pollTimer = setTimeout(loadOnce, 2000);
+        // Still waiting on pipeline. Poll again.
+        pollTimer = setTimeout(loadOnce, POLL_INTERVAL_MS);
         return;
       }
 
@@ -182,6 +185,19 @@ export default function Step7cKeepOrRemove() {
       setItems(mapped);
       setActiveItemId(mapped[0]?.id ?? null);
       setLoadState("ready");
+
+      // Fire EVF-SAM2 segmentation in background — non-blocking.
+      // Masks are stored in render_context.itemMasks and used by the redesign pipeline
+      // to build a differential diffusion change map for kept items.
+      if (room?.id) {
+        void fetch("/api/pipeline/segment-masks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ room_id: room.id }),
+        }).catch((err) => {
+          console.warn("[step-7c] segment-masks fire failed (non-fatal):", err);
+        });
+      }
     };
 
     loadOnce();
@@ -189,7 +205,10 @@ export default function Step7cKeepOrRemove() {
       cancelled = true;
       if (pollTimer) clearTimeout(pollTimer);
     };
-  }, [router]);
+    // retryTick is intentionally included — incrementing it re-mounts the effect
+    // and resets the startedAt timer, giving the user a fresh POLL_TIMEOUT_MS window.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router, retryTick]);
 
   const roomImageSrc = roomPhotoUrl ?? "";
   const nonFixedItems = useMemo(
@@ -449,14 +468,32 @@ export default function Step7cKeepOrRemove() {
               lineHeight: 1.5,
             }}
           >
-            Detection is taking longer than expected. You can retry or re-upload
-            your photo.
+            Room analysis is taking longer than expected.
           </p>
-          <div style={{ display: "flex", gap: 12 }}>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+            {/* Skip: advance to step-7d with empty/null pre_detection_result */}
+            <button
+              type="button"
+              onClick={() => router.push("/design/step-7d")}
+              style={{
+                fontFamily: "Inter, sans-serif",
+                background: "#C9A84C",
+                color: "#0A1628",
+                border: "none",
+                borderRadius: 24,
+                padding: "12px 28px",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+                letterSpacing: "0.04em",
+              }}
+            >
+              Skip this step
+            </button>
+            {/* Try again: resets POLL_TIMEOUT_MS timer and re-triggers pre-detection */}
             <button
               type="button"
               onClick={async () => {
-                setLoadState("loading");
                 try {
                   const { createBrowserClient } =
                     await import("@/lib/supabase/client");
@@ -483,26 +520,11 @@ export default function Step7cKeepOrRemove() {
                 } catch (err) {
                   console.warn("[step-7c] retry failed:", err);
                 }
-                window.location.reload();
+                // Reset timer by incrementing retryTick — this re-runs the useEffect
+                // with a fresh startedAt, giving the user another POLL_TIMEOUT_MS window.
+                setLoadState("loading");
+                setRetryTick((n) => n + 1);
               }}
-              style={{
-                fontFamily: "Inter, sans-serif",
-                background: "#C9A84C",
-                color: "#0A1628",
-                border: "none",
-                borderRadius: 24,
-                padding: "12px 28px",
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: "pointer",
-                letterSpacing: "0.04em",
-              }}
-            >
-              Retry detection
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push("/design/step-6")}
               style={{
                 fontFamily: "Inter, sans-serif",
                 background: "transparent",
@@ -516,7 +538,7 @@ export default function Step7cKeepOrRemove() {
                 letterSpacing: "0.04em",
               }}
             >
-              Re-upload photo
+              Try again
             </button>
           </div>
         </div>

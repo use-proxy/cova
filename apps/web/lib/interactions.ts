@@ -4,7 +4,7 @@
  */
 
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
-import type { TablesInsert as InsertTables } from "@/types/supabase";
+import type { TablesInsert as InsertTables } from "@/lib/types/supabase";
 
 type InteractionAction =
   | "hotspot_tap"

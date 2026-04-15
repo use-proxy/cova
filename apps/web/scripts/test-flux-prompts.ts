@@ -67,7 +67,7 @@ const DESCRIPTORS: Record<DimKey, { lo: string; hi: string }> = {
   },
 };
 
-const NEUTRAL_BAND = 0.15;
+const NEUTRAL_BAND = 0.1;
 
 function getMaterialPalette(d: Dims): string {
   const items: string[] = [];

@@ -1,119 +1,146 @@
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
+/**
+ * CANONICAL OAuth callback route — /auth/callback
+ *
+ * This is the single active callback route. Both auth entry points:
+ *   - apps/web/components/auth/AuthModal.tsx
+ *   - apps/web/app/auth/page.tsx
+ * redirect to `${window.location.origin}/auth/callback` via signInWithOAuth.
+ *
+ * The duplicate at /api/auth/callback/route.ts was DELETED (it was never
+ * referenced by any OAuth caller). Unique logic from that file (users table
+ * mirror write and ?next= param) has been merged here.
+ *
+ * Middleware: PUBLIC_API_ROUTES entry updated from "/api/auth/callback" to
+ * "/auth/callback" to match this route's actual path.
+ */
+
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import type { StyleFingerprint } from "@/types/fingerprint";
 
-const ANON_FINGERPRINT_COOKIE = "cova_anon_fingerprint";
+const COOKIE_NAME = "cova_anon_fingerprint";
 
-interface PersistedFingerprintState {
-  state?: {
-    fingerprint?: {
-      dimensions?: Record<string, number>;
-      covariance?: number[][];
-      confidence?: number;
+/**
+ * Parse the cova_anon_fingerprint cookie set by the Zustand fingerprint store.
+ * The cookie value is base64(encodeURIComponent(JSON.stringify(zustandState))).
+ * Returns the nested state object or null if anything is malformed.
+ */
+function parseAnonFingerprintCookie(raw: string | undefined): {
+  fingerprint: StyleFingerprint;
+  styleName: string | null;
+  styleTags: string[];
+  roomType: string | null;
+  budgetTier: string | null;
+  phaseBResponses: unknown[];
+} | null {
+  if (!raw) return null;
+  try {
+    const json = decodeURIComponent(atob(raw));
+    const parsed = JSON.parse(json);
+    const state = parsed?.state;
+    if (!state?.fingerprint?.dimensions) return null;
+    return {
+      fingerprint: state.fingerprint as StyleFingerprint,
+      styleName: state.styleName ?? null,
+      styleTags: Array.isArray(state.styleTags) ? state.styleTags : [],
+      roomType: state.roomType ?? null,
+      budgetTier: state.budgetTier ?? null,
+      phaseBResponses: Array.isArray(state.phaseBResponses)
+        ? state.phaseBResponses
+        : [],
     };
-    styleName?: string;
-    styleTags?: string[];
-    roomType?: string;
-    budgetTier?: string;
-    phaseBResponses?: unknown[];
-  };
+  } catch {
+    return null;
+  }
 }
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
+  // ?next= allows deep-linking after OAuth (e.g. quiz completion before auth)
+  const next = searchParams.get("next") ?? "/design/step-1";
 
   if (code) {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options),
-            );
-          },
-        },
-      },
-    );
-
-    const { data: sessionData, error } =
-      await supabase.auth.exchangeCodeForSession(code);
-
-    if (!error && sessionData.user) {
-      // After establishing session, check for a pre-auth fingerprint cookie.
-      // If present, persist it to style_fingerprints under the new user ID,
-      // then clear the cookie so it doesn't accumulate stale entries.
+    const supabase = await createServerSupabaseClient();
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (!error) {
+      // ── Persist pre-auth fingerprint from cookie ──────────────────────
+      // The quiz can run before auth. The computed fingerprint is stored in a
+      // cookie by the Zustand fingerprint store. Now that we have an
+      // authenticated user, persist it to the DB and clear the cookie.
       try {
-        const anonCookie = cookieStore.get(ANON_FINGERPRINT_COOKIE);
-        if (anonCookie?.value) {
-          let parsedState: PersistedFingerprintState | null = null;
-          try {
-            // Cookie value is base64url(encodeURIComponent(jsonString))
-            const jsonStr = decodeURIComponent(atob(anonCookie.value));
-            parsedState = JSON.parse(jsonStr) as PersistedFingerprintState;
-          } catch {
-            // Malformed cookie — proceed without saving fingerprint
-          }
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (user) {
+          const cookieStore = await cookies();
+          const rawCookie = cookieStore.get(COOKIE_NAME)?.value;
+          const anonState = parseAnonFingerprintCookie(rawCookie);
 
-          const fp = parsedState?.state?.fingerprint;
-          if (
-            fp?.dimensions &&
-            Object.keys(fp.dimensions).length === 12 &&
-            parsedState?.state?.roomType
-          ) {
+          if (anonState?.fingerprint?.dimensions) {
             const admin = createAdminSupabaseClient();
+            const fp = anonState.fingerprint;
+
+            // Insert into style_fingerprints
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const sfTable = admin.from("style_fingerprints") as any; // style_fingerprints row type requires vector_data which is optional at insert
-            const { error: insertErr } = await sfTable.insert({
-              user_id: sessionData.user.id,
+            const { error: insertErr } = await (admin.from("style_fingerprints") as any).insert({
+              user_id: user.id,
               dimensions: fp.dimensions,
               covariance: fp.covariance ?? null,
-              confidence: fp.confidence ?? null,
-              style_name: parsedState.state.styleName ?? null,
-              room_type: parsedState.state.roomType,
-              budget_tier: parsedState.state.budgetTier ?? null,
-              quiz_responses: parsedState.state.phaseBResponses ?? [],
-              entry_path: "pairs",
+              confidence: fp.confidence,
+              style_name: anonState.styleName ?? "Your Unique Style",
+              room_type: anonState.roomType ?? "living_room",
+              budget_tier: anonState.budgetTier ?? null,
+              quiz_responses: anonState.phaseBResponses,
+              entry_path: "pre_auth_quiz",
             });
+
             if (insertErr) {
-              console.warn(
-                "[auth-callback] anon fingerprint save failed:",
+              console.error(
+                "[auth-callback] fingerprint insert error:",
                 insertErr.message,
               );
             } else {
-              console.warn(
-                "[auth-callback] anon fingerprint saved for user:",
-                sessionData.user.id,
+              console.log( // eslint-disable-line no-console
+                "[auth-callback] fingerprint persisted for user:",
+                user.id,
               );
             }
-          }
 
-          // Clear the cookie regardless of save success to avoid stale state
-          cookieStore.set(ANON_FINGERPRINT_COOKIE, "", {
-            maxAge: 0,
-            path: "/",
-          });
+            // Mirror onto users row for downstream /api/render fallback
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { error: userErr } = await (admin.from("users") as any)
+              .update({
+                style_fingerprint: fp,
+                style_blend: fp.dimensions,
+              })
+              .eq("id", user.id);
+
+            if (userErr) {
+              console.error(
+                "[auth-callback] users update error:",
+                userErr.message,
+              );
+            }
+
+            // Clear the cookie — fingerprint is now in the DB
+            cookieStore.set(COOKIE_NAME, "", {
+              path: "/",
+              maxAge: 0,
+              sameSite: "lax",
+            });
+          }
         }
       } catch (e) {
-        // Non-fatal — fingerprint save is best-effort, auth redirect proceeds
-        console.warn(
-          "[auth-callback] fingerprint cookie handling error:",
-          e instanceof Error ? e.message : String(e),
-        );
+        // Fingerprint persistence is best-effort — never block the auth flow
+        console.error("[auth-callback] fingerprint persistence error:", e);
       }
 
-      return NextResponse.redirect(`${origin}/design/step-1`);
+      return NextResponse.redirect(`${origin}${next}`);
     }
-
-    console.error("Auth callback error:", error);
   }
 
-  return NextResponse.redirect(`${origin}/auth?error=auth-code-error`);
+  return NextResponse.redirect(`${origin}/?error=auth_failed`);
 }

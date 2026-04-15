@@ -364,6 +364,7 @@ export function buildFullFingerprintPhrase(
 // Internal anchor style names must never appear verbatim in FLUX prompts.
 // Replace with descriptive phrases the model handles better anyway.
 const FORBIDDEN_STYLE_NAMES = [
+  // Compound anchor names (longest match first to avoid partial clobber)
   "warm japandi",
   "pure minimal white",
   "coastal bright",
@@ -373,9 +374,17 @@ const FORBIDDEN_STYLE_NAMES = [
   "industrial loft",
   "maximalist eclectic",
   "retro mid-century",
+  // Bare style words forbidden by CLAUDE.md Rule 8 — stripped from user text
+  "mid-century modern",
+  "mid-century",
+  "minimalist",
+  "japandi",
+  "bohemian",
+  "coastal",
 ];
 
 const STYLE_NAME_REPLACEMENTS: Record<string, string> = {
+  // Compound anchor names first so they take priority over bare-word matches
   "warm japandi": "calm warm naturalism with clean lines",
   "pure minimal white": "purposeful bright simplicity",
   "coastal bright": "relaxed sun-drenched natural lightness",
@@ -385,6 +394,13 @@ const STYLE_NAME_REPLACEMENTS: Record<string, string> = {
   "industrial loft": "raw urban materiality with exposed structure",
   "maximalist eclectic": "boldly layered pattern-rich eclecticism",
   "retro mid-century": "warm retro modernism with sculptural furniture",
+  // Bare forbidden style words (Rule 8) — replaced with descriptive phrases
+  "mid-century modern": "warm retro modernism with teak and brass accents",
+  "mid-century": "retro modernism with sculptural furniture",
+  "minimalist": "purposeful negative space with refined restraint",
+  "japandi": "calm warm naturalism with clean lines",
+  "bohemian": "layered textural depth with collected character",
+  "coastal": "relaxed weathered materials with natural lightness",
 };
 
 /** Replace forbidden style labels with descriptive phrases in the final prompt. */
@@ -468,9 +484,9 @@ export function buildFluxPrompt(params: BuildFluxPromptParams): string {
     // 3. Top-N dominant style descriptors
     const descriptors = dominantDescriptors(d, descriptorCount);
     const activeDims = (Object.keys(DESCRIPTORS) as DimKey[]).filter(
-      (k) => Math.abs((d[k] ?? 0.5) - 0.5) >= NEUTRAL_BAND,
+      (k) => Math.abs((d[k] ?? 0.5) - 0.5) > NEUTRAL_BAND,
     );
-    if (activeDims.length < 2) {
+    if (activeDims.length === 0) {
       // All dims near neutral — fall back to top 2 by absolute deviation
       const top2 = (Object.keys(DESCRIPTORS) as DimKey[])
         .map((k) => ({ k, dev: Math.abs((d[k] ?? 0.5) - 0.5) }))

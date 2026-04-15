@@ -25,6 +25,7 @@
 
 1. **NEVER use localStorage or sessionStorage.**
    Auth state uses HTTP-only cookies via `@supabase/ssr`. Any localStorage usage will break auth on page refresh. Use `createBrowserClient` from `@supabase/ssr` in Client Components, `createServerClient` in Server Components and API routes.
+   sessionStorage was previously used as an overflow fallback in the fingerprint cookie store — this has been removed (April 2026, pre-launch hardening). The sessionStorage fallback is fully gone. The covariance matrix is stripped from the cookie payload to keep it under 3000 bytes without any fallback needed.
 
 2. **ALWAYS dynamic import SplatViewer with `ssr: false`.**
 
@@ -229,6 +230,10 @@ apps/
     app/               <- Next.js App Router pages
     components/        <- React components
     lib/               <- Shared utilities
+      types/
+        supabase.ts    <- CANONICAL Supabase types (AUTO-GENERATED). Import as @/lib/types/supabase.
+                          Regenerate: npx supabase gen types typescript --project-id xdeacbmkdwqrwxonqaqh > apps/web/lib/types/supabase.ts
+                          apps/web/types/supabase.ts was DELETED — do not recreate it.
     .env.local         <- Never commit
 modal_pipeline/        <- Python only. Not TypeScript.
   room_reconstruction.py
@@ -237,6 +242,12 @@ modal_pipeline/        <- Python only. Not TypeScript.
   SESSION_MEMORY.md    <- Update after every session
 CLAUDE.md              <- This file (also at root)
 ```
+
+### Dev-only flags (no runtime effect)
+
+- **FINGERPRINT_SAVE_VERIFIED** — checklist flag. No code reads it. Set to `true` after
+  running `scripts/test-fingerprint-save.ts` against a real auth session to confirm
+  style_fingerprints insert works end-to-end. Not a feature flag.
 
 ---
 
@@ -352,3 +363,9 @@ ETSY_AFFILIATE_ID=
 | App name               | Cova                                | Domain covainterior.com is separate     |
 | W-9                    | SSN individual (Daksh Parikh)       | EIN application failed online           |
 | Tax info               | Defer Amazon tax until EIN          | Get EIN before submitting               |
+
+---
+
+## Post-launch test debt
+
+- **quiz-flow.test.ts (7 tests)** — Supabase admin client mock chain is stale. Fix mock setup to chain `createAdminSupabaseClient()` correctly.

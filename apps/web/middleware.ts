@@ -4,8 +4,8 @@ import { NextResponse, type NextRequest } from "next/server";
 // Public routes: no auth required (page redirects)
 // /                      landing page
 // /auth                  sign-in page
+// /auth/callback         OAuth code exchange (canonical callback — see app/auth/callback/route.ts)
 // /design/step-1         welcome screen (public — no data entry yet)
-// /api/auth/callback     OAuth code exchange
 // /api/quiz/fingerprint  quiz fingerprint computation (public API)
 
 const PROTECTED_PAGE_ROUTES = [
@@ -25,8 +25,9 @@ const PROTECTED_PAGE_ROUTES = [
 ];
 
 // API routes that are public (no auth check)
+// Note: /auth/callback is NOT an API route and needs no entry here — it is not
+// protected by the PROTECTED_PAGE_ROUTES list and will pass through automatically.
 const PUBLIC_API_ROUTES = [
-  "/api/auth/callback",
   "/api/quiz/fingerprint",
   "/api/quiz/next-pair",
   "/api/quiz/next-card",
@@ -36,7 +37,7 @@ const PUBLIC_API_ROUTES = [
   "/api/style-references/match",
   "/api/rooms/public-count",
   "/api/test-pipeline",
-  "/api/pipeline",  // Pipeline routes have their own auth + dev bypass
+  "/api/pipeline", // Pipeline routes have their own auth + dev bypass
 ];
 
 export async function middleware(request: NextRequest) {
@@ -102,6 +103,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/dev|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

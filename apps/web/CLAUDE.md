@@ -1,126 +1,78 @@
-═══════════════════════════════════════════════════════════════════
+Cova — CLAUDE.md
+What this is
+AI interior design web app. User uploads room photo → style quiz → AI render → shoppable products.
+Stack: Next.js 14 App Router, TypeScript, Supabase, Modal A10G, fal.ai.
+Monorepo: apps/web is active. apps/mobile is FROZEN — never touch.
+Supabase project: xdeacbmkdwqrwxonqaqh. Deployment: Vercel, root apps/web.
+User flow
+/auth → step-1 (welcome) → step-2 (pick 2 style anchors) → step-3 (12-pair quiz → writes users.style_fingerprint, fires Unsplash reference fetch in background) → step-4 (fingerprint reveal) → step-5 (budget) → step-6 (photo upload → creates rooms row) → step-7 (pre-detect → EVF-SAM2 masks) → step-7b (constraints) → step-7c (keep/remove, dynamic only from pre_detection_result) → step-7d (personalization tabs: All, Tech, Products, Art → "Design My Room" fires redesign) → step-8a (render reveal + before/after slider) → step-8b (refinements, style intensity slider) → step-9 (shoppable hotspots + Smart Home Upgrades section).
+V3 render pipeline (in order)
 
-1. WHAT THIS PROJECT IS
-   ═══════════════════════════════════════════════════════════════════
+Unsplash refs — fires at step-3, stores 3-5 style-matched reference URLs in rooms.unsplash_references
+Preprocessing — DarkIR if brightness<80, then OpenCV (white balance LAB, CLAHE clipLimit=3, gamma, unsharp, resize max 1536px)
+Parallel: depth map (fal-ai/imageutils/depth, depth-anything-v2, $0.005) + soft edges (OpenCV low-canny 30/90 + blur) + EVF-SAM2 masks (fal-ai/evf-sam, $0.005/item)
+Professionalization pass — fal-ai/flux-general/image-to-image, strength=0.55, depth ControlNet=0.70. Same room, same layout. Only fix: lighting, clutter, textiles. Never redesign.
+Design Director Call 1 — Claude Sonnet + vision → staging JSON (room type, weaknesses, 6-12 objects with positions, 60-30-10 palette, lighting, depth layers). Stored in rooms.design_brief.
+Design Director Call 2 — staging JSON → explicit FLUX staging script 80-120 words with spatial choreography. Stored in rooms.flux_prompt.
+Main generation — fal-ai/flux-general/image-to-image: strength=0.85, steps=28, guidance=3.5, depth ControlNet=0.60, edge ControlNet=0.40, style LoRA scale=0.8, IP-Adapter Unsplash refs scale=0.45. If keep items: differential diffusion with change map (white=change, black=preserve).
+Post-processing — teal-orange LAB grade, vignette, film grain, unsharp, micro-contrast CLAHE, sRGB normalize
+Upscale — fal-ai/esrgan 2x
+Quality gate — LAION Aesthetic Predictor V2, threshold 5.0. On fail: Claude Vision identifies what's missing → targeted retry. Max 3 attempts.
+Product matching — Claude Vision extracts items → Serper Google Shopping + SearchAPI Google Lens per item. Tech tab preferences → same pipeline (style-matched smart tech queries). Affiliate links applied.
 
-Cova Interior — AI interior design web app.
+Key parameters
+Professionalization: strength=0.55, depth=0.70 | Main gen: strength=0.85, depth=0.60, edges=0.40, guidance=3.5, steps=28, LoRA=0.8, IP-Adapter=0.45 | Quality threshold: 5.0 | Target COGS ≤$0.20/render
+Style LoRAs
+Trained via fal-ai/flux-lora-fast-training ($2/run, 1000 steps, is_style=true, dual captions).
+Table: style_loras (style_name, trigger_word, lora_url, recommended_scale).
+Triggers: cvwmn (Japandi), cvscn (Scandi), cvmcm (MCM), cvind (Industrial), cvlux (Luxury), cvmax (Maximalist), cvcst (Coastal), cvdco (Art Deco), cvboh (Boho).
+Fallback if untrained: fal-ai/flux-2-lora-gallery/apartment-staging.
+Design director aesthetic rules (non-negotiable)
 
-- Stack: Next.js 14 (App Router), TypeScript, Supabase, Modal Labs, Replicate.
-- Auth: Supabase Google OAuth. HTTP-only cookies via `@supabase/ssr`.
-- Deployment: Vercel, team `cova-interior`, root directory `apps/web`.
-- Supabase project: `xdeacbmkdwqrwxonqaqh`.
-- Monorepo: `apps/web` is the active app. `apps/mobile` is FROZEN — never touch.
-- Python pipelines live in `modal_pipeline/` and run as Modal webhooks.
+60-30-10 color rule always. Three depth layers always populated. 6-12 named objects.
+Material tension: one warm + one cool/contrasting material always.
+Accessory groupings: 3 or 5 only. Vary height + texture + material simultaneously.
+Fingerprint mapping: density>0.7→10-12 objects, warmth>0.7→2700K Edison, naturalism>0.7→3+ plants.
+Room weaknesses always identified and compensated (low ceiling→vertical elements, dark→light materials+mirrors).
+Forbidden words: beautiful, stunning, modern, contemporary, cozy, luxurious, nice.
+Material specificity: never "wood"→walnut/oak/teak, never "fabric"→bouclé/linen/velvet.
+7d integration: Art tab→wall art in staging, Tech tab→smart tech in render+product search, Products tab→material quality language, Budget→IKEA/West Elm/designer tier.
 
-═══════════════════════════════════════════════════════════════════ 2. THE USER FLOW (source of truth)
-═══════════════════════════════════════════════════════════════════
+Locked decisions — never change
 
-Routes live under `apps/web/app/design/step-*`. Quiz/fingerprint state is held in a Zustand store (`lib/store` / `lib/stores`) and only persisted to Supabase at the points noted.
+apps/mobile/ FROZEN. Never touch.
+Auth: HTTP-only cookies via @supabase/ssr only. No localStorage/sessionStorage.
+SUPABASE*SERVICE_ROLE_KEY never in NEXT_PUBLIC*\*.
+products table frozen (768-dim CLIP). Do not alter schema.
+Modal GPU: A10G only. fetch() only for Modal calls.
+Output: single flat 2D image only. No 3D, no panorama, no video.
+fal.ai is the generation provider. Do not add new Replicate calls (being deprecated).
+Next.js 14.2.x, THREE.js 0.155.0, SparkJS 0.1.10 — versions frozen.
+No OrbitControls. No useState for camera state.
+rooms.redesign_pano_url stores flat 2D image (legacy name).
+Never a static smart tech database — use live Serper search.
+Style names: always route through toDisplayName() and sanitizeForbiddenStyleNames().
 
-- `/` — Landing. Unauthed CTA into `/auth`.
-- `/auth` — Supabase Google OAuth via `@supabase/ssr`.
-- `step-1` — Welcome. No API, no DB write. Navigates to step-2.
-- `step-2` — Pick 2 of 9 style anchors. Writes selections to Zustand only.
-- `step-3` — 12 pairwise quiz comparisons. Fires `GET /api/quiz/next-card`, `POST /api/quiz/next-pair` per response, then `POST /api/quiz/fingerprint` which writes `users.style_fingerprint`, `users.style_blend`, and inserts into `style_fingerprints`. `GET /api/quiz/validation-renders` may fire for preview images.
-- `step-4` — Fingerprint reveal. Reads the fingerprint back and renders a radar chart. No writes.
-- `step-5` — Budget tier selection. Persists budget into `rooms.render_context`.
-- `step-6` — Room photo upload. Single image only, no video path. Also offers a QR handoff to mobile; token validation via `POST /api/capture/validate-token`. Uploads image to Supabase Storage (`room-videos` bucket) and creates a row in `rooms` with `rooms.original_image_url` / `rooms.original_photo_url`.
-- `step-7` — Pre-detection loading screen. Fires `POST /api/pipeline/pre-detect`. Pre-detection writes `rooms.pre_detection_result`. Redesign pipeline fires from step-7d after persistRenderContext() writes rooms.render_context. Deliberately not step-7 — render_context must be populated first.
-- `step-7b` — Room constraints form (dimensions, constraints, preferences). Updates `rooms.render_context`.
-- `step-7c` — Keep/remove detected items. DYNAMIC ONLY: reads `rooms.pre_detection_result`; if that is not yet populated, it shows a loading state. There are no hardcoded default items. Keep/remove decisions are stored locally and folded into the next render call.
-- `step-7d` — Personalization chat. Fires `POST /api/design-chat`. "Design My Room" CTA calls `persistRenderContext()`, then fires `POST /api/pipeline/redesign`, then navigates to step-8a.
-- `step-8a` — Render reveal. Polls `GET /api/rooms/status?roomId=…` for `rooms.redesign_pano_url` and `rooms.perspective_render_url`. Displays a single flat 2D image. Offers "Refine This" (→ step-8b) and "Shop This Look" (→ step-9).
-- `step-8b` — Refinement. Up to 3 refinements; 4 options per round.
-- `step-9` — Shoppable room. On load, reads `room_products` for the room. If empty, fires `POST /api/pipeline/furniture-match {room_id}` and polls. Renders hotspots at `hotspot_x` / `hotspot_y` with the matched product cards.
-
-═══════════════════════════════════════════════════════════════════ 3. THE RENDER PIPELINE
-═══════════════════════════════════════════════════════════════════
-
-- Trigger: step-7d fires `POST /api/pipeline/redesign {room_id}` after `persistRenderContext()` succeeds.
-- Route: `apps/web/app/api/pipeline/redesign/route.ts`. It loads the room, the user's `style_fingerprint` and `style_blend`, and dispatches to the Modal webhook at env var `REDESIGN_PIPELINE_WEBHOOK_URL`.
-- Modal: `modal_pipeline/redesign_pipeline.py::redesign_webhook`.
-  - Gemini 2.5 Flash — room architecture analysis via `lib/ai/room-analyzer.ts` (`analyzeRoomArchitecture`). Non-blocking; best effort.
-  - Claude Sonnet — prompt compilation via `lib/ai/prompt-compiler.ts` (`compilePromptWithClaude`). Falls back to `buildFluxPrompt` in `lib/ai/flux.ts` if Claude compile fails.
-  - Replicate FLUX Kontext Pro (`black-forest-labs/flux-kontext-pro`) — primary render → written to `rooms.redesign_pano_url`.
-  - Replicate FLUX Depth Pro (`black-forest-labs/flux-depth-pro`) — perspective render → written to `rooms.perspective_render_url`.
-  - Both FLUX calls run in parallel.
-- Final output: a single flat 2D image at `rooms.redesign_pano_url`. The column name is a legacy artifact from an earlier panorama design — it now stores a flat image.
-- Status: `rooms.redesign_status` transitions through `queued` → `rendering` → `complete` (and `matching_products` during step-9). Step-8a polls via `GET /api/rooms/status`.
-
-═══════════════════════════════════════════════════════════════════ 4. THE PRODUCT MATCHING PIPELINE
-═══════════════════════════════════════════════════════════════════
-
-- Trigger: step-9 on load, only if `room_products` is empty for the room.
-- Route: `apps/web/app/api/pipeline/furniture-match/route.ts`.
-- Modal: `modal_pipeline/furniture_matching_pipeline.py`.
-- Input: `rooms.render_detection_result` (detected items + positions from the render).
-- Process: for each detected item, Serper shopping search (`https://google.serper.dev/shopping`, `lib/ai/serper.ts`) → filter → rank → insert `room_products` rows.
-- Idempotency: atomic lock by setting `rooms.redesign_status = 'matching_products'` with a guard that excludes `'matching_products'` and `'complete'`, so concurrent step-9 loads cannot double-run the pipeline.
-- Output columns on `room_products`: `hotspot_x`, `hotspot_y`, `match_label`, `serp_product_url`, plus `furniture_label`, `furniture_description`, `serp_title`, `serp_price`, `serp_retailer`, `serp_image_url`, `similarity_score`, `match_score`, `rank`, `azimuth_degrees`, `elevation_degrees`, `is_sale`, `is_unlocked`, `product_id`.
-- Fallback: if zero Serper results after retry, insert detection-only rows sourced from `rooms.render_detection_result` so step-9 always has hotspots to render.
-
-═══════════════════════════════════════════════════════════════════ 5. LOCKED DECISIONS — NEVER CHANGE THESE
-═══════════════════════════════════════════════════════════════════
-
-- `apps/mobile/` is FROZEN. Never touch any file here.
-- Auth uses HTTP-only cookies via `@supabase/ssr` only. Never use `localStorage` or `sessionStorage` for auth state.
-- Client Components: `createBrowserClient` from `@supabase/ssr`.
-- Server Components, API routes, middleware: `createServerClient` from `@supabase/ssr`.
-- All CLIP embedding work runs server-side (Supabase Edge Functions or API routes). Never call CLIP from a `'use client'` component.
-- `SUPABASE_SERVICE_ROLE_KEY` must never appear in a `NEXT_PUBLIC_*` variable.
-- `products` table is frozen (holds 768-dim CLIP embeddings). Do not alter its schema.
-- Modal GPU: A10G only.
-- Supabase project ID is `xdeacbmkdwqrwxonqaqh`. Do not change.
-- Never expose raw internal style anchor names to the user. Route through `toDisplayName()` and `sanitizeForbiddenStyleNames()`.
-
-═══════════════════════════════════════════════════════════════════ 6. WHAT IS INTENTIONALLY NOT IN THE PIPELINE
-═══════════════════════════════════════════════════════════════════
-
-These files exist in the repo but are NOT part of the active flow. Do not wire them in, call them, or reference them in new code without explicit instruction.
-
-- Marble API: `modal_pipeline/marble_pipeline.py`, `marble_plus_pipeline.py`, `marble_mini_final_pipeline.py`, `marble_multi_image_pipeline.py`. Not imported by `redesign_pipeline.py` or any TS route. Client-side, `apps/web/lib/marble.ts` has every function throwing a `MARBLE_DISABLED` error. Do not re-enable.
-- Depth video pipeline: `modal_pipeline/depth_video_pipeline.py`. A previous step-8a called it; it is not part of the current flow.
-- Panorama / equirectangular rendering: removed. Output is a flat 2D image. `rooms.redesign_pano_url` stores a flat image despite its name.
-- Video upload: step-6 accepts images only. No video path exists.
-- AnySplat / room reconstruction: `modal_pipeline/room_reconstruction.py`. Not called by the active flow.
-- Hardcoded furniture items: step-7c previously shipped with ~14 hardcoded defaults. Removed. Step-7c renders only real items from `rooms.pre_detection_result`.
-
-═══════════════════════════════════════════════════════════════════ 7. EXTERNAL SERVICES MAP
-═══════════════════════════════════════════════════════════════════
-
-- Anthropic Claude (`@anthropic-ai/sdk`):
-  - Claude Sonnet — prompt compilation in `lib/ai/prompt-compiler.ts`, consumed by `/api/pipeline/redesign`.
-  - Also used in `/api/detect/render`, `/api/fingerprint/explain`, `/api/match`, `/api/match/complete-room`, `/api/match/coherence`, `/api/design-chat`, `/api/render`, `/api/render/refine`, `/api/parse-constraints`.
-- Google Gemini 2.5 Flash (`@google/generative-ai`): `lib/ai/room-analyzer.ts` — room architecture analysis consumed by `/api/pipeline/redesign`.
-- Replicate (`replicate`):
-  - `black-forest-labs/flux-kontext-pro` — primary redesign render.
-  - `black-forest-labs/flux-depth-pro` — perspective render.
-  - Clarity upscaler and related utility models used in `/api/swap`, `/api/generate-art`, `/api/quiz/validation-renders`, `/api/render/*`.
-  - Configured in `lib/ai/flux.ts` and the Modal `redesign_pipeline.py`.
-- Modal Labs: webhooks for `redesign_pipeline.py` (`REDESIGN_PIPELINE_WEBHOOK_URL`), `pre_detection_pipeline.py`, `furniture_matching_pipeline.py`.
-- Serper: `lib/ai/serper.ts` (`https://google.serper.dev/shopping`), used by `/api/pipeline/furniture-match`, `/api/match`, `/api/match/accessories`.
-- SearchAPI Google Lens: used in `/api/match/route.ts` via `SEARCHAPI_KEY` against `searchapi.io` with `engine=google_lens`.
-- Supabase: database, auth, and `room-videos` storage bucket (private, RLS, user-scoped insert/select). Accessed via `@supabase/ssr`.
-- URL scraper (`scrapeProductUrl`): defined for product-page enrichment; not wired into the active furniture-match path at the time of this audit (unconfirmed for other routes).
-
-═══════════════════════════════════════════════════════════════════ 8. STYLE SYSTEM
-═══════════════════════════════════════════════════════════════════
-
-- 9 styles: Japandi, Modern Luxe, Industrial, Coastal, Maximalist, Scandinavian, Mid-Century, Bohemian, Art Deco.
-- Style fingerprint: 12-dimensional vector stored in `users.style_fingerprint`. Also persisted into the `style_fingerprints` table alongside `dimensions`, `covariance`, `confidence`, and `style_name`.
-- `users.style_blend`: top-weighted style dimensions (JSONB), used by the redesign prompt compiler.
-- Display names are produced by `toDisplayName()` in `apps/web/lib/ai/anchor-display.ts`. Never expose raw internal anchor names in user-facing strings.
-- `sanitizeForbiddenStyleNames()` lives in `apps/web/lib/ai/flux.ts` and is mirrored on the Python side in `modal_pipeline/redesign_pipeline.py`. Apply it to any prompt text that reaches a model or the user.
-
-═══════════════════════════════════════════════════════════════════ 9. DATABASE TABLES (key ones)
-═══════════════════════════════════════════════════════════════════
-
-Only columns confirmed read or written by the current code are listed.
-
-- `users`: `id`, `style_fingerprint`, `style_blend`. Written by `/api/quiz/fingerprint`. Read by `/api/pipeline/redesign`.
-- `rooms`: `id`, `user_id`, `room_type`, `original_image_url`, `original_photo_url`, `photo_url`, `render_context`, `style_blend`, `fingerprint_id`, `pre_detection_result`, `render_detection_result`, `redesign_pano_url`, `perspective_render_url`, `render_url`, `redesign_status`, `matched_products`. Written across step-6, step-7, the redesign pipeline, and the furniture-match pipeline.
-- `room_products`: `id`, `room_id`, `furniture_label`, `furniture_description`, `similarity_score`, `rank`, `hotspot_x`, `hotspot_y`, `azimuth_degrees`, `elevation_degrees`, `product_id`, `serp_title`, `serp_price`, `serp_retailer`, `serp_product_url`, `serp_image_url`, `match_label`, `match_score`, `is_sale`, `is_unlocked`. Written by `/api/pipeline/furniture-match`; read by step-9.
-- `style_fingerprints`: `id`, `user_id`, `style_name`, `dimensions`, `covariance`, `confidence`. Written by `/api/quiz/fingerprint`; read by step-8a and the redesign pipeline.
-- `quiz_anchor_images`: the 9-style anchor image set. Read by `/api/quiz/next-card` and step-2.
-- `quiz_comparison_pairs`: pairwise comparison set. Read by `/api/quiz/next-pair` during step-3.
-- `products`: frozen catalog with 768-dim CLIP embeddings. Read-only from the web app via pgvector similarity search in the matching paths. Do not alter schema.
+Disabled — do not re-enable
+Marble API, depth video pipeline, panorama rendering, AnySplat, IC-Light V2, InstantStyle, SUPIR upscaling, hardcoded step-7c furniture items.
+Key files
+apps/web/lib/ai/design-director.ts — VLM design director
+apps/web/lib/ai/prompt-compiler.ts — FLUX prompt compilation
+apps/web/lib/ai/lora-registry.ts — LoRA selection by style
+apps/web/lib/unsplash.ts — Unsplash reference fetching
+apps/web/app/api/fal/proxy/route.ts — fal.ai proxy (createRouteHandler)
+modal_pipeline/redesign_pipeline.py — main pipeline orchestrator
+modal_pipeline/preprocessing.py — DarkIR + OpenCV
+modal_pipeline/professionalization.py — cleanup pass
+modal_pipeline/generation.py — FLUX generation
+modal_pipeline/postprocessing.py — color grade + grain + vignette
+modal_pipeline/quality_gate.py — aesthetic scorer + retry logic
+New DB columns (rooms table)
+preprocessed_image_url, professionalized_image_url, design_brief (JSONB), flux_prompt, aesthetic_score, unsplash_references (JSONB)
+New tables
+style_loras: id, style_name, trigger_word, lora_url, recommended_scale, quality_score, trained_at
+Required env vars
+FAL_KEY, ANTHROPIC_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SERPER_API_KEY, SEARCHAPI_KEY, UNSPLASH_ACCESS_KEY, REDESIGN_PIPELINE_WEBHOOK_URL, AMAZON_ASSOCIATE_TAG, REPLICATE_API_TOKEN (legacy)
+Session continuity
+Read SESSION_NOTES.md at project root before every session.
+Append after every session: files changed, pipeline stage status (✅/❌/⏳), decisions made, known issues, env vars added.

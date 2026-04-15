@@ -21,6 +21,9 @@ type SliderKey =
 type SliderState = Record<SliderKey, number>;
 
 const MAX_REFINEMENTS = 3;
+// TODO: wire STYLE_STRENGTH_DEFAULT to the vibe sliders in the "vibe" refinement path
+// once slider-to-strength mapping is defined (higher slider deviation → higher strength)
+const STYLE_STRENGTH_DEFAULT = 0.85;
 const LOADING_MESSAGES = [
   "Applying your changes...",
   "Re-rendering your room...",
@@ -505,21 +508,47 @@ export default function Step8B() {
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
   const [renderError, setRenderError] = useState<string | null>(null);
   const [showStartOverModal, setShowStartOverModal] = useState(false);
+  // Current prompt loaded from rooms.render_context.fluxPrompt on mount.
+  // Passed to /api/render/refine so refinements build on the existing design context.
+  const [currentPrompt, setCurrentPrompt] = useState<string>("");
 
   const refinementsRemaining = Math.max(MAX_REFINEMENTS - refinementsUsed, 0);
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkAuthAndLoadPrompt = async () => {
       const { createBrowserClient } = await import("@/lib/supabase/client");
       const supabase = createBrowserClient();
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) router.push("/auth?next=/design/step-8b");
+      if (!user) {
+        router.push("/auth?next=/design/step-8b");
+        return;
+      }
+      // Load the prompt used for the most recent render of this room.
+      // Priority: render_context.fluxPrompt → render_context.prompt → empty string.
+      // The API falls back to reading this from DB if currentPrompt is empty,
+      // so this is belt-and-suspenders rather than strictly required.
+      if (roomId) {
+        try {
+          const { data: roomRow } = await supabase
+            .from("rooms")
+            .select("render_context")
+            .eq("id", roomId)
+            .single();
+          const ctx = roomRow?.render_context as
+            | { fluxPrompt?: string; prompt?: string }
+            | null;
+          const prompt = ctx?.fluxPrompt ?? ctx?.prompt ?? "";
+          if (prompt) setCurrentPrompt(prompt);
+        } catch {
+          // Non-fatal — the API will load it from DB if needed
+        }
+      }
     };
 
-    checkAuth();
-  }, [router]);
+    checkAuthAndLoadPrompt();
+  }, [router, roomId]);
 
   // Refinement count is kept in component state only (no localStorage per rule #1)
 
@@ -721,8 +750,8 @@ export default function Step8B() {
           current_render_url: renderUrl ?? "",
           refinement_text: refinementText,
           room_id: roomId,
-          current_prompt: "",
-          style_strength: 0.85,
+          current_prompt: currentPrompt,
+          style_strength: STYLE_STRENGTH_DEFAULT,
         }),
       });
 

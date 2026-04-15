@@ -1,0 +1,526 @@
+Design Director — 3 Test Case Outputs
+Generated: 2026-04-14T01:47:15.543Z
+══════════════════════════════════════════════════════════════════════
+
+══════════════════════════════════════════════════════════════════════
+TEST 1: Messy Bedroom — Warm & Grounded
+Style: Warm & Grounded (cvwmn) | Budget: $500-2000 | Room: bedroom
+Image: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/test/room_converted.jpeg
+══════════════════════════════════════════════════════════════════════
+
+── CALL 1: Staging JSON (rooms.design_brief) ──────────────────────────
+{
+  "roomType": "bedroom",
+  "styleAnchor": "Warm & Grounded — honey-toned sanctuary with natural textures, Edison-lit amber glow, and layered organic materiality",
+  "weaknesses": [
+    "Bare floor foreground — no rug anchor, naked carpet expanse creates visual void",
+    "Empty wall expanses — north wall and corner walls completely bare except photo string",
+    "Flat single-source lighting — ceiling fan alone creates harsh overhead wash with no depth",
+    "Missing bedside symmetry — only one nightstand, unbalanced composition",
+    "Unmade bed styling — duvet bunched without proper pillow architecture or throw layering",
+    "Corner dead zone — right corner adjacent to desk completely unaddressed",
+    "Lack of vertical elements — no floor-to-ceiling curtains, no tall plants, eye stays at furniture height"
+  ],
+  "compensations": [
+    "Layer jute rug (6x9ft minimum) extending 18 inches beyond bed edge with rug corner visible in foreground at camera",
+    "Add oversized framed art print (36x48 inches) centered above headboard at 57 inches from floor, walnut frame",
+    "Install brass swing-arm wall sconce on left wall above bed + add ceramic table lamp with linen shade on nightstand — both 2700K Edison bulbs creating warm diagonal shadows",
+    "Add matching nightstand on right side of bed with identical lamp to create symmetry",
+    "Restage bed with proper pillow architecture: 2 euro shams + 2 standard + 2 lumbar, rust linen throw draped diagonally across foot",
+    "Place 5ft fiddle leaf fig in woven seagrass basket in right corner with brass floor lamp arcing over it",
+    "Hang floor-to-ceiling linen curtains in honey beige from ceiling height, flanking window to add vertical pull"
+  ],
+  "palette": {
+    "dominant": "soft dove grey walls + honey beige carpet + warm white bed frame",
+    "secondary": "rust terracotta + caramel leather + natural jute",
+    "accent": "aged brass + deep amber glass + burnt sienna"
+  },
+  "lighting": {
+    "source": "layered — ceiling fan overhead + brass swing-arm sconce left wall + ceramic table lamps both nightstands + brass floor lamp right corner",
+    "quality": "warm ambient glow with sculptural shadows — Edison bulbs cast honeyed light across textured textiles, sconce creates reading pool, floor lamp backlights fiddle leaf creating leaf shadows on wall",
+    "colorTemp": "2700K across all sources — Edison-style bulbs in sconce and floor lamp, warm LED in table lamps",
+    "shadows": "soft diagonal shadows fall from left sconce across pillows, floor lamp casts gentle plant silhouette on right wall, layered depth replaces flat overhead wash"
+  },
+  "materialTension": {
+    "warm": "walnut picture frame + caramel leather journal on nightstand + rust linen throw + terracotta plant pot + aged brass lamp bases + natural jute rug + honey beige linen curtains + woven seagrass basket",
+    "cool": "dove grey walls + white oak nightstand drawer pulls + ceramic lamp bodies in matte white + brushed steel desk chair frame"
+  },
+  "depthLayers": {
+    "foreground": {
+      "zone": "foreground",
+      "distance": "0-3ft",
+      "objects": [
+        {
+          "name": "jute area rug corner",
+          "material": "natural jute with low pile",
+          "position": "rug edge visible at bottom of frame, extending under bed"
+        },
+        {
+          "name": "terracotta planter with trailing pothos",
+          "material": "unglazed terracotta",
+          "position": "floor left side on rug edge, vines spilling forward"
+        }
+      ]
+    },
+    "midground": {
+      "zone": "midground",
+      "distance": "4-8ft",
+      "objects": [
+        {
+          "name": "storage bed with restaged linens",
+          "material": "white oak frame + rust linen throw + terracotta patterned duvet",
+          "position": "centered on back wall, headboard touching wall"
+        },
+        {
+          "name": "matching nightstands both sides",
+          "material": "white oak with brushed brass drawer pulls",
+          "position": "flanking bed symmetrically, 6 inches from bed edge"
+        },
+        {
+          "name": "ceramic table lamps with linen shades",
+          "material": "matte white ceramic base + natural linen drum shade",
+          "position": "centered on each nightstand, 2700K Edison bulbs"
+        },
+        {
+          "name": "brass swing-arm wall sconce",
+          "material": "aged brass with exposed Edison bulb",
+          "position": "mounted left wall 48 inches from floor above bed, arm extended"
+        }
+      ]
+    },
+    "background": {
+      "zone": "background",
+      "distance": "8ft+",
+      "objects": [
+        {
+          "name": "oversized framed photography print",
+          "material": "walnut frame + archival print of desert landscape in amber tones",
+          "position": "centered above bed, 57 inches from floor to center, 36x48 inch dimensions"
+        },
+        {
+          "name": "fiddle leaf fig in seagrass basket",
+          "material": "woven seagrass basket + living fiddle leaf fig 5ft tall",
+          "position": "right corner behind desk, basket on floor"
+        },
+        {
+          "name": "brass arc floor lamp",
+          "material": "aged brass with amber glass globe shade",
+          "position": "right corner behind fiddle leaf, arcing over plant to backlight leaves"
+        },
+        {
+          "name": "floor-to-ceiling linen curtains",
+          "material": "honey beige linen with subtle texture",
+          "position": "hung from ceiling track flanking window, puddling 1 inch on floor"
+        }
+      ]
+    }
+  },
+  "decorObjects": [
+    {
+      "name": "stacked hardcover books with leather journal on top",
+      "material": "linen book covers in rust and cream + caramel leather journal",
+      "position": "left nightstand beside lamp base",
+      "depthZone": "midground"
+    },
+    {
+      "name": "amber glass bud vase with dried pampas grass stem",
+      "material": "hand-blown amber glass",
+      "position": "right nightstand in front of lamp",
+      "depthZone": "midground"
+    },
+    {
+      "name": "wooden catchall tray with brass watch dish",
+      "material": "walnut tray + brushed brass dish",
+      "position": "right nightstand corner near bed edge",
+      "depthZone": "midground"
+    },
+    {
+      "name": "woven wall hanging in macramé",
+      "material": "natural cotton rope in geometric pattern",
+      "position": "left wall between sconce and corner, hung 65 inches from floor",
+      "depthZone": "background"
+    },
+    {
+      "name": "ceramic planter with small snake plant",
+      "material": "matte terracotta ceramic pot",
+      "position": "left nightstand back corner",
+      "depthZone": "midground"
+    },
+    {
+      "name": "linen lumbar pillow in burnt sienna stripe",
+      "material": "linen with woven stripe pattern",
+      "position": "bed front center against euro shams",
+      "depthZone": "midground"
+    },
+    {
+      "name": "rattan storage basket with chunky knit throw inside",
+      "material": "natural rattan + cream wool-blend knit",
+      "position": "floor beside left nightstand, throw edge spilling out",
+      "depthZone": "foreground"
+    },
+    {
+      "name": "brass picture frame with black and white photo",
+      "material": "brushed brass frame",
+      "position": "leaning against wall on left nightstand behind books",
+      "depthZone": "midground"
+    }
+  ],
+  "budgetTier": "west-elm",
+  "totalObjectCount": 8
+}
+
+── CALL 2: FLUX Staging Script — 127 words ───────────────────────
+Remove ceiling fan, existing desk lamp, photo string on wall. Clean all surfaces.
+
+cvwmn interior photograph: Dove grey walls with walnut-framed desert landscape print (36x48 inches) centered 57 inches high. Honey beige floor-to-ceiling linen curtains flank window puddling on carpet. Right corner: 5ft fiddle leaf fig in woven seagrass basket backlit by aged brass arc floor lamp with amber glass globe. White oak storage bed centered against wall with terracotta patterned duvet, two euro shams, rust linen throw draped diagonally. Matching white oak nightstands both sides with matte white ceramic table lamps (natural linen drum shades, 2700K Edison bulbs). Brass swing-arm sconce left wall 48 inches high, arm extended. Shot on Canon EOS R5 35mm f/2.8 ISO 400. cvwmn, Architectural Digest editorial photograph, photorealistic interior design render.
+
+── QUALITY CHECKS ─────────────────────────────────────────────────────
+  [3a] Removal block is first line:  YES ✓
+  [3b] Prompt ends with camera spec: YES ✓
+  [3c] Total word count: 127 ✓
+  [3d] Budget tier: west-elm
+  [3e] Total objects: 8 (decorObjects: 8, max for density=0.7: 8) ✓
+  [3f] Weaknesses identified: 7
+  [3g] Depth layers: FG=2 MG=4 BG=4 ✓ all populated
+  [3h] Material tension: warm="walnut picture frame + caramel leather journal on nightstand + rust linen throw + terracotta plant pot + aged brass lamp bases + natural jute rug + honey beige linen curtains + woven seagrass basket" cool="dove grey walls + white oak nightstand drawer pulls + ceramic lamp bodies in matte white + brushed steel desk chair frame"
+  [3i] Forbidden words: none found ✓
+  [3j] LoRA trigger "cvwmn": present ✓
+
+
+
+══════════════════════════════════════════════════════════════════════
+TEST 2: Living Room — Industrial
+Style: Industrial (cvind) | Budget: $300-1000 | Room: living room
+Image: https://images.unsplash.com/photo-1773069459487-3d2d7bb4532e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w5MDgxNzF8MHwxfHNlYXJjaHwxfHxpbmR1c3RyaWFsJTIwbG9mdCUyMGxpdmluZyUyMHJvb20lMjBleHBvc2VkJTIwY29uY3JldGV8ZW58MXwwfHx8MTc3NjEzMDgyNnww&ixlib=rb-4.1.0&q=80&w=1080
+══════════════════════════════════════════════════════════════════════
+
+── CALL 1: Staging JSON (rooms.design_brief) ──────────────────────────
+{
+  "roomType": "living room",
+  "styleAnchor": "Industrial loft with exposed brick columns, steel-frame windows, and raw architectural bones",
+  "weaknesses": [
+    "Massive empty floor void in foreground — nothing anchors camera-side space",
+    "Coffee table completely bare — prime surface unstaged",
+    "Sofa isolated against window with no flanking elements or depth behind it",
+    "Lighting flatness — single overhead ambient source creates harsh midday glare with no warm counterpoint",
+    "Missing vertical elements — no floor lamp, no tall plant to balance column height",
+    "Textile poverty — no throws, no cushions, no rug to soften industrial hardness",
+    "Background void beyond sofa — empty space lacks depth anchor or architectural moment"
+  ],
+  "compensations": [
+    "Layer jute base rug (9x12ft minimum) with edge reaching foreground + raw concrete side table with sculptural object at rug edge to anchor camera zone",
+    "Coffee table tray system: matte black metal tray + three stacked architecture books + single white ceramic vessel + raw stone object",
+    "Flank sofa right side with industrial floor lamp (matte black tripod base, Edison bulb 2700K) to create warm shadow play against cool window light + left side tall snake plant in raw concrete planter",
+    "Add table lamp on side surface or console behind sofa (brushed steel base, linen shade, 2700K) to create second warm light layer countering blue daylight",
+    "Introduce 6ft fiddle leaf fig in woven basket behind sofa left corner to add vertical mass balancing brick columns",
+    "Sofa: add three cushions (one charcoal linen lumbar, two smaller slate bouclé squares) + one charcoal cashmere throw draped over right arm",
+    "Background: lean oversized black-framed abstract art (4ft x 5ft, charcoal and white gestural brushwork) against brick column behind sofa to create depth terminus"
+  ],
+  "palette": {
+    "dominant": "exposed brick terracotta + pale blonde wood flooring + white ceiling beams (60%)",
+    "secondary": "slate grey sofa leather + matte black steel window frames + charcoal textiles (30%)",
+    "accent": "brushed steel lamp bases + white ceramic vessels + raw concrete planters (10%)"
+  },
+  "lighting": {
+    "source": "floor-to-ceiling steel-frame windows right side flooding with cool north light + overhead ambient recessed cans + warm accent layers needed",
+    "quality": "harsh midday glare from windows casting hard diagonal shadows left across floor, creating high contrast between lit zones and column shadows",
+    "colorTemp": "natural daylight 5500K from windows, add 2700K Edison floor lamp + 2700K table lamp to create warm/cool tension and soften industrial severity",
+    "shadows": "strong diagonal window shadows cast left across floor from right-side windows, new floor lamp behind sofa will create soft warm glow with gentle shadow diffusion against brick"
+  },
+  "materialTension": {
+    "warm": "jute rug weave + woven plant basket + charcoal cashmere throw + blonde wood flooring + terracotta brick texture",
+    "cool": "slate grey leather sofa + matte black steel lamp + raw concrete planters + brushed steel accents + glass coffee table top"
+  },
+  "depthLayers": {
+    "foreground": {
+      "zone": "foreground",
+      "distance": "0-3ft",
+      "objects": [
+        {
+          "name": "jute rug edge",
+          "material": "natural jute low-pile weave",
+          "position": "extends to camera edge, establishing textile foundation in empty floor void"
+        },
+        {
+          "name": "raw concrete side table",
+          "material": "poured concrete with visible aggregate",
+          "position": "right side foreground on rug edge, 18 inches from camera sightline"
+        },
+        {
+          "name": "matte black sculptural object",
+          "material": "matte black ceramic irregular form",
+          "position": "on concrete side table, silhouetted against light floor"
+        }
+      ]
+    },
+    "midground": {
+      "zone": "midground",
+      "distance": "4-8ft",
+      "objects": [
+        {
+          "name": "glass coffee table with steel frame",
+          "material": "clear tempered glass + matte black welded steel base",
+          "position": "centered 18 inches from sofa front edge, existing furniture"
+        },
+        {
+          "name": "slate grey leather sofa",
+          "material": "tufted slate grey full-grain leather with brushed steel legs",
+          "position": "against window wall, primary seating anchor"
+        },
+        {
+          "name": "industrial tripod floor lamp",
+          "material": "matte black steel tripod base + Edison filament bulb 2700K + no shade",
+          "position": "right side of sofa, 12 inches from arm, 68 inches tall, creates warm glow pool"
+        },
+        {
+          "name": "snake plant in concrete planter",
+          "material": "sansevieria trifasciata in raw poured concrete cylinder pot",
+          "position": "left side of sofa on floor, 52 inches tall including pot"
+        }
+      ]
+    },
+    "background": {
+      "zone": "background",
+      "distance": "8ft+",
+      "objects": [
+        {
+          "name": "fiddle leaf fig floor plant",
+          "material": "ficus lyrata in natural woven seagrass basket",
+          "position": "behind sofa left corner against brick column, 6ft tall, creates vertical mass"
+        },
+        {
+          "name": "oversized abstract art leaning",
+          "material": "black wooden frame + charcoal and white gestural abstract canvas",
+          "position": "leaning against brick column behind sofa center-right, 4ft wide x 5ft tall, angled 10 degrees forward"
+        },
+        {
+          "name": "steel-frame windows",
+          "material": "matte black welded steel muntins + clear glass panes",
+          "position": "floor-to-ceiling right wall, architectural fixed element flooding space with cool north light"
+        }
+      ]
+    }
+  },
+  "decorObjects": [
+    {
+      "name": "matte black metal tray",
+      "material": "powder-coated black steel with low 1-inch lip",
+      "position": "centered on glass coffee table surface",
+      "depthZone": "midground"
+    },
+    {
+      "name": "architecture book stack",
+      "material": "three hardcover books (Tadao Ando, Brutalism, Concrete monograph) stacked horizontally",
+      "position": "on black tray, left third, spines facing sofa",
+      "depthZone": "midground"
+    },
+    {
+      "name": "white ceramic vessel",
+      "material": "matte white stoneware irregular cylindrical form",
+      "position": "on black tray, right of books, 8 inches tall",
+      "depthZone": "midground"
+    },
+    {
+      "name": "raw stone object",
+      "material": "unpolished grey granite river rock",
+      "position": "on black tray in front of books, 4 inches diameter",
+      "depthZone": "midground"
+    },
+    {
+      "name": "charcoal linen lumbar pillow",
+      "material": "charcoal linen with invisible zipper, 14x22 inches",
+      "position": "sofa left side against arm, vertical orientation",
+      "depthZone": "midground"
+    },
+    {
+      "name": "slate bouclé square pillows",
+      "material": "slate grey bouclé wool-blend, 18x18 inches each",
+      "position": "two pillows flanking center of sofa back, creating symmetry",
+      "depthZone": "midground"
+    },
+    {
+      "name": "charcoal cashmere throw",
+      "material": "charcoal cashmere-wool blend knit",
+      "position": "draped diagonally over sofa right arm, one end pooling on seat, one cascading to floor",
+      "depthZone": "midground"
+    },
+    {
+      "name": "matte black ceramic sculptural object",
+      "material": "matte black stoneware abstract organic form",
+      "position": "on raw concrete side table foreground right, 10 inches tall",
+      "depthZone": "foreground"
+    }
+  ],
+  "budgetTier": "west-elm",
+  "totalObjectCount": 8
+}
+
+── CALL 2: FLUX Staging Script — 124 words ───────────────────────
+Remove existing overhead lighting harshness. Clean all surfaces.
+
+cvind interior photograph: Steel-frame windows flood right wall with 5500K north light casting diagonal shadows left across pale blonde oak flooring. Exposed brick column anchors background left with leaning 4ft x 5ft black-framed abstract art (charcoal gestural brushwork). Six-foot fiddle leaf fig in woven seagrass basket fills left corner behind slate grey tufted leather sofa. Sofa centered midground with charcoal linen lumbar pillow, two slate bouclé squares, charcoal cashmere throw draped right arm. Industrial matte black tripod floor lamp right side, Edison bulb 2700K creating warm shadow pool. Snake plant in raw concrete cylinder left of sofa. Shot on Canon 5D Mark IV 24mm f/2.8 ISO 400. cvind, Architectural Digest editorial photograph, photorealistic interior design render.
+
+── QUALITY CHECKS ─────────────────────────────────────────────────────
+  [3a] Removal block is first line:  YES ✓
+  [3b] Prompt ends with camera spec: YES ✓
+  [3c] Total word count: 124 ✓
+  [3d] Budget tier: west-elm
+  [3e] Total objects: 8 (decorObjects: 8, max for density=0.5: 8) ✓
+  [3f] Weaknesses identified: 7
+  [3g] Depth layers: FG=3 MG=4 BG=3 ✓ all populated
+  [3h] Material tension: warm="jute rug weave + woven plant basket + charcoal cashmere throw + blonde wood flooring + terracotta brick texture" cool="slate grey leather sofa + matte black steel lamp + raw concrete planters + brushed steel accents + glass coffee table top"
+  [3i] Forbidden words: none found ✓
+  [3j] LoRA trigger "cvind": present ✓
+
+
+
+══════════════════════════════════════════════════════════════════════
+TEST 3: Bedroom — Pure & Calm
+Style: Pure & Calm (cvscn) | Budget: $200-500 | Room: bedroom
+Image: https://images.unsplash.com/photo-1759264244726-adde4e4318fc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w5MDgxNzF8MHwxfHNlYXJjaHwxfHxtaW5pbWFsaXN0JTIwYmVkcm9vbSUyMHdoaXRlJTIwY2xlYW4lMjBzZXJlbmV8ZW58MXwwfHx8MTc3NjEzMDgyNnww&ixlib=rb-4.1.0&q=80&w=1080
+══════════════════════════════════════════════════════════════════════
+
+── CALL 1: Staging JSON (rooms.design_brief) ──────────────────────────
+{
+  "roomType": "bedroom",
+  "styleAnchor": "Pure & Calm",
+  "weaknesses": [
+    "Bare floor zones - carpet completely empty with no rug anchor or foreground element",
+    "Missing foreground depth - nothing between camera and bed creates flat composition",
+    "Right wall void - massive empty wall opposite headboard lacking visual weight",
+    "Nightstand poverty - left nightstand visible but completely bare with no styling",
+    "Single lighting source - wall sconce only, no layered ambient or accent lighting",
+    "Textile poverty - bed lacks throw blanket and insufficient pillow architecture",
+    "Missing vertical element - low ceiling but no floor-to-ceiling curtains to maximize height perception"
+  ],
+  "compensations": [
+    "Layer jute base rug 8x10 extending 18 inches beyond bed footboard with smaller off-white wool rug at foot of bed for foreground anchor",
+    "Position ceramic floor vase 24 inches tall with dried pampas grass at right corner of rug edge closest to camera",
+    "Mount oversized abstract art 48x36 inches on right wall centered at 57 inches from floor in soft sage and cream tones",
+    "Style left nightstand with white ceramic table lamp 2700K bulb, small concrete vessel with succulent, linen coaster under water carafe",
+    "Add linen throw blanket in oatmeal draped diagonally across foot of bed from left corner",
+    "Increase pillow count to 4 euro shams plus 2 lumbar pillows in layered white-on-white textural linen",
+    "Install floor-to-ceiling sheer linen curtain panels in cream hung 2 inches below ceiling line flanking window wall"
+  ],
+  "palette": {
+    "dominant": "soft white walls and crisp white bedding foundation occupying 60%",
+    "secondary": "warm greige upholstered headboard and oatmeal textile accents at 30%",
+    "accent": "sage green in abstract art and dried botanicals at 10%"
+  },
+  "lighting": {
+    "source": "existing wall sconce right side plus added ceramic table lamp left nightstand both at 2700K creating symmetrical warm glow",
+    "quality": "soft diffused light with minimal shadow definition maintaining airiness",
+    "colorTemp": "2700K warm-white Edison bulbs in both sconce and table lamp",
+    "shadows": "gentle shadows cast diagonally left from sconce, balanced by table lamp eliminating harsh contrast"
+  },
+  "materialTension": {
+    "warm": "natural jute rug base and raw ceramic vessels in terracotta undertones",
+    "cool": "crisp white cotton-linen bedding and concrete vessel providing temperature contrast"
+  },
+  "depthLayers": {
+    "foreground": {
+      "zone": "foreground",
+      "distance": "0-3ft",
+      "objects": [
+        {
+          "name": "jute flatweave rug base 8x10",
+          "material": "natural jute",
+          "position": "centered under bed extending 18 inches beyond footboard toward camera"
+        },
+        {
+          "name": "ceramic floor vase with pampas grass",
+          "material": "white ceramic vessel with dried natural pampas",
+          "position": "right corner of rug edge 24 inches from camera creating foreground anchor"
+        }
+      ]
+    },
+    "midground": {
+      "zone": "midground",
+      "distance": "4-8ft",
+      "objects": [
+        {
+          "name": "upholstered bed with greige linen headboard",
+          "material": "warm greige linen upholstery",
+          "position": "centered against left wall as primary focal point"
+        },
+        {
+          "name": "white ceramic table lamp",
+          "material": "matte white ceramic base with white linen drum shade",
+          "position": "left nightstand 18 inches from headboard edge"
+        },
+        {
+          "name": "oatmeal linen throw blanket",
+          "material": "stonewashed linen in oatmeal",
+          "position": "draped diagonally across foot of bed from bottom left corner"
+        }
+      ]
+    },
+    "background": {
+      "zone": "background",
+      "distance": "8ft+",
+      "objects": [
+        {
+          "name": "abstract art canvas 48x36",
+          "material": "canvas print in white frame with sage and cream brushstrokes",
+          "position": "right wall centered at 57 inches height opposite headboard"
+        },
+        {
+          "name": "floor-to-ceiling sheer linen curtains",
+          "material": "cream sheer linen",
+          "position": "window wall hung 2 inches below ceiling extending to floor"
+        }
+      ]
+    }
+  },
+  "decorObjects": [
+    {
+      "name": "ceramic floor vase with pampas grass",
+      "material": "white ceramic with dried pampas",
+      "position": "foreground right rug corner",
+      "depthZone": "foreground"
+    },
+    {
+      "name": "white ceramic table lamp",
+      "material": "matte white ceramic with linen shade",
+      "position": "left nightstand",
+      "depthZone": "midground"
+    },
+    {
+      "name": "concrete succulent vessel",
+      "material": "raw concrete with jade succulent",
+      "position": "left nightstand beside lamp base",
+      "depthZone": "midground"
+    },
+    {
+      "name": "oatmeal linen throw blanket",
+      "material": "stonewashed linen",
+      "position": "foot of bed draped diagonally",
+      "depthZone": "midground"
+    }
+  ],
+  "budgetTier": "ikea",
+  "totalObjectCount": 4
+}
+
+── CALL 2: FLUX Staging Script — 111 words ───────────────────────
+Remove nightstand clutter. Clean bare floor zones.
+
+cvscn interior photograph: Background shows floor-to-ceiling cream sheer linen curtains hung 2 inches below ceiling line flanking window wall, oversized abstract canvas 48x36 inches in white frame with sage-cream brushstrokes centered at 57 inches on right wall opposite bed. Midground centers greige linen upholstered bed against left wall with 4 white euro shams plus 2 lumbar linen pillows, oatmeal stonewashed linen throw draped diagonally across foot from bottom left corner, white ceramic table lamp with linen drum shade on left nightstand casting 2700K warm glow. Shot on Canon 5D Mark IV 35mm f/2.8 ISO 400. cvscn, Architectural Digest editorial photograph, photorealistic interior design render.
+
+── QUALITY CHECKS ─────────────────────────────────────────────────────
+  [3a] Removal block is first line:  YES ✓
+  [3b] Prompt ends with camera spec: YES ✓
+  [3c] Total word count: 111 ✓
+  [3d] Budget tier: ikea
+  [3e] Total objects: 4 (decorObjects: 4, max for density=0.3: 4) ✓
+  [3f] Weaknesses identified: 7
+  [3g] Depth layers: FG=2 MG=3 BG=2 ✓ all populated
+  [3h] Material tension: warm="natural jute rug base and raw ceramic vessels in terracotta undertones" cool="crisp white cotton-linen bedding and concrete vessel providing temperature contrast"
+  [3i] Forbidden words: none found ✓
+  [3j] LoRA trigger "cvscn": present ✓
+
+
+
+══════════════════════════════════════════════════════════════════════
+SUMMARY: 3/3 passed, 0/3 errored
+══════════════════════════════════════════════════════════════════════

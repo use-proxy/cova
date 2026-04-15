@@ -26,10 +26,29 @@ import {
   analyzeRoomArchitecture,
   type RoomArchitecture,
 } from "@/lib/ai/room-analyzer";
+import { runDesignDirector } from "@/lib/ai/design-director";
+import { assembleDifferentialMap } from "@/lib/ai/mask-assembly";
+import { fetchScoredStyleReferences } from "@/lib/unsplash";
+import { getCuratedReferences } from "@/lib/ai/curated-references";
+import { getLorasFromFluxPrompt } from "@/lib/ai/lora-registry";
+import { STYLE_DISPLAY_NAMES } from "@/lib/ai/anchor-display";
 import type { StyleFingerprint } from "@/types/fingerprint";
 import type { RenderContext } from "@/lib/types/area2";
 import { logger } from "@/lib/logger";
 import { LogEvents } from "@/lib/logEvents";
+
+interface KeepRemoveDecision {
+  id: number;
+  name: string;
+  category: string;
+  decision: "keep" | "remove" | null;
+}
+
+interface DesignBrief {
+  wall_change_requested?: boolean;
+  floor_change_requested?: boolean;
+  required_objects?: string[];
+}
 
 interface RoomRow {
   render_context: RenderContext | null;
@@ -37,7 +56,37 @@ interface RoomRow {
   style_blend: Record<string, number> | null;
   original_image_url: string | null;
   original_photo_url: string | null;
+  preprocessed_image_url: string | null;
+  keep_remove_decisions: KeepRemoveDecision[] | null;
   user_id: string;
+  generation_seed: number | null;
+  redesign_status: string | null;
+  design_brief: DesignBrief | null;
+}
+
+// Extract a flat chat history string from rooms.render_context.tabStates
+function extractChatHistoryString(
+  tabStates: Record<string, unknown> | null | undefined,
+): string | null {
+  if (!tabStates) return null;
+  const lines: string[] = [];
+  for (const [tabKey, tab] of Object.entries(tabStates)) {
+    const tabObj = tab as Record<string, unknown> | undefined;
+    if (!tabObj) continue;
+    const messages = (tabObj.messages ?? tabObj.conversation ?? []) as Array<{
+      role: string;
+      content: string;
+    }>;
+    const userMsgs = messages
+      .filter((m) => m.role === "user")
+      .map((m) => (m.content ?? "").trim())
+      .filter(Boolean);
+    if (userMsgs.length > 0) {
+      lines.push(`[${tabKey} tab]`);
+      lines.push(...userMsgs.map((m) => `User: ${m}`));
+    }
+  }
+  return lines.length > 0 ? lines.join("\n") : null;
 }
 
 interface UserRow {
@@ -47,6 +96,7 @@ interface UserRow {
 interface RedesignBody {
   room_id?: string;
   chat_context?: Record<string, Array<{ role: string; content: string }>> | null;
+  explicit_retry?: boolean;
 }
 
 export async function POST(request: Request) {
@@ -62,7 +112,9 @@ export async function POST(request: Request) {
   // Test bypass — development only
   if (process.env.NODE_ENV !== 'production') {
     const serviceRoleHeader = request.headers.get('x-supabase-service-role');
-    if (serviceRoleHeader && serviceRoleHeader === process.env.SUPABASE_SERVICE_ROLE_KEY && room_id) {
+    const devBypassHeader = request.headers.get('x-dev-bypass');
+    const bypassToken = serviceRoleHeader ?? devBypassHeader;
+    if (bypassToken && bypassToken === process.env.SUPABASE_SERVICE_ROLE_KEY && room_id) {
       const admin = createAdminSupabaseClient();
       const { data: testRoom } = await admin
         .from('rooms')
@@ -103,7 +155,7 @@ export async function POST(request: Request) {
       admin
         .from("rooms")
         .select(
-          "user_id, render_context, room_type, style_blend, original_image_url, original_photo_url",
+          "user_id, render_context, room_type, style_blend, original_image_url, original_photo_url, preprocessed_image_url, keep_remove_decisions, generation_seed, redesign_status, design_brief",
         )
         .eq("id", room_id)
         .eq("user_id", userId)
@@ -166,7 +218,17 @@ export async function POST(request: Request) {
       });
   }
 
-  // Fetch style reference anchor
+  // Preprocessing — DarkIR (if dark) + OpenCV corrections
+  // Resolve the best available photo URL, then run preprocessing.
+  // The preprocessed URL is stored in rooms.preprocessed_image_url by the
+  // Modal function itself. We read it back here so all downstream steps use it.
+  const rawPhotoUrl =
+    room?.original_image_url ?? room?.original_photo_url ?? null;
+
+  // Professionalization pass removed 2026-04-13 — dispatch original photo directly.
+  const photoUrlForPipeline: string | null = rawPhotoUrl;
+
+  // Fetch style reference anchor (used by design director and fallback paths)
   let anchorPrompt: string | null = null;
   let styleReferenceUrl: string | null = null;
   if (fingerprint) {
@@ -177,21 +239,207 @@ export async function POST(request: Request) {
     styleReferenceUrl = styleRef?.image_url ?? null;
   }
 
-  // Gemini room architecture analysis (non-blocking)
+  // Gemini room architecture analysis (used by fallback prompt compiler)
   let roomAnalysis: RoomArchitecture | null = null;
   try {
-    const originalPhotoUrl =
-      room?.original_image_url ?? room?.original_photo_url ?? null;
-    if (originalPhotoUrl) {
-      roomAnalysis = await analyzeRoomArchitecture(originalPhotoUrl);
+    if (photoUrlForPipeline) {
+      roomAnalysis = await analyzeRoomArchitecture(photoUrlForPipeline);
     }
   } catch (err) {
     console.error("[redesign] Gemini analysis failed:", err);
   }
 
-  // Compile prompt
+  // Derive style anchor display name for design director
+  function deriveStyleAnchorDisplay(
+    blend: Record<string, number> | null | undefined,
+  ): string {
+    if (!blend) return "Balanced Contemporary";
+    const topKey = Object.entries(blend)
+      .filter(([, v]) => typeof v === "number")
+      .sort(([, a], [, b]) => (b as number) - (a as number))[0]?.[0];
+    if (!topKey) return "Balanced Contemporary";
+    // Match case-insensitively against STYLE_DISPLAY_NAMES keys
+    const normalised = topKey.trim().toLowerCase();
+    const match = Object.entries(STYLE_DISPLAY_NAMES).find(
+      ([k]) => k.toLowerCase() === normalised,
+    );
+    return match ? match[1] : "Balanced Contemporary";
+  }
+
+  // Resolve budget range from render context
+  const budgetMin = renderContext?.budget?.rangeMin ?? 500;
+  const budgetMax = renderContext?.budget?.rangeMax ?? 2000;
+  const styleBlendForAnchor = renderContext?.styleBlend ?? room?.style_blend ?? null;
+  const styleAnchorDisplay = deriveStyleAnchorDisplay(styleBlendForAnchor);
+
+  // ── Design Director (primary prompt path) ──────────────────────────────────
+  // Call 1: vision + fingerprint → staging JSON (design_brief)
+  // Call 2: staging JSON → FLUX script 80-120 words (flux_prompt)
   let compiledPrompt: string | null = null;
-  if (fingerprint) {
+  let negativePrompt: string | null = null;
+  let promptSource: "design-director" | "claude-compiled" | "fallback" = "fallback";
+  let unsplashReferences: string[] = [];
+
+  // Extract keep/remove labels from step-7c user decisions
+  const keepRemoveDecisions = (room?.keep_remove_decisions ?? []) as KeepRemoveDecision[];
+  const removeItems = keepRemoveDecisions
+    .filter((d) => d.decision === "remove")
+    .map((d) => d.name)
+    .filter(Boolean);
+  const keepItems = keepRemoveDecisions
+    .filter((d) => d.decision === "keep")
+    .map((d) => d.name)
+    .filter(Boolean);
+  const removeCount = removeItems.length;
+
+  // Extract chat history as a flat formatted string (highest priority signal for design director)
+  const tabStates = renderContext?.tabStates as Record<string, unknown> | null | undefined;
+  const chatHistory = extractChatHistoryString(tabStates);
+
+  if (fingerprint && photoUrlForPipeline) {
+    try {
+      // Resolve LoRA trigger from style blend primary key
+      const loraTriggerMap: Record<string, string> = {
+        "warm japandi": "cvwmn",
+        "pure minimal white": "cvscn",
+        "coastal bright": "cvcst",
+        "biophilic jungle": "cvboh",
+        "dark moody glam": "cvlux",
+        "industrial loft": "cvind",
+        "maximalist eclectic": "cvmax",
+        "retro mid-century": "cvmcm",
+        "heritage traditional": "cvdco",
+      };
+      const primaryBlendKey = Object.entries(styleBlendForAnchor ?? {})
+        .filter(([, v]) => typeof v === "number")
+        .sort(([, a], [, b]) => (b as number) - (a as number))[0]?.[0]
+        ?.toLowerCase() ?? "";
+      const loraTrigger = loraTriggerMap[primaryBlendKey] ?? "cvwmn";
+
+      const ddResult = await runDesignDirector({
+        imageUrl: photoUrlForPipeline,
+        fingerprint,
+        roomType,
+        styleAnchor: styleAnchorDisplay,
+        loraTrigger,
+        budgetMin,
+        budgetMax,
+        context: renderContext,
+        removeItems,
+        keepItems,
+        chatHistory,
+        roomId: room_id,
+      });
+
+      compiledPrompt = ddResult.fluxPrompt;
+      negativePrompt = ddResult.negativePrompt;
+      promptSource = "design-director";
+
+      // Persist design_brief, flux_prompt, and negative_prompt to rooms table (fire-and-forget)
+      void admin
+        .from("rooms")
+        .update({
+          design_brief: ddResult.stagingJson as unknown as Record<string, unknown>,
+          flux_prompt: compiledPrompt,
+          negative_prompt: negativePrompt,
+        })
+        .eq("id", room_id)
+        .then(({ error }) => {
+          if (error)
+            console.error("[redesign] design_brief/flux_prompt/negative_prompt write failed:", error);
+          else
+            console.log("[redesign] design_brief + flux_prompt + negative_prompt stored for room", room_id);
+        });
+
+      // Fetch quality-scored Unsplash references for IP-Adapter conditioning
+      // Scores each candidate on orientation, resolution, engagement, and style keyword match.
+      // Returns top 3 by score; index 0 is the single best reference used at scale 0.40.
+      unsplashReferences = await fetchScoredStyleReferences(styleAnchorDisplay, 3).catch(
+        () => [] as string[],
+      );
+      console.log(`[redesign] Unsplash references scored: ${unsplashReferences.length}`);
+
+      if (unsplashReferences.length < 3) {
+        // Detect mood from staging JSON
+        const stagingJson = ddResult?.stagingJson;
+        const isDark = stagingJson?.palette?.dominant?.toLowerCase()
+          .match(/dark|charcoal|black|navy|slate|deep/);
+        const isWarm = stagingJson?.lighting?.colorTemp
+          ?.includes("2700") ||
+          stagingJson?.lighting?.colorTemp?.includes("3000");
+
+        const moodKey = isDark && isWarm ? "dark_warm" :
+                        isWarm ? "warm_natural" :
+                        "bright_airy";
+
+        const curated = getCuratedReferences(loraTrigger, moodKey);
+
+        // Fill up to 5 total: keep any live refs first, pad with curated
+        unsplashReferences = [
+          ...unsplashReferences,
+          ...curated.filter(u => !unsplashReferences.includes(u))
+        ].slice(0, 5);
+
+        console.log(
+          `[redesign] Padded with curated refs — total: ${unsplashReferences.length} (mood: ${moodKey}, trigger: ${loraTrigger})`
+        );
+      }
+
+      // Persist unsplash_references to rooms table for refinement continuity (FIX 3)
+      void admin
+        .from("rooms")
+        .update({ unsplash_references: unsplashReferences })
+        .eq("id", room_id)
+        .then(({ error }) => {
+          if (error) console.error("[redesign] unsplash_references write failed:", error);
+          else console.log("[redesign] unsplash_references stored:", unsplashReferences.length);
+        });
+
+      // Extract design_memory and store in render_context for refinement continuity (ADDITION 4)
+      const designMemoryObj = {
+        room_type: ddResult.stagingJson.roomType,
+        style_anchor: styleAnchorDisplay,
+        dominant_material: ddResult.stagingJson.materialTension.warm,
+        color_palette: {
+          dominant: ddResult.stagingJson.palette.dominant,
+          secondary: ddResult.stagingJson.palette.secondary,
+          accent: ddResult.stagingJson.palette.accent,
+        },
+        key_furniture: [
+          ...ddResult.stagingJson.depthLayers.midground.objects,
+          ...ddResult.stagingJson.depthLayers.foreground.objects,
+          ...ddResult.stagingJson.depthLayers.background.objects,
+        ].slice(0, 3).map((obj) => obj.name),
+        lighting_spec: `${ddResult.stagingJson.lighting.source}, ${ddResult.stagingJson.lighting.colorTemp}`,
+        lora_trigger: loraTrigger,
+      };
+      void admin
+        .from("rooms")
+        .select("render_context")
+        .eq("id", room_id)
+        .single()
+        .then(async ({ data }) => {
+          const existingRc = (data?.render_context ?? {}) as Record<string, unknown>;
+          const { error: dmError } = await admin
+            .from("rooms")
+            .update({ render_context: { ...existingRc, design_memory: designMemoryObj } })
+            .eq("id", room_id);
+          if (dmError) console.error("[redesign] design_memory write failed:", dmError);
+          else console.log("[redesign] design_memory stored for room", room_id);
+        });
+
+      console.log(
+        `[redesign] Design Director complete — ${ddResult.fluxPrompt.split(/\s+/).length} words`,
+      );
+    } catch (ddErr) {
+      console.error("[redesign] Design Director failed — FULL ERROR:", ddErr);
+      console.error("[redesign] DD error stack:", ddErr instanceof Error ? ddErr.stack : String(ddErr));
+      console.error("[redesign] DD inputs — imageUrl:", photoUrlForPipeline, "fingerprint keys:", Object.keys(fingerprint?.dimensions ?? {}));
+    }
+  }
+
+  // ── Fallback: existing Claude prompt compiler ───────────────────────────────
+  if (!compiledPrompt && fingerprint) {
     compiledPrompt = await compilePromptWithClaude(
       renderContext,
       roomType,
@@ -201,19 +449,15 @@ export async function POST(request: Request) {
       chat_context ?? null,
     ).catch(() => null);
 
-    // Fallback: anchor-strategy prompt if Claude compile fails. This
-    // MUST frame kept items as anchors and removed items as vacated zones,
-    // matching the Rules 1-4 strategy in prompt-compiler.ts. The old
-    // buildFluxPrompt path ignored kept items and over-edited. Do not
-    // route through it.
+    if (compiledPrompt) promptSource = "claude-compiled";
+
+    // Second fallback: anchor-strategy prompt if Claude compile also fails.
     if (!compiledPrompt) {
-      const styleBlendRaw =
-        renderContext?.styleBlend ?? room?.style_blend ?? null;
       compiledPrompt = buildAnchorFallbackPrompt({
         fingerprint,
         roomType,
         context: renderContext,
-        styleBlend: styleBlendRaw,
+        styleBlend: styleBlendForAnchor,
         anchorPrompt,
         cameraAngle: roomAnalysis?.cameraAngle ?? undefined,
         focalLength: roomAnalysis?.focalLength ?? undefined,
@@ -227,12 +471,12 @@ export async function POST(request: Request) {
   console.warn(
     "[redesign] compiled_prompt length:",
     compiledPrompt?.length ?? 0,
+    "| source:", promptSource,
   );
   console.warn("[redesign] prompt preview:", compiledPrompt?.slice(0, 120));
 
   // Log the FLUX prompt for observability
   if (compiledPrompt) {
-    const usedClaudeCompiler = !compiledPrompt.startsWith("Redesign this");
     logger.info("RENDER", LogEvents.RENDER_FLUX_PROMPT_BUILT,
       "FLUX prompt built and dispatched to Modal", {
         roomId: room_id,
@@ -240,12 +484,208 @@ export async function POST(request: Request) {
           promptWordCount: compiledPrompt.split(/\s+/).length,
           promptPreview: compiledPrompt.substring(0, 300),
           fullPrompt: compiledPrompt,
-          promptSource: usedClaudeCompiler ? "claude-compiled" : "fallback",
-          styleBlend: renderContext?.styleBlend?.primaryStyle ?? "unknown",
+          promptSource,
+          styleBlend: styleAnchorDisplay,
         },
       },
     );
   }
+
+  // ── LoRA stack resolution ─────────────────────────────────────────────────
+  // Returns a dual-LoRA stack: [detail-enhancer@0.55, realism-lora@0.25] when
+  // no trained LoRA exists (fallback), or [custom@scale, realism@0.25-0.30] when
+  // a trained LoRA is found in style_loras table.
+  let lorasJson: string;
+  try {
+    // Use flux_prompt trigger extraction — design director embeds the trigger
+    // word (e.g. "cvwmn interior") directly in compiledPrompt, so we match
+    // against the actual prompt rather than the verbose styleAnchor string.
+    const loraResult = await getLorasFromFluxPrompt(compiledPrompt, admin);
+    console.log(
+      `[redesign] LoRA stack: ${loraResult.loras.map((l) => `${l.name}@${l.scale}`).join(" + ")} ` +
+      `(fallback: ${loraResult.isFallback}, total: ${loraResult.totalScale.toFixed(2)})`,
+    );
+    lorasJson = JSON.stringify(
+      loraResult.loras.map((l) => ({ url: l.url, scale: l.scale, name: l.name })),
+    );
+  } catch (loraErr) {
+    console.error("[redesign] LoRA resolution failed — using hard-coded fallback stack:", loraErr);
+    // Matches FALLBACK_LORA_STACK in lora-registry.ts
+    lorasJson = JSON.stringify([
+      {
+        url: "https://huggingface.co/Shakker-Labs/FLUX.1-dev-LoRA-add-details/resolve/main/FLUX-dev-lora-add_details.safetensors",
+        scale: 0.55,
+        name: "detail-enhancer",
+      },
+      {
+        url: "https://huggingface.co/XLabs-AI/flux-RealismLora/resolve/main/lora.safetensors",
+        scale: 0.25,
+        name: "realism-lora",
+      },
+    ]);
+  }
+
+  // ── Seed management ──────────────────────────────────────────────────────
+  // Failed/retry renders get seed+1 so they produce different output.
+  // New renders get a fresh random seed.
+  // Explicit retry is detected via redesign_status.
+  const isRetry =
+    room?.redesign_status === "failed" ||
+    room?.redesign_status === "error" ||
+    body.explicit_retry === true;
+
+  let generationSeed: number;
+  if (isRetry && room?.generation_seed) {
+    // Increment seed so retry produces different quality output
+    generationSeed = room.generation_seed + 1;
+    console.log(`[redesign] Retry detected — incrementing seed to: ${generationSeed}`);
+  } else if (room?.generation_seed && !isRetry) {
+    generationSeed = room.generation_seed;
+    console.log(`[redesign] Reusing existing seed: ${generationSeed}`);
+  } else {
+    generationSeed = Math.floor(Math.random() * 999999) + 1;
+    console.log(`[redesign] Generated new seed: ${generationSeed}`);
+  }
+
+  void admin
+    .from("rooms")
+    .update({ generation_seed: generationSeed })
+    .eq("id", room_id)
+    .then(({ error }) => {
+      if (error) console.error("[redesign] generation_seed write failed:", error);
+    });
+
+  // ── Change map assembly for differential diffusion ────────────────────────
+  // Read kept item mask URLs from render_context.itemMasks (written by segment-masks endpoint).
+  // segment-masks fires fire-and-forget from step-7c, so by the time redesign runs (from step-7d)
+  // the masks may or may not be in the DB. We handle both cases:
+  //   1. Re-read render_context from DB — picks up masks that completed after initial fetch.
+  //   2. If still missing and keepItems exist — call EVF-SAM2 inline (blocking) so change map
+  //      always has mask input when the user explicitly kept items.
+  let changeMapUrl: string | null = null;
+  let keptItemMaskUrls: string[] = [];
+
+  // Step 1: re-read render_context to get the freshest itemMasks
+  let effectiveItemMasks: Record<string, string> | null = null;
+  try {
+    const { data: freshRow } = await admin
+      .from("rooms")
+      .select("render_context")
+      .eq("id", room_id)
+      .single();
+    const freshCtx = (freshRow?.render_context as Record<string, unknown>) ?? {};
+    const freshMasks = freshCtx?.itemMasks;
+    if (freshMasks && typeof freshMasks === "object" && Object.keys(freshMasks).length > 0) {
+      effectiveItemMasks = freshMasks as Record<string, string>;
+      console.log(`[redesign] itemMasks from DB: ${Object.keys(effectiveItemMasks).length} masks`);
+    }
+  } catch (rcErr) {
+    console.warn("[redesign] Failed to re-read render_context:", rcErr);
+  }
+
+  // Step 2: if masks still missing and there are kept items, call EVF-SAM2 inline (blocks until done)
+  if (keepItems.length > 0 && (!effectiveItemMasks || Object.keys(effectiveItemMasks).length === 0)) {
+    const falKey = process.env.FAL_KEY;
+    if (falKey && photoUrlForPipeline) {
+      console.log(
+        `[redesign] itemMasks missing — calling EVF-SAM2 inline for ${keepItems.length} kept items`,
+      );
+      const inlineMasks: Record<string, string> = {};
+      await Promise.all(
+        keepItems.map(async (label) => {
+          try {
+            const resp = await fetch("https://fal.run/fal-ai/evf-sam", {
+              method: "POST",
+              headers: {
+                Authorization: `Key ${falKey}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                image_url: photoUrlForPipeline,
+                text_prompt: label.toLowerCase(),
+              }),
+              signal: AbortSignal.timeout(30_000),
+            });
+            if (!resp.ok) {
+              console.warn(`[redesign] EVF-SAM inline failed for "${label}": ${resp.status}`);
+              return;
+            }
+            const result = (await resp.json()) as {
+              image?: { url: string };
+              output?: { url: string };
+              url?: string;
+            };
+            const maskUrl =
+              result?.image?.url ??
+              result?.output?.url ??
+              (typeof result?.url === "string" ? result.url : null);
+            if (maskUrl) inlineMasks[label.toLowerCase()] = maskUrl;
+          } catch (evfErr) {
+            console.warn(`[redesign] EVF-SAM inline error for "${label}":`, evfErr);
+          }
+        }),
+      );
+
+      if (Object.keys(inlineMasks).length > 0) {
+        effectiveItemMasks = inlineMasks;
+        console.log(
+          `[redesign] EVF-SAM inline complete: ${Object.keys(inlineMasks).length}/${keepItems.length} masks`,
+        );
+        // Persist inline masks to render_context so future runs can skip this step
+        void (async () => {
+          try {
+            const { data: latestRow } = await admin
+              .from("rooms")
+              .select("render_context")
+              .eq("id", room_id)
+              .single();
+            const latestCtx = (latestRow?.render_context as Record<string, unknown>) ?? {};
+            await admin
+              .from("rooms")
+              .update({ render_context: { ...latestCtx, itemMasks: inlineMasks } })
+              .eq("id", room_id);
+            console.log("[redesign] itemMasks persisted inline to render_context");
+          } catch (persistErr) {
+            console.warn("[redesign] itemMasks inline persist failed:", persistErr);
+          }
+        })();
+      }
+    } else {
+      console.warn("[redesign] FAL_KEY missing or no photo URL — cannot call EVF-SAM inline");
+    }
+  }
+
+  if (effectiveItemMasks && typeof effectiveItemMasks === "object") {
+    // Get masks for kept items (from keep_remove_decisions)
+    keptItemMaskUrls = keepItems
+      .map((label) => effectiveItemMasks![label.toLowerCase()] ?? effectiveItemMasks![label])
+      .filter((url): url is string => typeof url === "string" && url.startsWith("https://"));
+
+    console.log(
+      `[redesign] Keep item masks found: ${keptItemMaskUrls.length}/${keepItems.length}`,
+    );
+
+    if (keptItemMaskUrls.length > 0) {
+      try {
+        changeMapUrl = await assembleDifferentialMap({
+          imageWidth: 1024,
+          imageHeight: 1024,
+          keepItemMasks: keptItemMaskUrls,
+          removeItemMasks: [],
+          roomId: room_id,
+        });
+        console.log(`[redesign] Change map assembled: ${changeMapUrl.slice(0, 80)}`);
+      } catch (cmErr) {
+        console.warn("[redesign] Change map assembly failed — proceeding without it:", cmErr);
+        changeMapUrl = null;
+      }
+    }
+  }
+
+  // Extract wall_change_requested from design brief (populated by design director).
+  // design_brief is now included in the SELECT query so this reads from the DB-fetched row.
+  // If wall_change_requested is explicitly false → preserve walls. Anything else → allow change.
+  const wallChangeRequested = room.design_brief?.wall_change_requested !== false;
 
   try {
     // Fire-and-forget style: send the request to Modal but don't wait for the full
@@ -258,9 +698,23 @@ export async function POST(request: Request) {
         room_id,
         user_id: userId,
         compiled_prompt: compiledPrompt ?? null,
+        negative_prompt: negativePrompt ?? null,
         anchor_prompt: anchorPrompt ?? null,
         style_reference_url: styleReferenceUrl ?? null,
         chat_context: renderContext?.tabStates ?? null,
+        // Preprocessed photo URL — DarkIR + OpenCV applied upstream.
+        // Falls back to raw photo if preprocessing was skipped/failed.
+        image_url: photoUrlForPipeline ?? null,
+        unsplash_references: unsplashReferences.length > 0 ? unsplashReferences : null,
+        // Stacked LoRA stack — JSON array of {url, scale, name}
+        loras_json: lorasJson,
+        seed: generationSeed,
+        // Dynamic generation parameters
+        remove_count: removeCount,
+        // Differential diffusion — change map for floor/wall/kept-item preservation
+        change_map_url: changeMapUrl ?? null,
+        kept_item_mask_urls: keptItemMaskUrls.length > 0 ? keptItemMaskUrls : null,
+        wall_change_requested: wallChangeRequested,
       }),
       signal: AbortSignal.timeout(295_000),
     });

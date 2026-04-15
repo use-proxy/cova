@@ -59,13 +59,14 @@ interface FingerprintState {
 /**
  * Cookie name used to persist fingerprint state across OAuth redirects.
  *
- * Two-layer persistence strategy:
- *   PRIMARY   — cookie `cova_anon_fingerprint` (Path=/, SameSite=Lax, Max-Age=3600).
- *               Survives cross-origin OAuth redirects where sessionStorage is wiped.
- *               Base64url-encoded JSON. If the encoded value exceeds 3800 bytes
- *               (cookie size headroom), falls back to sessionStorage with a warning.
- *   SECONDARY — sessionStorage, read-only fallback for same-tab reads before any
- *               redirect occurs. Never written to directly (except the size overflow case).
+ * Single-layer persistence strategy:
+ *   COOKIE — `cova_anon_fingerprint` (Path=/, SameSite=Lax, Max-Age=86400).
+ *            Survives cross-origin OAuth redirects where sessionStorage is wiped.
+ *            Base64url-encoded JSON. Covariance matrix is intentionally excluded
+ *            from the cookie payload (12×12 = 144 floats ≈ 1.4 KB saved) so the
+ *            cookie stays well under 3800 bytes without any fallback needed.
+ *            Covariance is preserved in the in-memory Zustand store and written to
+ *            Supabase style_fingerprints by /api/quiz/fingerprint on completion.
  *
  * The OAuth callback route (app/auth/callback/route.ts) reads this cookie after
  * successful session establishment and persists the fingerprint to Supabase
@@ -83,7 +84,6 @@ const fingerprintCookieStorage = {
   getItem: (_name: string): string | null => {
     try {
       if (typeof document === "undefined") return null;
-      // Primary: read from cookie
       const cookies = document.cookie.split("; ");
       for (const cookie of cookies) {
         const eqIdx = cookie.indexOf("=");
@@ -98,12 +98,7 @@ const fingerprintCookieStorage = {
           }
         }
       }
-      // Secondary: sessionStorage read fallback (same-tab, pre-redirect)
-      try {
-        return sessionStorage.getItem(COOKIE_NAME) ?? null;
-      } catch {
-        return null;
-      }
+      return null;
     } catch {
       return null;
     }
@@ -113,21 +108,13 @@ const fingerprintCookieStorage = {
     try {
       if (typeof document === "undefined") return;
       const encoded = btoa(encodeURIComponent(value));
-      if (encoded.length > 3800) {
-        console.warn(
-          "[fingerprint-store] Cookie value exceeds 3800 bytes — falling back to sessionStorage",
-        );
-        try {
-          sessionStorage.setItem(COOKIE_NAME, value);
-        } catch {
-          /* ignore */
-        }
-        return;
-      }
+      // Covariance is stripped from the serialized state (see partialize below),
+      // so encoded size is reliably under 3000 bytes. No sessionStorage fallback needed.
       const isProduction =
         typeof process !== "undefined" && process.env.NODE_ENV === "production";
       const secure = isProduction ? "; Secure" : "";
-      document.cookie = `${COOKIE_NAME}=${encoded}; Path=/; SameSite=Lax; Max-Age=3600${secure}`;
+      // 86400 = 24 hours — long enough to survive overnight OAuth flows
+      document.cookie = `${COOKIE_NAME}=${encoded}; Path=/; SameSite=Lax; Max-Age=86400${secure}`;
     } catch {
       // Cookie access can fail in restrictive iframe / privacy contexts — ignore silently
     }
@@ -203,7 +190,12 @@ export const useFingerprintStore = create<FingerprintState>()(
         isGiftMode: state.isGiftMode,
         phaseASelections: state.phaseASelections,
         phaseBResponses: state.phaseBResponses,
-        fingerprint: state.fingerprint,
+        // Covariance matrix (12×12 = 144 floats ≈ 1.4 KB) is excluded from the
+        // cookie. It remains in the in-memory store and is persisted to Supabase
+        // by /api/quiz/fingerprint. Omitting it keeps the cookie under 3000 bytes.
+        fingerprint: state.fingerprint
+          ? { ...state.fingerprint, covariance: undefined }
+          : null,
         styleName: state.styleName,
         styleTags: state.styleTags,
         styleExplanation: state.styleExplanation,

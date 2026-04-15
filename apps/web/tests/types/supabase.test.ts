@@ -4,7 +4,7 @@ import type {
   Tables,
   InsertTables,
   UpdateTables,
-} from "@/types/supabase";
+} from "@/lib/types/supabase";
 
 describe("Supabase Type Definitions", () => {
   describe("Database type structure", () => {

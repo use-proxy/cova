@@ -1,3 +1,8 @@
+// AUTO-GENERATED — do not edit manually
+// Regenerate with: npx supabase gen types typescript --project-id xdeacbmkdwqrwxonqaqh > apps/web/lib/types/supabase.ts
+// This is the single canonical Supabase type file.
+// Do not create apps/web/types/supabase.ts — it has been deleted; update this file only.
+
 export type Json =
   | string
   | number
@@ -724,6 +729,7 @@ export type Database = {
           id: string;
           image_url: string;
           livability_score: number | null;
+          room_images: Json | null;
           storage_path: string;
           style_index: number;
           style_name: string;
@@ -736,6 +742,7 @@ export type Database = {
           id?: string;
           image_url: string;
           livability_score?: number | null;
+          room_images?: Json | null;
           storage_path: string;
           style_index: number;
           style_name: string;
@@ -748,6 +755,7 @@ export type Database = {
           id?: string;
           image_url?: string;
           livability_score?: number | null;
+          room_images?: Json | null;
           storage_path?: string;
           style_index?: number;
           style_name?: string;
@@ -1089,10 +1097,18 @@ export type Database = {
           hotspot_x: number | null;
           hotspot_y: number | null;
           id: string;
+          is_sale: boolean | null;
           is_unlocked: boolean | null;
-          product_id: string;
+          match_label: string | null;
+          match_score: number | null;
+          product_id: string | null;
           rank: number;
           room_id: string;
+          serp_image_url: string | null;
+          serp_price: number | null;
+          serp_product_url: string | null;
+          serp_retailer: string | null;
+          serp_title: string | null;
           similarity_score: number | null;
           visible_from_second: number | null;
           visible_to_second: number | null;
@@ -1106,10 +1122,18 @@ export type Database = {
           hotspot_x?: number | null;
           hotspot_y?: number | null;
           id?: string;
+          is_sale?: boolean | null;
           is_unlocked?: boolean | null;
-          product_id: string;
+          match_label?: string | null;
+          match_score?: number | null;
+          product_id?: string | null;
           rank?: number;
           room_id: string;
+          serp_image_url?: string | null;
+          serp_price?: number | null;
+          serp_product_url?: string | null;
+          serp_retailer?: string | null;
+          serp_title?: string | null;
           similarity_score?: number | null;
           visible_from_second?: number | null;
           visible_to_second?: number | null;
@@ -1123,10 +1147,18 @@ export type Database = {
           hotspot_x?: number | null;
           hotspot_y?: number | null;
           id?: string;
+          is_sale?: boolean | null;
           is_unlocked?: boolean | null;
-          product_id?: string;
+          match_label?: string | null;
+          match_score?: number | null;
+          product_id?: string | null;
           rank?: number;
           room_id?: string;
+          serp_image_url?: string | null;
+          serp_price?: number | null;
+          serp_product_url?: string | null;
+          serp_retailer?: string | null;
+          serp_title?: string | null;
           similarity_score?: number | null;
           visible_from_second?: number | null;
           visible_to_second?: number | null;
@@ -1156,6 +1188,7 @@ export type Database = {
           capture_photo_urls: Json | null;
           constraints: string[] | null;
           created_at: string;
+          depth_conditioning_method: string | null;
           depth_map_quality_score: number | null;
           depth_map_url: string | null;
           depth_map_url_v2: string | null;
@@ -1190,6 +1223,7 @@ export type Database = {
           marble_spz_url_100k: string | null;
           marble_spz_url_500k: string | null;
           marble_world_id: string | null;
+          matched_products: Json | null;
           modal_job_id: string | null;
           name: string;
           original_image_url: string | null;
@@ -1204,14 +1238,15 @@ export type Database = {
           plus_started_at: string | null;
           plus_upgrade_ready: boolean | null;
           pre_detection_result: Json | null;
-          render_detection_result: Json | null;
           preview_url: string | null;
+          redesign_error: string | null;
           redesign_pano_url: string | null;
           redesign_splat_url: string | null;
           redesign_status: string | null;
           redesign_style: string | null;
           render_context: Json | null;
           render_count: number;
+          render_detection_result: Json | null;
           render_ready: boolean | null;
           render_url: string | null;
           room_analysis: Json | null;
@@ -1237,6 +1272,7 @@ export type Database = {
           capture_photo_urls?: Json | null;
           constraints?: string[] | null;
           created_at?: string;
+          depth_conditioning_method?: string | null;
           depth_map_quality_score?: number | null;
           depth_map_url?: string | null;
           depth_map_url_v2?: string | null;
@@ -1271,6 +1307,7 @@ export type Database = {
           marble_spz_url_100k?: string | null;
           marble_spz_url_500k?: string | null;
           marble_world_id?: string | null;
+          matched_products?: Json | null;
           modal_job_id?: string | null;
           name?: string;
           original_image_url?: string | null;
@@ -1285,14 +1322,15 @@ export type Database = {
           plus_started_at?: string | null;
           plus_upgrade_ready?: boolean | null;
           pre_detection_result?: Json | null;
-          render_detection_result?: Json | null;
           preview_url?: string | null;
+          redesign_error?: string | null;
           redesign_pano_url?: string | null;
           redesign_splat_url?: string | null;
           redesign_status?: string | null;
           redesign_style?: string | null;
           render_context?: Json | null;
           render_count?: number;
+          render_detection_result?: Json | null;
           render_ready?: boolean | null;
           render_url?: string | null;
           room_analysis?: Json | null;
@@ -1318,6 +1356,7 @@ export type Database = {
           capture_photo_urls?: Json | null;
           constraints?: string[] | null;
           created_at?: string;
+          depth_conditioning_method?: string | null;
           depth_map_quality_score?: number | null;
           depth_map_url?: string | null;
           depth_map_url_v2?: string | null;
@@ -1352,6 +1391,7 @@ export type Database = {
           marble_spz_url_100k?: string | null;
           marble_spz_url_500k?: string | null;
           marble_world_id?: string | null;
+          matched_products?: Json | null;
           modal_job_id?: string | null;
           name?: string;
           original_image_url?: string | null;
@@ -1366,14 +1406,15 @@ export type Database = {
           plus_started_at?: string | null;
           plus_upgrade_ready?: boolean | null;
           pre_detection_result?: Json | null;
-          render_detection_result?: Json | null;
           preview_url?: string | null;
+          redesign_error?: string | null;
           redesign_pano_url?: string | null;
           redesign_splat_url?: string | null;
           redesign_status?: string | null;
           redesign_style?: string | null;
           render_context?: Json | null;
           render_count?: number;
+          render_detection_result?: Json | null;
           render_ready?: boolean | null;
           render_url?: string | null;
           room_analysis?: Json | null;
@@ -1405,6 +1446,41 @@ export type Database = {
             columns: ["user_id"];
             isOneToOne: false;
             referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      saved_products: {
+        Row: {
+          created_at: string;
+          id: string;
+          product_data: Json | null;
+          product_url: string;
+          room_id: string | null;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          product_data?: Json | null;
+          product_url: string;
+          room_id?: string | null;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          product_data?: Json | null;
+          product_url?: string;
+          room_id?: string | null;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "saved_products_room_id_fkey";
+            columns: ["room_id"];
+            isOneToOne: false;
+            referencedRelation: "rooms";
             referencedColumns: ["id"];
           },
         ];
