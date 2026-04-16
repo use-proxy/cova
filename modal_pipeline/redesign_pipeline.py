@@ -9,7 +9,7 @@ Pipeline stages (run in order, with idempotency skipping):
   1. Preprocessing    — cova-preprocessing-pipeline / preprocess_room_photo
   2. Professionalize  — cova-professionalization / professionalize_room  (moved before depth)
   3. Structural       — cova-structural-extraction / extract_depth_map + extract_canny_edges (parallel, from professionalized image)
-  4. Generation       — cova-generation / generate_redesign_two_pass  ← always re-runs
+  4. Generation       — cova-generation / generate_redesign_phase4b  ← always re-runs (Phase 4b selective inpainting)
 
 Stage 3 skip: only if depth_map_url + edge_map_url exist AND render_context.professionalized_before_depth == True.
   Old runs (depth extracted before professionalization) are forced to re-extract.
@@ -53,7 +53,6 @@ def orchestrate_pipeline(
     room_id: str,
     user_id: str,
     compiled_prompt: str,
-    negative_prompt: str,
     unsplash_references: list,
     seed: int,
     image_url: str,
@@ -67,6 +66,7 @@ def orchestrate_pipeline(
     change_map_url: str = None,
     kept_item_mask_urls: list = None,
     wall_change_requested: bool = True,
+    floor_change_requested: bool = False,
 ) -> dict:
     """
     Full pipeline orchestrator.
@@ -106,7 +106,7 @@ def orchestrate_pipeline(
     # ── Read current DB state ─────────────────────────────────────────────────
     try:
         row_result = client.table("rooms").select(
-            "preprocessed_image_url, professionalized_image_url, render_context"
+            "preprocessed_image_url, professionalized_image_url, render_context, keep_remove_decisions, pre_detection_result"
         ).eq("id", room_id).single().execute()
         row = row_result.data or {}
     except Exception as e:
@@ -120,6 +120,52 @@ def orchestrate_pipeline(
             render_context = _json.loads(render_context)
         except Exception:
             render_context = {}
+
+    # Merge keep_remove_decisions into render_context for Phase 4b mask building
+    # Normalize from DB array format [{id, name, category, decision}, ...] to dict format
+    db_decisions = row.get("keep_remove_decisions") or []
+    if db_decisions and "keep_remove_decisions" not in render_context:
+        # Inline normalization (utils.py not available in orchestrator image)
+        if isinstance(db_decisions, list):
+            normalized = {}
+            for item in db_decisions:
+                if isinstance(item, dict):
+                    label = item.get('name') or item.get('label', '')
+                    decision = item.get('decision', 'keep')
+                    if label:
+                        key = label.lower().strip().replace(" ", "_").replace("-", "_")
+                        normalized[key] = decision
+        elif isinstance(db_decisions, dict):
+            normalized = {k.lower().strip().replace(" ", "_").replace("-", "_"): v
+                          for k, v in db_decisions.items()}
+        else:
+            normalized = {}
+        render_context["keep_remove_decisions"] = normalized
+        print(f"[orchestrator] Merged + normalized {len(normalized)} keep_remove_decisions into render_context: {normalized}")
+
+    # Fix B: Thread detected_items from pre_detection_result into render_context
+    # so generation.py can do category-based mask logic and prompt building.
+    if "detected_items" not in render_context:
+        pre_detection = row.get("pre_detection_result")
+        if isinstance(pre_detection, str):
+            import json as _json2
+            try:
+                pre_detection = _json2.loads(pre_detection)
+            except Exception:
+                pre_detection = None
+
+        det_items = []
+        if isinstance(pre_detection, list):
+            # pre_detection_result is the detected_items array directly
+            det_items = pre_detection
+        elif isinstance(pre_detection, dict):
+            det_items = pre_detection.get("detected_items") or pre_detection.get("items") or []
+
+        if det_items:
+            render_context["detected_items"] = det_items
+            print(f"[orchestrator] Merged {len(det_items)} detected_items from pre_detection_result into render_context")
+        else:
+            print(f"[orchestrator] WARNING: No detected_items found in pre_detection_result — category matching will be degraded")
 
     # ── STAGE 1: Preprocessing ────────────────────────────────────────────────
     # Check: rooms.preprocessed_image_url
@@ -274,20 +320,16 @@ def orchestrate_pipeline(
         except Exception as struct_err:
             print(f"[orchestrator] Stage 3 lookup FAILED (non-critical, continuing without): {struct_err}")
 
-    # ── STAGE 4: Generation (always re-runs) ──────────────────────────────────
-    # Log all differential diffusion inputs so any NONE values are immediately visible.
-    print(f"[orchestrator] Stage 4 inputs:")
-    print(f"[orchestrator]   change_map_url: {change_map_url or 'NONE'}")
+    # ── STAGE 4: Generation — Phase 4b selective inpainting (always re-runs) ──
+    print(f"[orchestrator] Stage 4 inputs (Phase 4b):")
     print(f"[orchestrator]   wall_change_requested: {wall_change_requested}")
-    print(f"[orchestrator]   kept_item_mask_count: {len(kept_item_mask_urls or [])}")
-    print(f"[orchestrator] Stage 4 START — generation for room {room_id} (always re-runs)")
+    print(f"[orchestrator]   floor_change_requested: {floor_change_requested}")
+    print(f"[orchestrator]   remove_count: {remove_count}")
+    print(f"[orchestrator]   render_context keys: {list(render_context.keys())}")
+    print(f"[orchestrator] Stage 4 START — Phase 4b generation for room {room_id}")
     client.table("rooms").update(
         {"redesign_status": "rendering"}
     ).eq("id", room_id).execute()
-
-    # Use photo as ControlNet fallback if depth/edge extraction failed
-    effective_depth_gen = depth_map_url or professionalized_url
-    effective_edge_gen = edge_map_url or professionalized_url
 
     effective_prompt = compiled_prompt or ""
     if not effective_prompt:
@@ -305,50 +347,78 @@ def orchestrate_pipeline(
             }).eq("id", room_id).execute()
             raise RuntimeError(f"Room {room_id}: no flux_prompt. Design Director must run before generation.")
 
+    # Pass render_context with itemMasks and keep_remove_decisions for Phase 4b mask building
+    # Merge keep_remove_decisions into render_context if not already there
+    if "keep_remove_decisions" not in render_context and kept_item_mask_urls:
+        # Build from kept_item_mask_urls — all are "keep" by inference
+        render_context["keep_remove_decisions"] = {}
+
     try:
-        gen_fn = _modal.Function.from_name("cova-generation", "generate_redesign_two_pass")
+        gen_fn = _modal.Function.from_name("cova-generation", "generate_redesign_phase4b")
         gen_result = gen_fn.remote(
-            professionalized_image_url=professionalized_url,
-            depth_map_url=effective_depth_gen,
-            edge_map_url=effective_edge_gen,
-            flux_prompt=effective_prompt,
-            loras_json=loras_json,
-            unsplash_reference_urls=unsplash_references or [],
             room_id=room_id,
-            remove_count=remove_count,
-            seed=seed,
-            change_map_url=change_map_url,
-            kept_item_mask_urls=kept_item_mask_urls or [],
+            user_id=user_id,
+            original_photo_url=image_url,  # Original photo — critical for Fill Pro
+            professionalized_photo_url=professionalized_url or image_url,
+            style_prompt=effective_prompt,
+            render_context=render_context,
             wall_change_requested=wall_change_requested,
+            floor_change_requested=floor_change_requested,
+            seed=seed,
+            remove_count=remove_count,
         )
 
-        final_url = gen_result.get("final_url") or ""
+        final_url = gen_result.get("final_url") or gen_result.get("image_url") or ""
         seed_used = gen_result.get("seed")
-        print(f"[orchestrator] Stage 4 DONE — final: {final_url[:80]}...")
+        route_used = gen_result.get("route_used", "unknown")
+        composite_applied = gen_result.get("composite_applied", False)
+        raw_fal_url = gen_result.get("raw_fal_url", "")
+        aesthetic_score = gen_result.get("aesthetic_score", 0.0)
+        all_scores = gen_result.get("all_scores", [])
+        print(f"[orchestrator] Stage 4 DONE — route: {route_used}, composite: {composite_applied}, aesthetic_score: {aesthetic_score:.2f}, final: {final_url[:80]}...")
+        print(f"[orchestrator] All candidate scores: {all_scores}")
         print(f"[orchestrator] ── Pipeline COMPLETE for room {room_id} ──")
 
-        # Store both pass URLs in render_context for debugging during tuning
+        # Persist the exact prompt sent to the model for audit/improvement
+        # Use whichever prompt was actually used based on route
+        actual_prompt = gen_result.get("fill_prompt_used") or gen_result.get("kontext_prompt_used") or effective_prompt
         try:
-            import json as _json
+            client.table("rooms").update({
+                "flux_prompt": actual_prompt,
+            }).eq("id", room_id).execute()
+            print(f"[orchestrator] flux_prompt persisted ({len((actual_prompt or '').split())} words), route={route_used}, seed={seed_used}")
+        except Exception as fp_err:
+            print(f"[orchestrator] Warning: could not persist flux_prompt: {fp_err}")
+
+        # Store generation metadata in render_context for debugging
+        try:
             updated_rc: dict = dict(render_context)
-            updated_rc["pass1_url"] = gen_result.get("pass1_url") or ""
-            updated_rc["pass2_url"] = gen_result.get("pass2_url") or ""
             updated_rc["generation_seed"] = seed_used
-            updated_rc["pass1_depth_scale"] = gen_result.get("pass1_depth_scale")
-            updated_rc["pass2_strength"] = gen_result.get("pass2_strength")
-            updated_rc["loras_active"] = gen_result.get("loras_active", False)
+            updated_rc["route_used"] = route_used
+            updated_rc["composite_applied"] = composite_applied
+            updated_rc["raw_fal_url"] = raw_fal_url
+            updated_rc["mask_url"] = gen_result.get("mask_url")
+            updated_rc["endpoint_used"] = gen_result.get("endpoint_used")
+            updated_rc["pipeline_version"] = "v4b"
+            updated_rc["aesthetic_score"] = aesthetic_score
+            updated_rc["all_scores"] = all_scores
+            updated_rc["fill_prompt_used"] = gen_result.get("fill_prompt_used")
+            updated_rc["kontext_prompt_used"] = gen_result.get("kontext_prompt_used")
             client.table("rooms").update(
                 {"render_context": updated_rc}
             ).eq("id", room_id).execute()
-            print(f"[orchestrator] render_context updated with pass1/pass2 URLs")
+            print(f"[orchestrator] render_context updated with Phase 4b metadata")
         except Exception as rc_err:
-            print(f"[orchestrator] Warning: could not persist pass URLs to render_context: {rc_err}")
+            print(f"[orchestrator] Warning: could not persist generation metadata: {rc_err}")
 
         return {
             "status": "complete",
             "room_id": room_id,
             "redesigned_pano_url": final_url,
             "seed_used": seed_used,
+            "route_used": route_used,
+            "aesthetic_score": aesthetic_score,
+            "all_scores": all_scores,
         }
 
     except Exception as gen_err:
@@ -388,7 +458,6 @@ def redesign_webhook(item: dict):
       room_id          (required)
       user_id
       compiled_prompt  — FLUX staging script from Design Director / fallback compiler
-      negative_prompt
       image_url        — raw or preprocessed room photo URL
       unsplash_references — list of style reference URLs (up to 5)
       lora_url         — style LoRA URL (direct HTTP URL or fal gallery path)
@@ -409,7 +478,6 @@ def redesign_webhook(item: dict):
 
     user_id = item.get("user_id") or "unknown"
     compiled_prompt = item.get("compiled_prompt") or ""
-    negative_prompt = item.get("negative_prompt") or ""
     # Stacked LoRA stack — JSON array preferred; legacy single-LoRA as fallback
     loras_json = item.get("loras_json") or None
     lora_url = item.get("lora_url") or None
@@ -421,6 +489,7 @@ def redesign_webhook(item: dict):
     change_map_url = item.get("change_map_url") or None
     kept_item_mask_urls = item.get("kept_item_mask_urls") or []
     wall_change_requested = bool(item.get("wall_change_requested", True))
+    floor_change_requested = bool(item.get("floor_change_requested", False))
 
     print(
         f"[webhook] Received redesign request — room={room_id} "
@@ -435,7 +504,6 @@ def redesign_webhook(item: dict):
         room_id=room_id,
         user_id=user_id,
         compiled_prompt=compiled_prompt,
-        negative_prompt=negative_prompt,
         unsplash_references=unsplash_references,
         seed=seed,
         image_url=image_url,
@@ -446,9 +514,10 @@ def redesign_webhook(item: dict):
         change_map_url=change_map_url,
         kept_item_mask_urls=kept_item_mask_urls,
         wall_change_requested=wall_change_requested,
+        floor_change_requested=floor_change_requested,
     )
 
-    return {"status": "queued", "room_id": room_id, "pipeline": "v4"}
+    return {"status": "queued", "room_id": room_id, "pipeline": "v4b"}
 
 
 # ---------------------------------------------------------------------------
@@ -459,7 +528,7 @@ def redesign_webhook(item: dict):
 def main(
     room_id: str = "test-room",
     image_url: str = "",
-    flux_prompt: str = "A warm minimalist bedroom with natural oak furniture, clean linen textiles.",
+    flux_prompt: str = "Replace furniture with warm natural style pieces. Bright natural daylight, professional interior photography.",
 ):
     if not image_url:
         print(
@@ -478,7 +547,6 @@ def main(
         room_id=room_id,
         user_id="local-test",
         compiled_prompt=flux_prompt,
-        negative_prompt="",
         unsplash_references=[],
         seed=None,
         image_url=image_url,

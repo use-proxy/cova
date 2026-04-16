@@ -1,13 +1,18 @@
 /**
- * Design Director — Session 4
+ * Design Director — Phase 5
  *
- * Two Claude Sonnet calls that convert a room photo + style fingerprint +
- * user preferences into a structured staging brief and FLUX script.
+ * Two Claude calls that convert a room photo + style fingerprint +
+ * user preferences into a room-aware design brief and FLUX prompt.
  *
- * Call 1: room image + fingerprint + context → staging JSON (design_brief)
- * Call 2: staging JSON → FLUX staging script, 80-145 words (flux_prompt)
+ * Call 1 (Sonnet, vision): room photo → room analysis JSON (design_brief)
+ *   - Detects room type, wall color, floor type, lighting, size
+ *   - Builds explicit constraints from keep/remove decisions + visual analysis
+ *   - Identifies specific improvement opportunities
  *
- * Model: claude-sonnet-4-5 (pinned — do not change)
+ * Call 2 (Haiku, fast): design_brief + style → compiled_prompt for Kontext Pro
+ *   - Constraints override everything — no uninstructed additions
+ *   - Color coherence: new items complement detected palette
+ *   - Imperative language optimized for FLUX T5 encoder
  */
 
 import Anthropic from "@anthropic-ai/sdk";
@@ -19,53 +24,56 @@ const anthropic = new Anthropic();
 
 // ── Type definitions ──────────────────────────────────────────────────────────
 
-export interface DesignObject {
-  name: string;
-  material: string; // always specific: "walnut" not "wood", "bouclé" not "fabric"
-  position: string; // spatial descriptor: "left foreground beside sofa"
-}
-
-export interface DepthLayer {
-  zone: "foreground" | "midground" | "background";
-  distance: string; // "0-3ft" | "4-8ft" | "8ft+"
-  objects: DesignObject[];
-}
-
 export interface DesignBrief {
+  // Phase 5 room analysis fields
+  room_type: string;
+  existing_palette: string[];
+  wall_color: string;
+  wall_color_hex?: string;
+  floor_type: string;
+  natural_light: "low" | "medium" | "high";
+  natural_light_direction?: string;
+  room_size: "small" | "medium" | "large";
+  style_direction: string;
+  secondary_style: string | null;
+  constraints: string[];
+  opportunities: string[];
+  key_furniture: string[];
+  depth_zones?: {
+    foreground: string;
+    midground: string;
+    background: string;
+  };
+
+  // Backward-compat aliases used by route.ts and design_memory
   roomType: string;
-  styleAnchor: string;
-  weaknesses: string[];         // visual weaknesses identified from photo
-  compensations: string[];      // design moves that address each weakness
   palette: {
-    dominant: string;           // 60% — walls/floor
-    secondary: string;          // 30% — primary furniture
-    accent: string;             // 10% — accessories/highlights
+    dominant: string;
+    secondary: string;
+    accent: string;
+    reasoning?: string;
   };
   lighting: {
-    source: string;             // "floor lamp" | "pendant" | "natural" etc.
-    quality: string;            // "warm diffused" | "raked directional" etc.
-    colorTemp: string;          // "2700K Edison" | "3000K warm-white" | "5000K"
-    shadows: string;            // shadow quality/direction
+    source: string;
+    quality: string;
+    colorTemp: string;
+    shadow_description?: string;
   };
   materialTension: {
-    warm: string;               // e.g. "brushed brass" — always specific
-    cool: string;               // e.g. "honed slate" — always specific
+    warm: string;
+    cool: string;
   };
-  depthLayers: {
-    foreground: DepthLayer;     // 0-3ft
-    midground: DepthLayer;      // 4-8ft
-    background: DepthLayer;     // 8ft+
-  };
-  decorObjects: Array<
-    DesignObject & { depthZone: "foreground" | "midground" | "background" }
-  >;
   budgetTier: "ikea" | "west-elm" | "designer";
-  totalObjectCount: number;
+
   wall_change_requested?: boolean;
   floor_change_requested?: boolean;
-  wall_color?: string;
-  removal_targets?: string[];   // specific visible objects to remove (clutter, dated fixtures, visual harm)
   required_objects?: string[];
+  kept_item_palette?: Array<{
+    label: string;
+    material: string;
+    color: string;
+    dominant_hex?: string;
+  }>;
 }
 
 export interface DesignDirectorInput {
@@ -87,392 +95,173 @@ export interface DesignDirectorInput {
 export interface DesignDirectorOutput {
   stagingJson: DesignBrief;
   fluxPrompt: string;
-  negativePrompt: string;
 }
 
-// ── System prompt: Call 1 — Vision → Staging JSON ────────────────────────────
-const CALL1_SYSTEM = `You are an expert interior designer with 20 years of Architectural Digest experience.
+// ── System prompt: Call 1 — Vision → Room Analysis JSON ─────────────────────
+const CALL1_SYSTEM = `You are an expert room analyst for an AI interior design app. Analyze a room photo and produce a structured design brief. You do NOT decide what furniture to add — Call 2 does that.
+
+━━━ STEP 1: ANALYZE THE ROOM PHOTO ━━━
+
+Detect from visual evidence only:
+- Room type: bedroom, living_room, kitchen, bathroom, home_office, dining_room, nursery, studio
+- Exact wall color as hex approximation AND description ("#A8C4D8 — soft slate blue")
+- Floor material + color ("medium oak hardwood", "beige loop carpet", "grey porcelain tile")
+- Natural light: direction (north/south/east/west), intensity (low/medium/high), quality (warm golden/cool white/diffused)
+- Room dimensions from perspective cues: small (<150sqft), medium (150-300sqft), large (>300sqft)
+- Every structural element: windows (count, size, treatment), doors, ceiling fixtures, built-ins, vents, outlets, columns, beams
+- Existing furniture with materials, colors, and approximate positions
+- Problem areas: bare walls, empty corners, poor lighting zones, clutter, dead spaces, unstyled surfaces
+
+━━━ STEP 2: INTERPRET STYLE FINGERPRINT ━━━
+
+Map the user's style preferences to specific aesthetic decisions:
+- High warmth → warm wood tones (walnut, oak), amber lighting, terracotta accents
+- Low warmth → cool tones (grey, blue, white), crisp whites, polished metals
+- High visual_complexity → layered textures, gallery walls, collected objects, pattern mixing
+- Low visual_complexity → clean surfaces, minimal decoration, negative space
+- High organicness → natural materials (linen, jute, raw wood), abundant plants, handcrafted items
+- Low organicness → manufactured materials (steel, glass, concrete), geometric forms
+- High density → fully furnished, layered accessories, curated collections
+- Low density → sparse, generous negative space, few statement pieces
+- High traditionalism → classic forms, heritage details, antique character
+- Low traditionalism → contemporary lines, forward-looking silhouettes
+- High character → personal expression, cultural references, art-forward
+
+━━━ STEP 3: ANALYZE PERSONALIZATION CONTEXT ━━━
+
+If tech preferences are provided:
+- hasTV=true → TV MUST appear in key_furniture, add constraint prohibiting its removal
+- hasTV=false → add constraint "No television or monitor in this room"
+- audioSetup specified → include audio equipment in key_furniture
+- smartLighting=true → note color temperature preferences for lighting spec
+- hasGamingSetup=true → include gaming peripherals context
+
+If art preferences are provided:
+- Specific art direction → include in opportunities ("wall above bed needs [style] art")
+- Gallery wall preference → note as opportunity
+
+If sensory preferences are provided:
+- plantPresence level → scale plant recommendations in opportunities
+- throwCushionDensity → note textile layering needs
+- windowTreatments=none → add constraint "Do not add curtains or drapes"
+- hasRug=true with style → include in key_furniture
+
+━━━ STEP 4: BUILD CONSTRAINTS (absolute rules for Call 2) ━━━
+
+ALWAYS include these universal constraints:
+- "Do not add any electronics (TV, monitor, speakers) unless the user explicitly requested them"
+- "Do not add window treatments over existing window coverings unless they are in the remove list"
+- "Do not change the floor material unless floor_change_requested is true"
+
+For each KEPT item:
+- "Do not replace, obscure, or cover [item name]"
+- If the kept item is window blinds, shutters, or any window covering, ALSO add:
+  "Do not add curtains, drapes, sheers, or valances — existing window treatment is kept exactly as-is"
+
+For each structural element: "Preserve [element] exactly as-is"
+From tech spec: hasTV=false → "No television in this render"
+
+━━━ STEP 4b: KEPT ITEM PALETTE (for color/material integration) ━━━
+
+For EACH kept item visible in the photo, detect from visual evidence:
+- material: specific material name ("white painted wood", "dark walnut", "brushed nickel", "grey linen")
+- color: dominant color ("white", "dark brown", "cream", "charcoal grey")
+- dominant_hex: hex approximation of the dominant color
+
+Output as kept_item_palette array in JSON:
+  "kept_item_palette": [
+    {"label": "window blinds", "material": "white painted aluminum", "color": "white", "dominant_hex": "#F5F5F0"},
+    {"label": "bed frame", "material": "dark walnut", "color": "dark brown", "dominant_hex": "#3B2518"}
+  ]
+
+This palette is used by Call 2 to ensure new furniture complements kept items.
+
+━━━ STEP 5: BUILD OPPORTUNITIES (specific to THIS room) ━━━
+
+Not generic ("add lighting") but specific:
+- "Empty corner left of window: add tall vertical element (floor lamp or plant)"
+- "Bare wall above bed (approximately 4ft wide): needs art at eye level"
+- "Floor foreground is empty: needs area rug to anchor furniture grouping"
+- "Single overhead light: add layered lighting (floor lamp + table lamp)"
+- "No textiles visible: add throw pillows, draped blanket, textured cushions"
+
+━━━ STEP 6: COLOR PALETTE ━━━
+
+60-30-10 rule based on detected walls and floor:
+- dominant (60%): the existing wall/floor colors — what's already there
+- secondary (30%): complement for primary furniture — must harmonize with walls
+- accent (10%): pop color for accessories — analogous or complementary
+
+Reason explicitly: "Walls are [color], floor is [color], so furniture should be [color] to create [warm/cool/neutral] contrast."
+
+COLOR CLASH REJECTION (apply to palette and key_furniture colors):
+- If walls are cool (blue, grey, green): do NOT use terracotta, rust, or warm orange for large surfaces (rugs, upholstery). Use warm neutrals instead (cream, sand, warm white, natural linen).
+- If walls are warm (cream, beige, yellow): do NOT use cool grey or icy blue for large surfaces.
+- Accent colors (10%) can be warmer/cooler but must be small items only (pillows, ceramics, not rugs).
 
-━━━ PRIORITY HIERARCHY — READ BEFORE ALL ELSE ━━━
+━━━ STEP 7: OUTPUT ━━━
 
-When an "AUTHORITATIVE CLIENT DIRECTIVES" section appears in the user message,
-it is the HIGHEST priority input. It overrides everything below it:
-  → Your aesthetic judgment
-  → The style fingerprint values
-  → Style anchor defaults
-  → Interior design best practices
-  → Everything else in the user message
-
-Rules that are ABSOLUTE when client directives are present:
-1. Named products MUST appear verbatim in your JSON output.
-   "65 inch Samsung Frame TV" → appears as "65 inch Samsung Frame TV wall-mounted"
-   in the appropriate depthLayers objects array. Never paraphrase or generalize named products.
-2. "keep the carpet/walls/floor" → set wall_change_requested: false AND/OR floor_change_requested: false AND
-   the kept element MUST be noted in the compensations array with its current material/color preserved.
-   Default wall_change_requested = true (allow change).
-   Default floor_change_requested = false (preserve unless the user explicitly asked to change the floor material or color).
-3. Material preferences ("dark sleek wood") override the style anchor's defaults for that category.
-
-━━━ INTERIOR DESIGN PRINCIPLES (apply only when not overridden by client) ━━━
-
-You will receive:
-1. A room photo (the user's actual space)
-2. A 12-dimensional style fingerprint
-3. Unsplash reference images (professional interior photos matching the target style)
-
-YOUR JOB: Analyze everything and produce a staging JSON that would make this specific room look like it belongs on the cover of Architectural Digest.
-
-════════════════════════════════════════════════
-REFERENCE IMAGE ANALYSIS (do this first)
-════════════════════════════════════════════════
-
-Before doing anything else, deeply analyze each Unsplash reference image provided. Extract and learn from:
-
-DECORATION DENSITY: Count the exact number of objects on every surface. Note which surfaces are styled vs bare. Your staging must match this density exactly.
-
-LAYERING TECHNIQUE: How many layers of objects exist on each surface? (e.g. coffee table: tray → books → object on books → vase). Replicate this layering depth.
-
-MATERIAL COMBINATIONS: List every material visible and how they are combined. Note warm/cool pairings, matte/shiny contrasts, rough/smooth relationships. Use these exact combinations.
-
-PLANT PLACEMENT: Where exactly are plants positioned? What species, what pot material, what size relative to surrounding furniture? Replicate placement logic.
-
-LIGHTING SOURCES: Count every light source visible. Note color temperature, direction, and shadow patterns. Replicate the lighting layer count.
-
-TEXTILE TECHNIQUE: How are throws draped? How are pillows arranged and in what quantities? What textures are mixed? Copy this exactly.
-
-COLOR DISTRIBUTION: Where does the dominant color sit? Where does the accent appear? Map the 60-30-10 distribution across the actual room geometry.
-
-NEGATIVE SPACE: Which areas are intentionally left empty? Why? Learn the rhythm of styled vs empty in these references.
-
-════════════════════════════════════════════════
-ROOM PHOTO ANALYSIS
-════════════════════════════════════════════════
-
-Analyze the user's room photo for:
-
-ARCHITECTURAL BONES: Ceiling height, window placement and size, door positions, alcoves, built-ins, ceiling features. These are fixed constraints.
-
-CURRENT FURNITURE FOOTPRINT: What exists, where it sits, approximate dimensions. This establishes the spatial logic.
-
-LIGHT QUALITY: Direction of natural light, time of day apparent, existing artificial sources, shadow patterns.
-
-ROOM WEAKNESSES (identify minimum 4, maximum 7):
-- Empty wall voids (walls with nothing on them)
-- Bare floor zones (carpet/floor with no rug or furniture)
-- Lighting flatness (single source, no layers)
-- Corner dead zones (unused corners)
-- Surface clutter vs intentional styling
-- Scale mismatches (furniture too small for wall)
-- Missing vertical elements (nothing drawing eye upward)
-- Color temperature conflicts
-- Missing foreground anchor
-- Missing background depth element
-- Textile poverty (no throws, cushions, rugs)
-- Plant absence
-- Art absence
-
-════════════════════════════════════════════════
-INTERIOR DESIGN PRINCIPLES — NON-NEGOTIABLE
-════════════════════════════════════════════════
-
-60-30-10 COLOR RULE:
-60% dominant: walls + largest furniture + floor
-30% secondary: sofa/bed upholstery + rugs + curtains
-10% accent: cushions + vases + art + small objects
-Never deviate from this ratio.
-
-THREE DEPTH LAYERS — ALL MUST BE POPULATED:
-Foreground (0-3ft from camera): rug edge, coffee table styling, floor object, pouffe, plant at lens level
-Midground (4-8ft): primary furniture, main lighting, primary art, main textile moment
-Background (8ft+): wall treatment, tall plant, floor lamp behind furniture, art grouping, architectural detail
-
-MATERIAL TENSION SYSTEM:
-Always pair one warm material with one cool/contrasting:
-- Warm: walnut, brass, amber glass, terracotta, linen, rattan
-- Cool: marble, concrete, steel, glass, slate, bouclé white
-- Bridge: a third material that connects both (jute, leather, aged brass, natural stone)
-Never use just warm or just cool — tension creates interest.
-
-SURFACE STYLING RULES:
-Coffee table: always tray + 2-3 objects of varying height + one organic element (plant/stone/coral)
-Nightstand: lamp + 1-2 small objects maximum, never bare
-Shelves: books horizontal + vertical + object in front + plant trailing or upright at end
-Windowsill: one object only, never cluttered
-Floor: rug always, never bare carpet in the midground
-
-PLANT RULES:
-- density > 0.6: minimum 3 plants of different species and scale
-- Always vary: one tall (fiddle leaf/monstera/snake plant), one trailing (pothos/string of pearls), one small (succulent/cactus/air plant in vessel)
-- Always specify pot material (terracotta/ceramic/woven basket/concrete/brass)
-- Never say "plant" — always name the species
-
-LIGHTING LAYERS (minimum 2 sources always):
-Primary: overhead ambient (pendant/chandelier/fan with light)
-Secondary: floor lamp OR table lamp (always specify bulb type)
-Accent optional: wall sconce/LED strip/candles
-Always specify color temperature (2700K/3000K/4000K)
-Always specify shadow direction relative to camera
-
-TEXTILE RULES:
-Bed: always duvet + throw + minimum 4 pillows in 2-3 sizes
-Sofa: always minimum 2 throws (one draped arm, one folded) + 3 or 5 pillows never 2 or 4
-Rug: always extend 12-18 inches beyond furniture edge, specify pile height (low/medium/high) and pattern
-
-ACCESSORY GROUPING RULES:
-Groups of 3 or 5 ONLY — never 2, never 4, never 6
-Vary: height + material + shape in every group
-Rule of odds: tallest in back or center, shortest in front
-Triangle composition: objects form invisible triangle
-
-ART RULES:
-Hang art so center is at 57 inches from floor (gallery standard)
-Above sofa: art width = 2/3 of sofa width minimum
-Bedrooms: art above headboard centered, width = headboard width
-Gallery walls: minimum 5 pieces, consistent frame material
-Always specify: frame material + artwork style + dominant color
-
-SCALE RULES:
-Largest furniture anchors the room — everything scales from it
-Pendant light diameter = 1/2 the table/surface below it
-Rug should be large enough that front legs of all furniture sit on it
-Floor plant minimum 4ft tall in rooms with 8ft+ ceilings
-
-════════════════════════════════════════════════
-ROOM TYPE SPECIFIC RULES
-════════════════════════════════════════════════
-
-BEDROOM:
-Primary focal point: headboard wall — always fully styled
-Headboard: upholstered or statement wood, touches ceiling or has art directly above it
-Bedside symmetry: matching or complementary lamps both sides
-Throw: always draped diagonally across foot of bed, never folded flat
-Pillow architecture: 2 euro shams (26x26) + 2 standard (20x20) + 2-3 lumbar/decorative minimum
-Bench or ottoman at foot of bed: always in rooms with space
-Dresser/chest: always has tray + perfume/watch dish + small plant + one tall object (candle/sculpture)
-Full length mirror: lean against wall at angle, never centered flat
-Window treatment: floor to ceiling curtains always, hung 6 inches above window frame to maximize perceived height
-Morning light simulation: describe light as coming from window side, casting soft diagonal shadows across bed
-Ceiling: if fan exists describe as architectural element, add pendant or sconce as secondary source
-
-LIVING ROOM:
-Sofa placement: always floating (not against wall) unless room under 10ft wide
-Coffee table: always centered, styled with tray system
-Side table: one beside sofa arm, one beside chair
-Console/sofa table behind floating sofa: always styled with lamp + art leaning + 3 objects
-TV wall: always flanked by built-ins or shelving or large plants to avoid visual isolation
-Rug: large enough that front legs of sofa AND chairs sit on it
-Throw blanket: one draped over sofa arm, one folded on ottoman
-Curtains: floor to ceiling, hung at ceiling height
-Gallery wall or single oversized piece: always above sofa
-
-OFFICE/STUDY:
-Desk surface: laptop/monitor centered + task lamp right side + small plant left + pen cup + one personal object
-Desk chair: always described (material + color)
-Behind desk wall: either large art centered above monitor OR floating shelves with books + objects + small plant
-Second seating: always include if room allows (reading chair + floor lamp)
-Cable management: described as hidden/managed
-Window: desk perpendicular to window for natural side light
-Bookshelf: books arranged by color AND object groups between sections, trailing plant from top shelf
-
-DINING ROOM:
-Table centerpiece: always present — candles + low vessel + botanical element, never blocking sightlines
-Pendant: always directly above table center, hung 30-34 inches above table surface, diameter = 1/2 table width
-Chairs: always specify material + upholstery if applicable
-Sideboard/buffet: always include if wall allows — styled with art above + objects on surface
-Place settings: if room is staged, describe as set for 2 or 4 with placemats + napkin rings
-Wine/bar cart: always include if budget allows
-
-KITCHEN:
-Counter styling: one side styled, one side functional
-Styled section: fruit bowl or cutting board + herb pots + utensil jar in ceramic + cookbook leaning
-Open shelving: books + ceramics + glass vessels + plants alternating
-Pendant lights above island: always in pairs, specify material
-Backsplash: always describe material and pattern
-
-════════════════════════════════════════════════
-BUDGET TIER MATERIAL GUIDE
-════════════════════════════════════════════════
-
-UNDER $500 (IKEA tier):
-Furniture: IKEA birch/pine, cotton canvas, ceramic from Target, jute rugs, rattan
-Accessories: H&M Home ceramics, IKEA glass vessels, cotton throws, affordable art prints in simple frames
-Never specify designer brands at this tier
-
-$500-2000 (West Elm / CB2 tier):
-Furniture: Article bouclé, West Elm walnut, CB2 brass accents, wool-blend rugs, linen upholstery
-Accessories: CB2 amber glass, West Elm ceramic vessels, quality cotton-linen throws, art prints in wood frames
-Lighting: West Elm pendants, CB2 floor lamps, brass fixtures
-
-OVER $2000 (Designer tier):
-Furniture: custom millwork, Restoration Hardware leather, designer upholstery fabrics, hand-knotted wool rugs
-Accessories: handblown glass, designer ceramics, original art or quality reproduction, cashmere throws
-Lighting: designer pendants, sculptural floor lamps, custom shades
-Specify brand names at this tier (Flos, Hay, Menu, Fritz Hansen, Muuto)
-
-════════════════════════════════════════════════
-USER CHAT INSTRUCTIONS (highest priority — always follow these)
-════════════════════════════════════════════════
-
-When provided in the user message under "USER EXPLICIT PREFERENCES FROM CHAT:", these are the user's own words and MUST override all fingerprint defaults and style assumptions:
-
-- If user said a style direction (e.g. "dark sleek wood", "luxurious", "light and airy") → anchor the ENTIRE design around it. The fingerprint is secondary.
-- If user said "keep walls the same" or similar → set wall_change_requested: false and preserve existing wall color exactly
-- If user mentioned specific wall or floor colors (e.g. "light blue walls", "brown carpet") → note them and do NOT change them
-- If user mentioned specific furniture → incorporate it as a named object in the appropriate depth layer
-- If user specified tech (TV size, mount type, audio) → include as named objects in the staging brief
-- If user gave keep instructions → honor them; do not redesign what they want kept
-
-════════════════════════════════════════════════
-WEAKNESS COMPENSATION SYSTEM
-════════════════════════════════════════════════
-
-For EACH weakness identified, provide an EXACT compensation:
-
-Empty wall void → oversized art (specify exact dimensions relative to wall width) OR gallery wall (specify piece count) OR large-scale architectural mirror
-
-Flat overhead lighting → add floor lamp behind primary furniture + table lamp on surface + specify both at 2700K to create warm layered glow with diagonal shadow play
-
-Bare floor zone → layer rugs (jute base + smaller patterned on top) OR extend existing rug + add floor plant anchor
-
-Corner dead zone → floor plant minimum 4ft + woven basket beneath + wall sconce above OR floor lamp + side table + small plant grouping
-
-Missing vertical element → floor-to-ceiling curtains hung at ceiling + tall plant + vertical art OR tall floor lamp
-
-Scale mismatch → specify larger replacement furniture OR add visual weight with oversized art to correct proportion
-
-Missing foreground → rug edge at camera + floor object (tray with candle grouping / stack of books / large plant)
-
-════════════════════════════════════════════════
-ROOM-TYPE STAGING RULES:
-
-BEDROOM:
-- Primary focal point: bed headboard wall
-- Camera: foot-of-bed level, slightly elevated
-- Nightstands must be symmetrical if two are present
-- Throw placed diagonally across lower third of bed
-- Art centered above headboard at 57 inches from floor
-- Always include: pillow layering system, one bedside light source
-
-LIVING ROOM:
-- Primary focal point: sofa wall or fireplace
-- Camera: standing eye level (5ft), wide angle
-- Coffee table objects in triangle arrangement
-- Rug must extend 18 inches beyond sofa on each side
-- Always include: throw on sofa arm, coffee table object grouping
-
-HOME OFFICE:
-- Primary focal point: desk wall
-- Camera: slightly above desk level
-- Monitor or screen always present as named object
-- Task lighting required as named object
-- Always include: one plant, one desk accessory grouping
-
-KITCHEN:
-- Primary focal point: counter or island
-- Camera: counter height (36 inches)
-- Always include: fruit bowl or plant on counter, open cookbook or cutting board, pendant lighting above island
-
-BATHROOM:
-- Camera: sink level
-- Always include: folded towels, single plant, soap dispenser
-
-════════════════════════════════════════════════
-FINGERPRINT DIMENSION MAPPINGS — apply all thresholds:
-- colorTemperature > 0.7   → warm amber/honey palette, 2700K Edison lighting
-- colorTemperature 0.4-0.7 → balanced neutrals, 3000K warm-white lighting
-- colorTemperature < 0.4   → cool crisp slate palette, 5000K blue-white lighting
-- density > 0.7            → MAXIMUM 12 objects, MINIMUM 8 objects in decorObjects array. Count before submitting — over 12 is a violation.
-- density 0.4-0.7          → MAXIMUM 8 objects, MINIMUM 5 objects in decorObjects array. Count before submitting — over 8 is a violation.
-- density < 0.4            → MAXIMUM 4 objects, MINIMUM 2 objects in decorObjects array. Count before submitting — over 4 is a violation.
-- nature > 0.7             → 3 or more named plant species, natural materials dominate
-- texture > 0.7            → woven, rough, handcraft materials throughout
-- material > 0.7           → designer-quality materials only, no accessible-tier substitutes
-- spatial_openness > 0.7   → furniture floats with generous breathing room between pieces
-
-FORBIDDEN WORDS — never output these in any field:
-beautiful, stunning, gorgeous, modern, contemporary, cozy, luxurious, amazing, elegant, chic, stylish, nice, lovely, perfect, exquisite
-
-MATERIAL SPECIFICITY — never use generic names:
-- never "wood"   → always "walnut", "white oak", "teak", "maple"
-- never "fabric" → always "bouclé", "linen", "velvet", "cashmere"
-- never "stone"  → always "Carrara marble", "raw concrete", "honed slate"
-- never "metal"  → always "brushed brass", "aged steel", "matte black iron"
-- never "plant"  → always name the species
-
-════════════════════════════════════════════════
-REMOVAL TARGETS — populate from actual photo analysis
-════════════════════════════════════════════════
-
-Identify 3-6 specific objects visible in the photo that are clutter, dated, or visually harmful.
-Name the actual object — not "clutter". Examples: "ceiling fan", "wall decal", "fluorescent strip light", "visible power cord", "popcorn ceiling", "dated valance", "mini blinds".
-Do NOT include furniture or items the user may want to keep.
-Do NOT include fixed architectural elements (windows, doors, load-bearing walls).
-Aim for 3-6 named objects. If fewer than 3 are visible, list only what you see.
-
-OUTPUT: Return ONLY a valid JSON object matching this exact schema.
-No markdown fences, no explanation, no preamble. Only the JSON.
+Return ONLY valid JSON. No markdown fences. No explanation.
 
 {
+  "room_type": string,
+  "existing_palette": [string, string, string],
+  "wall_color": string,
+  "wall_color_hex": string,
+  "floor_type": string,
+  "natural_light": "low" | "medium" | "high",
+  "natural_light_direction": string,
+  "room_size": "small" | "medium" | "large",
+  "wall_change_requested": boolean,
+  "floor_change_requested": boolean,
+  "style_direction": string,
+  "secondary_style": string | null,
+  "constraints": [string, ...],
+  "opportunities": [string, ...],
+  "key_furniture": [string, ...],
+  "depth_zones": {
+    "foreground": string,
+    "midground": string,
+    "background": string
+  },
+  "kept_item_palette": [{"label": string, "material": string, "color": string, "dominant_hex": string}, ...],
   "roomType": string,
-  "styleAnchor": string,
-  "weaknesses": [string, ...],
-  "compensations": [string, ...],
   "palette": {
     "dominant": string,
     "secondary": string,
-    "accent": string
+    "accent": string,
+    "reasoning": string
   },
   "lighting": {
     "source": string,
     "quality": string,
     "colorTemp": string,
-    "shadows": string
+    "shadow_description": string
   },
   "materialTension": {
     "warm": string,
     "cool": string
   },
-  "depthLayers": {
-    "foreground": {
-      "zone": "foreground",
-      "distance": "0-3ft",
-      "objects": [{ "name": string, "material": string, "position": string }]
-    },
-    "midground": {
-      "zone": "midground",
-      "distance": "4-8ft",
-      "objects": [{ "name": string, "material": string, "position": string }]
-    },
-    "background": {
-      "zone": "background",
-      "distance": "8ft+",
-      "objects": [{ "name": string, "material": string, "position": string }]
-    }
-  },
-  "decorObjects": [
-    {
-      "name": string,
-      "material": string,
-      "position": string,
-      "depthZone": "foreground" | "midground" | "background"
-    }
-  ],
-  "budgetTier": "ikea" | "west-elm" | "designer",
-  "totalObjectCount": number,
-  "wall_change_requested": boolean,
-  "floor_change_requested": boolean,
-  "wall_color": "new wall color and finish description — only populated if wall_change_requested is true, empty string otherwise",
-  "removal_targets": [
-    "specific visible object name (ceiling fan, wall decal, power cord, etc.)",
-    ...
-  ]
-}`;
+  "budgetTier": "ikea" | "west-elm" | "designer"
+}
 
-// ── Universal quality guards — always last in negative_prompt ────────────────
-const UNIVERSAL_QUALITY_GUARDS =
-  "warped geometry, floating furniture, inconsistent lighting, overexposed windows, " +
-  "blown highlights, blurry textures, watermark, text overlay, people, cartoonish, " +
-  "illustration style, render artifact, fisheye distortion";
+RULES:
+- room_type and roomType must be identical
+- wall_change_requested defaults to false
+- floor_change_requested defaults to false
+- key_furniture: EXACT materials and colors for each piece ("dark walnut low-profile platform bed with cream linen headboard", not "a bed")
+  Room size determines count:
+    small room → 3-5 pieces maximum (1 anchor + 2-4 supporting/accent)
+    medium room → 5-7 pieces
+    large room → 6-8 pieces
+- constraints: minimum 5 entries — 3 universal + room-specific
+- opportunities: minimum 4 specific improvements with locations
+- depth_zones: describe what should be in foreground (0-3ft from camera), midground (3-8ft), background (8ft+)
+- palette.reasoning: one sentence explaining why these colors work with the detected walls/floor
+- lighting.shadow_description: describe shadow quality ("diagonal shadows from east window", "soft diffused fill")
+- Never use generic materials: "walnut" not "wood", "bouclé" not "fabric", "brushed brass" not "metal"
+- Never use forbidden words: beautiful, stunning, gorgeous, modern, contemporary, cozy, luxurious
+- If any field would be "undefined", use a sensible default instead`;
 
 // ── Style DNA blocks — open every prompt with the style's visual signature ────
 // FLUX weighs earlier tokens heavily. These 13-18 word blocks lock style before
@@ -489,121 +278,227 @@ export const STYLE_DNA_BLOCKS: Record<string, string> = {
   cvdco: "Art deco interior. Lacquered surfaces, geometric inlay, velvet jewel tones, dramatic directional light.",
 };
 
-// ── System prompt: Call 2 — Staging JSON → FLUX Script (plain text) ─────────
-const CALL2_SYSTEM = `CRITICAL: This prompt will be used with FLUX Kontext Pro, an image editing model.
-FLUX weighs the FIRST tokens most heavily. Removals and preservations MUST come before any additions.
+// ── System prompt: Call 2 — Design Brief → Kontext-optimized prompt ─────────
+const CALL2_SYSTEM = `You produce FLUX Kontext Pro prompts for interior design renders. Output ONLY the prompt text — no JSON, no markdown, no labels.
 
-You are a FLUX Kontext Pro prompt engineer specializing in interior design photography.
-Convert a design brief JSON into a FLUX-optimized staging script.
+═══════════════════════════════════════════════════════════════════
+ AESTHETIC SYSTEM RULES — READ BEFORE GENERATING
+ These 6 rules apply universally to every room type.
+ Violating any rule = invalid output.
+═══════════════════════════════════════════════════════════════════
 
-━━━ FLUX PROMPT RULES ━━━
+RULE 1 — COLOR COHERENCE (apply before naming any color):
+  Step A: List persistent colors: wall_color, floor color, kept item colors.
+  Step B: For each new item, reason: "Wall is [X], floor is [Y], kept items are [Z].
+    Therefore [item] should be [color] because it is complementary/analogous/neutral to all three."
+  Step C: Reject any color that clashes with ANY persistent color:
+    - If walls are cool blue/grey/green: NEVER use terracotta, rust, warm orange,
+      or burnt sienna for LARGE surfaces (rugs, upholstery, throws). These are
+      only acceptable as small accent items (a single pillow, a small vase).
+    - Cool grey clashes with warm wood floors
+    - Two high-saturation surfaces in the same room = visual noise
+  Step D: For cool-walled rooms, prefer: cream, sand, warm white, natural linen,
+    soft camel, muted sage — warm neutrals that bridge without clashing.
+  Step E: Terracotta/rust is ONLY allowed on items smaller than 14 inches
+    when walls are blue/grey/green.
 
-OUTPUT: Only the prompt text. Nothing else. No labels. No markdown. No JSON wrapper.
+RULE 2 — ONE FOCAL POINT (apply before placing furniture):
+  Step A: Identify primary focal point by room type:
+    bedroom=bed wall, living_room=seating facing TV/fireplace,
+    dining_room=table center, home_office=desk wall,
+    kitchen=island/range wall, bathroom=vanity wall.
+  Step B: Categorize every piece:
+    PRIMARY=focal anchor (1 only), SUPPORTING=frames eye to primary (max 3),
+    ACCENT=small, does not compete (plants, lamps, art).
+  Step C: No SUPPORTING piece may be taller, wider, or more visually dominant
+    than the PRIMARY piece. A bookshelf taller than headboard=competing.
+  Step D: Side wall furniture max 60% height of primary focal piece.
+    If room_size=small, max 1 piece on side walls.
 
-LENGTH: 60-90 words. Research confirms this is the sweet spot for interior design.
-Longer prompts exceed FLUX's effective processing window — more is not better.
+RULE 3 — PHYSICAL LIGHT SOURCES (always specify visible fixtures):
+  Every prompt must describe at least TWO physical light sources:
+  Primary: natural light with direction + color temp + shadow description.
+    Example: "morning light from east window casting diagonal shadows at 5600K"
+  Secondary: a physically visible artificial fixture.
+    Example: "brass arc floor lamp pooling 2700K warm white on nightstand"
+  NEVER use alone: "warm ambient lighting", "professional lighting", "well-lit".
+  ALWAYS specify: direction + source fixture + color temperature + shadow quality.
 
-FORMAT: Natural language prose — NOT comma-separated keywords.
-FLUX uses a T5 text encoder that processes natural language. Keyword lists perform
-worse than descriptive sentences. Write how a photographer would brief a shot.
+RULE 4 — KEPT ITEM INTEGRATION (apply when kept_item_palette exists):
+  Read kept_item_palette from the design brief.
+  Every new furniture piece must be materially compatible with kept items:
+  - Kept item is white/light → new pieces in warm naturals (cream, light oak, linen), not dark walnut
+  - Kept item is dark wood → new pieces in cream/linen/brass, not competing dark tones
+  - Kept item is metal/industrial → new pieces in similar finish family
+  Never create high-contrast clashes between kept and new items in the same zone.
 
-TOKEN WEIGHT: FLUX weighs earlier tokens more heavily.
-Removals and preservations get MAXIMUM weight — they must be the very first tokens.
-Structure: removals → preservations → primary furniture transformation → additions → camera spec.
+RULE 5 — ROOM SIZE FURNITURE LIMITS (adapt to detected room_size):
+  small (room_size="small"):
+    PRIMARY: 1 anchor. SUPPORTING: max 2 pieces under 48" tall.
+    ACCENT: max 3 small items. No large bookcases, no sectionals.
+  medium (room_size="medium"):
+    PRIMARY: 1 anchor. SUPPORTING: max 3-4 pieces.
+    ACCENT: up to 5. One statement piece OK if it supports focal point.
+  large (room_size="large"):
+    PRIMARY: 1 anchor + optional secondary seating area.
+    SUPPORTING: up to 5. ACCENT: up to 7. Statement pieces on side walls OK.
 
-FORBIDDEN WORDS: beautiful, stunning, gorgeous, amazing, cozy, luxurious, modern,
-contemporary, nice, elegant, perfect. These are meaningless to FLUX's T5 encoder.
+RULE 6 — BILATERAL BALANCE (apply around anchor pieces):
+  bedroom: bed must have nightstand/surface on each accessible side.
+    If both sides accessible: matching or complementary pieces on each side.
+    If one side against wall: single nightstand acceptable.
+  living_room: sofa must have side table or lamp on at least one end.
+    Preferred: balanced elements on both ends.
+  Universal: no anchor piece should have one heavily styled side and
+    one completely bare side unless physically blocked by wall/window.
 
-DO NOT OUTPUT a negative prompt. FLUX does not support them and they throw API errors.
-Write positive descriptions only: "clean minimal surfaces" not "no clutter".
+═══════════════════════════════════════════════════════════════════
 
-━━━ REQUIRED 5-LINE PROMPT STRUCTURE ━━━
+━━━ STEP 0: KEPT ITEM EXCLUSION (read BEFORE writing anything) ━━━
 
-Follow this EXACT line structure. The user message will provide pre-built lines for
-removal instructions and preservation instructions — copy them VERBATIM as Lines 1-2.
+CRITICAL: Never describe a kept item in your furniture spec.
+Read the KEPT ITEMS list from the user message. These items appear ONLY in
+the preservation clause ("Keep bed...exactly unchanged") and NOWHERE ELSE
+in your output. They are invisible to your furniture generation.
 
-Line 1 — REMOVAL INSTRUCTIONS (copy verbatim from "REMOVAL LINE" in user message):
-  "Remove ceiling fan. Remove wall letters. Remove desk chair."
-  One sentence per item. These MUST be the very first words of the prompt.
-  If no removal line is provided, skip this line entirely.
+Examples:
+  - If bed is kept → do NOT write about the bed in your furniture body.
+    No "platform storage bed anchors the room." It only appears in "Keep bed...unchanged."
+  - If ceiling fan is kept → do NOT describe it in your lighting spec.
+  - If window blinds are kept → do NOT mention them in soft furnishing or window sections.
 
-Line 2 — FLOOR/WALL PRESERVATION (copy verbatim from "PRESERVATION LINE" in user message):
-  "Keep light blue walls. Keep beige carpet."
-  If no preservation line is provided, skip this line entirely.
+Kept items are already perfect. Focus ONLY on what is being added to empty spaces.
+Any sentence in your furniture/lighting/textile body that names a kept item = invalid output.
 
-Line 3 — PRIMARY FURNITURE TRANSFORMATION:
-  "Replace bed with dark walnut platform bed with cream linen headboard."
-  Use imperative transformation language. Include specific materials.
-  Embed the LoRA style trigger word naturally here.
+━━━ STEP 1: READ CONSTRAINTS — ABSOLUTE RULES (do this FIRST) ━━━
 
-Line 4 — ADD NEW ELEMENTS:
-  "Add brass floor lamp beside bed. Add abstract art above headboard."
-  Include lived-in details and named products from client directives.
+Read EVERY constraint from design_brief.constraints. Write each one down mentally.
+Constraints OVERRIDE all style preferences, DNA blocks, and style anchors.
+If a constraint says "do not add curtains", the word "curtain" CANNOT appear in your output.
+If a constraint says "do not add window treatments", no sheer/drape/curtain/valance language.
+Any constraint violation = invalid output that will be rejected.
 
-Line 5 — CAMERA LINE (always last):
-  "Shot on Hasselblad X2D 100C, 24mm tilt-shift at f/8."
-  Use a real camera + lens that matches the aesthetic:
-  - Japandi/minimal: "Shot on Hasselblad X2D 100C, 24mm tilt-shift at f/8"
-  - Industrial/dark: "Shot on Sony A7R V, 16mm at f/5.6"
-  - Luxury/editorial: "Shot on Phase One IQ4 150MP, 28mm tilt-shift at f/8"
-  - Bright/airy: "Shot on Fujifilm GFX 100S, 23mm at f/11"
+After writing your prompt, re-read every constraint and verify NO sentence violates ANY of them.
+If any sentence would violate a constraint, DELETE that sentence entirely.
 
-━━━ RULES FOR EACH ELEMENT ━━━
+Specifically PROHIBITED unless user explicitly requested:
+- Television, monitor, speakers (check tech preferences)
+- Curtains, drapes, sheers, or valances over existing window blinds/shutters/shades
+- Ottoman, bench, or extra seating not in the key_furniture list
+- Additional windows, doors, fireplaces, built-in elements
 
-MATERIALS (required — specific, never generic):
-✓ "warm walnut with visible grain" ✗ "wood"
-✓ "aged terracotta glaze" ✗ "ceramic"
-✓ "cream bouclé" ✗ "fabric"
-✓ "brushed unlacquered brass" ✗ "metal"
-✓ "pale ash veneer" ✗ "light wood"
+ONLY include furniture items that appear in key_furniture from the design brief.
+Do NOT invent additional furniture beyond what is listed.
 
-LIVED-IN DETAIL (required — prevents sterile showroom look):
-One specific small object that implies human habitation:
-✓ "a stack of art books on the coffee table"
-✓ "a wool throw draped over the armrest"
-✓ "a ceramic carafe on the bedside table"
-Must be plausible for the room's budget tier.
+━━━ STEP 2: BUILD REMOVAL CLAUSE (first 20 words) ━━━
 
-LIGHTING (include in Line 3 or 4 — describe interaction with surfaces):
-✓ "soft morning light raking across the linen headboard"
-✓ "warm Edison light casting long shadows across reclaimed oak"
-✗ "good lighting" (meaningless)
+Copy the REMOVAL LINE verbatim from the user message as the first words.
+If no removal line → skip entirely. Never invent removals.
 
-STYLE TRIGGER (required if LoRA trigger provided):
-Embed the trigger word NATURALLY in Line 3 prose — not bolted on at the end.
-✓ "Replace with warm cvwmn walnut platform bed..."
-✗ "...photorealistic interior. cvwmn interior."
+━━━ STEP 3: BUILD PRESERVATION CLAUSE ━━━
 
-NAMED PRODUCTS (from client directives):
-If the staging JSON depthLayers contain named client products, include them VERBATIM:
-✓ "65 inch Samsung Frame TV wall-mounted above low credenza"
-✗ "large smart TV on the wall"
+Copy the PRESERVATION LINE verbatim from the user message.
+Include wall color + floor type descriptions from the design_brief.
 
-WALL COLORS: Read wall_change_requested from staging JSON.
-- If true: include new wall color in Line 2 preservation line.
-- If false or absent: do NOT mention wall color.
+━━━ STEP 4: BUILD ROOM-TYPE-SPECIFIC FURNITURE ━━━
 
-FLOORING: Read floor_change_requested from staging JSON.
-- If false or absent: floor preservation is handled by Line 2 (already provided).
-  Do NOT override or contradict the preservation line.
-- If true: include new floor treatment in Line 3.
+Use room_type from the brief to determine the anchor piece:
+- bedroom → bed spec (frame material, headboard, bedding description)
+- living_room → sofa spec (upholstery, cushion style, throw)
+- kitchen → counter/island styling (accessories, not replacement)
+- bathroom → vanity/bath accessories (towels, plants, candles)
+- home_office → desk spec (surface material, chair, task lighting)
+- dining_room → table spec (material, chairs, overhead light)
 
-EDITORIAL QUALITY CUE (append to Line 5):
-- "Architectural Digest editorial photograph"
+For EACH piece from key_furniture, specify:
+- Exact material: "matte dark walnut" not "wood"
+- Exact color from palette.secondary or palette.accent
+- Position relative to room elements
 
-━━━ VERIFY BEFORE RESPONDING ━━━
-☐ Output is plain text only — no JSON, no markdown, no labels
-☐ Word count is 60-90 (count every word)
-☐ Line 1 starts with removal instructions (verbatim from user message) — these are the FIRST words
-☐ Line 2 has preservation instructions (verbatim from user message)
-☐ Camera spec is at the END (Line 5), not the beginning
-☐ Required verbatim objects included exactly as specified
-☐ Contains at least one lived-in detail
-☐ Trigger word embedded naturally in prose
-☐ No forbidden words
-☐ All materials specific — no "wood", "fabric", "stone", "metal"
-☐ No negative language except removal instructions on Line 1
-☐ Ends with camera spec + "Architectural Digest editorial photograph"`;
+Color coherence rule: Read palette.reasoning. Walls are [wall_color], floor is [floor_type].
+Furniture colors must complement — never clash. Use palette.secondary for large pieces,
+palette.accent for small accessories.
+
+━━━ STEP 5: POPULATE ALL THREE DEPTH ZONES ━━━
+
+Read depth_zones from the brief. Ensure the prompt covers:
+
+FOREGROUND (0-3ft from camera):
+- Area rug with specific pattern and color (if not prohibited by constraints)
+- Any foreground accent piece or plant
+
+MIDGROUND (3-8ft):
+- Primary furniture from Step 4
+- Secondary pieces (side tables, lamps)
+- Lighting fixtures with color temperature from lighting.colorTemp
+
+BACKGROUND (8ft+):
+- Wall art (ALWAYS include unless constraints prohibit)
+- Plants (ALWAYS include at least one unless sensory preferences say none)
+- Architectural detail treatment
+
+━━━ STEP 6: LIGHTING (MANDATORY — must include both sources) ━━━
+
+You MUST describe exactly TWO light sources per RULE 3:
+SOURCE 1 (natural): "[direction] light from [window/skylight] at [color temp]K casting [shadow description]"
+  Use lighting.source and natural_light_direction from the brief.
+  Example: "Afternoon west light from window at 5000K casting diagonal shadows across bed."
+SOURCE 2 (artificial): "[fixture name] [position] casting [color temp]K [quality]"
+  Must be a physically named fixture from key_furniture.
+  Example: "Dark walnut table lamp on nightstand casting 2700K warm glow."
+
+Do NOT skip either source. Both must appear in your output.
+
+━━━ STEP 7: SOFT FURNISHINGS + LIVED-IN DETAILS ━━━
+
+ALWAYS include (unless constraints prohibit):
+- At least one throw or blanket draped naturally
+- Textured cushions or pillows (2-3, varied sizes)
+- One organic element (plant, natural material, flowers)
+- One lived-in detail (stack of books, ceramic carafe, folded magazine)
+
+━━━ STEP 8: PHOTOGRAPHY SPEC (MANDATORY — always the last sentence) ━━━
+
+The FINAL sentence of your output MUST be exactly:
+"Shot on Hasselblad X2D 100C, 24mm tilt-shift at f/8, perfect exposure, professional architectural photography, Architectural Digest quality, no people, no text."
+
+Copy this verbatim. Do not omit it. Do not paraphrase it. It must be the last sentence.
+
+━━━ STEP 9: VALIDATE (critical — do this carefully) ━━━
+
+Before returning, verify EACH of these:
+1. Re-read EVERY constraint from Step 1. For each constraint, scan your output for violations.
+   - If "do not add curtains" → search for curtain/drape/sheer/valance in your output
+   - If "do not replace [item]" → ensure that item is not mentioned as being replaced
+2. Every furniture item in your output exists in key_furniture — no invented additions
+3. Contains room-type-appropriate anchor piece from Step 4
+4. Contains at least one element in each depth zone
+5. Contains lighting with color temperature
+6. Contains photography spec at end
+7. Contains no "undefined" strings
+8. Total length 120-200 words (Kontext Pro optimal range)
+9. FORBIDDEN WORDS: beautiful, stunning, gorgeous, modern, contemporary, cozy, luxurious
+10. Plain text only — no JSON, no markdown, no labels
+
+11. KEPT ITEM CHECK: Re-read the KEPT ITEMS list. For each kept item label,
+    scan your furniture body (everything between preservation clause and photography spec).
+    If ANY kept item label appears in the body, DELETE that sentence.
+
+If ANY violation found in step 1, 2, or 11, DELETE the offending sentence and continue.`;
+
+// ── Prompt sanitization — strip "undefined" fragments ────────────────────────
+
+function sanitizePrompt(prompt: string): string {
+  return prompt
+    // Remove undefined fragments
+    .replace(/\bundefined\b[\s\w]*[,.]?/g, '')
+    // Remove dangling sentence fragments starting with Existing/Current/Original
+    // (e.g. "Existing white" with no completing noun/verb)
+    .replace(/\b(Existing|Current|Original)\s+\w+\s*[,.]?\s*/gi, '')
+    // Collapse multiple spaces/newlines
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
 // ── Word ceiling enforcement ──────────────────────────────────────────────────
 
@@ -611,11 +506,13 @@ EDITORIAL QUALITY CUE (append to Line 5):
  * Trims a FLUX prompt to maxWords while preserving the camera spec ending.
  * The camera spec begins at the last "Shot on" occurrence.
  */
-function enforceWordCeiling(prompt: string, maxWords: number = 90): string {
+function enforceWordCeiling(prompt: string, maxWords: number = 200): string {
   const words = prompt.split(/\s+/).filter(Boolean);
   if (words.length <= maxWords) return prompt;
 
-  const shotOnIdx = prompt.lastIndexOf("Shot on");
+  // Find camera spec — may start with "Shot on" or "Shot at"
+  let shotOnIdx = prompt.lastIndexOf("Shot on");
+  if (shotOnIdx === -1) shotOnIdx = prompt.lastIndexOf("Shot at");
   if (shotOnIdx === -1) {
     // No camera spec — hard truncate at word boundary
     return words.slice(0, maxWords).join(" ");
@@ -642,14 +539,6 @@ function enforceWordCeiling(prompt: string, maxWords: number = 90): string {
   }
 
   return (kept.trimEnd() + " " + cameraSpec).trim();
-}
-
-// ── Density-based object count limits ────────────────────────────────────────
-
-function getMaxObjectsForDensity(density: number): number {
-  if (density > 0.7) return 12;
-  if (density >= 0.4) return 8;
-  return 4;
 }
 
 // ── Fingerprint dimension helpers ─────────────────────────────────────────────
@@ -749,201 +638,154 @@ function buildFingerprintContext(fp: StyleFingerprint): string {
   return `User style preferences: ${parts.join(", ")}`;
 }
 
-// ── Call 1: Vision analysis → staging JSON ───────────────────────────────────
+// ── Call 1: Vision analysis → room analysis JSON ────────────────────────────
 
 async function callDesignBriefFromImage(
   input: DesignDirectorInput,
 ): Promise<DesignBrief> {
-  const { imageUrl, fingerprint, roomType, styleAnchor, budgetMin, budgetMax, context, chatContext } = input;
+  const { imageUrl, fingerprint, styleAnchor, budgetMin, budgetMax, context } = input;
 
   const budgetTier = resolveBudgetTier(budgetMin, budgetMax);
   const fingerprintContext = buildFingerprintContext(fingerprint);
 
-  // Build context summary from RenderContext if available
-  const contextSummary: string[] = [];
-  if (context?.artBrief?.hasArtDirection) {
-    contextSummary.push(
-      `Art direction: ${context.artBrief.visualDirection ?? "not specified"}`,
-    );
+  // Resolve chat history for user preferences
+  const resolvedChatHistory = input.chatHistory?.trim() || null;
+
+  // Build keep/remove section
+  const keepItems = input.keepItems ?? [];
+  const removeItems = input.removeItems ?? [];
+
+  const keepRemoveSection = (keepItems.length + removeItems.length) > 0
+    ? `━━━ KEEP / REMOVE DECISIONS (from user) ━━━
+Items to KEEP unchanged: ${keepItems.length > 0 ? keepItems.join(", ") : "none"}
+Items to REMOVE: ${removeItems.length > 0 ? removeItems.join(", ") : "none"}
+
+For each KEPT item, add a constraint: "Do not replace or obscure [item name]"
+`
+    : "";
+
+  // Wall/floor preferences from render context
+  const wallPref = context?.wall_change_requested
+    ? `Wall change: yes${context.wall_color_preference ? ` (requested: ${context.wall_color_preference})` : ""}`
+    : "Wall change: no (preserve existing walls)";
+  const floorPref = "Floor change: no (preserve existing floor unless user explicitly asked)";
+
+  // Extract personalization data from renderContext
+  const techSpec = (context as Record<string, unknown> | null)?.techSpec as {
+    hasTV?: boolean;
+    audioSetup?: string;
+    smartLighting?: boolean;
+    hasGamingSetup?: boolean;
+    hasWorkFromHome?: boolean;
+    tvSizeInches?: number;
+  } | null | undefined;
+
+  const sensoryProfile = (context as Record<string, unknown> | null)?.sensoryProfile as {
+    plantPresence?: string;
+    throwCushionDensity?: number;
+    windowTreatments?: string;
+    hasRug?: boolean;
+    rugStyle?: string;
+    overallDensity?: string;
+  } | null | undefined;
+
+  const artBrief = (context as Record<string, unknown> | null)?.artBrief as {
+    hasArtDirection?: boolean;
+    visualDirection?: string;
+    frameStyle?: string;
+    placement?: string;
+    galleryWall?: boolean;
+  } | null | undefined;
+
+  const identityBrief = (context as Record<string, unknown> | null)?.identityBrief as {
+    moodTarget?: string;
+    moodKeywords?: string[];
+  } | null | undefined;
+
+  // Build personalization section for Call 1
+  const personalizationParts: string[] = [];
+  if (techSpec) {
+    const techLines: string[] = [];
+    if (techSpec.hasTV === true) techLines.push(`hasTV: true (${techSpec.tvSizeInches ?? 55} inch)`);
+    else if (techSpec.hasTV === false) techLines.push("hasTV: false — NO television");
+    if (techSpec.audioSetup && techSpec.audioSetup !== "none") techLines.push(`audioSetup: ${techSpec.audioSetup}`);
+    if (techSpec.smartLighting) techLines.push("smartLighting: true");
+    if (techSpec.hasGamingSetup) techLines.push("hasGamingSetup: true");
+    if (techSpec.hasWorkFromHome) techLines.push("hasWorkFromHome: true");
+    if (techLines.length > 0) personalizationParts.push(`Tech preferences:\n${techLines.join("\n")}`);
   }
-  if (context?.techSpec?.smartLighting) {
-    contextSummary.push("Smart lighting integration requested");
+  if (sensoryProfile) {
+    const sensoryLines: string[] = [];
+    if (sensoryProfile.plantPresence) sensoryLines.push(`plantPresence: ${sensoryProfile.plantPresence}`);
+    if (sensoryProfile.throwCushionDensity) sensoryLines.push(`throwCushionDensity: ${sensoryProfile.throwCushionDensity}/5`);
+    if (sensoryProfile.windowTreatments) sensoryLines.push(`windowTreatments: ${sensoryProfile.windowTreatments}`);
+    if (sensoryProfile.hasRug) sensoryLines.push(`rug: yes${sensoryProfile.rugStyle ? ` (${sensoryProfile.rugStyle})` : ""}`);
+    if (sensoryProfile.overallDensity) sensoryLines.push(`density: ${sensoryProfile.overallDensity}`);
+    if (sensoryLines.length > 0) personalizationParts.push(`Sensory preferences:\n${sensoryLines.join("\n")}`);
   }
-  if (context?.sensoryProfile?.hasRug) {
-    contextSummary.push(
-      `Rug requested: ${context.sensoryProfile.rugStyle ?? "any style"}, ${context.sensoryProfile.rugSize ?? "any size"}`,
-    );
+  if (artBrief?.hasArtDirection) {
+    const artLines: string[] = [];
+    if (artBrief.visualDirection) artLines.push(`Art direction: ${artBrief.visualDirection}`);
+    if (artBrief.frameStyle) artLines.push(`Frame style: ${artBrief.frameStyle}`);
+    if (artBrief.galleryWall) artLines.push("Gallery wall: yes");
+    if (artLines.length > 0) personalizationParts.push(artLines.join("\n"));
   }
-  if (context?.sensoryProfile?.plantPresence) {
-    contextSummary.push(
-      `Plants requested: ${context.sensoryProfile.plantSpecies?.join(", ") ?? "any species"}`,
-    );
+  if (identityBrief?.moodTarget) {
+    personalizationParts.push(`Mood target: ${identityBrief.moodTarget}`);
   }
-  if (context?.identityBrief?.moodTarget) {
-    contextSummary.push(`Mood target: ${context.identityBrief.moodTarget}`);
-  }
-  // Wall color change preference
-  if (context?.wall_change_requested) {
-    contextSummary.push(
-      `Wall color change requested: yes${context.wall_color_preference ? `. Requested wall color: ${context.wall_color_preference}` : ""}`,
-    );
-  } else {
-    contextSummary.push("Wall color change requested: no");
+  if (identityBrief?.moodKeywords?.length) {
+    personalizationParts.push(`Mood keywords: ${identityBrief.moodKeywords.join(", ")}`);
   }
 
-  // Check for design_memory in render_context for refinement continuity
+  const personalizationSection = personalizationParts.length > 0
+    ? `━━━ PERSONALIZATION CONTEXT (from user's tab selections) ━━━
+${personalizationParts.join("\n\n")}
+
+Use these to inform constraints, opportunities, and key_furniture.
+`
+    : "";
+
+  // User chat section
+  const chatSection = resolvedChatHistory
+    ? `━━━ USER PREFERENCES (highest priority) ━━━
+${resolvedChatHistory}
+
+Parse these preferences and incorporate into constraints and style_direction.
+Named products the user requested MUST appear in key_furniture.
+"keep X" → add constraint. Material/color preferences → override style defaults.
+`
+    : "";
+
+  // Design memory for refinement continuity
   const designMemory = (context as Record<string, unknown> | null)?.design_memory as {
     room_type: string;
     style_anchor: string;
-    dominant_material: string;
     color_palette: { dominant: string; secondary: string; accent: string };
     key_furniture: string[];
-    lighting_spec: string;
-    lora_trigger: string;
   } | null | undefined;
 
-  const designMemoryBlock = designMemory
-    ? `\n\nORIGINAL DESIGN CONTEXT (refinement — maintain continuity):
-- Room type: ${designMemory.room_type}
-- Style anchor: ${designMemory.style_anchor}
-- Dominant material: ${designMemory.dominant_material}
-- Color palette: dominant ${designMemory.color_palette.dominant}, secondary ${designMemory.color_palette.secondary}, accent ${designMemory.color_palette.accent}
-- Key furniture: ${designMemory.key_furniture.join(", ")}
-- Lighting: ${designMemory.lighting_spec}
-- LoRA trigger: ${designMemory.lora_trigger}
-
-Build the refinement consistently with the above — do not restart from scratch.`
-    : "";
-
-  // ── Extract explicit user preferences from 7d chat tabs ──────────────────
-  let chatContextBlock = "";
-  if (chatContext && typeof chatContext === "object") {
-    const lines: string[] = [];
-
-    // "all" tab — style direction, keep instructions, color context
-    const allTab = (chatContext as Record<string, unknown>)["all"] as Record<string, unknown> | undefined;
-    if (allTab) {
-      const allMessages = (allTab.messages ?? allTab.conversation ?? []) as Array<{ role: string; content: string }>;
-      const userMsgs = allMessages.filter((m) => m.role === "user").map((m) => m.content).join(" ");
-      if (userMsgs.trim()) {
-        // Style direction — any strong descriptor the user gave
-        const styleMatch = userMsgs.match(/(?:want|like|make it|going for|style[:\s]+)([^.!?\n]{5,60})/i);
-        if (styleMatch) lines.push(`Style direction: ${styleMatch[1].trim()}`);
-
-        // Keep instructions
-        const keepMatch = userMsgs.match(/keep[^.!?\n]{0,80}/gi);
-        if (keepMatch) lines.push(`Keep unchanged: ${keepMatch.slice(0, 3).join("; ")}`);
-
-        // Color context
-        const colorMatch = userMsgs.match(/(?:walls?|floor|carpet|ceiling)[^.!?\n]{0,60}/gi);
-        if (colorMatch) lines.push(`Color context: ${colorMatch.slice(0, 2).join("; ")}`);
-
-        // Full style dump if short enough
-        if (userMsgs.length < 300) lines.push(`Full user direction: ${userMsgs}`);
-      }
-    }
-
-    // "tech" tab — TV, audio, smart home
-    const techTab = (chatContext as Record<string, unknown>)["tech"] as Record<string, unknown> | undefined;
-    if (techTab) {
-      const techExtracted = techTab.extractedData as Record<string, unknown> | undefined;
-      const techLines: string[] = [];
-      if (techExtracted?.hasTV) {
-        const tvSize = techExtracted.tvSizeInches ? `${techExtracted.tvSizeInches}"` : "";
-        const mount = techExtracted.tvMountType ? String(techExtracted.tvMountType) : "";
-        techLines.push(`TV: ${[tvSize, mount].filter(Boolean).join(", ") || "requested"}`);
-      }
-      if (techExtracted?.audioSetup) techLines.push(`Audio: ${techExtracted.audioSetup}`);
-
-      // Also scan tech tab user messages for TV mentions
-      const techMessages = (techTab.messages ?? techTab.conversation ?? []) as Array<{ role: string; content: string }>;
-      const techUserText = techMessages.filter((m) => m.role === "user").map((m) => m.content).join(" ");
-      const tvMention = techUserText.match(/(\d{2,3})["\s-]*(?:inch|")\s*(?:tv|television|frame|screen)/i);
-      if (tvMention && !techExtracted?.tvSizeInches) techLines.push(`TV: ${tvMention[1]}" (from chat)`);
-
-      if (techLines.length > 0) lines.push(`Tech: ${techLines.join(", ")}`);
-    }
-
-    if (lines.length > 0) {
-      chatContextBlock = lines.join("\n");
-    }
-  }
-
-  // Resolve chat history: prefer explicit chatHistory string, fall back to parsed chatContext
-  const resolvedChatHistory = input.chatHistory?.trim() || chatContextBlock || null;
-
-  // ── Section 1: Client directives (HIGHEST PRIORITY — always first) ──────────
-  const chatSection = resolvedChatHistory
-    ? `CRITICAL: The following user preferences are authoritative and override all fingerprint data, style defaults, and room analysis below.
-
-━━━ AUTHORITATIVE CLIENT DIRECTIVES ━━━
-
-VERBATIM CLIENT CHAT:
-"""
-${resolvedChatHistory}
-"""
-
-Parse and enforce ALL of these constraints in your JSON:
-- Any named product (TV brands, audio brands, furniture) → MUST appear verbatim in depthLayers objects
-- Any "keep X" instruction → preserve it; do NOT redesign what they want kept
-- Any material preference ("dark wood", "walnut", "marble") → overrides style anchor defaults for that category
-- Any color preference → overrides fingerprint color values
-- "keep walls/floor/carpet" → set wall_change_requested: false and floor_change_requested: false; record current colors
-- Style adjectives ("dark", "sleek", "minimal", "bold") → anchor the ENTIRE design around them
-
-`
-    : `━━━ CLIENT CHAT ━━━
-No explicit preferences provided. Use fingerprint and style anchor as primary guides.
-
-`;
-
-  // ── Section 2: Keep/remove from step-7c UI ──────────────────────────────────
-  const keepItems = input.keepItems ?? [];
-  const keepRemoveSection = (keepItems.length + (input.removeItems ?? []).length) > 0
-    ? `━━━ KEEP / REMOVE (from step-7c UI) ━━━
-Keep unchanged: ${keepItems.length > 0 ? keepItems.join(", ") : "none"}
-Remove and replace: ${(input.removeItems ?? []).length > 0 ? (input.removeItems ?? []).join(", ") : "none"}
-
+  const memorySection = designMemory
+    ? `━━━ PRIOR DESIGN (refinement — maintain continuity) ━━━
+Prior palette: ${designMemory.color_palette.dominant}, ${designMemory.color_palette.secondary}, ${designMemory.color_palette.accent}
+Prior furniture: ${designMemory.key_furniture.join(", ")}
+Maintain consistency with prior design unless user requested changes.
 `
     : "";
 
-  // ── Section 3: Style + fingerprint ──────────────────────────────────────────
-  const fingerprintSection = `━━━ STYLE FINGERPRINT ━━━
-(Secondary to client directives above. Override when client specified preference.)
-
+  const userMessage = `${chatSection}${personalizationSection}${keepRemoveSection}━━━ STYLE CONTEXT ━━━
 Style anchor: ${styleAnchor}
-LoRA trigger: "${input.loraTrigger}"
-Room type: ${roomType}
 Budget: $${budgetMin}–$${budgetMax} (${budgetTier} tier)
-
-Fingerprint dimensions (apply all thresholds):
 ${fingerprintContext}
+${wallPref}
+${floorPref}
 
-`;
-
-  // ── Section 4: Additional preferences from render context ───────────────────
-  const prefsSection = contextSummary.length > 0
-    ? `━━━ ADDITIONAL PREFERENCES ━━━
-${contextSummary.join("\n")}
-
-`
-    : "";
-
-  // ── Section 5: Design memory for refinement continuity ──────────────────────
-  const memorySection = designMemoryBlock ? `${designMemoryBlock}\n\n` : "";
-
-  // ── Section 6: Task instruction ──────────────────────────────────────────────
-  const instruction = `━━━ YOUR TASK ━━━
-Analyze the attached room photo + all inputs above.
-
-Output ONLY valid JSON matching the schema. No markdown fences. No preamble. No explanation.
-Ensure all named client products appear verbatim in the appropriate depthLayers objects array.`;
-
-  const userMessage = chatSection + keepRemoveSection + fingerprintSection + prefsSection + memorySection + instruction;
+${memorySection}━━━ YOUR TASK ━━━
+Analyze the attached room photo. Output ONLY valid JSON matching the schema.
+No markdown fences. No preamble. No explanation.`;
 
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-5",
-    max_tokens: 4096,
+    max_tokens: 2048,
     system: CALL1_SYSTEM,
     messages: [
       {
@@ -951,10 +793,7 @@ Ensure all named client products appear verbatim in the appropriate depthLayers 
         content: [
           {
             type: "image",
-            source: {
-              type: "url",
-              url: imageUrl,
-            },
+            source: { type: "url", url: imageUrl },
           },
           {
             type: "text",
@@ -970,7 +809,6 @@ Ensure all named client products appear verbatim in the appropriate depthLayers 
     throw new Error("[design-director] Call 1 returned empty response");
   }
 
-  // Strip markdown fences if Claude wrapped the JSON anyway
   const raw = block.text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
 
   let brief: DesignBrief;
@@ -982,15 +820,19 @@ Ensure all named client products appear verbatim in the appropriate depthLayers 
     );
   }
 
-  // Validate and enforce density-based object count limits
-  const density = fingerprint.dimensions.density;
-  const maxObjects = getMaxObjectsForDensity(density);
-  if (brief.decorObjects && brief.decorObjects.length > maxObjects) {
+  // Ensure backward-compat aliases are set
+  if (!brief.roomType && brief.room_type) brief.roomType = brief.room_type;
+  if (!brief.room_type && brief.roomType) brief.room_type = brief.roomType;
+
+  // Enforce room-size-appropriate key_furniture count
+  const maxFurniture = brief.room_size === "small" ? 5
+    : brief.room_size === "large" ? 8
+    : 7; // medium
+  if (brief.key_furniture && brief.key_furniture.length > maxFurniture) {
     console.warn(
-      `[design-director] Call 1 object count ${brief.decorObjects.length} exceeds max ${maxObjects} for density=${density.toFixed(2)} — truncating to ${maxObjects}`,
+      `[design-director] Call 1 produced ${brief.key_furniture.length} key_furniture for ${brief.room_size} room — trimming to ${maxFurniture}`,
     );
-    brief.decorObjects = brief.decorObjects.slice(0, maxObjects);
-    brief.totalObjectCount = maxObjects;
+    brief.key_furniture = brief.key_furniture.slice(0, maxFurniture);
   }
 
   return brief;
@@ -1038,7 +880,86 @@ function extractRequiredObjects(chatHistory: string): string[] {
   return Array.from(new Set(objects)).filter(Boolean);
 }
 
-// ── Call 2: Staging JSON → FLUX script + negative prompt ─────────────────────
+// ── Post-generation constraint enforcement ──────────────────────────────────
+// Strips sentences from the flux prompt that violate keep constraints.
+// This is a hard filter — no LLM retry needed for simple violations.
+
+/** Terms that indicate window treatment additions — always prohibited when blinds are kept */
+const WINDOW_TREATMENT_TERMS = /\b(curtain|curtains|drape|drapes|sheer|sheers|valance|valances|drapery|draperies)\b/i;
+
+/**
+ * Extract prohibited nouns from "Do not add/include/place X" constraints.
+ * Returns lowercase terms.
+ */
+function extractProhibitedTerms(constraints: string[]): string[] {
+  const terms: string[] = [];
+  for (const c of constraints) {
+    // Match "Do not add/include/place/use X" patterns
+    const match = c.match(/do not (?:add|include|use|place|introduce)\s+(?:any\s+)?(.+)/i);
+    if (match) {
+      // Extract key nouns from the remainder
+      const remainder = match[1]!.toLowerCase();
+      // Split on commas, "or", dashes to get individual terms
+      const parts = remainder.split(/[,]|\bor\b|\b—\b/);
+      for (const part of parts) {
+        const trimmed = part.trim().replace(/[.!?]$/, '').trim();
+        if (trimmed.length > 2) terms.push(trimmed);
+      }
+    }
+  }
+  return terms;
+}
+
+/**
+ * Enforce constraints on the generated flux prompt by stripping violating sentences.
+ * - Removes sentences mentioning curtains/drapes/sheers when window treatment is kept
+ * - Removes sentences containing explicitly prohibited terms from constraints
+ */
+function enforceConstraints(
+  prompt: string,
+  constraints: string[],
+  keepItems: string[],
+): string {
+  const hasKeptWindowTreatment = keepItems.some(
+    (item) => /\b(blind|blinds|shutter|shutters|shade|shades|window)\b/i.test(item),
+  );
+
+  // Split into sentences for surgical removal
+  const sentences = prompt.match(/[^.!?]+[.!?]+\s*/g) ?? [prompt];
+  const violations: string[] = [];
+
+  const filtered = sentences.filter((sentence) => {
+    // Check window treatment violation
+    if (hasKeptWindowTreatment && WINDOW_TREATMENT_TERMS.test(sentence)) {
+      violations.push(`Window treatment in kept items — removed: "${sentence.trim()}"`);
+      return false;
+    }
+    return true;
+  });
+
+  // Check for explicitly prohibited terms from constraints
+  const prohibitedTerms = extractProhibitedTerms(constraints);
+  const finalFiltered = filtered.filter((sentence) => {
+    for (const term of prohibitedTerms) {
+      if (sentence.toLowerCase().includes(term)) {
+        violations.push(`Constraint violated ("${term}") — removed: "${sentence.trim()}"`);
+        return false;
+      }
+    }
+    return true;
+  });
+
+  if (violations.length > 0) {
+    console.warn(
+      `[design-director] Post-generation constraint enforcement stripped ${violations.length} sentence(s):\n` +
+        violations.map((v) => `  • ${v}`).join("\n"),
+    );
+  }
+
+  return finalFiltered.join("").trim();
+}
+
+// ── Call 2: Design brief → FLUX Kontext prompt + negative prompt ─────────────
 
 async function callFluxScriptFromBrief(
   brief: DesignBrief,
@@ -1046,34 +967,32 @@ async function callFluxScriptFromBrief(
   removeLabels: string[],
   styleAnchor: string,
   requiredObjects: string[],
-): Promise<{ fluxPrompt: string; negativePrompt: string }> {
-  // Note: CALL2_SYSTEM now outputs plain text only — no negative_prompt from Claude.
-  // FLUX does not support negative prompts (throws API errors). We build one server-side
-  // from removal targets + quality guards so Modal can use it if the pipeline supports it.
-
+  keepItems: string[],
+  personalizationContext?: string | null,
+): Promise<{ fluxPrompt: string }> {
   // Resolve DNA block for this style/trigger
-  const dnaBlock = STYLE_DNA_BLOCKS[loraTrigger] ?? null;
+  let dnaBlock = STYLE_DNA_BLOCKS[loraTrigger] ?? null;
 
-  // ── FIX 2: Build explicit removal line from removal_targets ──────────────
-  const allRemovalTargets = [
-    ...removeLabels,
-    ...(brief.removal_targets ?? []),
-  ];
-  // Deduplicate (case-insensitive)
-  const seenRemoval = new Set<string>();
-  const uniqueRemovals: string[] = [];
-  for (const item of allRemovalTargets) {
-    const key = item.toLowerCase().trim();
-    if (key && !seenRemoval.has(key)) {
-      seenRemoval.add(key);
-      uniqueRemovals.push(item.trim());
-    }
+  // Strip curtain/sheer/drape language from DNA block when window blinds are kept
+  const hasKeptWindowTreatment = keepItems.some(
+    (item) => /\b(blind|blinds|shutter|shutters|shade|shades|window)\b/i.test(item),
+  );
+  if (dnaBlock && hasKeptWindowTreatment) {
+    // Remove sentences containing curtain/drape/sheer/valance language
+    dnaBlock = dnaBlock
+      .replace(/[^.]*\b(curtain|curtains|drape|drapes|sheer|sheers|valance|drapery)\b[^.]*/gi, '')
+      .replace(/\s{2,}/g, ' ')
+      .replace(/\.\s*\./g, '.')
+      .trim();
+    console.log("[design-director] Stripped curtain language from DNA block — window treatment is kept");
   }
-  const removalLine = uniqueRemovals.length > 0
-    ? uniqueRemovals.map((item) => `Remove ${item} completely.`).join(" ")
+
+  // Build removal line from user keep_remove_decisions ONLY (single source of truth)
+  const removalLine = removeLabels.length > 0
+    ? removeLabels.map((item) => `Remove ${item.trim()} completely.`).join(" ")
     : "";
 
-  // ── FIX 1: Build floor/wall preservation line ───────────────────────────
+  // Build preservation line from wall/floor analysis
   const preservationParts: string[] = [];
   if (brief.wall_change_requested === false) {
     const wallColor = brief.wall_color || brief.palette?.dominant || "existing";
@@ -1082,56 +1001,63 @@ async function callFluxScriptFromBrief(
     preservationParts.push(`Change walls to ${brief.wall_color}.`);
   }
   if (brief.floor_change_requested === false) {
-    // Extract floor material from palette.dominant or fallback
-    const floorMaterial = brief.palette?.dominant || "existing";
-    preservationParts.push(`Keep the existing ${floorMaterial} floor exactly as-is.`);
+    const floorMaterial = brief.floor_type || "existing";
+    preservationParts.push(`Keep ${floorMaterial} floor exactly as-is.`);
   }
   const preservationLine = preservationParts.join(" ");
 
-  // ── Build pre-constructed lines section for Call 2 ──────────────────────
+  // Build pre-constructed lines for Call 2
   const removalSection = removalLine
-    ? `REMOVAL LINE (copy verbatim as Line 1 — these MUST be the first words of your output):
+    ? `REMOVAL LINE (copy verbatim as first words of your output):
 "${removalLine}"
-
 `
-    : `REMOVAL LINE: None — skip Line 1.
-
-`;
+    : "REMOVAL LINE: None — skip.\n";
 
   const preservationSection = preservationLine
     ? `PRESERVATION LINE (copy verbatim as Line 2):
 "${preservationLine}"
-
 `
-    : `PRESERVATION LINE: None — skip Line 2.
-
-`;
+    : "PRESERVATION LINE: None — skip.\n";
 
   const dnaSection = dnaBlock
-    ? `DNA block (embed naturally in Line 3 — NOT as the first sentence):
+    ? `DNA block (embed naturally in Line 3):
 "${dnaBlock}"
-
 `
     : "";
 
-  const requiredSection =
-    requiredObjects.length > 0
-      ? `REQUIRED VERBATIM OBJECTS (include these EXACTLY in Line 4 — no paraphrasing):
+  const requiredSection = requiredObjects.length > 0
+    ? `REQUIRED VERBATIM OBJECTS (include exactly):
 ${requiredObjects.map((o) => `- ${o}`).join("\n")}
-
 `
-      : "";
+    : "";
 
-  const userMessage = `${removalSection}${preservationSection}${dnaSection}${requiredSection}Staging brief:
+  const keepSection = keepItems.length > 0
+    ? `KEPT ITEMS (do NOT mention replacing these):
+${keepItems.map((k) => `- ${k}`).join("\n")}
+`
+    : "";
+
+  const personalizationBlock = personalizationContext
+    ? `PERSONALIZATION CONTEXT (incorporate into prompt):
+${personalizationContext}
+`
+    : "";
+
+  const userMessage = `${removalSection}
+${preservationSection}
+${dnaSection}${requiredSection}${keepSection}${personalizationBlock}
+Design brief:
 ${JSON.stringify(brief, null, 2)}
 
 LoRA trigger word: "${loraTrigger}"
 Style anchor: "${styleAnchor}"
 
-Write the FLUX prompt now following the 5-line structure. Lines 1-2 are pre-built above — copy them verbatim. Then Line 3 (transformation with DNA block + trigger word), Line 4 (additions), Line 5 (camera). 60-90 words total. Plain text only.`;
+Write the FLUX Kontext Pro prompt now. 120-200 words. Plain text only.
+Structure: removal → preservation → anchor furniture with materials/colors → depth zones (foreground/midground/background) → soft furnishings → lighting with color temp → photography spec.
+Honor ALL constraints. Populate all three depth zones. Include at least one plant and one textile detail.`;
 
   const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-5",
+    model: "claude-haiku-4-5-20251001",
     max_tokens: 500,
     system: CALL2_SYSTEM,
     messages: [{ role: "user", content: userMessage }],
@@ -1142,42 +1068,64 @@ Write the FLUX prompt now following the 5-line structure. Lines 1-2 are pre-buil
     throw new Error("[design-director] Call 2 returned empty response");
   }
 
-  // Output is plain text — strip any accidental markdown fences
   let fluxPrompt = block.text.trim().replace(/^```[^\n]*\n?/i, "").replace(/\n?```$/i, "").trim();
 
-  // Enforce 90-word hard ceiling on flux_prompt
+  // Sanitize — strip any "undefined" fragments from template resolution failures
+  fluxPrompt = sanitizePrompt(fluxPrompt);
+  if (fluxPrompt !== block.text.trim()) {
+    console.warn("[design-director] Call 2 flux_prompt contained 'undefined' fragments — sanitized");
+  }
+
+  // Enforce word ceiling — leave room for photography spec (~25 words) that may be appended later.
+  // Kontext Pro optimal: 120-200 words total. Ceiling body at 175 so body + spec ≤ 200.
   const rawWordCount = fluxPrompt.split(/\s+/).filter(Boolean).length;
-  if (rawWordCount > 90) {
-    console.warn(
-      `[design-director] Call 2 flux_prompt ${rawWordCount} words exceeds 90-word ceiling — trimming`,
-    );
-    fluxPrompt = enforceWordCeiling(fluxPrompt, 90);
-    const trimmedCount = fluxPrompt.split(/\s+/).filter(Boolean).length;
-    console.log(`[design-director] After trim: ${trimmedCount} words`);
+  const hasPhotoSpec = /\bShot (at|on)\b/i.test(fluxPrompt);
+  const ceiling = hasPhotoSpec ? 200 : 175; // if spec already present, full 200; otherwise leave room
+  if (rawWordCount > ceiling) {
+    console.warn(`[design-director] Call 2 flux_prompt ${rawWordCount} words exceeds ceiling — trimming to ${ceiling}`);
+    fluxPrompt = enforceWordCeiling(fluxPrompt, ceiling);
   }
 
-  // Warn if suspiciously short
   const finalWordCount = fluxPrompt.split(/\s+/).filter(Boolean).length;
-  if (finalWordCount < 40) {
-    console.warn(
-      `[design-director] Call 2 flux_prompt ${finalWordCount} words is suspiciously short — check output quality`,
-    );
+  if (finalWordCount < 80) {
+    console.warn(`[design-director] Call 2 flux_prompt ${finalWordCount} words — suspiciously short, may lack depth`);
   }
 
-  // Build negative_prompt server-side (FLUX doesn't use it, but Modal pipeline may)
-  const negParts: string[] = [];
-  if (removeLabels.length > 0) negParts.push(removeLabels.join(", "));
-  if (brief.removal_targets && brief.removal_targets.length > 0) {
-    negParts.push(brief.removal_targets.join(", "));
+  // ── Post-generation constraint validation ──────────────────────────────────
+  // Strip any sentences that violate keep constraints (curtains over blinds,
+  // uninstructed items like ottomans when not requested, etc.)
+  fluxPrompt = enforceConstraints(fluxPrompt, brief.constraints ?? [], keepItems);
+
+  // ── Natural light enforcement ────────────────────────────────────────────────
+  // If Call 2 dropped the natural light sentence (common after word ceiling trim),
+  // inject one based on the design brief's lighting data.
+  const hasNaturalLight = /\b(morning|afternoon|evening|west|east|north|south|daylight|sunlight|natural)\s*(light|sun|glow)/i.test(fluxPrompt);
+  if (!hasNaturalLight && brief.natural_light_direction) {
+    const lightDir = brief.natural_light_direction;
+    const lightLevel = brief.natural_light ?? "medium";
+    const colorTemp = lightLevel === "high" ? "5600K" : lightLevel === "low" ? "3200K" : "4500K";
+    const lightSentence = `${lightDir.charAt(0).toUpperCase() + lightDir.slice(1)} natural light at ${colorTemp} casting soft shadows across the room.`;
+    // Insert before the camera spec
+    const shotIdx = fluxPrompt.lastIndexOf("Shot at");
+    const shotOnIdx = fluxPrompt.lastIndexOf("Shot on");
+    const insertIdx = Math.max(shotIdx, shotOnIdx);
+    if (insertIdx > 0) {
+      fluxPrompt = fluxPrompt.slice(0, insertIdx).trimEnd() + " " + lightSentence + " " + fluxPrompt.slice(insertIdx);
+    } else {
+      fluxPrompt = fluxPrompt.trimEnd().replace(/[.]?$/, ". ") + lightSentence;
+    }
+    console.warn("[design-director] Natural light sentence was missing — injected from design brief");
   }
-  negParts.push(UNIVERSAL_QUALITY_GUARDS);
-  const negativePrompt = negParts.join(", ");
 
-  console.log(
-    `[design-director] negative_prompt assembled server-side: ${negParts.length} segments`,
-  );
+  // ── Photography spec enforcement ────────────────────────────────────────────
+  // If Call 2 omitted the camera closer, append it.
+  const CAMERA_SPEC = "Shot on Hasselblad X2D 100C, 24mm tilt-shift at f/8, perfect exposure, professional architectural photography, Architectural Digest quality, no people, no text.";
+  if (!/\bShot (at|on)\b/i.test(fluxPrompt)) {
+    console.warn("[design-director] Call 2 omitted photography spec — appending");
+    fluxPrompt = fluxPrompt.trimEnd().replace(/[.]?$/, ". ") + CAMERA_SPEC;
+  }
 
-  return { fluxPrompt, negativePrompt };
+  return { fluxPrompt };
 }
 
 // ── Public entry point ────────────────────────────────────────────────────────
@@ -1189,10 +1137,9 @@ export async function runDesignDirector(
 
   // Call 1: vision → staging JSON
   const stagingJson = await callDesignBriefFromImage(input);
-  const objectCount = stagingJson.totalObjectCount ?? stagingJson.decorObjects?.length ?? 0;
   console.log(
-    `[design-director] Call 1 complete — ${objectCount} objects, tier: ${stagingJson.budgetTier}`,
-    `| removal_targets: ${stagingJson.removal_targets?.length ?? 0}`,
+    `[design-director] Call 1 complete — room: ${stagingJson.room_type}, tier: ${stagingJson.budgetTier}`,
+    `| constraints: ${stagingJson.constraints?.length ?? 0}`,
   );
 
   // Assemble remove labels: step-7c user selections come first
@@ -1213,16 +1160,44 @@ export async function runDesignDirector(
   // merge with prior runs and so the design_brief JSONB carries them forward.
   stagingJson.required_objects = requiredObjects;
 
-  // Call 2: staging JSON → flux_prompt (additive) + negative_prompt
-  const { fluxPrompt, negativePrompt } = await callFluxScriptFromBrief(
+  // Build personalization summary for Call 2
+  const context = input.context as Record<string, unknown> | null;
+  const personalizationForCall2Parts: string[] = [];
+  const techCtx = context?.techSpec as Record<string, unknown> | null | undefined;
+  if (techCtx) {
+    if (techCtx.hasTV === true) personalizationForCall2Parts.push(`Include a ${techCtx.tvSizeInches ?? 55}" TV`);
+    if (techCtx.hasTV === false) personalizationForCall2Parts.push("No television");
+    if (techCtx.smartLighting) personalizationForCall2Parts.push("Smart lighting with warm color temp");
+  }
+  const sensoryCtx = context?.sensoryProfile as Record<string, unknown> | null | undefined;
+  if (sensoryCtx) {
+    if (sensoryCtx.plantPresence === "none") personalizationForCall2Parts.push("No plants");
+    if (sensoryCtx.windowTreatments === "none") personalizationForCall2Parts.push("No curtains or drapes");
+  }
+  const artCtx = context?.artBrief as Record<string, unknown> | null | undefined;
+  if (artCtx?.hasArtDirection && artCtx.visualDirection) {
+    personalizationForCall2Parts.push(`Art: ${artCtx.visualDirection}`);
+  }
+  const identityCtx = context?.identityBrief as Record<string, unknown> | null | undefined;
+  if (identityCtx?.moodTarget) {
+    personalizationForCall2Parts.push(`Mood: ${identityCtx.moodTarget}`);
+  }
+  const personalizationForCall2 = personalizationForCall2Parts.length > 0
+    ? personalizationForCall2Parts.join(". ") + "."
+    : null;
+
+  // Call 2: design brief → Kontext-optimized flux_prompt
+  const { fluxPrompt } = await callFluxScriptFromBrief(
     stagingJson,
     input.loraTrigger,
     removeLabels,
     input.styleAnchor,
     requiredObjects,
+    input.keepItems ?? [],
+    personalizationForCall2,
   );
   const wordCount = fluxPrompt.split(/\s+/).filter(Boolean).length;
   console.log(`[design-director] Call 2 complete — flux_prompt: ${wordCount} words`);
 
-  return { stagingJson, fluxPrompt, negativePrompt };
+  return { stagingJson, fluxPrompt };
 }

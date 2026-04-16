@@ -84,8 +84,8 @@ def main():
                 "(3) Add a small ceramic wabi-sabi vase with dried pampas grass on the desk. "
                 "(4) Add a linen table lamp with a natural wood base on the desk. "
                 "DO NOT change any of the following: the bed and its position, the white bed frame, the blue rolling cabinet, "
-                "the carpet texture or color, the walls and their color, the ceiling fan, the window and blinds, "
-                "the DAKSH letters on the wall, the desk, the posters and photos on the wall. "
+                "the carpet texture or color, the walls and their color, the ceiling fixtures, the window and blinds, "
+                "the wall-mounted decorations, the desk, the posters and photos on the wall. "
                 "The room must be immediately recognizable as the same room. Photorealistic interior photography."
             ),
             "input_image": INPUT_PHOTO,

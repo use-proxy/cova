@@ -1,7 +1,7 @@
 /**
  * Mask Assembly — Differential Diffusion Change Map
  *
- * Builds a grayscale change map for fal-ai/flux-general/differential-diffusion.
+ * Builds a grayscale change map for differential diffusion / kept-item preservation.
  * White (255) = regenerate, Black (0) = preserve exactly.
  *
  * Used in the redesign pipeline to prevent floor, walls, and kept items

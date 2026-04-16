@@ -23,7 +23,7 @@ const ROOM_CONTEXT_SCHEMA = `{
   "windowSize": "small-single|medium|large|floor-to-ceiling|multiple-mixed",
   "floorMaterial": "specific material e.g. light oak hardwood",
   "floorColor": "specific color e.g. warm honey",
-  "wallColor": "specific color e.g. warm greige — never just beige",
+  "wallColor": "specific color e.g. warm greige — always use precise descriptors",
   "hasAccentWall": false,
   "accentWallColor": null,
   "wallTexture": "smooth-matte|smooth-glossy|textured|wallpapered|exposed-brick|paneled",

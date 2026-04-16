@@ -14,6 +14,7 @@ app = modal.App("cova-pre-detection")
 image = (
     modal.Image.debian_slim(python_version="3.10")
     .pip_install("requests", "Pillow", "fastapi[standard]")
+    .add_local_file("modal_pipeline/utils.py", "/root/utils.py")
 )
 
 
@@ -196,10 +197,9 @@ Return ONLY a JSON array. No preamble, no markdown. Empty array [] if nothing is
                 merged.append(c)
                 seen.add(k)
 
-    STRUCTURAL_CATS = {
-        "ceiling", "wall", "floor", "window", "door",
-        "built_in_shelving", "radiator", "fireplace", "built_in_wardrobe",
-    }
+    from utils import HARD_STRUCTURAL as STRUCTURAL_CATS
+    from utils import normalize_label_key
+
     CLUTTER_CATS = {
         "cable", "power_cord", "bag", "clothing_on_floor", "trash", "random_item",
     }
@@ -210,7 +210,7 @@ Return ONLY a JSON array. No preamble, no markdown. Empty array [] if nothing is
         if not isinstance(f, dict) or not required_fields.issubset(f.keys()):
             continue
 
-        cat = str(f.get("category") or "").lower().strip()
+        cat = normalize_label_key(str(f.get("category") or ""))
 
         # Auto-classify structural and clutter categories for downstream UI
         if cat in STRUCTURAL_CATS:

@@ -276,7 +276,6 @@ export async function POST(request: Request) {
   // Call 1: vision + fingerprint → staging JSON (design_brief)
   // Call 2: staging JSON → FLUX script 80-120 words (flux_prompt)
   let compiledPrompt: string | null = null;
-  let negativePrompt: string | null = null;
   let promptSource: "design-director" | "claude-compiled" | "fallback" = "fallback";
   let unsplashReferences: string[] = [];
   let designDirectorResult: DesignDirectorOutput | null = null;
@@ -294,8 +293,10 @@ export async function POST(request: Request) {
   const removeCount = removeItems.length;
 
   // Extract chat history as a flat formatted string (highest priority signal for design director)
+  // Try renderContext.tabStates first, fall back to chat_context from POST body
   const tabStates = renderContext?.tabStates as Record<string, unknown> | null | undefined;
-  const chatHistory = extractChatHistoryString(tabStates);
+  const chatHistory = extractChatHistoryString(tabStates)
+    ?? extractChatHistoryString(chat_context as Record<string, unknown> | null | undefined);
 
   if (fingerprint && photoUrlForPipeline) {
     try {
@@ -351,23 +352,21 @@ export async function POST(request: Request) {
 
       designDirectorResult = ddResult;
       compiledPrompt = ddResult.fluxPrompt;
-      negativePrompt = ddResult.negativePrompt;
       promptSource = "design-director";
 
-      // Persist design_brief, flux_prompt, and negative_prompt to rooms table (fire-and-forget)
+      // Persist design_brief and flux_prompt to rooms table (fire-and-forget)
       void admin
         .from("rooms")
         .update({
           design_brief: ddResult.stagingJson as unknown as Record<string, unknown>,
           flux_prompt: compiledPrompt,
-          negative_prompt: negativePrompt,
         })
         .eq("id", room_id)
         .then(({ error }) => {
           if (error)
-            console.error("[redesign] design_brief/flux_prompt/negative_prompt write failed:", error);
+            console.error("[redesign] design_brief/flux_prompt write failed:", error);
           else
-            console.log("[redesign] design_brief + flux_prompt + negative_prompt stored for room", room_id);
+            console.log("[redesign] design_brief + flux_prompt stored for room", room_id);
         });
 
       // Fetch quality-scored Unsplash references for IP-Adapter conditioning
@@ -416,20 +415,18 @@ export async function POST(request: Request) {
 
       // Extract design_memory and store in render_context for refinement continuity (ADDITION 4)
       const designMemoryObj = {
-        room_type: ddResult.stagingJson.roomType,
+        room_type: ddResult.stagingJson.roomType || ddResult.stagingJson.room_type,
         style_anchor: styleAnchorDisplay,
-        dominant_material: ddResult.stagingJson.materialTension.warm,
+        dominant_material: ddResult.stagingJson.materialTension?.warm ?? "natural materials",
         color_palette: {
-          dominant: ddResult.stagingJson.palette.dominant,
-          secondary: ddResult.stagingJson.palette.secondary,
-          accent: ddResult.stagingJson.palette.accent,
+          dominant: ddResult.stagingJson.palette?.dominant ?? "neutral",
+          secondary: ddResult.stagingJson.palette?.secondary ?? "neutral",
+          accent: ddResult.stagingJson.palette?.accent ?? "neutral",
         },
-        key_furniture: [
-          ...ddResult.stagingJson.depthLayers.midground.objects,
-          ...ddResult.stagingJson.depthLayers.foreground.objects,
-          ...ddResult.stagingJson.depthLayers.background.objects,
-        ].slice(0, 3).map((obj) => obj.name),
-        lighting_spec: `${ddResult.stagingJson.lighting.source}, ${ddResult.stagingJson.lighting.colorTemp}`,
+        key_furniture: ddResult.stagingJson.key_furniture?.slice(0, 3) ?? [],
+        lighting_spec: ddResult.stagingJson.lighting
+          ? `${ddResult.stagingJson.lighting.source}, ${ddResult.stagingJson.lighting.colorTemp}`
+          : "natural light",
         lora_trigger: loraTrigger,
       };
       void admin
@@ -721,7 +718,6 @@ export async function POST(request: Request) {
         room_id,
         user_id: userId,
         compiled_prompt: compiledPrompt ?? null,
-        negative_prompt: negativePrompt ?? null,
         anchor_prompt: anchorPrompt ?? null,
         style_reference_url: styleReferenceUrl ?? null,
         chat_context: renderContext?.tabStates ?? null,
