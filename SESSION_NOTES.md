@@ -84,3 +84,59 @@ Supabase disabled legacy JWT keys 2026-03-14. Use new format:
 ## Session 3 Complete
 
 Session 3 complete. Depth extraction and edge extraction working perfectly (10/10 test pass). Professionalization FLUX pass removed — wrong tool for the job. Professional quality will be achieved through design director prompting and IP-Adapter Unsplash references in Sessions 4-5. The main generation at strength 0.85 implicitly removes clutter by redesigning the room.
+
+## Phase 3 — Keep/Remove System (Completed April 15, 2026)
+
+### What was built
+- Grounded-SAM2 pipeline: modal_pipeline/grounded_sam2_pipeline.py
+  - Uses Grounding DINO (IDEA-Research/grounding-dino-base) + SAM2 (facebook/sam2-hiera-large)
+  - Deployed at: https://cova-interior--cova-grounded-sam2-segment-room-api.modal.run
+  - Modal app: cova-grounded-sam2 (A10G, 16GB, CUDA 13 base image)
+  - Cold start: ~60-90s, warm start: ~10-15s
+  - Handles ALL room items including ceiling fixtures via top-30% crop second pass
+  - Window blinds via left-crop second pass
+  - Wall art uses vertical position constraint to avoid matching furniture
+  - LABEL_ALIASES map expands prompts for hard-to-detect items
+  - Uploads masks to: room-photos/masks/{room_id}/{label_with_underscores}.png
+
+- Segment-masks route: apps/web/app/api/pipeline/segment-masks/route.ts
+  - Calls GROUNDED_SAM2_URL env var (set in .env.local)
+  - Falls back to per-item SAM2 if Grounded-SAM2 fails
+  - Fetches actual image dimensions from JPEG header before computing SAM2 bbox
+  - Writes masksReady: true + itemMasks to render_context when complete
+  - Does NOT filter is_fixed items — ceiling fan and window blinds ARE segmented
+  - STRUCTURAL_CATEGORIES only excludes: ceiling, wall, floor, door, built_in_shelving, radiator, fireplace, built_in_wardrobe
+
+- Keep/Remove UI: apps/web/app/design/step-7c/page.tsx
+  - Shows full loading overlay on photo while masksState === 'pending'
+  - Canvas overlay renders gold rgba(201,168,76,0.45) on white pixels of SAM2 mask PNG
+  - Label lookup tries: normalized, underscore, space, raw variants
+  - Polls for masksReady every 2s, max 90s, then does final DB read before timeout
+  - Item cards: gold left border when active, Keep/Remove pills, Auto-kept/Auto-removed badges
+
+- Change map: modal_pipeline/generation.py
+  - Ceiling always preserved: top 8% of image
+  - Floor boundary: bottom 40%
+  - Dilation: 12px kernel (was 5px)
+  - Kept item masks applied from render_context.itemMasks
+
+### How keep/remove wires into the render
+1. User makes decisions on step-7c (keep/remove per item)
+2. Decisions saved to rooms.keep_remove_decisions as [{label, decision}]
+3. Masks stored in rooms.render_context.itemMasks as {label: maskUrl}
+4. redesign/route.ts reads keep_remove_decisions + itemMasks
+5. Kept item mask URLs passed to Modal as kept_item_mask_urls
+6. generation.py builds change map: black (preserve) for kept items, white (change) for removed
+7. Differential diffusion uses change map to preserve kept items pixel-perfectly
+
+### Critical env vars
+GROUNDED_SAM2_URL=https://cova-interior--cova-grounded-sam2-segment-room-api.modal.run
+
+### Known issues
+- Photo garland and wall letters overlap in some rooms (similar vertical position)
+- Cold start latency is 60-90s (acceptable for now, warm is 10-15s)
+- Step-7d personalization chat broken (separate issue, fix in Phase 4 prep)
+
+### Test rooms
+- Pranav (f39aac20): room e93ee121, room 4c7e28b7
+- Daksh (344b5705): room cb2e7047 (light blue walls, ceiling fan, DAKSH letters)

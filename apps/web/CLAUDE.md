@@ -10,7 +10,7 @@ V3 render pipeline (in order)
 
 Unsplash refs — fires at step-3, stores 3-5 style-matched reference URLs in rooms.unsplash_references
 Preprocessing — DarkIR if brightness<80, then OpenCV (white balance LAB, CLAHE clipLimit=3, gamma, unsharp, resize max 1536px)
-Parallel: depth map (fal-ai/imageutils/depth, depth-anything-v2, $0.005) + soft edges (OpenCV low-canny 30/90 + blur) + EVF-SAM2 masks (fal-ai/evf-sam, $0.005/item)
+Parallel: depth map (fal-ai/imageutils/depth, depth-anything-v2, $0.005) + soft edges (OpenCV low-canny 30/90 + blur) + Grounded-SAM2 masks via Modal endpoint (GROUNDED_SAM2_URL, Grounding DINO + SAM2, ~$0.01/room). Falls back to per-item fal-ai/sam2/image with bbox from estimated_bbox_pct if Modal endpoint unavailable.
 Professionalization pass — fal-ai/flux-general/image-to-image, strength=0.55, depth ControlNet=0.70. Same room, same layout. Only fix: lighting, clutter, textiles. Never redesign.
 Design Director Call 1 — Claude Sonnet + vision → staging JSON (room type, weaknesses, 6-12 objects with positions, 60-30-10 palette, lighting, depth layers). Stored in rooms.design_brief.
 Design Director Call 2 — staging JSON → explicit FLUX staging script 80-120 words with spatial choreography. Stored in rooms.flux_prompt.
@@ -67,6 +67,7 @@ modal_pipeline/professionalization.py — cleanup pass
 modal_pipeline/generation.py — FLUX generation
 modal_pipeline/postprocessing.py — color grade + grain + vignette
 modal_pipeline/quality_gate.py — aesthetic scorer + retry logic
+modal_pipeline/grounded_sam2_pipeline.py — Grounded-SAM2 whole-room segmentation endpoint
 New DB columns (rooms table)
 preprocessed_image_url, professionalized_image_url, design_brief (JSONB), flux_prompt, aesthetic_score, unsplash_references (JSONB)
 New tables
