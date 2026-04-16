@@ -47,6 +47,7 @@ PROFESSIONALIZATION_PROMPT = (
     "Do not add any new furniture or objects. Do not change any colors. "
     "Do not change the style. Do not change the perspective or camera angle. "
     "Preserve all flooring material exactly — do not change carpet to hardwood or any other flooring type. "
+    "Do not change the colors, furniture positions, or room layout. Only improve lighting quality and remove visual clutter. "
     "Photorealistic, unchanged room layout."
 )
 
@@ -129,14 +130,17 @@ def adaptive_strength(messiness: float) -> tuple:
     Returns (strength, depth_conditioning_scale) tuned to messiness.
     Upper bound: 0.72. Above this, room layout starts changing.
     """
+    # Strength capped at 0.35 to preserve room identity for downstream
+    # FLUX Kontext Pro editing — professionalization only fixes lighting and
+    # clutter, it must not reshape the room.
     if messiness < 0.25:
-        return 0.45, 0.70   # Tidy: gentle cleanup, lighter geometry lock
+        return 0.30, 0.70   # Tidy: gentle cleanup, lighter geometry lock
     elif messiness < 0.50:
-        return 0.55, 0.75   # Average: standard cleanup
+        return 0.35, 0.75   # Average: standard cleanup
     elif messiness < 0.75:
-        return 0.63, 0.78   # Cluttered: more aggressive cleanup
+        return 0.35, 0.78   # Cluttered
     else:
-        return 0.72, 0.82   # Very cluttered: maximum safe strength
+        return 0.35, 0.82   # Very cluttered: capped
 
 
 # ---------------------------------------------------------------------------
@@ -188,11 +192,11 @@ def professionalize_room(
     except Exception as e:
         print(f"[Prof] Messiness estimation failed ({e}) — falling back to removal_target_count tiers")
         if removal_target_count >= 4:
-            prof_strength, depth_conditioning_scale = 0.72, 0.82
+            prof_strength, depth_conditioning_scale = 0.35, 0.82
         elif removal_target_count >= 2:
-            prof_strength, depth_conditioning_scale = 0.62, 0.78
+            prof_strength, depth_conditioning_scale = 0.35, 0.78
         else:
-            prof_strength, depth_conditioning_scale = 0.55, 0.75
+            prof_strength, depth_conditioning_scale = 0.35, 0.75
 
     print(f"[prof] strength={prof_strength}, depth_scale={depth_conditioning_scale} (removal_target_count={removal_target_count})")
 
@@ -209,6 +213,7 @@ def professionalize_room(
             "Straighten any visibly crooked textiles. "
             "Do not add any new furniture or objects. Do not change any colors. "
             "Do not change the style. Do not change the perspective or camera angle. "
+            "Do not change the colors, furniture positions, or room layout. Only improve lighting quality and remove visual clutter. "
             "Photorealistic, unchanged room layout."
         )
     else:

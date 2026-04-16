@@ -1,6 +1,6 @@
 """
-Cova v3 — Session 5 Main Generation
-FLUX img2img with ControlNet (depth + edge), style LoRA, and Unsplash IP-Adapter references.
+Cova v3 — Main Generation
+FLUX text-to-image (Pass 1) + img2img refinement (Pass 2) with ControlNet (depth + edge) and style LoRAs.
 
 Entry point: generate_redesign()
 
@@ -45,6 +45,22 @@ fal_image = (
 app = modal.App("cova-generation")
 
 STORAGE_BUCKET = "room-photos"
+
+# Confirmed-working public LoRAs used as Pass 2 fallback when no trained
+# style LoRA stack is provided. Applied in Pass 2 only — FLUX Kontext Pro
+# does not support LoRAs.
+QUALITY_LORAS = [
+    {
+        "path": "https://huggingface.co/Shakker-Labs/FLUX.1-dev-LoRA-add-details/resolve/main/FLUX-dev-lora-add_details.safetensors",
+        "scale": 0.45,
+        "name": "detail-enhancer",
+    },
+    {
+        "path": "https://huggingface.co/XLabs-AI/flux-RealismLora/resolve/main/lora.safetensors",
+        "scale": 0.20,
+        "name": "realism",
+    },
+]
 
 
 # ---------------------------------------------------------------------------
@@ -98,6 +114,7 @@ def _validate_and_build_loras(
     # Legacy single-LoRA params — kept for backwards compat during transition
     lora_url: Optional[str] = None,
     lora_scale: float = 0.8,
+    fallback_loras: Optional[list] = None,
 ) -> list:
     """
     Parses and validates the LoRA stack for fal.ai.
@@ -139,6 +156,9 @@ def _validate_and_build_loras(
             print(f"[Generation] ✗ Invalid legacy LoRA URL: '{lora_url[:60]}'")
 
     if not lora_configs:
+        if fallback_loras:
+            print(f"[Generation] ⚠ No valid LoRAs — using fallback stack ({len(fallback_loras)} LoRAs)")
+            return [{"path": l["path"], "scale": l["scale"]} for l in fallback_loras]
         print("[Generation] ⚠ No valid LoRAs — running without style conditioning")
         return []
 
@@ -346,25 +366,21 @@ def generate_redesign_two_pass(
     """
     Two-pass generation for editorial-quality interior redesign.
 
-    PASS 1 — Text-to-image with depth ControlNet only:
-      - No input image. FLUX generates from scratch within room geometry.
-      - Produces editorial quality with correct tonal characteristics.
-      - IP-Adapter at single reference, scale 0.40.
-      - ControlNet end_percentage=0.80 (critical — early steps guide structure,
-        final 20% polish without constraint).
+    PASS 1 — Text-to-image (fal-ai/flux-general) with depth ControlNet:
+      - No input image — FLUX generates from scratch within room geometry.
+      - Depth ControlNet guides spatial structure (end_percentage=0.75).
+      - Quality LoRAs (detail-enhancer + realism) active.
+      - No IP-Adapter (causes split-screen bleed artifacts).
 
     PASS 2 — Low-strength img2img on Pass 1 output:
       - Input is Pass 1 output (not original iPhone photo).
-      - Strength 0.22-0.32: snaps architectural edges back, preserves styling.
-      - Canny ControlNet at scale 0.35 locks window frames, door positions.
-      - No IP-Adapter in Pass 2 (style already committed from Pass 1).
+      - Strength 0.30, guidance 3.0, 24 steps.
+      - Canny + depth ControlNets snap architectural edges back.
+      - No IP-Adapter in Pass 2 either.
 
     KEY NOTES:
     - FLUX does NOT support negative_prompt — never pass it (throws errors)
-    - end_percentage=0.80 was missing from single-pass code — it's the most
-      impactful single parameter change
-    - IP-Adapter combined > 0.5 degrades quality — single ref at 0.40 is better
-      than two refs at 0.50+0.35=0.85
+    - IP-Adapter removed entirely — it causes split-screen bleed artifacts
     - fal.ai parameter names: start_percentage / end_percentage
       (NOT control_guidance_start / control_guidance_end)
     """
@@ -376,7 +392,9 @@ def generate_redesign_two_pass(
     client = create_client(supabase_url, supabase_key)
 
     base_seed = seed if seed is not None else random.randint(1, 999999)
-    loras = _validate_and_build_loras(loras_json=loras_json)
+    # Pass 2 uses LoRAs (Kontext Pro does not support them). Falls back to
+    # QUALITY_LORAS when no trained style LoRA stack is provided.
+    loras = _validate_and_build_loras(loras_json=loras_json, fallback_loras=QUALITY_LORAS)
 
     # ── Build change map if kept item masks were passed ───────────────────────
     # change_map_url already set by caller → skip building
@@ -415,38 +433,18 @@ def generate_redesign_two_pass(
     print(f"[TwoPass] Config: remove_count={remove_count}, p1_depth={pass1_depth_scale}, p2_strength={pass2_strength}")
     print(f"[TwoPass] Seed: {base_seed}, LoRAs: {len(loras)}, refs: {len(unsplash_reference_urls)}")
 
-    # ── IP-Adapter / Redux reference conditioning ─────────────────────────────
-    # Research: combined scale > 0.5 degrades quality.
-    # Previous code used 0.50 + 0.35 = 0.85 combined — too high.
-    # Fix: single best reference at 0.40.
-    #
-    # USE_REDUX_REFERENCE=true switches to fal-ai/flux-general's reference_image_url
-    # (Redux-style conditioning) instead of the IP-Adapter. A/B test only.
-    # To test: set USE_REDUX_REFERENCE=true in Modal secrets, trigger rerun,
-    # and compare against IP-Adapter output. Whichever looks more editorial — use that.
-    USE_REDUX_REFERENCE = os.environ.get("USE_REDUX_REFERENCE", "false").lower() == "true"
-
-    valid_refs = [u for u in (unsplash_reference_urls or []) if u and u.startswith("https://")]
-    ip_adapter_url = valid_refs[0] if valid_refs else None
-    if ip_adapter_url:
-        if USE_REDUX_REFERENCE:
-            print(f"[TwoPass] Redux reference conditioning at strength 0.40: {ip_adapter_url[:80]}")
-        else:
-            print(f"[TwoPass] IP-Adapter: single reference at scale 0.40: {ip_adapter_url[:80]}")
-    else:
-        print(f"[TwoPass] No valid references — omitting reference conditioning")
-
     # ────────────────────────────────────────────────────────────────────────────
-    # PASS 1: Text-to-image + depth ControlNet
-    # fal-ai/flux-general (text-to-image endpoint, NO image_url param)
+    # PASS 1: Text-to-image with depth ControlNet only.
+    # NO input image — FLUX generates from scratch guided by room geometry.
+    # NO IP-Adapter — it causes split-screen bleed artifacts.
     # ────────────────────────────────────────────────────────────────────────────
-    print(f"[TwoPass] Pass 1: text-to-image + depth ControlNet (scale={pass1_depth_scale}, end=0.80)...")
+    print(f"[TwoPass] Pass 1: flux-general text-to-image (depth={pass1_depth_scale}@0.75)")
 
+    pass1_endpoint = "fal-ai/flux-general"
     pass1_args = {
         "prompt": flux_prompt,
-        # DO NOT pass negative_prompt — FLUX throws errors.
-        "num_inference_steps": 30,
-        "guidance_scale": 3.5,
+        "num_inference_steps": 32,
+        "guidance_scale": 4.5,
         "image_size": {"width": 1024, "height": 1024},
         "controlnet_unions": [
             {
@@ -457,9 +455,8 @@ def generate_redesign_two_pass(
                         "control_mode": "depth",
                         "conditioning_scale": pass1_depth_scale,
                         "start_percentage": 0.0,
-                        "end_percentage": 0.80,   # CRITICAL — was missing from single-pass code
+                        "end_percentage": 0.75,
                     }
-                    # No canny in Pass 1 — geometry set by depth, edge reserved for Pass 2 snap
                 ],
             }
         ],
@@ -471,25 +468,15 @@ def generate_redesign_two_pass(
         "scheduler": "euler",
     }
 
-    if ip_adapter_url:
-        if USE_REDUX_REFERENCE:
-            # Redux-style conditioning: reference_image_url + reference_strength
-            # Mirrors IP-Adapter scale of 0.40 for a fair A/B comparison
-            pass1_args["reference_image_url"] = ip_adapter_url
-            pass1_args["reference_strength"] = 0.40
-            print("[TwoPass] Pass 1: Using Redux reference conditioning (not IP-Adapter)")
-        else:
-            pass1_args["ip_adapter_image_url"] = ip_adapter_url
-            pass1_args["ip_adapter_scale"] = 0.40
-            print("[TwoPass] Pass 1: Using IP-Adapter conditioning at scale 0.40")
-
     try:
-        handle1 = fal_client.submit("fal-ai/flux-general", arguments=pass1_args)
+        handle1 = fal_client.submit(pass1_endpoint, arguments=pass1_args)
         result1 = handle1.get()
         images1 = result1.get("images") or []
         if not images1:
             raise RuntimeError(f"[TwoPass] Pass 1 returned no images: {str(result1)[:300]}")
-        pass1_image_url = images1[0]["url"]
+        pass1_image_url = images1[0].get("url", "")
+        if not pass1_image_url:
+            raise RuntimeError(f"[TwoPass] Pass 1 returned image without URL: {str(result1)[:300]}")
         print(f"[TwoPass] Pass 1 complete: {pass1_image_url[:80]}")
     except Exception as e:
         print(f"[TwoPass] Pass 1 FAILED for room {room_id}: {e}")
@@ -537,10 +524,13 @@ def generate_redesign_two_pass(
         }
     ]
 
+    pass2_strength_final = 0.30
+    pass2_guidance = 3.0
+    pass2_steps = 24
+
     if resolved_change_map_url:
         print(f"[TwoPass] Pass 2: differential diffusion (change_map + edge_scale=0.35, end=0.80)...")
         # Differential diffusion: white = regenerate, black = preserve.
-        # Strength still set to allow full regeneration in white regions.
         # The change map modulates per-pixel — black regions are NOT touched.
         pass2_endpoint = "fal-ai/flux-general/differential-diffusion"
         pass2_args = {
@@ -548,8 +538,8 @@ def generate_redesign_two_pass(
             "image_url": pass1_image_url,
             "change_map_image_url": resolved_change_map_url,
             "strength": 0.95,           # High strength in white regions — change map caps black
-            "num_inference_steps": 20,
-            "guidance_scale": 2.8,
+            "num_inference_steps": pass2_steps,
+            "guidance_scale": pass2_guidance,
             "controlnet_unions": pass2_controlnets,
             "loras": loras if loras else [],
             "output_format": "png",
@@ -559,21 +549,19 @@ def generate_redesign_two_pass(
             "scheduler": "euler",
         }
     else:
-        print(f"[TwoPass] Pass 2: standard img2img (strength={pass2_strength}, edge_scale=0.35, end=0.80)...")
+        print(f"[TwoPass] Pass 2: img2img refine on Pass 1 output (strength={pass2_strength_final}, guidance={pass2_guidance}, steps={pass2_steps})...")
         pass2_endpoint = "fal-ai/flux-general/image-to-image"
         pass2_args = {
             "prompt": flux_prompt,
-            # DO NOT pass negative_prompt
-            "image_url": pass1_image_url,   # Input IS Pass 1, not original iPhone photo
-            "strength": pass2_strength,
-            "num_inference_steps": 20,
-            "guidance_scale": 2.8,          # Lower than Pass 1 — stay close to Pass 1 output
+            "image_url": pass1_image_url,   # Input IS Pass 1 output
+            "strength": pass2_strength_final,
+            "num_inference_steps": pass2_steps,
+            "guidance_scale": pass2_guidance,
             "controlnet_unions": pass2_controlnets,
             "loras": loras if loras else [],
-            # No IP-Adapter in Pass 2 — style committed from Pass 1
             "output_format": "png",
             "num_images": 1,
-            "seed": base_seed + 1,          # Offset by 1: same scene, tiny variation
+            "seed": base_seed + 1,
             "enable_safety_checker": False,
             "scheduler": "euler",
         }

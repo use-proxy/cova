@@ -490,7 +490,10 @@ export const STYLE_DNA_BLOCKS: Record<string, string> = {
 };
 
 // ── System prompt: Call 2 — Staging JSON → FLUX Script (plain text) ─────────
-const CALL2_SYSTEM = `You are a FLUX.1-dev prompt engineer specializing in interior design photography.
+const CALL2_SYSTEM = `CRITICAL: This prompt will be used with FLUX Kontext Pro, an image editing model.
+FLUX weighs the FIRST tokens most heavily. Removals and preservations MUST come before any additions.
+
+You are a FLUX Kontext Pro prompt engineer specializing in interior design photography.
 Convert a design brief JSON into a FLUX-optimized staging script.
 
 ━━━ FLUX PROMPT RULES ━━━
@@ -505,8 +508,8 @@ FLUX uses a T5 text encoder that processes natural language. Keyword lists perfo
 worse than descriptive sentences. Write how a photographer would brief a shot.
 
 TOKEN WEIGHT: FLUX weighs earlier tokens more heavily.
-The style DNA block MUST come first — it gets maximum weight and locks the aesthetic.
-Structure: DNA block → dominant material → key objects → lighting → camera spec.
+Removals and preservations get MAXIMUM weight — they must be the very first tokens.
+Structure: removals → preservations → primary furniture transformation → additions → camera spec.
 
 FORBIDDEN WORDS: beautiful, stunning, gorgeous, amazing, cozy, luxurious, modern,
 contemporary, nice, elegant, perfect. These are meaningless to FLUX's T5 encoder.
@@ -514,34 +517,38 @@ contemporary, nice, elegant, perfect. These are meaningless to FLUX's T5 encoder
 DO NOT OUTPUT a negative prompt. FLUX does not support them and they throw API errors.
 Write positive descriptions only: "clean minimal surfaces" not "no clutter".
 
-━━━ REQUIRED PROMPT STRUCTURE ━━━
+━━━ REQUIRED 5-LINE PROMPT STRUCTURE ━━━
 
-Follow this EXACT order (adapt prose to match the brief):
+Follow this EXACT line structure. The user message will provide pre-built lines for
+removal instructions and preservation instructions — copy them VERBATIM as Lines 1-2.
 
-[STYLE DNA BLOCK — copy verbatim from the "DNA block" field in the user message].
-[DOMINANT MATERIAL or KEY ARCHITECTURAL FEATURE of this room].
-[PRIMARY FURNITURE with exact position and specific material].
-[REQUIRED VERBATIM OBJECTS — if any were specified, include them EXACTLY].
-[ONE LIVED-IN DETAIL — a specific object that makes the space feel inhabited, not staged].
-[LIGHTING: direction, quality, interaction with a specific surface].
-[STYLE TRIGGER WORD embedded naturally + CAMERA SPEC at the very end].
+Line 1 — REMOVAL INSTRUCTIONS (copy verbatim from "REMOVAL LINE" in user message):
+  "Remove ceiling fan. Remove wall letters. Remove desk chair."
+  One sentence per item. These MUST be the very first words of the prompt.
+  If no removal line is provided, skip this line entirely.
+
+Line 2 — FLOOR/WALL PRESERVATION (copy verbatim from "PRESERVATION LINE" in user message):
+  "Keep light blue walls. Keep beige carpet."
+  If no preservation line is provided, skip this line entirely.
+
+Line 3 — PRIMARY FURNITURE TRANSFORMATION:
+  "Replace bed with dark walnut platform bed with cream linen headboard."
+  Use imperative transformation language. Include specific materials.
+  Embed the LoRA style trigger word naturally here.
+
+Line 4 — ADD NEW ELEMENTS:
+  "Add brass floor lamp beside bed. Add abstract art above headboard."
+  Include lived-in details and named products from client directives.
+
+Line 5 — CAMERA LINE (always last):
+  "Shot on Hasselblad X2D 100C, 24mm tilt-shift at f/8."
+  Use a real camera + lens that matches the aesthetic:
+  - Japandi/minimal: "Shot on Hasselblad X2D 100C, 24mm tilt-shift at f/8"
+  - Industrial/dark: "Shot on Sony A7R V, 16mm at f/5.6"
+  - Luxury/editorial: "Shot on Phase One IQ4 150MP, 28mm tilt-shift at f/8"
+  - Bright/airy: "Shot on Fujifilm GFX 100S, 23mm at f/11"
 
 ━━━ RULES FOR EACH ELEMENT ━━━
-
-DNA BLOCK (required — first tokens, verbatim):
-Copy the exact DNA block from the user message. Do not modify it.
-It establishes the style signature before FLUX processes any room details.
-If user chat overrides specific materials (e.g. "dark wood" vs DNA's "white oak"),
-keep the DNA block verbatim and let the room-specific content override downstream.
-
-CAMERA SPEC (required — at the END, not the beginning):
-Use a real camera + lens that matches the aesthetic:
-- Japandi/minimal: "Shot on Hasselblad X2D 100C, 24mm tilt-shift at f/8"
-- Industrial/dark: "Shot on Sony A7R V, 16mm at f/5.6"
-- Luxury/editorial: "Shot on Phase One IQ4 150MP, 28mm tilt-shift at f/8"
-- Bright/airy: "Shot on Fujifilm GFX 100S, 23mm at f/11"
-"Tilt-shift" corrects vertical distortion (architectural photography standard).
-"f/8" gives deep focus across the whole room.
 
 MATERIALS (required — specific, never generic):
 ✓ "warm walnut with visible grain" ✗ "wood"
@@ -557,15 +564,14 @@ One specific small object that implies human habitation:
 ✓ "a ceramic carafe on the bedside table"
 Must be plausible for the room's budget tier.
 
-LIGHTING (required — describe interaction with surfaces):
+LIGHTING (include in Line 3 or 4 — describe interaction with surfaces):
 ✓ "soft morning light raking across the linen headboard"
 ✓ "warm Edison light casting long shadows across reclaimed oak"
 ✗ "good lighting" (meaningless)
-Include light direction: "from the left window" / "overhead" / "low angle afternoon"
 
 STYLE TRIGGER (required if LoRA trigger provided):
-Embed the trigger word NATURALLY in the prose — not bolted on at the end.
-✓ "...warm cvwmn interior, Japanese joinery..."
+Embed the trigger word NATURALLY in Line 3 prose — not bolted on at the end.
+✓ "Replace with warm cvwmn walnut platform bed..."
 ✗ "...photorealistic interior. cvwmn interior."
 
 NAMED PRODUCTS (from client directives):
@@ -574,28 +580,30 @@ If the staging JSON depthLayers contain named client products, include them VERB
 ✗ "large smart TV on the wall"
 
 WALL COLORS: Read wall_change_requested from staging JSON.
-- If true: name the new wall color/finish early in the prompt.
-- If false or absent: do NOT mention wall color — omit walls entirely.
+- If true: include new wall color in Line 2 preservation line.
+- If false or absent: do NOT mention wall color.
 
-FLOORING: Never describe floor material. Only describe objects ON the floor (rugs, furniture legs).
+FLOORING: Read floor_change_requested from staging JSON.
+- If false or absent: floor preservation is handled by Line 2 (already provided).
+  Do NOT override or contradict the preservation line.
+- If true: include new floor treatment in Line 3.
 
-EDITORIAL QUALITY CUE (end with one of these):
+EDITORIAL QUALITY CUE (append to Line 5):
 - "Architectural Digest editorial photograph"
-- "architectural photography, photorealistic"
-- "interior design editorial, photorealistic"
 
 ━━━ VERIFY BEFORE RESPONDING ━━━
 ☐ Output is plain text only — no JSON, no markdown, no labels
 ☐ Word count is 60-90 (count every word)
-☐ Starts with style DNA block (verbatim from user message — first word must match)
-☐ Camera spec is at the END, not the beginning
+☐ Line 1 starts with removal instructions (verbatim from user message) — these are the FIRST words
+☐ Line 2 has preservation instructions (verbatim from user message)
+☐ Camera spec is at the END (Line 5), not the beginning
 ☐ Required verbatim objects included exactly as specified
 ☐ Contains at least one lived-in detail
 ☐ Trigger word embedded naturally in prose
 ☐ No forbidden words
 ☐ All materials specific — no "wood", "fabric", "stone", "metal"
-☐ No negative language anywhere
-☐ Ends with "Architectural Digest editorial photograph" or equivalent`;
+☐ No negative language except removal instructions on Line 1
+☐ Ends with camera spec + "Architectural Digest editorial photograph"`;
 
 // ── Word ceiling enforcement ──────────────────────────────────────────────────
 
@@ -1046,8 +1054,61 @@ async function callFluxScriptFromBrief(
   // Resolve DNA block for this style/trigger
   const dnaBlock = STYLE_DNA_BLOCKS[loraTrigger] ?? null;
 
+  // ── FIX 2: Build explicit removal line from removal_targets ──────────────
+  const allRemovalTargets = [
+    ...removeLabels,
+    ...(brief.removal_targets ?? []),
+  ];
+  // Deduplicate (case-insensitive)
+  const seenRemoval = new Set<string>();
+  const uniqueRemovals: string[] = [];
+  for (const item of allRemovalTargets) {
+    const key = item.toLowerCase().trim();
+    if (key && !seenRemoval.has(key)) {
+      seenRemoval.add(key);
+      uniqueRemovals.push(item.trim());
+    }
+  }
+  const removalLine = uniqueRemovals.length > 0
+    ? uniqueRemovals.map((item) => `Remove ${item} completely.`).join(" ")
+    : "";
+
+  // ── FIX 1: Build floor/wall preservation line ───────────────────────────
+  const preservationParts: string[] = [];
+  if (brief.wall_change_requested === false) {
+    const wallColor = brief.wall_color || brief.palette?.dominant || "existing";
+    preservationParts.push(`Keep ${wallColor} walls exactly as-is.`);
+  } else if (brief.wall_change_requested === true && brief.wall_color) {
+    preservationParts.push(`Change walls to ${brief.wall_color}.`);
+  }
+  if (brief.floor_change_requested === false) {
+    // Extract floor material from palette.dominant or fallback
+    const floorMaterial = brief.palette?.dominant || "existing";
+    preservationParts.push(`Keep the existing ${floorMaterial} floor exactly as-is.`);
+  }
+  const preservationLine = preservationParts.join(" ");
+
+  // ── Build pre-constructed lines section for Call 2 ──────────────────────
+  const removalSection = removalLine
+    ? `REMOVAL LINE (copy verbatim as Line 1 — these MUST be the first words of your output):
+"${removalLine}"
+
+`
+    : `REMOVAL LINE: None — skip Line 1.
+
+`;
+
+  const preservationSection = preservationLine
+    ? `PRESERVATION LINE (copy verbatim as Line 2):
+"${preservationLine}"
+
+`
+    : `PRESERVATION LINE: None — skip Line 2.
+
+`;
+
   const dnaSection = dnaBlock
-    ? `DNA block (copy verbatim as the FIRST sentence of your output):
+    ? `DNA block (embed naturally in Line 3 — NOT as the first sentence):
 "${dnaBlock}"
 
 `
@@ -1055,19 +1116,19 @@ async function callFluxScriptFromBrief(
 
   const requiredSection =
     requiredObjects.length > 0
-      ? `REQUIRED VERBATIM OBJECTS (include these EXACTLY — no paraphrasing):
+      ? `REQUIRED VERBATIM OBJECTS (include these EXACTLY in Line 4 — no paraphrasing):
 ${requiredObjects.map((o) => `- ${o}`).join("\n")}
 
 `
       : "";
 
-  const userMessage = `${dnaSection}${requiredSection}Staging brief:
+  const userMessage = `${removalSection}${preservationSection}${dnaSection}${requiredSection}Staging brief:
 ${JSON.stringify(brief, null, 2)}
 
 LoRA trigger word: "${loraTrigger}"
 Style anchor: "${styleAnchor}"
 
-Write the FLUX prompt now. ${dnaBlock ? "BEGIN with the DNA block above verbatim, then: dominant material → key objects → lighting → camera spec." : "Start with camera spec."} 60-90 words total. Plain text only.`;
+Write the FLUX prompt now following the 5-line structure. Lines 1-2 are pre-built above — copy them verbatim. Then Line 3 (transformation with DNA block + trigger word), Line 4 (additions), Line 5 (camera). 60-90 words total. Plain text only.`;
 
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-5",
