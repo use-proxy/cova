@@ -3,135 +3,165 @@
 import "../step-1/step1.css";
 import "./step7c.css";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useArea2Store } from "@/lib/stores/area2Store";
 
 type Decision = "keep" | "remove" | null;
 
+type AutoDecision = "keep" | "remove" | null;
+
+type BBoxPct = { x: number; y: number; w: number; h: number };
+
 type RoomItem = {
   id: number;
   name: string;
+  label: string;
   category: string;
   decision: Decision;
+  autoDecision: AutoDecision;
   confidence?: number;
   isFixed?: boolean;
   dominantColor?: string;
   material?: string;
   sizeInRoom?: "large" | "medium" | "small";
   styleDescriptors?: string[];
-  position: {
-    x: number;
-    y: number;
-  };
-  highlight: {
-    left: string;
-    top: string;
-    width: string;
-    height: string;
-  };
+  bbox: BBoxPct;
 };
 
 type DetectedItem = {
   label: string;
   category: string;
-  azimuth_degrees: number;
-  elevation_degrees: number;
+  estimated_bbox_pct?: BBoxPct | null;
+  azimuth_degrees?: number;
+  elevation_degrees?: number;
   is_fixed: boolean;
   confidence: number;
+  auto_decision?: "keep" | "remove" | null;
   dominant_color?: string | null;
   material?: string | null;
   size_in_room?: "large" | "medium" | "small" | null;
   style_descriptors?: string[] | null;
 };
 
+const STRUCTURAL_CATEGORIES = new Set([
+  "ceiling",
+  "wall",
+  "floor",
+  "window",
+  "door",
+  "built_in_shelving",
+  "radiator",
+  "fireplace",
+  "built_in_wardrobe",
+]);
+
+const CLUTTER_CATEGORIES = new Set([
+  "cable",
+  "power_cord",
+  "bag",
+  "clothing_on_floor",
+  "trash",
+  "random_item",
+]);
+
+function normalizeCategory(c: string | null | undefined): string {
+  return (c ?? "").toLowerCase().trim().replace(/\s+/g, "_");
+}
+
+function resolveAutoDecision(d: DetectedItem): AutoDecision {
+  if (d.auto_decision === "keep" || d.auto_decision === "remove") {
+    return d.auto_decision;
+  }
+  const cat = normalizeCategory(d.category);
+  if (STRUCTURAL_CATEGORIES.has(cat)) return "keep";
+  if (CLUTTER_CATEGORIES.has(cat)) return "remove";
+  return null;
+}
+
+function bboxFromAzimuth(
+  azimuth_degrees: number | undefined,
+  elevation_degrees: number | undefined,
+): BBoxPct {
+  const az = typeof azimuth_degrees === "number" ? azimuth_degrees : 0;
+  const el = typeof elevation_degrees === "number" ? elevation_degrees : 0;
+  return {
+    x: Math.max(0, Math.min(0.95, 0.5 + (az / 90) * 0.4 - 0.05)),
+    y: Math.max(0, Math.min(0.95, 0.5 - (el / 60) * 0.3 - 0.05)),
+    w: 0.1,
+    h: 0.1,
+  };
+}
+
 function mapDetectedToRoomItems(detected: DetectedItem[]): RoomItem[] {
-  return detected.map((d, i) => ({
-    id: i + 1,
-    name: d.label.replace(/\b\w/g, (c) => c.toUpperCase()),
-    category: (d.category ?? "")
-      .replace(/_/g, " ")
-      .replace(/\b\w/g, (c) => c.toUpperCase()),
-    decision: d.is_fixed ? ("keep" as Decision) : null,
-    confidence: typeof d.confidence === "number" ? d.confidence : undefined,
-    isFixed: !!d.is_fixed,
-    dominantColor: d.dominant_color ?? undefined,
-    material: d.material ?? undefined,
-    sizeInRoom: d.size_in_room ?? undefined,
-    styleDescriptors: Array.isArray(d.style_descriptors)
-      ? d.style_descriptors
-      : undefined,
-    position: {
-      x: Math.round(50 + (d.azimuth_degrees / 90) * 40),
-      y: Math.round(50 + (d.elevation_degrees / 60) * 30),
-    },
-    highlight: {
-      left: `${Math.max(5, Math.min(80, 50 + (d.azimuth_degrees / 90) * 40 - 8))}%`,
-      top: `${Math.max(5, Math.min(80, 50 + (d.elevation_degrees / 60) * 30 - 8))}%`,
-      width: "16%",
-      height: "16%",
-    },
-  }));
+  return detected.map((d, i) => {
+    const auto = resolveAutoDecision(d);
+    let bbox: BBoxPct;
+    if (d.estimated_bbox_pct && typeof d.estimated_bbox_pct === "object") {
+      bbox = {
+        x: Math.max(0, Math.min(1, d.estimated_bbox_pct.x ?? 0.4)),
+        y: Math.max(0, Math.min(1, d.estimated_bbox_pct.y ?? 0.4)),
+        w: Math.max(0.02, Math.min(1, d.estimated_bbox_pct.w ?? 0.2)),
+        h: Math.max(0.02, Math.min(1, d.estimated_bbox_pct.h ?? 0.2)),
+      };
+    } else if (
+      typeof d.azimuth_degrees === "number" ||
+      typeof d.elevation_degrees === "number"
+    ) {
+      bbox = bboxFromAzimuth(d.azimuth_degrees, d.elevation_degrees);
+    } else {
+      bbox = { x: 0.5, y: 0.5, w: 0.1, h: 0.1 };
+    }
+
+    return {
+      id: i + 1,
+      name: d.label.replace(/\b\w/g, (c) => c.toUpperCase()),
+      label: d.label.toLowerCase(),
+      category: (d.category ?? "")
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase()),
+      decision: auto ?? (d.is_fixed ? "keep" : null),
+      autoDecision: auto,
+      confidence: typeof d.confidence === "number" ? d.confidence : undefined,
+      isFixed: !!d.is_fixed,
+      dominantColor: d.dominant_color ?? undefined,
+      material: d.material ?? undefined,
+      sizeInRoom: d.size_in_room ?? undefined,
+      styleDescriptors: Array.isArray(d.style_descriptors)
+        ? d.style_descriptors
+        : undefined,
+      bbox,
+    };
+  });
 }
 
-function CheckIcon() {
-  return (
-    <svg
-      className="step7c-icon"
-      viewBox="0 0 16 16"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M3 8.5 6.2 11.7 13 4.8"
-        stroke="currentColor"
-        strokeWidth="1.9"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function CloseIcon() {
-  return (
-    <svg
-      className="step7c-icon"
-      viewBox="0 0 16 16"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M4 4 12 12M12 4 4 12"
-        stroke="currentColor"
-        strokeWidth="1.9"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-// Named constants — do not inline magic numbers in polling logic
-const POLL_INTERVAL_MS = 2_000; // how often to check pre_detection_result
-const POLL_TIMEOUT_MS = 60_000;  // 60 s — after this, show timeout UI with skip option
+const POLL_INTERVAL_MS = 2_000;
+const POLL_TIMEOUT_MS = 60_000;
+const MASKS_POLL_INTERVAL_MS = 2_000;
+const MASKS_MAX_WAIT_MS = 90_000;
 
 type LoadState = "loading" | "empty" | "ready" | "timeout";
+type MasksState = "pending" | "ready" | "timeout";
 
 export default function Step7cKeepOrRemove() {
   const router = useRouter();
   const [items, setItems] = useState<RoomItem[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [roomPhotoUrl, setRoomPhotoUrl] = useState<string | null>(null);
+  const [roomId, setRoomId] = useState<string | null>(null);
+  const [itemMasks, setItemMasks] = useState<Record<string, string>>({});
+  const [masksState, setMasksState] = useState<MasksState>("pending");
   const [retryTick, setRetryTick] = useState(0);
-  const [editingLabelId, setEditingLabelId] = useState<number | null>(null);
   const [activeItemId, setActiveItemId] = useState<number | null>(null);
-  const [flashAction, setFlashAction] = useState<
-    "keepAll" | "startFresh" | null
-  >(null);
   const [displayedDecidedCount, setDisplayedDecidedCount] = useState(0);
-  const cardRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
-  /* ---- Auth gate + poll pre-detection results from Supabase ---- */
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const imageRef = useRef<HTMLImageElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const cardRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const segmentMasksFiredRef = useRef(false);
+
+  /* ───────────── Load detection results ───────────── */
   useEffect(() => {
     let cancelled = false;
     let pollTimer: ReturnType<typeof setTimeout> | null = null;
@@ -151,7 +181,7 @@ export default function Step7cKeepOrRemove() {
       const { data: rooms } = await supabase
         .from("rooms")
         .select(
-          "id, pre_detection_result, original_image_url, original_photo_url",
+          "id, pre_detection_result, original_image_url, original_photo_url, render_context",
         )
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
@@ -161,8 +191,9 @@ export default function Step7cKeepOrRemove() {
 
       const room = rooms?.[0];
       const photo =
-        room?.original_image_url ?? room?.original_photo_url ?? null;
+        room?.original_photo_url ?? room?.original_image_url ?? null;
       if (photo) setRoomPhotoUrl(photo);
+      if (room?.id) setRoomId(room.id);
 
       const raw = room?.pre_detection_result;
       if (raw === null || raw === undefined) {
@@ -170,7 +201,6 @@ export default function Step7cKeepOrRemove() {
           if (!cancelled) setLoadState("timeout");
           return;
         }
-        // Still waiting on pipeline. Poll again.
         pollTimer = setTimeout(loadOnce, POLL_INTERVAL_MS);
         return;
       }
@@ -182,14 +212,29 @@ export default function Step7cKeepOrRemove() {
       }
 
       const mapped = mapDetectedToRoomItems(raw as DetectedItem[]);
+
+      // Pick up any masks already written (in case they completed before we loaded).
+      // Must run BEFORE setLoadState('ready') so the poll effect sees correct state.
+      const ctx = (room?.render_context ?? {}) as Record<string, unknown>;
+      const existingMasks = ctx?.itemMasks as Record<string, string> | undefined;
+      if (existingMasks && Object.keys(existingMasks).length > 0) {
+        setItemMasks(existingMasks);
+      }
+      const masksAlreadyReady = ctx?.masksReady === true;
+      if (masksAlreadyReady) {
+        setMasksState("ready");
+      }
+
       setItems(mapped);
-      setActiveItemId(mapped[0]?.id ?? null);
+      const firstDecidable = mapped.find((m) => m.autoDecision === null);
+      setActiveItemId((firstDecidable ?? mapped[0])?.id ?? null);
       setLoadState("ready");
 
-      // Fire EVF-SAM2 segmentation in background — non-blocking.
-      // Masks are stored in render_context.itemMasks and used by the redesign pipeline
-      // to build a differential diffusion change map for kept items.
-      if (room?.id) {
+      // Fire EVF-SAM segmentation whenever pre_detection_result exists and masks
+      // aren't already ready. Covers fresh detections AND rooms that had
+      // pre_detection_result persisted before segment-masks was ever invoked.
+      if (room?.id && !masksAlreadyReady && !segmentMasksFiredRef.current) {
+        segmentMasksFiredRef.current = true;
         void fetch("/api/pipeline/segment-masks", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -205,14 +250,181 @@ export default function Step7cKeepOrRemove() {
       cancelled = true;
       if (pollTimer) clearTimeout(pollTimer);
     };
-    // retryTick is intentionally included — incrementing it re-mounts the effect
-    // and resets the startedAt timer, giving the user a fresh POLL_TIMEOUT_MS window.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router, retryTick]);
 
-  const roomImageSrc = roomPhotoUrl ?? "";
+  /* ───────────── Poll for mask completion ───────────── */
+  useEffect(() => {
+    if (loadState !== "ready" || !roomId || masksState !== "pending") return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const startedAt = Date.now();
+
+    const tick = async () => {
+      if (cancelled) return;
+      try {
+        const { createBrowserClient } = await import("@/lib/supabase/client");
+        const supabase = createBrowserClient();
+        const { data: row } = await supabase
+          .from("rooms")
+          .select("render_context")
+          .eq("id", roomId)
+          .single();
+        const ctx = (row?.render_context ?? {}) as Record<string, unknown>;
+        const masks = ctx?.itemMasks as Record<string, string> | undefined;
+        if (masks && Object.keys(masks).length > 0) {
+          setItemMasks(masks);
+        }
+        if (ctx?.masksReady === true) {
+          if (!cancelled) setMasksState("ready");
+          return;
+        }
+      } catch (err) {
+        console.warn("[step-7c] mask poll failed (non-fatal):", err);
+      }
+
+      if (Date.now() - startedAt >= MASKS_MAX_WAIT_MS) {
+        if (!cancelled) {
+          console.warn(
+            "[step-7c] mask polling hit cap — doing final DB read before enabling CTA",
+          );
+          try {
+            const { createBrowserClient } = await import("@/lib/supabase/client");
+            const supabase = createBrowserClient();
+            const { data: finalRow } = await supabase
+              .from("rooms")
+              .select("render_context")
+              .eq("id", roomId)
+              .single();
+            const finalCtx = (finalRow?.render_context ?? {}) as Record<string, unknown>;
+            const finalMasks = finalCtx?.itemMasks as Record<string, string> | undefined;
+            if (finalMasks && Object.keys(finalMasks).length > 0) {
+              setItemMasks(finalMasks);
+              setMasksState("ready");
+              return;
+            }
+          } catch (err) {
+            console.warn("[step-7c] final mask read failed (non-fatal):", err);
+          }
+          setMasksState("timeout");
+        }
+        return;
+      }
+      timer = setTimeout(tick, MASKS_POLL_INTERVAL_MS);
+    };
+
+    tick();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [loadState, roomId, masksState]);
+
+  /* ───────────── Canvas mask overlay ───────────── */
+  const renderMaskOverlay = useCallback(
+    async (label: string | null) => {
+      const canvas = canvasRef.current;
+      const img = imageRef.current;
+      if (!canvas || !img) return;
+
+      const rect = img.getBoundingClientRect();
+      const container = img.parentElement;
+      const containerRect = container?.getBoundingClientRect();
+      if (!containerRect) return;
+
+      canvas.style.position = "absolute";
+      canvas.style.left = rect.left - containerRect.left + "px";
+      canvas.style.top = rect.top - containerRect.top + "px";
+      canvas.style.width = rect.width + "px";
+      canvas.style.height = rect.height + "px";
+      canvas.width = Math.max(1, Math.round(rect.width));
+      canvas.height = Math.max(1, Math.round(rect.height));
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (!label) return;
+
+      const normalizedLabel = label.toLowerCase().trim();
+      const maskUrl =
+        itemMasks[normalizedLabel] ??
+        itemMasks[normalizedLabel.replace(/\s+/g, "_")] ??
+        itemMasks[normalizedLabel.replace(/_/g, " ")] ??
+        itemMasks[label];
+      if (!maskUrl) return;
+
+      const maskImg = new window.Image();
+      maskImg.crossOrigin = "anonymous";
+      maskImg.onload = () => {
+        const offscreen = document.createElement("canvas");
+        offscreen.width = maskImg.naturalWidth;
+        offscreen.height = maskImg.naturalHeight;
+        const offCtx = offscreen.getContext("2d");
+        if (!offCtx) return;
+        offCtx.drawImage(maskImg, 0, 0);
+
+        const imageData = offCtx.getImageData(
+          0,
+          0,
+          offscreen.width,
+          offscreen.height,
+        );
+        const data = imageData.data;
+
+        const outCanvas = document.createElement("canvas");
+        outCanvas.width = offscreen.width;
+        outCanvas.height = offscreen.height;
+        const outCtx = outCanvas.getContext("2d");
+        if (!outCtx) return;
+
+        const outData = outCtx.createImageData(
+          offscreen.width,
+          offscreen.height,
+        );
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i] ?? 0;
+          const g = data[i + 1] ?? 0;
+          const b = data[i + 2] ?? 0;
+          const a = data[i + 3] ?? 0;
+          const isItem = a > 128 && (r > 150 || g > 150 || b > 150);
+          outData.data[i] = isItem ? 201 : 0;
+          outData.data[i + 1] = isItem ? 168 : 0;
+          outData.data[i + 2] = isItem ? 76 : 0;
+          outData.data[i + 3] = isItem ? 140 : 0;
+        }
+        outCtx.putImageData(outData, 0, 0);
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(outCanvas, 0, 0, canvas.width, canvas.height);
+      };
+      maskImg.onerror = () => {
+        console.warn("[step-7c] Failed to load mask image:", maskUrl);
+      };
+      maskImg.src = maskUrl;
+    },
+    [itemMasks],
+  );
+
+  // Re-render overlay when active selection or masks change.
+  useEffect(() => {
+    const activeItem = items.find((i) => i.id === activeItemId) ?? null;
+    void renderMaskOverlay(activeItem?.label ?? null);
+  }, [activeItemId, items, renderMaskOverlay]);
+
+  // Redraw overlay on window resize so canvas stays aligned to photo.
+  useEffect(() => {
+    const handler = () => {
+      const activeItem = items.find((i) => i.id === activeItemId) ?? null;
+      void renderMaskOverlay(activeItem?.label ?? null);
+    };
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, [activeItemId, items, renderMaskOverlay]);
+
+  /* ───────────── Derived counts ───────────── */
   const nonFixedItems = useMemo(
-    () => items.filter((item) => !item.isFixed),
+    () => items.filter((item) => item.autoDecision === null),
     [items],
   );
   const decidedCount = useMemo(
@@ -228,77 +440,59 @@ export default function Step7cKeepOrRemove() {
     () => items.filter((item) => item.decision === "remove").length,
     [items],
   );
-  const allDecided = totalDecidable > 0 && decidedCount === totalDecidable;
+  const allDecided = totalDecidable === 0 || decidedCount === totalDecidable;
+  const masksReady = masksState !== "pending";
+  const canContinue = allDecided && masksReady;
 
   useEffect(() => {
     const totalFrames = 18;
     const startValue = displayedDecidedCount;
-    const difference = decidedCount - startValue;
-
-    if (difference === 0) {
-      return;
-    }
-
+    const diff = decidedCount - startValue;
+    if (diff === 0) return;
     let frame = 0;
     const interval = window.setInterval(() => {
       frame += 1;
-      const nextValue = Math.round(
-        startValue + (difference * frame) / totalFrames,
-      );
-      setDisplayedDecidedCount(nextValue);
-
+      const next = Math.round(startValue + (diff * frame) / totalFrames);
+      setDisplayedDecidedCount(next);
       if (frame >= totalFrames) {
         window.clearInterval(interval);
         setDisplayedDecidedCount(decidedCount);
       }
     }, 20);
-
     return () => window.clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [decidedCount]);
 
   const setDecision = (id: number, decision: Exclude<Decision, null>) => {
     setItems((current) =>
-      current.map((item) => (item.id === id ? { ...item, decision } : item)),
+      current.map((item) =>
+        item.id === id && item.autoDecision === null
+          ? { ...item, decision }
+          : item,
+      ),
     );
     setActiveItemId(id);
   };
 
-  const flash = (name: "keepAll" | "startFresh") => {
-    setFlashAction(name);
-    window.setTimeout(() => {
-      setFlashAction((current) => (current === name ? null : current));
-    }, 420);
-  };
-
-  const handleKeepAll = () => {
+  const handleKeepAll = () =>
     setItems((current) =>
-      current.map((item) => ({ ...item, decision: "keep" })),
+      current.map((item) =>
+        item.autoDecision === null ? { ...item, decision: "keep" } : item,
+      ),
     );
-    flash("keepAll");
-  };
 
-  const handleStartFresh = () => {
+  const handleStartFresh = () =>
     setItems((current) =>
-      current.map((item) => ({ ...item, decision: "remove" })),
+      current.map((item) =>
+        item.autoDecision === null ? { ...item, decision: "remove" } : item,
+      ),
     );
-    flash("startFresh");
-  };
-
-  const handleBadgeSelect = (id: number) => {
-    setActiveItemId(id);
-    cardRefs.current[id]?.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-    });
-  };
 
   const setKeepMask = useArea2Store((s) => s.setKeepMask);
 
   const handleContinue = async () => {
-    if (!allDecided) return;
+    if (!canContinue) return;
 
-    // Update Area2Store keepMask so the assembler can read it
     setKeepMask({
       objects: items.map((item) => ({
         id: String(item.id),
@@ -318,70 +512,59 @@ export default function Step7cKeepOrRemove() {
       detectionModelVersion: "user-selection",
     });
 
-    // Persist keep/remove decisions to Supabase
     try {
       const { createBrowserClient } = await import("@/lib/supabase/client");
       const supabase = createBrowserClient();
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (user) {
-        const { data: rooms } = await supabase
+      if (user && roomId) {
+        const decisions = items.map((item) => ({
+          id: item.id,
+          name: item.name,
+          category: item.category,
+          decision: item.decision,
+        }));
+        await supabase
           .from("rooms")
-          .select("id")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(1);
-        const roomId = rooms?.[0]?.id;
-        if (roomId) {
-          const decisions = items.map((item) => ({
-            id: item.id,
-            name: item.name,
-            category: item.category,
-            decision: item.decision,
-          }));
-          await supabase
-            .from("rooms")
-            .update({ keep_remove_decisions: decisions })
-            .eq("id", roomId);
+          .update({ keep_remove_decisions: decisions })
+          .eq("id", roomId);
 
-          // Fix 9: persist keepMask into render_context
-          const { data: existingRoom } = await supabase
-            .from("rooms")
-            .select("render_context")
-            .eq("id", roomId)
-            .single();
+        const { data: existingRoom } = await supabase
+          .from("rooms")
+          .select("render_context")
+          .eq("id", roomId)
+          .single();
 
-          const existingCtx =
-            (existingRoom?.render_context as Record<string, unknown>) ?? {};
+        const existingCtx =
+          (existingRoom?.render_context as Record<string, unknown>) ?? {};
 
-          await supabase
-            .from("rooms")
-            .update({
-              render_context: {
-                ...existingCtx,
-                keepMask: {
-                  objects: items.map((item) => ({
-                    id: String(item.id),
-                    type: item.name,
-                    bbox: [0, 0, 0, 0],
-                    confidence: 1,
-                    confidenceTier: "show-user",
-                    keep: item.decision === "keep",
-                    immovable: !!item.isFixed,
-                    material: item.material,
-                    dominantColor: item.dominantColor,
-                    sizeInRoom: item.sizeInRoom,
-                    styleDescriptors: item.styleDescriptors,
-                  })),
-                  depthMapUrl: "",
-                  rawDetectionCount: items.length,
-                  detectionModelVersion: "user-selection",
-                },
+        await supabase
+          .from("rooms")
+          .update({
+            render_context: {
+              ...existingCtx,
+              keepMask: {
+                objects: items.map((item) => ({
+                  id: String(item.id),
+                  type: item.name,
+                  bbox: [0, 0, 0, 0],
+                  confidence: 1,
+                  confidenceTier: "show-user",
+                  keep: item.decision === "keep",
+                  immovable: !!item.isFixed,
+                  material: item.material,
+                  dominantColor: item.dominantColor,
+                  sizeInRoom: item.sizeInRoom,
+                  styleDescriptors: item.styleDescriptors,
+                })),
+                depthMapUrl: "",
+                rawDetectionCount: items.length,
+                detectionModelVersion: "user-selection",
               },
-            })
-            .eq("id", roomId);
-        }
+            },
+          })
+          .eq("id", roomId);
       }
     } catch (err) {
       console.warn("[step-7c] Failed to persist decisions:", err);
@@ -390,113 +573,50 @@ export default function Step7cKeepOrRemove() {
     router.push("/design/step-7d");
   };
 
+  /* ───────────── Loading / timeout / empty states ───────────── */
   if (loadState === "loading") {
     return (
-      <main
-        className="step7c-page"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "100dvh",
-          background: "#0A1628",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 20,
-          }}
-        >
-          <div
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: "50%",
-              border: "3px solid rgba(201,168,76,0.2)",
-              borderTopColor: "#C9A84C",
-              animation: "spin 1s linear infinite",
-            }}
-            aria-hidden="true"
-          />
-          <p
-            style={{
-              fontFamily: "Inter, sans-serif",
-              color: "#F8F6F1",
-              fontSize: 14,
-              letterSpacing: "0.02em",
-            }}
-          >
-            Detecting items in your room...
-          </p>
+      <main className="step7c-page step7c-state-center">
+        <div className="step7c-skeleton-wrap" aria-label="Analyzing your room">
+          <div className="step7c-skeleton-grid">
+            <div className="step7c-skeleton-photo" />
+            <div className="step7c-skeleton-panel">
+              <div className="step7c-skeleton-line step7c-skeleton-line--title" />
+              <div className="step7c-skeleton-line step7c-skeleton-line--short" />
+              <div className="step7c-skeleton-card" />
+              <div className="step7c-skeleton-card" />
+              <div className="step7c-skeleton-card" />
+            </div>
+          </div>
+          <p className="step7c-skeleton-caption">Analyzing your room…</p>
         </div>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </main>
     );
   }
 
   if (loadState === "timeout") {
     return (
-      <main
-        className="step7c-page"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "100dvh",
-          background: "#0A1628",
-          padding: "0 24px",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 20,
-            textAlign: "center",
-          }}
-        >
-          <p
-            style={{
-              fontFamily: "Inter, sans-serif",
-              color: "#F8F6F1",
-              fontSize: 16,
-              maxWidth: 440,
-              lineHeight: 1.5,
-            }}
-          >
+      <main className="step7c-page step7c-state-center">
+        <div className="step7c-state-card">
+          <p className="step7c-state-text">
             Room analysis is taking longer than expected.
           </p>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
-            {/* Skip: advance to step-7d with empty/null pre_detection_result */}
+          <div className="step7c-state-actions">
             <button
               type="button"
+              className="step7c-btn step7c-btn--primary"
               onClick={() => router.push("/design/step-7d")}
-              style={{
-                fontFamily: "Inter, sans-serif",
-                background: "#C9A84C",
-                color: "#0A1628",
-                border: "none",
-                borderRadius: 24,
-                padding: "12px 28px",
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: "pointer",
-                letterSpacing: "0.04em",
-              }}
             >
               Skip this step
             </button>
-            {/* Try again: resets POLL_TIMEOUT_MS timer and re-triggers pre-detection */}
             <button
               type="button"
+              className="step7c-btn step7c-btn--ghost"
               onClick={async () => {
                 try {
-                  const { createBrowserClient } =
-                    await import("@/lib/supabase/client");
+                  const { createBrowserClient } = await import(
+                    "@/lib/supabase/client"
+                  );
                   const supabase = createBrowserClient();
                   const {
                     data: { user },
@@ -520,22 +640,8 @@ export default function Step7cKeepOrRemove() {
                 } catch (err) {
                   console.warn("[step-7c] retry failed:", err);
                 }
-                // Reset timer by incrementing retryTick — this re-runs the useEffect
-                // with a fresh startedAt, giving the user another POLL_TIMEOUT_MS window.
                 setLoadState("loading");
                 setRetryTick((n) => n + 1);
-              }}
-              style={{
-                fontFamily: "Inter, sans-serif",
-                background: "transparent",
-                color: "#F8F6F1",
-                border: "1px solid rgba(201,168,76,0.4)",
-                borderRadius: 24,
-                padding: "12px 28px",
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: "pointer",
-                letterSpacing: "0.04em",
               }}
             >
               Try again
@@ -548,55 +654,17 @@ export default function Step7cKeepOrRemove() {
 
   if (loadState === "empty") {
     return (
-      <main
-        className="step7c-page"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "100dvh",
-          background: "#0A1628",
-          padding: "0 24px",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 20,
-            textAlign: "center",
-          }}
-        >
-          <p
-            style={{
-              fontFamily: "Inter, sans-serif",
-              color: "#F8F6F1",
-              fontSize: 16,
-              maxWidth: 420,
-              lineHeight: 1.5,
-            }}
-          >
-            We couldn&apos;t detect any items in your photo. Try uploading a
-            clearer image.
+      <main className="step7c-page step7c-state-center">
+        <div className="step7c-state-card">
+          <p className="step7c-state-text">
+            No items detected. We&apos;ll redesign the full room.
           </p>
           <button
             type="button"
-            onClick={() => router.push("/design/step-6")}
-            style={{
-              fontFamily: "Inter, sans-serif",
-              background: "#C9A84C",
-              color: "#0A1628",
-              border: "none",
-              borderRadius: 24,
-              padding: "12px 28px",
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: "pointer",
-              letterSpacing: "0.04em",
-            }}
+            className="step7c-btn step7c-btn--primary"
+            onClick={() => router.push("/design/step-7d")}
           >
-            Re-upload Photo
+            Continue
           </button>
         </div>
       </main>
@@ -621,12 +689,6 @@ export default function Step7cKeepOrRemove() {
           type="button"
           className="step7c-brand"
           onClick={() => router.push("/")}
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            padding: 0,
-          }}
         >
           Cova
         </button>
@@ -636,200 +698,208 @@ export default function Step7cKeepOrRemove() {
       <div className="step7c-shell">
         <section className="step7c-grid" aria-label="Keep or remove room items">
           <div className="step7c-room">
-            <div className="step7c-room-frame">
-              <img
-                className="step7c-room-photo"
-                src={roomImageSrc}
-                alt="Scanned room with detected furniture items"
+            <div
+              ref={containerRef}
+              style={{ position: "relative", width: "100%" }}
+            >
+              {roomPhotoUrl && (
+                <img
+                  ref={imageRef}
+                  src={roomPhotoUrl}
+                  alt="Your room"
+                  style={{ width: "100%", height: "auto", display: "block" }}
+                  onLoad={() => {
+                    const a = items.find((i) => i.id === activeItemId) ?? null;
+                    void renderMaskOverlay(a?.label ?? null);
+                  }}
+                />
+              )}
+              <canvas
+                ref={canvasRef}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  pointerEvents: "none",
+                }}
+                aria-hidden="true"
               />
-              <div className="step7c-room-overlay" />
-              <div className="step7c-room-scan" />
-
-              {items.map((item, index) => {
-                const isVisible = activeItemId === item.id;
-
-                return (
-                  <div key={item.id}>
-                    <div
-                      className={`step7c-item-highlight${isVisible ? " is-visible" : ""}`}
-                      style={item.highlight}
-                      aria-hidden="true"
-                    />
-                    <button
-                      type="button"
-                      className={`step7c-badge${isVisible ? " is-active" : ""}`}
-                      style={{
-                        left: `${item.position.x}%`,
-                        top: `${item.position.y}%`,
-                        animationDelay: `${index * 90}ms`,
-                      }}
-                      onMouseEnter={() => setActiveItemId(item.id)}
-                      onFocus={() => setActiveItemId(item.id)}
-                      onClick={() => handleBadgeSelect(item.id)}
-                      aria-label={`Select ${item.name}`}
-                    >
-                      {item.id}
-                    </button>
-                  </div>
-                );
-              })}
+              {masksState === "pending" && (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background: "rgba(10, 22, 40, 0.75)",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "16px",
+                    borderRadius: "12px",
+                    zIndex: 10,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "44px",
+                      height: "44px",
+                      border: "3px solid rgba(201,168,76,0.25)",
+                      borderTopColor: "#C9A84C",
+                      borderRadius: "50%",
+                      animation: "spin 1s linear infinite",
+                    }}
+                  />
+                  <p
+                    style={{
+                      color: "rgba(245,240,232,0.8)",
+                      fontSize: "15px",
+                      fontWeight: 500,
+                      letterSpacing: "0.3px",
+                    }}
+                  >
+                    Analyzing your room...
+                  </p>
+                  <p
+                    style={{
+                      color: "rgba(245,240,232,0.4)",
+                      fontSize: "13px",
+                    }}
+                  >
+                    Tap items on the right while you wait
+                  </p>
+                </div>
+              )}
+            </div>
+            <div className="step7c-legend">
+              <span className="step7c-legend-swatch step7c-legend-swatch--keep" />
+              <span>Gold = keeping</span>
+              <span className="step7c-legend-divider" aria-hidden="true">
+                •
+              </span>
+              <span className="step7c-legend-swatch step7c-legend-swatch--remove" />
+              <span>Muted = removing</span>
             </div>
           </div>
 
           <aside className="step7c-panel">
             <div className="step7c-panel-header">
               <div>
-                <h1 className="step7c-heading">What stays in your new room?</h1>
+                <h1 className="step7c-heading">What stays?</h1>
                 <p className="step7c-subtext">
-                  Only items you keep will be worked around.
+                  Tap each item to see it highlighted.
                 </p>
               </div>
               <div className="step7c-progress-pill" aria-live="polite">
-                {displayedDecidedCount} of {totalDecidable} decided
+                {displayedDecidedCount} / {totalDecidable}
               </div>
             </div>
 
-            <div className="step7c-quick-actions">
-              <button
-                type="button"
-                className={`step7c-ghost-action${flashAction === "keepAll" ? " is-flashing" : ""}`}
-                onClick={handleKeepAll}
-              >
-                Keep All
-              </button>
-              <button
-                type="button"
-                className={`step7c-ghost-action${flashAction === "startFresh" ? " is-flashing" : ""}`}
-                onClick={handleStartFresh}
-              >
-                Start Fresh
-              </button>
-            </div>
+            {totalDecidable > 0 && (
+              <div className="step7c-quick-actions">
+                <button
+                  type="button"
+                  className="step7c-ghost-action"
+                  onClick={handleKeepAll}
+                >
+                  Keep all
+                </button>
+                <button
+                  type="button"
+                  className="step7c-ghost-action"
+                  onClick={handleStartFresh}
+                >
+                  Start fresh
+                </button>
+              </div>
+            )}
 
-            <div
-              className="step7c-list"
-              role="list"
-              aria-label="Detected furniture items"
-            >
-              {items.map((item) => {
+            <div className="step7c-list" role="list">
+              {items.map((item, index) => {
                 const isKeep = item.decision === "keep";
                 const isRemove = item.decision === "remove";
                 const isFocused = activeItemId === item.id;
+                const isAuto = item.autoDecision !== null;
 
                 return (
                   <div
                     key={item.id}
-                    ref={(element) => {
-                      cardRefs.current[item.id] = element;
+                    ref={(el) => {
+                      cardRefs.current[item.id] = el;
                     }}
-                    className={`step7c-card${isFocused ? " is-focused" : ""}${isKeep ? " is-keep" : ""}${isRemove ? " is-remove" : ""}`}
                     role="listitem"
+                    className={
+                      "step7c-card" +
+                      (isFocused ? " is-focused" : "") +
+                      (isKeep ? " is-keep" : "") +
+                      (isRemove ? " is-remove" : "") +
+                      (isAuto ? " is-auto" : "")
+                    }
+                    style={{ animationDelay: `${Math.min(index, 20) * 50}ms` }}
                     onMouseEnter={() => setActiveItemId(item.id)}
+                    onClick={() => setActiveItemId(item.id)}
                   >
-                    <div className="step7c-card-main">
-                      <div className="step7c-card-badge">{item.id}</div>
-                      <div className="step7c-card-copy">
-                        {editingLabelId === item.id ? (
-                          <input
-                            type="text"
-                            defaultValue={item.name}
-                            autoFocus
-                            onBlur={(e) => {
-                              const newLabel = e.currentTarget.value.trim();
-                              if (newLabel && newLabel !== item.name) {
-                                setItems((curr) =>
-                                  curr.map((it) =>
-                                    it.id === item.id
-                                      ? { ...it, name: newLabel }
-                                      : it,
-                                  ),
-                                );
-                              }
-                              setEditingLabelId(null);
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                (e.currentTarget as HTMLInputElement).blur();
-                              } else if (e.key === "Escape") {
-                                setEditingLabelId(null);
-                              }
-                            }}
-                            style={{
-                              background: "transparent",
-                              border: "1px solid rgba(201,168,76,0.6)",
-                              color: "#F8F6F1",
-                              padding: "4px 8px",
-                              borderRadius: 4,
-                              fontSize: 16,
-                              width: "100%",
-                            }}
-                          />
-                        ) : (
-                          <h2 className="step7c-card-title">{item.name}</h2>
+                    <div className="step7c-card-copy">
+                      <h2 className="step7c-card-title">{item.name}</h2>
+                      <div className="step7c-card-meta">
+                        <span className="step7c-card-pill">{item.category}</span>
+                        {item.material && (
+                          <span className="step7c-card-hint">
+                            {item.material}
+                          </span>
                         )}
-                        <div className="step7c-card-category">
-                          {item.category}
-                        </div>
-                        {typeof item.confidence === "number" &&
-                          item.confidence < 0.85 && (
-                            <div
-                              style={{
-                                fontSize: 11,
-                                color:
-                                  item.confidence < 0.65
-                                    ? "#C0504A"
-                                    : "#C9A84C",
-                                marginTop: 4,
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 6,
-                              }}
-                            >
-                              <span>
-                                {item.confidence < 0.65
-                                  ? "Not sure what this is"
-                                  : "AI detected — is this right?"}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => setEditingLabelId(item.id)}
-                                style={{
-                                  background: "transparent",
-                                  border: "1px solid rgba(201,168,76,0.4)",
-                                  color: "#C9A84C",
-                                  borderRadius: 4,
-                                  padding: "2px 8px",
-                                  fontSize: 10,
-                                  cursor: "pointer",
-                                }}
-                              >
-                                Edit
-                              </button>
-                            </div>
-                          )}
+                        {!item.material && item.dominantColor && (
+                          <span className="step7c-card-hint">
+                            {item.dominantColor}
+                          </span>
+                        )}
                       </div>
                     </div>
 
-                    <div className="step7c-actions">
-                      <button
-                        type="button"
-                        className={`step7c-choice step7c-choice--keep${isKeep ? " is-selected" : ""}`}
-                        onClick={() => setDecision(item.id, "keep")}
-                        aria-pressed={isKeep}
+                    {isAuto ? (
+                      <div
+                        className={
+                          "step7c-auto-badge" +
+                          (item.autoDecision === "keep"
+                            ? " step7c-auto-badge--keep"
+                            : " step7c-auto-badge--remove")
+                        }
                       >
-                        <CheckIcon />
-                        <span>KEEP</span>
-                      </button>
-                      <button
-                        type="button"
-                        className={`step7c-choice step7c-choice--remove${isRemove ? " is-selected" : ""}`}
-                        onClick={() => setDecision(item.id, "remove")}
-                        aria-pressed={isRemove}
-                      >
-                        <CloseIcon />
-                        <span>REMOVE</span>
-                      </button>
-                    </div>
+                        {item.autoDecision === "keep"
+                          ? "Auto-kept"
+                          : "Auto-removed"}
+                      </div>
+                    ) : (
+                      <div className="step7c-actions">
+                        <button
+                          type="button"
+                          className={
+                            "step7c-choice step7c-choice--keep" +
+                            (isKeep ? " is-selected" : "")
+                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDecision(item.id, "keep");
+                          }}
+                          aria-pressed={isKeep}
+                        >
+                          Keep
+                        </button>
+                        <button
+                          type="button"
+                          className={
+                            "step7c-choice step7c-choice--remove" +
+                            (isRemove ? " is-selected" : "")
+                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDecision(item.id, "remove");
+                          }}
+                          aria-pressed={isRemove}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -840,17 +910,24 @@ export default function Step7cKeepOrRemove() {
 
       <div className="step7c-bottombar">
         <div className="step7c-summary">
-          <strong>{keepCount}</strong> items keeping{" "}
-          <span aria-hidden="true">/</span> <strong>{removeCount}</strong> items
+          <strong>{keepCount}</strong> keeping{" "}
+          <span aria-hidden="true">/</span> <strong>{removeCount}</strong>{" "}
           removing
         </div>
         <button
           type="button"
-          className={`step7c-cta${allDecided ? " is-ready" : ""}`}
-          disabled={!allDecided}
+          className={"step7c-cta" + (canContinue ? " is-ready" : "")}
+          disabled={!canContinue}
           onClick={handleContinue}
         >
-          Lock In My Choices &rarr;
+          {!masksReady ? (
+            <>
+              <span className="step7c-spinner" aria-hidden="true" />
+              Preparing your room…
+            </>
+          ) : (
+            <>Design My Room &rarr;</>
+          )}
         </button>
       </div>
     </main>

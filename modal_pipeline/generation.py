@@ -215,15 +215,15 @@ def build_change_map(
             y_start = int(image_height * 0.60)
             floor_region = np.zeros((image_height, image_width), dtype=bool)
             floor_region[y_start:, :] = depth_arr[y_start:, :] > 0.45
-            # Always treat bottom 25% as floor regardless of depth
-            floor_region[int(image_height * 0.75):, :] = True
+            # Always treat bottom 40% as floor regardless of depth
+            floor_region[int(image_height * 0.60):, :] = True
 
             change_map[floor_region] = 0
             floor_px = int(np.sum(floor_region))
             print(f"[change_map] floor region painted black: {floor_px} pixels (depth-based)")
         except Exception as e:
             print(f"[change_map] Depth map failed ({e}), applying positional floor fallback")
-            fallback_start = int(image_height * 0.70)
+            fallback_start = int(image_height * 0.60)
             change_map[fallback_start:, :] = 0
             fallback_px = image_width * (image_height - fallback_start)
             print(f"[change_map] floor region painted black: {fallback_px} pixels (depth-exception fallback)")
@@ -243,6 +243,12 @@ def build_change_map(
         change_map[:int(image_height * 0.70), int(image_width * 0.90):] = 0   # right wall
         print("[change_map] Wall preservation mask applied")
 
+    # ── Ceiling: always preserve top 8% regardless of wall setting ───────────
+    # Ceilings are always structural — this prevents ceiling fixtures from
+    # disappearing in the redesign.
+    change_map[:int(image_height * 0.08), :] = 0
+    print("[change_map] Ceiling preservation strip (top 8%) applied")
+
     # ── Kept item masks: paint black wherever EVF-SAM2 mask is white ─────────
     for mask_url in kept_item_mask_urls:
         if not mask_url or not mask_url.startswith("https://"):
@@ -260,12 +266,14 @@ def build_change_map(
             print(f"[change_map] Failed to apply mask {mask_url[:60]}: {e}")
             # Non-fatal — continue with other masks
 
-    # ── Dilate all black regions by 5px to prevent edge artifacts ────────────
+    # ── Dilate all black regions by 12px to prevent edge artifacts ───────────
+    # Larger buffer zone around preserved items reduces seam artifacts at
+    # preservation boundaries during differential diffusion.
     black_mask = change_map == 0
-    structure = np.ones((11, 11), dtype=bool)   # 5px radius → 11x11 kernel
+    structure = np.ones((25, 25), dtype=bool)   # 12px radius → 25x25 kernel
     dilated_black = binary_dilation(black_mask, structure=structure)
     change_map[dilated_black] = 0
-    print(f"[change_map] Dilation applied: {np.sum(black_mask)} → {np.sum(dilated_black)} black px")
+    print(f"[change_map] Dilation (12px) applied: {np.sum(black_mask)} → {np.sum(dilated_black)} black px")
 
     # ── Upload to Supabase masks/{room_id}/change_map.png ────────────────────
     pil_map = Image.fromarray(change_map, mode="L")
