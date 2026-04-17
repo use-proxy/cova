@@ -92,11 +92,14 @@ app = modal.App("cova-generation")
 
 STORAGE_BUCKET = "room-photos"
 
-# Stage 1 neutral fill prompt — same for every room type, every render.
-NEUTRAL_FILL_PROMPT = (
-    "completely empty room, bare floor, bare walls, no furniture, no objects, "
-    "natural light, pristine surfaces, seamless interior photography"
-)
+
+def get_neutral_fill_prompt(room_type: str = "room") -> str:
+    """Stage 1 neutral fill prompt — room-type aware to guide Fill Pro."""
+    rt = room_type.replace("_", " ") if room_type else "room"
+    return (
+        f"completely empty {rt}, bare floor, bare walls, no furniture, no objects, "
+        f"natural light, pristine surfaces, seamless interior photography"
+    )
 
 # ---------------------------------------------------------------------------
 # Shared utilities
@@ -634,9 +637,10 @@ def build_fallback_mask(
 # Prompt builder — Fill Pro only
 # ---------------------------------------------------------------------------
 
-def build_fill_prompt(style_prompt: str, removed_items: list, kept_items: list = None) -> str:
+def build_fill_prompt(style_prompt: str, removed_items: list, kept_items: list = None, room_type: str = "room") -> str:
     """
     Fill Pro prompt describes replacement content for the masked region only.
+    room_type drives furniture selection (bedroom → bed, living room → sofa, etc).
     """
     style_cleaned = style_prompt
     for keyword in ["Keep ", "Preserve ", "unchanged", "exactly"]:
@@ -669,14 +673,15 @@ def build_fill_prompt(style_prompt: str, removed_items: list, kept_items: list =
     style_cleaned = style_cleaned.strip()
     removed_str = ", ".join([r.replace("_", " ") for r in removed_items]) if removed_items else "furniture"
 
+    rt = room_type.replace("_", " ") if room_type else "room"
     parts = []
-    parts.append(f"Replace {removed_str} with new bedroom furniture, maintaining this as a bedroom.")
+    parts.append(f"Replace {removed_str} with new {rt} furniture, maintaining this as a {rt}.")
     if style_cleaned:
         parts.append(style_cleaned)
     parts.append(
-        "Include appropriate bedroom soft furnishings, complementary lighting, "
-        "organic or natural elements, decorative accents where suitable, "
-        "styled surfaces. Style cohesive throughout the bedroom space."
+        f"Include appropriate {rt} soft furnishings, complementary lighting, "
+        f"organic or natural elements, decorative accents where suitable, "
+        f"styled surfaces. Style cohesive throughout the {rt} space."
     )
     parts.append(
         "Neatly arranged soft furnishings, no wrinkles or clutter, "
@@ -715,6 +720,7 @@ def generate_redesign_phase4b(
     seed: int = 42,
     remove_count: int = 0,
     loras_json: str = None,
+    room_type: str = "room",
 ) -> dict:
     """
     v5 generation: unified Fill Pro inpainting + pixel-perfect composite.
@@ -947,7 +953,8 @@ def generate_redesign_phase4b(
         print(f"[phase4b] Could not verify mask dimensions: {dim_err}")
 
     # ── Stage 1: Neutral removal ────────────────────────────────────────
-    print(f"[phase4b] Stage 1 prompt: {NEUTRAL_FILL_PROMPT[:100]}")
+    neutral_prompt = get_neutral_fill_prompt(room_type)
+    print(f"[phase4b] Stage 1 prompt (room_type={room_type}): {neutral_prompt[:100]}")
     print("[phase4b] Stage 1: Submitting Fill Pro (neutral removal)...")
 
     # Re-upload Supabase URLs to fal.ai storage for guaranteed access
@@ -957,7 +964,7 @@ def generate_redesign_phase4b(
     fill_args = {
         "image_url": fal_input_image,
         "mask_url": fal_mask_url,
-        "prompt": NEUTRAL_FILL_PROMPT,
+        "prompt": neutral_prompt,
         "seed": base_seed,
         "num_images": 1,
         "output_format": "png",
@@ -1022,7 +1029,7 @@ def generate_redesign_phase4b(
 
     # ── Stage 2: Styled inpainting x4 candidates (individual calls) ─────
     styled_fill_prompt = build_fill_prompt(
-        style_prompt, remove_decision_keys, kept_items=keep_decision_keys
+        style_prompt, remove_decision_keys, kept_items=keep_decision_keys, room_type=room_type
     )
 
     # Append COVA* trigger words to activate trained style signal
@@ -1311,7 +1318,7 @@ def generate_redesign_phase4b(
         "q_align_score": q_align_score,
         "ensemble_score": ensemble_score,
         "all_scores": all_scores,
-        "fill_prompt_used": NEUTRAL_FILL_PROMPT,
+        "fill_prompt_used": neutral_prompt,
         "styled_fill_prompt": styled_fill_prompt,
         "stage1_url": stage1_supabase_url,
         "loras_applied": False,

@@ -223,7 +223,10 @@ function buildPrompt(primaryStyle, secondaryStyle, primaryWeight, personalizatio
   return prompt;
 }
 
-async function fireWebhook(roomId, userId, prompt, imageUrl, seed, loras, removeCount, wallChange, floorChange) {
+async function fireWebhook(roomId, userId, prompt, imageUrl, seed, loras, removeCount, wallChange, floorChange, roomType) {
+  if (!roomType || roomType === 'room') {
+    log(`  WARNING: room_type is '${roomType}' — Fill Pro may generate wrong furniture type`);
+  }
   const payload = {
     room_id: roomId,
     user_id: userId,
@@ -235,6 +238,7 @@ async function fireWebhook(roomId, userId, prompt, imageUrl, seed, loras, remove
     loras_json: JSON.stringify(loras),
     wall_change_requested: wallChange,
     floor_change_requested: floorChange,
+    room_type: roomType || 'bedroom',
   };
 
   const resp = await fetch(WEBHOOK_URL, {
@@ -465,17 +469,19 @@ async function main() {
   // Query by name "My Room" and photo URL to find the original, not the test room
   let roomAId = 'cb2e7047-c7ae-4253-bf2b-cc42a6f3a727';
   let roomAPhotoUrl = ROOM_A_PHOTO;
+  let roomARoomType = 'bedroom';
   try {
     const roomAData = await supabaseQuery(
-      `rooms?id=eq.${roomAId}&select=id,original_photo_url`
+      `rooms?id=eq.${roomAId}&select=id,original_photo_url,room_type`
     );
-    if (roomAData.length > 0 && roomAData[0].original_photo_url) {
-      roomAPhotoUrl = roomAData[0].original_photo_url;
+    if (roomAData.length > 0) {
+      if (roomAData[0].original_photo_url) roomAPhotoUrl = roomAData[0].original_photo_url;
+      if (roomAData[0].room_type) roomARoomType = roomAData[0].room_type;
     }
   } catch (e) {
     log(`Room A lookup failed: ${e.message}, using default photo URL`);
   }
-  log(`Room A (Daksh): ${roomAId} photo=${roomAPhotoUrl.slice(0, 80)}...`);
+  log(`Room A (Daksh): ${roomAId} type=${roomARoomType} photo=${roomAPhotoUrl.slice(0, 80)}...`);
 
   // Room B: Pranav's bedroom — check if upload succeeded, otherwise use Room A for both
   let roomBId, roomBPhotoUrl;
@@ -498,9 +504,16 @@ async function main() {
     roomBPhotoUrl = roomAPhotoUrl;
   }
 
+  // Fetch Room B room_type from DB
+  let roomBRoomType = 'bedroom';
+  try {
+    const roomBData = await supabaseQuery(`rooms?id=eq.${roomBId}&select=room_type`);
+    if (roomBData.length > 0 && roomBData[0].room_type) roomBRoomType = roomBData[0].room_type;
+  } catch {}
+
   const rooms = [
-    { id: roomAId, name: 'Room_A', photoUrl: roomAPhotoUrl, benchmarkDir: BENCHMARK_DIR },
-    { id: roomBId, name: 'Room_B', photoUrl: roomBPhotoUrl, benchmarkDir: null },
+    { id: roomAId, name: 'Room_A', photoUrl: roomAPhotoUrl, benchmarkDir: BENCHMARK_DIR, roomType: roomARoomType },
+    { id: roomBId, name: 'Room_B', photoUrl: roomBPhotoUrl, benchmarkDir: null, roomType: roomBRoomType },
   ];
 
   let budget = loadBudget();
@@ -515,7 +528,7 @@ async function main() {
     { url: 'https://huggingface.co/XLabs-AI/flux-RealismLora/resolve/main/lora.safetensors', scale: 0.25, name: 'realism-lora' },
   ];
 
-  for (let iter = 10; iter < 100; iter++) {
+  for (let iter = 20; iter < 100; iter++) {
     // Budget check
     budget = loadBudget();
     if (!checkBudget(budget)) break;
@@ -564,7 +577,7 @@ async function main() {
       // Fire webhook
       const webhookResult = await fireWebhook(
         room.id, ROOM_A_USER_ID, prompt, room.photoUrl,
-        seed, defaultLoras, removeCount, wallChange, floorChange
+        seed, defaultLoras, removeCount, wallChange, floorChange, room.roomType
       );
       log(`  Webhook: ${JSON.stringify(webhookResult)}`);
 

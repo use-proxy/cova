@@ -69,6 +69,7 @@ def orchestrate_pipeline(
     kept_item_mask_urls: list = None,
     wall_change_requested: bool = True,
     floor_change_requested: bool = False,
+    room_type: str = "room",
 ) -> dict:
     """
     Full pipeline orchestrator.
@@ -369,6 +370,7 @@ def orchestrate_pipeline(
             seed=seed,
             remove_count=remove_count,
             loras_json=loras_json,
+            room_type=room_type,
         )
 
         final_url = gen_result.get("final_url") or gen_result.get("image_url") or ""
@@ -498,15 +500,20 @@ def redesign_webhook(item: dict):
     kept_item_mask_urls = item.get("kept_item_mask_urls") or []
     wall_change_requested = bool(item.get("wall_change_requested", True))
     floor_change_requested = bool(item.get("floor_change_requested", False))
+    room_type = item.get("room_type") or "room"
 
     print(
         f"[webhook] Received redesign request — room={room_id} "
+        f"room_type={room_type} "
         f"prompt_words={len(compiled_prompt.split())} "
         f"loras_json={'yes' if loras_json else 'no'} seed={seed} "
         f"refs={len(unsplash_references)} remove_count={remove_count} "
         f"change_map={'yes' if change_map_url else 'no'} masks={len(kept_item_mask_urls)}"
     )
     print(f"[webhook] loras_json received: {loras_json[:80] if loras_json else 'NONE — fallback will be used by generation.py'}")
+
+    if room_type in (None, "", "room"):
+        print(f"[webhook] WARNING: room_type is generic '{room_type}' for room {room_id} — Fill Pro may guess wrong furniture type")
 
     orchestrate_pipeline.spawn(
         room_id=room_id,
@@ -523,6 +530,7 @@ def redesign_webhook(item: dict):
         kept_item_mask_urls=kept_item_mask_urls,
         wall_change_requested=wall_change_requested,
         floor_change_requested=floor_change_requested,
+        room_type=room_type,
     )
 
     return {"status": "queued", "room_id": room_id, "pipeline": "v5"}

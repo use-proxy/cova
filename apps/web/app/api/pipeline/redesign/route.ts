@@ -718,6 +718,8 @@ export async function POST(request: Request) {
         kept_item_mask_urls: keptItemMaskUrls.length > 0 ? keptItemMaskUrls : null,
         wall_change_requested: wallChangeRequested,
         floor_change_requested: floorChangeRequested,
+        // Room type — critical for Fill Pro to generate correct furniture
+        room_type: roomType,
         // Style blend for LoRA resolution on Python side
         style_blend: room?.style_blend ?? renderContext?.styleBlend ?? null,
       }),
