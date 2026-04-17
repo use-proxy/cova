@@ -8,7 +8,6 @@ export const maxDuration = 300;
 
 import { NextResponse } from "next/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
-import { compilePromptWithClaude } from "@/lib/ai/prompt-compiler";
 import { buildFluxPrompt, buildAnchorFallbackPrompt } from "@/lib/ai/flux";
 import { fetchTopStyleReference } from "@/lib/ai/style-references";
 import {
@@ -125,28 +124,17 @@ export async function POST(request: Request) {
   // Compile prompt
   let compiledPrompt: string | null = null;
   if (fingerprint) {
-    compiledPrompt = await compilePromptWithClaude(
-      renderContext,
-      roomType,
+    const styleBlendRaw =
+      renderContext?.styleBlend ?? (room.style_blend as Record<string, number> | null) ?? null;
+    compiledPrompt = buildAnchorFallbackPrompt({
       fingerprint,
+      roomType,
+      context: renderContext,
+      styleBlend: styleBlendRaw,
       anchorPrompt,
-      roomAnalysis,
-      null,
-    ).catch(() => null);
-
-    if (!compiledPrompt) {
-      const styleBlendRaw =
-        renderContext?.styleBlend ?? (room.style_blend as Record<string, number> | null) ?? null;
-      compiledPrompt = buildAnchorFallbackPrompt({
-        fingerprint,
-        roomType,
-        context: renderContext,
-        styleBlend: styleBlendRaw,
-        anchorPrompt,
-        cameraAngle: roomAnalysis?.cameraAngle ?? undefined,
-        focalLength: roomAnalysis?.focalLength ?? undefined,
-      });
-    }
+      cameraAngle: roomAnalysis?.cameraAngle ?? undefined,
+      focalLength: roomAnalysis?.focalLength ?? undefined,
+    });
     void buildFluxPrompt;
   }
 

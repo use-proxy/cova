@@ -39,3 +39,23 @@ export interface StyleFingerprint {
   confidence: number; // [0, 1]
   fingerprint_version?: "v1" | "v2";
 }
+
+// ── V3 Fingerprint ────────────────────────────────────────────────────────────
+// V3 (2026-04-16): New 12-dim system with renamed dimensions for the 10-style
+// quiz. Uses DIMENSION_ORDER from style-archetypes.ts. Stored as JSONB in DB
+// with fingerprint_version: "v3".
+
+import type { DimensionName } from '@/lib/quiz/style-archetypes';
+
+export interface StyleFingerprintV3 {
+  dimensions: Record<DimensionName, number>;
+  covariance: number[][]; // 12×12
+  confidence: number;
+  fingerprint_version: "v3";
+}
+
+export type AnyFingerprint = StyleFingerprint | StyleFingerprintV3;
+
+export function isFingerprintV3(fp: AnyFingerprint): fp is StyleFingerprintV3 {
+  return fp.fingerprint_version === "v3";
+}

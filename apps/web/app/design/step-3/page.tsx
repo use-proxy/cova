@@ -53,7 +53,7 @@ type FingerprintResult = {
 
 const TOTAL_PAIRS = 24;
 const MAX_ANCHOR_PICKS = 3;
-const COMPLETION_ROUTE = "/design/step-4";
+const COMPLETION_ROUTE = "/design/step-3b";
 
 export default function CovaStyleQuizPage() {
   const router = useRouter();
@@ -289,6 +289,8 @@ export default function CovaStyleQuizPage() {
           room_type: store.roomType ?? "living_room",
           tiebreaker_deltas: store.tiebreakerDeltas ?? null,
           entry_path: "pairs",
+          // V3 anchor prior from step-2 (if available)
+          ...(store.anchorPrior ? { anchor_prior: store.anchorPrior } : {}),
         }),
       });
       if (!res.ok) throw new Error(`fingerprint ${res.status}`);

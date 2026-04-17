@@ -86,8 +86,46 @@ THIN_STRUCTURE_CATEGORIES = frozenset({
     "string_lights", "wall_sconce", "picture_frame",
 })
 
-DEFAULT_DILATION_PX = 17
+# Class-aware dilation table — thin structures get less dilation to preserve
+# detail (fan blades, garland strings, letter strokes), while large furniture
+# gets more to ensure full coverage. Kernel sizes are scaled linearly with
+# image resolution relative to 1024px baseline.
+DILATION_PX: dict[str, int] = {
+    "bed": 6, "sofa": 6, "couch": 6, "chair": 6, "dining_table": 6,
+    "coffee_table": 6, "side_table": 6, "table": 6,
+    "nightstand": 5, "dresser": 5, "wardrobe": 5, "cabinet": 5, "shelf": 5,
+    "bookshelf": 5, "rug": 7, "ottoman": 6, "bench": 6,
+    "lamp": 8, "floor_lamp": 8, "pendant_light": 8, "chandelier": 10,
+    "ceiling_fan": 12, "string_lights": 14, "garland": 14,
+    "wall_letter": 8, "wall_art": 6, "painting": 6, "mirror": 4,
+    "curtain": 8, "blind": 4, "pillow": 6, "cushion": 6,
+    "tv": 3, "television": 3, "plant": 7, "vase": 5,
+    "_default_": 6,
+}
+
+# Legacy aliases — code that used these constants still works
+DEFAULT_DILATION_PX = DILATION_PX["_default_"]
 THIN_DILATION_PX = 8
+
+
+def get_dilation_px(label: str, image_long_edge: int = 1024) -> int:
+    """
+    Look up class-aware dilation for a label.
+    Scales linearly with image resolution relative to 1024px baseline.
+    """
+    norm = normalize_label_key(label)
+    # Try exact match first, then partial match
+    px = DILATION_PX.get(norm)
+    if px is None:
+        for key, val in DILATION_PX.items():
+            if key != "_default_" and key in norm:
+                px = val
+                break
+    if px is None:
+        px = DILATION_PX["_default_"]
+    # Scale with resolution
+    scale = max(image_long_edge, 512) / 1024.0
+    return max(1, int(round(px * scale)))
 
 
 def get_category_for_label(label: str, detected_items: list) -> str:

@@ -49,6 +49,8 @@ interface FingerprintState {
   competingStyles: string[];
   /** Primary style blend ratio from step-2 softmax. <0.65 = ambiguous, run pairwise. */
   blendRatio: number;
+  /** V3 anchor question results from step-2. Null if user took V2 quiz. */
+  anchorPrior: Record<string, number> | null;
 
   setRoomType: (roomType: string) => void;
   setBudget: (tier: BudgetTier, range: [number, number]) => void;
@@ -70,6 +72,7 @@ interface FingerprintState {
   setRoomDimension: (dimension: "small" | "medium" | "large") => void;
   setTiebreakerDeltas: (deltas: number[] | null) => void;
   setCompetingStyles: (styles: string[], blendRatio: number) => void;
+  setAnchorPrior: (prior: Record<string, number>) => void;
   resetFingerprint: () => void;
 }
 
@@ -179,6 +182,7 @@ const INITIAL_STATE = {
   tiebreakerDeltas: null as number[] | null,
   competingStyles: [] as string[],
   blendRatio: 1.0,
+  anchorPrior: null as Record<string, number> | null,
 };
 
 export const useFingerprintStore = create<FingerprintState>()(
@@ -217,6 +221,7 @@ export const useFingerprintStore = create<FingerprintState>()(
       setRoomDimension: (roomDimension) => set({ roomDimension }),
       setTiebreakerDeltas: (tiebreakerDeltas) => set({ tiebreakerDeltas }),
       setCompetingStyles: (competingStyles, blendRatio) => set({ competingStyles, blendRatio }),
+      setAnchorPrior: (anchorPrior) => set({ anchorPrior }),
       resetFingerprint: () => set(INITIAL_STATE),
     }),
     {
@@ -250,6 +255,7 @@ export const useFingerprintStore = create<FingerprintState>()(
         // tiebreakerDeltas: omitted — in-session only, step-2 is single page load
         competingStyles: state.competingStyles,
         blendRatio: state.blendRatio,
+        anchorPrior: state.anchorPrior,
       }),
     },
   ),

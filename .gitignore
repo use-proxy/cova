@@ -62,3 +62,10 @@ data/processed/
 data/state/
 data/failed/
 .agents/
+lora-training/*.zip
+lora-training/results.json
+scripts/generation-progress.json
+swipe-pairs/manifest.json
+anchor-images/manifest.json
+training-data/*/manifest.json
+SESSION_NOTES.md

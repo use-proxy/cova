@@ -1,561 +1,652 @@
 /**
- * generate-all-images.ts
+ * generate-all-images.ts — Session B: Image Generation for 10 COVA styles
  *
- * Generates up to 369 images via Replicate FLUX 1.1 Pro:
- *   - 9 room types × 19 pairs × 2 images = 342 quiz pair images
- *   - 9 room types × 3 stock base photos = 27 stock images
+ * Generates three sets of images via fal.ai FLUX Pro:
+ *   SET A: 200 training images (20 per style × 10 styles)
+ *   SET B: 840 swipe pair images (420 pairs × 2)
+ *   SET C: 60 anchor images (10 styles × 6 room types)
  *
- * PHASE 0: Audits what already exists in Supabase Storage.
- * Only generates missing images.
- * Uploads each image to Supabase Storage immediately on completion.
- * Writes all URLs to scripts/generated-urls.json.
- * Overwrites apps/web/lib/ai/quiz-data.ts with all URLs populated.
+ * Total: 1,100 images. Budget: ~$85.77 (generation portion: ~$55)
  *
- * Usage: npx tsx scripts/generate-all-images.ts
- * Expected runtime: ~15-25 minutes | ~$14.76 max
+ * Resume: scripts/generation-progress.json — never regenerates completed images.
+ *
+ * Usage: cd scripts && npx tsx generate-all-images.ts
  */
 
-import { createClient } from '@supabase/supabase-js'
-import { config } from 'dotenv'
-import * as fs from 'fs'
-import * as path from 'path'
-import { fileURLToPath } from 'url'
+import { fal } from "@fal-ai/client";
+import { config } from "dotenv";
+import * as fs from "fs";
+import * as path from "path";
+import { fileURLToPath } from "url";
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-const rootEnvPath = path.join(__dirname, '..', 'apps', 'web', '.env.local')
-config({ path: rootEnvPath })
-// Also try root .env.local
-config({ path: path.join(__dirname, '..', '.env.local') })
+config({ path: path.join(__dirname, "..", "apps", "web", ".env.local") });
+config({ path: path.join(__dirname, "..", ".env.local") });
 
-const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN!
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const FAL_KEY = process.env.FAL_KEY;
+if (!FAL_KEY) throw new Error("FAL_KEY not set in .env.local");
 
-if (!REPLICATE_API_TOKEN) throw new Error('REPLICATE_API_TOKEN not set')
-if (!SUPABASE_URL) throw new Error('NEXT_PUBLIC_SUPABASE_URL not set')
-if (!SUPABASE_SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY not set')
+fal.config({ credentials: FAL_KEY });
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+// ── Constants ────────────────────────────────────────────────────────────────
 
-// ── Room type definitions ─────────────────────────────────────────────────────
+const PROGRESS_PATH = path.join(__dirname, "generation-progress.json");
+const COST_PER_IMAGE = 0.05;
+const BUDGET_CEILING = 85.77;
+// Reserve $25 for LoRA training ($20) + quality gate ($5)
+const GENERATION_BUDGET = BUDGET_CEILING - 25;
+
+const FAL_PARAMS = {
+  image_size: "landscape_4_3" as const,
+  num_inference_steps: 28,
+  guidance_scale: 3.5,
+  output_format: "jpeg" as const,
+  safety_tolerance: "4",
+  num_images: 1,
+};
 
 const ROOM_TYPES = [
-  { key: 'living-room',     desc: 'minimalist living room interior' },
-  { key: 'bedroom',         desc: 'minimalist bedroom interior' },
-  { key: 'studio',          desc: 'minimalist studio apartment' },
-  { key: 'home-office',     desc: 'minimalist home office' },
-  { key: 'dining-room',     desc: 'minimalist dining room' },
-  { key: 'bathroom',        desc: 'minimalist bathroom' },
-  { key: 'outdoor',         desc: 'minimalist outdoor terrace or patio' },
-  { key: 'dorm-room',       desc: 'minimalist dorm room' },
-  { key: 'first-apartment', desc: 'minimalist small apartment' },
-]
+  "bedroom",
+  "living room",
+  "kitchen",
+  "bathroom",
+  "home office",
+  "dining room",
+] as const;
 
-const APPEND = 'photorealistic interior photography, wide angle 35mm lens, 4k, architectural digest quality, not CGI, natural lighting'
+// ── Style Definitions ────────────────────────────────────────────────────────
 
-// ── Stock photo prompts ───────────────────────────────────────────────────────
-
-function buildStockPrompts(desc: string): [string, string, string] {
-  return [
-    `photorealistic architectural interior photography, ${desc}, maximally neutral and empty, off-white walls, light oak hardwood floors, single simple furniture piece only, abundant empty wall space for redesign, natural daylight from large window, no art no plants no clutter, wide angle 35mm lens, ultra sharp focus, photorealistic not CGI, 4k, architectural digest quality`,
-    `photorealistic architectural interior photography, ${desc}, corner perspective showing two walls, off-white walls, light oak floors, minimal furniture, large empty wall surfaces, soft natural daylight, nothing on surfaces, wide angle 35mm, 4k, photorealistic, architectural digest`,
-    `photorealistic architectural interior photography, ${desc}, view from doorway showing full room depth, off-white walls, light floors, simple furniture, large empty back wall fully visible, natural light, wide angle 35mm, 4k, photorealistic, architectural digest`,
-  ]
+interface StyleDNA {
+  trigger: string;
+  keywords: string;
+  colors: string;
+  light: string;
+  avoid: string;
 }
 
-// ── 19 pair templates ─────────────────────────────────────────────────────────
+const STYLES: Record<string, StyleDNA> = {
+  COVASCANDINAV: {
+    trigger: "COVASCANDINAV",
+    keywords: "light pine, white paint, sheepskin, cotton, hygge",
+    colors: "white, light grey, pale blue, birch wood",
+    light: "cool white daylight, diffused, shadow-free",
+    avoid: "dark colors, heavy furniture, warm wood tones",
+  },
+  COVAJAPANDI: {
+    trigger: "COVAJAPANDI",
+    keywords: "walnut, washi paper, linen, matte ceramic, bamboo",
+    colors: "warm beige, cream, terracotta, sage, warm brown",
+    light: "warm filtered morning light, soft shadows",
+    avoid: "synthetic materials, high gloss, bright colors",
+  },
+  COVABIOPHILIC: {
+    trigger: "COVABIOPHILIC",
+    keywords: "living plants, moss, stone, raw wood, water features",
+    colors: "forest green, earth brown, stone grey, sky blue",
+    light: "cool green-filtered natural light, dappled",
+    avoid: "synthetic materials, no plants, industrial elements",
+  },
+  COVAMINIMAL: {
+    trigger: "COVAMINIMAL",
+    keywords: "white oak, concrete, matte white, empty space",
+    colors: "white, off-white, warm grey, single muted accent",
+    light: "pure white, shadow-free, even exposure",
+    avoid: "color, pattern, decorative objects, clutter",
+  },
+  COVAMIDCENTURY: {
+    trigger: "COVAMIDCENTURY",
+    keywords: "teak, molded plywood, wool, brass, tapered legs",
+    colors: "mustard yellow, olive green, burnt orange, cream",
+    light: "golden afternoon, long horizontal shadows",
+    avoid: "ornate details, modern minimalism, farmhouse",
+  },
+  COVACOASTAL: {
+    trigger: "COVACOASTAL",
+    keywords: "whitewashed wood, jute, linen, sea glass, wicker",
+    colors: "white, sand, seafoam, navy, coral, driftwood",
+    light: "bright blown-out natural, airy, high key",
+    avoid: "dark colors, heavy fabrics, urban elements",
+  },
+  COVABOHEMIAN: {
+    trigger: "COVABOHEMIAN",
+    keywords: "rattan, macrame, velvet, kilim, woven textiles",
+    colors: "jewel tones, terracotta, mustard, deep teal",
+    light: "warm amber, layered sources, Edison accents",
+    avoid: "minimalism, matching sets, grey monotone",
+  },
+  COVAINDUSTRIAL: {
+    trigger: "COVAINDUSTRIAL",
+    keywords: "raw steel, exposed brick, concrete, leather, Edison",
+    colors: "grey, black, brown, rust, exposed brick red",
+    light: "cool grey, Edison accent pools, dramatic",
+    avoid: "soft colors, floral patterns, farmhouse warmth",
+  },
+  COVAFARMHOUSE: {
+    trigger: "COVAFARMHOUSE",
+    keywords: "shiplap, distressed wood, cotton, galvanized metal",
+    colors: "white, cream, sage green, navy, barn red",
+    light: "warm soft diffused, golden, cozy",
+    avoid: "modern minimalism, industrial metal, jewel tones",
+  },
+  COVAARTDECO: {
+    trigger: "COVAARTDECO",
+    keywords: "lacquered wood, velvet, gold, marble, mirrored",
+    colors: "black, gold, emerald, sapphire, champagne, ivory",
+    light: "warm dramatic, deep shadows, theatrical",
+    avoid: "rustic elements, casual textures, minimalism",
+  },
+};
 
-interface PairTemplate {
-  id: string
-  primaryDimension: string | null
-  secondaryDimension: string | null
-  contrastLevel: 'extreme' | 'mid' | 'fine' | null
-  aIntensity: number
-  bIntensity: number
-  isWarmup: boolean
-  promptA: string
-  promptB: string
+const STYLE_NAMES = Object.keys(STYLES);
+
+// ── Training Image Distribution ──────────────────────────────────────────────
+
+const TRAINING_DISTRIBUTION: Array<{ room: string; count: number }> = [
+  { room: "bedroom", count: 4 },
+  { room: "living room", count: 4 },
+  { room: "kitchen", count: 3 },
+  { room: "bathroom", count: 3 },
+  { room: "home office", count: 3 },
+  { room: "dining room", count: 3 },
+];
+
+// ── Swipe Pair Dimensions ────────────────────────────────────────────────────
+
+interface DimensionDef {
+  name: string;
+  pairsPerRoom: number;
+  promptA: string;
+  promptB: string;
 }
 
-function t(s: string) { return s.replace(/\s+/g, ' ').trim() }
+const DIMENSIONS: DimensionDef[] = [
+  {
+    name: "warmth",
+    pairsPerRoom: 6,
+    promptA:
+      "cool palette, grey-blue tones, contemporary, steel and glass elements",
+    promptB:
+      "warm palette, amber and honey tones, wood and textile dominant, candlelight quality",
+  },
+  {
+    name: "complexity",
+    pairsPerRoom: 6,
+    promptA:
+      "minimal, maximum 5 objects visible, negative space dominant, nothing decorative",
+    promptB:
+      "richly layered, every surface styled, multiple textures, abundant objects",
+  },
+  {
+    name: "formality",
+    pairsPerRoom: 6,
+    promptA:
+      "casual, lived-in, relaxed arrangement, mixed styles, comfortable imperfection",
+    promptB:
+      "formal, precise arrangement, matched set, architectural symmetry, deliberate composition",
+  },
+  {
+    name: "natureMateriality",
+    pairsPerRoom: 8,
+    promptA:
+      "raw natural materials, live edge wood, stone, woven natural fibers, unprocessed surfaces",
+    promptB:
+      "manufactured materials, lacquer, chrome, synthetic fabrics, processed glossy surfaces",
+  },
+  {
+    name: "colorSaturation",
+    pairsPerRoom: 4,
+    promptA:
+      "muted desaturated palette, grey undertones, tonal variation only, no bold color",
+    promptB:
+      "saturated vibrant palette, bold accent color, color as primary design element",
+  },
+  {
+    name: "textureRichness",
+    pairsPerRoom: 4,
+    promptA:
+      "smooth flat surfaces, minimal texture, clean lines, uniform materials",
+    promptB:
+      "heavily textured, multiple material textures, rough stone, chunky knit, woven rattan",
+  },
+  {
+    name: "lightingDrama",
+    pairsPerRoom: 8,
+    promptA:
+      "flat even bright light, no shadows, Scandinavian white room, high key photography",
+    promptB:
+      "dramatic directional light, deep shadows, moody atmosphere, pools of light, high contrast",
+  },
+  {
+    name: "pattern",
+    pairsPerRoom: 4,
+    promptA:
+      "solid colors throughout, no pattern, uniform surfaces, minimal visual noise",
+    promptB:
+      "bold pattern dominant, geometric print, floral wallpaper, patterned rug and textiles",
+  },
+  {
+    name: "lightPreference",
+    pairsPerRoom: 6,
+    promptA:
+      "dim moody room, low lux, intimate atmosphere, small windows, curtains drawn, lamp pools only",
+    promptB:
+      "maximally bright, floor to ceiling windows, white walls, abundant natural light, airy",
+  },
+  {
+    name: "lineQuality",
+    pairsPerRoom: 4,
+    promptA:
+      "organic curved forms, rounded edges, freeform shapes, irregular natural contours",
+    promptB:
+      "strict geometric lines, sharp right angles, architectural precision, clean rectangular forms",
+  },
+  {
+    name: "symmetryPreference",
+    pairsPerRoom: 6,
+    promptA:
+      "deliberate asymmetry, one nightstand, offset art placement, organic arrangement",
+    promptB:
+      "strict bilateral symmetry, matched pair nightstands, centered art, balanced composition",
+  },
+  {
+    name: "plantPresence",
+    pairsPerRoom: 8,
+    promptA:
+      "no plants, no nature elements, purely architectural, synthetic materials throughout",
+    promptB:
+      "abundant plants, living wall, multiple potted plants, trailing vines, botanical prints",
+  },
+];
 
-function pair(
-  id: string,
-  primaryDimension: string | null,
-  secondaryDimension: string | null,
-  contrastLevel: 'extreme' | 'mid' | 'fine' | null,
-  aIntensity: number,
-  bIntensity: number,
-  isWarmup: boolean,
-  promptA: string,
-  promptB: string,
-): PairTemplate {
-  return { id, primaryDimension, secondaryDimension, contrastLevel, aIntensity, bIntensity, isWarmup,
-    promptA: t(promptA), promptB: t(promptB) }
+// Total pairs per room type: 6+6+6+8+4+4+8+4+6+4+6+8 = 70
+// Total pairs: 70 × 6 room types = 420 pairs = 840 images
+
+// ── Camera/density/time variations for training images ───────────────────────
+
+const CAMERA_ANGLES = [
+  "straight-on view",
+  "slight left angle view",
+  "slight right angle view",
+];
+const DENSITY_LEVELS = ["sparsely furnished", "fully furnished"];
+const TIMES_OF_DAY = [
+  "morning light",
+  "afternoon golden light",
+  "evening lamp light",
+];
+
+// ── Progress tracking ────────────────────────────────────────────────────────
+
+interface Progress {
+  training: Record<string, { url: string; caption: string }>;
+  swipePairs: Record<string, { imageAUrl: string; imageBUrl: string }>;
+  anchors: Record<string, { url: string }>;
+  totalSpend: number;
 }
 
-const PAIR_TEMPLATES: PairTemplate[] = [
-  pair('pair-01', 'luminosity', 'temperature', 'extreme', 0.1, 0.9, false,
-    `[ROOM], dramatically dark moody atmosphere, near-black charcoal walls, single low warm Edison bulb, deep shadows, cool grey undertones throughout, intimate cave-like, dramatic and cinematic, ${APPEND}`,
-    `[ROOM], maximally bright airy atmosphere, pure white walls, flooded with natural sunlight through floor-to-ceiling windows, warm honey wood tones, expansive open feeling, luminous, ${APPEND}`
-  ),
-  pair('pair-02', 'density', null, 'extreme', 0.1, 0.9, false,
-    `[ROOM], radical minimalism, single piece of furniture only centered in vast empty space, enormous empty white walls, negative space dominates, monastic emptiness, ${APPEND}`,
-    `[ROOM], gloriously maximalist, bookshelves floor to ceiling on every wall, multiple layered rugs, artwork covering all wall space, plants on every surface, richly layered and full, ${APPEND}`
-  ),
-  pair('pair-03', 'temperature', null, 'extreme', 0.1, 0.9, false,
-    `[ROOM], icy cool color palette, slate grey walls, white oak floors, chrome and silver accents, cool white daylight, Scandinavian restraint, crisp and cold, ${APPEND}`,
-    `[ROOM], deeply warm color palette, burnt sienna terracotta walls, dark honey oak wood, copper brass accents, warm amber candlelight glow, Mediterranean richness, ${APPEND}`
-  ),
-  pair('pair-04', 'nature', 'materialOrigin', 'extreme', 0.1, 0.9, false,
-    `[ROOM], pure urban aesthetic, raw concrete walls, polished steel furniture, glass surfaces, zero plants zero organic elements, entirely manufactured and industrial, ${APPEND}`,
-    `[ROOM], lush biophilic abundance, plants covering every surface and hanging from ceiling, raw live-edge wood, woven natural textiles, stone surfaces, handmade ceramics, living breathing organic space, ${APPEND}`
-  ),
-  pair('pair-05', 'saturation', null, 'extreme', 0.1, 0.9, false,
-    `[ROOM], perfectly monochromatic palette, all variations of a single tone, no color contrast anywhere, restrained tonal harmony, everything in shades of the same hue, ${APPEND}`,
-    `[ROOM], bold jewel-tone color, emerald green walls, mustard yellow sofa, cobalt blue accents, rich color contrast throughout, confident and vibrant, ${APPEND}`
-  ),
-  pair('pair-06', 'luminosity', null, 'mid', 0.25, 0.75, false,
-    `[ROOM], softly dim comfortable atmosphere, warm low lighting, gentle shadows, cozy and intimate but not dramatic, moderately lit, ${APPEND}`,
-    `[ROOM], pleasantly bright and airy, good natural light, white walls reflecting light, open and fresh but not stark, comfortable brightness, ${APPEND}`
-  ),
-  pair('pair-07', 'temperature', null, 'mid', 0.25, 0.75, false,
-    `[ROOM], cool blue-grey tones, pale slate walls, white textiles, silver accents, cool morning light, fresh and crisp, ${APPEND}`,
-    `[ROOM], warm honey amber tones, warm oak wood, cream textiles, brass accents, afternoon warm light, inviting and cozy, ${APPEND}`
-  ),
-  pair('pair-08', 'density', null, 'mid', 0.25, 0.75, false,
-    `[ROOM], sparse and considered, only essential furniture present, some empty wall space, curated not bare, breathing room between objects, ${APPEND}`,
-    `[ROOM], well-furnished and layered, multiple furniture pieces, some wall art, plants, accessories, full and lived-in but not cluttered, ${APPEND}`
-  ),
-  pair('pair-09', 'form', 'scale', 'extreme', 0.1, 0.9, false,
-    `[ROOM], rigid geometric precision, modular grid furniture system, all right angles, sharp corners, compact intimate scale, structured and precise, ${APPEND}`,
-    `[ROOM], flowing organic curves everywhere, round sofa, oval coffee table, arched openings, kidney-shaped rug, generous grand scale with high ceilings, ${APPEND}`
-  ),
-  pair('pair-10', 'era', null, 'extreme', 0.1, 0.9, false,
-    `[ROOM], ultra contemporary 2024 design, floating invisible furniture, seamless surfaces, invisible hardware, cutting-edge minimal, futuristic and forward, ${APPEND}`,
-    `[ROOM], deep traditional heritage, antique wooden furniture, ornate carved details, Persian rug, dark wood paneling, Victorian grandeur, timeless, ${APPEND}`
-  ),
-  pair('pair-11', 'texture', 'materialOrigin', 'extreme', 0.1, 0.9, false,
-    `[ROOM], supremely smooth polished surfaces everywhere, lacquered furniture, polished marble floors, glass surfaces, chrome fixtures, factory-perfect finish, ${APPEND}`,
-    `[ROOM], intensely tactile textures, chunky hand-knit throws, rough raw linen, natural stone walls, hand-thrown ceramic objects, woven textiles, visible craft everywhere, ${APPEND}`
-  ),
-  pair('pair-12', 'nature', null, 'mid', 0.25, 0.75, false,
-    `[ROOM], mostly manufactured materials, one or two small plants, natural wood accents, some organic elements but predominantly man-made, ${APPEND}`,
-    `[ROOM], abundant plant life, trailing vines, potted trees, hanging planters, natural wood and stone, greenery as primary design element, ${APPEND}`
-  ),
-  pair('pair-13', 'saturation', null, 'mid', 0.25, 0.75, false,
-    `[ROOM], muted restrained color palette, desaturated tones, quiet and understated, sophisticated neutrals with subtle variation, ${APPEND}`,
-    `[ROOM], warm rich colors present, terracotta and sage and warm yellow, color used confidently but not overwhelming, ${APPEND}`
-  ),
-  pair('pair-14', 'scale', null, 'mid', 0.25, 0.75, false,
-    `[ROOM], cozy intimate scale, furniture arranged close together, low ceiling feel, nook-like atmosphere, human-scale and personal, ${APPEND}`,
-    `[ROOM], generous expansive scale, high ceilings, furniture spread with breathing room, statement pieces, a sense of openness and grandeur, ${APPEND}`
-  ),
-  pair('pair-15', 'luminosity', null, 'fine', 0.35, 0.65, false,
-    `[ROOM], softly lit comfortable space, slightly dimmer than average, warm atmosphere, relaxed and settled feeling, ${APPEND}`,
-    `[ROOM], pleasantly bright everyday lighting, good daylight, fresh and clear, comfortable modern brightness, ${APPEND}`
-  ),
-  pair('pair-16', 'temperature', null, 'fine', 0.35, 0.65, false,
-    `[ROOM], very slightly cool neutral, crisp whites and light greys, fresh and clean, subtle coolness, ${APPEND}`,
-    `[ROOM], very slightly warm neutral, off-whites and warm creams, subtle warmth, inviting and approachable, ${APPEND}`
-  ),
-  pair('pair-17', 'materialOrigin', null, 'fine', 0.35, 0.65, false,
-    `[ROOM], refined quality manufactured materials, precision-made furniture, clean factory finish, excellent craftsmanship in manufactured style, ${APPEND}`,
-    `[ROOM], handmade quality throughout, hand-thrown pottery, woven textiles, slight imperfections of craft, visible human touch in every object, ${APPEND}`
-  ),
-  pair('pair-18', 'form', null, 'mid', 0.25, 0.75, false,
-    `[ROOM], structured and ordered aesthetic, clean lines, rectangular furniture, organized layout, precise but not rigid, ${APPEND}`,
-    `[ROOM], soft flowing forms, curved sofa, rounded edges, gentle arches, organic but not extreme, comfortable curves, ${APPEND}`
-  ),
-  pair('pair-19', null, null, null, 0.0, 1.0, true,
-    `[ROOM], simple contemporary neutral comfortable space, clean and approachable, natural light, ${APPEND}`,
-    `[ROOM], warm layered personal space, collected over time, natural materials, inviting, ${APPEND}`
-  ),
-]
-
-// ── Job definition ────────────────────────────────────────────────────────────
-
-interface ImageJob {
-  label: string
-  prompt: string
-  bucket: string
-  storagePath: string
-  resultKey: string
-}
-
-function buildAllJobs(): ImageJob[] {
-  const jobs: ImageJob[] = []
-
-  for (const room of ROOM_TYPES) {
-    // Quiz pair images
-    for (const p of PAIR_TEMPLATES) {
-      const num = p.id.replace('pair-', '')
-      jobs.push({
-        label: `[${room.key}] ${p.id} A`,
-        prompt: p.promptA.replace(/\[ROOM\]/g, room.desc),
-        bucket: 'quiz-pairs',
-        storagePath: `${room.key}/pair-${num}-a.jpg`,
-        resultKey: `quiz-pairs/${room.key}/pair-${num}-a`,
-      })
-      jobs.push({
-        label: `[${room.key}] ${p.id} B`,
-        prompt: p.promptB.replace(/\[ROOM\]/g, room.desc),
-        bucket: 'quiz-pairs',
-        storagePath: `${room.key}/pair-${num}-b.jpg`,
-        resultKey: `quiz-pairs/${room.key}/pair-${num}-b`,
-      })
-    }
-
-    // Stock base photos
-    const stockPrompts = buildStockPrompts(room.desc)
-    for (let i = 0; i < 3; i++) {
-      jobs.push({
-        label: `[${room.key}] stock-${i + 1}`,
-        prompt: stockPrompts[i]!,
-        bucket: 'room-photos',
-        storagePath: `${room.key}-stock-${i + 1}.jpg`,
-        resultKey: `room-photos/${room.key}-stock-${i + 1}`,
-      })
-    }
+function loadProgress(): Progress {
+  if (fs.existsSync(PROGRESS_PATH)) {
+    return JSON.parse(fs.readFileSync(PROGRESS_PATH, "utf-8"));
   }
-
-  return jobs
+  return { training: {}, swipePairs: {}, anchors: {}, totalSpend: 0 };
 }
 
-// ── Phase 0: Audit existing files ─────────────────────────────────────────────
-
-async function auditExisting(): Promise<Set<string>> {
-  const existing = new Set<string>()
-
-  // Check quiz-pairs bucket (may not exist)
-  for (const room of ROOM_TYPES) {
-    const { data } = await supabase.storage.from('quiz-pairs').list(room.key, { limit: 200 })
-    if (data) {
-      for (const f of data) {
-        existing.add(`quiz-pairs/${room.key}/${f.name}`.replace('.jpg', ''))
-      }
-    }
-  }
-
-  // Check room-photos bucket
-  const { data: photos } = await supabase.storage.from('room-photos').list('', { limit: 200 })
-  if (photos) {
-    for (const f of photos) {
-      existing.add(`room-photos/${f.name}`.replace('.jpg', ''))
-    }
-  }
-
-  return existing
+function saveProgress(p: Progress): void {
+  fs.writeFileSync(PROGRESS_PATH, JSON.stringify(p, null, 2));
 }
 
-// Also load previously saved URLs from generated-urls.json
-function loadSavedUrls(): Record<string, string> {
-  const urlsPath = path.join(__dirname, 'generated-urls.json')
-  if (fs.existsSync(urlsPath)) {
-    try {
-      return JSON.parse(fs.readFileSync(urlsPath, 'utf-8')) as Record<string, string>
-    } catch {
-      return {}
-    }
-  }
-  return {}
-}
+// ── fal.ai generation ────────────────────────────────────────────────────────
 
-// ── Replicate helpers ─────────────────────────────────────────────────────────
-
-async function createPrediction(prompt: string): Promise<string> {
-  const res = await fetch('https://api.replicate.com/v1/predictions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Token ${REPLICATE_API_TOKEN}`,
-      'Content-Type': 'application/json',
+async function generateImage(prompt: string): Promise<string> {
+  const result = await fal.subscribe("fal-ai/flux-pro", {
+    input: {
+      prompt,
+      ...FAL_PARAMS,
     },
-    body: JSON.stringify({
-      version: 'black-forest-labs/flux-1.1-pro',
-      input: { prompt, width: 1344, height: 768, num_inference_steps: 28 },
-    }),
-  })
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`Replicate create failed: ${res.status} ${err}`)
+  });
+
+  const data = result.data as { images: Array<{ url: string }> };
+  if (!data.images?.[0]?.url) {
+    throw new Error("No image URL in fal.ai response");
   }
-  const data = await res.json() as { id: string; urls: { get: string } }
-  return data.urls.get
+  return data.images[0].url;
 }
 
-async function pollPrediction(pollUrl: string, label: string): Promise<string> {
-  while (true) {
-    await sleep(3000)
-    const res = await fetch(pollUrl, {
-      headers: { Authorization: `Token ${REPLICATE_API_TOKEN}` },
-    })
-    if (!res.ok) throw new Error(`Poll failed for ${label}: ${res.status}`)
-    const data = await res.json() as { status: string; output?: string | string[]; error?: string }
-    if (data.status === 'succeeded') {
-      const out = data.output
-      const url = Array.isArray(out) ? out[0] : out
-      if (!url) throw new Error(`No output URL for ${label}`)
-      return url
-    }
-    if (data.status === 'failed' || data.status === 'canceled') {
-      throw new Error(`Prediction ${data.status} for ${label}: ${data.error ?? 'unknown'}`)
+async function generateWithRetry(
+  prompt: string,
+  retries = 3
+): Promise<string> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await generateImage(prompt);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (i === retries - 1) throw e;
+      console.warn(`  Retry ${i + 1}/${retries}: ${msg}`);
+      await sleep(3000 * (i + 1));
     }
   }
+  throw new Error("Unreachable");
 }
 
 function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+  return new Promise((r) => setTimeout(r, ms));
 }
 
-// ── Supabase helpers ──────────────────────────────────────────────────────────
-
-async function ensureBucketPublic(bucketName: string): Promise<void> {
-  const { error } = await supabase.storage.createBucket(bucketName, {
-    public: true,
-    allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
-  })
-  if (error && !error.message.includes('already exists') && !error.message.includes('duplicate')) {
-    throw new Error(`Failed to create bucket ${bucketName}: ${error.message}`)
-  }
+function ts(): string {
+  return new Date().toISOString().replace("T", " ").slice(0, 19);
 }
 
-async function downloadImage(url: string): Promise<Buffer> {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`Download failed: ${res.status} ${url}`)
-  return Buffer.from(await res.arrayBuffer())
+function log(...args: unknown[]): void {
+  console.log(`[${ts()}]`, ...args);
 }
 
-async function uploadToSupabase(buffer: Buffer, bucket: string, storagePath: string): Promise<string> {
-  const { error } = await supabase.storage
-    .from(bucket)
-    .upload(storagePath, buffer, { contentType: 'image/jpeg', upsert: true })
-  if (error) throw new Error(`Upload failed for ${storagePath}: ${error.message}`)
-  const { data } = supabase.storage.from(bucket).getPublicUrl(storagePath)
-  return data.publicUrl
-}
+// ── SET A: Training Images ───────────────────────────────────────────────────
 
-// ── Job processor ─────────────────────────────────────────────────────────────
+async function generateTrainingImages(progress: Progress): Promise<void> {
+  log("═══ SET A: Training Images (200 total) ═══");
 
-async function processJob(
-  job: ImageJob,
-  results: Record<string, string>,
-  remaining: { count: number },
-): Promise<void> {
-  try {
-    console.log(`  Generating ${job.label}...`)
-    const pollUrl = await createPrediction(job.prompt)
-    const imageUrl = await pollPrediction(pollUrl, job.label)
-    const buffer = await downloadImage(imageUrl)
-    const publicUrl = await uploadToSupabase(buffer, job.bucket, job.storagePath)
-    results[job.resultKey] = publicUrl
-    remaining.count--
-    console.log(`  ✓ ${job.storagePath} — ${remaining.count} remaining`)
-    // Save progress after each image
-    const urlsPath = path.join(__dirname, 'generated-urls.json')
-    fs.writeFileSync(urlsPath, JSON.stringify(results, null, 2))
-  } catch (err) {
-    console.error(`  ✗ FAILED ${job.label}: ${err}`)
-    remaining.count--
-  }
-}
+  for (const styleName of STYLE_NAMES) {
+    const style = STYLES[styleName];
+    let imageIndex = 0;
 
-// ── quiz-data.ts writer ───────────────────────────────────────────────────────
+    for (const { room, count } of TRAINING_DISTRIBUTION) {
+      for (let i = 0; i < count; i++) {
+        const key = `training_${styleName}_${room.replace(/ /g, "_")}_${i}`;
+        if (progress.training[key]) {
+          imageIndex++;
+          continue;
+        }
 
-function generateQuizDataTs(results: Record<string, string>): string {
-  const lines: string[] = []
+        // Budget check
+        if (progress.totalSpend + COST_PER_IMAGE > GENERATION_BUDGET) {
+          throw new Error(
+            `Budget exceeded! Spent: $${progress.totalSpend.toFixed(2)}`
+          );
+        }
 
-  lines.push('// AUTO-GENERATED by scripts/generate-all-images.ts')
-  lines.push(`// Generated: ${new Date().toISOString()}`)
-  lines.push(`// Total images: 369 (342 quiz pairs + 27 stock photos)`)
-  lines.push('')
+        // Vary camera, density, time of day
+        const angle = CAMERA_ANGLES[imageIndex % CAMERA_ANGLES.length];
+        const density = DENSITY_LEVELS[imageIndex % DENSITY_LEVELS.length];
+        const time = TIMES_OF_DAY[imageIndex % TIMES_OF_DAY.length];
 
-  // New interfaces
-  lines.push('export interface QuizPair {')
-  lines.push('  id: string')
-  lines.push('  imageA: { url: string; alt: string }')
-  lines.push('  imageB: { url: string; alt: string }')
-  lines.push('  primaryDimension: string | null')
-  lines.push('  secondaryDimension: string | null')
-  lines.push("  contrastLevel: 'extreme' | 'mid' | 'fine' | null")
-  lines.push('  aIntensity: number')
-  lines.push('  bIntensity: number')
-  lines.push('  isWarmup: boolean')
-  lines.push('  roomTypes: string[]')
-  lines.push('}')
-  lines.push('')
-  lines.push('export interface StockPhoto {')
-  lines.push('  url: string')
-  lines.push("  roomType: string")
-  lines.push("  angle: 'front' | 'corner' | 'doorway'")
-  lines.push('}')
-  lines.push('')
+        const prompt = `${style.keywords}, ${room} interior, ${style.colors} color palette, ${style.light}, ${angle}, ${density}, ${time}, professional interior photography, architectural digest quality, no people, no text, 4K sharp`;
 
-  // QUIZ_PAIRS
-  lines.push('export const QUIZ_PAIRS: Record<string, QuizPair[]> = {')
+        log(
+          `  [${styleName}] ${room} ${i + 1}/${count} (image ${imageIndex + 1}/20)`
+        );
 
-  for (const room of ROOM_TYPES) {
-    lines.push(`  '${room.key}': [`)
-    for (const p of PAIR_TEMPLATES) {
-      const num = p.id.replace('pair-', '')
-      const urlA = results[`quiz-pairs/${room.key}/pair-${num}-a`] ?? ''
-      const urlB = results[`quiz-pairs/${room.key}/pair-${num}-b`] ?? ''
-      const pDim = p.primaryDimension === null ? 'null' : `'${p.primaryDimension}'`
-      const sDim = p.secondaryDimension === null ? 'null' : `'${p.secondaryDimension}'`
-      const cl = p.contrastLevel === null ? 'null' : `'${p.contrastLevel}'`
-      lines.push(`    {`)
-      lines.push(`      id: '${p.id}',`)
-      lines.push(`      imageA: { url: '${urlA}', alt: 'Style option A for ${room.key} ${p.id}' },`)
-      lines.push(`      imageB: { url: '${urlB}', alt: 'Style option B for ${room.key} ${p.id}' },`)
-      lines.push(`      primaryDimension: ${pDim},`)
-      lines.push(`      secondaryDimension: ${sDim},`)
-      lines.push(`      contrastLevel: ${cl},`)
-      lines.push(`      aIntensity: ${p.aIntensity},`)
-      lines.push(`      bIntensity: ${p.bIntensity},`)
-      lines.push(`      isWarmup: ${p.isWarmup},`)
-      lines.push(`      roomTypes: ['${room.key}'],`)
-      lines.push(`    },`)
-    }
-    lines.push(`  ],`)
-  }
+        const url = await generateWithRetry(prompt);
+        const caption = `${style.trigger} interior design style`;
 
-  lines.push('}')
-  lines.push('')
+        progress.training[key] = { url, caption };
+        progress.totalSpend += COST_PER_IMAGE;
+        saveProgress(progress);
 
-  // STOCK_PHOTOS
-  lines.push('export const STOCK_PHOTOS: Record<string, StockPhoto[]> = {')
-
-  const angles: Array<'front' | 'corner' | 'doorway'> = ['front', 'corner', 'doorway']
-  for (const room of ROOM_TYPES) {
-    lines.push(`  '${room.key}': [`)
-    for (let i = 0; i < 3; i++) {
-      const url = results[`room-photos/${room.key}-stock-${i + 1}`] ?? ''
-      lines.push(`    { url: '${url}', roomType: '${room.key}', angle: '${angles[i]}' },`)
-    }
-    lines.push(`  ],`)
-  }
-
-  lines.push('}')
-  lines.push('')
-
-  // Backward compat: old interfaces used by other parts of the codebase
-  lines.push('// Legacy compatibility exports')
-  lines.push('export interface QuizPairMapping {')
-  lines.push('  id: string')
-  lines.push('  primary_dimension: number')
-  lines.push('  signal: number')
-  lines.push('  secondary_dimension?: number')
-  lines.push('  secondary_signal?: number')
-  lines.push('}')
-  lines.push('')
-  lines.push('export interface QuizResponseWithDimension {')
-  lines.push("  pair_id: string")
-  lines.push("  chosen: 'A' | 'B'")
-  lines.push('  super_liked: boolean')
-  lines.push('}')
-  lines.push('')
-  lines.push('export const QUIZ_PAIR_DIMENSIONS: Record<string, QuizPairMapping> = {}')
-  lines.push('')
-  lines.push('export function computeFingerprintFromPairs(')
-  lines.push('  _responses: QuizResponseWithDimension[],')
-  lines.push('  _skipFirst = true')
-  lines.push('): number[] {')
-  lines.push('  return [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]')
-  lines.push('}')
-  lines.push('')
-
-  return lines.join('\n')
-}
-
-// ── Main ──────────────────────────────────────────────────────────────────────
-
-async function main() {
-  console.log('═══════════════════════════════════════════════════')
-  console.log('  Cova Quiz Image Generator — 10-Dimension System')
-  console.log('  19 pairs × 9 rooms × 2 + 27 stock = 369 images')
-  console.log('═══════════════════════════════════════════════════\n')
-
-  // Phase 0: Audit
-  console.log('Phase 0: Auditing existing files in Supabase Storage...')
-  const existing = await auditExisting()
-  const savedUrls = loadSavedUrls()
-  console.log(`  Found ${existing.size} existing storage files`)
-  console.log(`  Found ${Object.keys(savedUrls).length} saved URLs\n`)
-
-  // Ensure quiz-pairs bucket exists
-  await ensureBucketPublic('quiz-pairs')
-
-  // Build all jobs and filter to missing
-  const allJobs = buildAllJobs()
-  const missingJobs = allJobs.filter((job) => {
-    // Check if already in storage
-    if (existing.has(job.resultKey)) return false
-    // Check if we already have a URL saved
-    if (savedUrls[job.resultKey]) return false
-    return true
-  })
-
-  // Build results map starting from saved URLs
-  const results: Record<string, string> = { ...savedUrls }
-
-  // Populate public URLs for existing storage files
-  for (const job of allJobs) {
-    if (existing.has(job.resultKey) && !results[job.resultKey]) {
-      const { data } = supabase.storage.from(job.bucket).getPublicUrl(job.storagePath)
-      results[job.resultKey] = data.publicUrl
-    }
-  }
-
-  console.log(`ALREADY GENERATED: ${allJobs.length - missingJobs.length} images`)
-  if (allJobs.length - missingJobs.length > 0) {
-    const done = allJobs.filter(j => !missingJobs.includes(j))
-    done.slice(0, 10).forEach(j => console.log(`  ✓ ${j.storagePath}`))
-    if (done.length > 10) console.log(`  ... and ${done.length - 10} more`)
-  }
-  console.log(`NEEDS GENERATING: ${missingJobs.length} images`)
-  console.log(`Estimated cost: $${(missingJobs.length * 0.04).toFixed(2)}\n`)
-
-  if (missingJobs.length === 0) {
-    console.log('All images already generated! Writing quiz-data.ts...')
-  } else {
-    // Process in batches of 5
-    const BATCH_SIZE = 5
-    const batches: ImageJob[][] = []
-    for (let i = 0; i < missingJobs.length; i += BATCH_SIZE) {
-      batches.push(missingJobs.slice(i, i + BATCH_SIZE))
+        imageIndex++;
+        await sleep(200); // Rate limiting
+      }
     }
 
-    const remaining = { count: missingJobs.length }
-    console.log(`Processing ${batches.length} batches of up to ${BATCH_SIZE}...\n`)
+    log(
+      `  ✓ ${styleName}: 20 training images done. Running total: $${progress.totalSpend.toFixed(2)}`
+    );
+  }
 
-    for (let i = 0; i < batches.length; i++) {
-      console.log(`\nBatch ${i + 1}/${batches.length} (${batches[i]!.length} jobs):`)
-      await Promise.all(batches[i]!.map((job) => processJob(job, results, remaining)))
+  log(
+    `SET A complete: ${Object.keys(progress.training).length} training images`
+  );
+}
+
+// ── SET B: Swipe Pair Images ─────────────────────────────────────────────────
+
+async function generateSwipePairImages(progress: Progress): Promise<void> {
+  log("═══ SET B: Swipe Pair Images (840 total) ═══");
+
+  let pairCount = 0;
+
+  for (const roomType of ROOM_TYPES) {
+    for (const dim of DIMENSIONS) {
+      for (let pairIdx = 0; pairIdx < dim.pairsPerRoom; pairIdx++) {
+        const key = `pair_${dim.name}_${roomType.replace(/ /g, "_")}_${String(pairIdx).padStart(3, "0")}`;
+
+        if (progress.swipePairs[key]) {
+          pairCount++;
+          continue;
+        }
+
+        // Budget check
+        if (progress.totalSpend + COST_PER_IMAGE * 2 > GENERATION_BUDGET) {
+          throw new Error(
+            `Budget exceeded! Spent: $${progress.totalSpend.toFixed(2)}`
+          );
+        }
+
+        // Vary sub-prompts slightly for diversity across pairs within same dim+room
+        const variationSuffix = getVariationSuffix(pairIdx);
+
+        const promptA = `${dim.promptA}, ${roomType} interior, ${variationSuffix}, professional interior photography, architectural digest quality, no people, no text, 4K sharp`;
+        const promptB = `${dim.promptB}, ${roomType} interior, ${variationSuffix}, professional interior photography, architectural digest quality, no people, no text, 4K sharp`;
+
+        log(
+          `  [${dim.name}] ${roomType} pair ${pairIdx + 1}/${dim.pairsPerRoom}`
+        );
+
+        const imageAUrl = await generateWithRetry(promptA);
+        progress.totalSpend += COST_PER_IMAGE;
+
+        const imageBUrl = await generateWithRetry(promptB);
+        progress.totalSpend += COST_PER_IMAGE;
+
+        progress.swipePairs[key] = { imageAUrl, imageBUrl };
+        saveProgress(progress);
+
+        pairCount++;
+        await sleep(200);
+      }
+    }
+
+    log(
+      `  ✓ ${roomType}: all dimension pairs done. Running total: $${progress.totalSpend.toFixed(2)}`
+    );
+  }
+
+  log(
+    `SET B complete: ${Object.keys(progress.swipePairs).length} pairs (${Object.keys(progress.swipePairs).length * 2} images)`
+  );
+}
+
+function getVariationSuffix(pairIdx: number): string {
+  const variations = [
+    "wide angle view, spacious layout",
+    "medium shot, detailed furnishings",
+    "corner perspective, cozy arrangement",
+    "centered composition, balanced layout",
+    "angled view, depth layered",
+    "window-side view, natural light emphasis",
+    "doorway perspective, inviting entry",
+    "close framing, intimate atmosphere",
+  ];
+  return variations[pairIdx % variations.length];
+}
+
+// ── SET C: Anchor Images ─────────────────────────────────────────────────────
+
+async function generateAnchorImages(progress: Progress): Promise<void> {
+  log("═══ SET C: Anchor Images (60 total) ═══");
+
+  for (const styleName of STYLE_NAMES) {
+    const style = STYLES[styleName];
+
+    for (const roomType of ROOM_TYPES) {
+      const key = `anchor_${styleName}_${roomType.replace(/ /g, "_")}`;
+
+      if (progress.anchors[key]) continue;
+
+      if (progress.totalSpend + COST_PER_IMAGE > GENERATION_BUDGET) {
+        throw new Error(
+          `Budget exceeded! Spent: $${progress.totalSpend.toFixed(2)}`
+        );
+      }
+
+      const styleFriendlyName = styleName.replace("COVA", "").toLowerCase();
+      const prompt = `The most iconic ${styleFriendlyName} style ${roomType}, ${style.keywords}, ${style.colors} color palette, ${style.light}, perfectly represents the aesthetic, immediately recognizable, professional interior photography, architectural digest quality, 4K sharp, no people, no text`;
+
+      log(`  [${styleName}] anchor: ${roomType}`);
+
+      const url = await generateWithRetry(prompt);
+
+      progress.anchors[key] = { url };
+      progress.totalSpend += COST_PER_IMAGE;
+      saveProgress(progress);
+
+      await sleep(200);
+    }
+
+    log(`  ✓ ${styleName}: 6 anchor images done`);
+  }
+
+  log(
+    `SET C complete: ${Object.keys(progress.anchors).length} anchor images`
+  );
+}
+
+// ── Write manifests ──────────────────────────────────────────────────────────
+
+function writeManifests(progress: Progress): void {
+  log("Writing manifests...");
+
+  // Training data manifests (one per style)
+  for (const styleName of STYLE_NAMES) {
+    const dir = path.join(__dirname, "..", "training-data", styleName);
+    fs.mkdirSync(dir, { recursive: true });
+
+    const images: Array<{
+      key: string;
+      url: string;
+      caption: string;
+      room: string;
+    }> = [];
+
+    for (const [key, val] of Object.entries(progress.training)) {
+      if (key.startsWith(`training_${styleName}_`)) {
+        const parts = key.split("_");
+        // training_STYLE_room_type_idx
+        const roomParts = parts.slice(2, -1);
+        images.push({
+          key,
+          url: val.url,
+          caption: val.caption,
+          room: roomParts.join(" "),
+        });
+      }
+    }
+
+    fs.writeFileSync(
+      path.join(dir, "manifest.json"),
+      JSON.stringify({ style: styleName, images }, null, 2)
+    );
+  }
+
+  // Swipe pairs manifest
+  const swipeDir = path.join(__dirname, "..", "swipe-pairs");
+  fs.mkdirSync(swipeDir, { recursive: true });
+
+  const pairs: Array<{
+    pair_id: string;
+    dimension: string;
+    room_type: string;
+    image_a_url: string;
+    image_b_url: string;
+    a_is_high: boolean;
+    b_is_high: boolean;
+  }> = [];
+
+  for (const [key, val] of Object.entries(progress.swipePairs)) {
+    // key: pair_dimensionName_room_type_idx
+    const match = key.match(
+      /^pair_(\w+?)_(bedroom|living_room|kitchen|bathroom|home_office|dining_room)_(\d+)$/
+    );
+    if (match) {
+      pairs.push({
+        pair_id: key,
+        dimension: match[1],
+        room_type: match[2].replace(/_/g, " "),
+        image_a_url: val.imageAUrl,
+        image_b_url: val.imageBUrl,
+        a_is_high: false, // Image A is always the LOW end
+        b_is_high: true, // Image B is always the HIGH end
+      });
     }
   }
 
-  // Save final URLs
-  const urlsPath = path.join(__dirname, 'generated-urls.json')
-  fs.writeFileSync(urlsPath, JSON.stringify(results, null, 2))
-  console.log(`\nSaved ${Object.keys(results).length} URLs to scripts/generated-urls.json`)
+  fs.writeFileSync(
+    path.join(swipeDir, "manifest.json"),
+    JSON.stringify({ total_pairs: pairs.length, pairs }, null, 2)
+  );
 
-  // Write quiz-data.ts
-  const quizDataPath = path.join(__dirname, '..', 'apps', 'web', 'lib', 'ai', 'quiz-data.ts')
-  const quizDataContent = generateQuizDataTs(results)
-  fs.writeFileSync(quizDataPath, quizDataContent)
-  console.log('Wrote apps/web/lib/ai/quiz-data.ts')
+  // Anchor images manifest
+  const anchorDir = path.join(__dirname, "..", "anchor-images");
+  fs.mkdirSync(anchorDir, { recursive: true });
 
-  // Summary
-  const generated = allJobs.length - missingJobs.length + (allJobs.length - Object.keys(results).length > 0 ? 0 : 0)
-  const totalGenerated = Object.keys(results).filter(k => results[k]).length
-  console.log(`\n═══════════════════════════════════════════════════`)
-  console.log(`  Complete! ${totalGenerated}/${allJobs.length} images ready`)
-  console.log(`  Estimated cost: ~$${(missingJobs.length * 0.04).toFixed(2)}`)
-  console.log(`═══════════════════════════════════════════════════`)
+  const anchors: Array<{
+    style: string;
+    room_type: string;
+    url: string;
+    is_anchor: true;
+  }> = [];
+
+  for (const [key, val] of Object.entries(progress.anchors)) {
+    const match = key.match(
+      /^anchor_(\w+?)_(bedroom|living_room|kitchen|bathroom|home_office|dining_room)$/
+    );
+    if (match) {
+      anchors.push({
+        style: match[1],
+        room_type: match[2].replace(/_/g, " "),
+        url: val.url,
+        is_anchor: true,
+      });
+    }
+  }
+
+  fs.writeFileSync(
+    path.join(anchorDir, "manifest.json"),
+    JSON.stringify({ total_anchors: anchors.length, anchors }, null, 2)
+  );
+
+  log(
+    `Manifests written: ${STYLE_NAMES.length} training, 1 swipe-pairs, 1 anchors`
+  );
 }
 
-main().catch((err) => {
-  console.error('Fatal error:', err)
-  process.exit(1)
-})
+// ── Main ─────────────────────────────────────────────────────────────────────
+
+async function main(): Promise<void> {
+  log("Session B — Image Generation");
+  log(`Budget ceiling: $${GENERATION_BUDGET.toFixed(2)} for generation`);
+
+  const progress = loadProgress();
+  log(`Resuming from progress: $${progress.totalSpend.toFixed(2)} spent`);
+  log(
+    `  Training: ${Object.keys(progress.training).length}/200, Pairs: ${Object.keys(progress.swipePairs).length}/420, Anchors: ${Object.keys(progress.anchors).length}/60`
+  );
+
+  await generateTrainingImages(progress);
+  await generateSwipePairImages(progress);
+  await generateAnchorImages(progress);
+
+  writeManifests(progress);
+
+  log("═══ GENERATION COMPLETE ═══");
+  log(`Total images: ${Object.keys(progress.training).length + Object.keys(progress.swipePairs).length * 2 + Object.keys(progress.anchors).length}`);
+  log(`Total spend: $${progress.totalSpend.toFixed(2)}`);
+  log(`Budget remaining: $${(GENERATION_BUDGET - progress.totalSpend).toFixed(2)}`);
+}
+
+main().catch((e) => {
+  console.error("FATAL:", e);
+  process.exit(1);
+});

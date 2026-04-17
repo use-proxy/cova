@@ -67,6 +67,12 @@ interface NewFingerprintRequest {
   phase_c_confirmation?: boolean;
   confirmed_fingerprint?: StyleFingerprint;
   tiebreaker_deltas?: number[] | null;
+  /** V3 anchor prior from step-2. When present, activates V3 fingerprint computation. */
+  anchor_prior?: Record<string, number>;
+  /** V3 anchor question winners */
+  q1_winner?: string;
+  q2_winner?: string;
+  q3_winner?: string;
 }
 
 // Raised from 0.2 → 0.28: tighter threshold reduces noise
@@ -899,6 +905,94 @@ export async function POST(request: Request) {
           { error: "room_type required" },
           { status: 400 },
         );
+      }
+
+      // ── V3 Fast Path ─────────────────────────────────────────────────────
+      // When anchor_prior is present, build a V3 12-dim fingerprint from the
+      // anchor question results. This bypasses the V2 grid/NLP logic entirely.
+      if (body.anchor_prior && Object.keys(body.anchor_prior).length > 0) {
+        const { initPosterior, posteriorToFingerprint } = await import("@/lib/quiz/bayes");
+        const { fingerprintToStyleBlend, DIMENSION_ORDER: V3_DIMS } = await import("@/lib/quiz/style-archetypes");
+        // v3RecordToArray available from style-match if needed for array conversion
+
+        // Build V3 posterior from anchor prior
+        const v3Prior = body.anchor_prior as Record<string, number>;
+        const bayesState = initPosterior(v3Prior as Partial<Record<string, number>>);
+        const v3Dims = posteriorToFingerprint(bayesState);
+
+        // Compute style blend
+        const v3Blend = fingerprintToStyleBlend(v3Dims);
+        const sortedBlend = Object.entries(v3Blend).sort(([, a], [, b]) => b - a);
+
+        // Build fingerprint
+        const v3Fp = {
+          dimensions: v3Dims as unknown as StyleFingerprint["dimensions"],
+          covariance: V3_DIMS.map(() => V3_DIMS.map(() => 0)),
+          confidence: 0.6, // initial confidence from anchors
+          fingerprint_version: "v3" as const,
+        };
+
+        const v3PrimaryStyle = sortedBlend[0]?.[0] ?? "COVAJAPANDI";
+        const v3SecondaryStyle = sortedBlend[1]?.[0] ?? null;
+        const v3PrimaryWeight = sortedBlend[0]?.[1] ?? 1.0;
+        const v3SecondaryWeight = sortedBlend[1]?.[1] ?? 0;
+        const v3Competing = sortedBlend.slice(0, 2).map(([s]) => s);
+
+        // Derive style tags from strongest V3 dimensions
+        const v3Tags: string[] = [];
+        const dimEntries = Object.entries(v3Dims).sort(
+          ([, a], [, b]) => Math.abs(b - 0.5) - Math.abs(a - 0.5),
+        );
+        for (const [dim, val] of dimEntries.slice(0, 4)) {
+          if (val > 0.65) v3Tags.push(`High ${dim}`);
+          else if (val < 0.35) v3Tags.push(`Low ${dim}`);
+        }
+
+        // Build style blend for DB
+        const v3StyleBlend: Record<string, number> = {};
+        for (const [style, weight] of sortedBlend) {
+          v3StyleBlend[style] = Math.round(weight * 100) / 100;
+        }
+
+        // Save to DB if authenticated
+        if (user) {
+          const adminClient = createAdminSupabaseClient();
+          try {
+            await (adminClient.from("style_fingerprints") as ReturnType<typeof adminClient.from>)
+              .insert({
+                user_id: user.id,
+                dimensions: v3Dims,
+                covariance: v3Fp.covariance,
+                confidence: v3Fp.confidence,
+                fingerprint_version: "v3",
+                room_type: body.room_type,
+              });
+            await (adminClient.from("users") as ReturnType<typeof adminClient.from>)
+              .update({
+                style_blend: v3StyleBlend,
+                primary_style: v3PrimaryStyle,
+                secondary_style: v3SecondaryStyle,
+                primary_weight: v3PrimaryWeight,
+                secondary_weight: v3SecondaryWeight,
+                style_fingerprint: v3Fp,
+              })
+              .eq("id", user.id);
+          } catch (dbErr) {
+            console.error("[fingerprint] V3 DB save error:", dbErr);
+          }
+        }
+
+        return NextResponse.json({
+          fingerprint: v3Fp,
+          style_name: v3PrimaryStyle,
+          style_tags: v3Tags,
+          competing_styles: v3Competing,
+          blend_ratio: v3PrimaryWeight,
+          style_blend: v3StyleBlend,
+          primary_style: v3PrimaryStyle,
+          secondary_style: v3SecondaryStyle,
+          fingerprint_version: "v3",
+        });
       }
 
       let fingerprint: StyleFingerprint;

@@ -19,7 +19,6 @@ export const maxDuration = 300;
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
-import { compilePromptWithClaude } from "@/lib/ai/prompt-compiler";
 import { buildFluxPrompt, buildAnchorFallbackPrompt } from "@/lib/ai/flux";
 import { fetchTopStyleReference } from "@/lib/ai/style-references";
 import {
@@ -44,11 +43,7 @@ interface KeepRemoveDecision {
   decision: "keep" | "remove" | null;
 }
 
-interface DesignBrief {
-  wall_change_requested?: boolean;
-  floor_change_requested?: boolean;
-  required_objects?: string[];
-}
+import type { DesignBrief } from "@/lib/ai/design-director";
 
 interface RoomRow {
   render_context: RenderContext | null;
@@ -378,13 +373,16 @@ export async function POST(request: Request) {
       console.log(`[redesign] Unsplash references scored: ${unsplashReferences.length}`);
 
       if (unsplashReferences.length < 3) {
-        // Detect mood from staging JSON
+        // Detect mood from staging JSON palette hex values
         const stagingJson = ddResult?.stagingJson;
-        const isDark = stagingJson?.palette?.dominant?.toLowerCase()
-          .match(/dark|charcoal|black|navy|slate|deep/);
-        const isWarm = stagingJson?.lighting?.colorTemp
-          ?.includes("2700") ||
-          stagingJson?.lighting?.colorTemp?.includes("3000");
+        const primaryHex = stagingJson?.palette?.primary_hex ?? "";
+        const isDark = primaryHex.length >= 7 && (() => {
+          const r = parseInt(primaryHex.slice(1, 3), 16);
+          const g = parseInt(primaryHex.slice(3, 5), 16);
+          const b = parseInt(primaryHex.slice(5, 7), 16);
+          return (r * 299 + g * 587 + b * 114) / 1000 < 100;
+        })();
+        const isWarm = (stagingJson?.lighting?.color_temp_k ?? 4000) <= 3500;
 
         const moodKey = isDark && isWarm ? "dark_warm" :
                         isWarm ? "warm_natural" :
@@ -414,18 +412,23 @@ export async function POST(request: Request) {
         });
 
       // Extract design_memory and store in render_context for refinement continuity (ADDITION 4)
+      const allFurniture = [
+        ...(ddResult.stagingJson.depth_zones?.foreground ?? []),
+        ...(ddResult.stagingJson.depth_zones?.midground ?? []),
+        ...(ddResult.stagingJson.depth_zones?.background ?? []),
+      ];
       const designMemoryObj = {
-        room_type: ddResult.stagingJson.roomType || ddResult.stagingJson.room_type,
+        room_type: ddResult.stagingJson.room_type,
         style_anchor: styleAnchorDisplay,
-        dominant_material: ddResult.stagingJson.materialTension?.warm ?? "natural materials",
+        dominant_material: ddResult.stagingJson.materials?.[0] ?? "natural materials",
         color_palette: {
-          dominant: ddResult.stagingJson.palette?.dominant ?? "neutral",
-          secondary: ddResult.stagingJson.palette?.secondary ?? "neutral",
-          accent: ddResult.stagingJson.palette?.accent ?? "neutral",
+          dominant: ddResult.stagingJson.palette?.primary_hex ?? "neutral",
+          secondary: ddResult.stagingJson.palette?.secondary_hex ?? "neutral",
+          accent: ddResult.stagingJson.palette?.accent_hex ?? "neutral",
         },
-        key_furniture: ddResult.stagingJson.key_furniture?.slice(0, 3) ?? [],
+        key_furniture: allFurniture.slice(0, 3),
         lighting_spec: ddResult.stagingJson.lighting
-          ? `${ddResult.stagingJson.lighting.source}, ${ddResult.stagingJson.lighting.colorTemp}`
+          ? `${ddResult.stagingJson.lighting.direction}, ${ddResult.stagingJson.lighting.color_temp_k}K`
           : "natural light",
         lora_trigger: loraTrigger,
       };
@@ -456,29 +459,18 @@ export async function POST(request: Request) {
 
   // ── Fallback: existing Claude prompt compiler ───────────────────────────────
   if (!compiledPrompt && fingerprint) {
-    compiledPrompt = await compilePromptWithClaude(
-      renderContext,
-      roomType,
+    compiledPrompt = buildAnchorFallbackPrompt({
       fingerprint,
+      roomType,
+      context: renderContext,
+      styleBlend: styleBlendForAnchor,
       anchorPrompt,
-      roomAnalysis,
-      chat_context ?? null,
-    ).catch(() => null);
+      cameraAngle: roomAnalysis?.cameraAngle ?? undefined,
+      focalLength: roomAnalysis?.focalLength ?? undefined,
+    });
 
-    if (compiledPrompt) promptSource = "claude-compiled";
+    if (compiledPrompt) promptSource = "fallback";
 
-    // Second fallback: anchor-strategy prompt if Claude compile also fails.
-    if (!compiledPrompt) {
-      compiledPrompt = buildAnchorFallbackPrompt({
-        fingerprint,
-        roomType,
-        context: renderContext,
-        styleBlend: styleBlendForAnchor,
-        anchorPrompt,
-        cameraAngle: roomAnalysis?.cameraAngle ?? undefined,
-        focalLength: roomAnalysis?.focalLength ?? undefined,
-      });
-    }
     // Silence unused-import warning for legacy buildFluxPrompt until
     // validation-renders route is re-audited.
     void buildFluxPrompt;
