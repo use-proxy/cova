@@ -1,0 +1,28 @@
+{
+  "screen": "dashboard",
+  "url": "http://localhost:3000/dashboard",
+  "passed": true,
+  "attempt": 1,
+  "elements": 27,
+  "issues": [
+    {
+      "severity": "minor",
+      "description": "Third room card 'Dining Room Curation' title and last tag appear truncated/clipped at the right edge of the viewport, suggesting the card is not fully visible and may be missing a horizontal scroll indicator or the layout doesn't account for the third card properly",
+      "element": "Dining Room Curation card - title truncated to 'Dining Room Curatio' and last tag 'NATU...' cut off",
+      "root_cause": "Room cards grid likely uses overflow-hidden or fixed width without scroll affordance, causing the third card to be partially clipped. This is likely a CSS layout issue in the My Rooms grid container."
+    }
+  ],
+  "fixes": [],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776405922189,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776405922191,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776405943944,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776405943945,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776405945520,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776405945522,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776405971725,\"url\":\"/design/step-6\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776405971727,\"url\":\"/design/step-6\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776405990085,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776405990087,\"url\":\"/dashboard\"}"
+  ]
+}

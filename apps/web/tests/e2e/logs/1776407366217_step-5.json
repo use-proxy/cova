@@ -1,0 +1,53 @@
+{
+  "screen": "step-5",
+  "url": "http://localhost:3000/design/step-5",
+  "passed": false,
+  "attempt": 1,
+  "elements": 10,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Multiple React hydration errors: 'Text content does not match server-rendered HTML' and 'Invalid or unexpected token'. The entire root switches to client rendering due to hydration failure.",
+      "element": "Page component / budget tier cards",
+      "root_cause": "Likely caused by dynamic values (e.g. currency formatting with locale-specific number separators, or template literals with special characters like em-dash '—') rendering differently on server vs client. The '$500 — $2,000' text with em-dash or locale-dependent formatting is a common hydration mismatch source. Also 'Invalid or unexpected token' suggests a syntax error in the source file."
+    },
+    {
+      "severity": "major",
+      "description": "Step indicator shows 'STEP 3 OF 4' but the URL is /design/step-5. The step counter is wrong — it should reflect step 5 (e.g. 'STEP 5 OF 5' or similar).",
+      "element": "Step counter in top-right header",
+      "root_cause": "The step-5 page.tsx hardcodes or incorrectly computes the step number, showing '3 of 4' instead of the correct value for step 5."
+    },
+    {
+      "severity": "major",
+      "description": "Only 2 budget tier cards are visible (Essential partially and one more). Expected behavior is 4-5 cards (Essential, Elevated, Refined, Prestige, Signature). Cards are in a carousel/swipe layout which hides other options and may not meet the spec of showing all tiers.",
+      "element": "Budget tier cards",
+      "root_cause": "The cards are rendered in a horizontal scroll/swipe container showing only 1 card at a time. Either the other tier cards are missing from the data array, or the layout needs adjustment to show all cards."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-5/page.tsx",
+      "old_str": "STEP 3 OF 4",
+      "new_str": "STEP 5 OF 5",
+      "reason": "Fix incorrect step counter — the URL is /design/step-5 so the step indicator must reflect step 5."
+    },
+    {
+      "file": "apps/web/app/design/step-5/page.tsx",
+      "old_str": "\"use client\"",
+      "new_str": "'use client'",
+      "reason": "If the file uses a smart/curly quote instead of straight quote for the directive, it causes 'Invalid or unexpected token' syntax error and hydration failure. Ensure the use client directive uses straight single quotes."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407266925,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407266928,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407292288,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407292291,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776407312619,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776407312621,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407338351,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407338352,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407339889,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407339890,\"url\":\"/design/step-5\"}"
+  ]
+}

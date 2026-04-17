@@ -1,0 +1,83 @@
+{
+  "screen": "step-6",
+  "url": "http://localhost:3000/design/step-6",
+  "passed": false,
+  "attempt": 1,
+  "elements": 5,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Step indicator shows 'STEP 4 OF 4' but the current URL is /design/step-6, indicating a mismatch between the displayed step number and the actual route. The page is rendering step-4 content/component on step-6 route, or the step counter is hardcoded/wrong.",
+      "element": "Step indicator top-right: 'STEP 4 OF 4'",
+      "root_cause": "The step-6 page component likely has a hardcoded stepNumber prop or variable set to 4, or it is importing/reusing the step-4 component directly. The page mount log confirms 'step-6' mounts at /design/step-6 but the UI renders step 4 of 4 label."
+    },
+    {
+      "severity": "critical",
+      "description": "Multiple React hydration errors: 'Text content does not match server-rendered HTML' and 'entire root will switch to client rendering'. This means SSR output differs from client render, causing full client-side re-render fallback, potential flicker, SEO issues, and broken interactivity on first load.",
+      "element": "Entire page / React root",
+      "root_cause": "Likely caused by dynamic content rendered differently server vs client — common culprits: Date/time usage, Math.random(), window/navigator access without useEffect guard, or a QR code component that generates dynamic values. The QR code section or file size/format strings may differ between SSR and CSR."
+    },
+    {
+      "severity": "major",
+      "description": "The 'Analyze My Room →' button appears visually muted/disabled with no photo uploaded. There is no visible validation message or feedback explaining why it's disabled, which is a UX issue but also needs verification that the disabled state is intentional and not a stuck state.",
+      "element": "'Analyze My Room →' button",
+      "root_cause": "Button is conditionally disabled when no file is selected (photoFile state is null/undefined). This is likely intentional but lacks user-facing feedback text explaining the requirement."
+    },
+    {
+      "severity": "minor",
+      "description": "Console logs show page:mount firing twice for each route (step-6 mounts twice), indicating a StrictMode double-invoke or a component being mounted in two places, which could cause duplicate side effects.",
+      "element": "page:mount event logging",
+      "root_cause": "React StrictMode in development intentionally double-invokes effects. However if this also happens in production it indicates a duplicate component tree. The double mount log at ts:1776404573655 and ts:1776404573657 suggests StrictMode is active."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "app/design/step-6/page.tsx",
+      "old_str": "stepNumber={4}",
+      "new_str": "stepNumber={6}",
+      "reason": "The step indicator is hardcoded to 4 but this is step 6. Update the prop to reflect the correct step number."
+    },
+    {
+      "file": "app/design/step-6/page.tsx",
+      "old_str": "totalSteps={4}",
+      "new_str": "totalSteps={6}",
+      "reason": "If total steps is also hardcoded as 4, it should reflect the actual total number of steps in the flow (6 based on routes observed)."
+    },
+    {
+      "file": "components/StepHeader.tsx",
+      "old_str": "STEP {stepNumber} OF {totalSteps}",
+      "new_str": "STEP {stepNumber} OF {totalSteps}",
+      "reason": "Verify this is driven by props and not hardcoded. If hardcoded, replace with dynamic prop values."
+    },
+    {
+      "file": "app/design/step-6/page.tsx",
+      "old_str": "'use client'\n\nimport { useState } from 'react'",
+      "new_str": "'use client'\n\nimport { useState, useEffect } from 'react'",
+      "reason": "Ensure any browser-only APIs (QR code generation, file APIs, navigator) are wrapped in useEffect to prevent SSR/CSR hydration mismatch."
+    },
+    {
+      "file": "components/QRCodeSection.tsx",
+      "old_str": "const qrValue = `${window.location.origin}/mobile-upload`",
+      "new_str": "const [qrValue, setQrValue] = useState('')\nuseEffect(() => {\n  setQrValue(`${window.location.origin}/mobile-upload`)\n}, [])",
+      "reason": "Direct window.location access during SSR causes hydration mismatch. Move to useEffect so it only runs on client, preventing the 'Text content does not match server-rendered HTML' error."
+    },
+    {
+      "file": "app/design/step-6/page.tsx",
+      "old_str": "<button disabled={!photoFile} className=\"analyze-btn\">Analyze My Room →</button>",
+      "new_str": "<button disabled={!photoFile} className=\"analyze-btn\">\n  Analyze My Room →\n</button>\n{!photoFile && <p className=\"hint-text\">Please upload a photo to continue</p>}",
+      "reason": "Add user-facing feedback when the button is disabled so users understand they need to upload a photo first."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-2\"},\"ts\":1776404415346,\"url\":\"/design/step-2\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-2\"},\"ts\":1776404415346,\"url\":\"/design/step-2\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776404463656,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776404463659,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776404528973,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776404528975,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776404531071,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776404531073,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776404573655,\"url\":\"/design/step-6\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776404573657,\"url\":\"/design/step-6\"}"
+  ]
+}

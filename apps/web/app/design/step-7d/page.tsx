@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { flowLog } from "@/lib/debug/flow-logger";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { createBrowserClient } from "@/lib/supabase/client";
@@ -141,6 +142,7 @@ const EMPTY_TAB_MESSAGES: TabMessages = {
 
 export default function Step7DPage() {
   const router = useRouter();
+  useEffect(() => { flowLog("page:mount", { page: "step-7d" }); }, []);
   const {
     roomId,
     tabStates,

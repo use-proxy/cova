@@ -1,0 +1,53 @@
+{
+  "screen": "step-6",
+  "url": "http://localhost:3000/design/step-6",
+  "passed": false,
+  "attempt": 1,
+  "elements": 5,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Step-3 page.tsx has duplicate React hook imports causing a build error: 'useEffect' and 'useState' are defined multiple times",
+      "element": "apps/web/app/design/step-3/page.tsx import statements",
+      "root_cause": "The file has two separate import lines from 'react' - one legacy line 'import { useState, useEffect } from react' and a second line 'import { useCallback, useEffect, useRef, useState } from react', causing duplicate identifier errors in the SWC compiler"
+    },
+    {
+      "severity": "major",
+      "description": "Multiple hydration errors across pages - text content mismatch between server-rendered HTML and client",
+      "element": "Multiple page components",
+      "root_cause": "Server and client render different text content, likely due to dynamic values (e.g. step counter, QR code) being rendered differently on server vs client"
+    },
+    {
+      "severity": "minor",
+      "description": "Step counter shows 'STEP 4 OF 4' but we are on step-6, suggesting either the header is hardcoded incorrectly or the step-6 page is reusing step-4's component/data",
+      "element": "Step counter in header",
+      "root_cause": "The step-6 page likely has a hardcoded step number or is sharing state/component with step-4"
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "\"use client\"\nimport { useState, useEffect } from 'react';\nimport { useState, useEffect, useCallback, useRef } from \"react\";",
+      "new_str": "\"use client\"\nimport { useState, useEffect, useCallback, useRef } from \"react\";",
+      "reason": "Remove the duplicate first import line that causes 'useState' and 'useEffect' to be defined multiple times, fixing the SWC build error"
+    },
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "\"use client\"\nimport { useState, useEffect } from 'react';\n\nimport { useCallback, useEffect, useRef, useState } from \"react\";",
+      "new_str": "\"use client\"\nimport { useState, useEffect, useCallback, useRef } from \"react\";",
+      "reason": "Alternative pattern match - remove duplicate import lines that cause build failure, consolidating into a single import statement"
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776408229244,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776408229246,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776408254990,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776408254993,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776408278756,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776408278757,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776408280523,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776408280524,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776408307483,\"url\":\"/design/step-6\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776408307485,\"url\":\"/design/step-6\"}"
+  ]
+}

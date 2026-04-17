@@ -1,0 +1,53 @@
+{
+  "screen": "auth",
+  "url": "http://localhost:3000/auth",
+  "passed": false,
+  "attempt": 2,
+  "elements": 7,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Duplicate React hook imports in step-3/page.tsx causing module build failure. useState and useEffect are imported twice — once from a stale first line and again in the combined import. This causes a webpack/SWC build error.",
+      "element": "apps/web/app/design/step-3/page.tsx import statements",
+      "root_cause": "The file originally had 'import { useState, useEffect } from react' on line 2, then a second import 'import { useCallback, useEffect, useRef, useState } from react' on line 4, causing duplicate identifier errors."
+    },
+    {
+      "severity": "critical",
+      "description": "Repeated React hydration errors on the auth page — 'Text content does not match server-rendered HTML' — causing entire root to fall back to client rendering. This indicates dynamic/browser-only content rendered during SSR without suppression or useEffect guard.",
+      "element": "apps/web/app/auth/page.tsx — server/client HTML mismatch",
+      "root_cause": "Likely a date, random value, or browser-only API used during server render without being wrapped in useEffect or with suppressHydrationWarning. The exact auth page source is not provided, but the pattern is clear from the repeated hydration errors on the /auth route."
+    },
+    {
+      "severity": "major",
+      "description": "404 error for /design/step-8a route — page file missing.",
+      "element": "apps/web/app/design/step-8a/page.tsx",
+      "root_cause": "No page.tsx exists at apps/web/app/design/step-8a/, causing Next.js to return 404 and fallback to browser navigation with a fetch error in console."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "\"use client\"\nimport { useState, useEffect, useCallback, useRef } from \"react\";",
+      "new_str": "\"use client\"\nimport { useState, useEffect, useCallback, useRef } from \"react\";",
+      "reason": "Ensure only one clean import line exists. The actual broken state had two import lines; this confirms the single correct deduplicated import that should remain. If the file still has a second import line below, it must be removed."
+    },
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "\"use client\"\nimport { useState, useEffect } from 'react';\n\nimport { useCallback, useEffect, useRef, useState } from \"react\";",
+      "new_str": "\"use client\"\nimport { useState, useEffect, useCallback, useRef } from \"react\";",
+      "reason": "Remove the duplicate first import line and consolidate into a single import statement to fix the SWC build error about useEffect and useState being defined multiple times."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776408038198,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776408038200,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776408061156,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776408061158,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776408080000,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776408080002,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408106137,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408106138,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408126368,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408126370,\"url\":\"/auth\"}"
+  ]
+}

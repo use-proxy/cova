@@ -1,0 +1,51 @@
+{
+  "screen": "step-8a",
+  "url": "http://localhost:3000/design/step-8a",
+  "passed": false,
+  "attempt": 1,
+  "elements": 0,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "setIsMounted is not defined - ReferenceError thrown repeatedly, causing hydration failure and component crash",
+      "element": "step-8a page component",
+      "root_cause": "In apps/web/app/design/step-8a/page.tsx, setIsMounted is called but the useState hook that creates [isMounted, setIsMounted] is either missing or the destructuring is wrong (e.g. using const isMounted = useState(false) instead of const [isMounted, setIsMounted] = useState(false))"
+    },
+    {
+      "severity": "critical",
+      "description": "Hydration mismatch errors - server and client render different text content, causing entire root to switch to client rendering",
+      "element": "step-8a page component - likely timestamp or dynamic content rendered without suppressing hydration",
+      "root_cause": "Dynamic content (e.g. Date.now(), Math.random(), or similar) is being rendered during SSR and differs on the client. This is compounded by the setIsMounted bug - without isMounted guard, time-based or random content renders on server and differs client-side."
+    },
+    {
+      "severity": "major",
+      "description": "Loading state is stuck - the before/after slider and redesigned room image never appear",
+      "element": "Loading steps list, before/after slider, redesigned room image",
+      "root_cause": "Because setIsMounted is not defined, the useEffect that would set isMounted=true and trigger the transition from loading to result state never executes successfully, leaving the component permanently in loading state."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-8a/page.tsx",
+      "old_str": "const isMounted = useState(false)",
+      "new_str": "const [isMounted, setIsMounted] = useState(false)",
+      "reason": "Fixes the ReferenceError: setIsMounted is not defined by properly destructuring the useState return value into [state, setter] tuple"
+    },
+    {
+      "file": "apps/web/app/design/step-8a/page.tsx",
+      "old_str": "useEffect(() => {\n    setIsMounted(true)\n  }, [])",
+      "new_str": "useEffect(() => {\n    setIsMounted(true)\n  }, [isMounted])",
+      "reason": "Ensures the effect runs correctly after the useState fix; also guards against stale closure issues"
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776408746591,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776408746593,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776408776893,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776408776897,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776408825780,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776408825782,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776408890312,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776408890314,\"url\":\"/design/step-8a\"}"
+  ]
+}

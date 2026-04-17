@@ -1,0 +1,13 @@
+{
+  "screen": "auth",
+  "url": "http://localhost:3000/auth",
+  "passed": true,
+  "attempt": 1,
+  "elements": 7,
+  "issues": [],
+  "fixes": [],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776404275385,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776404275388,\"url\":\"/auth\"}"
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "screen": "dashboard",
+  "url": "http://localhost:3000/dashboard",
+  "passed": false,
+  "attempt": 1,
+  "elements": 27,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "React hydration error: Text content does not match server-rendered HTML. Multiple hydration mismatches causing entire root to switch to client rendering.",
+      "element": "Dashboard page - likely the greeting text with time-of-day ('Good evening') or the date ('Thursday, April 16') which are dynamic values computed differently on server vs client",
+      "root_cause": "The greeting text ('Good evening, Amelia.') and/or the date string ('Thursday, April 16') are being generated using Date() or new Date() directly in the component body or during render without being wrapped in a useEffect or suppressing hydration. Server renders at one time, client renders at another, causing mismatch. Also possibly the stats values are dynamically computed."
+    },
+    {
+      "severity": "major",
+      "description": "Style Profile radar chart is missing from the dashboard - expected per the spec but not visible in the screenshot",
+      "element": "Style Profile section with radar chart",
+      "root_cause": "The Style Profile radar chart section may not be rendered on the dashboard page, or it may be below the fold / not implemented in the dashboard page component."
+    },
+    {
+      "severity": "minor",
+      "description": "Third room card 'Dining Room Curation' tag is cut off showing 'NATU...' instead of full tag name",
+      "element": "Dining Room Curation card tag",
+      "root_cause": "CSS overflow/truncation on the tag container for the third card when it is partially visible at the right edge of the viewport."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/dashboard/page.tsx",
+      "old_str": "const getGreeting = () => {\n    const hour = new Date().getHours();",
+      "new_str": "const getGreeting = (hour: number) => {\n    // hour passed in to avoid hydration mismatch",
+      "reason": "Refactor greeting to accept hour as parameter so it can be called with a stable value from useEffect"
+    },
+    {
+      "file": "apps/web/app/dashboard/page.tsx",
+      "old_str": "  const [greeting, setGreeting] = useState(getGreeting())",
+      "new_str": "  const [greeting, setGreeting] = useState('Good evening')\n  useEffect(() => {\n    const hour = new Date().getHours()\n    if (hour < 12) setGreeting('Good morning')\n    else if (hour < 18) setGreeting('Good afternoon')\n    else setGreeting('Good evening')\n  }, [])",
+      "reason": "Move time-based greeting to useEffect so server and client both start with 'Good evening' and client updates after hydration, eliminating the hydration mismatch"
+    },
+    {
+      "file": "apps/web/app/dashboard/page.tsx",
+      "old_str": "  const [currentDate, setCurrentDate] = useState(new Date().toLocaleDateString",
+      "new_str": "  const [currentDate, setCurrentDate] = useState('')\n  useEffect(() => {\n    setCurrentDate(new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }))\n  }, [])",
+      "reason": "Move date computation to useEffect to prevent server/client hydration mismatch on the date string"
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776406778901,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776406778903,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776406809900,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776406809901,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776406811630,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776406811631,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776406838778,\"url\":\"/design/step-6\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776406838780,\"url\":\"/design/step-6\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776406857904,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776406857906,\"url\":\"/dashboard\"}"
+  ]
+}

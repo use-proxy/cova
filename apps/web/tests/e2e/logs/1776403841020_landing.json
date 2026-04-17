@@ -1,0 +1,15 @@
+{
+  "screen": "landing",
+  "url": "http://localhost:3000/",
+  "passed": false,
+  "attempt": 1,
+  "elements": 34,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Claude API error: Could not resolve authentication method. Expected either apiKey or authToken to be set. Or for one of the \"X-Api-Key\" or \"Authorization\" headers to be explicitly omitted"
+    }
+  ],
+  "fixes": [],
+  "flowLogs": []
+}

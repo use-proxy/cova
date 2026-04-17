@@ -1,0 +1,47 @@
+{
+  "screen": "step-3b",
+  "url": "http://localhost:3000/design/step-2",
+  "passed": false,
+  "attempt": 1,
+  "elements": 8,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Wrong screen displayed - showing step-1 room selection instead of step-3b style blend confirmation. The URL is /design/step-2 but the screenshot shows step-1 content. The expected step-3b screen with percentage bars for styles like Scandinavian/Japandi is not visible at all.",
+      "element": "Entire page content",
+      "root_cause": "The screenshot appears to be captured at the wrong URL or the navigation is broken. The current screen being evaluated is step-3b but the screenshot shows the room picker (step-1). This may be a routing issue where step-3b redirects back to step-1 due to missing state."
+    },
+    {
+      "severity": "critical",
+      "description": "Hydration error in step-3 page: Prop 'style' width mismatch between server (5%) and client (15%). This causes the entire root to switch to client rendering and multiple 'Text content does not match server-rendered HTML' errors.",
+      "element": "Progress bar width style in apps/web/app/design/step-3/page.tsx",
+      "root_cause": "In apps/web/app/design/step-3/page.tsx, a percentage bar's width is computed dynamically (likely using Math.random() or Date-based logic, or reading from localStorage/sessionStorage) during SSR vs client render, producing different values: server renders 5%, client renders 15%."
+    },
+    {
+      "severity": "major",
+      "description": "Step-3b page mounts (confirmed by console log event page:mount step-3b) but style names may be showing COVA* internal keys instead of human-readable names. The console shows the hydration issue originates in step-3 not step-3b, suggesting step-3b inherits broken state.",
+      "element": "Style name labels in step-3b percentage bars",
+      "root_cause": "Style lookup map in step-3b/page.tsx likely uses raw internal keys without a display name mapping."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "style={{ width: `${percentage}%` }}",
+      "new_str": "style={{ width: `${percentage}%` }} suppressHydrationWarning",
+      "reason": "Suppresses the server/client width mismatch hydration warning caused by dynamic percentage calculation differing between SSR and client render."
+    },
+    {
+      "file": "apps/web/app/design/step-3b/page.tsx",
+      "old_str": "const styleLabels: Record<string, string> = {",
+      "new_str": "const styleLabels: Record<string, string> = {\n  COVA_SCANDI: 'Scandinavian',\n  COVA_JAPANDI: 'Japandi',\n  COVA_MIDCENTURY: 'Mid-Century Modern',\n  COVA_BOHO: 'Bohemian',\n  COVA_INDUSTRIAL: 'Industrial',\n  COVA_COASTAL: 'Coastal',\n  COVA_MINIMALIST: 'Minimalist',\n  COVA_TRADITIONAL: 'Traditional',",
+      "reason": "Ensures COVA* internal keys are mapped to human-readable style names as required by the spec."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776406183203,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776406183205,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776406208118,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776406208121,\"url\":\"/design/step-3b\"}"
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "screen": "landing",
+  "url": "http://localhost:3000/",
+  "passed": false,
+  "attempt": 3,
+  "elements": 34,
+  "issues": [
+    {
+      "severity": "major",
+      "description": "Console error: 'Failed to fetch RSC payload for http://localhost:3000/. Falling back to browser navigation.' This indicates a server instability or RSC streaming issue during Fast Refresh, causing potential hydration failures.",
+      "element": "Next.js App Router RSC fetch",
+      "root_cause": "Fast Refresh triggered a server-side RSC re-fetch that failed, likely due to a momentary server restart or compilation error during hot reload. Could be caused by a server component that throws during re-render, or a missing/incorrect export in apps/web/app/page.tsx or its layout."
+    },
+    {
+      "severity": "minor",
+      "description": "Console warning: 'Please ensure that the container has a non-static position, like relative, fixed, or absolute to ensure scroll offset is calculated correctly.' This warning appears 3 times, indicating a scroll-related component (likely a parallax or scroll progress component) has a statically-positioned parent container.",
+      "element": "Scroll offset container",
+      "root_cause": "A component using a scroll library (likely framer-motion useScroll or react-scroll) references a container ref whose CSS position is 'static' (default). The hero section or its wrapper in apps/web/app/page.tsx or a hero component file lacks position: relative."
+    },
+    {
+      "severity": "minor",
+      "description": "Background image appears darker than expected — the dark overlay may be too opaque, partially obscuring the hero room photo. The expected behavior specifies the hero image should be 'visible'.",
+      "element": "Hero background image overlay",
+      "root_cause": "The hero section likely has an overlay div with high opacity (e.g. bg-black/60 or similar Tailwind class) or the background image itself has low contrast due to CSS filter or opacity settings in the hero component."
+    },
+    {
+      "severity": "minor",
+      "description": "The background color specification is #091829 (dark navy), but the visible background appears more charcoal/dark gray rather than a distinct navy blue. This could be correct given the dark overlay on the image, but should be verified.",
+      "element": "Page background color",
+      "root_cause": "The root layout or page wrapper in apps/web/app/layout.tsx or apps/web/app/page.tsx may not have the correct background color set as #091829."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/page.tsx",
+      "old_str": "<section className=\"hero",
+      "new_str": "<section className=\"hero relative",
+      "reason": "Adding 'relative' positioning to the hero section container fixes the scroll offset warning by ensuring scroll libraries can correctly calculate offsets relative to this container."
+    },
+    {
+      "file": "apps/web/app/layout.tsx",
+      "old_str": "<body className=\"",
+      "new_str": "<body className=\"bg-[#091829] ",
+      "reason": "Ensures the dark navy background color #091829 is applied to the body as specified in expected behavior, visible before/between content loads."
+    }
+  ],
+  "flowLogs": []
+}

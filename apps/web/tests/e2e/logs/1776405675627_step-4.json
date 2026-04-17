@@ -1,0 +1,40 @@
+{
+  "screen": "step-4",
+  "url": "http://localhost:3000/design/step-4",
+  "passed": false,
+  "attempt": 1,
+  "elements": 6,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Radar chart with 6 dimensions (Warmth, Complexity, Organic, Layered, Heritage, Character) is missing from the visible area. Expected behavior requires a radar chart to be displayed.",
+      "element": "Radar chart / Fingerprint Map",
+      "root_cause": "The 'YOUR STYLE DNA' section with 'Fingerprint Map' appears at the bottom of the scroll but the radar chart component may be failing to render or is hidden below the fold. Given the 500 errors in console logs, the chart data may be failing to load from an API endpoint, causing the chart to not render. The RadarChart component likely depends on data fetched from a failing API route."
+    },
+    {
+      "severity": "critical",
+      "description": "Tweak input field is completely absent from the screen. Expected behavior specifies a tweak input field should be present.",
+      "element": "Tweak input field",
+      "root_cause": "The tweak input field component is either not implemented in apps/web/app/design/step-4/page.tsx or is conditionally rendered behind a state/data dependency that is not being met due to the 500 API errors."
+    },
+    {
+      "severity": "major",
+      "description": "Multiple 500 Internal Server Error responses in console logs suggest API routes are failing, which could be preventing radar chart data and other dynamic content from loading.",
+      "element": "API data fetching",
+      "root_cause": "Server-side API routes are returning 500 errors. This likely affects the fingerprint calculation endpoint that provides the 6-dimension scores for the radar chart."
+    }
+  ],
+  "fixes": [],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405557117,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405557118,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405602477,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405602478,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776405628897,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776405628902,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776405631390,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776405631392,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776405651598,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776405651600,\"url\":\"/design/step-4\"}"
+  ]
+}

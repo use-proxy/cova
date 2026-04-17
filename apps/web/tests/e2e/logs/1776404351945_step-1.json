@@ -1,0 +1,67 @@
+{
+  "screen": "step-1",
+  "url": "http://localhost:3000/design/step-1",
+  "passed": true,
+  "attempt": 1,
+  "elements": 4,
+  "issues": [
+    {
+      "severity": "minor",
+      "description": "Console warning: 'Please ensure that the container has a non-static position, like relative, fixed, or absolute to ensure scroll offset is calculated correctly.' This suggests a scroll-related component (likely a tooltip, popover, or scroll-spy library) is mounted on a statically positioned container. Not visually breaking but indicates a positioning bug that could cause incorrect overlay placement.",
+      "element": "Scroll offset container — likely a tooltip or intersection observer wrapper",
+      "root_cause": "A component using a scroll-offset utility (e.g., react-scroll, react-tooltip, or a custom hook calling element.getBoundingClientRect() relative to a parent) is rendered inside a container that has the default CSS position:static. The library requires position:relative/absolute/fixed on the ancestor to compute offsets correctly."
+    },
+    {
+      "severity": "minor",
+      "description": "page:mount event fires twice for step-1 (ts 1776404311513/516 and again 1776404314268/271). This indicates a double-mount, likely from React StrictMode in development. In production this would mean redundant analytics pings, skewed event counts, and potentially double-initializing particle animation canvas.",
+      "element": "page:mount telemetry event / useEffect in Step1 page component",
+      "root_cause": "React 18 StrictMode intentionally double-invokes effects in development. However if the analytics dispatch or canvas init is inside a useEffect without a proper cleanup, the double-mount will cause duplicate events and possibly two canvas instances fighting for the same DOM node."
+    },
+    {
+      "severity": "minor",
+      "description": "Particle animation cannot be verified as actively animating from a static screenshot. The background shows static dots but no motion blur or frame evidence. If the canvas requestAnimationFrame loop is not started (e.g., cancelled by StrictMode cleanup), particles would appear frozen.",
+      "element": "Gold particle animation canvas",
+      "root_cause": "If the particle animation uses useEffect to start an rAF loop and StrictMode unmounts/remounts, the cleanup may cancel the animation ID but the restart effect may not correctly reinitialize, leaving a static first-frame render."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "src/pages/design/Step1.tsx",
+      "old_str": "  useEffect(() => {\n    trackEvent('page:mount', { page: 'step-1' });\n  }, []);",
+      "new_str": "  useEffect(() => {\n    // Guard against StrictMode double-mount duplicate events\n    let fired = false;\n    if (!fired) {\n      trackEvent('page:mount', { page: 'step-1' });\n      fired = true;\n    }\n    return () => {\n      fired = false;\n    };\n  }, []);",
+      "reason": "Prevents duplicate page:mount telemetry events caused by React 18 StrictMode double-invoking effects. The cleanup resets the guard so legitimate re-mounts (true navigation) still fire the event."
+    },
+    {
+      "file": "src/components/ParticleCanvas.tsx",
+      "old_str": "  useEffect(() => {\n    const animId = requestAnimationFrame(animate);\n    return () => cancelAnimationFrame(animId);\n  }, []);",
+      "new_str": "  useEffect(() => {\n    let animId: number;\n    let running = true;\n    const loop = () => {\n      if (!running) return;\n      animate();\n      animId = requestAnimationFrame(loop);\n    };\n    animId = requestAnimationFrame(loop);\n    return () => {\n      running = false;\n      cancelAnimationFrame(animId);\n    };\n  }, []);",
+      "reason": "Replaces single-frame rAF with a proper loop guarded by a running flag. The cleanup sets running=false and cancels the frame, ensuring StrictMode remount correctly restarts the full animation loop rather than freezing after one frame."
+    },
+    {
+      "file": "src/components/ParticleCanvas.tsx",
+      "old_str": "  return (\n    <canvas ref={canvasRef} className=\"particle-canvas\" />",
+      "new_str": "  return (\n    <canvas ref={canvasRef} className=\"particle-canvas\" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />",
+      "reason": "Ensures the canvas has position:absolute so any scroll-offset utilities that inspect its ancestor chain find a non-static positioned parent, resolving the console warning about scroll offset calculation."
+    },
+    {
+      "file": "src/components/ParticleCanvas.tsx",
+      "old_str": "const ParticleCanvas: React.FC = () => {",
+      "new_str": "const ParticleCanvas: React.FC = () => {\n  // Container must be position:relative — enforced by wrapper below",
+      "reason": "Documents the requirement so future developers know the parent container must not be position:static."
+    },
+    {
+      "file": "src/pages/design/Step1.tsx",
+      "old_str": "      <div className=\"hero-background\">",
+      "new_str": "      <div className=\"hero-background\" style={{ position: 'relative' }}>",
+      "reason": "Adds position:relative to the ParticleCanvas wrapper container, satisfying the scroll-offset library requirement and eliminating the console warning."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776404288740,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776404288742,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776404311513,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776404311516,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776404314268,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776404314271,\"url\":\"/design/step-1\"}"
+  ]
+}

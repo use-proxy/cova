@@ -1,0 +1,41 @@
+{
+  "screen": "auth",
+  "url": "http://localhost:3000/auth",
+  "passed": false,
+  "attempt": 1,
+  "elements": 7,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "React hydration errors - text content does not match server-rendered HTML. Multiple hydration mismatches detected across the app.",
+      "element": "Entire page / root",
+      "root_cause": "The console logs show a hydration error originating in apps/web/app/design/step-3/page.tsx where a div has style 'width:5%' on server but 'width:15%' on client. This causes the entire root to switch to client rendering, propagating hydration errors. Likely caused by dynamic/random values or Math.random() used in inline styles during SSR."
+    },
+    {
+      "severity": "major",
+      "description": "Hydration mismatch in step-3 page: Prop 'style' width value differs between server (5%) and client (15%)",
+      "element": "apps/web/app/design/step-3/page.tsx - a div with dynamic width style",
+      "root_cause": "A div element has a dynamically computed width style (e.g. using Math.random() or state initialized differently on server vs client) resulting in server rendering 'width:5%' and client rendering 'width:15%'. This breaks hydration for the entire app."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "style={{ width: `${",
+      "new_str": "suppressHydrationWarning style={{ width: `${",
+      "reason": "Adding suppressHydrationWarning to the div with dynamic width style prevents the hydration mismatch from crashing the entire root. This is the correct fix when a value legitimately differs between SSR and CSR (e.g. progress bar initialized from client state)."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776406631198,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776406631201,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776406660597,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776406660598,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776406681767,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776406681769,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776406706918,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776406706920,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406731256,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406731257,\"url\":\"/auth\"}"
+  ]
+}

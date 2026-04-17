@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { flowLog } from "@/lib/debug/flow-logger";
 import { useRoomStore } from "@/lib/store/room";
 import { useArea2Store } from "@/lib/stores/area2Store";
 import "../step-1/step1.css";
@@ -46,6 +47,7 @@ const DETECTION_DOTS: Array<{
 
 export default function StepSevenPage() {
   const router = useRouter();
+  useEffect(() => { flowLog("page:mount", { page: "step-7" }); }, []);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const progressFillRef = useRef<HTMLDivElement>(null);
   const [headlineIdx, setHeadlineIdx] = useState(0);

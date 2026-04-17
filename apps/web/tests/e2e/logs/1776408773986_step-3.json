@@ -1,0 +1,51 @@
+{
+  "screen": "step-3",
+  "url": "http://localhost:3000/design/step-3",
+  "passed": false,
+  "attempt": 1,
+  "elements": 5,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Hydration mismatch: server renders 'Which room are we designing?' but client renders 'Style Quiz' in the header subtitle. This causes full root hydration failure and client-side re-render.",
+      "element": "Header subtitle text in step-3 page",
+      "root_cause": "In apps/web/app/design/step-3/page.tsx, the header subtitle uses dynamic/conditional text that differs between server and client render — likely reading from state, context, or localStorage that isn't available on the server, causing SSR/CSR mismatch."
+    },
+    {
+      "severity": "critical",
+      "description": "Wrong content displayed: step-3 should show image comparison pairs (two room images side by side) per expected behavior, but instead shows text-only questions ('How do you prefer your surfaces?') which belongs to a different step.",
+      "element": "Main quiz content area",
+      "root_cause": "The step-3 page component is rendering text-choice questions instead of image comparison pairs. The question index or quiz data source may be misaligned, or the component is reusing the wrong question set."
+    },
+    {
+      "severity": "major",
+      "description": "Multiple hydration errors reported (7x 'Text content does not match server-rendered HTML') causing entire root to switch to client rendering, degrading performance and UX.",
+      "element": "Multiple text nodes across the page",
+      "root_cause": "The page uses client-side state to determine displayed text (quiz step label, question text, progress) without suppressing hydration or using 'use client' with proper initial state matching SSR output."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "  const [currentQuestion, setCurrentQuestion] = useState(0);",
+      "new_str": "  const [currentQuestion, setCurrentQuestion] = useState(0);\n  const [mounted, setMounted] = useState(false);\n  useEffect(() => { setMounted(true); }, []);",
+      "reason": "Track client mount state to avoid SSR/CSR mismatch by deferring dynamic content until after hydration."
+    },
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "          <p className=\"text-sm uppercase tracking-widest text-[#C9A84C] mb-2\">Style Quiz</p>",
+      "new_str": "          <p className=\"text-sm uppercase tracking-widest text-[#C9A84C] mb-2\" suppressHydrationWarning>Style Quiz</p>",
+      "reason": "Add suppressHydrationWarning to the subtitle element that mismatches between server ('Which room are we designing?') and client ('Style Quiz') to prevent hydration errors while the root cause is investigated."
+    },
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "\"use client\"\n\nimport",
+      "new_str": "\"use client\"\n// Step 3: Style quiz with image comparison pairs\nimport",
+      "reason": "Confirm 'use client' directive is present and first — if the file was missing this, SSR would render with different context. This also documents intent. If the directive is already present this is a no-op comment addition."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776408746591,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776408746593,\"url\":\"/design/step-3\"}"
+  ]
+}

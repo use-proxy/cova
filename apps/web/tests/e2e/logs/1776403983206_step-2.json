@@ -1,0 +1,22 @@
+{
+  "screen": "step-2",
+  "url": "http://localhost:3000/auth?next=%2Fdesign%2Fstep-2",
+  "passed": false,
+  "attempt": 1,
+  "elements": 7,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Claude API error: Could not resolve authentication method. Expected either apiKey or authToken to be set. Or for one of the \"X-Api-Key\" or \"Authorization\" headers to be explicitly omitted"
+    }
+  ],
+  "fixes": [],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776403968612,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776403968613,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776403973568,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776403973572,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776403978490,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776403978491,\"url\":\"/auth\"}"
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "screen": "landing",
+  "url": "http://localhost:3000/",
+  "passed": false,
+  "attempt": 1,
+  "elements": 34,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Repeated 500 Internal Server Error responses from the server, appearing consistently across multiple console log entries. These are server-side errors affecting resource loading.",
+      "element": "Server API/resource endpoint",
+      "root_cause": "A resource (likely an API route or image/font endpoint) is returning HTTP 500. The console shows multiple consecutive 500 errors. Given the auth page mount events appearing alongside these, it's likely an API route under /api/ or a server component that is crashing. Also a 400 error appears once, suggesting a bad request to some endpoint."
+    },
+    {
+      "severity": "major",
+      "description": "Console warning: 'Please ensure that the container has a non-static position, like relative, fixed, or absolute to ensure scroll offset is calculated correctly.' This indicates a scroll-related component has a positioning issue.",
+      "element": "Scroll container component",
+      "root_cause": "A component using scroll offset calculation (likely the 'See how it works ↓ SCROLL' element or a parallax/scroll library component) is mounted inside a statically positioned container. The parent div needs position: relative."
+    },
+    {
+      "severity": "minor",
+      "description": "The page:mount event for 'auth' is firing repeatedly (8+ times visible in logs) which suggests either a redirect loop or a component re-mounting excessively on the auth page, though this does not visually affect the landing page.",
+      "element": "Auth page component mount lifecycle",
+      "root_cause": "The auth page component is re-mounting repeatedly, possibly due to a useEffect with missing/wrong dependencies or a StrictMode double-invoke combined with state changes causing infinite re-render."
+    }
+  ],
+  "fixes": [],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405465042,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405465044,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405490514,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405490515,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405510135,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405510136,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405535176,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405535177,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405557117,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405557118,\"url\":\"/auth\"}"
+  ]
+}

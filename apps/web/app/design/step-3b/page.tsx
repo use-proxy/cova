@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { flowLog } from "@/lib/debug/flow-logger";
 import { useFingerprintStore } from "@/lib/store/fingerprint";
 import {
   fingerprintToStyleBlend,
@@ -30,6 +31,7 @@ type BlendEntry = { style: StyleName; weight: number };
 
 export default function Step3bPage() {
   const router = useRouter();
+  useEffect(() => { flowLog("page:mount", { page: "step-3b" }); }, []);
   const fingerprint = useFingerprintStore((s) => s.fingerprint);
   const [mode, setMode] = useState<"confirm" | "adjust">("confirm");
   const [blend, setBlend] = useState<BlendEntry[]>([]);

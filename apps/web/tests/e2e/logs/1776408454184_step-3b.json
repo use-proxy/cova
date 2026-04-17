@@ -1,0 +1,47 @@
+{
+  "screen": "step-3b",
+  "url": "http://localhost:3000/design/step-2",
+  "passed": false,
+  "attempt": 1,
+  "elements": 8,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Wrong page content is rendering. The step-3b style blend confirmation screen is not showing. Instead, the step-1 room selection screen is displayed. The hydration error in console confirms server rendered 'Which room are we designing?' but client expected 'Style Quiz' — indicating step-3/page.tsx has a hydration mismatch causing the wrong content to render.",
+      "element": "Main page content at /design/step-3b",
+      "root_cause": "The console warning shows: 'Text content did not match. Server: \"%s\" Client: \"%s\"%s Which room are we designing? Style Quiz' from CovaStyleQuizPage in apps/web/app/design/step-3/page.tsx. The step-3b page is mounting (confirmed by page:mount event) but the hydration error is causing the entire root to switch to client rendering, likely rendering incorrect content. The step-3b page at apps/web/app/design/step-3b/page.tsx likely reads style data from localStorage or sessionStorage (unavailable during SSR), causing the server to render fallback/empty state that mismatches client state."
+    },
+    {
+      "severity": "critical",
+      "description": "Hydration error: server HTML does not match client HTML across multiple components. The root switches entirely to client rendering, causing visual corruption — the step-1 room selector appears instead of step-3b content.",
+      "element": "Hydration across step-3 and step-3b pages",
+      "root_cause": "In apps/web/app/design/step-3b/page.tsx (and step-3/page.tsx), state is likely initialized directly from localStorage/sessionStorage or Math.random() at the module/component level without a useEffect or 'use client' + mounted guard, causing SSR to produce different HTML than the client hydration pass."
+    },
+    {
+      "severity": "major",
+      "description": "Style blend confirmation screen (step-3b) shows no percentage bars, no style names, no 'This feels right' button — none of the expected UI elements are present.",
+      "element": "Style blend UI elements on step-3b",
+      "root_cause": "Either apps/web/app/design/step-3b/page.tsx does not exist or renders nothing due to the hydration crash causing fallback to a different page's content."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3b/page.tsx",
+      "old_str": "const styles = getStylesFromStorage()",
+      "new_str": "const [styles, setStyles] = useState<StyleBlend | null>(null)\n  const [mounted, setMounted] = useState(false)\n\n  useEffect(() => {\n    setStyles(getStylesFromStorage())\n    setMounted(true)\n  }, [])\n\n  if (!mounted) return null",
+      "reason": "Prevents SSR/client mismatch by deferring localStorage reads to useEffect after mount, eliminating the hydration error that causes wrong content to render."
+    },
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "const styles = getStylesFromStorage()",
+      "new_str": "const [styles, setStyles] = useState<StyleBlend | null>(null)\n  const [mounted, setMounted] = useState(false)\n\n  useEffect(() => {\n    setStyles(getStylesFromStorage())\n    setMounted(true)\n  }, [])\n\n  if (!mounted) return null",
+      "reason": "Fixes the confirmed hydration mismatch in step-3/page.tsx reported in console logs ('Which room are we designing? Style Quiz' mismatch) by guarding localStorage access behind useEffect."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776408397195,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776408397197,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776408426199,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776408426201,\"url\":\"/design/step-3b\"}"
+  ]
+}

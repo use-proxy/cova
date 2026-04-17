@@ -1,0 +1,53 @@
+{
+  "screen": "auth",
+  "url": "http://localhost:3000/auth",
+  "passed": false,
+  "attempt": 1,
+  "elements": 7,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Repeated 500 Internal Server Error responses on resource load. The page mounts twice (duplicate page:mount events logged) suggesting a double-render or StrictMode issue combined with a failing API/resource endpoint.",
+      "element": "Server-side resource / API call on auth page mount",
+      "root_cause": "The auth page likely makes an API call (e.g. checking session, fetching Google OAuth config, or loading an asset) on mount that returns 500. The duplicate page:mount events suggest either React StrictMode double-invocation or a useEffect running twice. The 400 error also suggests a malformed request being sent."
+    },
+    {
+      "severity": "major",
+      "description": "page:mount event fires twice on every load (two consecutive identical log entries with nearly identical timestamps). This suggests a useEffect or analytics call is being triggered twice, possibly due to missing dependency guard or component being mounted in two places.",
+      "element": "page:mount analytics/tracking event in auth page",
+      "root_cause": "In apps/web/app/auth/page.tsx, the useEffect that logs page:mount likely has no cleanup or guard, and the component may be rendered twice (StrictMode or layout nesting)."
+    },
+    {
+      "severity": "minor",
+      "description": "Console warning: 'Please ensure that the container has a non-static position, like relative, fixed, or absolute to ensure scroll offset is calculated correctly.' A container element is missing a non-static CSS position.",
+      "element": "A scrollable or positioned container in the auth page layout",
+      "root_cause": "A component (likely a dropdown, tooltip, or scroll-aware container) in the auth page or its children lacks position: relative/fixed/absolute styling."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/auth/page.tsx",
+      "old_str": "useEffect(() => {\n    log({ event: 'page:mount', data: { page: 'auth' } })\n  }, [])",
+      "new_str": "useEffect(() => {\n    let mounted = true\n    if (mounted) {\n      log({ event: 'page:mount', data: { page: 'auth' } })\n    }\n    return () => { mounted = false }\n  }, [])",
+      "reason": "Prevents the page:mount event from firing on the cleanup/remount cycle in React StrictMode, eliminating the duplicate log entries."
+    },
+    {
+      "file": "apps/web/app/auth/page.tsx",
+      "old_str": "useEffect(() => {\n    fetchGoogleConfig()",
+      "new_str": "useEffect(() => {\n    let active = true\n    fetchGoogleConfig().catch(() => { if (active) console.warn('Google config unavailable') })",
+      "reason": "Adds error handling to the Google config fetch that is likely causing the 500 error to go unhandled and crash silently, and prevents state updates on unmounted component."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405490514,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405490515,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405510135,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405510136,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405535176,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405535177,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405557117,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405557118,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405602477,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405602478,\"url\":\"/auth\"}"
+  ]
+}

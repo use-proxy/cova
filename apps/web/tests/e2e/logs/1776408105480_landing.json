@@ -1,0 +1,53 @@
+{
+  "screen": "landing",
+  "url": "http://localhost:3000/dashboard",
+  "passed": false,
+  "attempt": 1,
+  "elements": 27,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Wrong page rendered: URL is /dashboard showing the authenticated dashboard instead of the marketing landing page. The expected screen is the public marketing landing page with hero image, gold CTA, and no authenticated user content.",
+      "element": "Entire page content",
+      "root_cause": "The current URL is /dashboard which correctly renders the dashboard. The test expects the landing page (/) but the browser is navigated to /dashboard. This is a navigation/routing issue, not a code bug in the page itself."
+    },
+    {
+      "severity": "critical",
+      "description": "Multiple React hydration errors across pages, causing entire root to switch to client rendering. This affects performance and SSR correctness.",
+      "element": "React hydration - dashboard page and other pages",
+      "root_cause": "The dashboard page likely uses dynamic content (e.g., time-based greeting 'Good evening, Amelia' or date 'Thursday, April 16') that differs between server render and client render, causing hydration mismatch."
+    },
+    {
+      "severity": "critical",
+      "description": "Build error in apps/web/app/design/step-3/page.tsx: duplicate imports of useState and useEffect from 'react'. The file has two import statements for React hooks - one on line 2 and one on line 4 (which appears to have been the old line before a merge conflict or edit).",
+      "element": "apps/web/app/design/step-3/page.tsx - duplicate imports",
+      "root_cause": "The file originally had 'import { useState, useEffect } from react' on line 2, and a second import 'import { useCallback, useEffect, useRef, useState } from react' was added on line 4 without removing the first one. The source file shown already has this fixed (single combined import on line 2), but the build error log shows the old state still causing issues."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "\"use client\"\nimport { useState, useEffect } from 'react';\n\nimport { useCallback, useEffect, useRef, useState } from \"react\";",
+      "new_str": "\"use client\"\nimport { useState, useEffect, useCallback, useRef } from \"react\";",
+      "reason": "Remove duplicate React imports that cause the build error 'useEffect and useState defined multiple times'. Merge into a single import statement."
+    },
+    {
+      "file": "apps/web/app/dashboard/page.tsx",
+      "old_str": "Good evening, Amelia.",
+      "new_str": "Good evening, Amelia.",
+      "reason": "Placeholder - the actual fix needs to wrap time-based greeting in a useEffect or suppressHydrationWarning to prevent hydration mismatch. Cannot provide exact fix without seeing the dashboard source file."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776407993027,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776407993029,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776408017222,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776408017224,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776408038198,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776408038200,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776408061156,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776408061158,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776408080000,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776408080002,\"url\":\"/dashboard\"}"
+  ]
+}

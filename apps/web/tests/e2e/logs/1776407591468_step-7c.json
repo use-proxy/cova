@@ -1,0 +1,49 @@
+{
+  "screen": "step-7c",
+  "url": "http://localhost:3000/design/step-7c",
+  "passed": false,
+  "attempt": 1,
+  "elements": 0,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Screen is stuck in skeleton/loading state — 'Analyzing your room...' message persists indefinitely. Furniture items from pre_detection_result never render, no orange overlays, no toggles, no Continue button.",
+      "element": "Entire step-7c page content",
+      "root_cause": "The component is likely waiting for data from sessionStorage/context (pre_detection_result) that is only available client-side, combined with hydration errors causing the entire root to switch to client rendering. The hydration mismatch (server vs client HTML) causes React to re-render from scratch, and if the loading state is initialized based on a condition that evaluates differently on server vs client (e.g., reading sessionStorage on server returns nothing), the loading state never resolves. The console confirms: 'There was an error while hydrating. Because the error happened outside of a Suspense boundary, the entire root will switch to client rendering.' The page mounts (page:mount logged) but data loading logic likely has a bug where it never transitions out of loading=true state."
+    },
+    {
+      "severity": "critical",
+      "description": "Multiple hydration errors: 'Text content does not match server-rendered HTML' repeated 7 times, and full hydration failure causing root to switch to client rendering. This compounds the loading state issue.",
+      "element": "React hydration — likely progress bar or date/time-dependent content",
+      "root_cause": "Console shows aria-label mismatch on a progress element in step-3 ('Progress 5 percent' server vs 'Progress 15 percent' client), indicating progress calculation uses sessionStorage or runtime state on initial render without 'use client' guard or suppressHydrationWarning. The step-7c page itself likely reads sessionStorage synchronously during render causing server/client mismatch."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-7c/page.tsx",
+      "old_str": "const [loading, setLoading] = useState(true);",
+      "new_str": "const [loading, setLoading] = useState(false);",
+      "reason": "If loading is initialized to true and the useEffect that sets it to false fails or never fires (e.g., due to hydration error or missing pre_detection_result), the screen stays stuck. Initializing to false ensures content renders; data availability can be checked separately."
+    },
+    {
+      "file": "apps/web/app/design/step-7c/page.tsx",
+      "old_str": "const detectionResult = sessionStorage.getItem('pre_detection_result');",
+      "new_str": "const detectionResult = typeof window !== 'undefined' ? sessionStorage.getItem('pre_detection_result') : null;",
+      "reason": "Reading sessionStorage without a typeof window check causes server/client hydration mismatch because sessionStorage is undefined on the server. This is likely causing the 7 repeated 'Text content does not match server-rendered HTML' hydration errors."
+    },
+    {
+      "file": "apps/web/app/design/step-7c/page.tsx",
+      "old_str": "useEffect(() => {\n    const detectionResult = sessionStorage.getItem('pre_detection_result');",
+      "new_str": "useEffect(() => {\n    if (typeof window === 'undefined') return;\n    const detectionResult = sessionStorage.getItem('pre_detection_result');",
+      "reason": "Guard the entire useEffect data-loading block with a window check to prevent SSR execution and ensure hydration stability, stopping the infinite loading state."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407509232,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407509233,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776407539274,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776407539276,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776407563962,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776407563964,\"url\":\"/design/step-7c\"}"
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "screen": "step-5",
+  "url": "http://localhost:3000/design/step-5",
+  "passed": false,
+  "attempt": 1,
+  "elements": 10,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Step indicator shows 'STEP 3 OF 4' but this is step-5. Should show 'STEP 3 OF 4' or the correct step number for the budget screen.",
+      "element": "Step indicator top right",
+      "root_cause": "apps/web/app/design/step-5/page.tsx likely has a hardcoded or incorrectly computed step value being passed to the progress/header component. The stepNumber prop is likely set to 3 instead of the correct value for step-5."
+    },
+    {
+      "severity": "critical",
+      "description": "Continue button is not visible anywhere on the screen. Expected behavior requires a Continue button to proceed from budget selection.",
+      "element": "Continue button",
+      "root_cause": "The Continue button may be rendered below the card carousel but the layout/overflow is hiding it, or it may be conditionally rendered only after a selection is made but no card appears selected by default."
+    },
+    {
+      "severity": "major",
+      "description": "Only 2 budget tier cards are partially visible in a horizontal swipe layout. Expected 4-5 cards (Essential, Elevated, Refined, Prestige, Signature). The carousel/swipe UX hides most cards and may not be the intended stacked card layout.",
+      "element": "Budget tier cards",
+      "root_cause": "The cards are implemented as a horizontal swipe carousel showing one card at a time, which only shows 1-2 cards. The expected behavior describes multiple visible cards. The container may have overflow:hidden with a flex row layout limiting visibility."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-5/page.tsx",
+      "old_str": "STEP 3 OF 4",
+      "new_str": "STEP 3 OF 4",
+      "reason": "Cannot determine exact source without file contents — need to inspect the file to find the hardcoded step number. See next_action."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776405628897,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776405628902,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776405631390,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776405631392,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776405651598,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776405651600,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776405676312,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776405676312,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776405678061,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776405678063,\"url\":\"/design/step-5\"}"
+  ]
+}

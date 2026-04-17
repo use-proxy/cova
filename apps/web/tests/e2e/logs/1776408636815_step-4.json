@@ -1,0 +1,47 @@
+{
+  "screen": "step-4",
+  "url": "http://localhost:3000/design/step-4",
+  "passed": false,
+  "attempt": 1,
+  "elements": 6,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Duplicate React imports in step-3/page.tsx causing a build error: 'useState' and 'useEffect' are defined multiple times. There are two import lines from 'react' — a stale 'use client' line plus a second full import. This causes a 500 error and module build failure.",
+      "element": "apps/web/app/design/step-3/page.tsx top imports",
+      "root_cause": "Line 1-2 has 'use client' followed immediately by `import { useState, useEffect } from 'react'` AND line 3 has `import { useState, useEffect, useCallback, useRef } from 'react'`. Two separate react imports with overlapping named exports cause the SWC compiler to throw a duplicate identifier error."
+    },
+    {
+      "severity": "major",
+      "description": "Radar chart with 6 dimensions is missing from the step-4 fingerprint reveal screen. Expected: Warmth, Complexity, Organic, Layered, Heritage, Character axes.",
+      "element": "Radar chart on step-4",
+      "root_cause": "Cannot fully determine without seeing step-4/page.tsx source, but the hydration errors (multiple 'Text content does not match server-rendered HTML') suggest the radar chart component may be failing to render due to SSR/client mismatch, likely from dynamic values computed on mount without Suspense or dynamic import with ssr:false."
+    },
+    {
+      "severity": "major",
+      "description": "Tweak input field is missing from the fingerprint reveal screen. Expected behavior specifies a tweak input field should be present.",
+      "element": "Tweak input field on step-4",
+      "root_cause": "Cannot determine without step-4/page.tsx source. Likely not rendered due to hydration errors causing the entire root to fall back to client rendering, or the component simply missing from the current render path."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "\"use client\"\nimport { useState, useEffect } from 'react'\nimport { useState, useEffect, useCallback, useRef } from \"react\";",
+      "new_str": "\"use client\"\nimport { useState, useEffect, useCallback, useRef } from \"react\";",
+      "reason": "Removes the duplicate React import that was causing the SWC build error 'useState is defined multiple times' and 'useEffect is defined multiple times', which was producing a 500 error and breaking the module build."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408525712,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408525714,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408567931,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408567932,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408588948,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408588950,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408591009,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408591011,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776408612386,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776408612389,\"url\":\"/design/step-4\"}"
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "screen": "dashboard",
+  "url": "http://localhost:3000/dashboard",
+  "passed": false,
+  "attempt": 1,
+  "elements": 27,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Multiple React hydration errors on dashboard page - 'Text content does not match server-rendered HTML' repeated 7 times, causing entire root to switch to client rendering. Likely caused by dynamic date/time rendering (e.g., 'Good evening, Amelia.' greeting uses time-of-day which differs between server and client render, and 'Thursday, April 16' date).",
+      "element": "Greeting text and/or date display in dashboard page",
+      "root_cause": "The greeting ('Good evening') and/or date ('Thursday, April 16') are computed at render time using new Date() or similar, producing different values between SSR and client hydration. Also 'Invalid or unexpected token' error may indicate a syntax error in the page file."
+    },
+    {
+      "severity": "major",
+      "description": "Style Profile section with radar chart is missing from the visible dashboard — expected per spec but not shown in screenshot.",
+      "element": "Style Profile radar chart section",
+      "root_cause": "Either the component is not rendered, is hidden below the fold (scroll required), or failed to mount due to the hydration error causing client-only rendering fallback."
+    },
+    {
+      "severity": "minor",
+      "description": "design/step-5 route returns 404, causing Fast Refresh fallback to browser navigation. Not directly visible on dashboard but logged as error.",
+      "element": "design/step-5 page route",
+      "root_cause": "apps/web/app/design/step-5/page.tsx is missing or was deleted during a rebuild."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/dashboard/page.tsx",
+      "old_str": "Good evening, Amelia.",
+      "new_str": "Welcome back, Amelia.",
+      "reason": "Replacing time-of-day greeting with a static greeting eliminates the SSR/client mismatch that causes hydration errors, since 'Good evening' depends on the current hour at render time."
+    },
+    {
+      "file": "apps/web/app/dashboard/page.tsx",
+      "old_str": "Thursday, April 16",
+      "new_str": "{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}",
+      "reason": "If the date is hardcoded as a string it will mismatch on other days; wrapping in suppressHydrationWarning or making it client-only is safer. However if it is already dynamic, the real fix is to suppress the warning on that element."
+    },
+    {
+      "file": "apps/web/app/dashboard/page.tsx",
+      "old_str": "<p className",
+      "new_str": "<p suppressHydrationWarning className",
+      "reason": "Adding suppressHydrationWarning to the date/greeting paragraph elements prevents React from throwing hydration errors for dynamic time-based content that legitimately differs between server and client."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407338351,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407338352,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407339889,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407339890,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407367409,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407367410,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776407391151,\"url\":\"/design/step-6\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776407391153,\"url\":\"/design/step-6\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407416299,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407416301,\"url\":\"/dashboard\"}"
+  ]
+}

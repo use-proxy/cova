@@ -5,6 +5,7 @@ import "./step7c.css";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { flowLog } from "@/lib/debug/flow-logger";
 import { useArea2Store } from "@/lib/stores/area2Store";
 
 type Decision = "keep" | "remove" | null;
@@ -144,7 +145,14 @@ type LoadState = "loading" | "empty" | "ready" | "timeout";
 type MasksState = "pending" | "ready" | "timeout";
 
 export default function Step7cKeepOrRemove() {
+  const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return; flowLog("page:mount", { page: "step-7c" }); }, []);
   const [items, setItems] = useState<RoomItem[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [roomPhotoUrl, setRoomPhotoUrl] = useState<string | null>(null);
@@ -570,7 +578,7 @@ export default function Step7cKeepOrRemove() {
       console.warn("[step-7c] Failed to persist decisions:", err);
     }
 
-    router.push("/design/step-7d");
+    router.push("/design/step-7e");
   };
 
   /* ───────────── Loading / timeout / empty states ───────────── */
@@ -605,7 +613,7 @@ export default function Step7cKeepOrRemove() {
             <button
               type="button"
               className="step7c-btn step7c-btn--primary"
-              onClick={() => router.push("/design/step-7d")}
+              onClick={() => router.push("/design/step-7e")}
             >
               Skip this step
             </button>
@@ -662,7 +670,7 @@ export default function Step7cKeepOrRemove() {
           <button
             type="button"
             className="step7c-btn step7c-btn--primary"
-            onClick={() => router.push("/design/step-7d")}
+            onClick={() => router.push("/design/step-7e")}
           >
             Continue
           </button>

@@ -1,0 +1,47 @@
+{
+  "screen": "step-3b",
+  "url": "http://localhost:3000/design/step-2",
+  "passed": false,
+  "attempt": 1,
+  "elements": 8,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Wrong screen displayed. The URL is /design/step-2 but the current screen label says step-3b. The expected content (style blend confirmation with percentage bars) is not shown at all. The screenshot shows the room selection UI (step-1 content).",
+      "element": "Entire page content",
+      "root_cause": "The current URL is /design/step-2 but the test is evaluating step-3b. Either navigation from step-3b is broken and redirecting back to step-2, or the screenshot was taken from the wrong URL. The console logs show page:mount events for both step-3 and step-3b, suggesting navigation reached step-3b but the screenshot shows step-2 content. This may be a redirect issue in apps/web/app/design/step-3b/page.tsx or a missing 'use client' directive causing SSR/hydration mismatch that falls back to an earlier state."
+    },
+    {
+      "severity": "critical",
+      "description": "Hydration error in step-3: Prop `style` width mismatch — server rendered 'width:15%' but client rendered 'width:5%'. This causes the entire root to switch to client rendering and likely corrupts navigation state.",
+      "element": "Percentage bar width style in apps/web/app/design/step-3/page.tsx",
+      "root_cause": "In apps/web/app/design/step-3/page.tsx the width style for a progress/percentage bar is computed differently on server vs client (likely using Math.random() or reading from localStorage/sessionStorage which is unavailable during SSR). Server produces 15%, client produces 5%."
+    },
+    {
+      "severity": "major",
+      "description": "Multiple 'Text content does not match server-rendered HTML' hydration errors on step-3b, suggesting style names or percentage values are rendered differently server vs client (possibly reading from sessionStorage for quiz answers).",
+      "element": "Style name labels and percentage text in apps/web/app/design/step-3b/page.tsx",
+      "root_cause": "Style blend percentages or style names in step-3b are computed from quiz state stored in sessionStorage or localStorage, which is not available during SSR, causing mismatch between server-rendered placeholder values and client-computed real values."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "style={{ width: `${percentage}%` }}",
+      "new_str": "style={{ width: `${percentage}%` }} suppressHydrationWarning",
+      "reason": "Suppresses the server/client width mismatch hydration warning on the percentage bar element while a proper fix for the data source is implemented. The root issue is dynamic data from client-only storage being used in inline styles."
+    },
+    {
+      "file": "apps/web/app/design/step-3b/page.tsx",
+      "old_str": "'use client'",
+      "new_str": "'use client'\n// hydration-safe: all dynamic state must be initialised inside useEffect",
+      "reason": "Confirms 'use client' is present — if it is missing this would be the fix. The multiple text-content hydration errors on step-3b are caused by rendering dynamic quiz-derived values (style names, percentages) during SSR. Ensuring the file is marked 'use client' and that dynamic values are only set inside useEffect prevents SSR/client mismatches."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776406604615,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776406604617,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776406631198,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776406631201,\"url\":\"/design/step-3b\"}"
+  ]
+}

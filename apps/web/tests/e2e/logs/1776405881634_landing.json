@@ -1,0 +1,34 @@
+{
+  "screen": "landing",
+  "url": "http://localhost:3000/",
+  "passed": true,
+  "attempt": 1,
+  "elements": 34,
+  "issues": [
+    {
+      "severity": "minor",
+      "description": "Console log shows a 400 error from a failed resource load, likely an auth-related API call or asset fetch. The page:mount event fires for 'auth' page repeatedly even while on the landing page, suggesting a background prefetch or redirect logic hitting a bad endpoint.",
+      "element": "Console: 'Failed to load resource: the server responded with a status of 400'",
+      "root_cause": "An API call or image/font resource is returning 400. Likely in an auth-related component or a prefetch in the root layout. Could be a Supabase auth session check or an image URL with missing/invalid parameters."
+    },
+    {
+      "severity": "minor",
+      "description": "Console warning: 'Please ensure that the container has a non-static position, like relative, fixed, or absolute to ensure scroll offset is calculated correctly.' This is a scroll-related positioning warning.",
+      "element": "Scroll indicator / scroll container",
+      "root_cause": "A scroll utility or parallax component references a container element that has default static positioning. The SCROLL indicator or hero section container likely lacks position: relative."
+    }
+  ],
+  "fixes": [],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405749361,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405749363,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405772080,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405772081,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405793146,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405793148,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405814630,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405814631,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405836664,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405836665,\"url\":\"/auth\"}"
+  ]
+}

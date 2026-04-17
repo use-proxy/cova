@@ -1,22 +1,27 @@
 """
-Cova — Mask Building Utilities for Selective Inpainting
+Cova v5 — Mask Building Utilities for Selective Inpainting
 
-Two masks drive the entire pipeline:
+Three masks + one strength map drive the entire pipeline:
 
   1. Architecture mask (white = architecture pixel, NEVER inpaint)
      Built from pre_detection_result categories in HARD_STRUCTURAL.
      Falls back to default ceiling/floor strips when detection is missing.
 
-  2. Remove mask (white = inpaint this region)
-     Union of all user-REMOVE item masks, dilated + feathered.
-     Architecture pixels are zeroed out — they can NEVER be in the remove mask.
+  2. Remove mask — two variants:
+     a. hard_mask:    binary union of all user-REMOVE item masks, arch zeroed
+     b. dilated_mask: 12px elliptical dilation of hard_mask for Fill Pro input
+        (gives the model room to generate natural contact shadows at boundaries)
 
-  soft_alpha is derived from the remove mask:
-     soft_alpha = GaussianBlur(hard_mask) / 255.0
-     soft_alpha[architecture_mask > 0] = 0.0
+  3. soft_alpha: Gaussian-feathered version of the UNDILATED hard_mask
+     sigma = max(1.0, image_width / 512)
+     Architecture pixels forced to exactly 0.0
+     Used by pixel_perfect_composite():
+       final = soft_alpha * ai_output + (1 - soft_alpha) * original
 
-  Used by pixel_perfect_composite():
-     final = soft_alpha * ai_output + (1 - soft_alpha) * original
+  4. strength_map: grayscale float32, drives differential diffusion
+     ARCH pixels = 0.0 (frozen), FURN pixels = 1.0 (fully regenerate)
+     AMBIG pixels = 0.4 (partial — smooths seams at arch/furn boundary)
+     Gaussian blurred at sigma = 48-64px for smooth transitions
 
   Architecture pixels are mathematically guaranteed byte-identical to original.
 """
@@ -132,11 +137,15 @@ def build_architecture_mask(
 # Remove mask — union of all user-REMOVE item masks
 # ---------------------------------------------------------------------------
 
+# Fill Pro dilation — gives the model room to generate contact shadows
+FILL_PRO_DILATION_PX = 12
+
+
 def build_remove_mask(
     instance_masks: list,
     architecture_mask: np.ndarray,
     image_hw: tuple,
-    feather_sigma: float = 4.0,
+    feather_sigma: float = None,
     instance_labels: list = None,
 ) -> tuple:
     """
@@ -146,22 +155,31 @@ def build_remove_mask(
         instance_masks: list of np.ndarray (grayscale, white=furniture)
         architecture_mask: binary mask (white=architecture, from build_architecture_mask)
         image_hw: (height, width) of the source image
-        feather_sigma: Gaussian sigma for soft alpha feathering
+        feather_sigma: Gaussian sigma for soft alpha feathering.
+                       If None, uses dynamic sigma = max(1.0, width / 512).
         instance_labels: optional list of label strings for class-aware dilation.
                          If provided, each mask gets its own dilation from DILATION_PX.
                          If not provided, uses uniform 3px dilation (legacy behavior).
 
     Returns:
-        (hard_mask, soft_alpha):
-            hard_mask: uint8 0/255, union of all instance masks with arch zeroed
-            soft_alpha: float32 0.0-1.0, feathered version with arch zeroed
+        (hard_mask, dilated_mask, soft_alpha, strength_map):
+            hard_mask:      uint8 0/255, union of all instance masks with arch zeroed
+            dilated_mask:   uint8 0/255, 12px elliptical dilation of hard_mask for Fill Pro
+            soft_alpha:     float32 0.0-1.0, feathered UNDILATED mask with arch zeroed
+            strength_map:   float32 0.0-1.0, ARCH=0 FURN=1 AMBIG=0.4, blurred
     """
     h, w = image_hw
     long_edge = max(h, w)
 
     if not instance_masks:
-        print("[mask_build] No instance masks — returning empty mask")
-        return np.zeros((h, w), dtype=np.uint8), np.zeros((h, w), dtype=np.float32)
+        print("[mask_build] No instance masks — returning empty masks")
+        empty = np.zeros((h, w), dtype=np.uint8)
+        return (
+            empty,
+            empty.copy(),
+            np.zeros((h, w), dtype=np.float32),
+            np.zeros((h, w), dtype=np.float32),
+        )
 
     union = np.zeros((h, w), dtype=np.uint8)
 
@@ -195,7 +213,17 @@ def build_remove_mask(
 
     hard_mask = union
 
-    # Soft alpha for blending
+    # ── Dilated mask for Fill Pro input (12px elliptical dilation) ────────
+    dil_size = FILL_PRO_DILATION_PX * 2 + 1
+    ellipse_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (dil_size, dil_size))
+    dilated_mask = cv2.dilate(hard_mask, ellipse_kernel, iterations=1)
+    # Zero architecture from dilated mask too
+    dilated_mask = np.where(architecture_mask > 0, 0, dilated_mask).astype(np.uint8)
+
+    # ── Soft alpha for composite — feathered UNDILATED mask ──────────────
+    if feather_sigma is None:
+        feather_sigma = max(1.0, w / 512.0)
+
     soft = cv2.GaussianBlur(
         hard_mask.astype(np.float32),
         (0, 0),
@@ -208,11 +236,46 @@ def build_remove_mask(
     # GaussianBlur can bleed into architecture regions — zero them explicitly
     soft_alpha = np.where(architecture_mask > 0, 0.0, soft_alpha).astype(np.float32)
 
-    mask_coverage = np.count_nonzero(hard_mask > 0) / (h * w)
-    print(f"[mask_build] Remove mask: {mask_coverage:.1%} coverage, "
-          f"feather_sigma={feather_sigma}")
+    # ── Strength map for differential diffusion ──────────────────────────
+    # ARCH = 0.0 (frozen), FURN = 1.0 (fully regenerate)
+    # AMBIG = 0.4 (partial — border band between arch and furn)
+    strength_map = np.zeros((h, w), dtype=np.float32)
+    strength_map[hard_mask > 0] = 1.0
 
-    return hard_mask, soft_alpha
+    # AMBIG = morphological border band around architecture edges (~20px)
+    # These are the pixels where furniture meets walls/floor/ceiling —
+    # partial regeneration smooths the contact shadow seams.
+    ambig_kernel_size = max(41, int(long_edge / 50))
+    if ambig_kernel_size % 2 == 0:
+        ambig_kernel_size += 1
+    kernel_ambig = cv2.getStructuringElement(
+        cv2.MORPH_ELLIPSE, (ambig_kernel_size, ambig_kernel_size)
+    )
+    arch_dilated_for_ambig = cv2.dilate(architecture_mask, kernel_ambig, iterations=1)
+    ambig_band = (arch_dilated_for_ambig > 0) & (architecture_mask == 0) & (hard_mask == 0)
+    strength_map[ambig_band] = 0.4
+
+    # Force architecture to 0.0
+    strength_map[architecture_mask > 0] = 0.0
+
+    # Gaussian blur to soften transitions: sigma = 48-64px at 1024px
+    blur_sigma = max(48, w / 21)
+    strength_map = cv2.GaussianBlur(
+        strength_map, (0, 0), sigmaX=blur_sigma, sigmaY=blur_sigma
+    )
+
+    # Re-zero architecture after blur (blur bleeds into protected regions)
+    strength_map[architecture_mask > 0] = 0.0
+    strength_map = strength_map.astype(np.float32)
+
+    mask_coverage = np.count_nonzero(hard_mask > 0) / (h * w)
+    dilated_coverage = np.count_nonzero(dilated_mask > 0) / (h * w)
+    ambig_coverage = np.count_nonzero(ambig_band) / (h * w)
+    print(f"[mask_build] Remove mask: {mask_coverage:.1%} coverage, "
+          f"dilated: {dilated_coverage:.1%}, ambig: {ambig_coverage:.1%}, "
+          f"feather_sigma={feather_sigma:.1f}")
+
+    return hard_mask, dilated_mask, soft_alpha, strength_map
 
 
 # ---------------------------------------------------------------------------

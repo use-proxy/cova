@@ -1,0 +1,53 @@
+{
+  "screen": "landing",
+  "url": "http://localhost:3000/dashboard",
+  "passed": false,
+  "attempt": 2,
+  "elements": 27,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Wrong page displayed: URL is http://localhost:3000/dashboard but expected screen is the marketing landing page (route '/'). The test is navigating to /dashboard instead of /.",
+      "element": "Entire page content",
+      "root_cause": "The CURRENT URL is /dashboard — the landing page lives at apps/web/app/page.tsx (route '/'), not /dashboard. The QA test or navigation is pointing to the wrong route."
+    },
+    {
+      "severity": "critical",
+      "description": "Multiple React hydration errors: 'Text content does not match server-rendered HTML' repeated 7 times and 'entire root will switch to client rendering'. This likely caused by dynamic date/time rendering (e.g., 'Good evening, Amelia.' greeting or 'Thursday, April 16' date) being computed differently on server vs client.",
+      "element": "Dashboard greeting / date display",
+      "root_cause": "In apps/web/app/dashboard/page.tsx, the greeting ('Good evening') and/or the date ('Thursday, April 16') are computed using new Date() or Date-based logic directly during render without suppressing hydration mismatch, causing server/client HTML divergence."
+    },
+    {
+      "severity": "major",
+      "description": "Failed to fetch RSC payload for /dashboard after Fast Refresh — 'Falling back to browser navigation'. Transient network error during hot reload, but indicates possible instability in the dashboard route's server component.",
+      "element": "RSC fetch on Fast Refresh",
+      "root_cause": "Server component in apps/web/app/dashboard/page.tsx may be doing async work that times out or throws during Fast Refresh cycles, combined with the hydration errors causing root to switch to client rendering."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/dashboard/page.tsx",
+      "old_str": "const getGreeting = () => {\n    const hour = new Date().getHours();\n    if (hour < 12) return 'Good morning';\n    if (hour < 18) return 'Good afternoon';\n    return 'Good evening';\n  };",
+      "new_str": "const getGreeting = () => {\n    if (typeof window === 'undefined') return 'Good evening';\n    const hour = new Date().getHours();\n    if (hour < 12) return 'Good morning';\n    if (hour < 18) return 'Good afternoon';\n    return 'Good evening';\n  };",
+      "reason": "Prevents server/client mismatch by returning a stable default on the server side, avoiding hydration errors from time-dependent greeting text."
+    },
+    {
+      "file": "apps/web/app/dashboard/page.tsx",
+      "old_str": "const formattedDate = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });",
+      "new_str": "const formattedDate = typeof window === 'undefined' ? '' : new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });",
+      "reason": "Returns empty string on server to avoid hydration mismatch for the date display, which changes based on when server vs client renders."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776407539274,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776407539276,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776407563962,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776407563964,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776407592419,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776407592421,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407624517,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407624519,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407651616,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407651617,\"url\":\"/dashboard\"}"
+  ]
+}

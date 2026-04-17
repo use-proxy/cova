@@ -1,0 +1,24 @@
+{
+  "screen": "step-3b",
+  "url": "http://localhost:3000/auth?next=%2Fdesign%2Fstep-3b",
+  "passed": false,
+  "attempt": 1,
+  "elements": 7,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Wrong page is displayed. The current URL is /auth?next=%2Fdesign%2Fstep-3b, meaning the user is being redirected to auth instead of reaching step-3b. The expected screen should show style blend confirmation with percentage bars (e.g. 65% Scandinavian, 35% Japandi), a 'This feels right' confirm button, and slider adjustment options. The auth page is blocking access to step-3b, likely because step-3b requires authentication and the user is not logged in.",
+      "element": "Entire page — showing auth gate instead of step-3b style blend confirmation",
+      "root_cause": "The /design/step-3b route has an authentication guard (middleware or page-level redirect) that is redirecting unauthenticated users to /auth?next=/design/step-3b. This is the auth wall working as intended, but for QA purposes the step-3b screen cannot be evaluated because the user session is not authenticated. The issue is either: (a) missing test session/auth bypass for QA, or (b) step-3b route is incorrectly requiring auth when it should be accessible, or (c) the QA runner is not authenticated."
+    }
+  ],
+  "fixes": [],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405749361,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405749363,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405772080,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405772081,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405793146,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405793148,\"url\":\"/auth\"}"
+  ]
+}

@@ -5,6 +5,7 @@ import "../step-1/step1.css";
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { flowLog } from "@/lib/debug/flow-logger";
 import { useRoomStore } from "@/lib/store/room";
 
 type RefinementPath = "specific" | "vibe" | "layout" | "direction" | null;
@@ -485,6 +486,7 @@ function LayoutThumbnail({
 
 export default function Step8B() {
   const router = useRouter();
+  useEffect(() => { flowLog("page:mount", { page: "step-8b" }); }, []);
   const roomId = useRoomStore((s) => s.roomId);
   const renderUrl = useRoomStore((s) => s.renderUrl);
   const setRenderUrl = useRoomStore((s) => s.setRenderUrl);

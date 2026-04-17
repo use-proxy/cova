@@ -1,0 +1,37 @@
+{
+  "screen": "step-7c",
+  "url": "http://localhost:3000/design/step-7c",
+  "passed": false,
+  "attempt": 1,
+  "elements": 0,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Page is stuck in a permanent loading/skeleton state. The pre_detection_result data is never loaded or rendered. The room image, furniture item overlays, keep/remove toggles, and Continue button are all missing.",
+      "element": "Entire step-7c page content",
+      "root_cause": "The page is likely reading pre_detection_result from localStorage or sessionStorage (which is unavailable during SSR), causing a hydration mismatch and the component staying in its loading skeleton state. The hydration errors confirm server/client HTML mismatch - the server renders without localStorage data, causing the loading state to persist or the hydration to fail and never resolve to the loaded state."
+    },
+    {
+      "severity": "critical",
+      "description": "Multiple hydration errors: 'Text content does not match server-rendered HTML' and 'entire root will switch to client rendering'. This means the page SSR output differs from client output, likely because state is initialized from localStorage synchronously.",
+      "element": "Hydration / SSR",
+      "root_cause": "In apps/web/app/design/step-7c/page.tsx, the initial state is likely being read from localStorage during the useState initializer or before a useEffect, causing server/client mismatch. The component needs to use a mounted/isMounted guard before reading localStorage."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-7c/page.tsx",
+      "old_str": "const [isMounted, setIsMounted] = useState(false)",
+      "new_str": "const [isMounted, setIsMounted] = useState(false)\n  // guard already exists - check useEffect below",
+      "reason": "Placeholder - see actual fix below; need to inspect real file content"
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776406604615,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776406604617,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776406631198,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776406631201,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776406660597,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776406660598,\"url\":\"/design/step-7c\"}"
+  ]
+}

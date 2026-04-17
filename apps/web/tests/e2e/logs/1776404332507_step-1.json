@@ -1,0 +1,49 @@
+{
+  "screen": "step-1",
+  "url": "http://localhost:3000/design/step-1",
+  "passed": true,
+  "attempt": 1,
+  "elements": 4,
+  "issues": [
+    {
+      "severity": "minor",
+      "description": "Console warning: 'Please ensure that the container has a non-static position, like relative, fixed, or absolute to ensure scroll offset is calculated correctly.' This indicates a scroll/position utility (likely react-scroll or a custom scroll hook) is being mounted on a statically-positioned container. Not visible to the user but indicates a layout/ref misconfiguration.",
+      "element": "Scroll container wrapper (likely wrapping the hero or page root)",
+      "root_cause": "A component using a scroll-offset library (e.g., react-scroll's Element or a custom useScrollOffset hook) is rendered inside a div without an explicit CSS position property set to 'relative', 'fixed', or 'absolute'. The default position is 'static', which causes the warning."
+    },
+    {
+      "severity": "minor",
+      "description": "page:mount event fires twice for step-1 (timestamps 1776404296929/934 and 1776404299367/369). This suggests StrictMode double-invocation or a component unmounting and remounting, potentially causing duplicate analytics events.",
+      "element": "Page mount event emitter in step-1 page component",
+      "root_cause": "React StrictMode in development intentionally double-invokes effects. If the analytics event is fired inside a useEffect without proper cleanup or deduplication, it will fire twice. In production this would not occur with StrictMode, but the double-mount could also indicate an actual remount (e.g., router re-rendering the component)."
+    },
+    {
+      "severity": "minor",
+      "description": "Gold particle animation on dark navy canvas cannot be visually confirmed from a static screenshot. The expected behavior specifies particles animating, but a still image cannot verify motion. No canvas element or particle overlay is visibly distinct in the screenshot.",
+      "element": "Canvas particle animation layer",
+      "root_cause": "Cannot determine from static screenshot whether the canvas/WebGL particle system is running. The canvas may be present but invisible at z-index below content, or the animation may not have started. No JS errors reported, so it may be functioning correctly."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "src/components/layout/PageContainer.tsx",
+      "old_str": "<div className=\"page-container\">",
+      "new_str": "<div className=\"page-container\" style={{ position: 'relative' }}>",
+      "reason": "Adds a non-static position to the root page container to resolve the scroll offset warning from the scroll utility library. Alternatively add 'relative' to the Tailwind className."
+    },
+    {
+      "file": "src/pages/design/step-1.tsx",
+      "old_str": "useEffect(() => {\n    emitEvent('page:mount', { page: 'step-1' });\n  }, []);",
+      "new_str": "const hasMounted = useRef(false);\n  useEffect(() => {\n    if (hasMounted.current) return;\n    hasMounted.current = true;\n    emitEvent('page:mount', { page: 'step-1' });\n  }, []);",
+      "reason": "Guards the analytics event with a ref flag so it only fires once even in React StrictMode's double-invocation of effects, preventing duplicate page:mount events in analytics."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776404275385,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776404275388,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776404296929,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776404296934,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776404299367,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776404299369,\"url\":\"/design/step-1\"}"
+  ]
+}

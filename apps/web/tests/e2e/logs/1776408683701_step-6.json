@@ -1,0 +1,47 @@
+{
+  "screen": "step-6",
+  "url": "http://localhost:3000/design/step-6",
+  "passed": false,
+  "attempt": 1,
+  "elements": 5,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Duplicate React imports in step-3/page.tsx causing module build failure. useState and useEffect are imported twice, breaking the build.",
+      "element": "apps/web/app/design/step-3/page.tsx import statements",
+      "root_cause": "Two import statements exist at the top of step-3/page.tsx: one with `useState, useEffect` and another with `useState, useEffect, useCallback, useRef`. The first line ('use client' with its own import) was accidentally left when a more complete import was added."
+    },
+    {
+      "severity": "major",
+      "description": "Step counter shows 'STEP 4 OF 4' but current URL is /design/step-6, meaning the step label is wrong for this screen.",
+      "element": "Step counter in header",
+      "root_cause": "The step-6 page component is hardcoding or computing the wrong step number — showing 4 of 4 instead of the correct step number for step-6."
+    },
+    {
+      "severity": "critical",
+      "description": "React hydration errors across multiple pages due to text content mismatch between server-rendered HTML and client render. Causes entire root to switch to client rendering.",
+      "element": "Hydration error on step-6 page",
+      "root_cause": "Content that differs between server and client render (likely dynamic values like dates, random IDs, or Math.random() calls) causes hydration mismatch. May also be triggered by the duplicate import build failure in step-3 affecting other routes."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "\"use client\"\nimport { useState, useEffect } from 'react'\nimport { useState, useEffect, useCallback, useRef } from \"react\";",
+      "new_str": "\"use client\"\nimport { useState, useEffect, useCallback, useRef } from \"react\";",
+      "reason": "Removes the duplicate import line that causes the module build failure. The first import line (with only useState and useEffect) is redundant since the second import already includes those plus useCallback and useRef."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408591009,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408591011,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776408612386,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776408612389,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776408637674,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776408637676,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776408639333,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776408639334,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776408663136,\"url\":\"/design/step-6\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776408663137,\"url\":\"/design/step-6\"}"
+  ]
+}

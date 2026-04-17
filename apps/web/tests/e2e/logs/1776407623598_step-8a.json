@@ -1,0 +1,57 @@
+{
+  "screen": "step-8a",
+  "url": "http://localhost:3000/design/step-8a",
+  "passed": false,
+  "attempt": 1,
+  "elements": 0,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Page is stuck in loading state - never transitions to showing the AI-redesigned room image and before/after slider. The loading animation appears to be infinite with no completion logic or timeout.",
+      "element": "Loading state / render result screen",
+      "root_cause": "The loading state in apps/web/app/design/step-8a/page.tsx likely has no mechanism to advance through loading steps and resolve to the result view. The steps probably cycle forever or the condition to show the result never becomes true (e.g., missing mock data, no simulated render completion, or the isLoading flag never flips to false)."
+    },
+    {
+      "severity": "major",
+      "description": "Multiple hydration errors causing full client-side re-render. 'Text content does not match server-rendered HTML' errors indicate time-dependent or random values rendered during SSR differ from client render.",
+      "element": "Hydration / SSR mismatch",
+      "root_cause": "The loading step text or progress indicator likely uses Date.now(), Math.random(), or similar non-deterministic values during render, causing SSR/client mismatch. The step-3 page also has an aria-label hydration mismatch ('Progress 5 percent' vs 'Progress 15 percent') indicating similar pattern exists across pages."
+    },
+    {
+      "severity": "major",
+      "description": "Before/after slider and redesigned room image are completely absent - the primary deliverable of step-8a is not shown at all.",
+      "element": "Before/after image slider and AI-redesigned room image",
+      "root_cause": "The result view is gated behind a loading state that never completes, so the slider component is never rendered. The page needs either a simulated completion after a timeout or mock data to display immediately."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-8a/page.tsx",
+      "old_str": "const [currentStep, setCurrentStep] = useState(0);",
+      "new_str": "const [currentStep, setCurrentStep] = useState(0);\n  const [isComplete, setIsComplete] = useState(false);",
+      "reason": "Add completion state to track when loading finishes"
+    },
+    {
+      "file": "apps/web/app/design/step-8a/page.tsx",
+      "old_str": "useEffect(() => {\n    const interval = setInterval(() => {\n      setCurrentStep((prev) => (prev + 1) % loadingSteps.length);\n    }, 2000);\n    return () => clearInterval(interval);\n  }, []);",
+      "new_str": "useEffect(() => {\n    const timers: NodeJS.Timeout[] = [];\n    loadingSteps.forEach((_, i) => {\n      timers.push(setTimeout(() => setCurrentStep(i), i * 1800));\n    });\n    timers.push(setTimeout(() => setIsComplete(true), loadingSteps.length * 1800));\n    return () => timers.forEach(clearTimeout);\n  }, []);",
+      "reason": "Replace infinite cycling interval with a sequential step advancement that completes after all steps, setting isComplete=true to reveal the result screen"
+    },
+    {
+      "file": "apps/web/app/design/step-8a/page.tsx",
+      "old_str": "  return (\n    <div className=\"min-h-screen bg-[#0d1b2a] flex items-center justify-center\">",
+      "new_str": "  if (isComplete) {\n    return (\n      <div className=\"min-h-screen bg-[#0d1b2a] flex flex-col items-center justify-center gap-8 p-8\">\n        <h1 className=\"text-3xl font-bold text-[#c9a84c]\">Your Redesigned Room</h1>\n        <div className=\"relative w-full max-w-3xl aspect-video bg-[#1a2a3a] rounded-xl overflow-hidden flex items-center justify-center\">\n          <span className=\"text-gray-400 text-lg\">AI Redesigned Room Image</span>\n        </div>\n        <p className=\"text-gray-300 text-center max-w-xl\">Your room has been redesigned. Use the slider to compare before and after.</p>\n        <a href=\"/design/step-9\" className=\"px-8 py-3 bg-[#c9a84c] text-[#0d1b2a] font-bold rounded-lg hover:bg-[#b8973b] transition-colors\">Continue</a>\n      </div>\n    );\n  }\n\n  return (\n    <div className=\"min-h-screen bg-[#0d1b2a] flex items-center justify-center\">",
+      "reason": "Show the result screen (with redesigned room image placeholder and navigation) once loading completes, so the page doesn't stay stuck in loading state forever"
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407509232,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407509233,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776407539274,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776407539276,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776407563962,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776407563964,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776407592419,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776407592421,\"url\":\"/design/step-8a\"}"
+  ]
+}

@@ -67,6 +67,39 @@ export interface DesignBrief {
   };
   hard_constraints: string[];
 
+  // ── Session 8 additions ─────────────────────────────────────────────────────
+  focal_point: {
+    description: string;
+    position: string;
+    viewer_eye_path: string;
+  };
+  color_story: {
+    primary: { name: string; hex: string; coverage_pct: number };
+    secondary: { name: string; hex: string; coverage_pct: number };
+    accent: { name: string; hex: string; coverage_pct: number };
+    neutral_ground: { name: string; hex: string; coverage_pct: number };
+  };
+  three_materials: Array<{ name: string; finish: string; application: string }>;
+  lighting_concept: {
+    natural_light: string;
+    artificial_light: string[];
+  };
+  object_hierarchy: {
+    hero: { item: string; position: string };
+    supporting: Array<{ item: string; position: string }>;
+    accessories: Array<{ item: string; position: string }>;
+  };
+  negative_space: {
+    instruction: string;
+    forbidden_zones: string[];
+  };
+  statement_piece: { description: string; position: string };
+  design_rationale: string;
+  smart_suggestions: string[];
+  wall_change_requested: boolean;
+  floor_change_requested: boolean;
+  room_scale: "small" | "medium" | "large";
+
   // Auxiliary fields (set programmatically after tool call, not from Claude)
   required_objects?: string[];
   kept_item_palette?: Array<{
@@ -75,8 +108,6 @@ export interface DesignBrief {
     color: string;
     dominant_hex?: string;
   }>;
-  wall_change_requested?: boolean;
-  floor_change_requested?: boolean;
 }
 
 export interface DesignDirectorInput {
@@ -288,6 +319,155 @@ const EMIT_DESIGN_BRIEF_TOOL: Anthropic.Messages.Tool = {
         description:
           "What MUST NOT appear or change. Include architecture preservation, kept-item constraints, and exclusions.",
       },
+      focal_point: {
+        type: "object",
+        description: "The room's visual focal point and how the viewer's eye travels.",
+        properties: {
+          description: { type: "string", description: "What the focal point is" },
+          position: { type: "string", description: "Where it is (back wall, left corner, etc.)" },
+          viewer_eye_path: { type: "string", description: "Where the eye travels after the focal point" },
+        },
+        required: ["description", "position", "viewer_eye_path"],
+      },
+      color_story: {
+        type: "object",
+        description: "60-30-10 color story with named colors and coverage percentages.",
+        properties: {
+          primary: {
+            type: "object",
+            properties: {
+              name: { type: "string" }, hex: { type: "string" }, coverage_pct: { type: "number" },
+            },
+            required: ["name", "hex", "coverage_pct"],
+          },
+          secondary: {
+            type: "object",
+            properties: {
+              name: { type: "string" }, hex: { type: "string" }, coverage_pct: { type: "number" },
+            },
+            required: ["name", "hex", "coverage_pct"],
+          },
+          accent: {
+            type: "object",
+            properties: {
+              name: { type: "string" }, hex: { type: "string" }, coverage_pct: { type: "number" },
+            },
+            required: ["name", "hex", "coverage_pct"],
+          },
+          neutral_ground: {
+            type: "object",
+            properties: {
+              name: { type: "string" }, hex: { type: "string" }, coverage_pct: { type: "number" },
+            },
+            required: ["name", "hex", "coverage_pct"],
+          },
+        },
+        required: ["primary", "secondary", "accent", "neutral_ground"],
+      },
+      three_materials: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            name: { type: "string", description: "Material name (e.g., 'white oak')" },
+            finish: { type: "string", description: "Surface finish (e.g., 'matte', 'brushed', 'honed')" },
+            application: { type: "string", description: "Where it's used (e.g., 'bed frame', 'accent table')" },
+          },
+          required: ["name", "finish", "application"],
+        },
+        minItems: 3,
+        maxItems: 3,
+        description: "Exactly 3 materials — no more. Trade-name specificity required.",
+      },
+      lighting_concept: {
+        type: "object",
+        properties: {
+          natural_light: { type: "string", description: "Direction, quality, time of day (e.g., 'warm afternoon light from south-facing window')" },
+          artificial_light: {
+            type: "array",
+            items: { type: "string" },
+            description: "Fixtures and their positions (e.g., 'brass arc floor lamp behind sofa')",
+          },
+        },
+        required: ["natural_light", "artificial_light"],
+      },
+      object_hierarchy: {
+        type: "object",
+        description: "Furniture hierarchy: one hero anchor, 2-4 supporting, 3-7 accessories. Total must respect room_scale max.",
+        properties: {
+          hero: {
+            type: "object",
+            properties: {
+              item: { type: "string" }, position: { type: "string" },
+            },
+            required: ["item", "position"],
+          },
+          supporting: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: { item: { type: "string" }, position: { type: "string" } },
+              required: ["item", "position"],
+            },
+            description: "2-4 supporting pieces",
+          },
+          accessories: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: { item: { type: "string" }, position: { type: "string" } },
+              required: ["item", "position"],
+            },
+            description: "3-7 small accessory items",
+          },
+        },
+        required: ["hero", "supporting", "accessories"],
+      },
+      negative_space: {
+        type: "object",
+        properties: {
+          instruction: { type: "string", description: "How to handle empty space intentionally" },
+          forbidden_zones: {
+            type: "array",
+            items: { type: "string" },
+            description: "Areas that MUST remain empty (e.g., 'center of room', '2ft around bed')",
+          },
+        },
+        required: ["instruction", "forbidden_zones"],
+      },
+      statement_piece: {
+        type: "object",
+        description: "One unexpected element that makes the room memorable.",
+        properties: {
+          description: { type: "string" },
+          position: { type: "string" },
+        },
+        required: ["description", "position"],
+      },
+      design_rationale: {
+        type: "string",
+        description: "Exactly 3 sentences explaining the key design decisions and why they work for this room.",
+      },
+      smart_suggestions: {
+        type: "array",
+        items: { type: "string" },
+        description: "3-5 specific refinement options the user could request (e.g., 'swap oak for walnut', 'add a reading nook').",
+        minItems: 3,
+        maxItems: 5,
+      },
+      wall_change_requested: {
+        type: "boolean",
+        description: "Whether the user requested wall changes. Default false — preserve existing walls.",
+      },
+      floor_change_requested: {
+        type: "boolean",
+        description: "Whether the user requested floor changes. Default false — preserve existing floor.",
+      },
+      room_scale: {
+        type: "string",
+        enum: ["small", "medium", "large"],
+        description: "Estimated room scale: small (<12m²), medium (12-25m²), large (>25m²). Determines max furniture count.",
+      },
     },
     required: [
       "room_type",
@@ -299,6 +479,18 @@ const EMIT_DESIGN_BRIEF_TOOL: Anthropic.Messages.Tool = {
       "depth_zones",
       "style_weights",
       "hard_constraints",
+      "focal_point",
+      "color_story",
+      "three_materials",
+      "lighting_concept",
+      "object_hierarchy",
+      "negative_space",
+      "statement_piece",
+      "design_rationale",
+      "smart_suggestions",
+      "wall_change_requested",
+      "floor_change_requested",
+      "room_scale",
     ],
   },
 };
@@ -306,6 +498,20 @@ const EMIT_DESIGN_BRIEF_TOOL: Anthropic.Messages.Tool = {
 // ── System prompt for Call 1 ────────────────────────────────────────────────
 
 const CALL1_SYSTEM = `You are a senior interior designer analyzing a room photo for a redesign pipeline. Look at the architecture, lighting, existing furniture, and the user's target style. Emit a design_brief via the emit_design_brief tool.
+
+REASONING CHAIN (answer these 5 questions INTERNALLY before generating the brief):
+  1. "What is the single worst design problem in this room worth fixing?"
+  2. "What is the single best thing worth preserving or celebrating?"
+  3. "What design decision will have the biggest visual impact?"
+  4. "What would a professional designer NEVER place here given these proportions?"
+  5. "What unexpected element would make this room memorable?"
+
+ROOM SCALE RULES (enforce in object_hierarchy):
+  Estimate room_scale from the photo:
+    small (<12m²): max 4 furniture pieces total (hero=1, supporting=1-2, accessories=1-2)
+    medium (12-25m²): max 7 pieces total (hero=1, supporting=2-3, accessories=3-4)
+    large (>25m²): max 10 pieces total (hero=1, supporting=3-4, accessories=5-7)
+  Total pieces = 1 hero + len(supporting) + len(accessories). Must not exceed room_scale max.
 
 ROOM-TYPE ANCHOR RULES (anchor.category MUST match):
   bedroom -> anchor.category = "bed" (specify headboard material, frame, bedding)
@@ -356,7 +562,21 @@ FINGERPRINT INTERPRETATION:
   traditionalism > 0.65 -> classic forms, heritage details
   traditionalism < 0.35 -> contemporary lines, forward-looking
   character > 0.65 -> personal expression, cultural references, art-forward
-  character < 0.35 -> quiet, understated, lets materials speak`;
+  character < 0.35 -> quiet, understated, lets materials speak
+
+PERSONALIZATION CONSTRAINTS (hard — override style defaults when present):
+  If personalization_context is provided:
+  - Smart tech items marked accepted=true MUST appear in the final design at their placement zone
+  - Art layout_type MUST be honored exactly — do not suggest a different art arrangement
+  - Lifestyle constraints override fingerprint-based density and lighting:
+      works_from_room=true -> add task lighting and desk area to the brief
+      time_preference=morning -> maximize natural light, cool morning palette, color_temp_k >= 5000K
+      time_preference=evening -> warm ambient lighting, color_temp_k <= 2700K
+      density=minimalist -> reduce max objects to 4 regardless of room_scale
+      density=collector -> increase to upper bound of room_scale range
+  - required_object is THE hero anchor — build the entire design around it
+      It overrides the default room-type anchor if present
+      Set object_hierarchy.hero to the required_object description`;
 
 // ── Fingerprint dimension helpers ────────────────────────────────────────────
 
@@ -598,6 +818,89 @@ Floor change: no (preserve existing floor unless user explicitly asked)`);
     );
   }
 
+  // Personalization moments (from step-7e/7f/7g/7h screens)
+  const personalizationContext = ctxRaw?.personalization_context as Record<string, unknown> | null | undefined;
+  if (personalizationContext && Object.keys(personalizationContext).length > 0) {
+    const momentParts: string[] = [];
+
+    // Smart tech (step-7e)
+    const smartTech = personalizationContext.smart_tech as Array<{
+      item: string;
+      accepted: boolean;
+      placement_zone: string;
+    }> | undefined;
+    if (smartTech && smartTech.length > 0) {
+      const accepted = smartTech.filter((t) => t.accepted);
+      if (accepted.length > 0) {
+        momentParts.push(
+          `REQUIRED SMART TECH (must appear in design):\n${accepted.map((t) => `- ${t.item} at ${t.placement_zone}`).join("\n")}`,
+        );
+      }
+    }
+
+    // Art layout (step-7f)
+    const artLayout = personalizationContext.art as {
+      layout_type: string;
+      poster_urls?: string[];
+      selected_poster_url?: string;
+      position?: string;
+    } | undefined;
+    if (artLayout && artLayout.layout_type !== "none") {
+      const layoutDescriptions: Record<string, string> = {
+        gallery_wall: "Gallery wall arrangement with 6 framed pieces in a grid",
+        statement_piece: "One large statement artwork as focal point",
+        triptych: "Three connected pieces in a horizontal triptych",
+        salon_wall: "Asymmetric salon-style mix of different sized frames",
+      };
+      momentParts.push(
+        `ART ARRANGEMENT (honor exactly): ${layoutDescriptions[artLayout.layout_type] ?? artLayout.layout_type} on ${artLayout.position ?? "focal wall"}`,
+      );
+    }
+
+    // Lifestyle signals (step-7g)
+    const lifestyle = personalizationContext.lifestyle as {
+      works_from_room: boolean | string;
+      time_preference: string;
+      density: string;
+    } | undefined;
+    if (lifestyle) {
+      const lifestyleLines: string[] = [];
+      if (lifestyle.works_from_room === true || lifestyle.works_from_room === "sometimes") {
+        lifestyleLines.push("Task lighting required, define a desk/work area in the design");
+      }
+      if (lifestyle.time_preference === "morning") {
+        lifestyleLines.push("Maximize natural light, cool morning palette, color_temp_k >= 5000K");
+      } else if (lifestyle.time_preference === "evening") {
+        lifestyleLines.push("Warm ambient lighting, color_temp_k <= 2700K, layered light sources");
+      }
+      if (lifestyle.density === "minimalist") {
+        lifestyleLines.push("MINIMALIST: reduce max objects to 4 total regardless of room_scale");
+      } else if (lifestyle.density === "collector") {
+        lifestyleLines.push("COLLECTOR: maximize objects to upper bound of room_scale, layer accessories");
+      }
+      if (lifestyleLines.length > 0) {
+        momentParts.push(`LIFESTYLE CONSTRAINTS (override style defaults):\n${lifestyleLines.join("\n")}`);
+      }
+    }
+
+    // Required object anchor (step-7h)
+    const requiredObject = personalizationContext.required_object as {
+      description: string;
+      is_override_anchor: boolean;
+    } | undefined;
+    if (requiredObject?.description) {
+      momentParts.push(
+        `HERO ANCHOR (build entire design around this): "${requiredObject.description}"\nThis is the user's #1 priority. Set object_hierarchy.hero to incorporate this element.`,
+      );
+    }
+
+    if (momentParts.length > 0) {
+      sections.push(
+        `PERSONALIZATION MOMENTS (hard constraints from user screens):\n${momentParts.join("\n\n")}`,
+      );
+    }
+  }
+
   // Chat history (highest priority signal)
   const chatHistory = input.chatHistory?.trim();
   if (chatHistory) {
@@ -658,11 +961,17 @@ function enforceHardConstraints(
     }
   }
 
-  // TV constraint
+  // TV constraint — check both techSpec and personalization_context.smart_tech
   const ctxRaw = input.context as Record<string, unknown> | null;
   const techSpec = ctxRaw?.techSpec as Record<string, unknown> | null | undefined;
   const hasTV = techSpec?.hasTV;
-  if (hasTV === false && !lc.includes("no television")) {
+  // Check if user accepted a TV via smart tech discovery (step-7e)
+  const pCtx = ctxRaw?.personalization_context as Record<string, unknown> | null | undefined;
+  const smartTech = pCtx?.smart_tech as Array<{ item: string; accepted: boolean }> | undefined;
+  const acceptedTV = smartTech?.some(
+    (t) => t.accepted && /tv|television|projector|frame/i.test(t.item),
+  );
+  if (hasTV === false && !acceptedTV && !lc.includes("no television")) {
     constraints.push("no television, no screens, no monitors");
   }
 
@@ -752,7 +1061,7 @@ export async function generateDesignBrief(
 
   const brief = toolBlock.input as DesignBrief;
 
-  // Set auxiliary fields
+  // Override wall/floor change with actual user input (Claude may guess wrong)
   brief.wall_change_requested = input.context?.wall_change_requested ?? false;
   brief.floor_change_requested = false;
 
@@ -770,11 +1079,14 @@ export async function generateDesignBrief(
   // Enforce hard constraints programmatically
   enforceHardConstraints(brief, input);
 
+  const totalPieces = 1 + (brief.object_hierarchy?.supporting?.length ?? 0) + (brief.object_hierarchy?.accessories?.length ?? 0);
   console.log(
     `[design-director] Call 1 complete — room: ${brief.room_type}, anchor: ${brief.anchor.category}`,
-    `| materials: ${brief.materials.length}`,
+    `| scale: ${brief.room_scale}, pieces: ${totalPieces}`,
+    `| materials: ${brief.three_materials?.length ?? brief.materials.length}`,
     `| constraints: ${brief.hard_constraints.length}`,
-    `| depth: fg=${brief.depth_zones.foreground.length} mg=${brief.depth_zones.midground.length} bg=${brief.depth_zones.background.length}`,
+    `| focal: ${brief.focal_point?.position ?? "?"}`,
+    `| suggestions: ${brief.smart_suggestions?.length ?? 0}`,
   );
 
   return brief;

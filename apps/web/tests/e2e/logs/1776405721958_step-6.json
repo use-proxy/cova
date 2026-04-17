@@ -1,0 +1,41 @@
+{
+  "screen": "step-6",
+  "url": "http://localhost:3000/design/step-6",
+  "passed": false,
+  "attempt": 1,
+  "elements": 5,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Step indicator shows 'STEP 4 OF 4' but this is step-6. The step counter is wrong — either the total steps or current step number is incorrect for this page.",
+      "element": "Step counter text 'STEP 4 OF 4'",
+      "root_cause": "In apps/web/app/design/step-6/page.tsx, the step indicator is hardcoded as '4 OF 4' instead of reflecting that this is step 6. Possibly the totalSteps or currentStep value is wrong."
+    },
+    {
+      "severity": "major",
+      "description": "The page is mounted as 'step-6' per console logs but visually appears to be the room photo upload screen which should align with the expected behavior. However, a file input element labeled 'Upload a Photo' or explicit file input is not clearly visible — only a camera icon in the drop zone with no visible text prompt like 'Drop photo here' or a clickable file input label.",
+      "element": "Upload zone — missing visible file input label/text",
+      "root_cause": "The upload zone in apps/web/app/design/step-6/page.tsx likely renders only the camera icon without visible instructional text or a visible file input button inside the drop zone area."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-6/page.tsx",
+      "old_str": "STEP 4 OF 4",
+      "new_str": "STEP 6 OF 6",
+      "reason": "The step indicator is hardcoded to '4 OF 4' but this page is step-6. It should read '6 OF 6' (or whatever the correct total is)."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776405631390,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776405631392,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776405651598,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776405651600,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776405676312,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776405676312,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776405678061,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776405678063,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776405702234,\"url\":\"/design/step-6\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776405702236,\"url\":\"/design/step-6\"}"
+  ]
+}

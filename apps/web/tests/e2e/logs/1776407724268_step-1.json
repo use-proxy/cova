@@ -1,0 +1,47 @@
+{
+  "screen": "step-1",
+  "url": "http://localhost:3000/design/step-1",
+  "passed": false,
+  "attempt": 1,
+  "elements": 4,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "React hydration error: 'Text content does not match server-rendered HTML' repeated 7 times, causing the entire root to switch to client rendering. This is likely caused by dynamic/random values (e.g. particle positions, timestamps, or Math.random()) being computed during SSR and producing different values on the client.",
+      "element": "Particle animation canvas or any component using Math.random()/Date on initial render",
+      "root_cause": "A component on this page (likely the particle/canvas animation component) generates random values (positions, velocities) during render without being wrapped in useEffect or suppressing hydration. SSR generates one set of random values, client hydration generates different ones, causing a mismatch."
+    },
+    {
+      "severity": "major",
+      "description": "Gold particle animation is not visibly animating on the dark navy canvas background — the background appears as a flat solid dark color with no visible particles.",
+      "element": "Canvas particle animation background",
+      "root_cause": "The hydration error causes the entire root to switch to client-side rendering, which may delay or prevent the canvas animation from initializing properly. Additionally, if the canvas component uses SSR-incompatible APIs (window, canvas context) without a dynamic import or 'use client' guard, it may fail silently."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-1/page.tsx",
+      "old_str": "\"use client\"",
+      "new_str": "\"use client\"\nimport dynamic from 'next/dynamic'",
+      "reason": "Ensure dynamic import is available for the particle component to prevent SSR hydration mismatch"
+    },
+    {
+      "file": "apps/web/app/design/step-1/page.tsx",
+      "old_str": "import ParticleCanvas from",
+      "new_str": "const ParticleCanvas = dynamic(() => import(",
+      "reason": "Convert particle canvas import to dynamic with ssr:false to prevent hydration mismatch from Math.random() differences between server and client"
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407624517,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407624519,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407651616,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407651617,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776407677596,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776407677597,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407698413,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407698416,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407700519,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407700521,\"url\":\"/design/step-1\"}"
+  ]
+}

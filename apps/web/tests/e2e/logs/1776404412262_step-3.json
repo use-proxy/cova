@@ -1,0 +1,89 @@
+{
+  "screen": "step-3",
+  "url": "http://localhost:3000/design/step-3",
+  "passed": false,
+  "attempt": 1,
+  "elements": 5,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Hydration mismatch: progress bar width differs between server (5%) and client (15%). Server rendered 'width:5%' but client computed 'width:15%', causing full root hydration failure and switching to client-only rendering.",
+      "element": "Progress bar div inside CovaStyleQuizPage",
+      "root_cause": "In app/design/step-3/page.tsx, the progress bar width is computed using state or a value that differs between SSR and CSR. Likely the progress percentage is derived from a value initialized differently on server vs client (e.g., using Math.random(), Date, window, or a non-deterministic initial state). The server renders step index as 0 (5% = 1/20 or similar) but client hydrates with a different step count or index producing 15%."
+    },
+    {
+      "severity": "critical",
+      "description": "Multiple 'Text content does not match server-rendered HTML' hydration errors (7 instances). This confirms widespread SSR/CSR mismatch across multiple text nodes in the component.",
+      "element": "CovaStyleQuizPage text content nodes",
+      "root_cause": "Dynamic text (question number, option labels, or progress text) is being generated differently on server vs client. Could be caused by using Math.random() for question selection, accessing localStorage/sessionStorage during render, or using a non-stable initial state that changes on mount."
+    },
+    {
+      "severity": "critical",
+      "description": "Page shows 'Question 1 of 3' but this is step-3. Expected behavior says step-3 should show comparison image pairs (two room images side by side). The question shown ('How do you prefer your surfaces?') with text-only options matches step-1 behavior, not step-3.",
+      "element": "Question content and question counter",
+      "root_cause": "The question index/state is being reset or not properly initialized for step-3. The component may be using a shared quiz state that initializes to question 1 on every page mount, or step-3 is rendering the same component as step-1 without advancing the question index. The page:mount logs show step-1 mounted 4 times before step-3 mounted, suggesting navigation state is not persisted."
+    },
+    {
+      "severity": "major",
+      "description": "Missing room comparison images. Expected behavior specifies 'Two room images side by side for preference selection' for the style quiz comparison pairs. No images are rendered.",
+      "element": "Room image comparison pairs",
+      "root_cause": "Either the images failed to load (broken src paths), the component conditionally renders images only for certain question types but the question type selector has a bug, or the image components are present but invisible due to the hydration failure causing the DOM to be re-rendered without the image data."
+    },
+    {
+      "severity": "minor",
+      "description": "Red '1 error' badge visible in bottom-left corner, confirming an active runtime error state is being surfaced to the user.",
+      "element": "Error badge UI element",
+      "root_cause": "The hydration error triggered an error boundary or error reporter component that displays the error count. This is a symptom of the hydration failures above."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "app/design/step-3/page.tsx",
+      "old_str": "const [currentQuestion, setCurrentQuestion] = useState(0);",
+      "new_str": "const [currentQuestion, setCurrentQuestion] = useState(0);\n  const [isMounted, setIsMounted] = useState(false);\n\n  useEffect(() => {\n    setIsMounted(true);\n  }, []);",
+      "reason": "Suppress hydration mismatch by deferring client-only state initialization until after mount"
+    },
+    {
+      "file": "app/design/step-3/page.tsx",
+      "old_str": "style={{ width: `${progressPercent}%` }}",
+      "new_str": "style={{ width: isMounted ? `${progressPercent}%` : '0%' }}",
+      "reason": "Fix the server/client width mismatch (server:5% vs client:15%) by rendering a neutral value on server and updating only after mount"
+    },
+    {
+      "file": "app/design/step-3/page.tsx",
+      "old_str": "const progressPercent = Math.round(((currentQuestion + 1) / questions.length) * 100);",
+      "new_str": "const TOTAL_STEPS = 3;\nconst CURRENT_STEP = 3;\nconst progressPercent = Math.round((CURRENT_STEP / TOTAL_STEPS) * 100);",
+      "reason": "Use static step-based progress instead of dynamic question index to avoid SSR/CSR mismatch and correctly show step 3 of 3 progress"
+    },
+    {
+      "file": "app/design/step-3/page.tsx",
+      "old_str": "const [currentQuestion, setCurrentQuestion] = useState(0);",
+      "new_str": "const STEP_3_QUESTION_INDEX = 2; // step-3 should start at question index 2\n  const [currentQuestion, setCurrentQuestion] = useState(STEP_3_QUESTION_INDEX);",
+      "reason": "Initialize question index to the correct question for step-3 instead of 0, so it does not show 'Question 1 of 3'"
+    },
+    {
+      "file": "app/design/step-3/page.tsx",
+      "old_str": "import { useState } from 'react';",
+      "new_str": "import { useState, useEffect } from 'react';",
+      "reason": "Add useEffect import needed for the isMounted pattern fix"
+    },
+    {
+      "file": "app/design/step-3/page.tsx",
+      "old_str": "{question.type === 'comparison' && (\n",
+      "new_str": "{isMounted && question.type === 'comparison' && (\n",
+      "reason": "Guard image comparison rendering behind isMounted to prevent SSR rendering images that differ from client, and ensure images only render client-side where image URLs/data are available"
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776404275385,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776404275388,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776404296929,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776404296934,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776404299367,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776404299369,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-2\"},\"ts\":1776404333486,\"url\":\"/design/step-2\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-2\"},\"ts\":1776404333487,\"url\":\"/design/step-2\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776404375620,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776404375622,\"url\":\"/design/step-3\"}"
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "screen": "step-8a",
+  "url": "http://localhost:3000/design/step-8a",
+  "passed": false,
+  "attempt": 1,
+  "elements": 0,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Screen is stuck in loading state - never transitions to the actual render result screen with AI-redesigned room image and before/after slider. The loading animation appears frozen on step 1 ('Analyzing your space...').",
+      "element": "Loading state / result render screen",
+      "root_cause": "The step-8a page likely has a loading simulation that either never completes, or the condition to transition from loading to result state is broken. The simulated loading steps probably use setTimeout/setInterval that either never resolves or the state transition to 'complete' never fires, keeping isLoading true indefinitely. Alternatively, the render result fetch/mock returns no data causing it to stay in loading state."
+    },
+    {
+      "severity": "major",
+      "description": "Multiple hydration errors across multiple pages (step-3, step-3b, step-7c, step-8a) - 'Text content does not match server-rendered HTML'. This causes the entire root to switch to client rendering.",
+      "element": "Server-side rendering hydration",
+      "root_cause": "Dynamic content (timestamps, random values, or browser-only APIs like localStorage/sessionStorage) is being rendered during SSR and produces different output on the client. Likely in page components that read from localStorage or use Math.random()/Date during render without suppressing hydration or using useEffect."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-8a/page.tsx",
+      "old_str": "const [currentStep, setCurrentStep] = useState(0);\n  const [isLoading, setIsLoading] = useState(true);",
+      "new_str": "const [currentStep, setCurrentStep] = useState(0);\n  const [isLoading, setIsLoading] = useState(true);\n  // Ensure loading always completes",
+      "reason": "Placeholder to identify the state variables - actual fix below targets the loading completion logic"
+    },
+    {
+      "file": "apps/web/app/design/step-8a/page.tsx",
+      "old_str": "useEffect(() => {\n    const steps = [0, 1, 2, 3];\n    let currentIndex = 0;\n    const interval = setInterval(() => {\n      currentIndex++;\n      if (currentIndex < steps.length) {\n        setCurrentStep(currentIndex);\n      } else {\n        clearInterval(interval);\n      }\n    }, 1500);\n    return () => clearInterval(interval);\n  }, []);",
+      "new_str": "useEffect(() => {\n    const steps = [0, 1, 2, 3];\n    let currentIndex = 0;\n    const interval = setInterval(() => {\n      currentIndex++;\n      if (currentIndex < steps.length) {\n        setCurrentStep(currentIndex);\n      } else {\n        clearInterval(interval);\n        setIsLoading(false);\n      }\n    }, 1500);\n    return () => clearInterval(interval);\n  }, []);",
+      "reason": "The interval completes all 4 loading steps but never calls setIsLoading(false), so the screen stays stuck in loading state forever. Adding setIsLoading(false) in the else branch transitions to the result screen."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776408397195,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776408397197,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776408426199,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776408426201,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776408455039,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776408455041,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776408477797,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776408477799,\"url\":\"/design/step-8a\"}"
+  ]
+}

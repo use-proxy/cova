@@ -1,0 +1,95 @@
+{
+  "screen": "dashboard",
+  "url": "http://localhost:3000/dashboard",
+  "passed": false,
+  "attempt": 1,
+  "elements": 27,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Multiple React hydration errors: 'Text content does not match server-rendered HTML' (7 instances) causing entire root to switch to client rendering. This breaks SSR, causes layout flash, and may corrupt interactive state.",
+      "element": "Entire dashboard page root",
+      "root_cause": "Server-rendered HTML differs from client render. Most likely cause: dynamic date/time rendering (e.g., 'Good evening, Amelia.' greeting uses server-time vs client-time, or 'Thursday, April 16' date is rendered with new Date() without suppressing SSR mismatch). Also possibly numeric counters or conditional text rendered differently server vs client. The greeting 'Good evening' is time-of-day dependent — if rendered on server at a different time-of-day than client hydration, it will mismatch."
+    },
+    {
+      "severity": "critical",
+      "description": "Radar/spider chart in Style Profile section is completely missing — the left panel renders as a blank dark rectangle with only 'Retake quiz →' visible. No chart SVG or canvas element is visible.",
+      "element": "Style Profile radar chart (left panel of style profile section)",
+      "root_cause": "Chart library (likely recharts, chart.js, or d3) is either: (1) not rendering due to hydration failure causing client-only chart to not mount, (2) SSR-incompatible canvas/SVG component rendered only client-side without a proper dynamic import with ssr:false, or (3) the component is throwing a silent error during render. Given the hydration errors, the entire root switched to client rendering which may have disrupted the chart mount lifecycle."
+    },
+    {
+      "severity": "major",
+      "description": "Third room card title is truncated: 'Dining Room Curatio' — likely 'Dining Room Curation' is cut off due to overflow without ellipsis or the card width is clipping text.",
+      "element": "Third room card title text",
+      "root_cause": "CSS overflow not set to ellipsis or the card container has insufficient width with no text-overflow:ellipsis applied to the room title element, causing hard truncation at container boundary."
+    },
+    {
+      "severity": "major",
+      "description": "Third room card tags show 'NAT[URAL]' truncated — second tag appears cut off at card right edge.",
+      "element": "Third room card tags row",
+      "root_cause": "Tag container has overflow:hidden without proper wrapping or the tags row is a single line flex row clipping at card boundary."
+    },
+    {
+      "severity": "minor",
+      "description": "Greeting 'Good evening, Amelia.' — this is the most likely source of hydration mismatch. Server renders at one time of day, client hydrates at potentially a different time bucket, causing 'Good morning/afternoon/evening' to differ.",
+      "element": "Greeting heading text",
+      "root_cause": "Time-of-day greeting computed without suppressing hydration mismatch. Component uses something like: const hour = new Date().getHours(); const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'; directly in render without useEffect or suppressHydrationWarning."
+    },
+    {
+      "severity": "minor",
+      "description": "Date display 'Thursday, April 16' — rendered using new Date() on both server and client which should match, but if timezone differs between server (UTC) and client (local), day/date string will mismatch.",
+      "element": "Date string top right of greeting",
+      "root_cause": "Date formatted using toLocaleDateString() or similar without explicit timezone, causing server (UTC) vs client (local timezone) mismatch."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "components/dashboard/DashboardGreeting.tsx",
+      "old_str": "const hour = new Date().getHours();\nconst greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';",
+      "new_str": "const [greeting, setGreeting] = useState('Good evening');\nuseEffect(() => {\n  const hour = new Date().getHours();\n  setGreeting(hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening');\n}, []);",
+      "reason": "Move time-of-day greeting computation to useEffect so it only runs on the client after hydration, preventing server/client HTML mismatch. Initialize with a default value that matches server render."
+    },
+    {
+      "file": "components/dashboard/DashboardGreeting.tsx",
+      "old_str": "const dateString = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });",
+      "new_str": "const [dateString, setDateString] = useState('');\nuseEffect(() => {\n  setDateString(new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }));\n}, []);",
+      "reason": "Move date string computation to client-side useEffect to avoid server/client timezone mismatch causing hydration errors."
+    },
+    {
+      "file": "components/dashboard/StyleProfileChart.tsx",
+      "old_str": "import RadarChart from './RadarChart';",
+      "new_str": "import dynamic from 'next/dynamic';\nconst RadarChart = dynamic(() => import('./RadarChart'), { ssr: false, loading: () => <div className=\"chart-placeholder\" style={{width:'100%',height:'300px',display:'flex',alignItems:'center',justifyContent:'center',color:'#888'}}>Loading chart...</div> });",
+      "reason": "Chart components using canvas or browser-only APIs must be dynamically imported with ssr:false in Next.js to prevent hydration errors and ensure the chart mounts correctly on the client."
+    },
+    {
+      "file": "components/rooms/RoomCard.tsx",
+      "old_str": "<h3 className=\"room-card-title\">{room.title}</h3>",
+      "new_str": "<h3 className=\"room-card-title\" style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:'100%'}} title={room.title}>{room.title}</h3>",
+      "reason": "Add text-overflow ellipsis to room card title to prevent hard truncation and show full title on hover via title attribute."
+    },
+    {
+      "file": "components/rooms/RoomCard.tsx",
+      "old_str": "<div className=\"room-card-tags\">\n  {room.tags.map(tag => <span key={tag} className=\"tag\">{tag}</span>)}\n</div>",
+      "new_str": "<div className=\"room-card-tags\" style={{display:'flex',flexWrap:'wrap',gap:'4px',overflow:'hidden',maxHeight:'52px'}}>\n  {room.tags.map(tag => <span key={tag} className=\"tag\" style={{flexShrink:0}}>{tag}</span>)}\n</div>",
+      "reason": "Allow tags to wrap and limit to 2 lines to prevent tags from being clipped at card boundary."
+    },
+    {
+      "file": "pages/dashboard.tsx",
+      "old_str": "export default function Dashboard() {",
+      "new_str": "export default function Dashboard() {\n  const [mounted, setMounted] = useState(false);\n  useEffect(() => { setMounted(true); }, []);\n  if (!mounted) return null; // prevent SSR of dynamic content",
+      "reason": "If the above targeted fixes are insufficient, a last-resort approach is to skip server rendering the entire dashboard page to eliminate all hydration mismatches. However this should only be used if targeted fixes fail as it disables SSR benefits."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776404463656,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776404463659,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776404528973,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776404528975,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776404531071,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776404531073,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776404573655,\"url\":\"/design/step-6\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776404573657,\"url\":\"/design/step-6\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776404610887,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776404610888,\"url\":\"/dashboard\"}"
+  ]
+}

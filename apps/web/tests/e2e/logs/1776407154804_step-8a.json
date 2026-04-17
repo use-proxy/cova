@@ -1,0 +1,45 @@
+{
+  "screen": "step-8a",
+  "url": "http://localhost:3000/design/step-8a",
+  "passed": false,
+  "attempt": 1,
+  "elements": 0,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Page is stuck in loading state — never transitions to showing the AI-redesigned room image or before/after slider",
+      "element": "Loading state / render result",
+      "root_cause": "The step-8a page likely uses a simulated or async loading sequence that never resolves to the result view. The loading steps cycle but the condition to show the result (e.g. isComplete state) is never set to true, or the timer/promise driving the loading animation never triggers the transition to the result screen."
+    },
+    {
+      "severity": "major",
+      "description": "Multiple hydration errors across the app (Text content does not match server-rendered HTML). On step-3, a Prop style mismatch 'width:5%' vs 'width:15%' is logged, causing full root client re-render.",
+      "element": "Hydration — step-3 progress bar and step-8a",
+      "root_cause": "In apps/web/app/design/step-3/page.tsx, a progress bar width is computed client-side (e.g. based on state initialized differently on server vs client), causing SSR/CSR mismatch. The use of dynamic initial state without suppressing hydration warning or using useEffect causes cascading hydration failures."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-8a/page.tsx",
+      "old_str": "const [isComplete, setIsComplete] = useState(false);",
+      "new_str": "const [isComplete, setIsComplete] = useState(false);\n\n  useEffect(() => {\n    const timer = setTimeout(() => {\n      setIsComplete(true);\n    }, 3500);\n    return () => clearTimeout(timer);\n  }, []);",
+      "reason": "If the loading state never resolves, adding a guaranteed timeout to set isComplete=true ensures the result screen renders after the loading animation finishes. This is the most likely missing piece causing the stuck loading state."
+    },
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "const [progress, setProgress] = useState(15);",
+      "new_str": "const [progress, setProgress] = useState(5);",
+      "reason": "The hydration error shows server renders width:5% but client renders width:15%. The initial useState value must match what the server computes. Setting initial state to 5 aligns SSR and CSR to eliminate the hydration mismatch."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407055294,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407055296,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776407080544,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776407080547,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776407106992,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776407106994,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776407131124,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776407131125,\"url\":\"/design/step-8a\"}"
+  ]
+}

@@ -30,6 +30,7 @@ import { assembleDifferentialMap } from "@/lib/ai/mask-assembly";
 import { fetchScoredStyleReferences } from "@/lib/unsplash";
 import { getCuratedReferences } from "@/lib/ai/curated-references";
 import { getLorasFromFluxPrompt } from "@/lib/ai/lora-registry";
+import { getLoraStackFromBlend, getDnaTriggerFromBlend } from "@/lib/styles/lora-registry";
 import { STYLE_DISPLAY_NAMES } from "@/lib/ai/anchor-display";
 import type { StyleFingerprint } from "@/types/fingerprint";
 import type { RenderContext } from "@/lib/types/area2";
@@ -57,6 +58,7 @@ interface RoomRow {
   generation_seed: number | null;
   redesign_status: string | null;
   design_brief: DesignBrief | null;
+  personalization_context: Record<string, unknown> | null;
 }
 
 // Extract a flat chat history string from rooms.render_context.tabStates
@@ -150,7 +152,7 @@ export async function POST(request: Request) {
       admin
         .from("rooms")
         .select(
-          "user_id, render_context, room_type, style_blend, original_image_url, original_photo_url, preprocessed_image_url, keep_remove_decisions, generation_seed, redesign_status, design_brief",
+          "user_id, render_context, room_type, style_blend, original_image_url, original_photo_url, preprocessed_image_url, keep_remove_decisions, generation_seed, redesign_status, design_brief, personalization_context",
         )
         .eq("id", room_id)
         .eq("user_id", userId)
@@ -175,7 +177,17 @@ export async function POST(request: Request) {
     );
   }
 
-  const renderContext: RenderContext | null = room?.render_context ?? null;
+  const renderContextRaw: RenderContext | null = room?.render_context ?? null;
+  // Merge personalization_context (from step-7e/7f/7g/7h) into render context
+  // so the Design Director can read it via ctxRaw.personalization_context
+  const renderContext: RenderContext | null = renderContextRaw
+    ? {
+        ...renderContextRaw,
+        ...(room?.personalization_context
+          ? { personalization_context: room.personalization_context }
+          : {}),
+      } as RenderContext
+    : null;
   const roomType = room?.room_type ?? "room"; // never assume room type; "room" is a safe generic fallback
 
   // Resolve fingerprint — render_context first, then users fallback
@@ -295,23 +307,8 @@ export async function POST(request: Request) {
 
   if (fingerprint && photoUrlForPipeline) {
     try {
-      // Resolve LoRA trigger from style blend primary key
-      const loraTriggerMap: Record<string, string> = {
-        "warm japandi": "cvwmn",
-        "pure minimal white": "cvscn",
-        "coastal bright": "cvcst",
-        "biophilic jungle": "cvboh",
-        "dark moody glam": "cvlux",
-        "industrial loft": "cvind",
-        "maximalist eclectic": "cvmax",
-        "retro mid-century": "cvmcm",
-        "heritage traditional": "cvdco",
-      };
-      const primaryBlendKey = Object.entries(styleBlendForAnchor ?? {})
-        .filter(([, v]) => typeof v === "number")
-        .sort(([, a], [, b]) => (b as number) - (a as number))[0]?.[0]
-        ?.toLowerCase() ?? "";
-      const loraTrigger = loraTriggerMap[primaryBlendKey] ?? "cvwmn";
+      // Resolve LoRA trigger from style blend using COVA* registry
+      const loraTrigger = getDnaTriggerFromBlend(styleBlendForAnchor);
 
       const ddResult = await runDesignDirector({
         imageUrl: photoUrlForPipeline,
@@ -500,37 +497,31 @@ export async function POST(request: Request) {
   }
 
   // ── LoRA stack resolution ─────────────────────────────────────────────────
-  // Returns a dual-LoRA stack: [detail-enhancer@0.55, realism-lora@0.25] when
-  // no trained LoRA exists (fallback), or [custom@scale, realism@0.25-0.30] when
-  // a trained LoRA is found in style_loras table.
+  // Resolves COVA* trained LoRAs from the style blend.
+  // Fill Pro doesn't accept loras param — trigger words in the prompt are
+  // the primary mechanism. The stack is sent to Modal for trigger word extraction.
   let lorasJson: string;
-  try {
-    // Use flux_prompt trigger extraction — design director embeds the trigger
-    // word (e.g. "cvwmn interior") directly in compiledPrompt, so we match
-    // against the actual prompt rather than the verbose styleAnchor string.
-    const loraResult = await getLorasFromFluxPrompt(compiledPrompt, admin);
+  const covaLoraStack = getLoraStackFromBlend(styleBlendForAnchor);
+
+  if (covaLoraStack.length > 0) {
     console.log(
-      `[redesign] LoRA stack: ${loraResult.loras.map((l) => `${l.name}@${l.scale}`).join(" + ")} ` +
-      `(fallback: ${loraResult.isFallback}, total: ${loraResult.totalScale.toFixed(2)})`,
+      `[redesign] COVA LoRA stack: ${covaLoraStack.map((l) => `${l.name}@${l.scale.toFixed(2)}`).join(" + ")}`,
     );
-    lorasJson = JSON.stringify(
-      loraResult.loras.map((l) => ({ url: l.url, scale: l.scale, name: l.name })),
-    );
-  } catch (loraErr) {
-    console.error("[redesign] LoRA resolution failed — using hard-coded fallback stack:", loraErr);
-    // Matches FALLBACK_LORA_STACK in lora-registry.ts
-    lorasJson = JSON.stringify([
-      {
-        url: "https://huggingface.co/Shakker-Labs/FLUX.1-dev-LoRA-add-details/resolve/main/FLUX-dev-lora-add_details.safetensors",
-        scale: 0.55,
-        name: "detail-enhancer",
-      },
-      {
-        url: "https://huggingface.co/XLabs-AI/flux-RealismLora/resolve/main/lora.safetensors",
-        scale: 0.25,
-        name: "realism-lora",
-      },
-    ]);
+    lorasJson = JSON.stringify(covaLoraStack);
+  } else {
+    // Fallback: try DB-based lookup via flux_prompt trigger extraction
+    try {
+      const loraResult = await getLorasFromFluxPrompt(compiledPrompt, admin);
+      console.log(
+        `[redesign] LoRA stack (DB fallback): ${loraResult.loras.map((l) => `${l.name}@${l.scale}`).join(" + ")}`,
+      );
+      lorasJson = JSON.stringify(
+        loraResult.loras.map((l) => ({ url: l.url, scale: l.scale, name: l.name, trigger: "" })),
+      );
+    } catch (loraErr) {
+      console.error("[redesign] LoRA resolution failed — no LoRAs:", loraErr);
+      lorasJson = JSON.stringify([]);
+    }
   }
 
   // ── Seed management ──────────────────────────────────────────────────────
@@ -727,6 +718,8 @@ export async function POST(request: Request) {
         kept_item_mask_urls: keptItemMaskUrls.length > 0 ? keptItemMaskUrls : null,
         wall_change_requested: wallChangeRequested,
         floor_change_requested: floorChangeRequested,
+        // Style blend for LoRA resolution on Python side
+        style_blend: room?.style_blend ?? renderContext?.styleBlend ?? null,
       }),
       signal: AbortSignal.timeout(295_000),
     });

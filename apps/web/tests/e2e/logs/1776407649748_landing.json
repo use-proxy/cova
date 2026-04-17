@@ -1,0 +1,53 @@
+{
+  "screen": "landing",
+  "url": "http://localhost:3000/dashboard",
+  "passed": false,
+  "attempt": 1,
+  "elements": 27,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Wrong page is being shown. The URL /dashboard is displaying the authenticated dashboard instead of the marketing landing page. The expected behavior describes a marketing landing page with hero image, gold CTA button, and 'Cova' branding — none of which are present.",
+      "element": "Entire page content",
+      "root_cause": "The root route (/) likely redirects to /dashboard, or the landing page is missing. The marketing landing page should be at apps/web/app/page.tsx but it may be redirecting authenticated users straight to /dashboard. The current URL should be / for the landing page, not /dashboard."
+    },
+    {
+      "severity": "critical",
+      "description": "Hydration errors on multiple pages including step-3 (aria-label mismatch: server 'Progress 5 percent' vs client 'Progress 15 percent') causing full root switch to client rendering.",
+      "element": "Progress component in apps/web/app/design/step-3/page.tsx",
+      "root_cause": "The aria-label for a progress element is computed differently on server vs client. The progress value (5 vs 15) is likely derived from state or a value that changes between SSR and hydration — possibly Math.random(), Date, or a value from localStorage/context that isn't available on the server."
+    },
+    {
+      "severity": "major",
+      "description": "Multiple 'Text content does not match server-rendered HTML' hydration errors across multiple pages.",
+      "element": "Multiple pages with dynamic text content",
+      "root_cause": "Dynamic content (like dates, times, or values from client-only sources) is being rendered differently on server vs client. The dashboard shows 'Thursday, April 16' which is a date that could differ between SSR and client rendering if not using suppressHydrationWarning or a stable date source."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "aria-label={`Progress ${",
+      "new_str": "suppressHydrationWarning aria-label={`Progress ${",
+      "reason": "The aria-label mismatch between server (5 percent) and client (15 percent) is causing a full hydration failure. Adding suppressHydrationWarning prevents React from throwing the hydration error for this specific attribute mismatch while the correct value loads on the client."
+    },
+    {
+      "file": "apps/web/app/dashboard/page.tsx",
+      "old_str": "<time>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</time>",
+      "new_str": "<time suppressHydrationWarning>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</time>",
+      "reason": "Date rendered server-side will differ from client-side render time, causing hydration mismatch. suppressHydrationWarning allows the client value to take over without error."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407509232,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407509233,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776407539274,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776407539276,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776407563962,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776407563964,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776407592419,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776407592421,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407624517,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407624519,\"url\":\"/dashboard\"}"
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "screen": "step-5",
+  "url": "http://localhost:3000/design/step-5",
+  "passed": false,
+  "attempt": 1,
+  "elements": 10,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "setIsMounted is not defined — repeated 14+ times in console errors, causing hydration failures and full client-side re-render fallback",
+      "element": "Page component — isMounted pattern",
+      "root_cause": "In apps/web/app/design/step-5/page.tsx, `setIsMounted` is called (likely in a useEffect) but `isMounted` state was never declared with useState. The variable was referenced without being defined, causing ReferenceError on every render cycle and cascading hydration errors."
+    },
+    {
+      "severity": "critical",
+      "description": "Hydration mismatch errors (Text content does not match server-rendered HTML) causing entire root to switch to client rendering",
+      "element": "Budget card price text / dynamic content",
+      "root_cause": "Without the isMounted guard working (due to setIsMounted not defined), dynamic content like price formatting or locale-dependent strings renders differently on server vs client. The missing useState declaration means the component cannot suppress SSR-mismatched content."
+    },
+    {
+      "severity": "major",
+      "description": "Continue button is not visible on screen — expected behavior specifies a Continue button should be present",
+      "element": "Continue button",
+      "root_cause": "The Continue button may be conditionally rendered only after a card is selected, or it may be rendered below the fold with no scroll, or it was omitted from the component. Given the hydration crash, the component may also be partially failing to render."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-5/page.tsx",
+      "old_str": "  useEffect(() => {\n    setIsMounted(true);\n  }, []);",
+      "new_str": "  const [isMounted, setIsMounted] = useState(false);\n\n  useEffect(() => {\n    setIsMounted(true);\n  }, []);",
+      "reason": "Adds the missing useState declaration for isMounted that setIsMounted references. This fixes the 'setIsMounted is not defined' ReferenceError and resolves the cascading hydration errors."
+    },
+    {
+      "file": "apps/web/app/design/step-5/page.tsx",
+      "old_str": "  const [selected, setSelected] = useState<string | null>(null);",
+      "new_str": "  const [selected, setSelected] = useState<string | null>(null);\n  const [isMounted, setIsMounted] = useState(false);",
+      "reason": "Fallback fix: if the useState for isMounted is entirely absent from the component (not just missing from before the useEffect), this adds it adjacent to other state declarations. Only apply one of the two isMounted fixes depending on where the gap is."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408957752,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408957755,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408959980,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408959982,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776408985060,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776408985062,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776409009224,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776409009225,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776409010728,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776409010729,\"url\":\"/design/step-5\"}"
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "screen": "step-7c",
+  "url": "http://localhost:3000/auth?next=%2Fdesign%2Fstep-7c",
+  "passed": false,
+  "attempt": 1,
+  "elements": 7,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Wrong screen displayed. The app is showing the auth page instead of the step-7c Keep/Remove furniture detection screen. The URL shows /auth?next=%2Fdesign%2Fstep-7c, meaning the user is being redirected to auth before reaching step-7c. This indicates that step-7c is a protected route and the user session is not persisted/authenticated, causing the middleware or route guard to redirect to /auth.",
+      "element": "Entire page — showing auth instead of step-7c Keep/Remove screen",
+      "root_cause": "The route /design/step-7c requires authentication. The middleware or a route guard in apps/web/middleware.ts (or similar) is redirecting unauthenticated users to /auth. The test/QA session is not authenticated, so every attempt to visit step-7c lands on the auth page. Additionally, the console shows 'page:mount' event for 'auth' page multiple times and a 400 error on a resource load, suggesting auth state is not being set. The step-7c page itself may also be missing or not scaffolded."
+    },
+    {
+      "severity": "major",
+      "description": "Console shows a 400 error on a failed resource load, likely related to an auth token or session API call failing during the auth page mount cycle.",
+      "element": "Failed to load resource: the server responded with a status of 400",
+      "root_cause": "An API call during auth page initialization (possibly to Supabase or a session endpoint) is returning 400. This may be in the auth page component making a malformed request, or an OAuth callback URL mismatch."
+    }
+  ],
+  "fixes": [],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405749361,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405749363,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405772080,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405772081,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405793146,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405793148,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405814630,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405814631,\"url\":\"/auth\"}"
+  ]
+}

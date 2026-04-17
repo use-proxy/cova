@@ -1,0 +1,47 @@
+{
+  "screen": "auth",
+  "url": "http://localhost:3000/auth",
+  "passed": false,
+  "attempt": 1,
+  "elements": 7,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "React hydration mismatch in apps/web/app/design/step-3/page.tsx causing full root hydration failure. Server renders '%s' but client renders 'Which room are we designing?' / 'Style Quiz'. This cascades to hydration errors across the entire app including the auth page.",
+      "element": "CovaStyleQuizPage heading/title text in step-3",
+      "root_cause": "In apps/web/app/design/step-3/page.tsx, a dynamic value (likely from useState or Math.random or Date or browser-only API) is used to render heading text differently on server vs client. The server interpolates a format string '%s' while the client renders actual text, suggesting a string formatting or i18n function is being called differently in SSR vs CSR context."
+    },
+    {
+      "severity": "major",
+      "description": "Multiple repeated hydration mismatch errors (7 instances) causing 'entire root will switch to client rendering', degrading performance and potentially causing layout flash on the auth page.",
+      "element": "React hydration - multiple pages",
+      "root_cause": "The root hydration failure originates in step-3/page.tsx and cascades. Additional mismatches may exist in other step pages using the same pattern."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "\"use client\"",
+      "new_str": "\"use client\"\nimport { useState, useEffect } from 'react'",
+      "reason": "Ensure useEffect is available for client-only rendering of dynamic text to prevent SSR/CSR mismatch"
+    },
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "Which room are we designing?",
+      "new_str": "Which room are we designing?",
+      "reason": "Placeholder - the actual fix depends on seeing the source. The real issue is that the heading text is likely generated via a function that behaves differently on server. If there is a format/template string call wrapping this text, it should be replaced with a static string or wrapped in useEffect/useState with a mounted guard."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776408426199,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776408426201,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776408455039,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776408455041,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776408477797,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776408477799,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776408502683,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776408502685,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408525712,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408525714,\"url\":\"/auth\"}"
+  ]
+}

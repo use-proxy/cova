@@ -1,0 +1,40 @@
+{
+  "screen": "step-4",
+  "url": "http://localhost:3000/design/step-4",
+  "passed": false,
+  "attempt": 1,
+  "elements": 6,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Radar chart with 6 dimensions (Warmth, Complexity, Organic, Layered, Heritage, Character) is missing from the visible area — the 'Fingerprint Map' section appears to be below the fold but the chart itself may not be rendering due to hydration errors",
+      "element": "Radar/Spider chart",
+      "root_cause": "Multiple hydration errors ('Text content does not match server-rendered HTML') are causing the entire root to switch to client rendering, which likely prevents the chart component (likely using a client-side library like recharts/d3) from rendering correctly. The server-rendered HTML doesn't match client output, possibly due to dynamic data or Math.random() calls in the chart component."
+    },
+    {
+      "severity": "critical",
+      "description": "Tweak input field is completely missing from the screen",
+      "element": "Tweak input field",
+      "root_cause": "The tweak/refinement input field expected per spec is not present in the rendered output. Either it was not implemented in apps/web/app/design/step-4/page.tsx or it is conditionally rendered and the condition evaluates to false."
+    },
+    {
+      "severity": "major",
+      "description": "Hydration errors causing server/client HTML mismatch - 7 hydration errors logged, entire root switching to client rendering",
+      "element": "Whole page hydration",
+      "root_cause": "Dynamic values (likely Date.now(), Math.random(), or non-deterministic data) are being used during server render that differ from client render in apps/web/app/design/step-4/page.tsx or its child components. This causes React to bail out of SSR hydration."
+    }
+  ],
+  "fixes": [],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776406389528,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776406389530,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406415289,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406415290,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776406435782,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776406435784,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776406437915,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776406437918,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776406466838,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776406466840,\"url\":\"/design/step-4\"}"
+  ]
+}

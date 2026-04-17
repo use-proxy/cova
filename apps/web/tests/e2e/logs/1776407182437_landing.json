@@ -1,0 +1,53 @@
+{
+  "screen": "landing",
+  "url": "http://localhost:3000/dashboard",
+  "passed": false,
+  "attempt": 1,
+  "elements": 27,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Wrong page shown: the URL /dashboard is showing the authenticated dashboard instead of the marketing landing page. The expected screen is the marketing landing page with hero image, gold CTA button, and marketing copy.",
+      "element": "Entire page content",
+      "root_cause": "The current URL is /dashboard which correctly renders the dashboard. The landing page should be at / (root route). Either the router is redirecting authenticated users to /dashboard when the test expects the landing page at /, or the landing page route is missing/broken."
+    },
+    {
+      "severity": "critical",
+      "description": "Hydration error in apps/web/app/design/step-3/page.tsx - style prop mismatch: server renders 'width:5%' but client renders 'width:15%'. This causes full root client-side re-render and multiple 'Text content does not match server-rendered HTML' errors.",
+      "element": "Progress bar div in step-3 page",
+      "root_cause": "In apps/web/app/design/step-3/page.tsx, a div has an inline style with width calculated dynamically (likely based on step number or state). The server-side value differs from client-side value, indicating a non-deterministic calculation or state that differs between SSR and hydration."
+    },
+    {
+      "severity": "major",
+      "description": "Multiple hydration errors: 'Text content does not match server-rendered HTML' appearing 7 times, causing full root switch to client rendering. These appear across multiple pages.",
+      "element": "Multiple page components",
+      "root_cause": "Dynamic content (dates, times, or browser-only values) rendered during SSR differs from client hydration. The 'Good evening, Amelia.' greeting uses time-based text that could differ between server and client render."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "style={{ width: `${",
+      "new_str": "suppressHydrationWarning style={{ width: `${",
+      "reason": "The progress bar width differs between SSR and client. Adding suppressHydrationWarning prevents the hydration mismatch error from crashing the entire app while the root cause is investigated."
+    },
+    {
+      "file": "apps/web/app/dashboard/page.tsx",
+      "old_str": "Good evening, Amelia.",
+      "new_str": "Good evening, Amelia.",
+      "reason": "Placeholder - see next_action for the real greeting fix needed"
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407055294,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407055296,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776407080544,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776407080547,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776407106992,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776407106994,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776407131124,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776407131125,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407155876,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407155878,\"url\":\"/dashboard\"}"
+  ]
+}

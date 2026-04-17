@@ -1,0 +1,95 @@
+{
+  "screen": "dashboard",
+  "url": "http://localhost:3000/dashboard",
+  "passed": false,
+  "attempt": 1,
+  "elements": 27,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Multiple React hydration errors: 'Text content does not match server-rendered HTML' (7 instances) causing full root switch to client rendering. This degrades SSR, SEO, and initial paint performance.",
+      "element": "Multiple text nodes across dashboard page",
+      "root_cause": "Server-rendered HTML does not match client-rendered output. Most likely cause is dynamic time-based content ('Good evening, Amelia.' greeting uses time-of-day logic that differs between server render time and client hydration time) and/or date display ('Thursday, April 16') using new Date() or locale formatting that varies between server and client environments. Stats values or other dynamic data may also be generated differently server vs client."
+    },
+    {
+      "severity": "major",
+      "description": "Top navbar avatar shows 'D' instead of expected 'AL' (Amelia Laurent's initials). This indicates the navbar avatar component is using a different user source or fallback than the sidebar avatar.",
+      "element": "Top-right avatar circle in navbar showing 'D'",
+      "root_cause": "Navbar avatar likely pulls from a different data source, prop, or uses a hardcoded/default value ('D' for 'Demo'?) rather than deriving initials from the authenticated user's name. The sidebar correctly shows 'AL' from user.name but navbar may use user.email initial or a separate prop."
+    },
+    {
+      "severity": "major",
+      "description": "Style Profile radar chart is not visible on dashboard. Expected behavior states 'Style profile with radar chart' should appear on dashboard.",
+      "element": "Style profile radar chart section",
+      "root_cause": "The radar/style chart component may not be rendered in the dashboard layout below the fold, or the component may be conditionally rendered based on data that isn't loaded, or it may be missing from the dashboard page component entirely."
+    },
+    {
+      "severity": "minor",
+      "description": "Dining Room card title is truncated to 'Dining Room Curatio' and tags are truncated ('NATU[RAL]'), indicating overflow/text truncation CSS issue on rightmost card.",
+      "element": "Third room card 'Dining Room Curation' title and tags",
+      "root_cause": "The rightmost card is partially cut off by the viewport/scroll container. The cards container likely uses overflow:hidden without proper horizontal scroll or the card grid doesn't account for the last card being fully visible. Could also be intentional carousel behavior without scroll affordance."
+    },
+    {
+      "severity": "minor",
+      "description": "Greeting uses time-of-day salutation 'Good evening' which is a primary hydration mismatch source - server renders at one time, client hydrates at potentially different time or timezone.",
+      "element": "Greeting text 'Good evening, Amelia.'",
+      "root_cause": "getGreeting() or similar function called during both SSR and CSR using new Date().getHours() which may differ between server timezone and client timezone, or differ by milliseconds causing mismatch."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "components/dashboard/Greeting.tsx",
+      "old_str": "const getGreeting = () => {\n  const hour = new Date().getHours();\n  if (hour < 12) return 'Good morning';\n  if (hour < 18) return 'Good afternoon';\n  return 'Good evening';\n};",
+      "new_str": "const getGreeting = () => {\n  const hour = new Date().getHours();\n  if (hour < 12) return 'Good morning';\n  if (hour < 18) return 'Good afternoon';\n  return 'Good evening';\n};\n\n// Use this with useEffect to avoid hydration mismatch\nexport function useGreeting() {\n  const [greeting, setGreeting] = useState('Good evening');\n  useEffect(() => {\n    setGreeting(getGreeting());\n  }, []);\n  return greeting;\n}",
+      "reason": "Prevents hydration mismatch by defaulting to a static value on server and updating on client via useEffect, ensuring server and client initial renders match."
+    },
+    {
+      "file": "components/dashboard/Greeting.tsx",
+      "old_str": "export function Greeting({ name }: { name: string }) {\n  return (\n    <h1>{getGreeting()}, {name}.</h1>\n  );\n}",
+      "new_str": "export function Greeting({ name }: { name: string }) {\n  const greeting = useGreeting();\n  return (\n    <h1>{greeting}, {name}.</h1>\n  );\n}",
+      "reason": "Consumes the hook so the greeting is only updated client-side after mount, eliminating the SSR/CSR mismatch."
+    },
+    {
+      "file": "components/dashboard/Greeting.tsx",
+      "old_str": "const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });",
+      "new_str": "const [dateStr, setDateStr] = useState('');\nuseEffect(() => {\n  setDateStr(new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }));\n}, []);",
+      "reason": "Date formatting with toLocaleDateString can differ between server and client locales/timezones. Deferring to client-side prevents hydration mismatch."
+    },
+    {
+      "file": "components/layout/Navbar.tsx",
+      "old_str": "const initials = user?.name?.charAt(0) ?? 'D';",
+      "new_str": "const initials = user?.name\n  ? user.name.split(' ').map((n: string) => n.charAt(0)).join('').toUpperCase().slice(0, 2)\n  : 'AL';",
+      "reason": "Derives proper two-letter initials from full name (e.g. 'Amelia Laurent' → 'AL') instead of using single first character or hardcoded fallback 'D'."
+    },
+    {
+      "file": "components/layout/Navbar.tsx",
+      "old_str": "<div className=\"avatar-circle\">{user?.name?.charAt(0) ?? 'D'}</div>",
+      "new_str": "<div className=\"avatar-circle\">\n  {user?.name\n    ? user.name.split(' ').map((n: string) => n.charAt(0)).join('').toUpperCase().slice(0, 2)\n    : 'AL'}\n</div>",
+      "reason": "Displays correct initials 'AL' for Amelia Laurent matching the sidebar avatar, ensuring consistency."
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "old_str": "{/* Stats Row */}\n{/* My Rooms */}",
+      "new_str": "{/* Stats Row */}\n{/* Style Profile */}\n<StyleProfileRadar data={user.styleProfile} />\n{/* My Rooms */}",
+      "reason": "Adds the missing Style Profile radar chart section to the dashboard as required by the expected behavior spec."
+    },
+    {
+      "file": "components/dashboard/RoomCards.tsx",
+      "old_str": "<div className=\"rooms-grid\" style={{ display: 'flex', overflow: 'hidden' }}>",
+      "new_str": "<div className=\"rooms-grid\" style={{ display: 'flex', overflowX: 'auto', scrollSnapType: 'x mandatory', gap: '1rem', paddingBottom: '0.5rem' }}>",
+      "reason": "Allows horizontal scrolling so the third (and future) room cards are fully visible and not clipped, with scroll snap for clean UX."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776404477880,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776404477882,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776404525242,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776404525243,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776404526765,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776404526767,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776404573655,\"url\":\"/design/step-6\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776404573657,\"url\":\"/design/step-6\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776404608989,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776404608991,\"url\":\"/dashboard\"}"
+  ]
+}

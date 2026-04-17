@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { flowLog } from "@/lib/debug/flow-logger";
 import { useFingerprintStore } from "@/lib/store/fingerprint";
 import type { StyleFingerprint } from "@/types/fingerprint";
 import "../step-1/step1.css";
@@ -50,6 +51,7 @@ function stripMarkdown(text: string): string {
 
 export default function StepFourPage() {
   const router = useRouter();
+  useEffect(() => { flowLog("page:mount", { page: "step-4" }); }, []);
   const revealCanvasRef = useRef<HTMLCanvasElement>(null);
   const particleCanvasRef = useRef<HTMLCanvasElement>(null);
   const radarCanvasRef = useRef<HTMLCanvasElement>(null);

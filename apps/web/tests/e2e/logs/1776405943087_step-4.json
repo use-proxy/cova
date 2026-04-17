@@ -1,0 +1,40 @@
+{
+  "screen": "step-4",
+  "url": "http://localhost:3000/design/step-4",
+  "passed": false,
+  "attempt": 1,
+  "elements": 6,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Radar chart with 6 dimensions (Warmth, Complexity, Organic, Layered, Heritage, Character) is completely missing from the visible screen. Expected to be present in the 'YOUR STYLE DNA / Fingerprint Map' section.",
+      "element": "Radar/spider chart component",
+      "root_cause": "The radar chart component is either not rendered, conditionally hidden, or the 'Fingerprint Map' section is below the fold but may not be rendering the chart at all. Could be a missing import, a null data guard that returns null, or a charting library (e.g. recharts RadarChart) not receiving the required data props."
+    },
+    {
+      "severity": "critical",
+      "description": "Tweak input field is missing. The expected behavior specifies a text input allowing users to tweak their style fingerprint before continuing.",
+      "element": "Tweak input field",
+      "root_cause": "The tweak input field component is either not implemented or not rendered in apps/web/app/design/step-4/page.tsx."
+    },
+    {
+      "severity": "major",
+      "description": "The CTA button says 'Design My Room' but expected behavior specifies a 'Continue' button. The button label is wrong for this step.",
+      "element": "Continue/CTA button label",
+      "root_cause": "In apps/web/app/design/step-4/page.tsx the button text is hardcoded as 'Design My Room' instead of 'Continue'."
+    }
+  ],
+  "fixes": [],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405836664,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405836665,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405881949,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405881951,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776405901101,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776405901106,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776405902979,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776405902981,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776405922189,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776405922191,\"url\":\"/design/step-4\"}"
+  ]
+}

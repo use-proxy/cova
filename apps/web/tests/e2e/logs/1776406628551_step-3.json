@@ -1,0 +1,51 @@
+{
+  "screen": "step-3",
+  "url": "http://localhost:3000/design/step-3",
+  "passed": false,
+  "attempt": 1,
+  "elements": 5,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Hydration error: progress bar width mismatches between server ('width:5%') and client ('width:15%'). This causes full root hydration failure and multiple 'Text content does not match server-rendered HTML' errors.",
+      "element": "Progress bar div with inline style width",
+      "root_cause": "In apps/web/app/design/step-3/page.tsx, the progress bar width is computed dynamically (likely based on currentQuestion state or Math.random()), producing different values on server vs client. Server renders 5% but client hydrates to 15%."
+    },
+    {
+      "severity": "major",
+      "description": "Progress counter shows 'Question 1 of 3' but this is step-3 of the design flow. The question counter may be resetting to 1 on each render due to state initialization mismatch during hydration.",
+      "element": "Question counter text",
+      "root_cause": "State initialized to 1 on both server and client but hydration failure causes client re-render resetting to initial state, or the progress width is derived from question index causing the mismatch."
+    },
+    {
+      "severity": "minor",
+      "description": "No room images visible despite expected behavior describing 'Two room images side by side for preference selection'. The current question is text-only which may be acceptable for question 1.",
+      "element": "Room comparison images",
+      "root_cause": "Current question type is text-options rather than image comparison. May be correct for Q1 of 3."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "style={{ width: `${(currentQuestion / totalQuestions) * 100}%` }}",
+      "new_str": "style={{ width: `${Math.round((currentQuestion / totalQuestions) * 100)}%` }}",
+      "reason": "Ensure consistent integer percentage calculation between server and client to prevent hydration mismatch."
+    },
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "'use client'",
+      "new_str": "'use client'\nimport { useState, useEffect } from 'react'",
+      "reason": "Ensure client directive is present and hooks are imported for suppressing hydration issues."
+    },
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "const [currentQuestion, setCurrentQuestion] = useState(1);",
+      "new_str": "const [currentQuestion, setCurrentQuestion] = useState(1);\n  const [mounted, setMounted] = useState(false);\n  useEffect(() => { setMounted(true); }, []);",
+      "reason": "Defer dynamic rendering until after mount to prevent server/client width mismatch on the progress bar."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776406604615,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776406604617,\"url\":\"/design/step-3\"}"
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "screen": "step-7c",
+  "url": "http://localhost:3000/design/step-7c",
+  "passed": false,
+  "attempt": 1,
+  "elements": 0,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Page is stuck in 'Analyzing your room...' loading state indefinitely. No furniture items are shown, no room image with orange overlays, no keep/remove toggles, and no Continue button. The page never transitions out of the loading skeleton.",
+      "element": "Entire step-7c page content",
+      "root_cause": "The page likely reads pre_detection_result from localStorage/store and either: (1) the data is not present so loading state never resolves, or (2) there is a hydration mismatch causing the component to stay in skeleton state. The multiple hydration errors in console confirm server/client state mismatch, which likely causes the component to re-render on client with empty/missing data and stay stuck in loading."
+    },
+    {
+      "severity": "major",
+      "description": "Multiple React hydration errors: 'Text content does not match server-rendered HTML' and 'entire root will switch to client rendering'. This causes the page to fully re-render on client and lose any SSR state, contributing to the stuck loading state.",
+      "element": "Hydration / SSR mismatch",
+      "root_cause": "The step-7c page likely accesses localStorage or browser-only APIs (like zustand store with localStorage persistence) during render without guarding with useEffect or isMounted pattern, causing server and client renders to differ."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-7c/page.tsx",
+      "old_str": "const [isLoading, setIsLoading] = useState(true);",
+      "new_str": "const [isLoading, setIsLoading] = useState(false);",
+      "reason": "If loading state is initialized to true without a mechanism to set it false when data is already available, the page stays stuck. Setting it to false allows the component to render with available data immediately."
+    },
+    {
+      "file": "apps/web/app/design/step-7c/page.tsx",
+      "old_str": "const [mounted, setMounted] = useState(false);\n\n  useEffect(() => {\n    setMounted(true);\n  }, []);\n\n  if (!mounted) return null;",
+      "new_str": "const [mounted, setMounted] = useState(true);",
+      "reason": "If the page uses a mounted guard that returns null on server, it causes hydration mismatch. Removing the null-return guard while keeping client-only data access in useEffect fixes hydration errors."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407055294,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407055296,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776407080544,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776407080547,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776407106992,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776407106994,\"url\":\"/design/step-7c\"}"
+  ]
+}

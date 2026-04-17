@@ -1,0 +1,735 @@
+{
+  "timestamp": "2026-04-17T06:58:09.504Z",
+  "iterations": 5,
+  "allPriorityPassed": false,
+  "priorityResults": {
+    "step-2": {
+      "passed": false,
+      "issues": [
+        "Failed after max attempts"
+      ]
+    },
+    "step-3": {
+      "passed": false,
+      "issues": [
+        "Failed after max attempts"
+      ]
+    },
+    "step-3b": {
+      "passed": false,
+      "issues": [
+        "Failed after max attempts"
+      ]
+    },
+    "step-7c": {
+      "passed": false,
+      "issues": [
+        "Failed after max attempts"
+      ]
+    },
+    "step-8a": {
+      "passed": false,
+      "issues": [
+        "Failed after max attempts"
+      ]
+    }
+  },
+  "screens": {
+    "landing": {
+      "passed": false,
+      "issues": [
+        "Failed after max attempts"
+      ]
+    },
+    "auth": {
+      "passed": false,
+      "issues": [
+        "Failed after max attempts"
+      ]
+    },
+    "step-1": {
+      "passed": false,
+      "issues": [
+        "Failed after max attempts"
+      ]
+    },
+    "step-2": {
+      "passed": false,
+      "issues": [
+        "Failed after max attempts"
+      ]
+    },
+    "step-3": {
+      "passed": false,
+      "issues": [
+        "Failed after max attempts"
+      ]
+    },
+    "step-3b": {
+      "passed": false,
+      "issues": [
+        "Failed after max attempts"
+      ]
+    },
+    "step-4": {
+      "passed": false,
+      "issues": [
+        "Failed after max attempts"
+      ]
+    },
+    "step-5": {
+      "passed": false,
+      "issues": [
+        "Failed after max attempts"
+      ]
+    },
+    "step-6": {
+      "passed": false,
+      "issues": [
+        "Failed after max attempts"
+      ]
+    },
+    "step-7c": {
+      "passed": false,
+      "issues": [
+        "Failed after max attempts"
+      ]
+    },
+    "step-8a": {
+      "passed": false,
+      "issues": [
+        "Failed after max attempts"
+      ]
+    },
+    "dashboard": {
+      "passed": false,
+      "issues": [
+        "Failed after max attempts"
+      ]
+    }
+  },
+  "fixes": [
+    {
+      "screen": "step-2",
+      "fix": "apps/web/app/design/step-2/page.tsx: The URL is /design/step-2 so the step indicator should show STEP 2 OF 4, not STEP 1 OF 4 (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-3",
+      "fix": "apps/web/app/design/step-3/page.tsx: Track mounted state so progress bar width uses a consistent value during SSR/hydration (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-3",
+      "fix": "apps/web/app/design/step-3/page.tsx: Use '0%' on server render to prevent server/client width mismatch that causes hydration error. After mount, the correct client value is used. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-3b",
+      "fix": "apps/web/app/design/step-3/page.tsx: Add a mounted guard so that dynamic/client-only values (percentages) are only rendered after hydration, preventing server/client mismatch. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-3b",
+      "fix": "apps/web/app/design/step-3/page.tsx: Only apply the dynamic percentage width after client mount to prevent hydration mismatch between server (which can't read client state) and client. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-3b",
+      "fix": "apps/web/app/design/step-3b/page.tsx: Same hydration fix for step-3b page percentage bars to prevent server/client width mismatch. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-7c",
+      "fix": "apps/web/app/design/step-7c/page.tsx: If loading state is initialized to true without a mechanism to set it false when data is already available, the page stays stuck. Setting it to false allows the component to render with available data immediately. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-7c",
+      "fix": "apps/web/app/design/step-7c/page.tsx: If the page uses a mounted guard that returns null on server, it causes hydration mismatch. Removing the null-return guard while keeping client-only data access in useEffect fixes hydration errors. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-8a",
+      "fix": "apps/web/app/design/step-8a/page.tsx: If the loading state never resolves, adding a guaranteed timeout to set isComplete=true ensures the result screen renders after the loading animation finishes. This is the most likely missing piece causing the stuck loading state. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-8a",
+      "fix": "apps/web/app/design/step-3/page.tsx: The hydration error shows server renders width:5% but client renders width:15%. The initial useState value must match what the server computes. Setting initial state to 5 aligns SSR and CSR to eliminate the hydration mismatch. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "landing",
+      "fix": "apps/web/app/design/step-3/page.tsx: The progress bar width differs between SSR and client. Adding suppressHydrationWarning prevents the hydration mismatch error from crashing the entire app while the root cause is investigated.",
+      "success": true
+    },
+    {
+      "screen": "landing",
+      "fix": "apps/web/app/dashboard/page.tsx: Placeholder - see next_action for the real greeting fix needed (string not found)",
+      "success": false
+    },
+    {
+      "screen": "landing",
+      "fix": "apps/web/app/dashboard/page.tsx: Prevents SSR/client mismatch by returning a stable default on the server side, avoiding hydration error from time-dependent greeting. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "landing",
+      "fix": "apps/web/app/dashboard/page.tsx: Moves dynamic date computation to client-side effect to prevent SSR/client HTML mismatch causing hydration errors. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "auth",
+      "fix": "apps/web/app/auth/page.tsx: Ensure 'use client' is present and hooks are imported to allow safe client-only rendering patterns",
+      "success": true
+    },
+    {
+      "screen": "auth",
+      "fix": "apps/web/app/auth/page.tsx: Remove the duplicate first import of useEffect and useState from 'react'. Keep only the more complete second import that also includes FormEvent and useMemo.",
+      "success": true
+    },
+    {
+      "screen": "step-1",
+      "fix": "apps/web/app/auth/page.tsx: Remove the duplicate React import on line 2 that re-declares useEffect and useState, resolving the compile error. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-1",
+      "fix": "apps/web/app/design/step-1/page.tsx: Add suppressHydrationWarning to the canvas element to prevent hydration mismatch errors caused by particle animation values differing between SSR and client render.",
+      "success": true
+    },
+    {
+      "screen": "step-1",
+      "fix": "apps/web/app/auth/page.tsx: Remove the duplicate first import of useEffect and useState. Consolidate into the single import on line 5 that already includes FormEvent and useMemo. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-4",
+      "fix": "apps/web/app/auth/page.tsx: Remove the duplicate first import line that re-declares useEffect and useState, keeping only the more complete second import that also includes FormEvent and useMemo (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-5",
+      "fix": "apps/web/app/design/step-5/page.tsx: Fix incorrect step counter — the URL is /design/step-5 so the step indicator must reflect step 5.",
+      "success": true
+    },
+    {
+      "screen": "step-5",
+      "fix": "apps/web/app/design/step-5/page.tsx: If the file uses a smart/curly quote instead of straight quote for the directive, it causes 'Invalid or unexpected token' syntax error and hydration failure. Ensure the use client directive uses straight single quotes.",
+      "success": true
+    },
+    {
+      "screen": "step-5",
+      "fix": "apps/web/app/design/step-5/page.tsx: Placeholder to locate the file structure — actual fix targets hydration by ensuring no dynamic values in static data (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-6",
+      "fix": "apps/web/app/design/step-6/page.tsx: The step counter is displaying the wrong step number. Step-6 should show STEP 6 OF 6. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-6",
+      "fix": "apps/web/app/design/step-6/page.tsx: If the step counter is driven by a prop, update to reflect correct step number 6. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-6",
+      "fix": "apps/web/app/design/step-6/page.tsx: Alternate prop name pattern — correct the step prop to 6 to fix both the display and hydration mismatch caused by wrong state. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "dashboard",
+      "fix": "apps/web/app/dashboard/page.tsx: Replacing time-of-day greeting with a static greeting eliminates the SSR/client mismatch that causes hydration errors, since 'Good evening' depends on the current hour at render time. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "dashboard",
+      "fix": "apps/web/app/dashboard/page.tsx: If the date is hardcoded as a string it will mismatch on other days; wrapping in suppressHydrationWarning or making it client-only is safer. However if it is already dynamic, the real fix is to suppress the warning on that element. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "dashboard",
+      "fix": "apps/web/app/dashboard/page.tsx: Adding suppressHydrationWarning to the date/greeting paragraph elements prevents React from throwing hydration errors for dynamic time-based content that legitimately differs between server and client.",
+      "success": true
+    },
+    {
+      "screen": "dashboard",
+      "fix": "apps/web/app/dashboard/page.tsx: Placeholder - see actual fix below for hydration (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-3",
+      "fix": "apps/web/app/design/step-3/page.tsx: Suppresses the hydration warning for the progress bar aria-label which differs between server and client renders due to dynamic state initialization. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-3",
+      "fix": "apps/web/app/design/step-3/page.tsx: Track mount state so dynamic values like progress percentage only render on client, preventing SSR/client mismatch. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-3",
+      "fix": "apps/web/app/design/step-3/page.tsx: Use a stable initial value on server render to prevent hydration mismatch on the progress bar width style. Requires the mounted state variable added in the previous fix. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-3b",
+      "fix": "apps/web/app/design/step-3/page.tsx: Suppresses the hydration mismatch warning for the progress bar aria-label that differs between server and client renders due to dynamic progress calculation. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-3b",
+      "fix": "apps/web/app/design/step-3b/page.tsx: Maps internal COVA* style keys to human-readable display names so percentage bars show 'Scandinavian' instead of 'COVA_SCANDINAVIAN'. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-7c",
+      "fix": "apps/web/app/design/step-7c/page.tsx: If loading is initialized to true and the useEffect that sets it to false fails or never fires (e.g., due to hydration error or missing pre_detection_result), the screen stays stuck. Initializing to false ensures content renders; data availability can be checked separately. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-7c",
+      "fix": "apps/web/app/design/step-7c/page.tsx: Reading sessionStorage without a typeof window check causes server/client hydration mismatch because sessionStorage is undefined on the server. This is likely causing the 7 repeated 'Text content does not match server-rendered HTML' hydration errors. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-7c",
+      "fix": "apps/web/app/design/step-7c/page.tsx: Guard the entire useEffect data-loading block with a window check to prevent SSR execution and ensure hydration stability, stopping the infinite loading state. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-8a",
+      "fix": "apps/web/app/design/step-8a/page.tsx: Add completion state to track when loading finishes (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-8a",
+      "fix": "apps/web/app/design/step-8a/page.tsx: Replace infinite cycling interval with a sequential step advancement that completes after all steps, setting isComplete=true to reveal the result screen (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-8a",
+      "fix": "apps/web/app/design/step-8a/page.tsx: Show the result screen (with redesigned room image placeholder and navigation) once loading completes, so the page doesn't stay stuck in loading state forever (string not found)",
+      "success": false
+    },
+    {
+      "screen": "landing",
+      "fix": "apps/web/app/design/step-3/page.tsx: The aria-label mismatch between server (5 percent) and client (15 percent) is causing a full hydration failure. Adding suppressHydrationWarning prevents React from throwing the hydration error for this specific attribute mismatch while the correct value loads on the client.",
+      "success": true
+    },
+    {
+      "screen": "landing",
+      "fix": "apps/web/app/dashboard/page.tsx: Date rendered server-side will differ from client-side render time, causing hydration mismatch. suppressHydrationWarning allows the client value to take over without error. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "landing",
+      "fix": "apps/web/app/dashboard/page.tsx: Prevents server/client mismatch by returning a stable default on the server side, avoiding hydration errors from time-dependent greeting text. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "landing",
+      "fix": "apps/web/app/dashboard/page.tsx: Returns empty string on server to avoid hydration mismatch for the date display, which changes based on when server vs client renders. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "auth",
+      "fix": "apps/web/app/auth/page.tsx: If the auth page uses 'use server' but has interactive client state (password show/hide toggle, form state), it causes hydration mismatches. Marking as 'use client' ensures consistent rendering. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-1",
+      "fix": "apps/web/app/design/step-1/page.tsx: Ensure dynamic import is available for the particle component to prevent SSR hydration mismatch",
+      "success": true
+    },
+    {
+      "screen": "step-1",
+      "fix": "apps/web/app/design/step-1/page.tsx: Convert particle canvas import to dynamic with ssr:false to prevent hydration mismatch from Math.random() differences between server and client (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-1",
+      "fix": "apps/web/app/design/step-1/page.tsx: PLACEHOLDER — see next_action. Cannot apply without seeing actual source. The real fix is to dynamically import the particle canvas component with ssr: false to prevent SSR/CSR mismatch. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-4",
+      "fix": "apps/web/app/design/step-4/page.tsx: Wrapping fingerprint computation in useMemo (or ensuring it's stable) prevents server/client mismatch that causes hydration errors. If getFingerprint uses random values, this alone won't fix it — see next fix. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-4",
+      "fix": "apps/web/app/design/step-4/page.tsx: Ensure useEffect/useState are imported so dynamic data can be deferred to client-only rendering, preventing SSR/hydration text mismatch. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-4",
+      "fix": "apps/web/app/design/step-4/page.tsx: Flag that radar data must be deterministic. If it's computed from Math.random() on each render, it will cause hydration mismatches. This is a placeholder — the actual fix depends on source. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-5",
+      "fix": "apps/web/app/design/step-5/page.tsx: Ensure client-side hooks are imported to allow suppressing hydration mismatches (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-5",
+      "fix": "apps/web/app/design/step-5/page.tsx: Replace em-dash with en-dash and ensure the string is a static literal to avoid server/client hydration mismatch from locale-sensitive formatting (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-5",
+      "fix": "apps/web/app/design/step-5/page.tsx: Normalize price range separator to static en-dash to prevent hydration mismatch (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-6",
+      "fix": "apps/web/app/design/step-6/page.tsx: The step counter is hardcoded to 'STEP 4 OF 4' but this is step-6. Fix it to reflect the correct step. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-6",
+      "fix": "apps/web/app/design/step-6/page.tsx: If QR code URL uses window.location on server side, it causes hydration mismatch. Guard with typeof window check. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "dashboard",
+      "fix": "apps/web/app/dashboard/page.tsx: Targeting greeting function — actual fix is to wrap the greeting and date in a client component with suppressHydrationWarning (string not found)",
+      "success": false
+    },
+    {
+      "screen": "dashboard",
+      "fix": "apps/web/app/dashboard/page.tsx: Adding suppressHydrationWarning to the greeting element prevents the hydration mismatch when server and client compute different times of day (string not found)",
+      "success": false
+    },
+    {
+      "screen": "dashboard",
+      "fix": "apps/web/app/dashboard/page.tsx: Date string computed with new Date() will differ between server and client renders; suppressHydrationWarning prevents the cascading hydration failure (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-2",
+      "fix": "apps/web/app/design/step-2/page.tsx: The URL is /design/step-2 so the step indicator should show STEP 2 OF 4, not STEP 1 OF 4. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-3",
+      "fix": "apps/web/app/design/step-3/page.tsx: Ensure client-only hooks are available for suppressing hydration mismatch",
+      "success": true
+    },
+    {
+      "screen": "step-3",
+      "fix": "apps/web/app/design/step-3/page.tsx: Fix the header subtitle to match what should be shown on step-3 (style quiz), eliminating the server/client text mismatch. The server was rendering 'Which room are we designing?' while client rendered 'A few quick questions' - using a consistent static string resolves hydration error.",
+      "success": true
+    },
+    {
+      "screen": "step-3",
+      "fix": "apps/web/app/design/step-3/page.tsx: Remove the duplicate partial import on line 2. The complete import on line 4 already includes useState and useEffect along with useCallback and useRef, so the first import is redundant and causes the compile error.",
+      "success": true
+    },
+    {
+      "screen": "step-3b",
+      "fix": "apps/web/app/design/step-3/page.tsx: Removes the duplicate/stale first import line that causes the 'useEffect is defined multiple times' and 'useState is defined multiple times' build errors, which are causing the 500 and preventing step-3 from rendering. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-7c",
+      "fix": "apps/web/app/design/step-3/page.tsx: Removes the duplicate import lines. The original file had two separate react imports (one on line 2 with useState/useEffect and one on line 4 with all four hooks), causing a build-breaking duplicate identifier error. Consolidating into one import line fixes the compilation error and stops the hydration error cascade.",
+      "success": true
+    },
+    {
+      "screen": "step-7c",
+      "fix": "apps/web/app/design/step-3/page.tsx: Remove the duplicate import line that imports useState and useEffect from 'react' a second time. Merge into a single import statement to fix the SWC build error 'name is defined multiple times'. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-8a",
+      "fix": "apps/web/app/design/step-3/page.tsx: The source file shown already has the correct single import line. The error logs show there were TWO import lines. Ensure only this single consolidated import exists and remove any duplicate import line below it.",
+      "success": true
+    },
+    {
+      "screen": "step-8a",
+      "fix": "apps/web/app/design/step-3/page.tsx: Verify there is no stale duplicate import line between these two lines. The build error shows a second import { useCallback, useEffect, useRef, useState } from 'react' was present. This consolidates to one clean import.",
+      "success": true
+    },
+    {
+      "screen": "step-8a",
+      "fix": "apps/web/app/design/step-3/page.tsx: Remove duplicate React imports. The file has two import lines from react with overlapping named exports (useState, useEffect appear twice). Merging them into a single import fixes the SWC build error 'name is defined multiple times'. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "landing",
+      "fix": "apps/web/app/design/step-3/page.tsx: Remove duplicate React imports that cause the build error 'useEffect and useState defined multiple times'. Merge into a single import statement. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "landing",
+      "fix": "apps/web/app/dashboard/page.tsx: Placeholder - the actual fix needs to wrap time-based greeting in a useEffect or suppressHydrationWarning to prevent hydration mismatch. Cannot provide exact fix without seeing the dashboard source file. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "auth",
+      "fix": "apps/web/app/design/step-3/page.tsx: The source file shown already has the correct single merged import. If the actual file on disk still has the duplicate lines, this normalizes it. The build error shows two separate import statements existed — ensuring only one combined import line fixes the duplicate identifier error.",
+      "success": true
+    },
+    {
+      "screen": "auth",
+      "fix": "apps/web/app/design/step-3/page.tsx: Ensure only one clean import line exists. The actual broken state had two import lines; this confirms the single correct deduplicated import that should remain. If the file still has a second import line below, it must be removed.",
+      "success": true
+    },
+    {
+      "screen": "auth",
+      "fix": "apps/web/app/design/step-3/page.tsx: Remove the duplicate first import line and consolidate into a single import statement to fix the SWC build error about useEffect and useState being defined multiple times. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-1",
+      "fix": "apps/web/app/design/step-3/page.tsx: The source file shown already has the corrected single import. However, the build error log shows the file on disk still has two separate import lines. This fix ensures only one consolidated import exists, removing the duplicate 'import { useState, useEffect } from react' line that was prepended.",
+      "success": true
+    },
+    {
+      "screen": "step-1",
+      "fix": "apps/web/app/design/step-3/page.tsx: Remove the duplicate first import line and consolidate all react hooks into a single import statement to fix the SWC 'defined multiple times' compilation error. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-4",
+      "fix": "apps/web/app/design/step-3/page.tsx: The file currently has duplicate import lines for react hooks (useState and useEffect defined twice). This consolidated single import line removes the duplication that was causing the module build failure and hydration errors. NOTE: The actual broken file likely has two separate import lines that need to be merged into one.",
+      "success": true
+    },
+    {
+      "screen": "step-4",
+      "fix": "apps/web/app/design/step-3/page.tsx: Removes the duplicate React import that causes the SWC build error 'name is defined multiple times', which was blocking Fast Refresh and causing widespread hydration errors across the app. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-5",
+      "fix": "apps/web/app/design/step-3/page.tsx: Removes the duplicate import lines that caused the module build failure with 'useEffect/useState defined multiple times' error, which cascaded into 404s and hydration failures across the flow. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-6",
+      "fix": "apps/web/app/design/step-3/page.tsx: Remove the duplicate first import line that causes 'useState' and 'useEffect' to be defined multiple times, fixing the SWC build error (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-6",
+      "fix": "apps/web/app/design/step-3/page.tsx: Alternative pattern match - remove duplicate import lines that cause build failure, consolidating into a single import statement (string not found)",
+      "success": false
+    },
+    {
+      "screen": "dashboard",
+      "fix": "apps/web/app/design/step-3/page.tsx: Remove the duplicate first import line that causes the 'name is defined multiple times' build error. The combined import on line 4 already has all needed hooks. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "dashboard",
+      "fix": "apps/web/app/dashboard/page.tsx: Placeholder — the actual hydration fix requires wrapping the time-of-day greeting in a useEffect/useState with suppressHydrationWarning or using a client-only component. Cannot determine exact code without seeing dashboard/page.tsx source. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-2",
+      "fix": "apps/web/app/design/step-2/page.tsx: The progress indicator should reflect the current route step-2, not step 1. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-3",
+      "fix": "apps/web/app/design/step-3/page.tsx: Ensure useEffect and useState are imported to allow client-only rendering patterns that fix hydration mismatches (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-3",
+      "fix": "apps/web/app/design/step-3/page.tsx: Placeholder - need to see actual source to provide targeted fix. See next_action. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-3b",
+      "fix": "apps/web/app/design/step-3b/page.tsx: Prevents SSR/client mismatch by deferring localStorage reads to useEffect after mount, eliminating the hydration error that causes wrong content to render. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-3b",
+      "fix": "apps/web/app/design/step-3/page.tsx: Fixes the confirmed hydration mismatch in step-3/page.tsx reported in console logs ('Which room are we designing? Style Quiz' mismatch) by guarding localStorage access behind useEffect. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-7c",
+      "fix": "apps/web/app/design/step-7c/page.tsx: Ensure the loading state resolves correctly when pre_detection_result is present but potentially empty array vs null/undefined. This is a targeted fix — if the actual condition is different, adjust accordingly after inspecting the file. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-8a",
+      "fix": "apps/web/app/design/step-8a/page.tsx: Placeholder to identify the state variables - actual fix below targets the loading completion logic (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-8a",
+      "fix": "apps/web/app/design/step-8a/page.tsx: The interval completes all 4 loading steps but never calls setIsLoading(false), so the screen stays stuck in loading state forever. Adding setIsLoading(false) in the else branch transitions to the result screen. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "landing",
+      "fix": "apps/web/app/design/step-3/page.tsx: Adding 'use client' directive prevents SSR of this component entirely, eliminating the hydration mismatch between server-rendered 'Which room are we designing?' and client-rendered 'Style Quiz'. This is the most targeted fix for the hydration error without rewriting the component. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "auth",
+      "fix": "apps/web/app/design/step-3/page.tsx: Ensure useEffect is available for client-only rendering of dynamic text to prevent SSR/CSR mismatch",
+      "success": true
+    },
+    {
+      "screen": "auth",
+      "fix": "apps/web/app/design/step-3/page.tsx: Placeholder - the actual fix depends on seeing the source. The real issue is that the heading text is likely generated via a function that behaves differently on server. If there is a format/template string call wrapping this text, it should be replaced with a static string or wrapped in useEffect/useState with a mounted guard.",
+      "success": true
+    },
+    {
+      "screen": "auth",
+      "fix": "apps/web/app/design/step-3/page.tsx: Remove the duplicate partial import on line 2, keeping only the complete import on line 3 which includes all needed hooks (useState, useEffect, useCallback, useRef).",
+      "success": true
+    },
+    {
+      "screen": "step-1",
+      "fix": "apps/web/app/design/step-3/page.tsx: Removes the duplicate partial React import that causes the SWC compile error 'useState/useEffect defined multiple times', fixing the 500 error on step-3 and the cascading Fast Refresh failures. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-4",
+      "fix": "apps/web/app/design/step-3/page.tsx: Removes the duplicate React import that was causing the SWC build error 'useState is defined multiple times' and 'useEffect is defined multiple times', which was producing a 500 error and breaking the module build. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-5",
+      "fix": "apps/web/app/design/step-3/page.tsx: Removes the duplicate first import line that causes the build failure. The second import is more complete (includes useCallback and useRef) so we keep it and remove the redundant first one. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-6",
+      "fix": "apps/web/app/design/step-3/page.tsx: Removes the duplicate import line that causes the module build failure. The first import line (with only useState and useEffect) is redundant since the second import already includes those plus useCallback and useRef. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "dashboard",
+      "fix": "apps/web/app/design/step-3/page.tsx: Removes the duplicate first import line that was causing SWC redefinition build error for useState and useEffect. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-3",
+      "fix": "apps/web/app/design/step-3/page.tsx: Track client mount state to avoid SSR/CSR mismatch by deferring dynamic content until after hydration. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-3",
+      "fix": "apps/web/app/design/step-3/page.tsx: Add suppressHydrationWarning to the subtitle element that mismatches between server ('Which room are we designing?') and client ('Style Quiz') to prevent hydration errors while the root cause is investigated. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-3",
+      "fix": "apps/web/app/design/step-3/page.tsx: Confirm 'use client' directive is present and first — if the file was missing this, SSR would render with different context. This also documents intent. If the directive is already present this is a no-op comment addition. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-3b",
+      "fix": "apps/web/app/design/step-3/page.tsx: Placeholder to identify file - actual fix below targets the hydration mismatch",
+      "success": true
+    },
+    {
+      "screen": "step-3b",
+      "fix": "apps/web/app/design/step-3/page.tsx: Placeholder - need to see actual file content. The hydration mismatch in step-3 title must be fixed by ensuring the title is not dynamically derived from client-only state during SSR. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-7c",
+      "fix": "apps/web/app/design/step-7c/page.tsx: Add isMounted state to prevent SSR/hydration mismatches from localStorage reads (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-7c",
+      "fix": "apps/web/app/design/step-7c/page.tsx: Guard all data-loading effects behind isMounted to prevent SSR hydration mismatches and ensure localStorage is only accessed client-side",
+      "success": true
+    },
+    {
+      "screen": "step-7c",
+      "fix": "apps/web/app/design/step-7c/page.tsx: Adds the missing useState declaration for isMounted so setIsMounted is defined before it is called inside the useEffect.",
+      "success": true
+    },
+    {
+      "screen": "step-8a",
+      "fix": "apps/web/app/design/step-8a/page.tsx: Fixes the ReferenceError: setIsMounted is not defined by properly destructuring the useState return value into [state, setter] tuple (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-8a",
+      "fix": "apps/web/app/design/step-8a/page.tsx: Ensures the effect runs correctly after the useState fix; also guards against stale closure issues (string not found)",
+      "success": false
+    },
+    {
+      "screen": "landing",
+      "fix": "apps/web/app/dashboard/page.tsx: Prevents hydration mismatch by returning a consistent value during SSR. The greeting won't differ between server and client initial render. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "auth",
+      "fix": "apps/web/app/auth/page.tsx: setIsMounted is referenced but the useState declaration for isMounted is missing. Adding the state declaration fixes the ReferenceError and resolves the hydration mismatch. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-1",
+      "fix": "apps/web/app/design/step-1/page.tsx: setIsMounted was not destructured from useState, causing the ReferenceError 'setIsMounted is not defined' on every render. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-1",
+      "fix": "apps/web/app/design/step-1/page.tsx: Particles must only be generated client-side after mount to prevent hydration mismatch from Math.random() producing different values on server vs client. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-1",
+      "fix": "apps/web/app/design/step-1/page.tsx: Ensures setIsMounted(true) is called after mount — this is likely already present but needs to be confirmed correct; combined with fix #1 this resolves the ReferenceError and hydration error. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-4",
+      "fix": "apps/web/app/design/step-4/page.tsx: placeholder - see actual fix below (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-5",
+      "fix": "apps/web/app/design/step-5/page.tsx: Adds the missing useState declaration for isMounted that setIsMounted references. This fixes the 'setIsMounted is not defined' ReferenceError and resolves the cascading hydration errors. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-5",
+      "fix": "apps/web/app/design/step-5/page.tsx: Fallback fix: if the useState for isMounted is entirely absent from the component (not just missing from before the useEffect), this adds it adjacent to other state declarations. Only apply one of the two isMounted fixes depending on where the gap is. (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-6",
+      "fix": "apps/web/app/design/step-6/page.tsx: Ensure useEffect is imported alongside useState so isMounted pattern works correctly (string not found)",
+      "success": false
+    },
+    {
+      "screen": "step-6",
+      "fix": "apps/web/app/design/step-6/page.tsx: Marker to locate the function - actual fix below adds missing useState (string not found)",
+      "success": false
+    },
+    {
+      "screen": "dashboard",
+      "fix": "apps/web/app/dashboard/page.tsx: Verify this line exists — if missing, this is the fix needed (string not found)",
+      "success": false
+    },
+    {
+      "screen": "dashboard",
+      "fix": "apps/web/app/dashboard/page.tsx: Return a static default greeting during SSR to prevent server/client HTML mismatch hydration error (string not found)",
+      "success": false
+    },
+    {
+      "screen": "dashboard",
+      "fix": "apps/web/app/dashboard/page.tsx: Add the missing useState declaration for isMounted so setIsMounted is defined, fixing the ReferenceError and hydration crash (string not found)",
+      "success": false
+    }
+  ],
+  "modifiedFiles": [],
+  "quizReseeded": false
+}

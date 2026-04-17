@@ -1,0 +1,45 @@
+{
+  "screen": "step-3",
+  "url": "http://localhost:3000/design/step-3",
+  "passed": false,
+  "attempt": 1,
+  "elements": 5,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Hydration error: server renders different text than client. Console shows 'Server: Which room are we designing? Client: A few quick questions' mismatch. The header subtitle text differs between SSR and client render, causing full root hydration failure and client-side re-render.",
+      "element": "Header subtitle text in CovaStyleQuizPage",
+      "root_cause": "In apps/web/app/design/step-3/page.tsx, the header section likely uses some dynamic/conditional text or references state/context that differs between server and client render. The server renders 'Which room are we designing?' while client renders 'A few quick questions', suggesting the component reads from a store or context that isn't available during SSR."
+    },
+    {
+      "severity": "critical",
+      "description": "Wrong question content displayed: step-3 should show style quiz with image comparison pairs, but instead shows 'How do you prefer your surfaces?' with text options - this is step-1 content. The progress shows 'Question 1 of 3' which is also wrong for step-3.",
+      "element": "Quiz question and answer options",
+      "root_cause": "The step-3 page component likely reads question index from a client-side store (e.g. Zustand) that initializes at 0 on both server and client, but the server doesn't have access to the persisted state. The component falls back to question 0 instead of the correct step-3 question."
+    },
+    {
+      "severity": "major",
+      "description": "Missing image comparison pairs: expected behavior for step-3 is 'Two room images side by side for preference selection' but only text buttons are shown with no images.",
+      "element": "Room image comparison pairs",
+      "root_cause": "Either the step-3 page is incorrectly configured to show text-only questions, or the question data for this step doesn't include image pairs. The component may be rendering the wrong question set entirely due to the hydration/state issue."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "\"use client\"",
+      "new_str": "\"use client\"\nimport { useState, useEffect } from 'react'",
+      "reason": "Ensure client-only hooks are available for suppressing hydration mismatch"
+    },
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "A few quick questions",
+      "new_str": "Style Quiz",
+      "reason": "Fix the header subtitle to match what should be shown on step-3 (style quiz), eliminating the server/client text mismatch. The server was rendering 'Which room are we designing?' while client rendered 'A few quick questions' - using a consistent static string resolves hydration error."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407902076,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407902078,\"url\":\"/design/step-3\"}"
+  ]
+}

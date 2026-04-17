@@ -1,0 +1,83 @@
+{
+  "screen": "step-6",
+  "url": "http://localhost:3000/design/step-6",
+  "passed": false,
+  "attempt": 1,
+  "elements": 5,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Step label mismatch: Header shows 'STEP 4 OF 4' but the URL is /design/step-6, indicating this is step 6 of the flow. The step counter is wrong.",
+      "element": "STEP 4 OF 4 header label",
+      "root_cause": "In the step-6 page component (likely pages/design/step-6.tsx or similar), the step indicator is hardcoded or incorrectly set to '4 OF 4' instead of the correct step number for this page. The totalSteps or currentStep prop/constant is misconfigured."
+    },
+    {
+      "severity": "critical",
+      "description": "Multiple React hydration errors (7+ instances of 'Text content does not match server-rendered HTML') causing the entire root to switch to client rendering. This indicates server-side rendered text differs from client-side rendered text.",
+      "element": "Full page hydration",
+      "root_cause": "Dynamic content (likely timestamps, random values, or browser-only APIs like window/navigator) is being rendered during SSR and producing different output on the client. Could be in QR code generation, date/time display, or random key generation within step-6 or its child components."
+    },
+    {
+      "severity": "major",
+      "description": "The page is mounted as 'step-6' per console logs but the URL routing appears correct (/design/step-6). However, the UI displays 'STEP 4 OF 4' suggesting the step progress component is not reading the correct step number for step-6.",
+      "element": "Progress indicator / StepHeader component",
+      "root_cause": "The StepHeader or ProgressBar component likely has TOTAL_STEPS=4 and currentStep is derived from the route but step-6 maps to step 4 (perhaps only 4 visible steps). If the design flow has 4 user-facing steps but step-6 is the 4th, the label may be intentional but conflicts with the URL naming convention, causing confusion. Alternatively the mapping object is off by one."
+    },
+    {
+      "severity": "major",
+      "description": "Upload zone appears incomplete - bottom text is cut off and not fully visible. The drag-and-drop instruction text is truncated.",
+      "element": "Upload zone / drop area",
+      "root_cause": "The upload zone container has insufficient height or overflow:hidden set, clipping the instructional text below the camera icon. CSS height constraint on the dashed border container."
+    },
+    {
+      "severity": "minor",
+      "description": "The 'Scan QR Code' tab option text shows 'Scan QR' on top line and 'Code' on second line, suggesting awkward text wrapping in the tab button.",
+      "element": "Scan QR Code tab button",
+      "root_cause": "The tab button for QR code lacks sufficient width or has word-break/white-space styling causing the label to wrap mid-phrase. The button or its text container needs white-space: nowrap or more width."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "components/StepHeader.tsx",
+      "old_str": "const TOTAL_STEPS = 4;",
+      "new_str": "const TOTAL_STEPS = 6;",
+      "reason": "If the flow actually has 6 steps (step-1 through step-6), total steps should be 6. Adjust based on actual flow length."
+    },
+    {
+      "file": "pages/design/step-6.tsx",
+      "old_str": "<StepHeader currentStep={4} totalSteps={4} />",
+      "new_str": "<StepHeader currentStep={6} totalSteps={6} />",
+      "reason": "The step indicator shows STEP 4 OF 4 but this is step-6, so currentStep and totalSteps need to reflect the correct values."
+    },
+    {
+      "file": "components/QRCodeSection.tsx",
+      "old_str": "const qrValue = `${Date.now()}-${Math.random()}`;",
+      "new_str": "const [qrValue, setQrValue] = React.useState('');\n  React.useEffect(() => {\n    setQrValue(`${Date.now()}-${Math.random()}`);\n  }, []);",
+      "reason": "Dynamic values like Date.now() and Math.random() used during SSR cause hydration mismatches. Moving them into useEffect ensures they only run client-side."
+    },
+    {
+      "file": "components/UploadZone.tsx",
+      "old_str": "className=\"border-2 border-dashed border-gold/40 rounded-lg h-64 flex flex-col items-center justify-center\"",
+      "new_str": "className=\"border-2 border-dashed border-gold/40 rounded-lg min-h-64 h-auto py-8 flex flex-col items-center justify-center\"",
+      "reason": "Fixed height h-64 clips the instructional text below the camera icon. Using min-h-64 with auto height and padding allows content to show fully."
+    },
+    {
+      "file": "components/QRTabButton.tsx",
+      "old_str": "<span>Scan QR Code</span>",
+      "new_str": "<span className=\"whitespace-nowrap\">Scan QR Code</span>",
+      "reason": "Prevents the 'Scan QR Code' label from wrapping mid-phrase onto two lines."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-2\"},\"ts\":1776404435199,\"url\":\"/design/step-2\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-2\"},\"ts\":1776404435199,\"url\":\"/design/step-2\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776404477880,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776404477882,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776404525242,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776404525243,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776404526765,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776404526767,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776404573655,\"url\":\"/design/step-6\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776404573657,\"url\":\"/design/step-6\"}"
+  ]
+}

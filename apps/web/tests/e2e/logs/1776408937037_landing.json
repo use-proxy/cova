@@ -1,0 +1,53 @@
+{
+  "screen": "landing",
+  "url": "http://localhost:3000/dashboard",
+  "passed": false,
+  "attempt": 1,
+  "elements": 27,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Wrong page shown: the test expects a marketing landing page at the root URL but the browser is on /dashboard showing the authenticated dashboard. The current URL is http://localhost:3000/dashboard, not http://localhost:3000/.",
+      "element": "Entire page",
+      "root_cause": "The test is navigating to /dashboard instead of the root / landing page, or the root route redirects to /dashboard. This is a routing/test-setup issue, not necessarily a code bug in the landing page itself."
+    },
+    {
+      "severity": "critical",
+      "description": "Multiple hydration errors: 'Text content does not match server-rendered HTML' repeated 7 times and 'entire root will switch to client rendering'. Caused by dynamic content (like dates/times or greeting) being rendered differently on server vs client.",
+      "element": "Dashboard page - likely the greeting 'Good evening, Amelia.' or date display",
+      "root_cause": "In apps/web/app/dashboard/page.tsx, the greeting (Good morning/afternoon/evening) or date string is computed at render time using new Date() or Date.now(), which differs between SSR and client hydration. The time-based greeting changes between server render and client mount."
+    },
+    {
+      "severity": "critical",
+      "description": "ReferenceError: 'setIsMounted is not defined' repeated 14+ times in page errors. This indicates a missing useState declaration for isMounted in one or more components.",
+      "element": "Component using setIsMounted without declaring it via useState",
+      "root_cause": "In apps/web/app/design/step-7c/page.tsx (referenced in stack trace at line 108), setIsMounted is called but the corresponding const [isMounted, setIsMounted] = useState(false) declaration is missing or was accidentally deleted."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/dashboard/page.tsx",
+      "old_str": "const getGreeting = () => {\n    const hour = new Date().getHours();\n    if (hour < 12) return 'Good morning';\n    if (hour < 18) return 'Good afternoon';\n    return 'Good evening';\n  };",
+      "new_str": "const getGreeting = () => {\n    if (typeof window === 'undefined') return 'Good evening';\n    const hour = new Date().getHours();\n    if (hour < 12) return 'Good morning';\n    if (hour < 18) return 'Good afternoon';\n    return 'Good evening';\n  };",
+      "reason": "Prevents hydration mismatch by returning a consistent value during SSR. The greeting won't differ between server and client initial render."
+    },
+    {
+      "file": "apps/web/app/design/step-7c/page.tsx",
+      "old_str": "export default function Step7cKeepOrRemove(",
+      "new_str": "// QA-patch: ensure isMounted state is declared\nexport default function Step7cKeepOrRemove(",
+      "reason": "Placeholder to locate the file - the actual fix needs to add the missing useState declaration. See next_action for targeted fix instructions."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776408746591,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776408746593,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776408776893,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776408776897,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776408825780,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776408825782,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776408890312,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776408890314,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776408911038,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776408911040,\"url\":\"/dashboard\"}"
+  ]
+}

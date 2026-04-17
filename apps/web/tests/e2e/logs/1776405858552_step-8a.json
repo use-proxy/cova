@@ -1,0 +1,34 @@
+{
+  "screen": "step-8a",
+  "url": "http://localhost:3000/auth?next=%2Fdesign%2Fstep-8a",
+  "passed": false,
+  "attempt": 1,
+  "elements": 7,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "The user is being redirected to the auth page instead of the step-8a render result screen. The URL shows /auth?next=%2Fdesign%2Fstep-8a, meaning the user is not authenticated and is being blocked from accessing the render result screen. The step-8a page content (AI-redesigned room image, before/after slider, quality score, loading state) is entirely absent.",
+      "element": "step-8a page / authentication guard",
+      "root_cause": "The /design/step-8a route is protected by an authentication middleware or route guard. When the user is not authenticated, they are redirected to /auth with a `next` param. The middleware at apps/web/middleware.ts (or similar) is blocking unauthenticated access to the design flow, so the render result page never renders. This could also be due to a missing or expired session cookie causing Supabase auth check to fail."
+    },
+    {
+      "severity": "major",
+      "description": "A 400 error is logged in the console ('Failed to load resource: the server responded with a status of 400'). This likely corresponds to a failed Supabase auth session refresh or OAuth token exchange, preventing automatic re-authentication.",
+      "element": "Network request / Supabase auth endpoint",
+      "root_cause": "The 400 response is likely from a Supabase token refresh endpoint (e.g., /auth/v1/token?grant_type=refresh_token) returning an error due to an invalid or expired refresh token. This is in the Supabase client configuration or session handling in apps/web/lib/supabase/ or apps/web/app/auth/."
+    }
+  ],
+  "fixes": [],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405749361,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405749363,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405772080,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405772081,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405793146,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405793148,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405814630,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405814631,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405836664,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405836665,\"url\":\"/auth\"}"
+  ]
+}

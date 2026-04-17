@@ -1,0 +1,20 @@
+{
+  "screen": "step-2",
+  "url": "http://localhost:3000/auth?next=%2Fdesign%2Fstep-2",
+  "passed": false,
+  "attempt": 1,
+  "elements": 7,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "The current URL is /auth?next=%2Fdesign%2Fstep-2, meaning the user is being redirected to authentication instead of landing on the step-2 room type selection page. The expected behavior describes room type selection with 6 buttons and style image grids, but instead the auth page is shown. The user is not authenticated, so the step-2 route is protected and redirecting to auth.",
+      "element": "Entire page — showing auth instead of step-2 room type selection",
+      "root_cause": "The /design/step-2 route has middleware or route-level auth protection that redirects unauthenticated users to /auth?next=/design/step-2. The middleware at apps/web/middleware.ts (or similar) is gating this route. This is likely intentional auth gating, but QA cannot reach the expected screen without an authenticated session."
+    }
+  ],
+  "fixes": [],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406012814,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406012816,\"url\":\"/auth\"}"
+  ]
+}

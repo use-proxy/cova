@@ -1,0 +1,53 @@
+{
+  "screen": "step-1",
+  "url": "http://localhost:3000/design/step-1",
+  "passed": false,
+  "attempt": 1,
+  "elements": 4,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Duplicate React imports in apps/web/app/auth/page.tsx — useEffect and useState are imported twice (lines 2 and 5), causing a compile error that breaks Fast Refresh for the entire app.",
+      "element": "apps/web/app/auth/page.tsx imports",
+      "root_cause": "Two import statements from 'react' exist: line 2 has `import { useEffect, useState } from 'react'` and line 5 has `import { FormEvent, useEffect, useMemo, useState } from 'react'`, causing duplicate identifier errors."
+    },
+    {
+      "severity": "critical",
+      "description": "React hydration errors on step-1 page — 'Text content does not match server-rendered HTML' repeated multiple times, causing the entire root to switch to client rendering. Likely caused by dynamic/random values (e.g. particle positions or timestamps) computed during SSR that differ on client.",
+      "element": "apps/web/app/design/step-1/page.tsx — particle canvas or dynamic text",
+      "root_cause": "Any Math.random() or Date.now() calls or non-deterministic values rendered during SSR will mismatch on hydration. The particle animation or any dynamically generated content without 'use client' or suppressHydrationWarning causes this."
+    },
+    {
+      "severity": "major",
+      "description": "Invalid or unexpected token error in console — indicates a syntax error in one of the source files, possibly introduced by a bad edit.",
+      "element": "Unknown source file with syntax error",
+      "root_cause": "A file in the app contains an invalid token (likely a stray character, bad template literal, or malformed JSX). Most likely in apps/web/app/auth/page.tsx given recent edits."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/auth/page.tsx",
+      "old_str": "import { useEffect, useState } from 'react';\n\nimport { Cormorant_Garamond, Manrope } from \"next/font/google\";\nimport { FormEvent, useEffect, useMemo, useState } from \"react\";",
+      "new_str": "import { Cormorant_Garamond, Manrope } from \"next/font/google\";\nimport { FormEvent, useEffect, useMemo, useState } from \"react\";",
+      "reason": "Remove the duplicate React import on line 2 that re-declares useEffect and useState, resolving the compile error."
+    },
+    {
+      "file": "apps/web/app/design/step-1/page.tsx",
+      "old_str": "<canvas",
+      "new_str": "<canvas suppressHydrationWarning",
+      "reason": "Add suppressHydrationWarning to the canvas element to prevent hydration mismatch errors caused by particle animation values differing between SSR and client render."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407183949,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407183950,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776407210369,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776407210371,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776407245104,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776407245106,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407264929,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407264932,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407266925,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407266928,\"url\":\"/design/step-1\"}"
+  ]
+}

@@ -1,7 +1,7 @@
 """
-Cova v3 — Redesign Pipeline Orchestrator (rewritten 2026-04-13)
+Cova v5 — Redesign Pipeline Orchestrator
 
-Single entry point for the complete v3 redesign pipeline.
+Single entry point for the complete v5 redesign pipeline.
 App name kept as "cova-redesign-pipeline" so REDESIGN_PIPELINE_WEBHOOK_URL
 in .env.local continues to work without changes.
 
@@ -9,7 +9,9 @@ Pipeline stages (run in order, with idempotency skipping):
   1. Preprocessing    — cova-preprocessing-pipeline / preprocess_room_photo
   2. Professionalize  — cova-professionalization / professionalize_room  (moved before depth)
   3. Structural       — cova-structural-extraction / extract_depth_map + extract_canny_edges (parallel, from professionalized image)
-  4. Generation       — cova-generation / generate_redesign_phase4b  ← always re-runs (Phase 4b selective inpainting)
+  4. Generation       — cova-generation / generate_redesign_phase4b  ← always re-runs (v5 unified Fill Pro)
+
+v5: ALL renders go through Fill Pro + pixel-perfect composite. No Kontext route.
 
 Stage 3 skip: only if depth_map_url + edge_map_url exist AND render_context.professionalized_before_depth == True.
   Old runs (depth extracted before professionalization) are forced to re-extract.
@@ -366,6 +368,7 @@ def orchestrate_pipeline(
             floor_change_requested=floor_change_requested,
             seed=seed,
             remove_count=remove_count,
+            loras_json=loras_json,
         )
 
         final_url = gen_result.get("final_url") or gen_result.get("image_url") or ""
@@ -381,7 +384,7 @@ def orchestrate_pipeline(
 
         # Persist the exact prompt sent to the model for audit/improvement
         # Use whichever prompt was actually used based on route
-        actual_prompt = gen_result.get("fill_prompt_used") or gen_result.get("kontext_prompt_used") or effective_prompt
+        actual_prompt = gen_result.get("styled_fill_prompt") or gen_result.get("fill_prompt_used") or effective_prompt
         try:
             client.table("rooms").update({
                 "flux_prompt": actual_prompt,
@@ -399,11 +402,16 @@ def orchestrate_pipeline(
             updated_rc["raw_fal_url"] = raw_fal_url
             updated_rc["mask_url"] = gen_result.get("mask_url")
             updated_rc["endpoint_used"] = gen_result.get("endpoint_used")
-            updated_rc["pipeline_version"] = "v4b"
+            updated_rc["pipeline_version"] = "v5"
             updated_rc["aesthetic_score"] = aesthetic_score
+            updated_rc["hps_score"] = gen_result.get("hps_score", 0.0)
+            updated_rc["ensemble_score"] = gen_result.get("ensemble_score", 0.0)
             updated_rc["all_scores"] = all_scores
             updated_rc["fill_prompt_used"] = gen_result.get("fill_prompt_used")
-            updated_rc["kontext_prompt_used"] = gen_result.get("kontext_prompt_used")
+            updated_rc["styled_fill_prompt"] = gen_result.get("styled_fill_prompt")
+            updated_rc["mask_source"] = gen_result.get("mask_source")
+            updated_rc["loras_applied"] = gen_result.get("loras_applied", False)
+            updated_rc["num_candidates"] = gen_result.get("num_candidates", 0)
             client.table("rooms").update(
                 {"render_context": updated_rc}
             ).eq("id", room_id).execute()
@@ -517,7 +525,7 @@ def redesign_webhook(item: dict):
         floor_change_requested=floor_change_requested,
     )
 
-    return {"status": "queued", "room_id": room_id, "pipeline": "v4b"}
+    return {"status": "queued", "room_id": room_id, "pipeline": "v5"}
 
 
 # ---------------------------------------------------------------------------

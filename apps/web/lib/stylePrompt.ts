@@ -27,7 +27,6 @@ export interface RoomContext {
 
 export interface StylePromptResult {
   prompt: string;
-  negative_prompt: string;
   dominant_styles: string[];
   style_description: string;
 }
@@ -248,8 +247,6 @@ export function generateStylePromptSync(
 
   // Build blended descriptors weighted by style weights
   const parts: string[] = [];
-  const negatives: string[] = [];
-
   for (const style of dominantStyles) {
     const desc = STYLE_DESCRIPTORS[style];
     if (!desc) continue;
@@ -261,7 +258,6 @@ export function generateStylePromptSync(
         `Textiles — ${desc.textiles}. Lighting — ${desc.lighting}. ` +
         `Accents — ${desc.accents}. Palette — ${desc.palette}.`,
     );
-    negatives.push(desc.negative);
   }
 
   const styleBlock = parts.join(" Blended with: ");
@@ -288,13 +284,8 @@ export function generateStylePromptSync(
     .filter(Boolean)
     .join(" ");
 
-  const negative_prompt =
-    negatives.join(". ") +
-    ". No CGI look. No floating objects. No warped geometry.";
-
   return {
     prompt,
-    negative_prompt,
     dominant_styles: dominantStyles,
     style_description: dominantStyles
       .map((s) => STYLE_DESCRIPTORS[s]?.feel ?? s)
@@ -390,17 +381,8 @@ Output ONLY the prompt text. No explanation.`;
   const data = await response.json();
   const prompt = data.content[0].text.trim();
 
-  // Generate negative prompt from style descriptors
-  const negatives = dominantStyles
-    .map((s) => STYLE_DESCRIPTORS[s]?.negative)
-    .filter(Boolean);
-  const negative_prompt =
-    negatives.join(". ") +
-    ". No CGI look. No floating objects. No warped geometry.";
-
   return {
     prompt,
-    negative_prompt,
     dominant_styles: dominantStyles,
     style_description: dominantStyles
       .map((s) => STYLE_DESCRIPTORS[s]?.feel ?? s)

@@ -1,0 +1,101 @@
+{
+  "screen": "step-4",
+  "url": "http://localhost:3000/design/step-4",
+  "passed": false,
+  "attempt": 1,
+  "elements": 6,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Radar chart renders with all values collapsed near the center — all 6 dimension scores appear at minimum (near zero), meaning the fingerprint data is not being passed to or read by the chart component correctly. The polygon is tiny and does not reflect the user's actual style DNA scores.",
+      "element": "Radar/spider chart (Fingerprint Map)",
+      "root_cause": "The radar chart component likely reads fingerprint dimension scores from state, context, or localStorage. Given the hydration errors and the page:mount event for step-4, the scores are either (a) not persisted from previous steps into the store/localStorage before this page mounts, (b) the chart reads SSR-rendered data that mismatches client state (causing hydration replacement and zeroed values), or (c) default/fallback values of 0 are used when the data key is not found. The hydration error 'Text content does not match server-rendered HTML' repeated 7 times on this page strongly indicates server-rendered static defaults (e.g. all zeros or hardcoded low values) differ from client-computed scores."
+    },
+    {
+      "severity": "critical",
+      "description": "Multiple React hydration errors: 'Text content does not match server-rendered HTML' fires 7 times and 'entire root will switch to client rendering' — this causes a full client-side re-render, destroying SSR benefits and causing visible content flicker. The radar chart values are almost certainly being computed client-side (e.g. from Math.random() or Date) or read from localStorage which is not available on the server.",
+      "element": "Entire page / radar chart text nodes",
+      "root_cause": "In step-3 (and possibly step-4), a progress bar width is computed as 'width:5%' on server and 'width:15%' on client (explicitly logged in console: \"Prop `style` did not match. Server: width:5% Client: width:15%\"). This means the progress percentage or some animated value is being initialized differently on server vs client — likely using useState with a value derived from window, localStorage, or a random seed. On step-4, the radar chart dimension values repeat this pattern: SSR renders placeholder/zero values, client reads actual quiz answers from localStorage/sessionStorage and recomputes, causing mismatch."
+    },
+    {
+      "severity": "major",
+      "description": "Large blank dark area between 'Fingerprint Map' section heading/description and the actual radar chart SVG. This suggests either: the chart has a fixed large height container that renders empty during SSR/hydration, an animation that hasn't triggered, or a loading state that never resolves.",
+      "element": "Section between Fingerprint Map text and radar chart SVG",
+      "root_cause": "The chart component likely wraps the SVG in a div with a fixed min-height or aspect-ratio container, and the SVG is only rendered after a useEffect (client-side only) to avoid SSR issues. Without dynamic import with ssr:false, the container reserves space but the chart content flickers or delays. Alternatively an entrance animation (opacity 0 → 1, translateY) is stalled."
+    },
+    {
+      "severity": "major",
+      "description": "The CTA button reads 'Design My Room →' but the expected behavior spec states a 'Continue button'. This may be intentional product naming but deviates from the spec.",
+      "element": "Primary CTA button",
+      "root_cause": "Button label in step-4/page.tsx is hardcoded as 'Design My Room' rather than 'Continue'."
+    },
+    {
+      "severity": "minor",
+      "description": "page:mount event fires twice for step-4 (ts:1776404463656 and ts:1776404463659) — double mount indicates a StrictMode double-invoke or a component unmounting and remounting, which can cause side effects like double API calls or double localStorage reads.",
+      "element": "Analytics / page mount event",
+      "root_cause": "React StrictMode in development causes effects to run twice. If useEffect fires the page:mount event, it will log twice. This is a dev-only issue but worth noting — production useEffect calls and data fetching should be idempotent."
+    },
+    {
+      "severity": "minor",
+      "description": "The step-3 progress bar SSR/client mismatch (width:5% vs width:15%) bleeds into step-4's hydration error cascade because Next.js app router shares the root error boundary. The step-3 hydration failure causes 'entire root will switch to client rendering' which affects step-4.",
+      "element": "Progress bar in step-3/page.tsx",
+      "root_cause": "In app/design/step-3/page.tsx, the progress bar width is set via useState initialized to a value that differs between server and client. Likely: const [progress, setProgress] = useState(0) on server but immediately updated in useEffect to 15, or the value is derived from quiz answers stored client-side only."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "app/design/step-4/page.tsx",
+      "old_str": "import RadarChart from '@/components/RadarChart'",
+      "new_str": "import dynamic from 'next/dynamic'\nconst RadarChart = dynamic(() => import('@/components/RadarChart'), { ssr: false })",
+      "reason": "Disable SSR for the radar chart component to prevent hydration mismatch. The chart reads client-only data (localStorage quiz answers) and uses browser APIs for SVG rendering. Using dynamic import with ssr:false ensures the chart only renders on the client, eliminating the text content mismatch errors and the collapsed/zero-value chart."
+    },
+    {
+      "file": "app/design/step-4/page.tsx",
+      "old_str": "const [dimensions, setDimensions] = useState({\n    warmth: 0,\n    complexity: 0,\n    organic: 0,\n    layered: 0,\n    heritage: 0,\n    character: 0\n  })\n\n  useEffect(() => {",
+      "new_str": "const [dimensions, setDimensions] = useState<Record<string, number> | null>(null)\n\n  useEffect(() => {",
+      "reason": "Initialize dimensions as null instead of all-zeros so the radar chart renders nothing (or a skeleton) until client data is loaded, preventing the SSR→client mismatch where server renders zeros and client renders real scores."
+    },
+    {
+      "file": "app/design/step-4/page.tsx",
+      "old_str": "useEffect(() => {\n    const stored = localStorage.getItem('cova_quiz_answers')\n    if (stored) {\n      const answers = JSON.parse(stored)\n      const computed = computeDimensions(answers)\n      setDimensions(computed)\n    }\n  }, [])",
+      "new_str": "useEffect(() => {\n    try {\n      const stored = localStorage.getItem('cova_quiz_answers')\n      if (stored) {\n        const answers = JSON.parse(stored)\n        const computed = computeDimensions(answers)\n        setDimensions(computed)\n      } else {\n        // Fallback: default Quiet Naturalist profile\n        setDimensions({ warmth: 60, complexity: 30, organic: 80, layered: 45, heritage: 50, character: 55 })\n      }\n    } catch (e) {\n      console.error('Failed to load quiz answers', e)\n      setDimensions({ warmth: 60, complexity: 30, organic: 80, layered: 45, heritage: 50, character: 55 })\n    }\n  }, [])",
+      "reason": "Add error handling and a meaningful fallback so the radar chart always renders with sensible values for the 'Quiet Naturalist' persona even if localStorage is empty or corrupted. This prevents the collapsed near-zero chart."
+    },
+    {
+      "file": "app/design/step-3/page.tsx",
+      "old_str": "const [progress, setProgress] = useState(5)\n\n  useEffect(() => {\n    setProgress(15)\n  }, [])",
+      "new_str": "const [progress, setProgress] = useState<number | null>(null)\n\n  useEffect(() => {\n    setProgress(15)\n  }, [])",
+      "reason": "Fix the hydration mismatch on step-3 progress bar (Server: width:5% Client: width:15%). By initializing to null and only setting the real value in useEffect, the server renders no width style (or a CSS class-based width) and the client sets it after mount, preventing the prop mismatch warning and cascading hydration failure."
+    },
+    {
+      "file": "app/design/step-3/page.tsx",
+      "old_str": "style={{ width: `${progress}%` }}",
+      "new_str": "style={progress !== null ? { width: `${progress}%` } : undefined}",
+      "reason": "Guard the inline style so server renders no width attribute (avoiding SSR/client mismatch) and client sets it after useEffect fires. Pair this with a CSS class that provides a default width for the no-JS case."
+    },
+    {
+      "file": "components/RadarChart.tsx",
+      "old_str": "export default function RadarChart({ dimensions }: { dimensions: Record<string, number> }) {",
+      "new_str": "export default function RadarChart({ dimensions }: { dimensions: Record<string, number> | null }) {\n  if (!dimensions) return <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ color: '#C9A84C', opacity: 0.5 }}>Loading fingerprint…</span></div>",
+      "reason": "Guard against null dimensions (during SSR or before useEffect fires) so the chart renders a loading placeholder instead of an empty/zero polygon. This eliminates the large blank dark area and the collapsed chart."
+    },
+    {
+      "file": "app/design/step-4/page.tsx",
+      "old_str": "<button className=\"design-my-room-btn\">Design My Room →</button>",
+      "new_str": "<button className=\"design-my-room-btn\">Design My Room →</button>\n{/* QA NOTE: Spec calls for 'Continue button' — confirm with product if 'Design My Room' is the intended final label */}",
+      "reason": "Flag the button label discrepancy from spec. If spec requires 'Continue', change to: <button className=\"design-my-room-btn\">Continue →</button>"
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-2\"},\"ts\":1776404333486,\"url\":\"/design/step-2\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-2\"},\"ts\":1776404333487,\"url\":\"/design/step-2\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776404375620,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776404375622,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776404415140,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776404415143,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-2\"},\"ts\":1776404415346,\"url\":\"/design/step-2\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-2\"},\"ts\":1776404415346,\"url\":\"/design/step-2\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776404463656,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776404463659,\"url\":\"/design/step-4\"}"
+  ]
+}

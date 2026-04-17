@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { flowLog } from "@/lib/debug/flow-logger";
 import { useRouter, usePathname } from "next/navigation";
 import "../design/step-1/step1.css";
 import "./dashboard.css";
@@ -433,6 +434,7 @@ function ArrowLink() {
 
 export default function Home() {
   const router = useRouter();
+  useEffect(() => { flowLog("page:mount", { page: "dashboard" }); }, []);
   const location = usePathname();
   const [isLoaded, setIsLoaded] = useState(false);
   const [styleVisible, setStyleVisible] = useState(false);
@@ -602,7 +604,7 @@ export default function Home() {
           >
             <div>
               <h1 className="cova-greeting">{greeting}, Amelia.</h1>
-              <p className="cova-subtext">
+              <p suppressHydrationWarning className="cova-subtext">
                 Your spaces are coming together beautifully.
               </p>
             </div>

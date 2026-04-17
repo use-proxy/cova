@@ -9,6 +9,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { flowLog } from "@/lib/debug/flow-logger";
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -238,6 +239,7 @@ const money = (value: number) =>
 
 export default function Step9Experience() {
   const router = useRouter();
+  useEffect(() => { flowLog("page:mount", { page: "step-9" }); }, []);
   const roomId = useRoomStore((s) => s.roomId);
   const renderUrl = useRoomStore((s) => s.renderUrl);
 

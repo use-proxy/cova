@@ -1,0 +1,28 @@
+{
+  "screen": "step-8a",
+  "url": "http://localhost:3000/auth?next=%2Fdesign%2Fstep-8a",
+  "passed": false,
+  "attempt": 1,
+  "elements": 7,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "User is being redirected to /auth?next=%2Fdesign%2Fstep-8a instead of seeing the render result screen at /design/step-8a. The auth page is shown because the route /design/step-8a requires authentication and the user is not authenticated. The expected render result screen with AI-redesigned room image and before/after slider is not shown at all.",
+      "element": "Entire page — showing auth screen instead of step-8a render result screen",
+      "root_cause": "The middleware or route guard at apps/web/middleware.ts (or equivalent auth guard) is redirecting unauthenticated users to /auth. The page at apps/web/app/design/step-8a/page.tsx requires an authenticated session. The test user is not logged in, causing the redirect. The ?next param shows the intended destination. Additionally, there is a 400 error in console logs which may indicate a failed auth/session API call."
+    }
+  ],
+  "fixes": [],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406012814,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406012816,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406033900,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406033901,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406057994,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406057996,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406078272,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406078273,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406099971,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406099973,\"url\":\"/auth\"}"
+  ]
+}

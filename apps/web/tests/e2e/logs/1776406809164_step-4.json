@@ -1,0 +1,59 @@
+{
+  "screen": "step-4",
+  "url": "http://localhost:3000/design/step-4",
+  "passed": false,
+  "attempt": 1,
+  "elements": 6,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Radar chart with 6 dimensions (Warmth, Complexity, Organic, Layered, Heritage, Character) is missing from the visible screen area",
+      "element": "Radar/spider chart",
+      "root_cause": "The radar chart component is likely either not rendered, rendered below the fold without proper positioning, or the component has a hydration error causing it to not mount. The multiple 'Text content does not match server-rendered HTML' hydration errors suggest server/client mismatch, likely due to Math.random() or Date-based values used in chart data generation without being wrapped in useEffect or suppressed with suppressHydrationWarning."
+    },
+    {
+      "severity": "critical",
+      "description": "Hydration errors (7 instances) causing entire root to switch to client rendering, which means server-rendered chart/dynamic content mismatches client",
+      "element": "Page hydration",
+      "root_cause": "In apps/web/app/design/step-4/page.tsx, dynamic values (likely random scores for the 6 radar dimensions or color palette generation) are computed during render without being deferred to client-side only via useEffect or useMemo with stable seeds. This causes SSR output to differ from client render."
+    },
+    {
+      "severity": "major",
+      "description": "Tweak input field is missing from the visible UI — spec requires a tweak/refinement input field on this screen",
+      "element": "Tweak input field",
+      "root_cause": "The tweak input field is either not implemented in apps/web/app/design/step-4/page.tsx or conditionally hidden due to a state/rendering issue caused by the hydration failure switching to full client rendering."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-4/page.tsx",
+      "old_str": "const radarData = [",
+      "new_str": "const radarData = useMemo(() => [",
+      "reason": "Wrapping radar data in useMemo with a stable dependency prevents recalculation between SSR and client render, fixing hydration mismatch"
+    },
+    {
+      "file": "apps/web/app/design/step-4/page.tsx",
+      "old_str": "];\n\n  const palette = [",
+      "new_str": "], []);\n\n  const palette = [",
+      "reason": "Close the useMemo for radarData array with stable empty deps array"
+    },
+    {
+      "file": "apps/web/app/design/step-4/page.tsx",
+      "old_str": "<RadarChart",
+      "new_str": "<ClientOnly>\n              <RadarChart",
+      "reason": "Wrap RadarChart in a ClientOnly boundary to prevent SSR from attempting to render the chart and causing hydration mismatch with dynamic/random dimension values"
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776406706918,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776406706920,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406731256,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406731257,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776406753045,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776406753047,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776406755435,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776406755437,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776406778901,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776406778903,\"url\":\"/design/step-4\"}"
+  ]
+}

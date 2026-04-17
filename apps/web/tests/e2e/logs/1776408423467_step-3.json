@@ -1,0 +1,45 @@
+{
+  "screen": "step-3",
+  "url": "http://localhost:3000/design/step-3",
+  "passed": false,
+  "attempt": 1,
+  "elements": 5,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Hydration error: server renders 'Which room are we designing?' but client renders 'Style Quiz' - text content mismatch causing full client re-render",
+      "element": "Header section title/subtitle text",
+      "root_cause": "In apps/web/app/design/step-3/page.tsx, there is likely a dynamic value (e.g. from localStorage, context, or Math.random()) being read during render that differs between server and client. The header label switches between 'Which room are we designing?' on server and 'Style Quiz' on client, indicating the component reads client-only state (like a store or localStorage) without suppressing hydration or using useEffect."
+    },
+    {
+      "severity": "critical",
+      "description": "Page shows wrong question content: 'How do you prefer your surfaces?' with text options instead of image comparison pairs (two room images side by side)",
+      "element": "Quiz question and answer options",
+      "root_cause": "Step-3 is expected to show image comparison pairs per the expected behavior spec, but the page is rendering text-only questions (Question 1 of 3 about surfaces). Either the wrong question set is loaded for step-3, or the image comparison component is missing/not rendered because currentQuestion index is wrong due to the hydration mismatch resetting state."
+    },
+    {
+      "severity": "major",
+      "description": "Multiple hydration errors (7x 'Text content does not match server-rendered HTML') causing entire root to switch to client rendering",
+      "element": "Multiple text nodes throughout the component",
+      "root_cause": "The component in apps/web/app/design/step-3/page.tsx uses client-only data (context/store state) during initial render without suppressing hydration mismatches. The page is likely a 'use client' component reading from a Zustand/Context store that has different initial values on server vs client."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "'use client'",
+      "new_str": "'use client'\nimport { useState, useEffect } from 'react'",
+      "reason": "Ensure useEffect and useState are imported to allow client-only rendering patterns that fix hydration mismatches"
+    },
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "export function CovaStyleQuizPage(",
+      "new_str": "export function CovaStyleQuizPage(",
+      "reason": "Placeholder - need to see actual source to provide targeted fix. See next_action."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776408397195,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776408397197,\"url\":\"/design/step-3\"}"
+  ]
+}

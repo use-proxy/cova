@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import QRCode from "react-qr-code";
 import { useRouter } from "next/navigation";
+import { flowLog } from "@/lib/debug/flow-logger";
 import { useRoomStore } from "@/lib/store/room";
 import "../step-1/step1.css";
 import "./step6.css";
@@ -847,6 +848,7 @@ function QRPanel({
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function RoomPhotoUpload() {
   const router = useRouter();
+  useEffect(() => { flowLog("page:mount", { page: "step-6" }); }, []);
   const [dragOver, setDragOver] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);

@@ -1,0 +1,41 @@
+{
+  "screen": "auth",
+  "url": "http://localhost:3000/auth",
+  "passed": false,
+  "attempt": 3,
+  "elements": 7,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Duplicate React imports in auth/page.tsx - useEffect and useState are imported twice from 'react', causing a compile error",
+      "element": "apps/web/app/auth/page.tsx imports",
+      "root_cause": "Line 2 has `import { useEffect, useState } from 'react'` and line 5 has `import { FormEvent, useEffect, useMemo, useState } from 'react'` - duplicate named imports cause the SWC compiler to throw a 'defined multiple times' error"
+    },
+    {
+      "severity": "major",
+      "description": "Hydration mismatch errors - text content does not match server-rendered HTML",
+      "element": "Page hydration",
+      "root_cause": "Likely caused by the duplicate import compile error triggering fallback rendering behavior, or dynamic content (e.g. date/time) rendered differently on server vs client"
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/auth/page.tsx",
+      "old_str": "import { useEffect, useState } from 'react';\n\nimport { Cormorant_Garamond, Manrope } from \"next/font/google\";\nimport { FormEvent, useEffect, useMemo, useState } from \"react\";",
+      "new_str": "import { Cormorant_Garamond, Manrope } from \"next/font/google\";\nimport { FormEvent, useEffect, useMemo, useState } from \"react\";",
+      "reason": "Remove the duplicate first import line that only imports useEffect and useState - the second import on line 5 already includes these plus FormEvent and useMemo, so the first import is redundant and causes the compile error"
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776407131124,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776407131125,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407155876,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407155878,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407183949,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407183950,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776407210369,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776407210371,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776407245104,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776407245106,\"url\":\"/auth\"}"
+  ]
+}

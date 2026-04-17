@@ -1,29 +1,33 @@
 """
-Cova v5 — Selective Inpainting via Fill Pro + Pixel-Perfect Composite
+Cova v5 — Unified Fill Pro + Pixel-Perfect Composite (Linear RGB)
 
-Architecture reset: pixel-composite approach guarantees architecture preservation.
+Architecture reset: ALL renders go through Fill Pro inpainting + pixel composite.
+No route branching. Kontext Pro removed entirely.
 
-Three-stage pipeline (Route A — items removed):
+Three-stage pipeline:
 
   Stage 1: fal-ai/flux-pro/v1/fill — NEUTRAL removal.
-    Input: original_photo + combined_remove_mask + neutral prompt
+    Input: original_photo + dilated_remove_mask + neutral prompt
     Output: empty_room.png (furniture erased, floor/walls revealed)
 
-  Stage 2: fal-ai/flux-pro/v1/fill — STYLED inpainting.
-    Input: empty_room.png + combined_remove_mask (SAME mask) + compiled_prompt
-    Output: ai_output.png (styled furniture in masked region only)
+  Stage 2: fal-ai/flux-pro/v1/fill — STYLED inpainting (×4 candidates).
+    Input: empty_room.png + dilated_remove_mask (SAME mask) + compiled_prompt
+    Output: 4 ai_output candidates (styled furniture in masked region only)
 
-  Stage 3: Pixel-perfect composite.
-    soft_alpha derived from remove mask (feathered, architecture-zeroed)
+  Stage 3: Pixel-perfect composite (linear RGB).
+    sRGB → linear RGB → alpha blend → sRGB
+    soft_alpha derived from UNDILATED remove mask (feathered, architecture-zeroed)
     final = soft_alpha * ai_output + (1 - soft_alpha) * original
     Architecture pixels are byte-identical to original (mathematically guaranteed).
 
-Route B — No removals (style transfer only):
-  fal-ai/flux-pro/kontext (FLUX Kontext Pro)
-  Kontext preserves structure implicitly.
+When no items marked for removal: auto-mask all non-structural items, or use
+inverse of architecture mask as fallback. This eliminates the need for any
+separate route.
 
-Generate 3 candidates (3 different seeds), score with LAION Aesthetic V2.5,
-return the best. Apply visual signature post-processing.
+Score 4 candidates with 3-model ensemble (scoring.py):
+  HPSv2 (0.5) + Q-Align (0.3) + Aesthetic V2.5 (0.2).
+Return the best. If best < 5.0 (auto-reject gate), regenerate once.
+Per-candidate scores stored in renders table.
 
 Entry point: generate_redesign_phase4b()
 """
@@ -43,47 +47,55 @@ import modal
 
 fal_image = (
     modal.Image.debian_slim(python_version="3.10")
-    # Cache bust: 2026-04-16-v5-mask-resize-fix
+    # Cache bust: 2026-04-17-v5-postprocess
     .pip_install(
         "fal-client",
         "supabase",
         "requests",
+        "httpx",
         "Pillow",
         "numpy",
         "opencv-python-headless",
+        "colour-science",
     )
     .add_local_file("modal_pipeline/utils.py", "/root/utils.py")
     .add_local_file("modal_pipeline/mask_build.py", "/root/mask_build.py")
+    .add_local_file("modal_pipeline/postprocess.py", "/root/postprocess.py")
+    .add_local_dir("modal_pipeline/luts", "/root/luts")
 )
 
-# Aesthetic scorer image — heavier deps (torch, CLIP)
-aesthetic_image = (
+# Scorer image — torch, CLIP, HPSv2, Q-Align (optional, may OOM on A10G)
+# HPSv2 depends on matplotlib which needs libtk8.6
+# Q-Align (q-future/one-align) is ~7B params — gracefully skipped if OOM
+scorer_image = (
     modal.Image.debian_slim(python_version="3.10")
+    .apt_install("python3-tk")
     .pip_install(
         "torch",
         "torchvision",
         "clip-anytorch",
+        "hpsv2",
         "requests",
         "Pillow",
         "numpy",
         "huggingface_hub",
         "opencv-python-headless",
+        "transformers",
+        "accelerate",
     )
     .add_local_file("modal_pipeline/utils.py", "/root/utils.py")
     .add_local_file("modal_pipeline/mask_build.py", "/root/mask_build.py")
+    .add_local_file("modal_pipeline/scoring.py", "/root/scoring.py")
 )
 
 app = modal.App("cova-generation")
 
 STORAGE_BUCKET = "room-photos"
 
-# Phase 7 visual signature — disable until base render quality is verified (Session 6)
-ENABLE_VISUAL_SIGNATURE = False
-
 # Stage 1 neutral fill prompt — same for every room type, every render.
 NEUTRAL_FILL_PROMPT = (
     "completely empty room, bare floor, bare walls, no furniture, no objects, "
-    "natural light, architectural interior photograph, pristine surfaces, seamless"
+    "natural light, pristine surfaces, seamless interior photography"
 )
 
 # ---------------------------------------------------------------------------
@@ -110,6 +122,30 @@ from mask_build import (
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+def _upload_to_fal(image_url: str) -> str:
+    """Download image bytes and re-upload to fal.ai storage for guaranteed access.
+    URLs already on fal.media/fal.run are returned as-is."""
+    if not image_url:
+        return image_url
+    if any(x in image_url for x in ["fal.media", "fal.run", "cdn.fal"]):
+        return image_url  # already on fal, no need to re-upload
+
+    import httpx
+    import fal_client
+
+    try:
+        response = httpx.get(image_url, timeout=30, follow_redirects=True)
+        if response.status_code != 200:
+            raise ValueError(f"Image URL returned {response.status_code}: {image_url}")
+        image_bytes = response.content
+    except Exception as e:
+        raise ValueError(f"_upload_to_fal failed to download image: {e}") from None
+
+    fal_url = fal_client.upload(image_bytes, content_type="image/jpeg")
+    print(f"[fal_upload] Re-uploaded {image_url[:60]}... -> {fal_url[:60]}...")
+    return fal_url
+
 
 def _download_bytes(url: str) -> bytes:
     import requests
@@ -151,217 +187,99 @@ def _upload_to_supabase(img_bytes: bytes, path: str, supabase_url: str, supabase
 
 
 # ---------------------------------------------------------------------------
-# Phase 6 — LAION Aesthetic V2.5 scorer (GPU, separate image)
+# sRGB ↔ Linear RGB conversion for pixel-perfect compositing
+# ---------------------------------------------------------------------------
+
+def _srgb_to_linear(c):
+    """Convert sRGB [0,1] to linear RGB [0,1]. Vectorized numpy."""
+    import numpy as np
+    return np.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)
+
+
+def _linear_to_srgb(c):
+    """Convert linear RGB [0,1] to sRGB [0,1]. Vectorized numpy."""
+    import numpy as np
+    return np.where(c <= 0.0031308, c * 12.92, 1.055 * c ** (1.0 / 2.4) - 0.055)
+
+
+# ---------------------------------------------------------------------------
+# Phase 6 — 3-Model Ensemble Scorer
+#   HPSv2 (0.5) + Q-Align (0.3) + Aesthetic V2.5 (0.2)
+#   See scoring.py for model details and licensing.
 # ---------------------------------------------------------------------------
 
 @app.function(
-    image=aesthetic_image,
+    image=scorer_image,
     gpu="A10G",
-    timeout=120,
+    timeout=300,
 )
-def score_aesthetic(image_url: str) -> float:
+def score_candidate(image_url: str, prompt: str = "") -> dict:
     """
-    Scores image using LAION Aesthetic V2.5 (CLIP ViT-L/14 + linear head).
-    Returns score 0-10. Reject below 5.0. Target above 6.0 for good renders.
+    Scores a single candidate image using the 3-model ensemble from scoring.py.
+
+    Returns dict with keys: overall, hps, q_align, aesthetic, reject.
+    Individual model scores are None if that model failed.
     """
-    import torch
-    import clip
-    import numpy as np
-    import requests
-    from io import BytesIO
-    from PIL import Image
-    from huggingface_hub import hf_hub_download
-
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-
-    # Load CLIP ViT-L/14
-    model, preprocess = clip.load("ViT-L/14", device=device)
-
-    # Download image
-    response = requests.get(image_url, timeout=30)
-    response.raise_for_status()
-    img = Image.open(BytesIO(response.content)).convert("RGB")
-    img_tensor = preprocess(img).unsqueeze(0).to(device)
-
-    with torch.no_grad():
-        image_features = model.encode_image(img_tensor)
-        image_features /= image_features.norm(dim=-1, keepdim=True)
-
-    # Load LAION aesthetic predictor V2.5 (MLP head)
-    import os as _os
-    weights_path = "/tmp/sac+logos+ava1-l14-linearMSE.pth"
-    if not _os.path.exists(weights_path):
-        import urllib.request
-        urllib.request.urlretrieve(
-            "https://github.com/christophschuhmann/improved-aesthetic-predictor/raw/main/sac+logos+ava1-l14-linearMSE.pth",
-            weights_path,
-        )
-    state_dict = torch.load(weights_path, map_location=device)
-
-    # MLP head architecture: 768 → 1024 → 128 → 64 → 16 → 1
-    cleaned_state_dict = {k.replace("layers.", ""): v for k, v in state_dict.items()}
-    mlp = torch.nn.Sequential(
-        torch.nn.Linear(768, 1024),
-        torch.nn.Dropout(0.2),
-        torch.nn.Linear(1024, 128),
-        torch.nn.Dropout(0.2),
-        torch.nn.Linear(128, 64),
-        torch.nn.Dropout(0.1),
-        torch.nn.Linear(64, 16),
-        torch.nn.Linear(16, 1),
-    ).to(device)
-    mlp.load_state_dict(cleaned_state_dict)
-    mlp.eval()
-
-    with torch.no_grad():
-        score = mlp(image_features.float())
-
-    return float(score.squeeze().cpu())
+    from scoring import score_render
+    return score_render(image_url, prompt)
 
 
 def score_and_select(candidates: list, prompt: str) -> dict:
     """
-    Score all candidates with LAION Aesthetic V2.5 and return the best.
+    Score all candidates with 3-model ensemble, return the best.
+    Scores each candidate via score_candidate.remote() (parallel on Modal).
     """
-    if len(candidates) == 1:
-        try:
-            score = score_aesthetic.remote(candidates[0]["url"])
-            print(f"[aesthetic] Single candidate seed={candidates[0]['seed']} score={score:.2f}")
-        except Exception as e:
-            print(f"[aesthetic] Scoring failed: {e}")
-            score = 0.0
-        candidates[0]["aesthetic_score"] = score
-        candidates[0]["all_scores"] = [{"seed": candidates[0]["seed"], "score": score}]
-        return candidates[0]
-
-    scores = []
+    scored = []
     for c in candidates:
         try:
-            score = score_aesthetic.remote(c["url"])
-            scores.append((c, score))
-            print(f"[aesthetic] Candidate seed={c['seed']} score={score:.2f}")
+            s = score_candidate.remote(c["url"], prompt)
+            scored.append((c, s))
+            print(f"[scoring] Candidate seed={c['seed']} "
+                  f"overall={s.get('overall', 0):.2f} "
+                  f"hps={s.get('hps', 'N/A')} "
+                  f"q_align={s.get('q_align', 'N/A')} "
+                  f"aesthetic={s.get('aesthetic', 'N/A')}")
         except Exception as e:
-            print(f"[aesthetic] Scoring failed for seed={c['seed']}: {e}")
-            scores.append((c, 0.0))
+            print(f"[scoring] Scoring failed for seed={c['seed']}: {e}")
+            scored.append((c, {
+                "overall": 0.0, "hps": None, "q_align": None, "aesthetic": None, "reject": True,
+            }))
 
-    valid = [(c, s) for c, s in scores if s >= 5.0]
-    if not valid:
-        print("[aesthetic] All candidates below threshold — using best available")
-        valid = scores
+    if not scored:
+        print("[scoring] No candidates scored — returning first candidate")
+        candidates[0]["ensemble_score"] = 0.0
+        return candidates[0]
 
-    best_candidate, best_score = max(valid, key=lambda x: x[1])
-    print(f"[aesthetic] Selected seed={best_candidate['seed']} score={best_score:.2f}")
+    # Select best by overall score
+    best_candidate, best_scores = max(scored, key=lambda x: x[1].get("overall", 0.0))
+    print(f"[scoring] Selected seed={best_candidate['seed']} "
+          f"overall={best_scores.get('overall', 0):.2f}")
 
-    best_candidate["aesthetic_score"] = best_score
+    # Attach scores to best candidate
+    best_candidate["hps_score"] = best_scores.get("hps") or 0.0
+    best_candidate["q_align_score"] = best_scores.get("q_align")
+    best_candidate["aesthetic_score"] = best_scores.get("aesthetic") or 0.0
+    best_candidate["ensemble_score"] = best_scores.get("overall", 0.0)
+    best_candidate["reject"] = best_scores.get("reject", False)
+
+    # Store all candidate scores for DB persistence
     best_candidate["all_scores"] = [
-        {"seed": c["seed"], "score": s} for c, s in scores
+        {
+            "seed": c["seed"],
+            "url": c["url"],
+            "hps": s.get("hps"),
+            "q_align": s.get("q_align"),
+            "aesthetic": s.get("aesthetic"),
+            "overall": s.get("overall", 0.0),
+            "was_selected": c["seed"] == best_candidate["seed"],
+        }
+        for c, s in scored
     ]
     return best_candidate
 
 
 # ---------------------------------------------------------------------------
-# Phase 7 — Post-processing visual signature
-# ---------------------------------------------------------------------------
-
-def apply_visual_signature(image_array):
-    """
-    Applies Cova visual signature post-processing.
-    Input: composite image as numpy array (BGR, from cv2)
-    Output: processed image as numpy array (BGR)
-    Universal — applies to any room type, any render.
-    Steps must run in exact order.
-
-    Order: white balance → CLAHE → teal-orange grade → vignette → grain → CA
-    """
-    import cv2
-    import numpy as np
-
-    WB_A_SHIFT = 3
-    WB_B_SHIFT = 5
-    CLAHE_CLIP = 2.0
-    CLAHE_GRID = (8, 8)
-    GRADE_SHADOW_A = -3
-    GRADE_SHADOW_B = 3
-    GRADE_HIGH_A = 2
-    GRADE_HIGH_B = 5
-    SHADOW_THRESHOLD = 85
-    HIGHLIGHT_THRESHOLD = 170
-    VIGNETTE_STRENGTH = 0.15
-    GRAIN_INTENSITY = 0.025
-    CA_SHIFT_PX = 1
-
-    img = image_array.copy()
-    h, w = img.shape[:2]
-
-    # STEP 1 — White balance correction (LAB space)
-    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
-    l, a, b = cv2.split(lab)
-    a = np.clip(a.astype(np.int16) + WB_A_SHIFT, 0, 255).astype(np.uint8)
-    b = np.clip(b.astype(np.int16) + WB_B_SHIFT, 0, 255).astype(np.uint8)
-    img = cv2.cvtColor(cv2.merge([l, a, b]), cv2.COLOR_LAB2BGR)
-
-    # STEP 2 — CLAHE micro-contrast on L channel
-    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
-    l, a, b = cv2.split(lab)
-    l_std = float(np.std(l))
-    clip = CLAHE_CLIP if l_std < 60 else 1.5
-    clahe = cv2.createCLAHE(clipLimit=clip, tileGridSize=CLAHE_GRID)
-    l = clahe.apply(l)
-    img = cv2.cvtColor(cv2.merge([l, a, b]), cv2.COLOR_LAB2BGR)
-
-    # STEP 3 — Teal-orange LAB grade
-    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
-    l, a, b = cv2.split(lab)
-    shadow_mask = (l < SHADOW_THRESHOLD).astype(np.float32)
-    highlight_mask = (l > HIGHLIGHT_THRESHOLD).astype(np.float32)
-    a = np.clip(
-        a.astype(np.int16)
-        + (shadow_mask * GRADE_SHADOW_A).astype(np.int16)
-        + (highlight_mask * GRADE_HIGH_A).astype(np.int16),
-        0, 255
-    ).astype(np.uint8)
-    b = np.clip(
-        b.astype(np.int16)
-        + (shadow_mask * GRADE_SHADOW_B).astype(np.int16)
-        + (highlight_mask * GRADE_HIGH_B).astype(np.int16),
-        0, 255
-    ).astype(np.uint8)
-    img = cv2.cvtColor(cv2.merge([l, a, b]), cv2.COLOR_LAB2BGR)
-
-    # STEP 4 — Elliptical vignette
-    sigma_x = w * 0.7
-    sigma_y = h * 0.6
-    kernel_x = cv2.getGaussianKernel(w, sigma_x)
-    kernel_y = cv2.getGaussianKernel(h, sigma_y)
-    vignette_mask = (kernel_y * kernel_x.T)
-    vignette_mask = vignette_mask / vignette_mask.max()
-    vignette = 1 - VIGNETTE_STRENGTH * (1 - vignette_mask)
-    for c in range(3):
-        img[:, :, c] = np.clip(
-            img[:, :, c] * vignette, 0, 255
-        ).astype(np.uint8)
-
-    # STEP 5 — Shadow-weighted film grain
-    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
-    l, a, b = cv2.split(lab)
-    grain_weight = 1.0 - (l.astype(np.float32) / 255.0) * 0.7
-    noise = np.random.normal(0, GRAIN_INTENSITY * 255, l.shape)
-    l = np.clip(
-        l.astype(np.float32) + noise * grain_weight, 0, 255
-    ).astype(np.uint8)
-    img = cv2.cvtColor(cv2.merge([l, a, b]), cv2.COLOR_LAB2BGR)
-
-    # STEP 6 — Chromatic aberration (1px shift, R channel only)
-    b_ch, g_ch, r_ch = cv2.split(img)
-    M = np.float32([[1, 0, CA_SHIFT_PX], [0, 1, 0]])
-    r_ch = cv2.warpAffine(r_ch, M, (w, h))
-    img = cv2.merge([b_ch, g_ch, r_ch])
-
-    return img
-
-
-# ---------------------------------------------------------------------------
-# Pixel-perfect composite — THE critical differentiator
+# Pixel-perfect composite — linear RGB, THE critical differentiator
 # ---------------------------------------------------------------------------
 
 def pixel_perfect_composite(
@@ -372,8 +290,11 @@ def pixel_perfect_composite(
     room_id: str,
 ):
     """
-    Composites ai_output onto original using soft_alpha.
+    Composites ai_output onto original using soft_alpha in LINEAR RGB space.
     Architecture pixels are byte-identical to original.
+
+    sRGB blending causes perceived darkening at boundaries.
+    Linear RGB blending produces physically correct results.
 
     Args:
         original_arr: RGB numpy array of original photo
@@ -390,7 +311,7 @@ def pixel_perfect_composite(
 
     # Resize ai_output to match original exactly
     if ai_output_arr.shape[:2] != original_arr.shape[:2]:
-        print(f"[composite] Resizing AI output {ai_output_arr.shape[:2]} → {original_arr.shape[:2]}")
+        print(f"[composite] Resizing AI output {ai_output_arr.shape[:2]} -> {original_arr.shape[:2]}")
         ai_output_arr = cv2.resize(
             ai_output_arr,
             (original_arr.shape[1], original_arr.shape[0]),
@@ -413,19 +334,20 @@ def pixel_perfect_composite(
             interpolation=cv2.INTER_NEAREST,
         )
 
+    # Convert to linear RGB — critical for correct blending
+    orig_lin = _srgb_to_linear(original_arr / 255.0)
+    ai_lin = _srgb_to_linear(ai_output_arr / 255.0)
+
     # Expand soft_alpha to 3 channels
     alpha_3ch = soft_alpha[:, :, np.newaxis]
 
-    # Composite: final = alpha * ai + (1 - alpha) * original
-    composite = (
-        alpha_3ch * ai_output_arr.astype(np.float32) +
-        (1.0 - alpha_3ch) * original_arr.astype(np.float32)
-    ).astype(np.uint8)
+    # Composite in linear RGB space
+    comp_lin = alpha_3ch * ai_lin + (1.0 - alpha_3ch) * orig_lin
+
+    # Convert back to sRGB
+    composite = (_linear_to_srgb(comp_lin) * 255).clip(0, 255).astype(np.uint8)
 
     # CRITICAL ASSERTION: architecture pixels must be byte-identical
-    # Architecture mask uses INVERTED convention here: we want to check
-    # pixels where architecture_mask == 255 (architecture regions)
-    # In those regions, soft_alpha should be 0.0, so composite == original
     arch_region = architecture_mask > 0
     arch_pixel_count = np.count_nonzero(arch_region)
 
@@ -443,9 +365,10 @@ def pixel_perfect_composite(
                   f"mismatched={mismatched}/{arch_pixel_count * 3} subpixels")
             # Force-correct: paste original architecture pixels back
             composite[arch_region] = original_arr[arch_region]
-            print(f"[composite] Force-corrected — architecture pixels now byte-identical")
+            print("[composite] Force-corrected — architecture pixels now byte-identical")
         else:
-            print(f"[composite] PASS: {arch_pixel_count} architecture pixels byte-identical")
+            print(f"[composite] arch_pixel_assertion=PASS: "
+                  f"{arch_pixel_count} architecture pixels byte-identical")
 
     # Also verify non-architecture non-mask regions are original
     non_mask = soft_alpha < 0.001
@@ -472,10 +395,15 @@ def build_combined_remove_mask(
     room_id: str,
     supabase_url: str,
     supabase_key: str,
+    auto_remove_all: bool = False,
 ) -> Optional[tuple]:
     """
-    Union all masks for user-REMOVE items, build soft_alpha via mask_build.
-    Returns (mask_url, hard_mask, soft_alpha) or None if no removals.
+    Union all masks for removed items, build soft_alpha via mask_build.
+    Returns (dilated_mask_url, hard_mask, dilated_mask, soft_alpha, strength_map)
+    or None if no masks available.
+
+    When auto_remove_all=True, treats ALL non-structural items as remove
+    (used when no explicit removal decisions but we need a mask for Fill Pro).
     """
     import cv2
     import numpy as np
@@ -484,8 +412,8 @@ def build_combined_remove_mask(
 
     keep_remove_decisions = normalize_decisions(keep_remove_decisions)
 
-    if not item_masks or not keep_remove_decisions:
-        print("[mask_union] No item_masks or keep_remove_decisions — returning None")
+    if not item_masks:
+        print("[mask_union] No item_masks — returning None")
         return None
 
     norm_masks = {normalize_label_key(k): v for k, v in item_masks.items()}
@@ -498,14 +426,18 @@ def build_combined_remove_mask(
         category = get_category_for_label(label_key, detected_items or [])
         if category in HARD_STRUCTURAL:
             continue
-        decision = norm_decisions.get(label_key, "keep")
-        if decision == "remove":
+        if auto_remove_all:
+            # Treat all non-structural items as remove
             remove_keys.append(label_key)
         else:
-            keep_keys.append(label_key)
+            decision = norm_decisions.get(label_key, "keep")
+            if decision == "remove":
+                remove_keys.append(label_key)
+            else:
+                keep_keys.append(label_key)
 
     if not remove_keys:
-        print("[mask_union] No remove decisions — returning None (Kontext route)")
+        print("[mask_union] No items to remove — returning None")
         return None
 
     print(f"[mask_union] Building combined mask for {len(remove_keys)} removed items: {remove_keys}")
@@ -545,7 +477,6 @@ def build_combined_remove_mask(
         return None
 
     # Step 2: Exclude kept items from the union
-    # Download kept masks, dilate them, and use them to zero out overlapping regions
     keep_exclusion_masks = []
     for key in keep_keys:
         mask_url = norm_masks.get(key)
@@ -570,12 +501,11 @@ def build_combined_remove_mask(
         except Exception as e:
             print(f"[mask_union] Failed to exclude kept item '{key}': {e}")
 
-    # Step 3: Build union via mask_build, then subtract kept items
-    hard_mask, soft_alpha = build_remove_mask(
+    # Step 3: Build union via mask_build — returns 4 values now
+    hard_mask, dilated_mask, soft_alpha, strength_map = build_remove_mask(
         instance_masks=instance_masks,
         architecture_mask=architecture_mask,
         image_hw=image_hw,
-        feather_sigma=4.0,
         instance_labels=instance_labels,
     )
 
@@ -585,163 +515,88 @@ def build_combined_remove_mask(
             if km.shape[:2] != (h, w):
                 km = cv2.resize(km, (w, h), interpolation=cv2.INTER_NEAREST)
             hard_mask[km > 128] = 0
+            dilated_mask[km > 128] = 0
 
         # Rebuild soft_alpha from modified hard_mask
+        feather_sigma = max(1.0, w / 512.0)
         soft = cv2.GaussianBlur(
             hard_mask.astype(np.float32), (0, 0),
-            sigmaX=4.0, sigmaY=4.0,
+            sigmaX=feather_sigma, sigmaY=feather_sigma,
         )
         soft_alpha = soft / 255.0
         soft_alpha = np.where(architecture_mask > 0, 0.0, soft_alpha).astype(np.float32)
 
-    # Upload hard mask for Fill Pro
-    mask_url = upload_mask_to_supabase(
-        hard_mask,
-        f"masks/{room_id}/combined_remove_mask.png",
+    # Upload DILATED mask for Fill Pro (not the hard mask)
+    dilated_mask_url = upload_mask_to_supabase(
+        dilated_mask,
+        f"masks/{room_id}/combined_remove_mask_dilated.png",
         supabase_url, supabase_key,
     )
 
-    return mask_url, hard_mask, soft_alpha
+    return dilated_mask_url, hard_mask, dilated_mask, soft_alpha, strength_map
 
 
 # ---------------------------------------------------------------------------
-# Prompt builders
+# Fallback mask — inverse of architecture (when no item masks available)
 # ---------------------------------------------------------------------------
 
-def build_kontext_prompt(
-    style_prompt: str,
-    render_context: dict,
-    wall_change_requested: bool = False,
-    floor_change_requested: bool = False,
-) -> str:
+def build_fallback_mask(
+    architecture_mask,
+    image_hw: tuple,
+    room_id: str,
+    supabase_url: str,
+    supabase_key: str,
+) -> tuple:
     """
-    Dynamically build a Kontext-optimized imperative prompt from render_context.
-    All item lists are derived from render_context for THIS room — nothing hardcoded.
-    User decisions are law — no silent overrides.
+    When no item masks are available at all, create a mask that covers ONLY the
+    furniture zone — the interior space between ceiling and floor strips.
+    Walls, floor, and ceiling are NOT masked.
+
+    This gives Fill Pro control over the area where furniture would be
+    while the composite preserves all architecture pixel-perfectly.
+
+    Returns (dilated_mask_url, hard_mask, dilated_mask, soft_alpha, strength_map)
     """
-    detected_items = render_context.get("detected_items", [])
-    decisions = normalize_decisions(render_context.get("keep_remove_decisions", {}))
-    norm_decisions = {normalize_label_key(k): v for k, v in decisions.items()}
+    import numpy as np
 
-    remove_items = []
-    for item in detected_items:
-        label = normalize_label_key(item.get("label", ""))
-        display = item.get("display_name", label.replace("_", " "))
-        category = normalize_label_key(item.get("category", ""))
-        if norm_decisions.get(label) == "remove" and category not in HARD_STRUCTURAL:
-            remove_items.append(display)
-    detected_labels = {normalize_label_key(i.get("label", "")) for i in detected_items}
-    for k, v in norm_decisions.items():
-        if v == "remove" and k not in detected_labels:
-            cat = get_category_for_label(k, detected_items)
-            if cat not in HARD_STRUCTURAL:
-                remove_items.append(k.replace("_", " "))
+    h, w = image_hw
 
-    structural_present = []
-    user_kept = []
-    for item in detected_items:
-        label = normalize_label_key(item.get("label", ""))
-        display = item.get("display_name", label.replace("_", " "))
-        category = normalize_label_key(item.get("category", ""))
-        if category in HARD_STRUCTURAL:
-            structural_present.append(display)
-        elif norm_decisions.get(label, "keep") == "keep":
-            user_kept.append(display)
-    for k, v in norm_decisions.items():
-        if v == "keep" and k not in detected_labels:
-            user_kept.append(k.replace("_", " "))
+    # Only mask the furniture zone: between ceiling strip and floor strip.
+    # Walls within this zone are subtracted via architecture_mask.
+    ceiling_end = int(h * 0.12)
+    floor_start = int(h * 0.85)
 
-    wall_lang = (
-        "walls with smooth painted finish exactly unchanged"
-        if not wall_change_requested
-        else "walls repainted to complement new style, smooth painted finish"
-    )
-    floor_lang = (
-        "floor exactly unchanged"
-        if not floor_change_requested
-        else "floor updated to complement new style"
+    fallback = np.zeros((h, w), dtype=np.uint8)
+    fallback[ceiling_end:floor_start, :] = 255
+
+    # Subtract architecture elements within the furniture zone
+    # (walls detected by OneFormer or bbox, plus the ceiling/floor strips)
+    fallback = np.where(architecture_mask > 0, 0, fallback).astype(np.uint8)
+
+    coverage = np.count_nonzero(fallback > 0) / (h * w)
+    print(f"[fallback_mask] Furniture-zone mask: {coverage:.1%} coverage "
+          f"(ceiling_end={ceiling_end}, floor_start={floor_start})")
+
+    # Build the 4 outputs via build_remove_mask
+    hard_mask_out, dilated_mask, soft_alpha, strength_map = build_remove_mask(
+        instance_masks=[fallback],
+        architecture_mask=architecture_mask,
+        image_hw=image_hw,
+        instance_labels=["fallback_furniture_zone"],
     )
 
-    remove_clause = f"Remove {', '.join(remove_items)}. " if remove_items else ""
-    preserve_all = structural_present + user_kept
-    keep_clause = (
-        f"Keep {', '.join(preserve_all)}, {wall_lang}, {floor_lang} exactly. "
-        if preserve_all
-        else f"Keep {wall_lang}, {floor_lang} exactly. "
+    dilated_mask_url = upload_mask_to_supabase(
+        dilated_mask,
+        f"masks/{room_id}/fallback_mask_dilated.png",
+        supabase_url, supabase_key,
     )
 
-    style_cleaned = style_prompt
-    for prefix in ["Remove ", "Keep ", "Preserve "]:
-        while prefix in style_cleaned:
-            idx = style_cleaned.find(prefix)
-            end = style_cleaned.find(".", idx)
-            if end == -1:
-                end = len(style_cleaned)
-            style_cleaned = style_cleaned[:idx] + style_cleaned[end + 1:]
-    style_cleaned = style_cleaned.strip()
+    return dilated_mask_url, hard_mask_out, dilated_mask, soft_alpha, strength_map
 
-    # Filter sentences describing kept items as new furniture
-    kept_labels = set(
-        normalize_label_key(k) for k, v in norm_decisions.items() if v != "remove"
-    )
-    if kept_labels and style_cleaned:
-        import re as _re
-        sentences = _re.split(r'(?<=[.!?])\s+', style_cleaned)
-        filtered_sentences = []
-        for sentence in sentences:
-            sentence_lower = sentence.lower()
-            mentions_kept = any(
-                normalize_label_key(label) in sentence_lower
-                or any(
-                    word in sentence_lower
-                    for word in label.lower().split("_")
-                    if len(word) > 3
-                )
-                for label in kept_labels
-            )
-            if mentions_kept:
-                print(f"[kontext_prompt] Filtered kept-item sentence: '{sentence[:60]}...'")
-            else:
-                filtered_sentences.append(sentence)
-        style_cleaned = ' '.join(filtered_sentences)
 
-    MAX_BODY_WORDS = 165
-    body_words = style_cleaned.split()
-    if len(body_words) > MAX_BODY_WORDS:
-        truncated = ' '.join(body_words[:MAX_BODY_WORDS])
-        last_period = truncated.rfind('.')
-        if last_period > len(truncated) * 0.7:
-            style_cleaned = truncated[:last_period + 1]
-        else:
-            style_cleaned = truncated
-        print(f"[kontext_prompt] Prompt body truncated to {len(style_cleaned.split())} words")
-
-    import re as _re_photo
-    style_cleaned = _re_photo.sub(
-        r'Shot (?:at eye level|on Hasselblad)[^.]*\.?\s*', '', style_cleaned
-    ).strip()
-
-    quality_suffix = (
-        "Shot on Hasselblad X2D 100C, 24mm tilt-shift at f/8, "
-        "perfect exposure, professional architectural photography, "
-        "Architectural Digest quality, no people, no text."
-    )
-
-    prompt = remove_clause + keep_clause + (style_cleaned + " " if style_cleaned else "") + quality_suffix
-    word_count = len(prompt.split())
-    if word_count < 80:
-        print(f"[kontext_prompt] WARNING: prompt too short ({word_count} words)")
-    if word_count > 210:
-        print(f"[kontext_prompt] WARNING: prompt too long ({word_count} words) — truncating")
-        words = prompt.split()
-        prompt = " ".join(words[:210])
-        if "hasselblad" not in prompt.lower():
-            prompt += (" Shot on Hasselblad X2D 100C, 24mm tilt-shift at f/8, "
-                       "perfect exposure, professional architectural photography, "
-                       "Architectural Digest quality, no people, no text.")
-    print(f"[kontext_prompt] Built ({len(prompt.split())} words): {prompt[:120]}...")
-    return prompt
-
+# ---------------------------------------------------------------------------
+# Prompt builder — Fill Pro only
+# ---------------------------------------------------------------------------
 
 def build_fill_prompt(style_prompt: str, removed_items: list, kept_items: list = None) -> str:
     """
@@ -750,7 +605,7 @@ def build_fill_prompt(style_prompt: str, removed_items: list, kept_items: list =
     style_cleaned = style_prompt
     for keyword in ["Keep ", "Preserve ", "unchanged", "exactly"]:
         lines = style_cleaned.split(".")
-        lines = [l for l in lines if keyword not in l]
+        lines = [ln for ln in lines if keyword not in ln]
         style_cleaned = ".".join(lines)
 
     if kept_items:
@@ -776,7 +631,7 @@ def build_fill_prompt(style_prompt: str, removed_items: list, kept_items: list =
         style_cleaned = ' '.join(filtered)
 
     style_cleaned = style_cleaned.strip()
-    removed_str = ", ".join([r.replace("_", " ") for r in removed_items])
+    removed_str = ", ".join([r.replace("_", " ") for r in removed_items]) if removed_items else "furniture"
 
     parts = []
     parts.append(f"Replace {removed_str} with new furniture.")
@@ -801,7 +656,7 @@ def build_fill_prompt(style_prompt: str, removed_items: list, kept_items: list =
 
 
 # ---------------------------------------------------------------------------
-# Main generation function — Phase 4b → v5 pixel-composite architecture
+# Main generation function — v5 unified Fill Pro pipeline
 # ---------------------------------------------------------------------------
 
 @app.function(
@@ -823,17 +678,19 @@ def generate_redesign_phase4b(
     floor_change_requested: bool = False,
     seed: int = 42,
     remove_count: int = 0,
+    loras_json: str = None,
 ) -> dict:
     """
-    v5 generation: selective inpainting via Fill Pro + pixel-perfect composite.
+    v5 generation: unified Fill Pro inpainting + pixel-perfect composite.
 
-    ROUTE A (Fill Pro × 2 stages): When items are marked for removal:
+    ALL renders go through the same 3-stage pipeline:
       Stage 1: Fill Pro neutrally removes items (reveals floor/walls behind)
-      Stage 2: Fill Pro applies styled furniture into the SAME mask region
-      Stage 3: Pixel-perfect composite — architecture pixels byte-identical
+      Stage 2: Fill Pro applies styled furniture into the SAME mask region (x4 candidates)
+      Stage 3: Pixel-perfect composite in linear RGB — architecture pixels byte-identical
 
-    ROUTE B (Kontext Pro): When no items are removed, uses Kontext Pro for
-    whole-room style transfer. Kontext preserves structure implicitly.
+    No route branching. When no items marked for removal:
+      - If itemMasks exist: auto-remove all non-structural items
+      - If no itemMasks: use inverse of architecture mask as fallback
     """
     import fal_client
     import cv2
@@ -848,13 +705,37 @@ def generate_redesign_phase4b(
 
     base_seed = seed if seed is not None else random.randint(1, 999999)
 
-    print(f"[phase4b] ── Generation START for room {room_id} ──")
+    print(f"[phase4b] == Generation START for room {room_id} ==")
     print(f"[phase4b] original_photo: {(original_photo_url or 'NONE')[:80]}")
     print(f"[phase4b] professionalized_photo: {(professionalized_photo_url or 'NONE')[:80]}")
     print(f"[phase4b] style_prompt ({len(style_prompt.split())} words): {style_prompt[:120]}...")
     print(f"[phase4b] remove_count: {remove_count}")
     print(f"[phase4b] wall_change: {wall_change_requested}, floor_change: {floor_change_requested}")
     print(f"[phase4b] seed: {base_seed}")
+
+    # ── LoRA parsing — extract COVA* trigger words for prompt injection ──
+    # Fill Pro does NOT accept loras param. COVA* trigger words are appended
+    # to the styled prompt to activate the trained style signal.
+    lora_stack = []
+    lora_trigger_words = []
+    if loras_json:
+        try:
+            lora_stack = json.loads(loras_json) if isinstance(loras_json, str) else loras_json
+            lora_trigger_words = [
+                entry.get("trigger", "")
+                for entry in lora_stack
+                if entry.get("trigger", "")
+            ]
+            print(f"[phase4b] LoRA stack received ({len(lora_stack)} entries): "
+                  f"{[entry.get('name', 'unknown') for entry in lora_stack]}")
+            if lora_trigger_words:
+                print(f"[phase4b] COVA trigger words for prompt: {lora_trigger_words}")
+            else:
+                print("[phase4b] No COVA trigger words in stack — style from prompt only")
+        except Exception as e:
+            print(f"[phase4b] LoRA JSON parse failed: {e}")
+    else:
+        print("[phase4b] No LoRA stack received — style from prompt only")
 
     item_masks = render_context.get("itemMasks") or {}
     masks_ready = render_context.get("masksReady", False)
@@ -879,11 +760,13 @@ def generate_redesign_phase4b(
         except Exception as e:
             print(f"[phase4b] Failed to download {try_url[:80]}: {e}")
     if orig_arr is None:
-        print(f"[phase4b] WARNING: No original image available — composite disabled")
-        image_hw = (1024, 1024)
+        raise RuntimeError(f"[phase4b] No original image available for room {room_id}")
+
+    input_image = original_photo_url or professionalized_photo_url
+    if not input_image:
+        raise RuntimeError(f"[phase4b] No photo URL available for room {room_id}")
 
     # ── Build architecture mask ──────────────────────────────────────────
-    # Use OneFormer pixel-perfect mask if available from segmentation pipeline
     arch_mask_url = render_context.get("archMaskUrl", "")
     arch_mask = build_architecture_mask(
         detected_items, image_hw, arch_mask_url=arch_mask_url,
@@ -891,28 +774,11 @@ def generate_redesign_phase4b(
     print(f"[phase4b] Architecture mask built: {np.count_nonzero(arch_mask > 0)} pixels protected"
           f"{' (OneFormer)' if arch_mask_url else ' (bbox fallback)'}")
 
-    # ── Build combined remove mask ───────────────────────────────────────
+    # ── Build combined remove mask (unified — no route branching) ────────
     mask_result = None
-    if masks_ready and item_masks and remove_count > 0:
-        try:
-            mask_result = build_combined_remove_mask(
-                item_masks=item_masks,
-                keep_remove_decisions=keep_remove_decisions,
-                detected_items=detected_items,
-                architecture_mask=arch_mask,
-                image_hw=image_hw,
-                room_id=room_id,
-                supabase_url=supabase_url,
-                supabase_key=supabase_key,
-            )
-        except Exception as mask_err:
-            print(f"[phase4b] Mask build failed — falling to Kontext: {mask_err}")
-            mask_result = None
-    elif not masks_ready and remove_count > 0:
-        print("[phase4b] WARNING: masksReady=false but remove_count>0 — "
-              "falling to Kontext route")
+    mask_source = "none"
 
-    # Compute remove and keep lists for prompt building
+    # Compute remove and keep lists
     norm_decisions = {normalize_label_key(k): v for k, v in keep_remove_decisions.items()}
     remove_decision_keys = []
     keep_decision_keys = []
@@ -925,232 +791,273 @@ def generate_redesign_phase4b(
         else:
             keep_decision_keys.append(k)
 
-    # ── Route selection ──────────────────────────────────────────────────
-    two_stage = bool(mask_result and len(remove_decision_keys) > 0)
+    # Priority 1: User explicitly marked items for removal + masks available
+    if masks_ready and item_masks and remove_count > 0:
+        try:
+            mask_result = build_combined_remove_mask(
+                item_masks=item_masks,
+                keep_remove_decisions=keep_remove_decisions,
+                detected_items=detected_items,
+                architecture_mask=arch_mask,
+                image_hw=image_hw,
+                room_id=room_id,
+                supabase_url=supabase_url,
+                supabase_key=supabase_key,
+            )
+            if mask_result:
+                mask_source = "user_decisions"
+        except Exception as mask_err:
+            print(f"[phase4b] Mask build failed: {mask_err}")
 
-    if two_stage:
-        combined_mask_url, hard_mask, soft_alpha = mask_result
-        route_used = "fill_pro_two_stage"
-        endpoint_used = "fal-ai/flux-pro/v1/fill × 2 stages"
-        input_image = original_photo_url or professionalized_photo_url
-    else:
-        combined_mask_url = None
-        hard_mask = None
-        soft_alpha = None
-        route_used = "kontext_pro"
-        endpoint_used = "fal-ai/flux-pro/kontext"
-        input_image = professionalized_photo_url or original_photo_url
+    # Priority 2: No explicit removals but masks available — auto-remove all furniture
+    if mask_result is None and masks_ready and item_masks:
+        print("[phase4b] No explicit removals — auto-masking all non-structural items")
+        try:
+            mask_result = build_combined_remove_mask(
+                item_masks=item_masks,
+                keep_remove_decisions={},
+                detected_items=detected_items,
+                architecture_mask=arch_mask,
+                image_hw=image_hw,
+                room_id=room_id,
+                supabase_url=supabase_url,
+                supabase_key=supabase_key,
+                auto_remove_all=True,
+            )
+            if mask_result:
+                mask_source = "auto_all_furniture"
+                remove_decision_keys = list({
+                    normalize_label_key(k) for k in item_masks.keys()
+                    if get_category_for_label(normalize_label_key(k), detected_items) not in HARD_STRUCTURAL
+                })
+        except Exception as mask_err:
+            print(f"[phase4b] Auto-mask build failed: {mask_err}")
 
-    if not input_image:
-        raise RuntimeError(f"[phase4b] No photo URL available for room {room_id}")
+    # Priority 3: No masks at all — use inverse of architecture mask
+    if mask_result is None:
+        print("[phase4b] No item masks available — using architecture-inverse fallback")
+        try:
+            mask_result = build_fallback_mask(
+                architecture_mask=arch_mask,
+                image_hw=image_hw,
+                room_id=room_id,
+                supabase_url=supabase_url,
+                supabase_key=supabase_key,
+            )
+            if mask_result:
+                mask_source = "architecture_inverse"
+                remove_decision_keys = ["furniture_zone"]
+        except Exception as fb_err:
+            print(f"[phase4b] Fallback mask build failed: {fb_err}")
+            raise RuntimeError(f"[phase4b] Cannot build any mask for room {room_id}")
 
-    print(f"[phase4b] ROUTE: {'A (Fill Pro × 2 + Composite)' if two_stage else 'B (Kontext Pro)'}")
+    combined_mask_url, hard_mask, dilated_mask, soft_alpha, strength_map = mask_result
+
+    print(f"[phase4b] ROUTE: unified Fill Pro (mask_source={mask_source})")
     print(f"[phase4b] Input image: {input_image[:80]}")
+    print(f"[phase4b] Mask URL: {combined_mask_url[:80]}")
 
-    # Build prompts
-    kontext_prompt = build_kontext_prompt(
-        style_prompt, render_context,
-        wall_change_requested=wall_change_requested,
-        floor_change_requested=floor_change_requested,
+    # ── FIX 1: Floor preservation diagnostics ────────────────────────────
+    h_img, w_img = image_hw
+    floor_start_px = int(h_img * 0.85)
+    floor_arch_pixels = np.count_nonzero(arch_mask[floor_start_px:, :] > 0)
+    floor_total_pixels = arch_mask[floor_start_px:, :].size
+    print(f"[phase4b] FLOOR CHECK: {floor_arch_pixels}/{floor_total_pixels} floor pixels in architecture_mask "
+          f"({floor_arch_pixels / max(floor_total_pixels, 1):.1%})")
+    floor_soft_alpha_max = float(soft_alpha[floor_start_px:, :].max()) if soft_alpha.shape[0] > floor_start_px else 0.0
+    print(f"[phase4b] FLOOR CHECK: soft_alpha max in bottom 15% = {floor_soft_alpha_max:.6f}")
+    if floor_soft_alpha_max > 0.001:
+        print("[phase4b] WARNING: soft_alpha > 0 in floor region — force-zeroing")
+        soft_alpha[floor_start_px:, :] = 0.0
+
+    ceiling_end_px = int(h_img * 0.06)
+    ceil_soft_alpha_max = float(soft_alpha[:ceiling_end_px, :].max()) if ceiling_end_px > 0 else 0.0
+    print(f"[phase4b] CEILING CHECK: soft_alpha max in top 6% = {ceil_soft_alpha_max:.6f}")
+    if ceil_soft_alpha_max > 0.001:
+        print("[phase4b] WARNING: soft_alpha > 0 in ceiling region — force-zeroing")
+        soft_alpha[:ceiling_end_px, :] = 0.0
+
+    # ── FIX 2: Mask polarity check ──────────────────────────────────────
+    mask_white_count = np.count_nonzero(dilated_mask > 0)
+    mask_total = dilated_mask.size
+    mask_coverage_pct = mask_white_count / max(mask_total, 1) * 100
+    print(f"[phase4b] MASK POLARITY: {mask_white_count} white pixels / {mask_total} total = {mask_coverage_pct:.1f}%")
+    if mask_white_count == 0:
+        print("[phase4b] CRITICAL: Mask is all black — Fill Pro will not inpaint anything!")
+    elif mask_coverage_pct < 5.0:
+        print(f"[phase4b] WARNING: Mask coverage < 5% — Fill Pro may barely modify the room")
+
+    # ── Mask dimension verification ─────────────────────────────────────
+    try:
+        orig_h, orig_w = orig_arr.shape[:2]
+        mask_bytes = _req.get(combined_mask_url, timeout=60).content
+        mask_img = _Img.open(io.BytesIO(mask_bytes))
+        mask_w, mask_h = mask_img.size
+
+        if (mask_w, mask_h) != (orig_w, orig_h):
+            print(f"[phase4b] Mask dimensions {mask_w}x{mask_h} != image {orig_w}x{orig_h} — resizing")
+            mask_arr = np.array(mask_img.convert("L"))
+            mask_arr = cv2.resize(mask_arr, (orig_w, orig_h), interpolation=cv2.INTER_NEAREST)
+            resized_pil = _Img.fromarray(mask_arr, mode="L")
+            buf = io.BytesIO()
+            resized_pil.save(buf, format="PNG")
+            resized_bytes = buf.getvalue()
+            mask_path = f"masks/{room_id}/combined_remove_mask_resized.png"
+            combined_mask_url = _upload_to_supabase(resized_bytes, mask_path, supabase_url, supabase_key)
+            print(f"[phase4b] Resized mask uploaded: {combined_mask_url[:80]}")
+        else:
+            print("[phase4b] Mask dimensions match — OK")
+    except Exception as dim_err:
+        print(f"[phase4b] Could not verify mask dimensions: {dim_err}")
+
+    # ── Stage 1: Neutral removal ────────────────────────────────────────
+    print(f"[phase4b] Stage 1 prompt: {NEUTRAL_FILL_PROMPT[:100]}")
+    print("[phase4b] Stage 1: Submitting Fill Pro (neutral removal)...")
+
+    # Re-upload Supabase URLs to fal.ai storage for guaranteed access
+    fal_input_image = _upload_to_fal(input_image)
+    fal_mask_url = _upload_to_fal(combined_mask_url)
+
+    fill_args = {
+        "image_url": fal_input_image,
+        "mask_url": fal_mask_url,
+        "prompt": NEUTRAL_FILL_PROMPT,
+        "seed": base_seed,
+        "num_images": 1,
+        "output_format": "png",
+        "safety_tolerance": "2",
+    }
+
+    try:
+        handle = fal_client.submit("fal-ai/flux-pro/v1/fill", arguments=fill_args)
+        fill_result = handle.get()
+    except Exception as e:
+        print(f"[phase4b] Stage 1 Fill Pro FAILED: {e}")
+        try:
+            client.table("rooms").update({
+                "redesign_status": "failed",
+                "redesign_error": f"FillPro stage1: {str(e)[:1900]}",
+            }).eq("id", room_id).execute()
+        except Exception:
+            pass
+        raise
+
+    fill_images = fill_result.get("images") or []
+    if not fill_images:
+        single = fill_result.get("image")
+        if single and isinstance(single, dict) and "url" in single:
+            stage1_url = single["url"]
+        else:
+            raise RuntimeError(f"[phase4b] Stage 1 returned no images: {str(fill_result)[:300]}")
+    else:
+        stage1_url = fill_images[0].get("url", "")
+
+    if not stage1_url:
+        raise RuntimeError("[phase4b] Stage 1 empty URL")
+
+    print(f"[phase4b] Stage 1 DONE — empty room: {stage1_url[:80]}")
+
+    # Upload Stage 1 to Supabase for reuse
+    stage1_bytes = _req.get(stage1_url, timeout=60).content
+    stage1_path = f"renders/{room_id}/stage1_fill_{int(_time_module.time())}.png"
+    stage1_supabase_url = _upload_to_supabase(
+        stage1_bytes, stage1_path, supabase_url, supabase_key
+    )
+    render_context["debug_stage1_url"] = stage1_supabase_url
+
+    # ── Resize mask to match Stage 1 output dimensions ───────────────
+    stage1_img = _Img.open(io.BytesIO(stage1_bytes))
+    s1_w, s1_h = stage1_img.size
+    orig_h, orig_w = image_hw
+    if (s1_w, s1_h) != (orig_w, orig_h):
+        print(f"[phase4b] Stage 1 output {s1_w}x{s1_h} != original {orig_w}x{orig_h} — resizing mask for Stage 2")
+        resized_mask = cv2.resize(dilated_mask, (s1_w, s1_h), interpolation=cv2.INTER_NEAREST)
+        resized_mask_pil = _Img.fromarray(resized_mask, mode="L")
+        buf = io.BytesIO()
+        resized_mask_pil.save(buf, format="PNG")
+        stage2_mask_path = f"masks/{room_id}/combined_remove_mask_s2.png"
+        stage2_mask_url = _upload_to_supabase(
+            buf.getvalue(), stage2_mask_path, supabase_url, supabase_key
+        )
+        print(f"[phase4b] Stage 2 mask resized and uploaded: {stage2_mask_url[:80]}")
+    else:
+        stage2_mask_url = combined_mask_url
+        print("[phase4b] Stage 1 output matches original — using same mask for Stage 2")
+
+    # ── Stage 2: Styled inpainting x4 candidates (individual calls) ─────
+    styled_fill_prompt = build_fill_prompt(
+        style_prompt, remove_decision_keys, kept_items=keep_decision_keys
     )
 
-    # ── Mask dimension verification (Route A only) ───────────────────────
-    if two_stage:
-        try:
-            orig_h, orig_w = orig_arr.shape[:2] if orig_arr is not None else (0, 0)
-            mask_bytes = _req.get(combined_mask_url, timeout=60).content
-            mask_img = _Img.open(io.BytesIO(mask_bytes))
-            mask_w, mask_h = mask_img.size
+    # Append COVA* trigger words to activate trained style signal
+    if lora_trigger_words:
+        trigger_suffix = ", ".join(lora_trigger_words) + " style"
+        styled_fill_prompt = styled_fill_prompt + f", {trigger_suffix}"
+        print(f"[phase4b] Appended COVA triggers to prompt: {trigger_suffix}")
 
-            if (mask_w, mask_h) != (orig_w, orig_h):
-                print(f"[phase4b] Mask dimensions {mask_w}x{mask_h} != image {orig_w}x{orig_h} — resizing")
-                mask_arr = np.array(mask_img.convert("L"))
-                mask_arr = cv2.resize(mask_arr, (orig_w, orig_h), interpolation=cv2.INTER_NEAREST)
-                resized_pil = _Img.fromarray(mask_arr, mode="L")
-                buf = io.BytesIO()
-                resized_pil.save(buf, format="PNG")
-                resized_bytes = buf.getvalue()
-                mask_path = f"masks/{room_id}/combined_remove_mask_resized.png"
-                combined_mask_url = _upload_to_supabase(resized_bytes, mask_path, supabase_url, supabase_key)
-                print(f"[phase4b] Resized mask uploaded: {combined_mask_url[:80]}")
+    print(f"[phase4b] Stage 2 prompt (compiled/style): {styled_fill_prompt[:100]}")
+    print("[phase4b] Stage 2: Fill Pro styled inpainting x4 seeds")
+
+    # Re-upload Stage 1 output + mask to fal.ai storage for Stage 2
+    fal_stage1_url = _upload_to_fal(stage1_supabase_url)
+    fal_stage2_mask = _upload_to_fal(stage2_mask_url)
+
+    # Fill Pro num_images param returns only 1 image regardless of value.
+    # Use 4 individual calls with different seeds for actual diversity.
+    seeds = [base_seed, base_seed + 1000, base_seed + 2000, base_seed + 3000]
+    candidates = []
+
+    for s in seeds:
+        try:
+            style_args = {
+                "image_url": fal_stage1_url,
+                "mask_url": fal_stage2_mask,
+                "prompt": styled_fill_prompt,
+                "seed": s,
+                "num_images": 1,
+                "output_format": "png",
+                "safety_tolerance": "2",
+            }
+            print(f"[phase4b] Stage 2 seed={s}: Submitting Fill Pro...")
+            handle = fal_client.submit("fal-ai/flux-pro/v1/fill", arguments=style_args)
+            result = handle.get()
+
+            images = result.get("images") or []
+            if not images:
+                single_image = result.get("image")
+                if single_image and isinstance(single_image, dict) and "url" in single_image:
+                    images = [single_image]
+
+            if images:
+                candidate_url = images[0].get("url", "")
+                if candidate_url:
+                    candidates.append({"url": candidate_url, "seed": s})
+                    print(f"[phase4b] Stage 2 seed={s}: OK — {candidate_url[:80]}")
+                else:
+                    print(f"[phase4b] Stage 2 seed={s}: empty URL — skipping")
             else:
-                print(f"[phase4b] Mask dimensions match — OK")
-        except Exception as dim_err:
-            print(f"[phase4b] Could not verify mask dimensions: {dim_err}")
+                print(f"[phase4b] Stage 2 seed={s}: no images returned — skipping")
 
-    # ── ROUTE A: Fill Pro two-stage + pixel composite ────────────────────
-    stage1_supabase_url = None
-    fill_prompt = None
-
-    if two_stage:
-        # ── Stage 1: Neutral removal ──────────────────────────────────────
-        fill_prompt = NEUTRAL_FILL_PROMPT
-        print(f"[phase4b] Stage 1 prompt: {NEUTRAL_FILL_PROMPT[:100]}")
-        print(f"[phase4b] Stage 1: Submitting Fill Pro (neutral removal)...")
-
-        fill_args = {
-            "image_url": input_image,
-            "mask_url": combined_mask_url,
-            "prompt": fill_prompt,
-            "seed": base_seed,
-            "output_format": "png",
-            "safety_tolerance": "2",
-        }
-
-        try:
-            handle = fal_client.submit("fal-ai/flux-pro/v1/fill", arguments=fill_args)
-            fill_result = handle.get()
         except Exception as e:
-            print(f"[phase4b] Stage 1 Fill Pro FAILED: {e}")
+            print(f"[phase4b] Stage 2 seed={s} failed: {e}")
+            # Retry once with higher safety tolerance
             try:
-                client.table("rooms").update({
-                    "redesign_status": "failed",
-                    "redesign_error": f"FillPro stage1: {str(e)[:1900]}",
-                }).eq("id", room_id).execute()
-            except Exception:
-                pass
-            raise
-
-        fill_images = fill_result.get("images") or []
-        if not fill_images:
-            single = fill_result.get("image")
-            if single and isinstance(single, dict) and "url" in single:
-                stage1_url = single["url"]
-            else:
-                raise RuntimeError(f"[phase4b] Stage 1 returned no images: {str(fill_result)[:300]}")
-        else:
-            stage1_url = fill_images[0].get("url", "")
-
-        if not stage1_url:
-            raise RuntimeError(f"[phase4b] Stage 1 empty URL")
-
-        print(f"[phase4b] Stage 1 DONE — empty room: {stage1_url[:80]}")
-
-        # Upload Stage 1 to Supabase for reuse
-        stage1_bytes = _req.get(stage1_url, timeout=60).content
-        stage1_path = f"renders/{room_id}/stage1_fill_{int(_time_module.time())}.png"
-        stage1_supabase_url = _upload_to_supabase(
-            stage1_bytes, stage1_path, supabase_url, supabase_key
-        )
-        render_context["debug_stage1_url"] = stage1_supabase_url
-
-        # ── Resize mask to match Stage 1 output dimensions ───────────────
-        # Fill Pro may return a different resolution than the input image.
-        # Stage 2 requires the mask to match the Stage 1 output exactly.
-        stage1_img = _Img.open(io.BytesIO(stage1_bytes))
-        s1_w, s1_h = stage1_img.size
-        orig_h, orig_w = image_hw
-        if (s1_w, s1_h) != (orig_w, orig_h):
-            print(f"[phase4b] Stage 1 output {s1_w}x{s1_h} != original {orig_w}x{orig_h} — resizing mask for Stage 2")
-            resized_mask = cv2.resize(hard_mask, (s1_w, s1_h), interpolation=cv2.INTER_NEAREST)
-            resized_mask_pil = _Img.fromarray(resized_mask, mode="L")
-            buf = io.BytesIO()
-            resized_mask_pil.save(buf, format="PNG")
-            stage2_mask_path = f"masks/{room_id}/combined_remove_mask_s2.png"
-            stage2_mask_url = _upload_to_supabase(
-                buf.getvalue(), stage2_mask_path, supabase_url, supabase_key
-            )
-            print(f"[phase4b] Stage 2 mask resized and uploaded: {stage2_mask_url[:80]}")
-        else:
-            stage2_mask_url = combined_mask_url
-            print(f"[phase4b] Stage 1 output matches original — using same mask for Stage 2")
-
-        # ── Stage 2: Styled inpainting × 3 seeds ─────────────────────────
-        styled_fill_prompt = build_fill_prompt(
-            style_prompt, remove_decision_keys, kept_items=keep_decision_keys
-        )
-        print(f"[phase4b] Stage 2 prompt (compiled/style): {styled_fill_prompt[:100]}")
-        print(f"[phase4b] Stage 2: Fill Pro styled inpainting × 3 seeds")
-
-        seeds = [base_seed, base_seed + 1000, base_seed + 2000]
-        candidates = []
-
-        for s in seeds:
-            try:
-                style_args = {
-                    "image_url": stage1_supabase_url,
-                    "mask_url": stage2_mask_url,
-                    "prompt": styled_fill_prompt,
-                    "seed": s,
-                    "output_format": "png",
-                    "safety_tolerance": "2",
-                }
-                print(f"[phase4b] Stage 2 candidate seed={s}: Submitting Fill Pro...")
+                style_args["safety_tolerance"] = "6"
+                print(f"[phase4b] Stage 2 seed={s}: retrying with safety_tolerance=6...")
                 handle = fal_client.submit("fal-ai/flux-pro/v1/fill", arguments=style_args)
                 result = handle.get()
-
                 images = result.get("images") or []
                 if not images:
                     single_image = result.get("image")
                     if single_image and isinstance(single_image, dict) and "url" in single_image:
-                        candidate_url = single_image["url"]
-                    else:
-                        print(f"[phase4b] Stage 2 seed={s}: no images — skipping")
-                        continue
-                else:
+                        images = [single_image]
+                if images:
                     candidate_url = images[0].get("url", "")
-
-                if not candidate_url:
-                    print(f"[phase4b] Stage 2 seed={s}: empty URL — skipping")
-                    continue
-
-                candidates.append({"url": candidate_url, "seed": s})
-                print(f"[phase4b] Stage 2 seed={s}: OK — {candidate_url[:80]}")
-
-            except Exception as e:
-                print(f"[phase4b] Stage 2 seed={s} failed: {e}")
-                # Retry once with higher safety tolerance
-                try:
-                    style_args["safety_tolerance"] = "6"
-                    print(f"[phase4b] Stage 2 seed={s}: retrying with safety_tolerance=6...")
-                    handle = fal_client.submit("fal-ai/flux-pro/v1/fill", arguments=style_args)
-                    result = handle.get()
-                    images = result.get("images") or []
-                    if images:
-                        candidates.append({"url": images[0]["url"], "seed": s})
+                    if candidate_url:
+                        candidates.append({"url": candidate_url, "seed": s})
                         print(f"[phase4b] Stage 2 seed={s}: retry OK")
-                except Exception as retry_e:
-                    print(f"[phase4b] Stage 2 seed={s}: retry also failed: {retry_e}")
-                continue
-
-    else:
-        # ── ROUTE B: Kontext Pro × 3 seeds ───────────────────────────────
-        seeds = [base_seed, base_seed + 1000, base_seed + 2000]
-        candidates = []
-
-        for s in seeds:
-            try:
-                fal_args = {
-                    "image_url": input_image,
-                    "prompt": kontext_prompt,
-                    "num_inference_steps": 30,
-                    "guidance_scale": 7.0,
-                    "seed": s,
-                    "output_format": "jpeg",
-                    "safety_tolerance": "5",
-                }
-                print(f"[phase4b] Kontext candidate seed={s}: Submitting...")
-                handle = fal_client.submit("fal-ai/flux-pro/kontext", arguments=fal_args)
-                result = handle.get()
-
-                images = result.get("images") or []
-                if not images:
-                    single_image = result.get("image")
-                    if single_image and isinstance(single_image, dict) and "url" in single_image:
-                        candidate_url = single_image["url"]
-                    else:
-                        print(f"[phase4b] Kontext seed={s}: no images — skipping")
-                        continue
-                else:
-                    candidate_url = images[0].get("url", "")
-
-                if not candidate_url:
-                    continue
-
-                candidates.append({"url": candidate_url, "seed": s})
-                print(f"[phase4b] Kontext seed={s}: OK — {candidate_url[:80]}")
-            except Exception as e:
-                print(f"[phase4b] Kontext seed={s} failed: {e}")
+            except Exception as retry_e:
+                print(f"[phase4b] Stage 2 seed={s}: retry also failed: {retry_e}")
 
     # ── Check candidates ─────────────────────────────────────────────────
     if not candidates:
@@ -1165,185 +1072,175 @@ def generate_redesign_phase4b(
             pass
         raise RuntimeError(f"[phase4b] {err_msg}")
 
-    print(f"[phase4b] {len(candidates)} candidates — scoring with LAION Aesthetic V2.5...")
+    print(f"[phase4b] {len(candidates)} candidates — scoring with 3-model ensemble...")
 
     # ── Score and select best candidate ──────────────────────────────────
-    best = score_and_select(candidates, kontext_prompt)
+    best = score_and_select(candidates, styled_fill_prompt)
     raw_output_url = best["url"]
+    ensemble_score = best.get("ensemble_score", 0.0)
     aesthetic_score = best.get("aesthetic_score", 0.0)
+    hps_score = best.get("hps_score", 0.0)
+    q_align_score = best.get("q_align_score")
     all_scores = best.get("all_scores", [])
 
-    print(f"[phase4b] Best: seed={best['seed']} score={aesthetic_score:.2f}")
+    print(f"[phase4b] Best: seed={best['seed']} ensemble={ensemble_score:.2f} "
+          f"aesthetic={aesthetic_score:.2f} hps={hps_score:.4f} "
+          f"q_align={q_align_score}")
     print(f"[phase4b] All scores: {all_scores}")
 
-    # ── Pixel-perfect composite (Route A only) ───────────────────────────
-    composite_applied = False
-    if two_stage and orig_arr is not None and soft_alpha is not None:
+    # ── Auto-reject gate — regenerate if best < 5.0 ─────────────────────
+    if ensemble_score < 5.0 and len(candidates) > 0:
+        print(f"[phase4b] AUTO-REJECT: best score {ensemble_score:.2f} < 5.0 — regenerating with new seed")
+        retry_seed = base_seed + 5000
         try:
-            ai_arr = _download_image_as_array(raw_output_url)
+            retry_args = {
+                "image_url": fal_stage1_url,
+                "mask_url": fal_stage2_mask,
+                "prompt": styled_fill_prompt,
+                "seed": retry_seed,
+                "num_images": 1,
+                "output_format": "png",
+                "safety_tolerance": "2",
+            }
+            handle = fal_client.submit("fal-ai/flux-pro/v1/fill", arguments=retry_args)
+            result = handle.get()
+            retry_images = result.get("images") or []
+            if not retry_images:
+                single_image = result.get("image")
+                if single_image and isinstance(single_image, dict) and "url" in single_image:
+                    retry_images = [single_image]
+            retry_candidates = []
+            for idx, img_data in enumerate(retry_images):
+                url = img_data.get("url", "") if isinstance(img_data, dict) else ""
+                if url:
+                    retry_candidates.append({"url": url, "seed": retry_seed})
 
-            composite_arr = pixel_perfect_composite(
-                original_arr=orig_arr,
-                ai_output_arr=ai_arr,
-                soft_alpha=soft_alpha,
-                architecture_mask=arch_mask,
-                room_id=room_id,
+            if retry_candidates:
+                retry_best = score_and_select(retry_candidates, styled_fill_prompt)
+                if retry_best.get("ensemble_score", 0.0) > ensemble_score:
+                    best = retry_best
+                    raw_output_url = best["url"]
+                    ensemble_score = best.get("ensemble_score", 0.0)
+                    aesthetic_score = best.get("aesthetic_score", 0.0)
+                    hps_score = best.get("hps_score", 0.0)
+                    q_align_score = best.get("q_align_score")
+                    all_scores = all_scores + best.get("all_scores", [])
+                    print(f"[phase4b] Retry improved: ensemble={ensemble_score:.2f}")
+                else:
+                    # Add retry scores to all_scores even if not selected
+                    all_scores = all_scores + retry_best.get("all_scores", [])
+                    print("[phase4b] Retry did not improve — keeping original best")
+        except Exception as retry_err:
+            print(f"[phase4b] Retry failed: {retry_err}")
+
+    # ── Store per-candidate scores in renders table ──────────────────────
+    try:
+        loras_used_json = json.loads(loras_json) if loras_json and isinstance(loras_json, str) else loras_json
+        for cs in all_scores:
+            render_row = {
+                "room_id": room_id,
+                "user_id": user_id,
+                "image_url": cs.get("url", ""),
+                "seed": cs.get("seed"),
+                "prompt_used": styled_fill_prompt[:2000],
+                "loras_used": loras_used_json,
+                "hps_score": cs.get("hps"),
+                "laion_score": cs.get("aesthetic"),
+                "q_align_score": cs.get("q_align"),
+                "composite_score": cs.get("overall", 0.0),
+                "was_selected": cs.get("was_selected", False),
+                "render_type": "candidate",
+                "status": "scored",
+                "pipeline_version": "v5-ensemble",
+            }
+            client.table("renders").insert(render_row).execute()
+        print(f"[phase4b] Stored {len(all_scores)} candidate scores in renders table")
+    except Exception as db_score_err:
+        print(f"[phase4b] Failed to store candidate scores: {db_score_err}")
+
+    # ── Stage 3: Pixel-perfect composite (linear RGB) ────────────────────
+    before_url = None
+    try:
+        ai_arr = _download_image_as_array(raw_output_url)
+
+        composite_arr = pixel_perfect_composite(
+            original_arr=orig_arr,
+            ai_output_arr=ai_arr,
+            soft_alpha=soft_alpha,
+            architecture_mask=arch_mask,
+            room_id=room_id,
+        )
+
+        # Floor preservation verification
+        h_comp, w_comp = composite_arr.shape[:2]
+        floor_region = composite_arr[int(h_comp * 0.75):, :]
+        original_floor = orig_arr[int(h_comp * 0.75):, :]
+        floor_diff = int(np.abs(floor_region.astype(int) - original_floor.astype(int)).max())
+        print(f"[phase4b] floor_diff={floor_diff}")
+        if floor_diff > 0:
+            print("[phase4b] WARNING: Floor pixels changed — architecture mask may not cover floor")
+            floor_arch = arch_mask[int(h_comp * 0.85):, :]
+            floor_arch_coverage = np.count_nonzero(floor_arch > 0) / floor_arch.size
+            print(f"[phase4b] Architecture mask floor coverage (bottom 15%): {floor_arch_coverage:.1%}")
+            floor_alpha = soft_alpha[int(h_comp * 0.75):, :]
+            floor_alpha_max = float(floor_alpha.max())
+            print(f"[phase4b] soft_alpha max in floor region (bottom 25%): {floor_alpha_max:.4f}")
+        else:
+            print("[phase4b] Floor preservation PASS — byte-identical to original")
+
+        # Ceiling preservation verification
+        ceiling_region = composite_arr[:int(h_comp * 0.10), :]
+        original_ceiling = orig_arr[:int(h_comp * 0.10), :]
+        ceiling_diff = int(np.abs(ceiling_region.astype(int) - original_ceiling.astype(int)).max())
+        print(f"[phase4b] ceiling_diff={ceiling_diff}")
+        if ceiling_diff == 0:
+            print("[phase4b] Ceiling preservation PASS — byte-identical to original")
+
+        # ── Save before_postprocess for A/B comparison ──────────────────
+        before_pil = _Img.fromarray(composite_arr)
+        before_buf = io.BytesIO()
+        before_pil.save(before_buf, format="JPEG", quality=95)
+        before_path = f"renders/{room_id}/before_postprocess_{int(_time_module.time())}.jpg"
+        before_url = _upload_to_supabase(
+            before_buf.getvalue(), before_path, supabase_url, supabase_key
+        )
+        print(f"[phase4b] Before postprocess saved: {before_url[:80]}")
+
+        # ── Post-processing chain — magazine quality ────────────────────
+        try:
+            from postprocess import run_postprocessing_chain
+
+            composite_arr = run_postprocessing_chain(
+                composite=composite_arr,
+                original=orig_arr,
+                arch_mask=arch_mask,
+                furniture_mask=soft_alpha,
+                depth_map=None,
+                window_direction=None,
+                style_name="",
+                tier="default",
             )
-
-            # FIX 2 — Floor preservation verification
-            h_comp, w_comp = composite_arr.shape[:2]
-            floor_region = composite_arr[int(h_comp * 0.75):, :]
-            original_floor = orig_arr[int(h_comp * 0.75):, :]
-            floor_diff = np.abs(floor_region.astype(int) - original_floor.astype(int)).max()
-            print(f"[phase4b] Floor region max pixel diff: {floor_diff}")
-            if floor_diff > 0:
-                print(f"[phase4b] WARNING: Floor pixels changed — architecture mask may not cover floor")
-                # Log architecture mask floor coverage
-                floor_arch = arch_mask[int(h_comp * 0.85):, :]
-                floor_arch_coverage = np.count_nonzero(floor_arch > 0) / floor_arch.size
-                print(f"[phase4b] Architecture mask floor coverage (bottom 15%): {floor_arch_coverage:.1%}")
-                # Log soft_alpha in floor region
-                floor_alpha = soft_alpha[int(h_comp * 0.75):, :]
-                floor_alpha_max = float(floor_alpha.max())
-                print(f"[phase4b] soft_alpha max in floor region (bottom 25%): {floor_alpha_max:.4f}")
-            else:
-                print(f"[phase4b] Floor preservation PASS — byte-identical to original")
-
-            # Phase 7 visual signature (disabled until Session 6)
-            if ENABLE_VISUAL_SIGNATURE:
-                composite_bgr = cv2.cvtColor(composite_arr, cv2.COLOR_RGB2BGR)
-                processed_bgr = apply_visual_signature(composite_bgr)
-                output_rgb = cv2.cvtColor(processed_bgr, cv2.COLOR_BGR2RGB)
-                print(f"[phase4b] Visual signature applied")
-            else:
-                output_rgb = composite_arr
-                print(f"[phase4b] Visual signature SKIPPED (ENABLE_VISUAL_SIGNATURE=False)")
-
-            # Upload
-            processed_pil = _Img.fromarray(output_rgb)
-            buf = io.BytesIO()
-            processed_pil.save(buf, format="JPEG", quality=95)
-            processed_bytes = buf.getvalue()
-
-            final_path = f"renders/{room_id}/final_{int(_time_module.time())}.jpg"
-            final_url = _upload_to_supabase(processed_bytes, final_path, supabase_url, supabase_key)
-            composite_applied = True
-            print(f"[phase4b] Pixel composite uploaded: {final_url[:80]}")
-
-        except Exception as comp_err:
-            print(f"[phase4b] Composite FAILED — falling back to raw + visual sig: {comp_err}")
-            final_url = None
-
-    if not two_stage or not composite_applied:
-        # Route B — Color-matched Kontext + strip-based architecture protection.
-        # Strategy: use Kontext output for the middle band (furniture zone),
-        # force-paste original pixels for floor + ceiling strips with feathered blend.
-        # Global LAB color matching minimizes wall color drift.
-        # No bbox rectangles — avoids visible seam artifacts on flat walls.
-        try:
-            kontext_arr = _download_image_as_array(raw_output_url)
-
-            if orig_arr is not None:
-                h_out, w_out = orig_arr.shape[:2]
-                FEATHER_PX = max(80, int(min(h_out, w_out) * 0.025))
-
-                # Resize Kontext output to match original
-                if kontext_arr.shape[:2] != (h_out, w_out):
-                    print(f"[phase4b] Resizing Kontext output {kontext_arr.shape[:2]} → {(h_out, w_out)}")
-                    kontext_arr = cv2.resize(
-                        kontext_arr, (w_out, h_out),
-                        interpolation=cv2.INTER_LANCZOS4,
-                    )
-
-                # Step 1: Global LAB color matching — shift Kontext colors to match original
-                try:
-                    orig_lab = cv2.cvtColor(orig_arr, cv2.COLOR_RGB2LAB).astype(np.float32)
-                    kontext_lab = cv2.cvtColor(kontext_arr, cv2.COLOR_RGB2LAB).astype(np.float32)
-                    for ch in range(3):
-                        o_mean, o_std = orig_lab[:, :, ch].mean(), orig_lab[:, :, ch].std()
-                        k_mean, k_std = kontext_lab[:, :, ch].mean(), kontext_lab[:, :, ch].std()
-                        if k_std > 0.1:
-                            kontext_lab[:, :, ch] = (
-                                (kontext_lab[:, :, ch] - k_mean) * (o_std / k_std) + o_mean
-                            )
-                    kontext_lab = np.clip(kontext_lab, 0, 255)
-                    kontext_arr = cv2.cvtColor(kontext_lab.astype(np.uint8), cv2.COLOR_LAB2RGB)
-                    print(f"[phase4b] Global LAB color matching applied")
-                except Exception as cm_err:
-                    print(f"[phase4b] Color matching failed: {cm_err}")
-
-                # Step 2: Start with color-matched Kontext as base
-                output_arr = kontext_arr.copy()
-
-                # Step 3: Force-paste floor strip with feathered blend
-                if not floor_change_requested:
-                    floor_hard = int(h_out * 0.72)  # bottom 28% is hard original
-                    for y in range(max(0, floor_hard - FEATHER_PX), floor_hard):
-                        t = (y - (floor_hard - FEATHER_PX)) / FEATHER_PX
-                        output_arr[y, :] = (
-                            (1.0 - t) * output_arr[y, :].astype(np.float32) +
-                            t * orig_arr[y, :].astype(np.float32)
-                        ).astype(np.uint8)
-                    output_arr[floor_hard:, :] = orig_arr[floor_hard:, :]
-                    print(f"[phase4b] Floor strip: original below y={floor_hard} ({FEATHER_PX}px feather)")
-
-                # Step 4: Force-paste ceiling strip with feathered blend
-                if not wall_change_requested:
-                    ceil_hard = int(h_out * 0.12)  # top 12% is hard original
-                    output_arr[:ceil_hard, :] = orig_arr[:ceil_hard, :]
-                    for y in range(ceil_hard, min(h_out, ceil_hard + FEATHER_PX)):
-                        t = (y - ceil_hard) / FEATHER_PX
-                        output_arr[y, :] = (
-                            t * output_arr[y, :].astype(np.float32) +
-                            (1.0 - t) * orig_arr[y, :].astype(np.float32)
-                        ).astype(np.uint8)
-                    print(f"[phase4b] Ceiling strip: original above y={ceil_hard} ({FEATHER_PX}px feather)")
-
-                # Step 5: Force architecture mask pixels (catches blinds, structural items)
-                resized_arch = arch_mask
-                if arch_mask.shape[:2] != (h_out, w_out):
-                    resized_arch = cv2.resize(arch_mask, (w_out, h_out), interpolation=cv2.INTER_NEAREST)
-                output_arr[resized_arch > 0] = orig_arr[resized_arch > 0]
-
-                # Verification logs
-                floor_region = output_arr[int(h_out * 0.75):, :]
-                original_floor = orig_arr[int(h_out * 0.75):, :]
-                floor_diff = int(np.abs(floor_region.astype(int) - original_floor.astype(int)).max())
-                print(f"[phase4b] Floor region max pixel diff: {floor_diff}")
-                if floor_diff == 0:
-                    print(f"[phase4b] Floor preservation PASS — byte-identical to original")
-
-                ceil_region = output_arr[:int(h_out * 0.10), :]
-                original_ceil = orig_arr[:int(h_out * 0.10), :]
-                ceil_diff = int(np.abs(ceil_region.astype(int) - original_ceil.astype(int)).max())
-                print(f"[phase4b] Ceiling region max pixel diff: {ceil_diff}")
-
-                composite_applied = True
-            else:
-                output_arr = kontext_arr
-                print(f"[phase4b] No original image — cannot apply architecture composite")
-
-            if ENABLE_VISUAL_SIGNATURE:
-                vis_bgr = cv2.cvtColor(output_arr, cv2.COLOR_RGB2BGR)
-                processed_bgr = apply_visual_signature(vis_bgr)
-                output_arr = cv2.cvtColor(processed_bgr, cv2.COLOR_BGR2RGB)
-                print(f"[phase4b] Visual signature applied")
-            else:
-                print(f"[phase4b] Visual signature SKIPPED (ENABLE_VISUAL_SIGNATURE=False)")
-
-            processed_pil = _Img.fromarray(output_arr)
-            buf = io.BytesIO()
-            processed_pil.save(buf, format="JPEG", quality=95)
-            processed_bytes = buf.getvalue()
-
-            final_path = f"renders/{room_id}/final_{int(_time_module.time())}.jpg"
-            final_url = _upload_to_supabase(processed_bytes, final_path, supabase_url, supabase_key)
-            print(f"[phase4b] Route B output uploaded: {final_url[:80]}")
-        except Exception as route_b_err:
-            print(f"[phase4b] Route B post-processing FAILED — using raw: {route_b_err}")
+            print("[phase4b] Post-processing chain complete")
+        except Exception as pp_err:
+            print(f"[phase4b] Post-processing FAILED — using raw composite: {pp_err}")
             import traceback
             traceback.print_exc()
-            final_url = raw_output_url
+
+        # Upload final
+        processed_pil = _Img.fromarray(composite_arr)
+        buf = io.BytesIO()
+        processed_pil.save(buf, format="JPEG", quality=95)
+        processed_bytes = buf.getvalue()
+
+        final_path = f"renders/{room_id}/final_{int(_time_module.time())}.jpg"
+        final_url = _upload_to_supabase(processed_bytes, final_path, supabase_url, supabase_key)
+        print(f"[phase4b] Final (post-processed) uploaded: {final_url[:80]}")
+
+    except Exception as comp_err:
+        print(f"[phase4b] Composite FAILED — using raw output: {comp_err}")
+        import traceback
+        traceback.print_exc()
+        final_url = raw_output_url
 
     print(f"[phase4b] Final URL: {final_url[:80]}")
 
@@ -1352,36 +1249,40 @@ def generate_redesign_phase4b(
         update_payload = {
             "redesign_pano_url": final_url,
             "redesign_status": "complete",
-            "generation_seed": best["seed"],
+            "generation_seed": best.get("seed", base_seed),
         }
         client.table("rooms").update(update_payload).eq("id", room_id).execute()
-        print(f"[phase4b] DB updated — redesign_status=complete")
+        print("[phase4b] DB updated — redesign_status=complete")
     except Exception as db_err:
         print(f"[phase4b] DB update FAILED: {db_err}")
         raise
 
-    print(f"[phase4b] ── Generation COMPLETE for room {room_id} ──")
+    print(f"[phase4b] == Generation COMPLETE for room {room_id} ==")
 
     result_dict = {
         "final_url": final_url,
         "raw_fal_url": raw_output_url,
-        "composite_applied": composite_applied,
+        "before_postprocess_url": before_url,
+        "composite_applied": True,
         "image_url": final_url,
-        "route_used": route_used,
+        "route_used": "fill_pro_unified",
         "mask_url": combined_mask_url,
-        "seed": best["seed"],
-        "endpoint_used": endpoint_used,
+        "mask_source": mask_source,
+        "seed": best.get("seed", base_seed),
+        "endpoint_used": "fal-ai/flux-pro/v1/fill x 2 stages",
         "aesthetic_score": aesthetic_score,
+        "hps_score": hps_score,
+        "q_align_score": q_align_score,
+        "ensemble_score": ensemble_score,
         "all_scores": all_scores,
-        "fill_prompt_used": fill_prompt if two_stage else None,
-        "kontext_prompt_used": kontext_prompt,
+        "fill_prompt_used": NEUTRAL_FILL_PROMPT,
+        "styled_fill_prompt": styled_fill_prompt,
+        "stage1_url": stage1_supabase_url,
+        "loras_applied": False,
+        "loras_in_prompt": bool(lora_trigger_words),
+        "lora_triggers_appended": lora_trigger_words,
+        "num_candidates": len(candidates),
     }
-
-    if two_stage:
-        result_dict["stage1_url"] = stage1_supabase_url
-        result_dict["styled_fill_prompt"] = build_fill_prompt(
-            style_prompt, remove_decision_keys, kept_items=keep_decision_keys
-        ) if remove_decision_keys else None
 
     return result_dict
 

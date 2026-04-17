@@ -1,0 +1,59 @@
+{
+  "screen": "step-5",
+  "url": "http://localhost:3000/design/step-5",
+  "passed": false,
+  "attempt": 1,
+  "elements": 10,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Step counter shows 'STEP 3 OF 4' but this is step-5. Should show 'STEP 5 OF 5' or similar correct step numbering.",
+      "element": "Step counter in header - 'STEP 3 OF 4'",
+      "root_cause": "In apps/web/app/design/step-5/page.tsx, the step prop or hardcoded value passed to the layout/header component is set to 3 out of 4 instead of the correct step number for step-5."
+    },
+    {
+      "severity": "major",
+      "description": "Cards are horizontally swipeable/scrollable but expected behavior describes 4-5 budget tier cards (Essential, Elevated, Refined, Prestige, Signature). Only the Essential card and a partial second card are visible. The layout should show all cards or at minimum indicate more tiers clearly.",
+      "element": "Budget tier card carousel - missing visible cards for Elevated, Refined, Prestige, Signature",
+      "root_cause": "The carousel/swipe implementation in step-5/page.tsx likely has correct cards but the layout only reveals one card at a time with partial peek of the next, which is acceptable UX but the step numbering is the primary issue."
+    },
+    {
+      "severity": "major",
+      "description": "No Continue button is visible in the screenshot. Expected behavior requires a Continue button.",
+      "element": "Continue button - absent from visible area",
+      "root_cause": "The Continue button may be below the fold or not rendered. In step-5/page.tsx the continue button may be conditionally rendered only after a selection is made, or it is scrolled off screen due to the card carousel taking full height."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-5/page.tsx",
+      "old_str": "STEP 3 OF 4",
+      "new_str": "STEP 5 OF 5",
+      "reason": "Correct the step counter to reflect that this is step 5 of 5 in the design flow"
+    },
+    {
+      "file": "apps/web/app/design/step-5/page.tsx",
+      "old_str": "currentStep={3}",
+      "new_str": "currentStep={5}",
+      "reason": "Fix the currentStep prop passed to the layout/header component so step indicator shows correct position"
+    },
+    {
+      "file": "apps/web/app/design/step-5/page.tsx",
+      "old_str": "totalSteps={4}",
+      "new_str": "totalSteps={5}",
+      "reason": "Fix the totalSteps prop so progress bar and step counter reflect the full 5-step flow"
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776405901101,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776405901106,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776405902979,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776405902981,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776405922189,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776405922191,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776405943944,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776405943945,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776405945520,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776405945522,\"url\":\"/design/step-5\"}"
+  ]
+}

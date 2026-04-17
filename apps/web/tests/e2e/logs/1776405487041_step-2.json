@@ -1,0 +1,26 @@
+{
+  "screen": "step-2",
+  "url": "http://localhost:3000/auth?next=%2Fdesign%2Fstep-2",
+  "passed": false,
+  "attempt": 1,
+  "elements": 7,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "The user is stuck on the auth page (/auth?next=%2Fdesign%2Fstep-2) instead of being redirected to /design/step-2. The auth middleware or session check is not recognizing the user as authenticated, causing a redirect loop or failed session validation. The 500 Internal Server Error in console logs suggests the Supabase session/auth endpoint is failing, which prevents the middleware from confirming authentication and redirecting to step-2.",
+      "element": "Entire page — showing /auth instead of /design/step-2",
+      "root_cause": "The middleware at apps/web/middleware.ts (or equivalent) redirects unauthenticated users to /auth with ?next= parameter. The 500 error from Supabase means the session check is failing server-side, keeping the user on the auth page. Alternatively, the Supabase auth callback or session cookie is not being set correctly, so every request to /design/step-2 bounces back to /auth."
+    },
+    {
+      "severity": "critical",
+      "description": "500 Internal Server Error logged in console. This indicates a server-side failure, likely in a Supabase API route or server component that handles session validation or data fetching for the design step-2 page.",
+      "element": "Console error: Failed to load resource: 500 Internal Server Error",
+      "root_cause": "A server route (possibly apps/web/app/api/auth/... or a Supabase server client call) is returning a 500. This could be due to missing environment variables (SUPABASE_URL, SUPABASE_ANON_KEY), a misconfigured Supabase client, or a broken API route handler."
+    }
+  ],
+  "fixes": [],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405465042,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405465044,\"url\":\"/auth\"}"
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "screen": "auth",
+  "url": "http://localhost:3000/auth",
+  "passed": false,
+  "attempt": 1,
+  "elements": 7,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "React hydration mismatch errors occurring repeatedly on the auth page. Text content does not match server-rendered HTML, causing the entire root to switch to client rendering.",
+      "element": "Auth page hydration",
+      "root_cause": "The auth page likely contains dynamic content (e.g., Date, Math.random(), browser-only APIs, or conditional rendering based on window/localStorage) that differs between server-side rendering and client-side hydration. This is a classic SSR/CSR mismatch. Common culprits: using new Date() inline, checking typeof window, or a state value initialized differently on server vs client."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/auth/page.tsx",
+      "old_str": "\"use client\"",
+      "new_str": "\"use client\"\nimport dynamic from 'next/dynamic'",
+      "reason": "Placeholder — actual fix depends on source. The real fix is to suppress hydration on dynamic content or wrap browser-only logic in useEffect. See next_action."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776406208118,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776406208121,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776406232792,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776406232794,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776406357294,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776406357296,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776406389528,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776406389530,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406415289,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406415290,\"url\":\"/auth\"}"
+  ]
+}

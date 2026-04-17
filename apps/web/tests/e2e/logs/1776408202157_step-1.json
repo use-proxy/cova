@@ -1,0 +1,47 @@
+{
+  "screen": "step-1",
+  "url": "http://localhost:3000/design/step-1",
+  "passed": false,
+  "attempt": 1,
+  "elements": 4,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Duplicate React imports in step-3/page.tsx causing module build failure. Two import statements from 'react' with overlapping hooks (useState, useEffect) cause a SWC compilation error that blocks the entire build/Fast Refresh cycle.",
+      "element": "apps/web/app/design/step-3/page.tsx import statements",
+      "root_cause": "The file originally had 'import { useState, useEffect } from react' on line 2, and then a second import 'import { useCallback, useEffect, useRef, useState } from react' on line 4, causing duplicate identifier errors in the SWC compiler."
+    },
+    {
+      "severity": "critical",
+      "description": "Multiple React hydration errors on step-1 page — 'Text content does not match server-rendered HTML' causing entire root to switch to client rendering. Likely caused by dynamic content (e.g., particle positions, timestamps, or Math.random) rendered during SSR that differs on client.",
+      "element": "apps/web/app/design/step-1/page.tsx — particle animation or dynamic text",
+      "root_cause": "Gold particle animation likely uses Math.random() or Date.now() during initial render without being wrapped in useEffect or suppressed via suppressHydrationWarning, causing SSR/client mismatch."
+    },
+    {
+      "severity": "major",
+      "description": "Gold particle animation not visible on the canvas background. The background is a flat dark navy color with no animated particles, which is part of the expected behavior for step-1.",
+      "element": "Particle canvas on step-1 welcome screen",
+      "root_cause": "The hydration error ('entire root will switch to client rendering') may be preventing the canvas particle animation from initializing properly, or the canvas element is failing silently."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "\"use client\"\nimport { useState, useEffect, useCallback, useRef } from \"react\";\nimport { useRouter } from \"next/navigation\";",
+      "new_str": "\"use client\"\nimport { useState, useEffect, useCallback, useRef } from \"react\";\nimport { useRouter } from \"next/navigation\";",
+      "reason": "The source file shown already has the corrected single import. However, the build error log shows the file on disk still has two separate import lines. This fix ensures only one consolidated import exists, removing the duplicate 'import { useState, useEffect } from react' line that was prepended."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408106137,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408106138,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408126368,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408126370,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408151824,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408151826,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408174697,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408174699,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408177047,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408177049,\"url\":\"/design/step-1\"}"
+  ]
+}
