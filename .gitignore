@@ -61,3 +61,4 @@ data/scraped/
 data/processed/
 data/state/
 data/failed/
+.agents/
