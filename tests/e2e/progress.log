@@ -527,3 +527,53 @@
 2026-04-17T15:51:22.897Z |   Poll: status=processing, elapsed=0s
 2026-04-17T15:51:38.112Z |   Poll: status=rendering, elapsed=15s
 2026-04-17T15:51:53.543Z |   Poll: status=rendering, elapsed=31s
+2026-04-17T15:52:08.754Z |   Poll: status=rendering, elapsed=46s
+2026-04-17T15:52:23.956Z |   Poll: status=rendering, elapsed=61s
+2026-04-17T15:52:39.122Z |   Poll: status=rendering, elapsed=76s
+2026-04-17T15:52:54.234Z |   Poll: status=rendering, elapsed=91s
+2026-04-17T15:53:09.420Z |   Poll: status=rendering, elapsed=107s
+2026-04-17T15:53:24.680Z |   Poll: status=rendering, elapsed=122s
+2026-04-17T15:53:40.076Z |   Poll: status=rendering, elapsed=137s
+2026-04-17T15:53:55.656Z |   Poll: status=rendering, elapsed=153s
+2026-04-17T15:54:11.039Z |   Poll: status=rendering, elapsed=168s
+2026-04-17T15:54:26.217Z |   Poll: status=rendering, elapsed=183s
+2026-04-17T15:54:41.448Z |   Poll: status=rendering, elapsed=199s
+2026-04-17T15:54:56.592Z |   Poll: status=rendering, elapsed=214s
+2026-04-17T15:55:12.891Z |   Downloaded: 3.7MB
+2026-04-17T15:55:16.449Z |   SCORE: 83/100 ✗ FAIL
+2026-04-17T15:55:16.449Z |   Dims: ARCH=9 STYL=8 FURN=9 COMP=8 LIGH=8 COLO=8 DETA=8 EDIT=8 ROOM=9 BETT=8
+2026-04-17T15:55:16.449Z |   Winner: tie
+2026-04-17T15:55:16.450Z | 
+── Iteration 16 | Room_A | COVABOHEMIAN 0.7 + COVAARTDECO ──
+2026-04-17T15:55:16.450Z |   remove=2 wall=true floor=true seed=1600
+2026-04-17T15:55:29.704Z |   Webhook: {"status":"queued","room_id":"cb2e7047-c7ae-4253-bf2b-cc42a6f3a727","pipeline":"v5"}
+2026-04-17T15:55:30.003Z |   Poll: status=pending, elapsed=0s
+2026-04-17T15:55:45.289Z |   Poll: status=rendering, elapsed=16s
+2026-04-17T15:56:00.892Z |   Poll: status=rendering, elapsed=31s
+2026-04-17T15:56:16.030Z |   Poll: status=rendering, elapsed=46s
+2026-04-17T15:56:31.391Z |   Poll: status=rendering, elapsed=62s
+2026-04-17T15:56:46.682Z |   Poll: status=rendering, elapsed=77s
+2026-04-17T15:57:01.921Z |   Poll: status=rendering, elapsed=92s
+2026-04-17T15:57:17.168Z |   Poll: status=rendering, elapsed=107s
+2026-04-17T15:57:32.510Z |   Poll: status=rendering, elapsed=123s
+2026-04-17T15:57:47.719Z |   Poll: status=rendering, elapsed=138s
+2026-04-17T15:58:03.035Z |   Poll: status=rendering, elapsed=153s
+2026-04-17T15:58:18.263Z |   Poll: status=rendering, elapsed=169s
+2026-04-17T15:58:33.427Z |   Poll: status=rendering, elapsed=184s
+2026-04-17T15:58:48.622Z |   Poll: status=rendering, elapsed=199s
+2026-04-17T15:59:03.921Z |   Poll: status=rendering, elapsed=214s
+2026-04-17T15:59:20.027Z |   Downloaded: 3.3MB
+2026-04-17T15:59:28.578Z |   SCORE: 41/100 ✗ FAIL
+2026-04-17T15:59:28.579Z |   Dims: ARCH=3 STYL=4 FURN=5 COMP=4 LIGH=5 COLO=6 DETA=5 EDIT=4 ROOM=3 BETT=2
+2026-04-17T15:59:28.579Z |   CRITICAL: ARCHITECTURE_FIDELITY — Cova image shows different room entirely - appears to be a lounge/living room with sofa, while benchmark is a bedroom. Window treatment, ceiling fixture, wall dimensions completely different. (composite)
+2026-04-17T15:59:28.579Z |   CRITICAL: STYLE_ACCURACY — Cova renders eclectic/casual bohemian with orange sofa and string lights. Benchmark shows calm, minimalist scandinavian-modern aesthetic with neutral palette and tailored furnishings. (prompt)
+2026-04-17T15:59:28.580Z |   CRITICAL: EDITORIAL_QUALITY — Cova appears amateur with unrefined composition and styling choices. Benchmark is polished, magazine-ready interior design photograph. (prompt)
+2026-04-17T15:59:28.580Z |   CRITICAL: ROOM_ADAPTATION — Cova is generic lounge space unrelated to original brief. Benchmark thoughtfully adapts minimalist style to bedroom context with appropriate furnishings and scale. (composite)
+2026-04-17T15:59:28.580Z |   CRITICAL: BETTER_THAN_BENCHMARK — Benchmark is substantially superior in every measurable dimension: photorealism, cohesion, editorial quality, and design coherence. (composite)
+2026-04-17T15:59:28.580Z |   Winner: benchmark
+2026-04-17T15:59:28.580Z | 
+── Iteration 17 | Room_B | COVAINDUSTRIAL 0.8 + COVASCANDINAV ──
+2026-04-17T15:59:28.581Z |   remove=5 wall=false floor=false seed=1700
+2026-04-17T15:59:35.542Z |   Webhook: {"status":"queued","room_id":"c1405ef4-140e-492e-a8e3-2a0c25ebc093","pipeline":"v5"}
+2026-04-17T15:59:35.780Z |   Poll: status=pending, elapsed=0s
+2026-04-17T15:59:51.022Z |   Poll: status=rendering, elapsed=15s
