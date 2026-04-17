@@ -61,6 +61,7 @@ fal_image = (
     .add_local_file("modal_pipeline/utils.py", "/root/utils.py")
     .add_local_file("modal_pipeline/mask_build.py", "/root/mask_build.py")
     .add_local_file("modal_pipeline/postprocess.py", "/root/postprocess.py")
+    .add_local_file("modal_pipeline/spatial_templates.py", "/root/spatial_templates.py")
     .add_local_dir("modal_pipeline/luts", "/root/luts")
 )
 
@@ -94,11 +95,14 @@ STORAGE_BUCKET = "room-photos"
 
 
 def get_neutral_fill_prompt(room_type: str = "room") -> str:
-    """Stage 1 neutral fill prompt — room-type aware to guide Fill Pro."""
+    """Stage 1 neutral fill prompt — room-type aware with anchor furniture hint."""
+    from spatial_templates import get_anchor_furniture
     rt = room_type.replace("_", " ") if room_type else "room"
+    anchor = get_anchor_furniture(room_type)
     return (
-        f"completely empty {rt}, bare floor, bare walls, no furniture, no objects, "
-        f"natural light, pristine surfaces, seamless interior photography"
+        f"completely empty {rt} for sleeping, bare floor, bare walls, "
+        f"NO furniture at all, awaiting a {anchor} as the main furniture piece, "
+        f"natural light, pristine surfaces, seamless interior photography, 8k"
     )
 
 # ---------------------------------------------------------------------------
@@ -639,9 +643,14 @@ def build_fallback_mask(
 
 def build_fill_prompt(style_prompt: str, removed_items: list, kept_items: list = None, room_type: str = "room") -> str:
     """
-    Fill Pro prompt describes replacement content for the masked region only.
-    room_type drives furniture selection (bedroom → bed, living room → sofa, etc).
+    Fill Pro prompt with spatial placement, exclusion guidance, and composition.
+    room_type drives furniture selection AND spatial layout.
     """
+    from spatial_templates import (
+        get_spatial_template, fill_spatial_placeholders,
+        get_exclusion_phrases, COMPOSITION_DIRECTIVE,
+    )
+
     style_cleaned = style_prompt
     for keyword in ["Keep ", "Preserve ", "unchanged", "exactly"]:
         lines = style_cleaned.split(".")
@@ -671,25 +680,21 @@ def build_fill_prompt(style_prompt: str, removed_items: list, kept_items: list =
         style_cleaned = ' '.join(filtered)
 
     style_cleaned = style_cleaned.strip()
-    removed_str = ", ".join([r.replace("_", " ") for r in removed_items]) if removed_items else "furniture"
 
-    rt = room_type.replace("_", " ") if room_type else "room"
+    # Build spatial layout from room type template
+    spatial = fill_spatial_placeholders(get_spatial_template(room_type))
+    exclusion = get_exclusion_phrases(room_type)
+
     parts = []
-    parts.append(f"Replace {removed_str} with new {rt} furniture, maintaining this as a {rt}.")
+    # 1. Spatial layout — WHERE furniture goes
+    parts.append(spatial)
+    # 2. Style description — WHAT materials/aesthetic
     if style_cleaned:
         parts.append(style_cleaned)
-    parts.append(
-        f"Include appropriate {rt} soft furnishings, complementary lighting, "
-        f"organic or natural elements, decorative accents where suitable, "
-        f"styled surfaces. Style cohesive throughout the {rt} space."
-    )
-    parts.append(
-        "Neatly arranged soft furnishings, no wrinkles or clutter, "
-        "hotel-quality presentation. "
-        "Professional interior photography, photorealistic, "
-        "warm ambient lighting, sharp focus, no artifacts, "
-        "high dynamic range."
-    )
+    # 3. Exclusion guidance — what NOT to generate
+    parts.append(exclusion)
+    # 4. Composition and quality directive
+    parts.append(COMPOSITION_DIRECTIVE)
 
     prompt = " ".join(parts)
     print(f"[fill_prompt] Built ({len(prompt.split())} words): {prompt[:120]}...")
@@ -1032,11 +1037,11 @@ def generate_redesign_phase4b(
         style_prompt, remove_decision_keys, kept_items=keep_decision_keys, room_type=room_type
     )
 
-    # Append COVA* trigger words to activate trained style signal
+    # PREPEND COVA* trigger words — position at START for FLUX attention weighting
     if lora_trigger_words:
-        trigger_suffix = ", ".join(lora_trigger_words) + " style"
-        styled_fill_prompt = styled_fill_prompt + f", {trigger_suffix}"
-        print(f"[phase4b] Appended COVA triggers to prompt: {trigger_suffix}")
+        trigger_prefix = ", ".join(lora_trigger_words) + " style"
+        styled_fill_prompt = f"{trigger_prefix}, {styled_fill_prompt}"
+        print(f"[phase4b] Prepended COVA triggers to prompt: {trigger_prefix}")
 
     print(f"[phase4b] Stage 2 prompt (compiled/style): {styled_fill_prompt[:100]}")
     print("[phase4b] Stage 2: Fill Pro styled inpainting x4 seeds")
