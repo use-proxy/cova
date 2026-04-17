@@ -1,18 +1,11 @@
 {
-  "budget_ceilings": {
-    "fal_ai": 85.00,
-    "modal": 18.00,
-    "wall_clock_hours": 10
-  },
-  "spend": {
-    "fal_ai": 0.00,
-    "modal": 0.00,
-    "anthropic_haiku": 0.00,
-    "anthropic_sonnet": 0.00,
-    "total": 0.00
-  },
-  "started_at": "2026-04-17T00:00:00Z",
-  "last_updated": "2026-04-17T00:00:00Z",
-  "api_calls": [],
-  "notes": "Phase 1 - audit in progress"
+  "fal": 9.900000000000002,
+  "modal": 1.6499999999999997,
+  "anthropic_calls": 6,
+  "started_at": "2026-04-17T10:08:00Z",
+  "renders_completed": 11,
+  "renders_passed": 0,
+  "consecutive_passes": 0,
+  "phase": "2",
+  "last_updated": "2026-04-17T10:54:36.814Z"
 }

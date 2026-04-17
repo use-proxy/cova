@@ -1,0 +1,307 @@
+2026-04-17T12:00:00Z | Phase 2 START | Budget: fal=$0, modal=$0 | Target: 20 consecutive passes >= 88
+2026-04-17T10:05:10.836Z | === Phase 2: Render Quality Iteration ===
+2026-04-17T10:05:10.840Z | Webhook: https://cova-interior--cova-redesign-pipeline-redesign-webhook.modal.run
+2026-04-17T10:05:10.840Z | Supabase: https://xdeacbmkdwqrwxonqaqh.supabase.co
+2026-04-17T10:05:11.751Z | Upload warning: 400 — {"statusCode":"404","error":"Bucket not found","message":"Bucket not found"}
+2026-04-17T10:05:11.752Z | Pranav photo URL: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/roomphotos/pranav_test/original.jpg
+2026-04-17T10:05:12.786Z | Room A (Daksh): cb2e7047-c7ae-4253-bf2b-cc42a6f3a727
+2026-04-17T10:05:13.298Z | FATAL: Supabase POST rooms: 400 — {"code":"23514","details":"Failing row contains (a2f755e1-2d5f-4258-aa14-6cec5eac256f, 344b5705-61e3-4cc0-915d-b1f32bb99cd9, https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/publi..., null, null, null, bedroom, null, null, null, null, 2026-04-17 10:05:13.225354+00, 2026-04-17 10:05:13.225354+00, 2000, Audit Room B - Pranav, {\"COVAJAPANDI\": 0.5, \"COVAMINIMAL\": 0.2, \"COVABIOPHILIC\": 0.3}, {\"width_ft\": 12, \"length_ft\": 14, \"ceiling_height_ft\": 9}, captured, 0, null, #F5F0EB, null, null, null, null, null, null, null, null, pending, null, null, null, 0, mini_async_plus, {}, null, multi_image, null, null, null, null, f, null, null, null, f, null, null, null, t, 0, null, f, https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/publi..., null, null, null, null, null, null, null, null, null, null, null, null, null, null, pending, 0, null, null, null, null, null, null, null, null, null, null, null, null, null, null, f, f, null, null, null, v3, null).","hint":null,"message":"new row for relation \"rooms\" violates check constraint \"rooms_status_check\""}
+2026-04-17T10:05:59.862Z | === Phase 2: Render Quality Iteration ===
+2026-04-17T10:05:59.865Z | Webhook: https://cova-interior--cova-redesign-pipeline-redesign-webhook.modal.run
+2026-04-17T10:05:59.865Z | Supabase: https://xdeacbmkdwqrwxonqaqh.supabase.co
+2026-04-17T10:06:00.816Z | Pranav photo URL: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/pranav_test/original.jpg
+2026-04-17T10:06:01.403Z | Room A (Daksh): cb2e7047-c7ae-4253-bf2b-cc42a6f3a727
+2026-04-17T10:06:01.840Z | Created room: c1405ef4-140e-492e-a8e3-2a0c25ebc093
+2026-04-17T10:06:01.841Z | Room B (Pranav): c1405ef4-140e-492e-a8e3-2a0c25ebc093
+2026-04-17T10:06:01.841Z | 
+── Iteration 0 | Room A | COVASCANDINAV 0.6 + COVAMINIMAL ──
+2026-04-17T10:06:01.842Z |   remove=0 wall=true floor=true seed=0
+2026-04-17T10:06:08.952Z |   Webhook: {"status":"queued","room_id":"cb2e7047-c7ae-4253-bf2b-cc42a6f3a727","pipeline":"v5"}
+2026-04-17T10:06:09.227Z |   Poll: status=pending, elapsed=0s
+2026-04-17T10:06:24.341Z |   Poll: status=extracting_structure, elapsed=15s
+2026-04-17T10:06:39.499Z |   Poll: status=rendering, elapsed=31s
+2026-04-17T10:06:54.668Z |   Pipeline FAILED: _upload_to_fal failed to download image: Image URL returned 400: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/roomphotos/344b5705-61e3-4cc0-915d-b1f32bb99cd9/1776152283994.jpg
+2026-04-17T10:06:54.668Z |   RENDER FAILED — no URL returned
+2026-04-17T10:06:54.669Z | 
+── Iteration 1 | Room B | COVAJAPANDI 0.7 + COVAMIDCENTURY ──
+2026-04-17T10:06:54.669Z |   remove=2 wall=false floor=false seed=100
+2026-04-17T10:06:55.148Z |   Webhook: {"status":"queued","room_id":"c1405ef4-140e-492e-a8e3-2a0c25ebc093","pipeline":"v5"}
+2026-04-17T10:06:55.278Z |   Poll: status=pending, elapsed=0s
+2026-04-17T10:07:10.510Z |   Poll: status=professionalizing, elapsed=15s
+2026-04-17T10:08:14.717Z | === Phase 2: Render Quality Iteration ===
+2026-04-17T10:08:14.719Z | Webhook: https://cova-interior--cova-redesign-pipeline-redesign-webhook.modal.run
+2026-04-17T10:08:14.719Z | Supabase: https://xdeacbmkdwqrwxonqaqh.supabase.co
+2026-04-17T10:08:15.884Z | Pranav photo URL: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/pranav_test/original.jpg
+2026-04-17T10:08:16.322Z | Room A (Daksh): c1405ef4-140e-492e-a8e3-2a0c25ebc093 photo=https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/pr...
+2026-04-17T10:08:16.719Z | Found existing room: c1405ef4-140e-492e-a8e3-2a0c25ebc093
+2026-04-17T10:08:16.720Z | Room B (Pranav): c1405ef4-140e-492e-a8e3-2a0c25ebc093
+2026-04-17T10:08:16.721Z | 
+── Iteration 0 | Room_A | COVASCANDINAV 0.6 + COVAMINIMAL ──
+2026-04-17T10:08:16.721Z |   remove=0 wall=true floor=true seed=0
+2026-04-17T10:08:24.946Z |   Webhook: {"status":"queued","room_id":"c1405ef4-140e-492e-a8e3-2a0c25ebc093","pipeline":"v5"}
+2026-04-17T10:08:25.155Z |   Poll: status=pending, elapsed=0s
+2026-04-17T10:08:40.327Z |   Poll: status=professionalizing, elapsed=15s
+2026-04-17T10:08:55.500Z |   Poll: status=professionalizing, elapsed=31s
+2026-04-17T10:09:10.726Z |   Poll: status=professionalizing, elapsed=46s
+2026-04-17T10:09:25.914Z |   Poll: status=professionalizing, elapsed=61s
+2026-04-17T10:09:41.094Z |   Poll: status=professionalizing, elapsed=76s
+2026-04-17T10:09:56.217Z |   Poll: status=professionalizing, elapsed=91s
+2026-04-17T10:10:11.307Z |   Poll: status=professionalizing, elapsed=106s
+2026-04-17T10:10:26.620Z |   Poll: status=professionalizing, elapsed=122s
+2026-04-17T10:10:41.861Z |   Poll: status=professionalizing, elapsed=137s
+2026-04-17T10:10:57.126Z |   Poll: status=professionalizing, elapsed=152s
+2026-04-17T10:11:12.338Z |   Poll: status=rendering, elapsed=167s
+2026-04-17T10:11:27.541Z |   Poll: status=rendering, elapsed=183s
+2026-04-17T10:11:42.848Z |   Poll: status=rendering, elapsed=198s
+2026-04-17T10:11:58.198Z |   Poll: status=rendering, elapsed=213s
+2026-04-17T10:12:13.347Z |   Poll: status=rendering, elapsed=228s
+2026-04-17T10:12:28.767Z |   Poll: status=rendering, elapsed=244s
+2026-04-17T10:12:43.945Z |   Poll: status=rendering, elapsed=259s
+2026-04-17T10:12:59.233Z |   Poll: status=rendering, elapsed=274s
+2026-04-17T10:13:14.377Z |   Poll: status=rendering, elapsed=289s
+2026-04-17T10:13:29.963Z |   Poll: status=rendering, elapsed=305s
+2026-04-17T10:13:45.296Z |   Poll: status=rendering, elapsed=320s
+2026-04-17T10:14:00.542Z |   Poll: status=rendering, elapsed=336s
+2026-04-17T10:14:15.893Z |   Poll: status=rendering, elapsed=351s
+2026-04-17T10:14:31.261Z |   Poll: status=rendering, elapsed=366s
+2026-04-17T10:14:46.500Z |   Poll: status=rendering, elapsed=382s
+2026-04-17T10:15:01.717Z |   Poll: status=rendering, elapsed=397s
+2026-04-17T10:15:17.027Z |   Poll: status=rendering, elapsed=412s
+2026-04-17T10:15:32.999Z |   Poll: status=rendering, elapsed=428s
+2026-04-17T10:15:48.332Z |   Poll: status=rendering, elapsed=443s
+2026-04-17T10:16:03.516Z |   Poll: status=rendering, elapsed=459s
+2026-04-17T10:16:19.822Z |   Downloaded: 4.1MB
+2026-04-17T10:16:20.631Z |   ERROR: Claude scoring failed: 400 — {"type":"error","error":{"type":"invalid_request_error","message":"messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5669296 bytes > 5242880 bytes"},"request_id":"req_011Ca9AoCB6HrYjqW5wf3pGP"}
+2026-04-17T10:16:20.632Z | 
+── Iteration 1 | Room_B | COVAJAPANDI 0.7 + COVAMIDCENTURY ──
+2026-04-17T10:16:20.632Z |   remove=2 wall=false floor=false seed=100
+2026-04-17T10:16:26.060Z |   Webhook: {"status":"queued","room_id":"c1405ef4-140e-492e-a8e3-2a0c25ebc093","pipeline":"v5"}
+2026-04-17T10:16:26.260Z |   Poll: status=pending, elapsed=0s
+2026-04-17T10:16:42.558Z |   Downloaded: 4.3MB
+2026-04-17T10:16:43.406Z |   ERROR: Claude scoring failed: 400 — {"type":"error","error":{"type":"invalid_request_error","message":"messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6040572 bytes > 5242880 bytes"},"request_id":"req_011Ca9Aprk6nuTqaz5W7WFMf"}
+2026-04-17T10:16:43.408Z | 
+── Iteration 2 | Room_A | COVABIOPHILIC 0.8 + COVACOASTAL ──
+2026-04-17T10:16:43.408Z |   remove=5 wall=true floor=false seed=200
+2026-04-17T10:16:44.269Z |   Webhook: {"status":"queued","room_id":"c1405ef4-140e-492e-a8e3-2a0c25ebc093","pipeline":"v5"}
+2026-04-17T10:16:44.376Z |   Poll: status=processing, elapsed=0s
+2026-04-17T10:17:35.850Z | === Phase 2: Render Quality Iteration ===
+2026-04-17T10:17:35.852Z | Webhook: https://cova-interior--cova-redesign-pipeline-redesign-webhook.modal.run
+2026-04-17T10:17:35.852Z | Supabase: https://xdeacbmkdwqrwxonqaqh.supabase.co
+2026-04-17T10:17:36.879Z | Pranav photo URL: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/pranav_test/original.jpg
+2026-04-17T10:17:37.431Z | Room A (Daksh): cb2e7047-c7ae-4253-bf2b-cc42a6f3a727 photo=https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/34...
+2026-04-17T10:17:38.002Z | Found existing room: c1405ef4-140e-492e-a8e3-2a0c25ebc093
+2026-04-17T10:17:38.003Z | Room B (Pranav): c1405ef4-140e-492e-a8e3-2a0c25ebc093
+2026-04-17T10:17:38.004Z | Scoring existing render: Room_A_iter_0.jpg
+2026-04-17T10:17:38.873Z |   Score error: Claude scoring failed: 400 — {"type":"error","error":{"type":"invalid_request_error","message":"messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5669296 bytes > 5242880 bytes"},"request_id":"req_011Ca9Atxi8nHXFEhQMxuAmy"}
+2026-04-17T10:17:38.874Z | Scoring existing render: Room_B_iter_1.jpg
+2026-04-17T10:17:39.606Z |   Score error: Claude scoring failed: 400 — {"type":"error","error":{"type":"invalid_request_error","message":"messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6040572 bytes > 5242880 bytes"},"request_id":"req_011Ca9Au1z5tzRNnyLfJfrsW"}
+2026-04-17T10:17:39.606Z | 
+── Iteration 2 | Room_A | COVABIOPHILIC 0.8 + COVACOASTAL ──
+2026-04-17T10:17:39.607Z |   remove=5 wall=true floor=false seed=200
+2026-04-17T10:17:40.648Z |   Webhook: {"status":"queued","room_id":"cb2e7047-c7ae-4253-bf2b-cc42a6f3a727","pipeline":"v5"}
+2026-04-17T10:17:40.970Z |   Poll: status=pending, elapsed=0s
+2026-04-17T10:18:42.838Z | === Phase 2: Render Quality Iteration ===
+2026-04-17T10:18:42.841Z | Webhook: https://cova-interior--cova-redesign-pipeline-redesign-webhook.modal.run
+2026-04-17T10:18:42.841Z | Supabase: https://xdeacbmkdwqrwxonqaqh.supabase.co
+2026-04-17T10:18:43.995Z | Pranav photo URL: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/pranav_test/original.jpg
+2026-04-17T10:18:44.527Z | Room A (Daksh): cb2e7047-c7ae-4253-bf2b-cc42a6f3a727 photo=https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/34...
+2026-04-17T10:18:44.967Z | Found existing room: c1405ef4-140e-492e-a8e3-2a0c25ebc093
+2026-04-17T10:18:44.968Z | Room B (Pranav): c1405ef4-140e-492e-a8e3-2a0c25ebc093
+2026-04-17T10:18:44.969Z | Scoring existing render: Room_A_iter_0.jpg
+2026-04-17T10:18:48.969Z |   SCORE: 82/100 ✗ FAIL
+2026-04-17T10:18:48.970Z |   Dims: ARCH=9 STYL=8 FURN=8 COMP=8 LIGH=8 COLO=9 DETA=8 EDIT=8 ROOM=8 BETT=8
+2026-04-17T10:18:48.971Z | Scoring existing render: Room_B_iter_1.jpg
+2026-04-17T10:18:53.399Z |   SCORE: 82/100 ✗ FAIL
+2026-04-17T10:18:53.399Z |   Dims: ARCH=9 STYL=8 FURN=8 COMP=8 LIGH=8 COLO=9 DETA=8 EDIT=8 ROOM=7 BETT=7
+2026-04-17T10:18:53.400Z | 
+── Iteration 2 | Room_A | COVABIOPHILIC 0.8 + COVACOASTAL ──
+2026-04-17T10:18:53.400Z |   remove=5 wall=true floor=false seed=200
+2026-04-17T10:18:54.624Z |   Webhook: {"status":"queued","room_id":"cb2e7047-c7ae-4253-bf2b-cc42a6f3a727","pipeline":"v5"}
+2026-04-17T10:18:54.771Z |   Poll: status=pending, elapsed=0s
+2026-04-17T10:19:09.904Z |   Poll: status=rendering, elapsed=15s
+2026-04-17T10:19:25.091Z |   Poll: status=rendering, elapsed=30s
+2026-04-17T10:19:40.589Z |   Poll: status=rendering, elapsed=46s
+2026-04-17T10:19:55.964Z |   Poll: status=rendering, elapsed=61s
+2026-04-17T10:20:11.412Z |   Poll: status=rendering, elapsed=77s
+2026-04-17T10:20:26.564Z |   Poll: status=rendering, elapsed=92s
+2026-04-17T10:20:42.062Z |   Poll: status=rendering, elapsed=107s
+2026-04-17T10:20:57.231Z |   Poll: status=rendering, elapsed=123s
+2026-04-17T10:21:12.866Z |   Poll: status=rendering, elapsed=138s
+2026-04-17T10:21:28.318Z |   Poll: status=rendering, elapsed=154s
+2026-04-17T10:21:43.595Z |   Poll: status=rendering, elapsed=169s
+2026-04-17T10:21:58.940Z |   Poll: status=rendering, elapsed=184s
+2026-04-17T10:22:14.143Z |   Poll: status=rendering, elapsed=200s
+2026-04-17T10:22:29.387Z |   Poll: status=rendering, elapsed=215s
+2026-04-17T10:22:45.230Z |   Poll: status=rendering, elapsed=231s
+2026-04-17T10:23:00.576Z |   Poll: status=rendering, elapsed=246s
+2026-04-17T10:23:15.831Z |   Poll: status=rendering, elapsed=261s
+2026-04-17T10:23:31.901Z |   Downloaded: 3.5MB
+2026-04-17T10:23:37.967Z |   SCORE: 68/100 ✗ FAIL
+2026-04-17T10:23:37.967Z |   Dims: ARCH=9 STYL=6 FURN=7 COMP=8 LIGH=8 COLO=7 DETA=7 EDIT=7 ROOM=5 BETT=4
+2026-04-17T10:23:37.967Z |   CRITICAL: STYLE_ACCURACY — Image 1 lacks biophilic elements; no plants, natural materials, or organic elements. CollovAI render includes potted plant and natural textures. (prompt)
+2026-04-17T10:23:37.968Z |   CRITICAL: ROOM_ADAPTATION — Cova render shows child's bedroom with gaming setup (office chair, storage cubbies). CollovAI shows adult bedroom. Not adapted to same space contextually. (prompt)
+2026-04-17T10:23:37.968Z |   CRITICAL: BETTER_THAN_BENCHMARK — CollovAI superior in styling, cleanliness, biophilic integration, and editorial presentation. Cova appears as before-photo rather than design iteration. (prompt)
+2026-04-17T10:23:37.968Z |   Winner: benchmark
+2026-04-17T10:23:37.968Z | 
+── Iteration 3 | Room_B | COVAMINIMAL 0.6 + COVABOHEMIAN ──
+2026-04-17T10:23:37.968Z |   remove=0 wall=false floor=false seed=300
+2026-04-17T10:23:51.318Z |   Webhook: {"status":"queued","room_id":"c1405ef4-140e-492e-a8e3-2a0c25ebc093","pipeline":"v5"}
+2026-04-17T10:23:51.428Z |   Poll: status=pending, elapsed=0s
+2026-04-17T10:24:06.527Z |   Poll: status=rendering, elapsed=15s
+2026-04-17T10:25:22.141Z | === Phase 2: Render Quality Iteration ===
+2026-04-17T10:25:22.143Z | Webhook: https://cova-interior--cova-redesign-pipeline-redesign-webhook.modal.run
+2026-04-17T10:25:22.143Z | Supabase: https://xdeacbmkdwqrwxonqaqh.supabase.co
+2026-04-17T10:25:23.548Z | Pranav photo URL: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/pranav_test/original.jpg
+2026-04-17T10:25:24.168Z | Room A (Daksh): cb2e7047-c7ae-4253-bf2b-cc42a6f3a727 photo=https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/34...
+2026-04-17T10:25:24.568Z | Found existing room: c1405ef4-140e-492e-a8e3-2a0c25ebc093
+2026-04-17T10:25:24.569Z | Room B (Pranav): c1405ef4-140e-492e-a8e3-2a0c25ebc093
+2026-04-17T10:25:24.570Z | 
+── Iteration 4 | Room_A | COVAMIDCENTURY 0.7 + COVAINDUSTRIAL ──
+2026-04-17T10:25:24.570Z |   remove=2 wall=true floor=true seed=400
+2026-04-17T10:25:38.640Z |   Webhook: {"status":"queued","room_id":"cb2e7047-c7ae-4253-bf2b-cc42a6f3a727","pipeline":"v5"}
+2026-04-17T10:25:39.003Z |   Poll: status=pending, elapsed=0s
+2026-04-17T10:25:54.166Z |   Poll: status=rendering, elapsed=16s
+2026-04-17T10:26:09.304Z |   Poll: status=rendering, elapsed=31s
+2026-04-17T10:26:24.571Z |   Poll: status=rendering, elapsed=46s
+2026-04-17T10:26:40.023Z |   Poll: status=rendering, elapsed=61s
+2026-04-17T10:26:55.314Z |   Poll: status=rendering, elapsed=77s
+2026-04-17T10:27:10.615Z |   Poll: status=rendering, elapsed=92s
+2026-04-17T10:27:25.931Z |   Poll: status=rendering, elapsed=107s
+2026-04-17T10:27:41.242Z |   Poll: status=rendering, elapsed=123s
+2026-04-17T10:27:56.516Z |   Poll: status=rendering, elapsed=138s
+2026-04-17T10:28:11.888Z |   Poll: status=rendering, elapsed=153s
+2026-04-17T10:28:27.064Z |   Poll: status=rendering, elapsed=168s
+2026-04-17T10:28:42.245Z |   Poll: status=rendering, elapsed=184s
+2026-04-17T10:28:57.577Z |   Poll: status=rendering, elapsed=199s
+2026-04-17T10:29:12.766Z |   Poll: status=rendering, elapsed=214s
+2026-04-17T10:29:28.088Z |   Poll: status=rendering, elapsed=229s
+2026-04-17T10:29:43.305Z |   Poll: status=rendering, elapsed=245s
+2026-04-17T10:29:58.457Z |   Poll: status=rendering, elapsed=260s
+2026-04-17T10:30:14.059Z |   Poll: status=rendering, elapsed=275s
+2026-04-17T10:30:29.747Z |   Poll: status=rendering, elapsed=291s
+2026-04-17T10:30:45.111Z |   Poll: status=rendering, elapsed=306s
+2026-04-17T10:31:00.487Z |   Poll: status=rendering, elapsed=322s
+2026-04-17T10:31:15.743Z |   Poll: status=rendering, elapsed=337s
+2026-04-17T10:31:31.018Z |   Poll: status=rendering, elapsed=352s
+2026-04-17T10:31:46.286Z |   Poll: status=rendering, elapsed=368s
+2026-04-17T10:32:01.763Z |   Poll: status=rendering, elapsed=383s
+2026-04-17T10:32:17.007Z |   Poll: status=rendering, elapsed=398s
+2026-04-17T10:32:32.229Z |   Poll: status=rendering, elapsed=414s
+2026-04-17T10:32:47.428Z |   Poll: status=rendering, elapsed=429s
+2026-04-17T10:33:02.527Z |   Poll: status=rendering, elapsed=444s
+2026-04-17T10:33:17.659Z |   Poll: status=rendering, elapsed=459s
+2026-04-17T10:33:32.933Z |   Poll: status=rendering, elapsed=474s
+2026-04-17T10:33:48.237Z |   Poll: status=rendering, elapsed=490s
+2026-04-17T10:34:03.433Z |   Poll: status=rendering, elapsed=505s
+2026-04-17T10:34:18.631Z |   Poll: status=rendering, elapsed=520s
+2026-04-17T10:34:33.823Z |   Poll: status=rendering, elapsed=535s
+2026-04-17T10:34:49.006Z |   Poll: status=rendering, elapsed=550s
+2026-04-17T10:35:04.197Z |   Poll: status=rendering, elapsed=566s
+2026-04-17T10:35:19.386Z |   Poll: status=rendering, elapsed=581s
+2026-04-17T10:35:34.949Z |   Poll: status=rendering, elapsed=596s
+2026-04-17T10:35:49.952Z |   Poll TIMEOUT after 600s
+2026-04-17T10:35:49.952Z |   RENDER FAILED — no URL returned
+2026-04-17T10:35:49.954Z | 
+── Iteration 5 | Room_B | COVACOASTAL 0.8 + COVAFARMHOUSE ──
+2026-04-17T10:35:49.954Z |   remove=0 wall=false floor=false seed=500
+2026-04-17T10:35:55.591Z |   Webhook: {"status":"queued","room_id":"c1405ef4-140e-492e-a8e3-2a0c25ebc093","pipeline":"v5"}
+2026-04-17T10:35:55.794Z |   Poll: status=pending, elapsed=0s
+2026-04-17T10:36:10.949Z |   Poll: status=rendering, elapsed=15s
+2026-04-17T10:36:26.048Z |   Poll: status=rendering, elapsed=30s
+2026-04-17T10:36:41.313Z |   Poll: status=rendering, elapsed=46s
+2026-04-17T10:36:56.520Z |   Poll: status=rendering, elapsed=61s
+2026-04-17T10:37:11.741Z |   Poll: status=rendering, elapsed=76s
+2026-04-17T10:37:26.981Z |   Poll: status=rendering, elapsed=91s
+2026-04-17T10:37:42.202Z |   Poll: status=rendering, elapsed=107s
+2026-04-17T10:37:57.444Z |   Poll: status=rendering, elapsed=122s
+2026-04-17T10:38:12.753Z |   Poll: status=rendering, elapsed=137s
+2026-04-17T10:38:27.956Z |   Poll: status=rendering, elapsed=152s
+2026-04-17T10:38:43.110Z |   Poll: status=rendering, elapsed=168s
+2026-04-17T10:38:58.234Z |   Poll: status=rendering, elapsed=183s
+2026-04-17T10:39:13.713Z |   Poll: status=rendering, elapsed=198s
+2026-04-17T10:39:29.044Z |   Poll: status=rendering, elapsed=213s
+2026-04-17T10:39:44.232Z |   Poll: status=rendering, elapsed=229s
+2026-04-17T10:39:59.360Z |   Poll: status=rendering, elapsed=244s
+2026-04-17T10:40:14.493Z |   Poll: status=rendering, elapsed=259s
+2026-04-17T10:40:29.807Z |   Poll: status=rendering, elapsed=274s
+2026-04-17T10:40:45.352Z |   Poll: status=rendering, elapsed=290s
+2026-04-17T10:41:00.671Z |   Poll: status=rendering, elapsed=305s
+2026-04-17T10:41:15.909Z |   Poll: status=rendering, elapsed=320s
+2026-04-17T10:41:31.733Z |   Poll: status=rendering, elapsed=336s
+2026-04-17T10:41:48.527Z |   Downloaded: 4.8MB
+2026-04-17T10:41:52.929Z |   SCORE: 83/100 ✗ FAIL
+2026-04-17T10:41:52.930Z |   Dims: ARCH=9 STYL=8 FURN=8 COMP=9 LIGH=8 COLO=8 DETA=8 EDIT=8 ROOM=9 BETT=8
+2026-04-17T10:41:52.930Z |   Winner: tie
+2026-04-17T10:41:52.930Z | 
+── Iteration 6 | Room_A | COVABOHEMIAN 0.6 + COVAARTDECO ──
+2026-04-17T10:41:52.930Z |   remove=2 wall=true floor=false seed=600
+2026-04-17T10:41:58.152Z |   Webhook: {"status":"queued","room_id":"cb2e7047-c7ae-4253-bf2b-cc42a6f3a727","pipeline":"v5"}
+2026-04-17T10:41:58.623Z |   Poll: status=processing, elapsed=0s
+2026-04-17T10:42:13.841Z |   Poll: status=rendering, elapsed=16s
+2026-04-17T10:42:29.100Z |   Poll: status=rendering, elapsed=31s
+2026-04-17T10:42:44.681Z |   Poll: status=rendering, elapsed=47s
+2026-04-17T10:42:59.946Z |   Poll: status=rendering, elapsed=62s
+2026-04-17T10:43:15.297Z |   Poll: status=rendering, elapsed=77s
+2026-04-17T10:43:30.682Z |   Poll: status=rendering, elapsed=93s
+2026-04-17T10:43:46.068Z |   Poll: status=rendering, elapsed=108s
+2026-04-17T10:44:01.305Z |   Poll: status=rendering, elapsed=123s
+2026-04-17T10:44:16.550Z |   Poll: status=rendering, elapsed=138s
+2026-04-17T10:44:31.857Z |   Poll: status=rendering, elapsed=154s
+2026-04-17T10:44:47.078Z |   Poll: status=rendering, elapsed=169s
+2026-04-17T10:45:02.439Z |   Poll: status=rendering, elapsed=184s
+2026-04-17T10:45:17.706Z |   Poll: status=rendering, elapsed=200s
+2026-04-17T10:45:32.942Z |   Poll: status=rendering, elapsed=215s
+2026-04-17T10:45:48.277Z |   Poll: status=rendering, elapsed=230s
+2026-04-17T10:46:03.448Z |   Poll: status=rendering, elapsed=245s
+2026-04-17T10:46:18.577Z |   Poll: status=rendering, elapsed=260s
+2026-04-17T10:46:33.921Z |   Poll: status=rendering, elapsed=276s
+2026-04-17T10:46:49.148Z |   Poll: status=rendering, elapsed=291s
+2026-04-17T10:47:04.548Z |   Poll: status=rendering, elapsed=306s
+2026-04-17T10:47:19.922Z |   Poll: status=rendering, elapsed=322s
+2026-04-17T10:47:35.160Z |   Poll: status=rendering, elapsed=337s
+2026-04-17T10:47:50.431Z |   Poll: status=rendering, elapsed=352s
+2026-04-17T10:48:05.567Z |   Poll: status=rendering, elapsed=367s
+2026-04-17T10:48:20.685Z |   Poll: status=rendering, elapsed=383s
+2026-04-17T10:48:36.489Z |   Downloaded: 3.5MB
+2026-04-17T10:48:44.288Z |   SCORE: 58/100 ✗ FAIL
+2026-04-17T10:48:44.288Z |   Dims: ARCH=9 STYL=4 FURN=7 COMP=6 LIGH=8 COLO=7 DETA=7 EDIT=5 ROOM=3 BETT=2
+2026-04-17T10:48:44.289Z |   CRITICAL: STYLE_ACCURACY — COVABOHEMIAN style not evident; image shows minimal bohemian elements (some small photos, basic bedding). Missing macramé, plants, textiles, eclectic patterns, warm earthy tones characteristic of bohemian design (prompt)
+2026-04-17T10:48:44.290Z |   CRITICAL: ROOM_ADAPTATION — Render appears to be a completely different room - proper bed frame vs trundle bed, organized vs cluttered, stylized furniture placement vs actual existing layout. Not an adaptation of the source room (composite)
+2026-04-17T10:48:44.290Z |   CRITICAL: BETTER_THAN_BENCHMARK — Benchmark vastly superior in design coherence, styling sophistication, and aesthetic appeal. Benchmark clearly curated and styled; Cova minimal and generic (prompt)
+2026-04-17T10:48:44.290Z |   Winner: benchmark
+2026-04-17T10:48:44.291Z | 
+── Iteration 7 | Room_B | COVAINDUSTRIAL 0.7 + COVASCANDINAV ──
+2026-04-17T10:48:44.292Z |   remove=5 wall=false floor=false seed=700
+2026-04-17T10:48:53.007Z |   Webhook: {"status":"queued","room_id":"c1405ef4-140e-492e-a8e3-2a0c25ebc093","pipeline":"v5"}
+2026-04-17T10:48:53.168Z |   Poll: status=pending, elapsed=0s
+2026-04-17T10:49:08.266Z |   Poll: status=rendering, elapsed=15s
+2026-04-17T10:49:23.357Z |   Poll: status=rendering, elapsed=30s
+2026-04-17T10:49:38.523Z |   Poll: status=rendering, elapsed=46s
+2026-04-17T10:49:53.917Z |   Poll: status=rendering, elapsed=61s
+2026-04-17T10:50:09.116Z |   Poll: status=rendering, elapsed=76s
+2026-04-17T10:50:24.363Z |   Poll: status=rendering, elapsed=91s
+2026-04-17T10:50:39.577Z |   Poll: status=rendering, elapsed=107s
+2026-04-17T10:50:55.134Z |   Poll: status=rendering, elapsed=122s
+2026-04-17T10:51:10.716Z |   Poll: status=rendering, elapsed=138s
+2026-04-17T10:51:26.200Z |   Poll: status=rendering, elapsed=153s
+2026-04-17T10:51:41.479Z |   Poll: status=rendering, elapsed=168s
+2026-04-17T10:51:57.007Z |   Poll: status=rendering, elapsed=184s
+2026-04-17T10:52:12.364Z |   Poll: status=rendering, elapsed=199s
+2026-04-17T10:52:27.700Z |   Poll: status=rendering, elapsed=215s
+2026-04-17T10:52:42.963Z |   Poll: status=rendering, elapsed=230s
+2026-04-17T10:52:58.193Z |   Poll: status=rendering, elapsed=245s
+2026-04-17T10:53:13.299Z |   Poll: status=rendering, elapsed=260s
+2026-04-17T10:53:28.606Z |   Poll: status=rendering, elapsed=276s
+2026-04-17T10:53:44.014Z |   Poll: status=rendering, elapsed=291s
+2026-04-17T10:53:59.451Z |   Poll: status=rendering, elapsed=306s
+2026-04-17T10:54:14.731Z |   Poll: status=rendering, elapsed=322s
+2026-04-17T10:54:30.576Z |   Downloaded: 4.2MB
+2026-04-17T10:54:33.507Z |   SCORE: 81/100 ✗ FAIL
+2026-04-17T10:54:33.508Z |   Dims: ARCH=9 STYL=8 FURN=8 COMP=8 LIGH=7 COLO=8 DETA=8 EDIT=8 ROOM=9 BETT=8
+2026-04-17T10:54:33.508Z |   Winner: tie
+2026-04-17T10:54:33.508Z | 
+── Iteration 8 | Room_A | COVAFARMHOUSE 0.8 + COVAJAPANDI ──
+2026-04-17T10:54:33.508Z |   remove=0 wall=true floor=true seed=800
+2026-04-17T10:54:36.813Z |   Webhook: {"status":"queued","room_id":"cb2e7047-c7ae-4253-bf2b-cc42a6f3a727","pipeline":"v5"}
+2026-04-17T10:54:36.879Z |   Poll: status=pending, elapsed=0s
+2026-04-17T10:54:51.987Z |   Poll: status=rendering, elapsed=15s
