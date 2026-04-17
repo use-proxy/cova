@@ -305,3 +305,18 @@
 2026-04-17T10:54:36.813Z |   Webhook: {"status":"queued","room_id":"cb2e7047-c7ae-4253-bf2b-cc42a6f3a727","pipeline":"v5"}
 2026-04-17T10:54:36.879Z |   Poll: status=pending, elapsed=0s
 2026-04-17T10:54:51.987Z |   Poll: status=rendering, elapsed=15s
+2026-04-17T10:55:07.156Z |   Poll: status=rendering, elapsed=30s
+2026-04-17T10:55:22.424Z |   Poll: status=rendering, elapsed=46s
+2026-04-17T10:55:37.881Z |   Poll: status=rendering, elapsed=61s
+2026-04-17T10:55:53.147Z |   Poll: status=rendering, elapsed=76s
+2026-04-17T10:56:08.445Z |   Poll: status=rendering, elapsed=92s
+2026-04-17T10:56:23.587Z |   Poll: status=rendering, elapsed=107s
+2026-04-17T10:56:38.864Z |   Poll: status=rendering, elapsed=122s
+2026-04-17T10:56:54.025Z |   Poll: status=rendering, elapsed=137s
+2026-04-17T10:57:09.365Z |   Poll: status=rendering, elapsed=153s
+2026-04-17T10:57:24.628Z |   Poll: status=rendering, elapsed=168s
+2026-04-17T10:57:39.810Z |   Poll: status=rendering, elapsed=183s
+2026-04-17T10:57:54.998Z |   Poll: status=rendering, elapsed=198s
+2026-04-17T10:58:10.136Z |   Poll: status=rendering, elapsed=213s
+2026-04-17T10:58:25.291Z |   Poll: status=rendering, elapsed=228s
+2026-04-17T10:58:40.409Z |   Poll: status=rendering, elapsed=244s

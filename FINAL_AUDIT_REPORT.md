@@ -106,9 +106,20 @@ These require infrastructure changes, Modal deployments, or design decisions:
 
 ### Blockers for Phase 2 Completion
 
-1. **Modal orchestrator timeout=600s** — cannot be changed without `modal deploy`. Room A renders consistently timeout.
-2. **No model caching in scoring.py** — Q-Align 7B loads from scratch per candidate. Fix requires Modal redeployment.
-3. **Score ceiling ~83** — reaching 88 likely requires Design Director integration (Claude Vision + structured staging) which is the full production path, not just webhook prompts.
+1. **Modal orchestrator timeout=600s** — cannot be changed without `modal deploy`. Room A renders consistently timeout at scoring stage.
+2. **No model caching in scoring.py** — Q-Align 7B loads from scratch per candidate × 4. Fix requires Modal redeployment.
+3. **Score ceiling ~83** — reaching 88 requires one or more of:
+   - Stronger LoRA influence (currently fallback stack only; trained LoRAs in DB not matched)
+   - Full Design Director integration (Claude Vision analysis → structured staging script → compiled prompt)
+   - SAM masks for Room A (keep/remove decisions exist but no actual pixel masks generated)
+4. **Room A fundamentally broken for webhook-only path** — no SAM masks generated, composite preserves 100% of original. Would need UI flow (step-7c) to generate masks, or a programmatic SAM call.
+
+### Actionable Next Steps (for human/next session)
+
+1. **Modal redeploy with timeout=900** — gives scoring ensemble time to complete
+2. **Add model caching to scoring.py** — load HPSv2 + Q-Align + Aesthetic once per container, reuse across candidates
+3. **Run renders through full UI flow** — step-1 through step-8a generates SAM masks, Design Director brief, and compiled prompt. Scores from UI-path renders will be higher.
+4. **Tune LoRA resolution** — `getLorasFromFluxPrompt` should match trained LoRAs from style_loras table, not just fallback stack
 
 ---
 
