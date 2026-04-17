@@ -1,0 +1,74 @@
+{
+  "iter": 20,
+  "room": "Room_A",
+  "style": "COVASCANDINAV",
+  "secondaryStyle": "COVAMINIMAL",
+  "primaryWeight": 0.8,
+  "removeCount": 0,
+  "wallChange": true,
+  "floorChange": true,
+  "seed": 2000,
+  "renderUrl": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/renders/cb2e7047-c7ae-4253-bf2b-cc42a6f3a727/final_1776442588.jpg",
+  "score": {
+    "scores": {
+      "ARCHITECTURE_FIDELITY": 6,
+      "STYLE_ACCURACY": 7,
+      "FURNITURE_REALISM": 5,
+      "COMPOSITION": 6,
+      "LIGHTING": 5,
+      "COLOR_HARMONY": 7,
+      "DETAIL_QUALITY": 5,
+      "EDITORIAL_QUALITY": 5,
+      "ROOM_ADAPTATION": 6,
+      "BETTER_THAN_BENCHMARK": 3
+    },
+    "total": 55,
+    "pass": false,
+    "issues": [
+      {
+        "dimension": "ARCHITECTURE_FIDELITY",
+        "symptom": "Window placement and size differ; ceiling fan position slightly off; room proportions altered",
+        "root_cause": "mask",
+        "severity": "major"
+      },
+      {
+        "dimension": "FURNITURE_REALISM",
+        "symptom": "Daybed appears stiff and plasticky; pillows lack natural fabric draping; desk area lacks convincing material properties",
+        "root_cause": "lora",
+        "severity": "major"
+      },
+      {
+        "dimension": "LIGHTING",
+        "symptom": "Inconsistent light direction; window light doesn't create proper shadow gradients on furniture; ceiling light quality unconvincing",
+        "root_cause": "lighting",
+        "severity": "critical"
+      },
+      {
+        "dimension": "DETAIL_QUALITY",
+        "symptom": "Blurry texture on bedding; plant vase edges undefined; framed photos on wall lack clarity and proper perspective",
+        "root_cause": "postprocess",
+        "severity": "major"
+      },
+      {
+        "dimension": "COMPOSITION",
+        "symptom": "Bed positioned awkwardly; desk area cramped; overall spatial flow less intuitive than benchmark",
+        "root_cause": "composite",
+        "severity": "major"
+      },
+      {
+        "dimension": "EDITORIAL_QUALITY",
+        "symptom": "Overall render lacks polish; colors feel muted rather than intentional; furniture arrangement less magazine-ready",
+        "root_cause": "postprocess",
+        "severity": "major"
+      },
+      {
+        "dimension": "BETTER_THAN_BENCHMARK",
+        "symptom": "Benchmark features superior lighting, cleaner composition, more realistic materials, better spatial hierarchy",
+        "root_cause": "composite",
+        "severity": "critical"
+      }
+    ],
+    "winner_subjective": "benchmark"
+  },
+  "passed": false
+}
