@@ -670,13 +670,13 @@ def build_fill_prompt(style_prompt: str, removed_items: list, kept_items: list =
     removed_str = ", ".join([r.replace("_", " ") for r in removed_items]) if removed_items else "furniture"
 
     parts = []
-    parts.append(f"Replace {removed_str} with new furniture.")
+    parts.append(f"Replace {removed_str} with new bedroom furniture, maintaining this as a bedroom.")
     if style_cleaned:
         parts.append(style_cleaned)
     parts.append(
-        "Include appropriate soft furnishings, complementary lighting, "
+        "Include appropriate bedroom soft furnishings, complementary lighting, "
         "organic or natural elements, decorative accents where suitable, "
-        "styled surfaces. Style cohesive throughout the space."
+        "styled surfaces. Style cohesive throughout the bedroom space."
     )
     parts.append(
         "Neatly arranged soft furnishings, no wrinkles or clutter, "

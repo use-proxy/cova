@@ -205,6 +205,10 @@ const STYLE_PROMPTS = {
 
 function buildPrompt(primaryStyle, secondaryStyle, primaryWeight, personalization) {
   let prompt = STYLE_PROMPTS[primaryStyle] || STYLE_PROMPTS.COVAJAPANDI;
+  // Ensure bedroom is always mentioned prominently for Fill Pro
+  if (!prompt.toLowerCase().includes('bedroom')) {
+    prompt = prompt.replace('interior,', 'interior, bedroom redesign,');
+  }
 
   if (personalization?.required_object?.description) {
     prompt += `, ${personalization.required_object.description} placed naturally in the room`;
