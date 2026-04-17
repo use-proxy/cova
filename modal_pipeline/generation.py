@@ -211,7 +211,7 @@ def _linear_to_srgb(c):
 @app.function(
     image=scorer_image,
     gpu="A10G",
-    timeout=300,
+    timeout=600,
 )
 def score_candidate(image_url: str, prompt: str = "") -> dict:
     """
@@ -224,26 +224,62 @@ def score_candidate(image_url: str, prompt: str = "") -> dict:
     return score_render(image_url, prompt)
 
 
+@app.function(
+    image=scorer_image,
+    gpu="A10G",
+    timeout=600,
+)
+def score_candidates_batch(candidate_urls: list, prompt: str = "") -> list:
+    """
+    Score ALL candidates in a single container call.
+    Models load once on first candidate, remaining candidates are fast (~5s each).
+    Returns list of score dicts in same order as candidate_urls.
+    """
+    from scoring import score_render
+    results = []
+    for i, url in enumerate(candidate_urls):
+        try:
+            s = score_render(url, prompt)
+            print(f"[scoring-batch] Candidate {i}: overall={s.get('overall', 0):.2f}")
+            results.append(s)
+        except Exception as e:
+            print(f"[scoring-batch] Candidate {i} failed: {e}")
+            results.append({
+                "overall": 0.0, "hps": None, "q_align": None, "aesthetic": None, "reject": True,
+            })
+    return results
+
+
 def score_and_select(candidates: list, prompt: str) -> dict:
     """
     Score all candidates with 3-model ensemble, return the best.
-    Scores each candidate via score_candidate.remote() (parallel on Modal).
+    Uses batch scoring to load models once per container.
     """
+    # Batch all candidates into a single remote call
+    urls = [c["url"] for c in candidates]
+    try:
+        all_scores = score_candidates_batch.remote(urls, prompt)
+    except Exception as e:
+        print(f"[scoring] Batch scoring failed: {e}. Falling back to individual scoring.")
+        all_scores = []
+        for c in candidates:
+            try:
+                s = score_candidate.remote(c["url"], prompt)
+                all_scores.append(s)
+            except Exception as e2:
+                print(f"[scoring] Individual scoring failed for seed={c['seed']}: {e2}")
+                all_scores.append({
+                    "overall": 0.0, "hps": None, "q_align": None, "aesthetic": None, "reject": True,
+                })
+
     scored = []
-    for c in candidates:
-        try:
-            s = score_candidate.remote(c["url"], prompt)
-            scored.append((c, s))
-            print(f"[scoring] Candidate seed={c['seed']} "
-                  f"overall={s.get('overall', 0):.2f} "
-                  f"hps={s.get('hps', 'N/A')} "
-                  f"q_align={s.get('q_align', 'N/A')} "
-                  f"aesthetic={s.get('aesthetic', 'N/A')}")
-        except Exception as e:
-            print(f"[scoring] Scoring failed for seed={c['seed']}: {e}")
-            scored.append((c, {
-                "overall": 0.0, "hps": None, "q_align": None, "aesthetic": None, "reject": True,
-            }))
+    for c, s in zip(candidates, all_scores):
+        scored.append((c, s))
+        print(f"[scoring] Candidate seed={c['seed']} "
+              f"overall={s.get('overall', 0):.2f} "
+              f"hps={s.get('hps', 'N/A')} "
+              f"q_align={s.get('q_align', 'N/A')} "
+              f"aesthetic={s.get('aesthetic', 'N/A')}")
 
     if not scored:
         print("[scoring] No candidates scored — returning first candidate")

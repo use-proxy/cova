@@ -46,7 +46,7 @@ app = modal.App("cova-redesign-pipeline", image=pipeline_image)
 # ---------------------------------------------------------------------------
 
 @app.function(
-    timeout=600,
+    timeout=1800,
     secrets=[
         modal.Secret.from_name("supabase-credentials"),
     ],

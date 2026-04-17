@@ -71,8 +71,8 @@ const PERSONALIZATION_CONTEXTS = [
   {},
 ];
 
-// Budget limits
-const BUDGET_LIMITS = { fal: 85, modal: 18 };
+// Budget limits (reset for round 2)
+const BUDGET_LIMITS = { fal: 85, modal: 18 }; // Hard stops with buffer from $95/$22
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -511,7 +511,7 @@ async function main() {
     { url: 'https://huggingface.co/XLabs-AI/flux-RealismLora/resolve/main/lora.safetensors', scale: 0.25, name: 'realism-lora' },
   ];
 
-  for (let iter = 4; iter < 100; iter++) {
+  for (let iter = 10; iter < 100; iter++) {
     // Budget check
     budget = loadBudget();
     if (!checkBudget(budget)) break;
