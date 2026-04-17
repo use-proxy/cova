@@ -320,3 +320,53 @@
 2026-04-17T10:58:10.136Z |   Poll: status=rendering, elapsed=213s
 2026-04-17T10:58:25.291Z |   Poll: status=rendering, elapsed=228s
 2026-04-17T10:58:40.409Z |   Poll: status=rendering, elapsed=244s
+2026-04-17T10:58:55.625Z |   Poll: status=rendering, elapsed=259s
+2026-04-17T10:59:11.210Z |   Poll: status=rendering, elapsed=274s
+2026-04-17T10:59:26.497Z |   Poll: status=rendering, elapsed=290s
+2026-04-17T10:59:41.820Z |   Poll: status=rendering, elapsed=305s
+2026-04-17T10:59:57.006Z |   Poll: status=rendering, elapsed=320s
+2026-04-17T11:00:12.370Z |   Poll: status=rendering, elapsed=336s
+2026-04-17T11:00:27.780Z |   Poll: status=rendering, elapsed=351s
+2026-04-17T11:00:42.898Z |   Poll: status=rendering, elapsed=366s
+2026-04-17T11:00:58.119Z |   Poll: status=rendering, elapsed=381s
+2026-04-17T11:01:14.182Z |   Downloaded: 3.5MB
+2026-04-17T11:01:20.554Z |   SCORE: 73/100 ✗ FAIL
+2026-04-17T11:01:20.554Z |   Dims: ARCH=9 STYL=7 FURN=8 COMP=7 LIGH=8 COLO=8 DETA=8 EDIT=7 ROOM=6 BETT=5
+2026-04-17T11:01:20.554Z |   CRITICAL: BETTER_THAN_BENCHMARK — Benchmark shows complete, styled, cohesive bedroom with proper scale and accessories; Cova render is emptier, less curated, lower visual impact (prompt)
+2026-04-17T11:01:20.554Z |   Winner: benchmark
+2026-04-17T11:01:20.555Z | 
+── Iteration 9 | Room_B | COVAARTDECO 0.6 + COVABIOPHILIC ──
+2026-04-17T11:01:20.555Z |   remove=2 wall=false floor=false seed=900
+2026-04-17T11:01:33.558Z |   Webhook: {"status":"queued","room_id":"c1405ef4-140e-492e-a8e3-2a0c25ebc093","pipeline":"v5"}
+2026-04-17T11:01:33.778Z |   Poll: status=pending, elapsed=0s
+2026-04-17T11:01:48.901Z |   Poll: status=rendering, elapsed=15s
+2026-04-17T11:02:04.032Z |   Poll: status=rendering, elapsed=30s
+2026-04-17T11:02:19.518Z |   Poll: status=rendering, elapsed=46s
+2026-04-17T11:02:34.856Z |   Poll: status=rendering, elapsed=61s
+2026-04-17T11:02:49.982Z |   Poll: status=rendering, elapsed=76s
+2026-04-17T11:03:05.141Z |   Poll: status=rendering, elapsed=92s
+2026-04-17T11:03:20.263Z |   Poll: status=rendering, elapsed=107s
+2026-04-17T11:03:35.716Z |   Poll: status=rendering, elapsed=122s
+2026-04-17T11:03:51.046Z |   Poll: status=rendering, elapsed=137s
+2026-04-17T11:04:06.214Z |   Poll: status=rendering, elapsed=153s
+2026-04-17T11:04:21.448Z |   Poll: status=rendering, elapsed=168s
+2026-04-17T11:04:36.676Z |   Poll: status=rendering, elapsed=183s
+2026-04-17T11:04:51.881Z |   Poll: status=rendering, elapsed=198s
+2026-04-17T11:05:07.435Z |   Poll: status=rendering, elapsed=214s
+2026-04-17T11:05:22.620Z |   Poll: status=rendering, elapsed=229s
+2026-04-17T11:05:37.937Z |   Poll: status=rendering, elapsed=244s
+2026-04-17T11:05:53.166Z |   Poll: status=rendering, elapsed=260s
+2026-04-17T11:06:08.553Z |   Poll: status=rendering, elapsed=275s
+2026-04-17T11:06:23.708Z |   Poll: status=rendering, elapsed=290s
+2026-04-17T11:06:38.992Z |   Poll: status=rendering, elapsed=305s
+2026-04-17T11:06:54.203Z |   Poll: status=rendering, elapsed=321s
+2026-04-17T11:07:09.559Z |   Poll: status=rendering, elapsed=336s
+2026-04-17T11:07:24.794Z |   Poll: status=rendering, elapsed=351s
+2026-04-17T11:07:40.187Z |   Poll: status=rendering, elapsed=367s
+2026-04-17T11:07:55.456Z |   Poll: status=rendering, elapsed=382s
+2026-04-17T11:08:10.702Z |   Poll: status=rendering, elapsed=397s
+2026-04-17T11:08:25.877Z |   Poll: status=rendering, elapsed=412s
+2026-04-17T11:08:41.045Z |   Poll: status=rendering, elapsed=427s
+2026-04-17T11:08:56.237Z |   Poll: status=rendering, elapsed=443s
+2026-04-17T11:09:11.366Z |   Poll: status=rendering, elapsed=458s
+2026-04-17T11:09:26.503Z |   Poll: status=rendering, elapsed=473s

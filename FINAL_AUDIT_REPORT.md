@@ -76,14 +76,16 @@ These require infrastructure changes, Modal deployments, or design decisions:
 | Metric | Value |
 |---|---|
 | Webhook fires | 10+ |
-| Scored renders | 4 |
-| Timeouts | 2 (both Room A/Daksh) |
+| Scored renders | 7 |
+| Timeouts | 3+ (scoring ensemble too slow) |
 | Best score | 83/100 (Coastal, Pranav room) |
-| Average score | 78.75/100 |
+| Average score | 75.3/100 |
+| Room B average | 82.0/100 (82, 82, 83, 81) |
+| Room A average | 66.3/100 (68, 58, 73) |
 | Consecutive passes | 0 (target: 20) |
-| fal.ai spend | ~$9.00/$85 |
-| Modal spend | ~$1.50/$18 |
-| Anthropic calls | 4 (Haiku scoring) |
+| fal.ai spend | $10.80/$85 |
+| Modal spend | $1.80/$18 |
+| Anthropic calls | 7 (Haiku scoring) |
 
 ### Score Breakdown by Render
 
@@ -93,6 +95,9 @@ These require infrastructure changes, Modal deployments, or design decisions:
 | 1 | B (Pranav) | Japandi | 82 | tie | ROOM=7, BETT=7 |
 | 2 | A (Daksh) | Biophilic | 68 | benchmark | STYL=6, ROOM=5, BETT=4 — style not applied |
 | 5 | B (Pranav) | Coastal | 83 | tie | All dims >= 8, COMP=9, ROOM=9 |
+| 6 | A (Daksh) | Bohemian | 58 | benchmark | STYL=4, ROOM=3 — original photo |
+| 7 | B (Pranav) | Industrial | 81 | tie | LIGH=7, all others >=8 |
+| 8 | A (Daksh) | Farmhouse | 73 | benchmark | BETT=5, ROOM=6 — partial style |
 
 ### Key Findings
 
