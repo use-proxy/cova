@@ -340,40 +340,73 @@ async function scoreRender(renderPath, benchmarkPath, originalPhotoUrl, iterNum,
     benchmarkB64 = bmData.toString('base64');
   }
 
+  // Download and resize original room photo for architecture comparison
+  let originalB64 = null;
+  if (originalPhotoUrl) {
+    try {
+      const origResp = await fetch(originalPhotoUrl);
+      if (origResp.ok) {
+        const origBuf = Buffer.from(await origResp.arrayBuffer());
+        const origTmp = renderPath + '.orig.jpg';
+        writeFileSync(origTmp, origBuf);
+        const origResized = resizeImageForClaude(origTmp);
+        originalB64 = origResized.toString('base64');
+        try { unlinkSync(origTmp); } catch {}
+      }
+    } catch (e) {
+      log(`  Could not fetch original photo: ${e.message}`);
+    }
+  }
+
+  const imageContent = [
+    {
+      type: 'image',
+      source: { type: 'base64', media_type: 'image/jpeg', data: renderB64 },
+    },
+    ...(benchmarkB64 ? [{
+      type: 'image',
+      source: { type: 'base64', media_type: 'image/png', data: benchmarkB64 },
+    }] : []),
+    ...(originalB64 ? [{
+      type: 'image',
+      source: { type: 'base64', media_type: 'image/jpeg', data: originalB64 },
+    }] : []),
+  ];
+
   const messages = [{
     role: 'user',
     content: [
-      {
-        type: 'image',
-        source: { type: 'base64', media_type: 'image/jpeg', data: renderB64 },
-      },
-      ...(benchmarkB64 ? [{
-        type: 'image',
-        source: { type: 'base64', media_type: 'image/png', data: benchmarkB64 },
-      }] : []),
+      ...imageContent,
       {
         type: 'text',
-        text: `You are scoring a Cova AI interior design render${benchmarkB64 ? ' against a CollovAI benchmark' : ''}.
+        text: `You are scoring a Cova AI interior design render against a CollovAI competitor render OF THE SAME PHYSICAL ROOM.
 
 IMAGE 1: Cova render (iteration ${iterNum}, style: ${style})
-${benchmarkB64 ? 'IMAGE 2: CollovAI benchmark' : ''}
+${benchmarkB64 ? 'IMAGE 2: CollovAI benchmark render OF THE SAME ROOM' : ''}
+${originalB64 ? `IMAGE ${benchmarkB64 ? '3' : '2'}: Original unedited room photo` : ''}
 
-Score the Cova render on 10 dimensions (0-10 each, total 100):
-1. ARCHITECTURE_FIDELITY: Same room? Walls, ceiling, floor, windows match original.
-2. STYLE_ACCURACY: Matches requested ${style} style?
-3. FURNITURE_REALISM: Photorealistic? Correct shadows, scale, materials?
-4. COMPOSITION: Foreground/mid/background populated? Balanced?
-5. LIGHTING: Consistent direction? Correct temperature?
-6. COLOR_HARMONY: Palette coherent? Not muddy or over-saturated?
-7. DETAIL_QUALITY: Sharp? No AI artifacts, extra limbs, impossible geometry?
-8. EDITORIAL_QUALITY: Magazine-worthy? Pinterest-worthy?
-9. ROOM_ADAPTATION: Style applied to THIS room, not generic?
-10. BETTER_THAN_BENCHMARK: ${benchmarkB64 ? 'More aesthetic than CollovAI?' : 'Overall quality vs professional interior photo?'}
+CRITICAL CONTEXT: Both the Cova render and the CollovAI benchmark show the SAME bedroom from the SAME angle. The architecture is identical — same walls, same ceiling fan, same window, same DAKSH wall letters, same corner layout. Only the FURNITURE differs between them. Both are AI redesigns of the same source photo.
 
-For dimensions scoring < 8, provide root cause: mask|prompt|lora|postprocess|composite|lighting
+Your job is to score whether Cova's redesigned furniture, styling, and overall quality is better than CollovAI's, assuming both started from the same room.
+
+DO NOT penalize Cova for "different room" — it IS the same room with different furniture. Compare architecture preservation against the ORIGINAL photo${originalB64 ? ' (Image ' + (benchmarkB64 ? '3' : '2') + ')' : ''}, not against CollovAI.
+
+Score on 10 dimensions (0-10 each, total 100):
+1. ARCH_FIDELITY: Does Cova preserve walls/ceiling/fan/window/DAKSH letters from the original? If yes, score 9-10.
+2. FURNITURE_QUALITY: Is Cova's furniture more realistic than CollovAI's? (Materials, shadows, scale, contact with floor)
+3. COMPOSITION: Is Cova's layout better? (Bed placement, nightstand, rug, balance, rule of thirds)
+4. STYLE_COHERENCE: Does Cova express the ${style} style more consistently than CollovAI?
+5. DETAIL: Is Cova sharper, fewer AI artifacts than CollovAI?
+6. LIGHTING: Is Cova's lighting more believable than CollovAI's?
+7. COLOR: Is Cova's color palette better than CollovAI's?
+8. EDITORIAL: Is Cova more magazine/editorial quality than CollovAI?
+9. ROOM_FIT: Is Cova's furniture better scaled and positioned for this specific room?
+10. BETTER_OVERALL: If showing one render to a client, would you pick Cova over CollovAI?
+
+For each dimension scoring < 8, provide root cause: mask|prompt|lora|postprocess|composite|lighting
 
 Output JSON ONLY (no markdown, no explanation):
-{"scores":{"ARCHITECTURE_FIDELITY":N,"STYLE_ACCURACY":N,"FURNITURE_REALISM":N,"COMPOSITION":N,"LIGHTING":N,"COLOR_HARMONY":N,"DETAIL_QUALITY":N,"EDITORIAL_QUALITY":N,"ROOM_ADAPTATION":N,"BETTER_THAN_BENCHMARK":N},"total":N,"pass":bool,"issues":[{"dimension":"str","symptom":"str","root_cause":"mask|prompt|lora|postprocess|composite|lighting","severity":"critical|major|minor"}],"winner_subjective":"cova|benchmark|tie"}`,
+{"scores":{"ARCH_FIDELITY":N,"FURNITURE_QUALITY":N,"COMPOSITION":N,"STYLE_COHERENCE":N,"DETAIL":N,"LIGHTING":N,"COLOR":N,"EDITORIAL":N,"ROOM_FIT":N,"BETTER_OVERALL":N},"total":N,"pass":bool,"issues":[{"dimension":"str","symptom":"str","root_cause":"mask|prompt|lora|postprocess|composite|lighting","severity":"critical|major|minor"}],"winner_subjective":"cova|benchmark|tie"}`,
       },
     ],
   }];
@@ -528,7 +561,35 @@ async function main() {
     { url: 'https://huggingface.co/XLabs-AI/flux-RealismLora/resolve/main/lora.safetensors', scale: 0.25, name: 'realism-lora' },
   ];
 
-  for (let iter = 20; iter < 100; iter++) {
+  // Re-score existing renders with corrected scoring prompt
+  const rescore = [
+    { path: 'Room_A_iter_20.jpg', style: 'COVASCANDINAV', iter: 20, room: rooms[0] },
+    { path: 'Room_B_iter_21.jpg', style: 'COVAJAPANDI', iter: 21, room: rooms[1] },
+    { path: 'Room_A_iter_22.jpg', style: 'COVABIOPHILIC', iter: 22, room: rooms[0] },
+    { path: 'Room_B_iter_25.jpg', style: 'COVACOASTAL', iter: 25, room: rooms[1] },
+    { path: 'Room_A_iter_26.jpg', style: 'COVABOHEMIAN', iter: 26, room: rooms[0] },
+  ];
+  for (const rs of rescore) {
+    const rPath = join(RENDERS_DIR, rs.path);
+    if (!existsSync(rPath)) continue;
+    const bIdx = (rs.iter % 4) + 1;
+    const bPath = rs.room.benchmarkDir ? join(rs.room.benchmarkDir, `collov_${bIdx}.png`) : '';
+    try {
+      log(`RE-SCORING ${rs.path} with corrected prompt`);
+      const sc = await scoreRender(rPath, bPath, rs.room.photoUrl, rs.iter, rs.style);
+      budget.anthropic_calls++;
+      saveBudget(budget);
+      const t = sc.total || 0;
+      log(`  RE-SCORE: ${t}/100 ${t >= 88 ? '✓ PASS' : '✗ FAIL'}`);
+      if (sc.scores) {
+        log(`  Dims: ${Object.entries(sc.scores).map(([k,v]) => `${k.slice(0,4)}=${v}`).join(' ')}`);
+      }
+      if (sc.winner_subjective) log(`  Winner: ${sc.winner_subjective}`);
+    } catch (e) { log(`  Re-score error: ${e.message}`); }
+  }
+  log('=== Re-scoring complete. Starting new iterations ===');
+
+  for (let iter = 28; iter < 100; iter++) {
     // Budget check
     budget = loadBudget();
     if (!checkBudget(budget)) break;

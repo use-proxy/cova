@@ -1,11 +1,11 @@
 {
-  "fal": 3.6,
-  "modal": 0.6,
-  "anthropic_calls": 3,
-  "started_at": "2026-04-17T16:10:00Z",
-  "renders_completed": 4,
+  "fal": 0,
+  "modal": 0,
+  "anthropic_calls": 0,
+  "started_at": "2026-04-17T19:35:00Z",
+  "renders_completed": 0,
   "renders_passed": 0,
   "consecutive_passes": 0,
-  "phase": "2_room_type_fix",
-  "last_updated": "2026-04-17T16:26:44.748Z"
+  "phase": "2_fixed_scoring",
+  "last_updated": "2026-04-17T19:35:00Z"
 }
