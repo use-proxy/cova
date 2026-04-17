@@ -1275,8 +1275,7 @@ export function buildFluxPromptFromContext(context: RenderContext): string {
     const floorLower = (rc.floorMaterial ?? "").toLowerCase();
     const isHardwood =
       floorLower.includes("hardwood") || floorLower.includes("wood");
-    const keepFlooring =
-      cons?.wallPermanence !== "renting-no-paint" ? true : true; // default keep
+    const keepFlooring = true; // Always preserve flooring
     let floorDesc: string;
     if (isHardwood && keepFlooring) {
       floorDesc = `PRESERVE existing ${rc.floorMaterial} flooring exactly — do not replace or cover the ${rc.floorColor} hardwood, natural patina retained`;

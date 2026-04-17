@@ -150,7 +150,7 @@ export default function Step7hRequiredObject() {
             One thing you definitely want
           </h1>
           <p className="text-sm text-[rgba(245,240,232,0.5)] mb-8 text-center">
-            Tell us one must-have element and we'll build the entire design
+            Tell us one must-have element and we&apos;ll build the entire design
             around it.
           </p>
 

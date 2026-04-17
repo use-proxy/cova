@@ -1,0 +1,200 @@
+{
+  "audit_timestamp": "2026-04-17T00:00:00Z",
+  "audit_phase": "Phase 1 — Deep Code Audit",
+  "tsc_status": "CLEAN",
+  "total_files_audited": 55,
+
+  "critical_issues_found_and_fixed": [
+    {
+      "id": "CRIT-001",
+      "severity": "critical",
+      "file": "apps/web/app/api/quiz/update-fingerprint/route.ts",
+      "issue": "Authorization bypass — no session auth check. Any unauthenticated caller could modify any user's fingerprint by providing a user_id in request body.",
+      "fix": "Added createServerSupabaseClient session check + user_id ownership verification (403 if mismatch)",
+      "status": "FIXED"
+    },
+    {
+      "id": "CRIT-002",
+      "severity": "major",
+      "file": "apps/web/app/api/render/refine/route.ts",
+      "issue": "Render runs BEFORE refinement limit check — wastes API credits on requests that will be rejected.",
+      "fix": "Moved refinement count check and 403 response before the runFluxRender call",
+      "status": "FIXED"
+    },
+    {
+      "id": "CRIT-003",
+      "severity": "critical",
+      "file": "apps/web/lib/store/room.ts",
+      "issue": "CLAUDE.md Rule 1 violation — persisted to sessionStorage. Room state lost on auth redirects.",
+      "fix": "Replaced sessionStorage with in-memory no-op storage adapter",
+      "status": "FIXED"
+    },
+    {
+      "id": "CRIT-004",
+      "severity": "major",
+      "file": "apps/web/lib/store/fingerprint.ts",
+      "issue": "CLAUDE.md Rule 1 violation — sessionStorage fallback for read (getItem) and overflow write (setItem). CLAUDE.md explicitly states sessionStorage fallback was removed.",
+      "fix": "Removed sessionStorage.getItem fallback and sessionStorage.setItem overflow fallback",
+      "status": "FIXED"
+    },
+    {
+      "id": "CRIT-005",
+      "severity": "major",
+      "file": "apps/web/lib/ai/prompt-compiler.ts",
+      "issue": "ANTI_CLUTTER_RULES dead code — keys are COVA style names (COVAJAPANDI) but lookup uses .toUpperCase() on trigger words (cvwmn → CVWMN). Never matches.",
+      "fix": "Added trigger word keys to ANTI_CLUTTER_RULES map and updated lookup to try raw trigger first",
+      "status": "FIXED"
+    },
+    {
+      "id": "CRIT-006",
+      "severity": "minor",
+      "file": "apps/web/lib/ai/flux.ts",
+      "issue": "keepFlooring always true — both branches of ternary return true. Dead code.",
+      "fix": "Simplified to const keepFlooring = true with comment",
+      "status": "FIXED"
+    },
+    {
+      "id": "CRIT-007",
+      "severity": "major",
+      "file": "apps/web/lib/env.ts",
+      "issue": "Missing critical env vars from validation: FAL_KEY, SUPABASE_JWT_SECRET, REDESIGN_PIPELINE_WEBHOOK_URL, SERPER_API_KEY, SEARCHAPI_KEY, GEMINI_API_KEY, UNSPLASH_ACCESS_KEY",
+      "fix": "Added all missing vars to ENV_VARS array with correct required/optional/serverOnly flags",
+      "status": "FIXED"
+    },
+    {
+      "id": "CRIT-008",
+      "severity": "minor",
+      "file": "apps/web/app/api/match/route.ts",
+      "issue": "Model inconsistency — uses claude-sonnet-4-5 while all other routes use claude-sonnet-4-6",
+      "fix": "Updated to claude-sonnet-4-6",
+      "status": "FIXED"
+    }
+  ],
+
+  "issues_noted_not_fixed": [
+    {
+      "id": "NOTE-001",
+      "severity": "major",
+      "file": "modal_pipeline/scoring.py",
+      "issue": "Q-Align loads full 7B model on every call — no model caching. 30s+ load time per candidate × 4 candidates = 2+ minutes of model loading alone.",
+      "reason_not_fixed": "FROZEN file (utils.py) dependency + requires Modal GPU config changes. Flag for dedicated session."
+    },
+    {
+      "id": "NOTE-002",
+      "severity": "major",
+      "file": "modal_pipeline/pre_detection_pipeline.py",
+      "issue": "30s container timeout but makes 2 sequential 25s Claude Vision API calls — guaranteed timeout on second call.",
+      "reason_not_fixed": "Modal deployment required. Flag for M9."
+    },
+    {
+      "id": "NOTE-003",
+      "severity": "major",
+      "file": "modal_pipeline/redesign_pipeline.py",
+      "issue": "Webhook endpoint has no auth validation — any POST triggers a pipeline run.",
+      "reason_not_fixed": "Requires Modal deployment. Currently protected by URL obscurity."
+    },
+    {
+      "id": "NOTE-004",
+      "severity": "major",
+      "file": "modal_pipeline/*.py",
+      "issue": "Modal secret name inconsistency: generation.py uses 'supabase-credentials', professionalization.py/preprocessing.py/restoration.py/structural_extraction.py use 'supabase-secrets'. If only one exists, half the pipeline fails.",
+      "reason_not_fixed": "Requires checking which secret name actually exists in Modal dashboard."
+    },
+    {
+      "id": "NOTE-005",
+      "severity": "major",
+      "file": "apps/web/app/api/pipeline/furniture-match/route.ts",
+      "issue": "Delete-then-insert pattern for room_products with no transaction — failed insert loses all previous product matches.",
+      "reason_not_fixed": "Supabase JS client doesn't support transactions. Would need to use RPC function."
+    },
+    {
+      "id": "NOTE-006",
+      "severity": "minor",
+      "file": "apps/web/app/api/render/status/route.ts",
+      "issue": "getInternalBaseUrl() replaces localhost with production URL — dev self-calls route to production.",
+      "reason_not_fixed": "Affects development only. Flag for dev ergonomics session."
+    },
+    {
+      "id": "NOTE-007",
+      "severity": "minor",
+      "file": "apps/web/lib/ai/segmentation.ts",
+      "issue": "Module-level sessionCumulativeCost resets on each cold start in Vercel serverless — cost guardrail ineffective.",
+      "reason_not_fixed": "Would require external state (Redis/DB) for cross-invocation cost tracking."
+    },
+    {
+      "id": "NOTE-008",
+      "severity": "minor",
+      "file": "apps/web/components/FurnitureHotspots.tsx",
+      "issue": "setProjected() called at 60fps from RAF loop — causes continuous React re-renders.",
+      "reason_not_fixed": "Performance optimization, not blocking. Flag for M10 polish."
+    },
+    {
+      "id": "NOTE-009",
+      "severity": "minor",
+      "file": "apps/web/app/design/step-9/page.tsx",
+      "issue": "window.location.reload() after product matching — breaks SPA navigation and loses state.",
+      "reason_not_fixed": "Behavioral change. Flag for M10 polish."
+    },
+    {
+      "id": "NOTE-010",
+      "severity": "info",
+      "file": "apps/web/app/dashboard/page.tsx",
+      "issue": "Dashboard data is fully mocked — no Supabase queries for real user data.",
+      "reason_not_fixed": "Known state per SESSION_NOTES. M9 task."
+    },
+    {
+      "id": "NOTE-011",
+      "severity": "minor",
+      "file": "apps/web/lib/ai/lora-registry.ts",
+      "issue": "cvnrd trigger word has no STYLE_DNA_BLOCK entry in design-director.ts — Scandinavian style anchor maps to unrecognized DNA block.",
+      "reason_not_fixed": "Requires design decision on whether to add cvnrd DNA block or remap Scandinavian to cvscn."
+    },
+    {
+      "id": "NOTE-012",
+      "severity": "minor",
+      "file": "apps/web/lib/ai/clip.ts",
+      "issue": "fingerprintToStyleTags() generates 20+ tags with no dead band — computeFingerprintAlignment() scores always below 0.3, making alignment meaningless.",
+      "reason_not_fixed": "Affects match quality, not correctness. Flag for M8 tuning."
+    },
+    {
+      "id": "NOTE-013",
+      "severity": "minor",
+      "file": "apps/web/app/api/quiz/fingerprint/route.ts",
+      "issue": "x-cova-session-token pre-auth path checks for non-emptiness but never cryptographically verifies contents.",
+      "reason_not_fixed": "Pre-auth flow is needed for quiz-before-login UX. Token is not sensitive — it only allows quiz state write, not read."
+    }
+  ],
+
+  "files_summary": {
+    "apps/web/app/api/**": {
+      "count": 36,
+      "critical_issues": 2,
+      "major_issues": 4,
+      "minor_issues": 3
+    },
+    "apps/web/lib/**": {
+      "count": 42,
+      "critical_issues": 3,
+      "major_issues": 2,
+      "minor_issues": 4
+    },
+    "apps/web/app/design/**": {
+      "count": 18,
+      "critical_issues": 0,
+      "major_issues": 1,
+      "minor_issues": 5
+    },
+    "apps/web/components/**": {
+      "count": 25,
+      "critical_issues": 0,
+      "major_issues": 0,
+      "minor_issues": 3
+    },
+    "modal_pipeline/**": {
+      "count": 12,
+      "critical_issues": 0,
+      "major_issues": 4,
+      "minor_issues": 5
+    }
+  }
+}

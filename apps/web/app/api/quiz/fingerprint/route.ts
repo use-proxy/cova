@@ -744,7 +744,7 @@ async function computeNewFingerprint(
   let styleName: string;
   let competingStyles: string[] = [];
   let blendRatio = 1.0;
-  let styleBlend: Record<string, number> = {};
+  const styleBlend: Record<string, number> = {};
   let primaryStyleName: string | null = null;
   let secondaryStyleName: string | null = null;
   let primaryWeight = 0;

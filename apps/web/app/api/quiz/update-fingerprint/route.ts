@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { softmaxStyleMatch } from "@/lib/ai/style-match";
 import { toDisplayName } from "@/lib/ai/anchor-display";
 
@@ -42,8 +43,25 @@ function extractV2(dimensions: Record<string, number>): number[] {
 
 export async function POST(request: Request) {
   try {
+    // Auth check: verify the caller is the user they claim to be
+    const supabase = await createServerSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = (await request.json()) as UpdateRequest;
     const { user_id, rating, render_style_vector } = body;
+
+    // Ensure the authenticated user matches the requested user_id
+    if (user_id !== user.id) {
+      return NextResponse.json(
+        { error: "Forbidden: user_id does not match authenticated user" },
+        { status: 403 },
+      );
+    }
 
     if (!user_id || (rating !== "up" && rating !== "down")) {
       return NextResponse.json(
@@ -61,8 +79,8 @@ export async function POST(request: Request) {
     const admin = createAdminSupabaseClient();
 
     // 1. Fetch the most recent stored fingerprint for this user
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: latest, error: fetchErr } = await (admin
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .from("style_fingerprints") as any)
       .select("id, dimensions, covariance, confidence")
       .eq("user_id", user_id)
@@ -111,8 +129,8 @@ export async function POST(request: Request) {
       newDimensions[V2_SLOT_KEYS[i]!] = newV2[i]!;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: updateErr } = await (admin
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .from("style_fingerprints") as any)
       .update({ dimensions: newDimensions })
       .eq("id", latest.id);

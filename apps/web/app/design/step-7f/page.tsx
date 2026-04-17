@@ -295,7 +295,7 @@ export default function Step7fArtPosters() {
               How should art be displayed?
             </h1>
             <p className="text-sm text-[rgba(245,240,232,0.55)] mb-8">
-              Choose an arrangement and we'll generate artwork that matches your
+              Choose an arrangement and we&apos;ll generate artwork that matches your
               style.
             </p>
 

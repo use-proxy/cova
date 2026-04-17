@@ -1,0 +1,18 @@
+{
+  "budget_ceilings": {
+    "fal_ai": 85.00,
+    "modal": 18.00,
+    "wall_clock_hours": 10
+  },
+  "spend": {
+    "fal_ai": 0.00,
+    "modal": 0.00,
+    "anthropic_haiku": 0.00,
+    "anthropic_sonnet": 0.00,
+    "total": 0.00
+  },
+  "started_at": "2026-04-17T00:00:00Z",
+  "last_updated": "2026-04-17T00:00:00Z",
+  "api_calls": [],
+  "notes": "Phase 1 - audit in progress"
+}

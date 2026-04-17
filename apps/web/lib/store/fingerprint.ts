@@ -118,12 +118,8 @@ const fingerprintCookieStorage = {
           }
         }
       }
-      // Secondary: sessionStorage read fallback (same-tab, pre-redirect)
-      try {
-        return sessionStorage.getItem(COOKIE_NAME) ?? null;
-      } catch {
-        return null;
-      }
+      // No secondary fallback — sessionStorage removed per CLAUDE.md Rule 1
+      return null;
     } catch {
       return null;
     }
@@ -135,13 +131,11 @@ const fingerprintCookieStorage = {
       const encoded = btoa(encodeURIComponent(value));
       if (encoded.length > 3800) {
         console.warn(
-          "[fingerprint-store] Cookie value exceeds 3800 bytes — falling back to sessionStorage",
+          "[fingerprint-store] Cookie value exceeds 3800 bytes — data will not persist across redirects",
         );
-        try {
-          sessionStorage.setItem(COOKIE_NAME, value);
-        } catch {
-          /* ignore */
-        }
+        // No sessionStorage fallback per CLAUDE.md Rule 1. The covariance
+        // matrix is stripped from the cookie payload (partialize) to stay
+        // under 3000 bytes, so this branch should rarely fire.
         return;
       }
       const isProduction =

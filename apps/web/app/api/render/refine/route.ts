@@ -67,22 +67,10 @@ export async function POST(request: Request) {
       ],
     });
 
-    const modifiedPrompt =
-      message.content[0].type === "text"
-        ? message.content[0].text.trim()
-        : current_prompt;
-
-    const renderUrl = await runFluxRender(
-      current_render_url,
-      "",
-      modifiedPrompt,
-      "distorted walls, wrong perspective, AI artifacts, blurry",
-      style_strength,
-    );
-
     const admin = createAdminSupabaseClient();
 
     // Server-side enforcement: count completed refinements for this room.
+    // Check BEFORE running the render to avoid wasting API credits.
     // Refinement 1 = iteration 2, 2 = iteration 3, 3 = iteration 4 → max iteration = 4.
     const { count: sessionCount } = await admin
       .from("render_sessions")
@@ -99,6 +87,19 @@ export async function POST(request: Request) {
         { status: 403 },
       );
     }
+
+    const modifiedPrompt =
+      message.content[0].type === "text"
+        ? message.content[0].text.trim()
+        : current_prompt;
+
+    const renderUrl = await runFluxRender(
+      current_render_url,
+      "",
+      modifiedPrompt,
+      "distorted walls, wrong perspective, AI artifacts, blurry",
+      style_strength,
+    );
 
     const { data: existingSessions } = await admin
       .from("render_sessions")

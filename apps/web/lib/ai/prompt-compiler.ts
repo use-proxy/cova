@@ -18,17 +18,29 @@ const anthropic = new Anthropic();
 
 // ── Anti-clutter rules per COVA* trigger ──────────────────────────────────────
 
+// Keyed by both COVA style names AND short trigger words so lookups from
+// brief.style_weights.primary_lora (e.g. "cvwmn") match correctly.
 const ANTI_CLUTTER_RULES: Record<string, string> = {
-  COVAJAPANDI: "three materials maximum, generous negative space, odd groupings",
-  COVAMINIMAL: "maximum 5 objects visible, surfaces bare except hero",
-  COVABOHEMIAN: "layered textures but intentional — nothing random",
+  COVAJAPANDI:   "three materials maximum, generous negative space, odd groupings",
+  cvwmn:         "three materials maximum, generous negative space, odd groupings",
+  COVAMINIMAL:   "maximum 5 objects visible, surfaces bare except hero",
+  cvscn:         "maximum 5 objects visible, surfaces bare except hero",
+  COVABOHEMIAN:  "layered textures but intentional — nothing random",
+  cvboh:         "layered textures but intentional — nothing random",
   COVABIOPHILIC: "plants as structural elements not accessories",
-  COVAARTDECO: "strict bilateral symmetry, one hero surface per zone",
+  cvbio:         "plants as structural elements not accessories",
+  COVAARTDECO:   "strict bilateral symmetry, one hero surface per zone",
+  cvdco:         "strict bilateral symmetry, one hero surface per zone",
   COVASCANDINAV: "light palette, functional simplicity, no ornament",
-  COVAMIDCENTURY: "clean lines, organic curves, one statement piece per zone",
-  COVACOASTAL: "airy and open, natural light emphasis, no clutter",
-  COVAINDUSTRIAL: "raw materials, exposed structure, intentional sparseness",
+  cvnrd:         "light palette, functional simplicity, no ornament",
+  COVAMIDCENTURY:"clean lines, organic curves, one statement piece per zone",
+  cvmcm:         "clean lines, organic curves, one statement piece per zone",
+  COVACOASTAL:   "airy and open, natural light emphasis, no clutter",
+  cvcst:         "airy and open, natural light emphasis, no clutter",
+  COVAINDUSTRIAL:"raw materials, exposed structure, intentional sparseness",
+  cvind:         "raw materials, exposed structure, intentional sparseness",
   COVAFARMHOUSE: "rustic warmth, practical comfort, curated not cluttered",
+  cvfrm:         "rustic warmth, practical comfort, curated not cluttered",
 };
 
 // ── System prompt for Call 2 ────────────────────────────────────────────────
@@ -186,8 +198,10 @@ function buildCall2UserMessage(brief: DesignBrief): string {
     sections.push(`Constraints: ${brief.hard_constraints.join("; ")}`);
   }
 
-  // Anti-clutter rule for this style
-  const antiClutter = ANTI_CLUTTER_RULES[loraTrigger.toUpperCase()];
+  // Anti-clutter rule for this style — check both raw trigger and uppercased
+  const antiClutter =
+    ANTI_CLUTTER_RULES[loraTrigger] ??
+    ANTI_CLUTTER_RULES[loraTrigger.toUpperCase()];
   if (antiClutter) {
     sections.push(`Anti-clutter rule: ${antiClutter}`);
   }
