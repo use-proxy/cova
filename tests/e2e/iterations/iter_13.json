@@ -1,0 +1,50 @@
+{
+  "iter": 13,
+  "room": "Room_B",
+  "style": "COVAMINIMAL",
+  "secondaryStyle": "COVABOHEMIAN",
+  "primaryWeight": 0.7,
+  "removeCount": 0,
+  "wallChange": false,
+  "floorChange": false,
+  "seed": 1300,
+  "renderUrl": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/renders/c1405ef4-140e-492e-a8e3-2a0c25ebc093/final_1776440778.jpg",
+  "score": {
+    "scores": {
+      "ARCHITECTURE_FIDELITY": 9,
+      "STYLE_ACCURACY": 8,
+      "FURNITURE_REALISM": 8,
+      "COMPOSITION": 8,
+      "LIGHTING": 8,
+      "COLOR_HARMONY": 8,
+      "DETAIL_QUALITY": 7,
+      "EDITORIAL_QUALITY": 8,
+      "ROOM_ADAPTATION": 8,
+      "BETTER_THAN_BENCHMARK": 8
+    },
+    "total": 82,
+    "pass": true,
+    "issues": [
+      {
+        "dimension": "DETAIL_QUALITY",
+        "symptom": "Slight softness/blur on plant fronds and small decorative objects on nightstand; minor loss of micro-textures on fabrics",
+        "root_cause": "postprocess",
+        "severity": "minor"
+      },
+      {
+        "dimension": "FURNITURE_REALISM",
+        "symptom": "Bed headboard upholstery shows subtle specular inconsistencies; nailhead trim could be sharper",
+        "root_cause": "lora",
+        "severity": "minor"
+      },
+      {
+        "dimension": "LIGHTING",
+        "symptom": "Window light penetration slightly diffuse; shadow gradients on floor softened, reducing depth perception vs benchmark",
+        "root_cause": "lighting",
+        "severity": "minor"
+      }
+    ],
+    "winner_subjective": "tie"
+  },
+  "passed": false
+}

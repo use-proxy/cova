@@ -1,11 +1,11 @@
 {
-  "fal": 0,
-  "modal": 0,
-  "anthropic_calls": 0,
+  "fal": 5.4,
+  "modal": 0.9,
+  "anthropic_calls": 4,
   "started_at": "2026-04-17T11:15:00Z",
-  "renders_completed": 0,
+  "renders_completed": 6,
   "renders_passed": 0,
   "consecutive_passes": 0,
   "phase": "2_retry",
-  "last_updated": "2026-04-17T11:15:00Z"
+  "last_updated": "2026-04-17T15:51:22.761Z"
 }
