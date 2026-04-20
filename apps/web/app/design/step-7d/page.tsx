@@ -69,7 +69,7 @@ const SUGGESTION_CHIPS: Record<ChatTabId, string[]> = {
     "I want it to feel like a boutique hotel",
     "Make it cozy and warm",
     "Bold and maximalist",
-    "Clean and Scandinavian-inspired",
+    "Bright and airy with pale wood",
   ],
   products: [
     "I want a sectional sofa",

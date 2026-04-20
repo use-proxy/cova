@@ -35,3 +35,30 @@ export function toDisplayName(styleName: string | null | undefined): string {
   if (!styleName) return "";
   return STYLE_DISPLAY_NAMES[styleName] ?? styleName;
 }
+
+// COVA* archetype keys (used by quiz step-3b, fingerprint blending, LoRA
+// registry) mapped to user-facing display labels. These labels intentionally
+// avoid every canonical forbidden token (Japandi, Bohemian, Coastal,
+// Mid-Century Modern, Minimalist, Scandinavian) so they can be rendered
+// directly in the UI without routing through a second sanitizer.
+export const COVA_KEY_DISPLAY_NAMES: Record<string, string> = {
+  COVASCANDINAV: "Bright & Nordic",
+  COVAJAPANDI: "Warm & Grounded",
+  COVABIOPHILIC: "Biophilic",
+  COVAMINIMAL: "Pure & Calm",
+  COVAMIDCENTURY: "Vintage Modern",
+  COVACOASTAL: "Bright & Airy",
+  COVABOHEMIAN: "Layered & Collected",
+  COVAINDUSTRIAL: "Urban Industrial",
+  COVAFARMHOUSE: "Modern Farmhouse",
+  COVAARTDECO: "Art Deco",
+};
+
+/**
+ * Translate a COVA* archetype key to a user-facing display label. Falls
+ * through unchanged for any key not in the map.
+ */
+export function toCovaKeyDisplayName(styleKey: string | null | undefined): string {
+  if (!styleKey) return "";
+  return COVA_KEY_DISPLAY_NAMES[styleKey] ?? styleKey;
+}

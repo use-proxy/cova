@@ -9,6 +9,7 @@ import {
   type StyleName,
   type DimensionName,
 } from "@/lib/quiz/style-archetypes";
+import { toCovaKeyDisplayName } from "@/lib/ai/anchor-display";
 import type { AnyFingerprint } from "@/types/fingerprint";
 import "../step-1/step1.css";
 import "./step3b.css";
@@ -217,7 +218,7 @@ export default function Step3bPage() {
                 </div>
                 <div className="step3b-bar-label">
                   <span className="step3b-bar-name">
-                    {DISPLAY_NAMES[entry.style]}
+                    {toCovaKeyDisplayName(entry.style)}
                   </span>
                   <span className="step3b-bar-pct">
                     {Math.round(entry.weight * 100)}%

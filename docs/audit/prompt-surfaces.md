@@ -3,8 +3,8 @@
 **Audit date:** 2026-04-20
 **Auditor:** Claude Code (autonomous, Opus 4.7)
 **Commit at audit start:** `d364576` (Phase 0 closure of Director audit)
-**Status:** **PARTIAL** — all active outbound prompt/DB surfaces patched; two pre-existing user-facing UI copy surfaces surfaced as BLOCKERs for product judgment.
-**Phase 0 closure status:** Closes Phase 0 for outbound (fal/Modal/DB) leaks. Two user-facing UI string decisions (step-3b, step-7d) deferred with BLOCKER entries.
+**Status:** **PASS** — all active outbound prompt/DB surfaces patched; both user-facing UI copy BLOCKERs resolved in the 2026-04-20 closure pass.
+**Phase 0 closure status:** **CLOSED.** Outbound prompt paths + user-facing UI leaks all resolved.
 
 ---
 
@@ -59,6 +59,12 @@ Imported `sanitizeForbiddenStyleNames` from `@/lib/ai/flux`. Applied to the asse
 ### P3. `apps/web/lib/ai/design-director.ts:580, 881-882`
 Renamed internal density system-prompt token from `minimalist`/`MINIMALIST` to `restrained`/`RESTRAINED`. The UI `step-7g` and DB `personalization_context.lifestyle.density` value remains `"minimalist"` for backward compatibility; only the string sent to Sonnet changed. This prevents Sonnet from echoing a forbidden token into `design_rationale` and failing the B-3 Zod refine.
 
+### P5. `apps/web/app/design/step-3b/page.tsx` (closure — BLOCKER 1)
+Added `COVA_KEY_DISPLAY_NAMES` + `toCovaKeyDisplayName()` in `apps/web/lib/ai/anchor-display.ts` with non-forbidden labels for all 10 COVA* archetypes. Changed the user-visible render at step-3b/page.tsx:220 from `DISPLAY_NAMES[entry.style]` to `toCovaKeyDisplayName(entry.style)`. The local `DISPLAY_NAMES` map is retained unchanged — it is only used for internal reverse-lookup from `competingStyles` and for the `users.style_blend` DB write key, where preserving historical key semantics avoids breaking 30+ downstream consumers of `style_blend`. The user-visible UI now shows "Warm & Grounded", "Bright & Airy", "Layered & Collected" etc.
+
+### P6. `apps/web/app/design/step-7d/page.tsx` (closure — BLOCKER 2)
+Rewrote the `SUGGESTION_CHIPS.all` entry "Clean and Scandinavian-inspired" to "Bright and airy with pale wood". No other SUGGESTION_CHIPS or STARTERS entry contains a bare forbidden token (verified by a regression test that parses the block and asserts no literal is flagged).
+
 ### P4. `modal_pipeline/generation.py`
 Added `sanitize_forbidden_names(prompt: str) -> str` helper (mirror of TS `sanitizeForbiddenStyleNames`) with word-boundary regex replacements. Wired at three exit points:
 - `generate_design_brief` Sonnet success path (line 757)
@@ -68,7 +74,7 @@ Added `sanitize_forbidden_names(prompt: str) -> str` helper (mirror of TS `sanit
 
 ## Regression tests added
 
-- `apps/web/tests/ai/prompt-surfaces.test.ts` — 4 tests covering: buildFluxPromptFromContext default + leak-injection, style-preview sanitizer, design-director source-level assertion that `MINIMALIST` token is gone and `RESTRAINED` is present.
+- `apps/web/tests/ai/prompt-surfaces.test.ts` — 7 tests covering: buildFluxPromptFromContext default + leak-injection, style-preview sanitizer, design-director source-level assertion that `MINIMALIST` token is gone and `RESTRAINED` is present, COVA* display-name coverage for all 10 archetypes with no forbidden tokens, step-3b render-path source assertion (uses `toCovaKeyDisplayName`), step-7d SUGGESTION_CHIPS literal-scan for forbidden tokens.
 - `tests/python/stages/test_forbidden_names.py` — 5 tests covering: `sanitize_forbidden_names` strips bare tokens, preserves+rewrites qualified forms, is idempotent, handles empty input, and `_fallback_design_brief` output is clean after sanitization.
 
 ## Surfaces verified clean (no action needed)
@@ -94,8 +100,15 @@ Added `sanitize_forbidden_names(prompt: str) -> str` helper (mirror of TS `sanit
 
 ## Open BLOCKERs (user-facing UI copy — product decisions)
 
+**All BLOCKERs below were RESOLVED in the 2026-04-20 closure commit. Retained here as a resolution ledger.**
+
+### RESOLVED: step-3b (see Patches Applied P5)
+### RESOLVED: step-7d (see Patches Applied P6)
+
+Original entries preserved below for audit trail:
+
 ```
-BLOCKER: step-3b quiz display renders bare forbidden style names to the user
+BLOCKER (RESOLVED): step-3b quiz display renders bare forbidden style names to the user
 WHERE: apps/web/app/design/step-3b/page.tsx:17-28 (DISPLAY_NAMES) and :220 (render site)
 EVIDENCE: DISPLAY_NAMES maps COVAJAPANDI→"Japandi", COVABOHEMIAN→"Bohemian",
   COVAMINIMAL→"Minimalist", COVACOASTAL→"Coastal", COVAMIDCENTURY→"Mid-Century".
@@ -119,7 +132,7 @@ PROPOSED RESOLUTIONS:
      fair). This requires updating Rule 8.
 STATE PRESERVED: no code changes made to step-3b or DISPLAY_NAMES.
 
-BLOCKER: step-7d suggestion chip contains "Scandinavian"
+BLOCKER (RESOLVED): step-7d suggestion chip contains "Scandinavian"
 WHERE: apps/web/app/design/step-7d/page.tsx:72
 EVIDENCE: SUGGESTION_CHIPS.all includes "Clean and Scandinavian-inspired"
   as a clickable chip the user may send as chat input. If clicked, the
