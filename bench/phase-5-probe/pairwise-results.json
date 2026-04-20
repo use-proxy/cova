@@ -1,0 +1,202 @@
+[
+  {
+    "pair": {
+      "pair_id": "A1",
+      "set": "A",
+      "image1_path": "/Users/daksh/Desktop/cova/bench/phase-5-probe/redesign/room-01.webp",
+      "image2_path": "/Users/daksh/Desktop/cova/bench/phase-5-probe/redesign/room-02.webp",
+      "image1_label": "WJ room-01 (clean empty)",
+      "image2_label": "WJ room-02 (broken empty)",
+      "note": "Same archetype Warm Japandi; clean vs broken empty-room"
+    },
+    "order1_result": {
+      "verdict": "A is better",
+      "reason": "Image A demonstrates superior architectural coherence with Japanese-inspired shoji screens, cleaner spatial proportions, and more believable furniture placement than B's cluttered composition.",
+      "raw": "```json\n{\"verdict\": \"A is better\", \"reason\": \"Image A demonstrates superior architectural coherence with Japanese-inspired shoji screens, cleaner spatial proportions, and more believable furniture placement than B's cluttered composition.\"}\n```"
+    },
+    "order2_result": {
+      "verdict": "B is better",
+      "reason": "Image B demonstrates superior architectural clarity with cleaner lines, better proportioned furniture, and more realistic lighting that creates natural shadows and depth.",
+      "raw": "```json\n{\"verdict\": \"B is better\", \"reason\": \"Image B demonstrates superior architectural clarity with cleaner lines, better proportioned furniture, and more realistic lighting that creates natural shadows and depth.\"}\n```"
+    },
+    "consolidated": {
+      "consolidated": "Image1 wins",
+      "reason": "Image A demonstrates superior architectural coherence with Japanese-inspired shoji screens, cleaner spatial proportions, and more believable furniture placement than B's cluttered composition."
+    }
+  },
+  {
+    "pair": {
+      "pair_id": "A2",
+      "set": "A",
+      "image1_path": "/Users/daksh/Desktop/cova/bench/phase-5-probe/redesign/room-09.webp",
+      "image2_path": "/Users/daksh/Desktop/cova/bench/phase-5-probe/redesign/room-11.webp",
+      "image1_label": "WJ room-09 (clean empty)",
+      "image2_label": "WJ room-11 (broken empty)",
+      "note": "Same archetype Warm Japandi; clean vs broken empty-room"
+    },
+    "order1_result": {
+      "verdict": "B is better",
+      "reason": "Image B has superior architectural coherence with better window proportions, more natural lighting, and improved spatial depth through visible radiator details.",
+      "raw": "```json\n{\"verdict\": \"B is better\", \"reason\": \"Image B has superior architectural coherence with better window proportions, more natural lighting, and improved spatial depth through visible radiator details.\"}\n```"
+    },
+    "order2_result": {
+      "verdict": "A is better",
+      "reason": "Image A has more natural window proportions and better spatial depth, while B's oversized central window appears architecturally implausible.",
+      "raw": "```json\n{\"verdict\": \"A is better\", \"reason\": \"Image A has more natural window proportions and better spatial depth, while B's oversized central window appears architecturally implausible.\"}\n```"
+    },
+    "consolidated": {
+      "consolidated": "Image2 wins",
+      "reason": "Image B has superior architectural coherence with better window proportions, more natural lighting, and improved spatial depth through visible radiator details."
+    }
+  },
+  {
+    "pair": {
+      "pair_id": "A3",
+      "set": "A",
+      "image1_path": "/Users/daksh/Desktop/cova/bench/phase-5-probe/redesign/room-03.webp",
+      "image2_path": "/Users/daksh/Desktop/cova/bench/phase-5-probe/redesign/room-07.webp",
+      "image1_label": "WJ room-03 (medium)",
+      "image2_label": "WJ room-07 (medium)",
+      "note": "Same archetype Warm Japandi; both medium empty-room quality"
+    },
+    "order1_result": {
+      "verdict": "A is better",
+      "reason": "Image A demonstrates superior composition with more varied furniture arrangements, better spatial depth, and richer layering of decorative elements throughout the room.",
+      "raw": "```json\n{\"verdict\": \"A is better\", \"reason\": \"Image A demonstrates superior composition with more varied furniture arrangements, better spatial depth, and richer layering of decorative elements throughout the room.\"}\n```"
+    },
+    "order2_result": {
+      "verdict": "A is better",
+      "reason": "Image A demonstrates superior architectural coherence with better spatial flow, more refined furniture proportions, and cleaner compositional balance throughout the space.",
+      "raw": "```json\n{\"verdict\": \"A is better\", \"reason\": \"Image A demonstrates superior architectural coherence with better spatial flow, more refined furniture proportions, and cleaner compositional balance throughout the space.\"}\n```"
+    },
+    "consolidated": {
+      "consolidated": "Genuine tie",
+      "reason": "Position-bias detected: order1='A is better', order2='A is better'"
+    }
+  },
+  {
+    "pair": {
+      "pair_id": "B1",
+      "set": "B",
+      "image1_path": "/Users/daksh/Desktop/cova/bench/phase-5-probe/redesign/room-02.webp",
+      "image2_path": "/Users/daksh/Desktop/cova/bench/phase-5-probe-2/redesign/room-02.webp",
+      "image1_label": "room-02 Warm Japandi",
+      "image2_label": "room-02 Industrial Loft",
+      "note": "Same broken empty-room; WJ vs Industrial Loft archetype"
+    },
+    "order1_result": {
+      "verdict": "A is better",
+      "reason": "Image A demonstrates superior architectural coherence with better proportioned furniture, realistic material textures, and more plausible spatial relationships throughout the composition.",
+      "raw": "```json\n{\"verdict\": \"A is better\", \"reason\": \"Image A demonstrates superior architectural coherence with better proportioned furniture, realistic material textures, and more plausible spatial relationships throughout the composition.\"}\n```"
+    },
+    "order2_result": {
+      "verdict": "A is better",
+      "reason": "Image A demonstrates superior architectural depth, realistic material textures, and more sophisticated spatial composition with authentic industrial loft details.",
+      "raw": "```json\n{\"verdict\": \"A is better\", \"reason\": \"Image A demonstrates superior architectural depth, realistic material textures, and more sophisticated spatial composition with authentic industrial loft details.\"}\n```"
+    },
+    "consolidated": {
+      "consolidated": "Genuine tie",
+      "reason": "Position-bias detected: order1='A is better', order2='A is better'"
+    }
+  },
+  {
+    "pair": {
+      "pair_id": "B2",
+      "set": "B",
+      "image1_path": "/Users/daksh/Desktop/cova/bench/phase-5-probe/redesign/room-11.webp",
+      "image2_path": "/Users/daksh/Desktop/cova/bench/phase-5-probe-2/redesign/room-11.webp",
+      "image1_label": "room-11 Warm Japandi",
+      "image2_label": "room-11 Maximalist Eclectic",
+      "note": "Same broken empty-room; WJ vs Maximalist Eclectic archetype"
+    },
+    "order1_result": {
+      "verdict": "A is better",
+      "reason": "Image A demonstrates superior architectural coherence with cleaner lines, better spatial balance, and more plausible furniture placement than B's cluttered arrangement.",
+      "raw": "```json\n{\"verdict\": \"A is better\", \"reason\": \"Image A demonstrates superior architectural coherence with cleaner lines, better spatial balance, and more plausible furniture placement than B's cluttered arrangement.\"}\n```"
+    },
+    "order2_result": {
+      "verdict": "B is better",
+      "reason": "Image B demonstrates superior spatial clarity, realistic lighting, cohesive minimalist aesthetic, and more believable furniture proportions compared to A's cluttered composition.",
+      "raw": "```json\n{\"verdict\": \"B is better\", \"reason\": \"Image B demonstrates superior spatial clarity, realistic lighting, cohesive minimalist aesthetic, and more believable furniture proportions compared to A's cluttered composition.\"}\n```"
+    },
+    "consolidated": {
+      "consolidated": "Image1 wins",
+      "reason": "Image A demonstrates superior architectural coherence with cleaner lines, better spatial balance, and more plausible furniture placement than B's cluttered arrangement."
+    }
+  },
+  {
+    "pair": {
+      "pair_id": "C1",
+      "set": "C",
+      "image1_path": "/Users/daksh/Desktop/cova/bench/phase-5-probe-2/redesign/room-02.webp",
+      "image2_path": "/Users/daksh/Desktop/cova/bench/phase-5-probe/redesign/room-01.webp",
+      "image1_label": "Industrial Loft room-02 (broken empty + hard archetype)",
+      "image2_label": "WJ room-01 (clean empty + easy archetype)",
+      "note": "Cross: broken+hard vs clean+easy"
+    },
+    "order1_result": {
+      "verdict": "A is better",
+      "reason": "Image A demonstrates superior spatial coherence with more realistic furniture placement, lighting integration, and authentic material textures throughout the industrial loft design.",
+      "raw": "```json\n{\"verdict\": \"A is better\", \"reason\": \"Image A demonstrates superior spatial coherence with more realistic furniture placement, lighting integration, and authentic material textures throughout the industrial loft design.\"}\n```"
+    },
+    "order2_result": {
+      "verdict": "A is better",
+      "reason": "Image A demonstrates superior architectural coherence with consistent Japandi style, realistic furniture placement, and harmonious lighting versus B's cluttered industrial aesthetic.",
+      "raw": "```json\n{\"verdict\": \"A is better\", \"reason\": \"Image A demonstrates superior architectural coherence with consistent Japandi style, realistic furniture placement, and harmonious lighting versus B's cluttered industrial aesthetic.\"}\n```"
+    },
+    "consolidated": {
+      "consolidated": "Genuine tie",
+      "reason": "Position-bias detected: order1='A is better', order2='A is better'"
+    }
+  },
+  {
+    "pair": {
+      "pair_id": "C2",
+      "set": "C",
+      "image1_path": "/Users/daksh/Desktop/cova/bench/phase-5-probe-2/redesign/room-11.webp",
+      "image2_path": "/Users/daksh/Desktop/cova/bench/phase-5-probe/redesign/room-09.webp",
+      "image1_label": "Maximalist Eclectic room-11 (broken+hard)",
+      "image2_label": "WJ room-09 (clean+easy)",
+      "note": "Cross: broken+hard vs clean+easy"
+    },
+    "order1_result": {
+      "verdict": "B is better",
+      "reason": "Image B demonstrates superior architectural coherence with cleaner spatial organization, realistic furniture placement, and more believable lighting without the cluttered, implausible density of Image A.",
+      "raw": "{\"verdict\": \"B is better\", \"reason\": \"Image B demonstrates superior architectural coherence with cleaner spatial organization, realistic furniture placement, and more believable lighting without the cluttered, implausible density of Image A.\", \"reason_detail\": \"Image A, while visually rich, suffers from unrealistic density of objects and artwork that would be difficult to achieve in real space, whereas Image B shows professionally restrained composition with proper scale and realistic material rendering.\"}"
+    },
+    "order2_result": {
+      "verdict": "A is better",
+      "reason": "Image A demonstrates superior architectural coherence with clean lines, balanced composition, and realistic furniture placement, while B appears overly cluttered and implausible.",
+      "raw": "```json\n{\"verdict\": \"A is better\", \"reason\": \"Image A demonstrates superior architectural coherence with clean lines, balanced composition, and realistic furniture placement, while B appears overly cluttered and implausible.\", \"reason_words\": 24}\n```"
+    },
+    "consolidated": {
+      "consolidated": "Image2 wins",
+      "reason": "Image B demonstrates superior architectural coherence with cleaner spatial organization, realistic furniture placement, and more believable lighting without the cluttered, implausible density of Image A."
+    }
+  },
+  {
+    "pair": {
+      "pair_id": "C3",
+      "set": "C",
+      "image1_path": "/Users/daksh/Desktop/cova/bench/phase-5-probe-2/redesign/room-15.webp",
+      "image2_path": "/Users/daksh/Desktop/cova/bench/phase-5-probe-2/redesign/room-05.webp",
+      "image1_label": "Dark Moody Glam room-15",
+      "image2_label": "Heritage Traditional room-05",
+      "note": "Archetype-vs-archetype on similar empty-room quality"
+    },
+    "order1_result": {
+      "verdict": "A is better",
+      "reason": "Image A demonstrates superior cohesive design with better spatial composition, balanced lighting, and more sophisticated integration of furniture and architectural elements.",
+      "raw": "{\"verdict\": \"A is better\", \"reason\": \"Image A demonstrates superior cohesive design with better spatial composition, balanced lighting, and more sophisticated integration of furniture and architectural elements.\", \"reason_detail\": \"A shows professional-level interior design with harmonious color palette, proper scale relationships, and intentional layering, while B appears cluttered with competing elements.\"}"
+    },
+    "order2_result": {
+      "verdict": "A is better",
+      "reason": "Image A demonstrates superior architectural coherence with plausible proportions, authentic furniture placement, and natural lighting versus B's overly dramatic, staged appearance.",
+      "raw": "```json\n{\"verdict\": \"A is better\", \"reason\": \"Image A demonstrates superior architectural coherence with plausible proportions, authentic furniture placement, and natural lighting versus B's overly dramatic, staged appearance.\"}\n```"
+    },
+    "consolidated": {
+      "consolidated": "Genuine tie",
+      "reason": "Position-bias detected: order1='A is better', order2='A is better'"
+    }
+  }
+]
