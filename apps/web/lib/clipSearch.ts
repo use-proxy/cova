@@ -1,3 +1,9 @@
+// DORMANT — Curated product catalog infrastructure
+// Not used by active v9 product matching (Serper + Google Lens + client-side CLIP).
+// Preserved for possible future use (preferred-supplier feature, fallback path, or v2 catalog matching).
+// Last reviewed: 2026-04-19
+// Active v9 path lives in apps/web/app/api/match/route.ts
+
 /**
  * CLIP text embedding and product similarity search.
  * Uses existing Modal CLIP endpoint and Supabase pgvector RPC.

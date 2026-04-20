@@ -1,3 +1,9 @@
+# DORMANT — Curated product catalog infrastructure
+# Not used by active v9 product matching (Serper + Google Lens + client-side CLIP).
+# Preserved for possible future use (preferred-supplier feature, fallback path, or v2 catalog matching).
+# Last reviewed: 2026-04-19
+# Active v9 path lives in apps/web/app/api/match/route.ts
+
 """
 M6 CLIP Embedding Pipeline — Embeds product images via Replicate CLIP on Modal.
 Run: modal run modal_pipeline/embed_catalog.py
