@@ -1,0 +1,35 @@
+{
+  "total_cost_usd": 0.0,
+  "fal_calls": 0,
+  "cost_per_call_usd": 0.04,
+  "hard_cap_usd": 0.5,
+  "per_room": [
+    {
+      "room_id": "room-01",
+      "error": null,
+      "skipped": true,
+      "probe_whole_ssim": null,
+      "probe_patch_ssim": null,
+      "delta_whole": null,
+      "delta_patch": null
+    },
+    {
+      "room_id": "room-09",
+      "error": null,
+      "skipped": true,
+      "probe_whole_ssim": null,
+      "probe_patch_ssim": null,
+      "delta_whole": null,
+      "delta_patch": null
+    },
+    {
+      "room_id": "room-11",
+      "error": null,
+      "skipped": true,
+      "probe_whole_ssim": null,
+      "probe_patch_ssim": null,
+      "delta_whole": null,
+      "delta_patch": null
+    }
+  ]
+}
