@@ -1,0 +1,29 @@
+{
+  "room_id": "room-03",
+  "room_class": "medium",
+  "original_path": "bench/rooms/room-03_livingroom-leather-herringbone.webp",
+  "empty_room_path": "bench/run-3-empty-room/outputs/room-03.webp",
+  "redesign_path": "bench/phase-5-probe/redesign/room-03.webp",
+  "empty_room_patch_ssim": 0.9738418171237627,
+  "redesign_patch_ssim": 0.9001507947968357,
+  "patch_position": {
+    "x": 0,
+    "y": 0
+  },
+  "clean_patch_available": true,
+  "vp_shift_pct": 30.43368041666091,
+  "mllm_judge": {
+    "style_match": 5,
+    "architectural_fidelity": 5,
+    "furniture_plausibility": 5,
+    "lighting_coherence": 4,
+    "composition": 5,
+    "rationale": "Exemplary Japandi design with perfect light wood, beige palette, paper lanterns, and plants. Minor shadow inconsistencies on far right, otherwise structurally coherent and beautifully balanced."
+  },
+  "latency_s": 28.514018058776855,
+  "cost_usd": 0.049999999999999996,
+  "original_dims": {
+    "w": 1080,
+    "h": 1440
+  }
+}

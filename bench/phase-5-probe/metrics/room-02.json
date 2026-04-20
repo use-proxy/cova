@@ -1,0 +1,29 @@
+{
+  "room_id": "room-02",
+  "room_class": "broken",
+  "original_path": "bench/rooms/room-02_livingroom-piano-joydivision.webp",
+  "empty_room_path": "bench/run-3-empty-room/outputs/room-02.webp",
+  "redesign_path": "bench/phase-5-probe/redesign/room-02.webp",
+  "empty_room_patch_ssim": 0.7144836501663718,
+  "redesign_patch_ssim": 0.6371698138398445,
+  "patch_position": {
+    "x": 35,
+    "y": 67
+  },
+  "clean_patch_available": true,
+  "vp_shift_pct": 1.5955868330037852,
+  "mllm_judge": {
+    "style_match": 5,
+    "architectural_fidelity": 5,
+    "furniture_plausibility": 5,
+    "lighting_coherence": 5,
+    "composition": 5,
+    "rationale": "Exemplary japandi design with perfect execution. Light wood, cream textiles, paper lanterns, natural plants, minimal decor, and coherent architecture create a serene, balanced space."
+  },
+  "latency_s": 26.438019037246704,
+  "cost_usd": 0.049999999999999996,
+  "original_dims": {
+    "w": 1080,
+    "h": 809
+  }
+}

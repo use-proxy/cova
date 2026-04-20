@@ -1,0 +1,101 @@
+{
+  "entries": [
+    {
+      "room_id": "room-01",
+      "call_type": "redesign",
+      "cost_usd": 0.045,
+      "cumulative_usd": 0.045,
+      "note": "seed=43 latency=36.4s",
+      "timestamp": "2026-04-20T20:16:50Z"
+    },
+    {
+      "room_id": "room-01",
+      "call_type": "mllm_judge",
+      "cost_usd": 0.005,
+      "cumulative_usd": 0.049999999999999996,
+      "note": "",
+      "timestamp": "2026-04-20T20:16:52Z"
+    },
+    {
+      "room_id": "room-02",
+      "call_type": "redesign",
+      "cost_usd": 0.045,
+      "cumulative_usd": 0.095,
+      "note": "seed=44 latency=26.4s",
+      "timestamp": "2026-04-20T20:17:20Z"
+    },
+    {
+      "room_id": "room-02",
+      "call_type": "mllm_judge",
+      "cost_usd": 0.005,
+      "cumulative_usd": 0.1,
+      "note": "",
+      "timestamp": "2026-04-20T20:17:22Z"
+    },
+    {
+      "room_id": "room-03",
+      "call_type": "redesign",
+      "cost_usd": 0.045,
+      "cumulative_usd": 0.14500000000000002,
+      "note": "seed=45 latency=28.5s",
+      "timestamp": "2026-04-20T20:17:52Z"
+    },
+    {
+      "room_id": "room-03",
+      "call_type": "mllm_judge",
+      "cost_usd": 0.005,
+      "cumulative_usd": 0.15000000000000002,
+      "note": "",
+      "timestamp": "2026-04-20T20:17:54Z"
+    },
+    {
+      "room_id": "room-07",
+      "call_type": "redesign",
+      "cost_usd": 0.045,
+      "cumulative_usd": 0.195,
+      "note": "seed=49 latency=35.3s",
+      "timestamp": "2026-04-20T20:18:31Z"
+    },
+    {
+      "room_id": "room-07",
+      "call_type": "mllm_judge",
+      "cost_usd": 0.005,
+      "cumulative_usd": 0.2,
+      "note": "",
+      "timestamp": "2026-04-20T20:18:32Z"
+    },
+    {
+      "room_id": "room-09",
+      "call_type": "redesign",
+      "cost_usd": 0.045,
+      "cumulative_usd": 0.245,
+      "note": "seed=51 latency=34.4s",
+      "timestamp": "2026-04-20T20:19:08Z"
+    },
+    {
+      "room_id": "room-09",
+      "call_type": "mllm_judge",
+      "cost_usd": 0.005,
+      "cumulative_usd": 0.25,
+      "note": "",
+      "timestamp": "2026-04-20T20:19:11Z"
+    },
+    {
+      "room_id": "room-11",
+      "call_type": "redesign",
+      "cost_usd": 0.045,
+      "cumulative_usd": 0.295,
+      "note": "seed=53 latency=25.9s",
+      "timestamp": "2026-04-20T20:19:39Z"
+    },
+    {
+      "room_id": "room-11",
+      "call_type": "mllm_judge",
+      "cost_usd": 0.005,
+      "cumulative_usd": 0.3,
+      "note": "",
+      "timestamp": "2026-04-20T20:19:41Z"
+    }
+  ],
+  "total_usd": 0.3
+}
