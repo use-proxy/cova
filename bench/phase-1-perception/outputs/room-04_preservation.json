@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "image_url": "https://v3b.fal.media/files/b/0a970fd4/0XQI8dQe367G1AyWb2zDJ_room-04_attic-music-sloped.webp",
+  "image_hash": "2fad8b9f07e2ca35094b172cd90a676e3708d7c4cbe5c1ddb86f2d3e3d7e4f6b",
+  "image_width": 1080,
+  "image_height": 810,
+  "keep_class_detections": [],
+  "face_in_frame_flags": [],
+  "wall_text_flags": [],
+  "partial_failures": [
+    "paddleocr:RuntimeError:could not execute a primitive"
+  ],
+  "generated_at_iso": "2026-04-20T21:44:50Z",
+  "latency_ms": 2627
+}

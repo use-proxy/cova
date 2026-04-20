@@ -1,0 +1,36 @@
+{
+  "schema_version": "1.0",
+  "image_url": "https://v3b.fal.media/files/b/0a970fd8/7EdeSSHhT6nq2JefXI5IF_room-06_empty-bay-window.webp",
+  "image_hash": "4458ebb00b207f658185db58656ff3209c9be4fce1d07bd0ad02ca17729ea321",
+  "image_width": 768,
+  "image_height": 576,
+  "keep_class_detections": [
+    {
+      "prompt": "crown molding",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fd8/E1U8__xusUR9Cp_zfUxyU.png",
+      "score": 0.5614330172538757,
+      "bbox": {
+        "x": 0,
+        "y": 17,
+        "w": 81,
+        "h": 56
+      }
+    },
+    {
+      "prompt": "bay window",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fd8/fa5mQCHDqwHFf0f1sB6X3.png",
+      "score": 0.500438928604126,
+      "bbox": {
+        "x": 239,
+        "y": 118,
+        "w": 143,
+        "h": 203
+      }
+    }
+  ],
+  "face_in_frame_flags": [],
+  "wall_text_flags": [],
+  "partial_failures": [],
+  "generated_at_iso": "2026-04-20T21:45:25Z",
+  "latency_ms": 3204
+}

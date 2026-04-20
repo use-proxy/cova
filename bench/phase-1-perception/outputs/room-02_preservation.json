@@ -1,0 +1,80 @@
+{
+  "schema_version": "1.0",
+  "image_url": "https://v3b.fal.media/files/b/0a970fd0/Bd8-FO7ln22wlWGZJaqjN_room-02_livingroom-piano-joydivision.webp",
+  "image_hash": "93a7d021b93b502b8ee2eb45bf46197800d6171bdf4f2653d4d5d2467d3967ec",
+  "image_width": 1080,
+  "image_height": 809,
+  "keep_class_detections": [
+    {
+      "prompt": "exposed beam",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fd1/38yAsXcBhUTyJZzoJ_SV6.png",
+      "score": 0.5112934112548828,
+      "bbox": {
+        "x": 649,
+        "y": 0,
+        "w": 206,
+        "h": 230
+      }
+    },
+    {
+      "prompt": "radiator",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fd1/U6--7zQh8xF7lHKjHiPLL.png",
+      "score": 0.9356281161308289,
+      "bbox": {
+        "x": 631,
+        "y": 439,
+        "w": 94,
+        "h": 74
+      }
+    },
+    {
+      "prompt": "radiator",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fd1/NLv4az2ezwO6WPPbvKef8.png",
+      "score": 0.9224374890327454,
+      "bbox": {
+        "x": 883,
+        "y": 476,
+        "w": 54,
+        "h": 81
+      }
+    },
+    {
+      "prompt": "built-in bookshelf",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fd1/jMYVt99KgTEZXl6Sp-nyM.png",
+      "score": 0.8739361763000488,
+      "bbox": {
+        "x": 239,
+        "y": 253,
+        "w": 48,
+        "h": 205
+      }
+    },
+    {
+      "prompt": "built-in bookshelf",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fd1/Po3p0hWoK64gqDayG1YGX.png",
+      "score": 0.8076757192611694,
+      "bbox": {
+        "x": 957,
+        "y": 85,
+        "w": 123,
+        "h": 724
+      }
+    },
+    {
+      "prompt": "built-in bookshelf",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fd1/f8O-7mjgOWQaWv5kSzUAk.png",
+      "score": 0.5563141703605652,
+      "bbox": {
+        "x": 936,
+        "y": 235,
+        "w": 95,
+        "h": 282
+      }
+    }
+  ],
+  "face_in_frame_flags": [],
+  "wall_text_flags": [],
+  "partial_failures": [],
+  "generated_at_iso": "2026-04-20T21:44:14Z",
+  "latency_ms": 4211
+}

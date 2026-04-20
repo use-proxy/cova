@@ -1,0 +1,36 @@
+{
+  "schema_version": "1.0",
+  "image_url": "https://v3b.fal.media/files/b/0a970fde/YnJzAvIurdFnhAqANBDm4_room-10_tv-fireplace-dark.webp",
+  "image_hash": "b0bea8565e13889e8431e3b04d028cce214bbb4f1cc052d38172106d1dffd234",
+  "image_width": 864,
+  "image_height": 855,
+  "keep_class_detections": [
+    {
+      "prompt": "fireplace",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fdf/MIq0V0JXaqY5vAI00bGI-.png",
+      "score": 0.9108166694641113,
+      "bbox": {
+        "x": 275,
+        "y": 429,
+        "w": 81,
+        "h": 81
+      }
+    },
+    {
+      "prompt": "fireplace",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fdf/2Q6RB-eqZXjvdcYPkAgTs.png",
+      "score": 0.5093175172805786,
+      "bbox": {
+        "x": 136,
+        "y": 387,
+        "w": 275,
+        "h": 181
+      }
+    }
+  ],
+  "face_in_frame_flags": [],
+  "wall_text_flags": [],
+  "partial_failures": [],
+  "generated_at_iso": "2026-04-20T21:46:31Z",
+  "latency_ms": 3250
+}

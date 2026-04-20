@@ -1,0 +1,564 @@
+{
+  "generated_at": "2026-04-20T21:48:04Z",
+  "endpoint": "https://cova-interior--cova-perception-perception-api.modal.run",
+  "bench_user_id": "863c7799-accd-42e6-bac2-d4697b111542",
+  "rooms_run": 15,
+  "bench_wall_seconds": 279.0396783328615,
+  "per_room": [
+    {
+      "room_id": "room-01",
+      "filename": "room-01_bedroom-cat-popcorn.webp",
+      "image_url": "https://v3b.fal.media/files/b/0a970fcc/_uzxpAQmQqHV9a29ZQP08_room-01_bedroom-cat-popcorn.webp",
+      "detect_preservation_spec": {
+        "status": 200,
+        "wall_s": 26.625889542046934,
+        "server_latency_ms": 3776,
+        "detections": 1,
+        "face_in_frame": 0,
+        "wall_text": 0,
+        "partial_failures": []
+      },
+      "encode_sam2_for_cache": {
+        "status": 200,
+        "wall_s": 12.73464854201302,
+        "server_latency_ms": 10933,
+        "size_bytes": 2097152,
+        "shape": [
+          1,
+          256,
+          64,
+          64
+        ],
+        "row_id": "932a12e7-33c7-44a0-90eb-29eb4046ca71"
+      },
+      "depth_anything_v2": {
+        "status": 200,
+        "wall_s": 3.416315999813378,
+        "server_latency_ms": 2888,
+        "depth_url": "https://v3b.fal.media/files/b/0a970fd0/MKKvuEA9O2pQybNrR9dxm_5a9281d5c41e4300a9293fdc13cb86b6.png"
+      }
+    },
+    {
+      "room_id": "room-02",
+      "filename": "room-02_livingroom-piano-joydivision.webp",
+      "image_url": "https://v3b.fal.media/files/b/0a970fd0/Bd8-FO7ln22wlWGZJaqjN_room-02_livingroom-piano-joydivision.webp",
+      "detect_preservation_spec": {
+        "status": 200,
+        "wall_s": 4.70820612506941,
+        "server_latency_ms": 4211,
+        "detections": 6,
+        "face_in_frame": 0,
+        "wall_text": 0,
+        "partial_failures": []
+      },
+      "encode_sam2_for_cache": {
+        "status": 200,
+        "wall_s": 8.365827000234276,
+        "server_latency_ms": 7117,
+        "size_bytes": 2097152,
+        "shape": [
+          1,
+          256,
+          64,
+          64
+        ],
+        "row_id": "4bd1798e-94ea-4825-ba7c-e3ab7311be88"
+      },
+      "depth_anything_v2": {
+        "status": 200,
+        "wall_s": 4.517922957893461,
+        "server_latency_ms": 4014,
+        "depth_url": "https://v3b.fal.media/files/b/0a970fd2/kXK5W44no-5wJAWFRwPN6_9931aa60e58146fda26a6f525609e0fb.png"
+      }
+    },
+    {
+      "room_id": "room-03",
+      "filename": "room-03_livingroom-leather-herringbone.webp",
+      "image_url": "https://v3b.fal.media/files/b/0a970fd2/Wl5K_OY-y3I362ig_AkMs_room-03_livingroom-leather-herringbone.webp",
+      "detect_preservation_spec": {
+        "status": 200,
+        "wall_s": 4.075895084068179,
+        "server_latency_ms": 3597,
+        "detections": 3,
+        "face_in_frame": 0,
+        "wall_text": 0,
+        "partial_failures": []
+      },
+      "encode_sam2_for_cache": {
+        "status": 200,
+        "wall_s": 8.66119062481448,
+        "server_latency_ms": 7474,
+        "size_bytes": 2097152,
+        "shape": [
+          1,
+          256,
+          64,
+          64
+        ],
+        "row_id": "d958d7da-3dd5-40d6-899d-b64048855a39"
+      },
+      "depth_anything_v2": {
+        "status": 200,
+        "wall_s": 5.477031790651381,
+        "server_latency_ms": 4919,
+        "depth_url": "https://v3b.fal.media/files/b/0a970fd4/v6ebEh7qQEh0YpGpQbSyY_5ee41eafc543493990b8c9e3d2755b9e.png"
+      }
+    },
+    {
+      "room_id": "room-04",
+      "filename": "room-04_attic-music-sloped.webp",
+      "image_url": "https://v3b.fal.media/files/b/0a970fd4/0XQI8dQe367G1AyWb2zDJ_room-04_attic-music-sloped.webp",
+      "detect_preservation_spec": {
+        "status": 200,
+        "wall_s": 3.142309666145593,
+        "server_latency_ms": 2627,
+        "detections": 0,
+        "face_in_frame": 0,
+        "wall_text": 0,
+        "partial_failures": [
+          "paddleocr:RuntimeError:could not execute a primitive"
+        ]
+      },
+      "encode_sam2_for_cache": {
+        "status": 200,
+        "wall_s": 6.629090333357453,
+        "server_latency_ms": 5373,
+        "size_bytes": 2097152,
+        "shape": [
+          1,
+          256,
+          64,
+          64
+        ],
+        "row_id": "4307784c-66bf-40ed-b350-dd2ee87b92b7"
+      },
+      "depth_anything_v2": {
+        "status": 200,
+        "wall_s": 3.908261083997786,
+        "server_latency_ms": 3343,
+        "depth_url": "https://v3b.fal.media/files/b/0a970fd5/iqExSfh8qMKPG5U7PI7op_8885788e955345fd9a816b394d1257d9.png"
+      }
+    },
+    {
+      "room_id": "room-05",
+      "filename": "room-05_office-gallery-rug.webp",
+      "image_url": "https://v3b.fal.media/files/b/0a970fd6/rlZI1Z4Wbnua9wxYfB4n9_room-05_office-gallery-rug.webp",
+      "detect_preservation_spec": {
+        "status": 200,
+        "wall_s": 5.161067333072424,
+        "server_latency_ms": 4519,
+        "detections": 9,
+        "face_in_frame": 0,
+        "wall_text": 0,
+        "partial_failures": []
+      },
+      "encode_sam2_for_cache": {
+        "status": 200,
+        "wall_s": 8.869866875000298,
+        "server_latency_ms": 7614,
+        "size_bytes": 2097152,
+        "shape": [
+          1,
+          256,
+          64,
+          64
+        ],
+        "row_id": "3fce3ac4-1221-4c6e-a69d-5b67da8e3592"
+      },
+      "depth_anything_v2": {
+        "status": 200,
+        "wall_s": 3.5950248748995364,
+        "server_latency_ms": 3117,
+        "depth_url": "https://v3b.fal.media/files/b/0a970fd7/EhDfP7mFLxWaXRvzZmCG3_bd523e949b4740dcb82919eb0ac958e1.png"
+      }
+    },
+    {
+      "room_id": "room-06",
+      "filename": "room-06_empty-bay-window.webp",
+      "image_url": "https://v3b.fal.media/files/b/0a970fd8/7EdeSSHhT6nq2JefXI5IF_room-06_empty-bay-window.webp",
+      "detect_preservation_spec": {
+        "status": 200,
+        "wall_s": 3.7150167082436383,
+        "server_latency_ms": 3204,
+        "detections": 2,
+        "face_in_frame": 0,
+        "wall_text": 0,
+        "partial_failures": []
+      },
+      "encode_sam2_for_cache": {
+        "status": 200,
+        "wall_s": 8.352860124781728,
+        "server_latency_ms": 7181,
+        "size_bytes": 2097152,
+        "shape": [
+          1,
+          256,
+          64,
+          64
+        ],
+        "row_id": "0b089e1a-939e-4314-a9be-beaa692a7e88"
+      },
+      "depth_anything_v2": {
+        "status": 200,
+        "wall_s": 4.320832583587617,
+        "server_latency_ms": 3795,
+        "depth_url": "https://v3b.fal.media/files/b/0a970fd9/CCVRRpqSo841YWW_dPWlQ_6c4170cb27ba4146b77e97ca8b342e45.png"
+      }
+    },
+    {
+      "room_id": "room-07",
+      "filename": "room-07_bedroom-desk-carpet.webp",
+      "image_url": "https://v3b.fal.media/files/b/0a970fd9/-h1hCzVcdq_yMvas1pXTD_room-07_bedroom-desk-carpet.webp",
+      "detect_preservation_spec": {
+        "status": 200,
+        "wall_s": 3.5024954583495855,
+        "server_latency_ms": 3003,
+        "detections": 1,
+        "face_in_frame": 0,
+        "wall_text": 0,
+        "partial_failures": []
+      },
+      "encode_sam2_for_cache": {
+        "status": 200,
+        "wall_s": 8.152563707903028,
+        "server_latency_ms": 6931,
+        "size_bytes": 2097152,
+        "shape": [
+          1,
+          256,
+          64,
+          64
+        ],
+        "row_id": "6428c8fc-56ee-4d54-bc79-4b235d4f3b6f"
+      },
+      "depth_anything_v2": {
+        "status": 200,
+        "wall_s": 3.661402374971658,
+        "server_latency_ms": 3113,
+        "depth_url": "https://v3b.fal.media/files/b/0a970fdb/DKvlNJSKgiVrc1CKAGtrw_643052ac637b4cb8b6c86d0b7d7ac03d.png"
+      }
+    },
+    {
+      "room_id": "room-08",
+      "filename": "room-08_livingroom-papasan-floral.webp",
+      "image_url": "https://v3b.fal.media/files/b/0a970fdb/xg1uXzeigujJdtwiqRNHN_room-08_livingroom-papasan-floral.webp",
+      "detect_preservation_spec": {
+        "status": 200,
+        "wall_s": 4.827395708300173,
+        "server_latency_ms": 4337,
+        "detections": 8,
+        "face_in_frame": 0,
+        "wall_text": 0,
+        "partial_failures": []
+      },
+      "encode_sam2_for_cache": {
+        "status": 200,
+        "wall_s": 5.3357936246320605,
+        "server_latency_ms": 4132,
+        "size_bytes": 2097152,
+        "shape": [
+          1,
+          256,
+          64,
+          64
+        ],
+        "row_id": "cabb9052-54de-4dea-bbba-810a6eb1db14"
+      },
+      "depth_anything_v2": {
+        "status": 200,
+        "wall_s": 3.6849196669645607,
+        "server_latency_ms": 3120,
+        "depth_url": "https://v3b.fal.media/files/b/0a970fdc/WlJf7bSv_yNixKEPpbhmM_5b5ac911f26147b9a6bf3734959dda29.png"
+      }
+    },
+    {
+      "room_id": "room-09",
+      "filename": "room-09_gaming-led-popcorn.webp",
+      "image_url": "https://v3b.fal.media/files/b/0a970fdc/c7TXerdBMiOu4Njs8Ldr1_room-09_gaming-led-popcorn.webp",
+      "detect_preservation_spec": {
+        "status": 200,
+        "wall_s": 3.509116250090301,
+        "server_latency_ms": 2987,
+        "detections": 2,
+        "face_in_frame": 0,
+        "wall_text": 0,
+        "partial_failures": []
+      },
+      "encode_sam2_for_cache": {
+        "status": 200,
+        "wall_s": 8.264689625240862,
+        "server_latency_ms": 6838,
+        "size_bytes": 2097152,
+        "shape": [
+          1,
+          256,
+          64,
+          64
+        ],
+        "row_id": "1c6a9829-3a8e-45b1-88a1-e9cb60a8bd7a"
+      },
+      "depth_anything_v2": {
+        "status": 200,
+        "wall_s": 5.8080106670968235,
+        "server_latency_ms": 5161,
+        "depth_url": "https://v3b.fal.media/files/b/0a970fde/4PXZdY5I3m66vzPJcNRKl_e0170f0610404ea09a810bd561463e56.png"
+      }
+    },
+    {
+      "room_id": "room-10",
+      "filename": "room-10_tv-fireplace-dark.webp",
+      "image_url": "https://v3b.fal.media/files/b/0a970fde/YnJzAvIurdFnhAqANBDm4_room-10_tv-fireplace-dark.webp",
+      "detect_preservation_spec": {
+        "status": 200,
+        "wall_s": 3.827120083849877,
+        "server_latency_ms": 3250,
+        "detections": 2,
+        "face_in_frame": 0,
+        "wall_text": 0,
+        "partial_failures": []
+      },
+      "encode_sam2_for_cache": {
+        "status": 200,
+        "wall_s": 8.208489707671106,
+        "server_latency_ms": 7001,
+        "size_bytes": 2097152,
+        "shape": [
+          1,
+          256,
+          64,
+          64
+        ],
+        "row_id": "22ed8c48-0f11-4d35-a08e-78386b5d45b5"
+      },
+      "depth_anything_v2": {
+        "status": 200,
+        "wall_s": 3.402399207931012,
+        "server_latency_ms": 2891,
+        "depth_url": "https://v3b.fal.media/files/b/0a970fe0/A6IPlmIw8R132Hz2S9r94_15309c64bf854717bd9224803d88538a.png"
+      }
+    },
+    {
+      "room_id": "room-11",
+      "filename": "room-11_green-velvet-gallery.webp",
+      "image_url": "https://v3b.fal.media/files/b/0a970fe0/HemaCOIJ5L4akAtKfQ2yg_room-11_green-velvet-gallery.webp",
+      "detect_preservation_spec": {
+        "status": 200,
+        "wall_s": 5.280476583167911,
+        "server_latency_ms": 4677,
+        "detections": 8,
+        "face_in_frame": 0,
+        "wall_text": 0,
+        "partial_failures": []
+      },
+      "encode_sam2_for_cache": {
+        "status": 200,
+        "wall_s": 6.0035375421866775,
+        "server_latency_ms": 4784,
+        "size_bytes": 2097152,
+        "shape": [
+          1,
+          256,
+          64,
+          64
+        ],
+        "row_id": "18402d6e-8f2c-44c1-8ec2-b90b237ff1cd"
+      },
+      "depth_anything_v2": {
+        "status": 200,
+        "wall_s": 3.62244391720742,
+        "server_latency_ms": 3128,
+        "depth_url": "https://v3b.fal.media/files/b/0a970fe1/1_sVr6twNAxIYYS8XpQrR_b976f431ab414301970a9fcfec4fe440.png"
+      }
+    },
+    {
+      "room_id": "room-12",
+      "filename": "room-12_bedroom-piano-led.webp",
+      "image_url": "https://v3b.fal.media/files/b/0a970fe1/9kfb1bEXyMS3vod7_R-oN_room-12_bedroom-piano-led.webp",
+      "detect_preservation_spec": {
+        "status": 200,
+        "wall_s": 3.6020843340083957,
+        "server_latency_ms": 2979,
+        "detections": 3,
+        "face_in_frame": 0,
+        "wall_text": 0,
+        "partial_failures": []
+      },
+      "encode_sam2_for_cache": {
+        "status": 200,
+        "wall_s": 7.659786832984537,
+        "server_latency_ms": 6458,
+        "size_bytes": 2097152,
+        "shape": [
+          1,
+          256,
+          64,
+          64
+        ],
+        "row_id": "378ea869-b962-4552-b7b8-ae69145f9734"
+      },
+      "depth_anything_v2": {
+        "status": 200,
+        "wall_s": 4.165404041763395,
+        "server_latency_ms": 3575,
+        "depth_url": "https://v3b.fal.media/files/b/0a970fe3/EFM5QC041EFWmOtvN-jsN_f9afada8d20d4a2d809829b1e1fc06f5.png"
+      }
+    },
+    {
+      "room_id": "room-13",
+      "filename": "room-13_exposed-brick-arched.webp",
+      "image_url": "https://v3b.fal.media/files/b/0a970fe3/Gula2czrZ1MvfPNaCn-mU_room-13_exposed-brick-arched.webp",
+      "detect_preservation_spec": {
+        "status": 200,
+        "wall_s": 4.513602709397674,
+        "server_latency_ms": 4005,
+        "detections": 6,
+        "face_in_frame": 0,
+        "wall_text": 0,
+        "partial_failures": []
+      },
+      "encode_sam2_for_cache": {
+        "status": 200,
+        "wall_s": 6.51792574999854,
+        "server_latency_ms": 5296,
+        "size_bytes": 2097152,
+        "shape": [
+          1,
+          256,
+          64,
+          64
+        ],
+        "row_id": "436c955a-c642-4ec3-a954-85f2f173ecd3"
+      },
+      "depth_anything_v2": {
+        "status": 200,
+        "wall_s": 3.614757291972637,
+        "server_latency_ms": 3109,
+        "depth_url": "https://v3b.fal.media/files/b/0a970fe4/DVkMX6Ho9TO2eWhD8CM63_06578058b53a40e7a58c475f0b7a175c.png"
+      }
+    },
+    {
+      "room_id": "room-14",
+      "filename": "room-14_stacked-stone-empty.webp",
+      "image_url": "https://v3b.fal.media/files/b/0a970fe5/IfgvevlK_rznpn6vMbfBA_room-14_stacked-stone-empty.webp",
+      "detect_preservation_spec": {
+        "status": 200,
+        "wall_s": 4.34505462506786,
+        "server_latency_ms": 3827,
+        "detections": 5,
+        "face_in_frame": 0,
+        "wall_text": 0,
+        "partial_failures": []
+      },
+      "encode_sam2_for_cache": {
+        "status": 200,
+        "wall_s": 8.683746666647494,
+        "server_latency_ms": 7012,
+        "size_bytes": 2097152,
+        "shape": [
+          1,
+          256,
+          64,
+          64
+        ],
+        "row_id": "bf451189-cc94-4e8d-ab78-177892cff86e"
+      },
+      "depth_anything_v2": {
+        "status": 200,
+        "wall_s": 4.809122167062014,
+        "server_latency_ms": 4271,
+        "depth_url": "https://v3b.fal.media/files/b/0a970fe6/2-jrFhcMz_jUAS0yRz6WB_68270aebe5d64731b7b76b68822eb5e9.png"
+      }
+    },
+    {
+      "room_id": "room-15",
+      "filename": "room-15_wood-paneling-twin-beds.webp",
+      "image_url": "https://v3b.fal.media/files/b/0a970fe6/MpNjyb1rKos890wR1gv6-_room-15_wood-paneling-twin-beds.webp",
+      "detect_preservation_spec": {
+        "status": 200,
+        "wall_s": 4.096320874989033,
+        "server_latency_ms": 3597,
+        "detections": 4,
+        "face_in_frame": 0,
+        "wall_text": 0,
+        "partial_failures": []
+      },
+      "encode_sam2_for_cache": {
+        "status": 200,
+        "wall_s": 6.371176042128354,
+        "server_latency_ms": 5195,
+        "size_bytes": 2097152,
+        "shape": [
+          1,
+          256,
+          64,
+          64
+        ],
+        "row_id": "9f825433-a886-4ae8-8209-59c3cbf2c761"
+      },
+      "depth_anything_v2": {
+        "status": 200,
+        "wall_s": 3.623433374799788,
+        "server_latency_ms": 3115,
+        "depth_url": "https://v3b.fal.media/files/b/0a970fe8/DyNg2zHuq2MOx2xvwubTg_661d2c82911140d8bad856b5cb440bfe.png"
+      }
+    }
+  ],
+  "aggregate": {
+    "per_endpoint_server_latency_ms": {
+      "detect_preservation_spec": {
+        "n": 15,
+        "min": 2627.0,
+        "p50": 3597.0,
+        "p95": 4677.0,
+        "p99": 4677.0,
+        "max": 4677.0,
+        "mean": 3639.733333333333
+      },
+      "encode_sam2_for_cache": {
+        "n": 15,
+        "min": 4132.0,
+        "p50": 6931.0,
+        "p95": 10933.0,
+        "p99": 10933.0,
+        "max": 10933.0,
+        "mean": 6622.6
+      },
+      "depth_anything_v2": {
+        "n": 15,
+        "min": 2888.0,
+        "p50": 3128.0,
+        "p95": 5161.0,
+        "p99": 5161.0,
+        "max": 5161.0,
+        "mean": 3570.6
+      }
+    },
+    "sam2_embedding_bytes": {
+      "n": 15,
+      "min": 2097152.0,
+      "p50": 2097152.0,
+      "p95": 2097152.0,
+      "p99": 2097152.0,
+      "max": 2097152.0,
+      "mean": 2097152.0
+    },
+    "sam2_max_bytes_cap": 2097152,
+    "per_call_cost_estimate_usd": {
+      "detect_preservation_spec": 0.04611214074074074,
+      "encode_sam2_for_cache": 0.002023572222222223,
+      "depth_anything_v2": 0.006091016666666667
+    },
+    "bench_total_cost_estimate_usd": 0.8134009444444444,
+    "bench_total_calls": 45,
+    "partial_failures_total": 1,
+    "partial_failures_sample": [
+      "paddleocr:RuntimeError:could not execute a primitive"
+    ],
+    "acceptance": {
+      "p95_detect_under_3s": false,
+      "all_sam2_under_2mib": true,
+      "cost_under_0_02_per_call": true,
+      "cost_detect_under_0_02": false
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0",
+  "image_url": "https://v3b.fal.media/files/b/0a970fe1/9kfb1bEXyMS3vod7_R-oN_room-12_bedroom-piano-led.webp",
+  "image_hash": "c9a7708110047c672b7761dd1f96fb18d5903f7a0ce8fb082f71521e4bdb9828",
+  "image_width": 1080,
+  "image_height": 1440,
+  "keep_class_detections": [
+    {
+      "prompt": "picture frame",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fe2/UZCz3CY6UDLiSN7bHPMmH.png",
+      "score": 0.9064947962760925,
+      "bbox": {
+        "x": 776,
+        "y": 566,
+        "w": 72,
+        "h": 68
+      }
+    },
+    {
+      "prompt": "framed photograph",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fe2/H3f18QG3x-XtM_jFl8SZC.png",
+      "score": 0.9466180801391602,
+      "bbox": {
+        "x": 776,
+        "y": 567,
+        "w": 71,
+        "h": 67
+      }
+    },
+    {
+      "prompt": "crown molding",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fe2/87vaGfc9Bdu0koZXeBPbG.png",
+      "score": 0.5268540978431702,
+      "bbox": {
+        "x": 912,
+        "y": 350,
+        "w": 168,
+        "h": 55
+      }
+    }
+  ],
+  "face_in_frame_flags": [],
+  "wall_text_flags": [],
+  "partial_failures": [],
+  "generated_at_iso": "2026-04-20T21:47:03Z",
+  "latency_ms": 2979
+}

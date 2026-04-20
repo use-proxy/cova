@@ -1,0 +1,102 @@
+{
+  "schema_version": "1.0",
+  "image_url": "https://v3b.fal.media/files/b/0a970fdb/xg1uXzeigujJdtwiqRNHN_room-08_livingroom-papasan-floral.webp",
+  "image_hash": "5e0a20eb9d17719b652530a39b34cfb646fe584926fe5ac8962dd99fff709153",
+  "image_width": 1080,
+  "image_height": 810,
+  "keep_class_detections": [
+    {
+      "prompt": "picture frame",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fdb/Yhp9oCyxjCcVPA0P7kGEv.png",
+      "score": 0.9498595595359802,
+      "bbox": {
+        "x": 615,
+        "y": 81,
+        "w": 131,
+        "h": 204
+      }
+    },
+    {
+      "prompt": "picture frame",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fdb/O4LfoEiMDABCnvC8WaJB5.png",
+      "score": 0.9317017793655396,
+      "bbox": {
+        "x": 963,
+        "y": 254,
+        "w": 78,
+        "h": 83
+      }
+    },
+    {
+      "prompt": "picture frame",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fdb/bzLi2d8ZHdwRxZrVkRHa3.png",
+      "score": 0.9060393571853638,
+      "bbox": {
+        "x": 1047,
+        "y": 255,
+        "w": 33,
+        "h": 82
+      }
+    },
+    {
+      "prompt": "crown molding",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fdb/DaRePQL7MjoiRkm_21Voa.png",
+      "score": 0.880454421043396,
+      "bbox": {
+        "x": 139,
+        "y": 0,
+        "w": 628,
+        "h": 44
+      }
+    },
+    {
+      "prompt": "crown molding",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fdb/dYuFRHZzVGmjXu2xQvggK.png",
+      "score": 0.8742485642433167,
+      "bbox": {
+        "x": 131,
+        "y": 0,
+        "w": 216,
+        "h": 43
+      }
+    },
+    {
+      "prompt": "framed photograph",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fdb/eIOkMESLa2V4jBxXecdu5.png",
+      "score": 0.978927731513977,
+      "bbox": {
+        "x": 616,
+        "y": 81,
+        "w": 130,
+        "h": 204
+      }
+    },
+    {
+      "prompt": "framed photograph",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fdb/Wr2yS6J-tpNWxbtjxXTrs.png",
+      "score": 0.960142195224762,
+      "bbox": {
+        "x": 963,
+        "y": 255,
+        "w": 77,
+        "h": 82
+      }
+    },
+    {
+      "prompt": "framed photograph",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fdb/Rt5TFrgMy9_tqRoatsIL6.png",
+      "score": 0.9353344440460205,
+      "bbox": {
+        "x": 1047,
+        "y": 255,
+        "w": 33,
+        "h": 82
+      }
+    }
+  ],
+  "face_in_frame_flags": [],
+  "wall_text_flags": [],
+  "partial_failures": [],
+  "generated_at_iso": "2026-04-20T21:45:59Z",
+  "latency_ms": 4337
+}

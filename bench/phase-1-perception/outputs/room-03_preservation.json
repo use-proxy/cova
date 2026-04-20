@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0",
+  "image_url": "https://v3b.fal.media/files/b/0a970fd2/Wl5K_OY-y3I362ig_AkMs_room-03_livingroom-leather-herringbone.webp",
+  "image_hash": "f1d6ccfa8994815eab4004260ebd3a46ccad57985692d664c56ccb570f585a42",
+  "image_width": 1080,
+  "image_height": 1440,
+  "keep_class_detections": [
+    {
+      "prompt": "picture frame",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fd3/qChVDrMMwHj8XThHxtFyY.png",
+      "score": 0.8424963355064392,
+      "bbox": {
+        "x": 890,
+        "y": 593,
+        "w": 36,
+        "h": 25
+      }
+    },
+    {
+      "prompt": "radiator",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fd3/f0V_E2pS9I1PK6GfePnVS.png",
+      "score": 0.9157382845878601,
+      "bbox": {
+        "x": 1021,
+        "y": 866,
+        "w": 59,
+        "h": 171
+      }
+    },
+    {
+      "prompt": "framed photograph",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fd3/LZ2KhXvJlOSBnCzSpj-Wf.png",
+      "score": 0.882425844669342,
+      "bbox": {
+        "x": 890,
+        "y": 593,
+        "w": 36,
+        "h": 25
+      }
+    }
+  ],
+  "face_in_frame_flags": [],
+  "wall_text_flags": [],
+  "partial_failures": [],
+  "generated_at_iso": "2026-04-20T21:44:32Z",
+  "latency_ms": 3597
+}

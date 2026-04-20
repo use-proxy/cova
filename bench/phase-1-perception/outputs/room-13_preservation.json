@@ -1,0 +1,80 @@
+{
+  "schema_version": "1.0",
+  "image_url": "https://v3b.fal.media/files/b/0a970fe3/Gula2czrZ1MvfPNaCn-mU_room-13_exposed-brick-arched.webp",
+  "image_hash": "bb4910b7a3859d292dd8098d06069a62cdc417e7ad6260db15ec2b6689d0e518",
+  "image_width": 1080,
+  "image_height": 1440,
+  "keep_class_detections": [
+    {
+      "prompt": "ceiling fan",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fe3/NCoQtaAkrvS4Veva3Wsku.png",
+      "score": 0.805866539478302,
+      "bbox": {
+        "x": 664,
+        "y": 0,
+        "w": 304,
+        "h": 155
+      }
+    },
+    {
+      "prompt": "ceiling fan",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fe3/mGbfsF-uJTqICQbJ83H1A.png",
+      "score": 0.7488580942153931,
+      "bbox": {
+        "x": 664,
+        "y": 0,
+        "w": 304,
+        "h": 364
+      }
+    },
+    {
+      "prompt": "crown molding",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fe3/9TkdSmzJOXehSgnhmBz_L.png",
+      "score": 0.9258363842964172,
+      "bbox": {
+        "x": 0,
+        "y": 247,
+        "w": 618,
+        "h": 129
+      }
+    },
+    {
+      "prompt": "framed photograph",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fe3/3iNPWykKqV0lFk6PksAQ3.png",
+      "score": 0.8285591006278992,
+      "bbox": {
+        "x": 0,
+        "y": 969,
+        "w": 27,
+        "h": 126
+      }
+    },
+    {
+      "prompt": "picture frame",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fe3/HUZOeGq33x1rvfxdOH2pd.png",
+      "score": 0.7882079482078552,
+      "bbox": {
+        "x": 0,
+        "y": 969,
+        "w": 27,
+        "h": 129
+      }
+    },
+    {
+      "prompt": "exposed brick",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fe3/8RumssdJopOWe0Ddl9q_7.png",
+      "score": 0.798626184463501,
+      "bbox": {
+        "x": 0,
+        "y": 265,
+        "w": 610,
+        "h": 483
+      }
+    }
+  ],
+  "face_in_frame_flags": [],
+  "wall_text_flags": [],
+  "partial_failures": [],
+  "generated_at_iso": "2026-04-20T21:47:20Z",
+  "latency_ms": 4005
+}

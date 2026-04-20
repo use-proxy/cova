@@ -1,0 +1,69 @@
+{
+  "schema_version": "1.0",
+  "image_url": "https://v3b.fal.media/files/b/0a970fe5/IfgvevlK_rznpn6vMbfBA_room-14_stacked-stone-empty.webp",
+  "image_hash": "6b8aeaa498db91e5015e073b91d95ada89c942ac7890d94ae05c7a751d4b73e0",
+  "image_width": 1080,
+  "image_height": 810,
+  "keep_class_detections": [
+    {
+      "prompt": "crown molding",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fe5/dE5f5zwN0BMrtu4Px-1Z8.png",
+      "score": 0.7567041516304016,
+      "bbox": {
+        "x": 0,
+        "y": 122,
+        "w": 35,
+        "h": 39
+      }
+    },
+    {
+      "prompt": "crown molding",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fe5/X-cxLHBdhdmFWZqzW2e6T.png",
+      "score": 0.7258351445198059,
+      "bbox": {
+        "x": 949,
+        "y": 199,
+        "w": 131,
+        "h": 35
+      }
+    },
+    {
+      "prompt": "crown molding",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fe5/F-iza2XgK9Hj3jXniBkRD.png",
+      "score": 0.7074651122093201,
+      "bbox": {
+        "x": 0,
+        "y": 124,
+        "w": 1080,
+        "h": 111
+      }
+    },
+    {
+      "prompt": "exposed brick",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fe5/O2XFCkXDeGDLEsFjDdl0b.png",
+      "score": 0.6556544899940491,
+      "bbox": {
+        "x": 33,
+        "y": 166,
+        "w": 911,
+        "h": 357
+      }
+    },
+    {
+      "prompt": "fireplace",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fe5/jDa5D5za2LHQ98OQUCWH5.png",
+      "score": 0.9093254208564758,
+      "bbox": {
+        "x": 738,
+        "y": 394,
+        "w": 60,
+        "h": 57
+      }
+    }
+  ],
+  "face_in_frame_flags": [],
+  "wall_text_flags": [],
+  "partial_failures": [],
+  "generated_at_iso": "2026-04-20T21:47:35Z",
+  "latency_ms": 3827
+}

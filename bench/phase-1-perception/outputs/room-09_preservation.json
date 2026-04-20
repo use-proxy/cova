@@ -1,0 +1,36 @@
+{
+  "schema_version": "1.0",
+  "image_url": "https://v3b.fal.media/files/b/0a970fdc/c7TXerdBMiOu4Njs8Ldr1_room-09_gaming-led-popcorn.webp",
+  "image_hash": "6cda098d208251873dabd7a818541dcf3080fd4089e2c7394121024337d8cf38",
+  "image_width": 1080,
+  "image_height": 1440,
+  "keep_class_detections": [
+    {
+      "prompt": "framed photograph",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fdd/UANawYsU94e8bfoGSfKzs.png",
+      "score": 0.6206182837486267,
+      "bbox": {
+        "x": 953,
+        "y": 451,
+        "w": 73,
+        "h": 182
+      }
+    },
+    {
+      "prompt": "framed photograph",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fdd/wZuL0wG6vVVWsBdUndBho.png",
+      "score": 0.5016025900840759,
+      "bbox": {
+        "x": 831,
+        "y": 442,
+        "w": 70,
+        "h": 38
+      }
+    }
+  ],
+  "face_in_frame_flags": [],
+  "wall_text_flags": [],
+  "partial_failures": [],
+  "generated_at_iso": "2026-04-20T21:46:12Z",
+  "latency_ms": 2987
+}

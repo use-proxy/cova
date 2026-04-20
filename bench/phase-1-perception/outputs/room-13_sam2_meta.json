@@ -1,0 +1,13 @@
+{
+  "image_hash": "bb4910b7a3859d292dd8098d06069a62cdc417e7ad6260db15ec2b6689d0e518",
+  "embedding_size_bytes": 2097152,
+  "embedding_shape": [
+    1,
+    256,
+    64,
+    64
+  ],
+  "supabase_row_id": "436c955a-c642-4ec3-a954-85f2f173ecd3",
+  "generated_at_iso": "2026-04-20T21:47:25Z",
+  "latency_ms": 5296
+}

@@ -1,0 +1,58 @@
+{
+  "schema_version": "1.0",
+  "image_url": "https://v3b.fal.media/files/b/0a970fe6/MpNjyb1rKos890wR1gv6-_room-15_wood-paneling-twin-beds.webp",
+  "image_hash": "9cc125bfea4e80946edc11c2559e380abcbe59ed1b2558470eb755b24b333495",
+  "image_width": 1080,
+  "image_height": 810,
+  "keep_class_detections": [
+    {
+      "prompt": "crown molding",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fe7/u9Qz2vd0QJzPRrBRbZ2E3.png",
+      "score": 0.6889422535896301,
+      "bbox": {
+        "x": 650,
+        "y": 100,
+        "w": 430,
+        "h": 72
+      }
+    },
+    {
+      "prompt": "crown molding",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fe7/15hvBQea5Ca26ZRn1vWYk.png",
+      "score": 0.6225917935371399,
+      "bbox": {
+        "x": 446,
+        "y": 142,
+        "w": 211,
+        "h": 30
+      }
+    },
+    {
+      "prompt": "mirror",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fe7/AM-gNltJpsIgtqOjZ8FwU.png",
+      "score": 0.8845846652984619,
+      "bbox": {
+        "x": 0,
+        "y": 319,
+        "w": 76,
+        "h": 339
+      }
+    },
+    {
+      "prompt": "ceiling fan",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fe7/F6ZaOj-ynuMwTWQjBQ9yc.png",
+      "score": 0.9753808379173279,
+      "bbox": {
+        "x": 476,
+        "y": 0,
+        "w": 595,
+        "h": 149
+      }
+    }
+  ],
+  "face_in_frame_flags": [],
+  "wall_text_flags": [],
+  "partial_failures": [],
+  "generated_at_iso": "2026-04-20T21:47:54Z",
+  "latency_ms": 3597
+}

@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "image_url": "https://v3b.fal.media/files/b/0a970fcc/_uzxpAQmQqHV9a29ZQP08_room-01_bedroom-cat-popcorn.webp",
+  "image_hash": "4ed37f5b72bea47a950ce4b678c0ca30e80e545f52a721134b1485892b048131",
+  "image_width": 1080,
+  "image_height": 1440,
+  "keep_class_detections": [
+    {
+      "prompt": "ceiling fan",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fcf/4t6F_f8FB9P1D0lNvPhyl.png",
+      "score": 0.8947641253471375,
+      "bbox": {
+        "x": 431,
+        "y": 362,
+        "w": 387,
+        "h": 161
+      }
+    }
+  ],
+  "face_in_frame_flags": [],
+  "wall_text_flags": [],
+  "partial_failures": [],
+  "generated_at_iso": "2026-04-20T21:43:52Z",
+  "latency_ms": 3776
+}

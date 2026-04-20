@@ -1,0 +1,113 @@
+{
+  "schema_version": "1.0",
+  "image_url": "https://v3b.fal.media/files/b/0a970fd6/rlZI1Z4Wbnua9wxYfB4n9_room-05_office-gallery-rug.webp",
+  "image_hash": "5ac401a2f20b4c1e1d07715e4114fc7695099ac519ae18b9486112b98dbfd59e",
+  "image_width": 1080,
+  "image_height": 1440,
+  "keep_class_detections": [
+    {
+      "prompt": "picture frame",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fd6/sbKCDJeezh6YVcLeGDxUV.png",
+      "score": 0.9345540404319763,
+      "bbox": {
+        "x": 701,
+        "y": 419,
+        "w": 82,
+        "h": 100
+      }
+    },
+    {
+      "prompt": "picture frame",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fd6/cr10GUafzYvh53WnHjSa7.png",
+      "score": 0.9304386377334595,
+      "bbox": {
+        "x": 803,
+        "y": 416,
+        "w": 86,
+        "h": 71
+      }
+    },
+    {
+      "prompt": "picture frame",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fd6/1QfszHyzNtDy76vmoxUD0.png",
+      "score": 0.92911696434021,
+      "bbox": {
+        "x": 809,
+        "y": 504,
+        "w": 88,
+        "h": 101
+      }
+    },
+    {
+      "prompt": "framed photograph",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fd6/o26HZwW8I6Z9pSdl1vUZx.png",
+      "score": 0.9585939645767212,
+      "bbox": {
+        "x": 702,
+        "y": 419,
+        "w": 81,
+        "h": 100
+      }
+    },
+    {
+      "prompt": "framed photograph",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fd6/bCLHnf2Y-d11nknbCw4Pw.png",
+      "score": 0.9560160636901855,
+      "bbox": {
+        "x": 809,
+        "y": 504,
+        "w": 88,
+        "h": 100
+      }
+    },
+    {
+      "prompt": "framed photograph",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fd6/b_k5j3rSLquIOHX3eEULf.png",
+      "score": 0.9548750519752502,
+      "bbox": {
+        "x": 803,
+        "y": 417,
+        "w": 85,
+        "h": 69
+      }
+    },
+    {
+      "prompt": "built-in bookshelf",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fd6/-2wTujIXYO3g6ZJ7plVP5.png",
+      "score": 0.6896085739135742,
+      "bbox": {
+        "x": 0,
+        "y": 434,
+        "w": 376,
+        "h": 177
+      }
+    },
+    {
+      "prompt": "built-in bookshelf",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fd6/wTX3QvDrA60YrkhG_SUgA.png",
+      "score": 0.5799521803855896,
+      "bbox": {
+        "x": 0,
+        "y": 545,
+        "w": 376,
+        "h": 67
+      }
+    },
+    {
+      "prompt": "built-in bookshelf",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fd6/2KSk6nAeOqOKIQjVeZqnR.png",
+      "score": 0.5785893797874451,
+      "bbox": {
+        "x": 0,
+        "y": 434,
+        "w": 374,
+        "h": 86
+      }
+    }
+  ],
+  "face_in_frame_flags": [],
+  "wall_text_flags": [],
+  "partial_failures": [],
+  "generated_at_iso": "2026-04-20T21:45:08Z",
+  "latency_ms": 4519
+}

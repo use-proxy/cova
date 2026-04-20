@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "image_url": "https://v3b.fal.media/files/b/0a970fd9/-h1hCzVcdq_yMvas1pXTD_room-07_bedroom-desk-carpet.webp",
+  "image_hash": "ddde41375955595af38a98ac48ed10e9c4ac29087627c0f1b87d56cf7a7d6136",
+  "image_width": 1080,
+  "image_height": 810,
+  "keep_class_detections": [
+    {
+      "prompt": "ceiling fan",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fda/r3mke7WwhB_hCJuT7zA1F.png",
+      "score": 0.9233584403991699,
+      "bbox": {
+        "x": 386,
+        "y": 85,
+        "w": 286,
+        "h": 107
+      }
+    }
+  ],
+  "face_in_frame_flags": [],
+  "wall_text_flags": [],
+  "partial_failures": [],
+  "generated_at_iso": "2026-04-20T21:45:42Z",
+  "latency_ms": 3003
+}

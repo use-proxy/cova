@@ -1,0 +1,102 @@
+{
+  "schema_version": "1.0",
+  "image_url": "https://v3b.fal.media/files/b/0a970fe0/HemaCOIJ5L4akAtKfQ2yg_room-11_green-velvet-gallery.webp",
+  "image_hash": "ca5e48e58ebbd8d3bcd97aeee91cb806d19d6b14c3c6aeac3674ad565744a2fe",
+  "image_width": 1080,
+  "image_height": 810,
+  "keep_class_detections": [
+    {
+      "prompt": "built-in bookshelf",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fe0/c6S3rXSbtmNEzfI9Icd6K.png",
+      "score": 0.8215779066085815,
+      "bbox": {
+        "x": 343,
+        "y": 300,
+        "w": 235,
+        "h": 94
+      }
+    },
+    {
+      "prompt": "fireplace",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fe0/feDShOmTtJCZncsHJHo-G.png",
+      "score": 0.6176371574401855,
+      "bbox": {
+        "x": 1009,
+        "y": 375,
+        "w": 71,
+        "h": 84
+      }
+    },
+    {
+      "prompt": "framed photograph",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fe0/Xuz0e83Zi3m9H7MR9Efp0.png",
+      "score": 0.9612226486206055,
+      "bbox": {
+        "x": 247,
+        "y": 76,
+        "w": 65,
+        "h": 75
+      }
+    },
+    {
+      "prompt": "framed photograph",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fe0/EKah3MKoO8B4sLqwLGOe3.png",
+      "score": 0.9609544277191162,
+      "bbox": {
+        "x": 393,
+        "y": 106,
+        "w": 98,
+        "h": 88
+      }
+    },
+    {
+      "prompt": "framed photograph",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fe0/4dDa6FTW1cA4YOfbM8c8P.png",
+      "score": 0.954431414604187,
+      "bbox": {
+        "x": 319,
+        "y": 98,
+        "w": 64,
+        "h": 79
+      }
+    },
+    {
+      "prompt": "picture frame",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fe0/s0rN3dsqJi5spqh5FWeps.png",
+      "score": 0.9485148191452026,
+      "bbox": {
+        "x": 247,
+        "y": 75,
+        "w": 65,
+        "h": 76
+      }
+    },
+    {
+      "prompt": "picture frame",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fe0/hzoSwMf0gXgnB7SFrEI5S.png",
+      "score": 0.9331033229827881,
+      "bbox": {
+        "x": 318,
+        "y": 97,
+        "w": 66,
+        "h": 80
+      }
+    },
+    {
+      "prompt": "picture frame",
+      "mask_url": "https://v3b.fal.media/files/b/0a970fe0/0ioD9X26dZfz0TEla1tUs.png",
+      "score": 0.9294438362121582,
+      "bbox": {
+        "x": 393,
+        "y": 105,
+        "w": 99,
+        "h": 90
+      }
+    }
+  ],
+  "face_in_frame_flags": [],
+  "wall_text_flags": [],
+  "partial_failures": [],
+  "generated_at_iso": "2026-04-20T21:46:49Z",
+  "latency_ms": 4677
+}
