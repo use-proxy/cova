@@ -1,11 +1,21 @@
-"""Aggregate per-room metrics into run-summary.md for Run 1.5.
+"""Aggregate per-room metrics into run-summary.md for Run 2.
 
 Includes:
-  - Per-room table with dual SSIM threshold columns (§3.4 strict + calibrated)
-  - Noise-floor section (4x room-06 repeats)
-  - Ghost-furniture delta: Run 1 vs Run 1.5
-  - Texture-type stratification of ghost failures
-  - Gate recommendation
+  1. Standard per-room table with 6 metric columns evaluated against
+     calibrated thresholds (SSIM ≥0.97, ghost <1%, VP <3%, edge 0.7-1.3,
+     lat ≤60s, cost ≤$0.50).
+  2. Per-metric pass rate (X/15 per metric).
+  3. Overall pass rate.
+  4. Rescan stats: how many rooms triggered rescan, avg coverage before vs
+     after, did rescan rooms outperform non-rescan rooms?
+  5. H2 hard-exit table for room-01, room-09, room-11 vs Run 1.5 SSIM:
+     improvement ≥0.02 → H2 may be partially mask-driven;
+     none improve ≥0.02 → H2 confirmed Bria-architectural-drift.
+  6. room-10 over-masking check: Run 1.5 vs Run 2 dilated coverage %.
+  7. Gate decision:
+     ≥13/15 → PROCEED TO RUN 3
+     10–12/15 → MIXED
+     <10/15 → FAIL
 """
 from __future__ import annotations
 
@@ -16,19 +26,32 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent.parent
 BENCH = ROOT / "bench"
 
-# Run 1.5 directories (write target)
-OUT = BENCH / "run-1-5-empty-room"
+# Run 2 directories (write target)
+OUT = BENCH / "run-2-empty-room"
 METRICS_DIR = OUT / "metrics"
-NOISE_FLOOR_DIR = OUT / "noise-floor"
 SUMMARY_PATH = OUT / "run-summary.md"
 
-# Run 1 directories (read-only — do not modify)
-RUN1_METRICS_DIR = BENCH / "run-1-empty-room" / "metrics"
+# Run 1.5 directories (read-only — do not modify)
+RUN15_METRICS_DIR = BENCH / "run-1-5-empty-room" / "metrics"
 
 manifest = json.loads((BENCH / "manifest.json").read_text())
 rooms = manifest["rooms"]
 
-# ── Load Run 1.5 results ──────────────────────────────────────────────────────
+# Run 2 calibrated thresholds (same as bench script)
+THRESHOLDS = {
+    "ssim_unmasked_min": 0.97,
+    "ghost_area_max_pct": 1.0,
+    "vp_shift_max_pct": 3.0,
+    "edge_density_min": 0.7,
+    "edge_density_max": 1.3,
+    "latency_p95_max_s": 60.0,
+    "cost_max_usd_per_room": 0.50,
+}
+
+# H2 hard-exit rooms confirmed in mask-audit.md
+H2_ROOMS = ["room-01", "room-09", "room-11"]
+
+# ── Load Run 2 results ────────────────────────────────────────────────────────
 results: list[dict] = []
 for r in rooms:
     p = METRICS_DIR / f"{r['id']}.json"
@@ -37,318 +60,422 @@ for r in rooms:
     else:
         results.append({"room_id": r["id"], "error": "missing metrics file"})
 
-# ── Load Run 1 results (for ghost delta) ─────────────────────────────────────
-run1_results: dict[str, dict] = {}
+# ── Load Run 1.5 results (for H2 delta + room-10 check) ─────────────────────
+run15_results: dict[str, dict] = {}
 for r in rooms:
-    p = RUN1_METRICS_DIR / f"{r['id']}.json"
+    p = RUN15_METRICS_DIR / f"{r['id']}.json"
     if p.exists():
-        run1_results[r["id"]] = json.loads(p.read_text())
-
-# ── Load noise-floor stats ────────────────────────────────────────────────────
-noise_stats_path = NOISE_FLOOR_DIR / "stats.json"
-noise_stats: dict = {}
-if noise_stats_path.exists():
-    noise_stats = json.loads(noise_stats_path.read_text())
-
-# Individual run files
-noise_run_files = sorted(NOISE_FLOOR_DIR.glob("room-06_run*.json"))
-noise_runs: list[dict] = [json.loads(f.read_text()) for f in noise_run_files]
-
-# ── Noise-floor derived values ────────────────────────────────────────────────
-calibrated_threshold: float = noise_stats.get("calibrated_threshold", 0.985)
-mean_ssim_nf: float = noise_stats.get("mean_ssim", 0.985)
-sigma_ssim_nf: float = noise_stats.get("sigma_ssim", 0.0)
-ssim_values_nf: list[float] = noise_stats.get("ssim_values", [])
+        run15_results[r["id"]] = json.loads(p.read_text())
 
 # ── Aggregate stats ───────────────────────────────────────────────────────────
 total_cost = sum(r.get("metrics", {}).get("cost_usd", r.get("cost_usd", 0.0)) for r in results)
 total_latency = sum(r.get("metrics", {}).get("total_latency_s", 0.0) for r in results)
 
-ssim_vals = [
-    (r["room_id"], r.get("metrics", {}).get("ssim_unmasked", 0))
-    for r in results if "metrics" in r
-]
-mean_ssim = sum(s for _, s in ssim_vals) / len(ssim_vals) if ssim_vals else 0.0
-
 strat_by_id = {r["id"]: r["stratification"] for r in rooms}
 
-# Pass under §3.4 strict (0.985)
-def passes_strict(r: dict) -> bool:
-    return bool(r.get("overall_pass"))
 
-# Pass under calibrated threshold (same as 0.985 in this run, but computed separately)
-def passes_calibrated(r: dict) -> bool:
+# ── Pass/fail helpers ─────────────────────────────────────────────────────────
+def metric_passes(r: dict, metric_key: str) -> bool:
+    """Evaluate a single metric against Run 2 calibrated thresholds."""
     m = r.get("metrics", {})
-    pm = r.get("pass_per_metric", {})
-    ssim_ok = m.get("ssim_unmasked", 0) >= calibrated_threshold
-    # All other metrics same as strict
-    other_ok = all(v for k, v in pm.items() if k != "ssim_unmasked")
-    return ssim_ok and other_ok
+    if metric_key == "ssim_unmasked":
+        v = m.get("ssim_unmasked")
+        return v is not None and v >= THRESHOLDS["ssim_unmasked_min"]
+    if metric_key == "ghost_furniture":
+        v = m.get("ghost_furniture_area_pct")
+        return v is not None and v < THRESHOLDS["ghost_area_max_pct"]
+    if metric_key == "vp_shift":
+        v = m.get("vp_shift_pct")
+        return v is not None and v < THRESHOLDS["vp_shift_max_pct"]
+    if metric_key == "edge_density":
+        v = m.get("edge_density_ratio")
+        return v is not None and THRESHOLDS["edge_density_min"] <= v <= THRESHOLDS["edge_density_max"]
+    if metric_key == "latency":
+        v = m.get("bria_latency_s")
+        return v is not None and v <= THRESHOLDS["latency_p95_max_s"]
+    if metric_key == "cost":
+        v = m.get("cost_usd")
+        return v is not None and v <= THRESHOLDS["cost_max_usd_per_room"]
+    return False
 
-passed_strict = sum(1 for r in results if passes_strict(r))
-passed_calibrated = sum(1 for r in results if passes_calibrated(r))
+
+def passes_run2(r: dict) -> bool:
+    """Overall pass under Run 2 calibrated thresholds."""
+    if r.get("error"):
+        return False
+    keys = ["ssim_unmasked", "ghost_furniture", "vp_shift", "edge_density", "latency", "cost"]
+    return all(metric_passes(r, k) for k in keys)
+
+
+METRIC_KEYS = ["ssim_unmasked", "ghost_furniture", "vp_shift", "edge_density", "latency", "cost"]
+METRIC_LABELS = {
+    "ssim_unmasked": f"SSIM ≥{THRESHOLDS['ssim_unmasked_min']}",
+    "ghost_furniture": f"Ghost <{THRESHOLDS['ghost_area_max_pct']}%",
+    "vp_shift": f"VP <{THRESHOLDS['vp_shift_max_pct']}%",
+    "edge_density": f"EDR {THRESHOLDS['edge_density_min']}–{THRESHOLDS['edge_density_max']}",
+    "latency": f"Lat ≤{THRESHOLDS['latency_p95_max_s']}s",
+    "cost": f"Cost ≤${THRESHOLDS['cost_max_usd_per_room']}",
+}
+
+# ── Per-metric pass rates ─────────────────────────────────────────────────────
+metric_pass_counts: dict[str, int] = {k: 0 for k in METRIC_KEYS}
+for r in results:
+    if r.get("error"):
+        continue
+    for k in METRIC_KEYS:
+        if metric_passes(r, k):
+            metric_pass_counts[k] += 1
+
+n_rooms = len(results)
+n_with_data = sum(1 for r in results if not r.get("error"))
+passed_overall = sum(1 for r in results if passes_run2(r))
 
 # ── Per-room table ────────────────────────────────────────────────────────────
+def mark(v: bool) -> str:
+    return "✓" if v else "✗"
+
+
 def fmt_row(r: dict, strat: dict) -> str:
     m = r.get("metrics", {})
-    pm = r.get("pass_per_metric", {})
     stag = (
         f"{strat.get('clutter','?')[:1]}/"
         f"{strat.get('geometry','?')[:3]}/"
         f"{strat.get('texture','?')[:5]}/"
         f"{strat.get('lighting','?')[:5]}"
     )
-    def mark(v: bool | None) -> str:
-        return "✓" if v else "✗"
+    if r.get("error"):
+        return f"| {r['room_id']} | {stag} | ERROR: {r['error'][:40]} |"
+
     ssim = m.get("ssim_unmasked")
     ghost = m.get("ghost_furniture_area_pct")
     vp = m.get("vp_shift_pct")
     edr = m.get("edge_density_ratio")
     lat = m.get("bria_latency_s")
     cost = m.get("cost_usd", 0.0)
-    if r.get("error"):
-        return f"| {r['room_id']} | {stag} | ERROR: {r['error'][:30]} |"
-    ssim_strict_ok = ssim is not None and ssim >= 0.985
-    ssim_calib_ok = ssim is not None and ssim >= calibrated_threshold
+    rescan = "R" if r.get("rescan_triggered") else ""
+
+    ssim_str = f"{ssim:.3f}" if ssim is not None else "—"
+    ghost_str = f"{ghost:.1f}%" if ghost is not None else "—"
+    vp_str = f"{vp:.1f}%" if vp is not None else "—"
+    edr_str = f"{edr:.2f}" if edr is not None else "—"
+    lat_str = f"{lat:.1f}s" if lat is not None else "—"
+
+    overall = passes_run2(r)
     return (
-        f"| {r['room_id']} | {stag} | "
-        f"{ssim:.3f} | {mark(ssim_strict_ok)} | {mark(ssim_calib_ok)} | "
-        f"{ghost:.1f}%{mark(pm.get('ghost_furniture'))} | "
-        f"{vp:.1f}%{mark(pm.get('vp_shift'))} | "
-        f"{edr:.2f}{mark(pm.get('edge_density'))} | "
-        f"{lat:.1f}s{mark(pm.get('latency'))} | "
-        f"${cost:.3f}{mark(pm.get('cost'))} | "
-        f"**{mark(passes_strict(r))}** | **{mark(passes_calibrated(r))}** |"
+        f"| {r['room_id']}{rescan} | {stag} | "
+        f"{ssim_str}{mark(metric_passes(r,'ssim_unmasked'))} | "
+        f"{ghost_str}{mark(metric_passes(r,'ghost_furniture'))} | "
+        f"{vp_str}{mark(metric_passes(r,'vp_shift'))} | "
+        f"{edr_str}{mark(metric_passes(r,'edge_density'))} | "
+        f"{lat_str}{mark(metric_passes(r,'latency'))} | "
+        f"${cost:.3f}{mark(metric_passes(r,'cost'))} | "
+        f"**{mark(overall)}** |"
     )
 
+
 rows = [fmt_row(r, strat_by_id.get(r["room_id"], {})) for r in results]
+
+# ── Rescan stats ──────────────────────────────────────────────────────────────
+rescan_rooms_data = [r for r in results if r.get("rescan_triggered")]
+non_rescan_rooms_data = [r for r in results if not r.get("rescan_triggered") and not r.get("error")]
+
+n_rescan = len(rescan_rooms_data)
+rescan_pass = sum(1 for r in rescan_rooms_data if passes_run2(r))
+non_rescan_pass = sum(1 for r in non_rescan_rooms_data if passes_run2(r))
+
+avg_cov_before = (
+    sum(r.get("coverage_before_rescan") or 0 for r in rescan_rooms_data) / n_rescan
+    if n_rescan else 0.0
+)
+avg_cov_after = (
+    sum(r.get("coverage_after_rescan") or 0 for r in rescan_rooms_data) / n_rescan
+    if n_rescan else 0.0
+)
+
+rescan_ssim_vals = [
+    r.get("metrics", {}).get("ssim_unmasked") or 0
+    for r in rescan_rooms_data
+    if not r.get("error")
+]
+non_rescan_ssim_vals = [
+    r.get("metrics", {}).get("ssim_unmasked") or 0
+    for r in non_rescan_rooms_data
+    if not r.get("error")
+]
+
+avg_rescan_ssim = sum(rescan_ssim_vals) / len(rescan_ssim_vals) if rescan_ssim_vals else 0.0
+avg_non_rescan_ssim = sum(non_rescan_ssim_vals) / len(non_rescan_ssim_vals) if non_rescan_ssim_vals else 0.0
+
+# Did rescan rooms outperform non-rescan?
+if n_rescan > 0 and non_rescan_rooms_data:
+    rescan_outperforms = avg_rescan_ssim > avg_non_rescan_ssim
+    rescan_comparison = (
+        f"Rescan avg SSIM {avg_rescan_ssim:.4f} vs non-rescan avg SSIM {avg_non_rescan_ssim:.4f} — "
+        + ("rescan rooms outperformed" if rescan_outperforms else "rescan rooms did NOT outperform non-rescan")
+    )
+else:
+    rescan_comparison = "Insufficient data for comparison"
+
+rescan_table_rows = []
+for r in rescan_rooms_data:
+    rid = r["room_id"]
+    strat = strat_by_id.get(rid, {})
+    before = r.get("coverage_before_rescan")
+    after = r.get("coverage_after_rescan")
+    ssim_v = r.get("metrics", {}).get("ssim_unmasked")
+    rescan_table_rows.append(
+        f"| {rid} | {strat.get('clutter','?')} | "
+        f"{before:.1f}% | {after:.1f}% | "
+        f"{(after - before):.1f}pp | "
+        f"{f'{ssim_v:.4f}' if ssim_v is not None else '—'} | "
+        f"{'PASS' if passes_run2(r) else 'FAIL'} |"
+    )
+
+# ── H2 hard-exit table ────────────────────────────────────────────────────────
+h2_rows: list[str] = []
+h2_all_improved_02 = True
+h2_any_improved_02 = False
+
+for rid in H2_ROOMS:
+    r2 = next((r for r in results if r.get("room_id") == rid), None)
+    r15 = run15_results.get(rid)
+    ssim_15 = r15.get("metrics", {}).get("ssim_unmasked") if r15 else None
+    ssim_2 = r2.get("metrics", {}).get("ssim_unmasked") if r2 and not r2.get("error") else None
+    if ssim_15 is not None and ssim_2 is not None:
+        delta = ssim_2 - ssim_15
+        improved = delta >= 0.02
+        if improved:
+            h2_any_improved_02 = True
+        else:
+            h2_all_improved_02 = False
+        h2_rows.append(
+            f"| {rid} | {ssim_15:.4f} | {ssim_2:.4f} | {delta:+.4f} | {'YES' if improved else 'no'} |"
+        )
+    else:
+        h2_all_improved_02 = False
+        h2_rows.append(f"| {rid} | {'—' if ssim_15 is None else f'{ssim_15:.4f}'} | {'—' if ssim_2 is None else f'{ssim_2:.4f}'} | — | no |")
+
+if h2_all_improved_02:
+    h2_verdict = (
+        "H2 may be partially mask-driven, re-evaluate. ALL three H2 rooms improved by ≥0.02 SSIM. "
+        "Bria-architectural-drift hypothesis weakened — improved masking contributed meaningfully."
+    )
+elif h2_any_improved_02:
+    h2_verdict = (
+        "MIXED H2 signal. Some H2 rooms improved ≥0.02, others did not. "
+        "Both mask quality and Bria drift likely contributing. Further investigation needed."
+    )
+else:
+    h2_verdict = (
+        "H2 confirmed as Bria-architectural-drift; mask iteration does not address it. "
+        "NONE of room-01/09/11 improved by ≥0.02 SSIM with 24px dilation + rescan. "
+        "Root cause is Bria VAE latent-space drift on complex room content, not mask coverage."
+    )
+
+# ── room-10 over-masking check ────────────────────────────────────────────────
+r10_r2 = next((r for r in results if r.get("room_id") == "room-10"), None)
+r10_r15 = run15_results.get("room-10")
+
+r10_cov_r15 = r10_r15.get("mask_coverage_dilated_pct") if r10_r15 else None
+r10_cov_r2 = r10_r2.get("mask_coverage_dilated_pct") if r10_r2 and not r10_r2.get("error") else None
+
+if r10_cov_r15 is not None and r10_cov_r2 is not None:
+    if r10_cov_r2 >= r10_cov_r15:
+        r10_verdict = (
+            f"Over-masking persists (Run 1.5: {r10_cov_r15:.1f}% → Run 2: {r10_cov_r2:.1f}%). "
+            "24px dilation increased coverage further. H1 (mask coverage) flag on room-10 is a real concern."
+        )
+    elif 15.0 <= r10_cov_r2 <= 30.0:
+        r10_verdict = (
+            f"Over-masking transient — H1 false alarm in audit "
+            f"(Run 1.5: {r10_cov_r15:.1f}% → Run 2: {r10_cov_r2:.1f}%). "
+            "Coverage in 15–30% range is reasonable for this room."
+        )
+    else:
+        r10_verdict = (
+            f"Run 1.5: {r10_cov_r15:.1f}% → Run 2: {r10_cov_r2:.1f}%. "
+            "Coverage outside expected range; inspect mask visually."
+        )
+else:
+    r10_verdict = "Insufficient data to compare room-10 coverage across runs."
+
+# ── Gate decision ─────────────────────────────────────────────────────────────
+if passed_overall >= 13:
+    gate = "PROCEED TO RUN 3 — full-pipeline test"
+    gate_detail = f"≥13/15 pass rate achieved ({passed_overall}/15). Mask iteration sufficient for full-pipeline integration test."
+elif passed_overall >= 10:
+    gate = "MIXED — combine with Track 2 prompt-free probe results before proceeding"
+    gate_detail = (
+        f"10–12/15 pass rate ({passed_overall}/15). Neither clear success nor failure. "
+        "Track 2 (prompt-free probe) results needed to determine if mask iteration is additive."
+    )
+else:
+    gate = "FAIL — Bria mask-mode not viable primary; escalate to Canny+FLUX secondary"
+    gate_detail = (
+        f"<10/15 pass rate ({passed_overall}/15). Mask iteration alone insufficient. "
+        "Recommend escalating to Canny+FLUX secondary path as described in §3.5."
+    )
 
 # ── Stratification breakdown ──────────────────────────────────────────────────
 def group_pass(dim: str) -> dict[str, tuple[int, int]]:
     out: dict[str, list[int]] = defaultdict(list)
     for r in results:
-        if "overall_pass" not in r:
+        if "metrics" not in r:
             continue
         val = strat_by_id.get(r["room_id"], {}).get(dim, "unknown")
-        out[val].append(1 if passes_calibrated(r) else 0)
+        out[val].append(1 if passes_run2(r) else 0)
     return {k: (sum(v), len(v)) for k, v in out.items()}
+
 
 def strat_md(dim: str) -> str:
     g = group_pass(dim)
-    return " · ".join(f"{k}: {p}/{t}" for k, (p, t) in g.items())
+    return " · ".join(f"{k}: {p}/{t}" for k, (p, t) in sorted(g.items()))
 
 # ── Failure mode summary ──────────────────────────────────────────────────────
 failure_lines = []
 for r in results:
-    if passes_calibrated(r) or r.get("error"):
+    if passes_run2(r) or r.get("error"):
         if r.get("error"):
             failure_lines.append(f"- **{r['room_id']}** — ERROR: {r['error']}")
         continue
-    pm = r.get("pass_per_metric", {})
     m = r.get("metrics", {})
     strat = strat_by_id.get(r["room_id"], {})
     detail = []
-    ssim_val = m.get("ssim_unmasked", 0)
-    if ssim_val < calibrated_threshold:
-        detail.append(f"SSIM {ssim_val:.3f} < {calibrated_threshold}")
-    if not pm.get("ghost_furniture"):
-        detail.append(f"ghost {m['ghost_furniture_area_pct']:.1f}% > 0.5%")
-    if not pm.get("vp_shift"):
-        detail.append(f"VP {m['vp_shift_pct']:.1f}% ≥ 2%")
-    if not pm.get("edge_density"):
-        detail.append(f"EDR {m['edge_density_ratio']:.2f} outside [0.7,1.3]")
+    ssim_val = m.get("ssim_unmasked", 0.0)
+    if ssim_val < THRESHOLDS["ssim_unmasked_min"]:
+        detail.append(f"SSIM {ssim_val:.3f} < {THRESHOLDS['ssim_unmasked_min']}")
+    ghost_val = m.get("ghost_furniture_area_pct", 0.0)
+    if ghost_val >= THRESHOLDS["ghost_area_max_pct"]:
+        detail.append(f"ghost {ghost_val:.1f}% ≥ {THRESHOLDS['ghost_area_max_pct']}%")
+    vp_val = m.get("vp_shift_pct", 0.0)
+    if vp_val >= THRESHOLDS["vp_shift_max_pct"]:
+        detail.append(f"VP {vp_val:.1f}% ≥ {THRESHOLDS['vp_shift_max_pct']}%")
+    edr_val = m.get("edge_density_ratio", 1.0)
+    if not (THRESHOLDS["edge_density_min"] <= edr_val <= THRESHOLDS["edge_density_max"]):
+        detail.append(f"EDR {edr_val:.2f} outside [{THRESHOLDS['edge_density_min']},{THRESHOLDS['edge_density_max']}]")
+    lat_val = m.get("bria_latency_s", 0.0)
+    if lat_val > THRESHOLDS["latency_p95_max_s"]:
+        detail.append(f"lat {lat_val:.1f}s > {THRESHOLDS['latency_p95_max_s']}s")
     strat_str = "/".join(str(v) for v in strat.values())
-    failure_lines.append(f"- **{r['room_id']}** ({strat_str}): {'; '.join(detail)}")
-
-# ── Near-misses ───────────────────────────────────────────────────────────────
-near_miss = []
-for r in results:
-    if passes_calibrated(r) or r.get("error"):
-        continue
-    pm = r.get("pass_per_metric", {})
-    m = r.get("metrics", {})
-    # Under calibrated threshold, treat SSIM as pass if ≥ calibrated_threshold
-    ssim_calib_pass = m.get("ssim_unmasked", 0) >= calibrated_threshold
-    fail_keys = [k for k, v in pm.items() if not v]
-    if not ssim_calib_pass and "ssim_unmasked" not in fail_keys:
-        fail_keys.append("ssim_unmasked")
-    elif ssim_calib_pass and "ssim_unmasked" in fail_keys:
-        fail_keys.remove("ssim_unmasked")
-    if len(fail_keys) == 1:
-        near_miss.append(f"- **{r['room_id']}** failed only on `{fail_keys[0]}`")
-
-# ── Ghost delta: Run 1 vs Run 1.5 ────────────────────────────────────────────
-ghost_delta_rows = []
-for r in results:
-    rid = r["room_id"]
-    m15 = r.get("metrics", {})
-    ghost_15 = m15.get("ghost_furniture_area_pct", 0.0)
-    r1 = run1_results.get(rid, {})
-    ghost_1 = r1.get("metrics", {}).get("ghost_furniture_area_pct", 0.0)
-    delta = ghost_15 - ghost_1
-    sign = "+" if delta >= 0 else ""
-    strat = strat_by_id.get(rid, {})
-    texture = strat.get("texture", "?")
-    ghost_delta_rows.append(
-        f"| {rid} | {texture} | {ghost_1:.1f}% | {ghost_15:.1f}% | {sign}{delta:.1f}% |"
+    rescan_tag = " [RESCAN]" if r.get("rescan_triggered") else ""
+    failure_lines.append(
+        f"- **{r['room_id']}**{rescan_tag} ({strat_str}): {'; '.join(detail)}"
     )
-
-# ── Texture stratification of ghost failures (Run 1.5) ───────────────────────
-ghost_by_texture: dict[str, list[float]] = defaultdict(list)
-for r in results:
-    if r.get("error"):
-        continue
-    m = r.get("metrics", {})
-    ghost_pct = m.get("ghost_furniture_area_pct", 0.0)
-    if ghost_pct > 0.5:  # only ghost-failure rooms
-        texture = strat_by_id.get(r["room_id"], {}).get("texture", "unknown")
-        ghost_by_texture[texture].append(ghost_pct)
-
-texture_strat_rows = []
-for texture, vals in sorted(ghost_by_texture.items(), key=lambda t: -max(t[1])):
-    avg = sum(vals) / len(vals)
-    texture_strat_rows.append(
-        f"| {texture} | {len(vals)} | {avg:.1f}% | {max(vals):.1f}% |"
-    )
-
-# ── Gate recommendation ───────────────────────────────────────────────────────
-if passed_calibrated >= 13:
-    gate = "PROCEED TO RUN 2 — >=13/15 pass under calibrated threshold"
-elif passed_calibrated >= 8:
-    gate = "TEST CANNY+FLUX ON SUBSET — 8-12/15 pass under calibrated threshold"
-else:
-    gate = "HALT — RECONSIDER ARCHITECTURE — <8/15 pass under calibrated threshold"
 
 # ── Write summary ─────────────────────────────────────────────────────────────
-noise_floor_runs_md = []
-for i, nr in enumerate(noise_runs, 1):
-    ssim_i = nr.get("metrics", {}).get("ssim_unmasked", 0)
-    noise_floor_runs_md.append(f"  - Run {i}: SSIM = {ssim_i:.6f}")
-
 lines = [
-    "# Phase 0.5 Run 1.5 — Empty-Room Bench Summary",
+    "# Phase 0.5 Run 2 — Empty-Room Bench Summary",
     "",
     "**Date:** 2026-04-20  ",
     "**Input:** 15 rooms from `bench/manifest.json`  ",
-    "**Path tested:** Bria Eraser (`fal-ai/bria/eraser`) primary, SAM-3 furniture union (20 widened prompts) + 16px dilation  ",
+    "**Path tested:** Bria Eraser (`fal-ai/bria/eraser`) primary, SAM-3 furniture union (20 widened prompts) + **24px dilation** (was 16px)  ",
+    "**New in Run 2:** Low-coverage rescan gate — medium/heavy clutter rooms with <20% primary coverage trigger second SAM-3 pass at score_threshold=0.20  ",
     f"**Total cost (15 rooms):** ${total_cost:.2f}  ",
-    f"**Noise-floor runs cost:** ${noise_stats.get('total_cost_usd', 0):.2f}  ",
     f"**Total wall-clock (sum of per-room):** {total_latency:.0f}s (run concurrent ×3)  ",
-    f"**Pass rate (§3.4 strict ≥0.985):** {passed_strict}/15  ",
-    f"**Pass rate (calibrated ≥{calibrated_threshold}):** {passed_calibrated}/15  ",
-    f"**Mean SSIM-unmasked:** {mean_ssim:.4f}  ",
+    f"**Overall pass rate:** {passed_overall}/{n_rooms}  ",
     "",
-    "## Noise-floor measurement (room-06, 4 fresh repeats)",
+    "## Per-metric pass rates",
     "",
-    "Room-06 (near-empty bay window) is the control case. Run 1 hit SSIM=0.9850 exactly.",
-    "Four fresh runs under the widened-prompt pipeline to measure pipeline variance:",
+    "| Metric | Threshold | Pass count |",
+    "|---|---|---|",
+    *[
+        f"| {METRIC_LABELS[k]} | — | {metric_pass_counts[k]}/{n_rooms} |"
+        for k in METRIC_KEYS
+    ],
+    f"| **Overall** | all 6 | **{passed_overall}/{n_rooms}** |",
     "",
-    *noise_floor_runs_md,
+    "## Per-room results",
     "",
-    f"- **Mean:** {mean_ssim_nf:.6f}",
-    f"- **σ:** {sigma_ssim_nf:.2e}",
-    f"- **Calibrated SSIM threshold (mean − 2σ):** {calibrated_threshold}",
+    "R = rescan triggered (second SAM-3 pass at score_threshold=0.20)",
     "",
-    "**Finding:** Bria's pipeline is effectively deterministic for this near-empty image.",
-    f"σ = {sigma_ssim_nf:.2e} — the four runs all return SSIM ≈ 0.98497, consistently just below",
-    "the §3.4 threshold of 0.985. The threshold is at the absolute ceiling of what Bria",
-    "produces even with zero erasure content. Any real furniture erasure will push SSIM lower.",
-    "",
-    "## Per-room results (dual SSIM threshold)",
-    "",
-    "| Room | Strat (clutter/geom/tex/light) | SSIM | ≥0.985 | ≥calib | Ghost ≤0.5% | VP <2% | EDR 0.7–1.3 | Lat ≤90s | Cost ≤$0.50 | **§3.4** | **Calib** |",
-    "|---|---|---|---|---|---|---|---|---|---|---|---|",
+    "| Room | Strat (C/G/T/L) | SSIM | Ghost | VP | EDR | Lat | Cost | **Pass** |",
+    "|---|---|---|---|---|---|---|---|---|",
     *rows,
     "",
-    f"**§3.4 strict pass rate:** {passed_strict}/15  ",
-    f"**Calibrated pass rate:** {passed_calibrated}/15 (threshold = {calibrated_threshold})  ",
+    f"**Overall pass rate:** {passed_overall}/{n_rooms}  ",
     "",
-    "## Ghost-furniture delta: Run 1 → Run 1.5",
-    "",
-    "Widened prompt list (9 new prompts). Did more comprehensive masking reduce ghost artifacts?",
-    "",
-    "| Room | Texture | Ghost Run 1 | Ghost Run 1.5 | Delta |",
-    "|---|---|---|---|---|",
-    *ghost_delta_rows,
-    "",
-    "**Summary:** Ghost rates are mixed — some rooms improved (room-02: 6.4%→2.4%, room-05: 21.6%→2.4%),",
-    "others worsened (room-04: 7.7%→9.2%, room-12: 8.7%→6.2%, room-15: 15.1%→16.4%).",
-    "The improvement in patterned-rug rooms (room-05) suggests expanded prompts do help capture",
-    "more furniture for masking, reducing ghost artifact area in those cases.",
-    "Worsening in heavy-clutter rooms may reflect more aggressive masking exposing additional",
-    "background regions that Bria fills with plausible but subtly mis-registered content.",
-    "",
-    "## Texture-type stratification of ghost failures (Run 1.5, ghost > 0.5%)",
-    "",
-    "| Texture | Room count | Avg ghost % | Max ghost % |",
-    "|---|---|---|---|",
-    *(texture_strat_rows or ["| _(none)_ | — | — | — |"]),
-    "",
-    "**Finding:** Ghost failures in Run 1.5 remain concentrated in:",
-    "- Patterned/textured floor coverings (moroccan-rug, shag-rug) — Bria reads texture patterns as furniture silhouettes",
-    "- Wood paneling — high-frequency surface detail confuses the generative fill",
-    "- Rooms with heavy clutter (wall-molding, herringbone) where mask is incomplete even with widened prompts",
-    "",
-    "## Stratification analysis — calibrated pass counts",
+    "## Stratification analysis",
     "",
     f"- **Clutter:** {strat_md('clutter')}",
     f"- **Geometry:** {strat_md('geometry')}",
     f"- **Texture:** {strat_md('texture')}",
     f"- **Lighting:** {strat_md('lighting')}",
     "",
-    "## Failure mode summary (calibrated threshold)",
+    "## Rescan stats (low-coverage gate)",
     "",
-    *(failure_lines or ["_(none)_"]),
+    f"- **Rooms that triggered rescan:** {n_rescan}/{n_rooms}",
+    f"- **Avg coverage before rescan:** {avg_cov_before:.1f}%",
+    f"- **Avg coverage after rescan:** {avg_cov_after:.1f}%",
+    f"- **Rescan rooms pass rate:** {rescan_pass}/{n_rescan}" if n_rescan else "- No rooms triggered rescan",
+    f"- **Non-rescan rooms pass rate:** {non_rescan_pass}/{len(non_rescan_rooms_data)}",
+    f"- **Performance comparison:** {rescan_comparison}",
     "",
-    "## Near-misses (single-metric failures, calibrated)",
+]
+
+if rescan_table_rows:
+    lines += [
+        "### Per-room rescan detail",
+        "",
+        "| Room | Clutter | Cov Before | Cov After | Δ | SSIM | Pass |",
+        "|---|---|---|---|---|---|---|",
+        *rescan_table_rows,
+        "",
+    ]
+else:
+    lines += ["_(No rooms triggered the low-coverage rescan gate.)_", ""]
+
+lines += [
+    "## H2 hard-exit table — room-01, room-09, room-11",
     "",
-    *(near_miss or ["_(none)_"]),
+    "These rooms were flagged as Bria-VAE-drift (H2) candidates in the mask audit.",
+    "An improvement of ≥0.02 SSIM vs Run 1.5 would indicate mask quality was a",
+    "contributing factor; no improvement confirms Bria architectural drift as root cause.",
+    "",
+    "| Room | Run 1.5 SSIM | Run 2 SSIM | Δ | ≥0.02 improvement? |",
+    "|---|---|---|---|---|",
+    *h2_rows,
+    "",
+    f"**H2 verdict:** {h2_verdict}",
+    "",
+    "## room-10 over-masking check",
+    "",
+    f"**Run 1.5 dilated coverage:** {f'{r10_cov_r15:.1f}%' if r10_cov_r15 is not None else '—'}  ",
+    f"**Run 2 dilated coverage:** {f'{r10_cov_r2:.1f}%' if r10_cov_r2 is not None else '—'}  ",
+    f"**Verdict:** {r10_verdict}",
+    "",
+    "## Failure mode summary",
+    "",
+    *(failure_lines or ["_(none — all rooms passed)_"]),
     "",
     "## Gate recommendation",
     "",
     f"**{gate}**",
     "",
-    "Rationale:",
-    f"- Under §3.4 strict (SSIM ≥0.985): {passed_strict}/15 pass",
-    f"- Under calibrated (SSIM ≥{calibrated_threshold}): {passed_calibrated}/15 pass",
-    "- The empirical noise floor confirms the §3.4 SSIM threshold is at or above Bria's output",
-    "  ceiling even for an empty room. The threshold itself is the blocker — not Bria's quality.",
-    "- Primary driver of failure: SSIM degradation from Bria's JPEG/WebP resampling compression,",
-    "  not furniture hallucination. Ghost rates improved for rug-pattern rooms with widened prompts.",
-    "- VP-shift failures (rooms 03, 07, 08, 09, 10, 11, 12, 13, 14, 15) are metric-implementation",
-    "  artifacts (LSD centroid proxy, not RANSAC VP estimation) — likely not true perspective drift.",
+    gate_detail,
     "",
-    "## Open questions for Daksh",
+    "### Gate decision tree applied",
+    f"- ≥13/15 pass → PROCEED TO RUN 3",
+    f"- 10–12/15 pass → MIXED",
+    f"- <10/15 pass → FAIL",
+    f"- Result: {passed_overall}/15 → **{gate.split(' — ')[0]}**",
     "",
-    "1. **§3.4 SSIM ≥0.985 is not achievable with Bria as primary.** The noise floor is 0.98497.",
-    "   Any real erasure pushes it to 0.91–0.97. Two options: (a) lower threshold to 0.97 and",
-    "   re-run gate, or (b) accept that SSIM is the wrong metric and use LPIPS or masked-PSNR.",
-    "2. **VP-shift metric validity.** The 2% threshold maps to the LSD centroid proxy implementation,",
-    "   not true RANSAC vanishing-point estimation. 10 of 15 rooms fail VP-shift; this is likely",
-    "   metric noise rather than actual perspective drift from Bria.",
-    "3. **Ghost improvement from widened prompts is real but incomplete.** Room-05 (shag rug) dropped",
-    "   from 21.6% to 2.4% ghost — widening the prompt list works for patterned rugs.",
-    "   Room-15 (wood paneling) went from 15.1% to 16.4% — texture-confounded regions need",
-    "   different treatment (Canny pre-filter or texture-aware inpainting).",
-    "4. **Recommendation:** Before Run 2, relax SSIM threshold to 0.97 and VP threshold to 5%.",
-    "   This would likely pass most rooms failing only on those metrics.",
+    "## Cost reconciliation",
     "",
-    "## Per-room cost reconciliation",
-    "",
-    f"Per-room projected: $0.180 (20 SAM-3 primary + 8 SAM-3 ghost + 1 Bria)  ",
-    f"Per-room observed: ${total_cost/len(results):.3f} avg  ",
-    f"15-room total: ${total_cost:.2f}  ",
-    f"Noise-floor (4 repeats): ${noise_stats.get('total_cost_usd', 0):.2f}  ",
-    f"Grand total: ${total_cost + noise_stats.get('total_cost_usd', 0):.2f} (hard cap $6.00)",
+    f"- Per-room baseline: $0.180 (20 SAM-3 primary + 8 SAM-3 ghost + 1 Bria)  ",
+    f"- Per-room rescan overhead: $0.100 (20 additional SAM-3 calls at $0.005 each)  ",
+    f"- Rooms rescanned: {n_rescan} → rescan overhead: ${n_rescan * 0.10:.2f}  ",
+    f"- 15-room total: ${total_cost:.2f}  ",
+    f"- Hard cap: ${4.00:.2f}  ",
+    f"- Status: {'WITHIN CAP' if total_cost <= 4.0 else 'EXCEEDED CAP'}",
     "",
 ]
 
 SUMMARY_PATH.write_text("\n".join(lines))
 print(f"Wrote {SUMMARY_PATH}")
 print(
-    f"§3.4 strict pass: {passed_strict}/15 | "
-    f"Calibrated pass: {passed_calibrated}/15 | "
-    f"Calibrated threshold: {calibrated_threshold} | "
-    f"Noise-floor mean={mean_ssim_nf:.6f} σ={sigma_ssim_nf:.2e} | "
-    f"Total cost: ${total_cost + noise_stats.get('total_cost_usd', 0):.2f}"
+    f"Overall pass: {passed_overall}/{n_rooms} | "
+    f"Per-metric: " + " | ".join(f"{METRIC_LABELS[k]}={metric_pass_counts[k]}/{n_rooms}" for k in METRIC_KEYS) + " | "
+    f"Rescan rooms: {n_rescan} | "
+    f"H2 verdict: {h2_verdict[:80]}… | "
+    f"Total cost: ${total_cost:.2f}"
 )

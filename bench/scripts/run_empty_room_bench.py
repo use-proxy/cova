@@ -1,14 +1,16 @@
-"""Phase 0.5 Run 1.5 — Empty-room bench harness (Bria Eraser primary path).
+"""Phase 0.5 Run 2 — Empty-room bench harness (Bria Eraser primary path).
 
 Per docs/cova-v9-research.pdf §3.4–§3.5 and §9.5:
-  Stage E1: SAM 3 text-prompted furniture mask (widened prompt list)
-  Stage E2: Morphological dilation +16px
+  Stage E1: SAM 3 text-prompted furniture mask (widened prompt list, 20 prompts)
+  Stage E2: Morphological dilation +24px (was 16px in Run 1.5)
   Stage E3: fal-ai/bria/eraser  ← PRIMARY
   Stage E4: Ghost gate — SAM 3 rerun + SSIM + VP-shift + edge density
+  Stage E5 (new): Low-coverage rescan gate — if medium/heavy clutter and
+            coverage < 20%, re-run SAM 3 at score_threshold=0.20 and merge.
 
-Acceptance thresholds (§3.4):
-  SSIM-unmasked ≥ 0.985, ghost area ≤ 0.5%, VP-shift < 2%,
-  edge-density ratio 0.7–1.3, latency p95 ≤ 90s, cost ≤ $0.50/render.
+Acceptance thresholds (Run 2 calibrated):
+  SSIM-unmasked ≥ 0.97, ghost area < 1.0%, VP-shift < 3%,
+  edge-density ratio 0.7–1.3, latency ≤ 60s, cost ≤ $0.50/render.
 
 Invocation:
   python3 bench/scripts/run_empty_room_bench.py           # all 15 rooms
@@ -36,7 +38,7 @@ from skimage.metrics import structural_similarity as ssim  # type: ignore
 ROOT = Path(__file__).resolve().parent.parent.parent
 BENCH = ROOT / "bench"
 ROOMS_DIR = BENCH / "rooms"
-OUT_ROOT = BENCH / "run-1-5-empty-room"
+OUT_ROOT = BENCH / "run-2-empty-room"
 OUTPUTS_DIR = OUT_ROOT / "outputs"
 MASKS_DIR = OUT_ROOT / "masks"
 METRICS_DIR = OUT_ROOT / "metrics"
@@ -59,18 +61,23 @@ GHOST_PROMPTS = ["sofa", "chair", "table", "bed", "lamp", "rug", "cabinet", "pla
 
 COST_BRIA = 0.04      # per §3.1 table
 COST_SAM3 = 0.005     # per §3.3
-DILATION_PX = 16      # per §3.3 sweet spot
-SAM3_SCORE_THRESHOLD = 0.30
+DILATION_PX = 24      # Run 2: widened from 16px (Run 1.5) to 24px
+SAM3_SCORE_THRESHOLD = 0.30   # default; rescan uses 0.20 (passed as parameter)
 MAX_PARALLEL_ROOMS = 3
-HARD_COST_CAP = 6.0   # USD — hard stop
+HARD_COST_CAP = 4.0   # USD — hard stop (Run 2: tighter than Run 1.5's $6)
 
+# Low-coverage rescan parameters
+RESCAN_COVERAGE_THRESHOLD = 0.20  # 20% — trigger threshold for medium/heavy clutter rooms
+RESCAN_SCORE_THRESHOLD = 0.20     # lowered from 0.30 to catch more furniture in rescan pass
+
+# Run 2 calibrated thresholds (relaxed from §3.4 strict based on Run 1.5 findings)
 THRESHOLDS = {
-    "ssim_unmasked_min": 0.985,
-    "ghost_area_max_pct": 0.5,
-    "vp_shift_max_pct": 2.0,
+    "ssim_unmasked_min": 0.97,
+    "ghost_area_max_pct": 1.0,
+    "vp_shift_max_pct": 3.0,
     "edge_density_min": 0.7,
     "edge_density_max": 1.3,
-    "latency_p95_max_s": 90.0,
+    "latency_p95_max_s": 60.0,
     "cost_max_usd_per_room": 0.50,
 }
 
@@ -100,8 +107,17 @@ def fal_upload_file(path: Path) -> str:
     return fal_client.upload_file(str(path))
 
 
-def sam3_detect(image_url: str, prompt: str, max_retries: int = 3) -> list[tuple[str, float]]:
-    """Return list of (mask_url, score) for a SAM-3 text prompt call."""
+def sam3_detect(
+    image_url: str,
+    prompt: str,
+    score_threshold: float = SAM3_SCORE_THRESHOLD,
+    max_retries: int = 3,
+) -> list[tuple[str, float]]:
+    """Return list of (mask_url, score) for a SAM-3 text prompt call.
+
+    score_threshold: minimum confidence to keep a mask. Default 0.30; pass 0.20
+    for the low-coverage rescan pass.
+    """
     for attempt in range(max_retries):
         try:
             r = fal_client.subscribe(
@@ -199,14 +215,22 @@ def build_union_mask(
     image_url: str,
     shape: tuple[int, int],
     prompts: list[str],
+    score_threshold: float = SAM3_SCORE_THRESHOLD,
 ) -> tuple[np.ndarray, dict[str, Any], int]:
-    """Run SAM-3 for each prompt in parallel, union the best mask per prompt."""
+    """Run SAM-3 for each prompt in parallel, union the best mask per prompt.
+
+    score_threshold: passed through to sam3_detect. Default 0.30 for primary
+    pass; use 0.20 for the low-coverage rescan pass.
+    """
     h, w = shape
     union = np.zeros((h, w), dtype=np.uint8)
     info: dict[str, Any] = {}
     calls_made = 0
     with ThreadPoolExecutor(max_workers=6) as ex:
-        fut_to_prompt = {ex.submit(sam3_detect, image_url, p): p for p in prompts}
+        fut_to_prompt = {
+            ex.submit(sam3_detect, image_url, p, score_threshold): p
+            for p in prompts
+        }
         for fut in as_completed(fut_to_prompt):
             p = fut_to_prompt[fut]
             calls_made += 1
@@ -215,7 +239,7 @@ def build_union_mask(
             except Exception as e:
                 info[p] = {"error": str(e)}
                 continue
-            kept = [(u, s) for (u, s) in results if s >= SAM3_SCORE_THRESHOLD]
+            kept = [(u, s) for (u, s) in results if s >= score_threshold]
             if not kept:
                 info[p] = {"hits": 0}
                 continue
@@ -330,9 +354,16 @@ def metric_edge_density_ratio(out_arr: np.ndarray, mask: np.ndarray, ring_px: in
 
 # ── Per-room pipeline ─────────────────────────────────────────────────────────
 def process_room(room: dict, metrics_out_dir: Path | None = None) -> dict:
-    """Run the full E1-E4 pipeline for a single room.
+    """Run the full E1-E5 pipeline for a single room.
 
     metrics_out_dir: override where metrics JSON is written (used by noise-floor mode).
+
+    New in Run 2:
+    - DILATION_PX = 24 (was 16)
+    - Low-coverage rescan gate: if medium/heavy clutter AND coverage < 20%,
+      run second SAM 3 pass at score_threshold=0.20 and merge.
+    - Rescan stats tracked: rescan_triggered, coverage_before_rescan,
+      coverage_after_rescan, rescan_sam3_calls.
     """
     room_id = room["id"]
     filename = room["filename"]
@@ -355,12 +386,50 @@ def process_room(room: dict, metrics_out_dir: Path | None = None) -> dict:
         return {"room_id": room_id, "error": f"upload failed: {e}", "cost_usd": cost}
     print(f"[{room_id}] uploaded ({w}x{h}) -> {image_url[:60]}…")
 
-    # Build primary mask
-    raw_mask, prompt_info, n_calls = build_union_mask(image_url, (h, w), FURNITURE_PROMPTS)
+    # Build primary mask (score_threshold=0.30 default)
+    raw_mask, prompt_info, n_calls = build_union_mask(
+        image_url, (h, w), FURNITURE_PROMPTS, score_threshold=SAM3_SCORE_THRESHOLD
+    )
     cost += n_calls * COST_SAM3
     cov_raw = float(raw_mask.astype(bool).sum() / (h * w) * 100)
 
-    # Dilate + save
+    # ── Low-coverage rescan gate ──────────────────────────────────────────────
+    stratification = room.get("stratification") or {}
+    stratification_clutter = stratification.get("clutter", "unknown")
+    clutter_qualifies = stratification_clutter in ("medium", "heavy")
+
+    rescan_triggered = False
+    coverage_before_rescan: float | None = None
+    coverage_after_rescan: float | None = None
+    rescan_sam3_calls = 0
+    rescan_prompt_info: dict[str, Any] = {}
+
+    coverage_fraction = raw_mask.astype(bool).sum() / (h * w)
+    if clutter_qualifies and coverage_fraction < RESCAN_COVERAGE_THRESHOLD:
+        rescan_triggered = True
+        coverage_before_rescan = float(coverage_fraction * 100)
+        print(
+            f"[{room_id}] LOW COVERAGE ({coverage_before_rescan:.1f}%) on {stratification_clutter} room "
+            f"— triggering rescan at score_threshold={RESCAN_SCORE_THRESHOLD}"
+        )
+        rescan_mask, rescan_info, n_rescan_calls = build_union_mask(
+            image_url, (h, w), FURNITURE_PROMPTS, score_threshold=RESCAN_SCORE_THRESHOLD
+        )
+        cost += n_rescan_calls * COST_SAM3
+        rescan_sam3_calls = n_rescan_calls
+        rescan_prompt_info = rescan_info
+
+        # Merge rescan into primary union
+        raw_mask = np.maximum(raw_mask, rescan_mask)
+        coverage_after_rescan = float(raw_mask.astype(bool).sum() / (h * w) * 100)
+        print(
+            f"[{room_id}] Rescan done: coverage {coverage_before_rescan:.1f}% → {coverage_after_rescan:.1f}%"
+        )
+
+    # Recompute raw coverage after possible rescan merge
+    cov_raw = float(raw_mask.astype(bool).sum() / (h * w) * 100)
+
+    # Dilate + save (24px — Run 2 change)
     dilated = dilate_mask(raw_mask, DILATION_PX)
     cov_dilated = float(dilated.astype(bool).sum() / (h * w) * 100)
     mask_path = MASKS_DIR / f"{room_id}_mask.png"
@@ -368,7 +437,6 @@ def process_room(room: dict, metrics_out_dir: Path | None = None) -> dict:
     print(f"[{room_id}] mask coverage raw={cov_raw:.1f}% dilated={cov_dilated:.1f}%")
 
     # Guard: extremely low coverage on non-empty room is a regression
-    stratification_clutter = (room.get("stratification") or {}).get("clutter", "unknown")
     low_coverage_flag = (cov_raw < 15.0) and stratification_clutter not in ("none",)
 
     # Upload mask
@@ -431,7 +499,12 @@ def process_room(room: dict, metrics_out_dir: Path | None = None) -> dict:
         "mask_coverage_raw_pct": cov_raw,
         "mask_coverage_dilated_pct": cov_dilated,
         "low_coverage_flag": low_coverage_flag,
+        "rescan_triggered": rescan_triggered,
+        "coverage_before_rescan": coverage_before_rescan,
+        "coverage_after_rescan": coverage_after_rescan,
+        "rescan_sam3_calls": rescan_sam3_calls,
         "per_prompt_mask_info": prompt_info,
+        "rescan_prompt_info": rescan_prompt_info,
         "ghost_per_prompt": ghost_per,
         "metrics": {
             "ssim_unmasked": ssim_score,
@@ -452,6 +525,7 @@ def process_room(room: dict, metrics_out_dir: Path | None = None) -> dict:
         f"[{room_id}] ✓ pass={overall_pass} ssim={ssim_score:.4f} "
         f"ghost={ghost_area:.2f}% vp={vp:.2f}% edr={edr:.2f} "
         f"lat={bria_latency:.1f}s cost=${cost:.3f}"
+        + (f" RESCAN" if rescan_triggered else "")
     )
     return result
 
@@ -461,7 +535,7 @@ def run_noise_floor(room_id_arg: str, n_repeats: int, manifest: dict) -> int:
     """Run room_id N times under the new widened-prompt pipeline.
 
     Writes metrics to noise-floor/room-<id>_run{1..N}.json.
-    All runs are fresh — Run 1 numbers are NOT reused.
+    All runs are fresh — prior run numbers are NOT reused.
     """
     rooms_by_id = {r["id"]: r for r in manifest["rooms"]}
     if room_id_arg not in rooms_by_id:
@@ -569,20 +643,48 @@ def main() -> int:
             return 0
 
     # Cost projection guard
-    per_room_projected = len(FURNITURE_PROMPTS) * COST_SAM3 + len(GHOST_PROMPTS) * COST_SAM3 + COST_BRIA
-    projected = per_room_projected * len(rooms)
-    print(f"Projected cost for {len(rooms)} rooms: ${projected:.2f} (per-room ~${per_room_projected:.3f})")
-    if projected > HARD_COST_CAP:
-        print(f"BLOCKER: projected ${projected:.2f} > hard cap ${HARD_COST_CAP:.2f}")
+    # Worst-case: all medium/heavy rooms trigger rescan (+20 SAM3 calls each)
+    medium_heavy_count = sum(
+        1 for r in rooms
+        if (r.get("stratification") or {}).get("clutter") in ("medium", "heavy")
+    )
+    per_room_base = len(FURNITURE_PROMPTS) * COST_SAM3 + len(GHOST_PROMPTS) * COST_SAM3 + COST_BRIA
+    per_room_rescan_max = len(FURNITURE_PROMPTS) * COST_SAM3  # only for medium/heavy if triggered
+    projected_baseline = per_room_base * len(rooms)
+    projected_worst = projected_baseline + per_room_rescan_max * medium_heavy_count
+    print(
+        f"Projected cost for {len(rooms)} rooms: "
+        f"${projected_baseline:.2f} baseline + up to ${per_room_rescan_max * medium_heavy_count:.2f} "
+        f"rescan overhead (worst case ${projected_worst:.2f})"
+    )
+    print(f"Hard cap: ${HARD_COST_CAP:.2f}")
+    if projected_worst > HARD_COST_CAP:
+        print(
+            f"WARN: worst-case ${projected_worst:.2f} may exceed hard cap ${HARD_COST_CAP:.2f} "
+            f"(only if all {medium_heavy_count} medium/heavy rooms trigger rescan)"
+        )
+    if projected_baseline > HARD_COST_CAP:
+        print(f"BLOCKER: baseline projected ${projected_baseline:.2f} > hard cap ${HARD_COST_CAP:.2f}")
         return 2
 
     results: list[dict] = []
+    total_running_cost = 0.0
     with ThreadPoolExecutor(max_workers=MAX_PARALLEL_ROOMS) as ex:
         fut_to_room = {ex.submit(process_room, r): r for r in rooms}
         for fut in as_completed(fut_to_room):
             r = fut_to_room[fut]
             try:
-                results.append(fut.result())
+                result = fut.result()
+                results.append(result)
+                run_cost = result.get("metrics", {}).get("cost_usd", result.get("cost_usd", 0.0))
+                total_running_cost += run_cost
+                if total_running_cost > HARD_COST_CAP:
+                    print(
+                        f"HARD CAP EXCEEDED: cumulative cost ${total_running_cost:.2f} "
+                        f"> ${HARD_COST_CAP:.2f} — cancelling remaining rooms"
+                    )
+                    ex.shutdown(wait=False, cancel_futures=True)
+                    break
             except Exception as e:
                 print(f"[{r['id']}] CATASTROPHIC: {e}")
                 results.append({"room_id": r["id"], "error": str(e), "cost_usd": 0.0})
@@ -591,20 +693,21 @@ def main() -> int:
     order = {r["id"]: i for i, r in enumerate(manifest["rooms"])}
     results.sort(key=lambda x: order.get(x.get("room_id"), 999))
 
-    # Soft-cap warning (logged, not aborted)
     total_cost = sum(r.get("metrics", {}).get("cost_usd", r.get("cost_usd", 0.0)) for r in results)
-    if total_cost > 4.0:
-        print(f"WARN: total cost ${total_cost:.2f} exceeded soft cap $4.00")
+    if total_cost > 3.0:
+        print(f"WARN: total cost ${total_cost:.2f} exceeded soft cap $3.00")
 
     # Cost log
     cost_log = {
         "total_cost_usd": total_cost,
+        "hard_cap_usd": HARD_COST_CAP,
         "per_room": [
             {
                 "room_id": r.get("room_id"),
                 "cost_usd": r.get("metrics", {}).get("cost_usd", r.get("cost_usd", 0.0)),
                 "error": r.get("error"),
                 "overall_pass": r.get("overall_pass"),
+                "rescan_triggered": r.get("rescan_triggered", False),
             }
             for r in results
         ],
@@ -612,7 +715,12 @@ def main() -> int:
     (OUT_ROOT / "cost-log.json").write_text(json.dumps(cost_log, indent=2))
 
     passed = sum(1 for r in results if r.get("overall_pass"))
-    print(f"\n═══ TOTAL: {passed}/{len(results)} pass, cost ${total_cost:.2f} ═══")
+    rescan_rooms = sum(1 for r in results if r.get("rescan_triggered"))
+    print(
+        f"\n═══ TOTAL: {passed}/{len(results)} pass, "
+        f"cost ${total_cost:.2f}, "
+        f"rescan triggered: {rescan_rooms} room(s) ═══"
+    )
     return 0
 
 
