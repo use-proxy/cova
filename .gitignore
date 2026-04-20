@@ -80,7 +80,8 @@ experiments/
 
 # Runtime artifacts
 tests/e2e/renders/
-tests/e2e/v*_test_urls.txt
+tests/e2e/v*_urls.txt
+tests/e2e/iterations/
 tests/e2e/budget.json
 tests/e2e/progress.log
 
