@@ -1,0 +1,27 @@
+{
+  "endpoint": "fal-ai/flux-pro/v1/fill",
+  "flux_cost_per_call_usd": 0.05,
+  "soft_cap_usd": 0.4,
+  "hard_cap_usd": 0.5,
+  "total_cost_usd": 0.27,
+  "per_room": [
+    {
+      "room_id": "room-02",
+      "cost_usd": 0.09,
+      "flux_ssim": 0.93625384218832,
+      "error": null
+    },
+    {
+      "room_id": "room-11",
+      "cost_usd": 0.09,
+      "flux_ssim": 0.9611268406842737,
+      "error": null
+    },
+    {
+      "room_id": "room-14",
+      "cost_usd": 0.09,
+      "flux_ssim": 0.9103675596636615,
+      "error": null
+    }
+  ]
+}

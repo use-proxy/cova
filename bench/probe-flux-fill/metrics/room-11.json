@@ -1,0 +1,56 @@
+{
+  "room_id": "room-11",
+  "run3_ssim": 0.9234,
+  "run3_patch_ssim": 0.9707705385985382,
+  "run3_ghost_global": 21.04,
+  "flux_ssim": 0.9611268406842737,
+  "flux_patch_ssim": 0.9726046333138656,
+  "patch_xy_used": [
+    600,
+    0
+  ],
+  "patch_mask_overlap_pct": 0.0,
+  "patch_texture_std": 30.61425872627614,
+  "flux_ghost_global": 19.424096936442616,
+  "flux_ghost_inside": 13.840649291266576,
+  "ghost_per_prompt": {
+    "sofa": {
+      "biggest_mask_pct": 0.0,
+      "biggest_inside_mask_pct": 0.0
+    },
+    "table": {
+      "biggest_mask_pct": 0.7096479195244627,
+      "biggest_inside_mask_pct": 0.7096479195244627
+    },
+    "chair": {
+      "biggest_mask_pct": 5.3925468678555095,
+      "biggest_inside_mask_pct": 1.095793324188386
+    },
+    "lamp": {
+      "biggest_mask_pct": 0.5373799725651577,
+      "biggest_inside_mask_pct": 0.2557155921353452
+    },
+    "bed": {
+      "biggest_mask_pct": 10.534407864654778,
+      "biggest_inside_mask_pct": 9.785322359396433
+    },
+    "rug": {
+      "biggest_mask_pct": 0.0,
+      "biggest_inside_mask_pct": 0.0
+    },
+    "cabinet": {
+      "biggest_mask_pct": 0.0,
+      "biggest_inside_mask_pct": 0.0
+    },
+    "plant": {
+      "biggest_mask_pct": 2.2501143118427067,
+      "biggest_inside_mask_pct": 2.249885688157293
+    }
+  },
+  "vp_shift_pct": 6.138542175292969,
+  "inpainter_latency_s": 12.68912410736084,
+  "total_latency_s": 21.857282876968384,
+  "cost_usd": 0.09,
+  "endpoint": "fal-ai/flux-pro/v1/fill",
+  "classification": "Bria VAE drift + high ghost"
+}
