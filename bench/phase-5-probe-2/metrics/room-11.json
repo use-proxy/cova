@@ -1,0 +1,24 @@
+{
+  "room_id": "room-11",
+  "archetype": "Maximalist Eclectic",
+  "run3_path": "bench/run-3-empty-room/outputs/room-11.webp",
+  "redesign_path": "bench/phase-5-probe-2/redesign/room-11.webp",
+  "empty_room_ssim": 0.9234258643745734,
+  "patch_ssim_run3_vs_redesign": 0.4530002302437255,
+  "patch_position": {
+    "x": 575,
+    "y": 67
+  },
+  "clean_patch_available": true,
+  "mllm_judge": {
+    "style_match": 5,
+    "architectural_fidelity": 5,
+    "furniture_plausibility": 5,
+    "lighting_coherence": 4,
+    "composition": 5,
+    "rationale": "Lighting shows minor inconsistency with shadow directionality on furniture versus wall sconces. Some highlights appear slightly flattened, though natural light distribution is generally convincing throughout the layered space."
+  },
+  "judge_model": "claude-sonnet-4-5",
+  "latency_s": 44.39197111129761,
+  "cost_usd": 0.07
+}

@@ -1,0 +1,24 @@
+{
+  "room_id": "room-02",
+  "archetype": "Industrial Loft",
+  "run3_path": "bench/run-3-empty-room/outputs/room-02.webp",
+  "redesign_path": "bench/phase-5-probe-2/redesign/room-02.webp",
+  "empty_room_ssim": 0.7144836501663718,
+  "patch_ssim_run3_vs_redesign": 0.4355143814045225,
+  "patch_position": {
+    "x": 0,
+    "y": 0
+  },
+  "clean_patch_available": true,
+  "mllm_judge": {
+    "style_match": 5,
+    "architectural_fidelity": 5,
+    "furniture_plausibility": 5,
+    "lighting_coherence": 4,
+    "composition": 5,
+    "rationale": "Edison bulbs appear illuminated but natural light from large windows dominates without corresponding shadow softening. Minor inconsistency between artificial and natural light balance, though professionally executed overall."
+  },
+  "judge_model": "claude-sonnet-4-5",
+  "latency_s": 32.00344395637512,
+  "cost_usd": 0.07
+}

@@ -1,0 +1,24 @@
+{
+  "room_id": "room-15",
+  "archetype": "Dark Moody Glam",
+  "run3_path": "bench/run-3-empty-room/outputs/room-15.webp",
+  "redesign_path": "bench/phase-5-probe-2/redesign/room-15.webp",
+  "empty_room_ssim": 0.9348951654719391,
+  "patch_ssim_run3_vs_redesign": 0.3630953471043076,
+  "patch_position": {
+    "x": 880,
+    "y": 0
+  },
+  "clean_patch_available": true,
+  "mllm_judge": {
+    "style_match": 5,
+    "architectural_fidelity": 5,
+    "furniture_plausibility": 5,
+    "lighting_coherence": 4,
+    "composition": 5,
+    "rationale": "Floor lamp creates strong localized glow on wall while chandelier provides ambient light, creating slightly competing focal points. Minor inconsistency in shadow directionality, though overall lighting remains plausible and atmospheric."
+  },
+  "judge_model": "claude-sonnet-4-5",
+  "latency_s": 34.94356894493103,
+  "cost_usd": 0.07
+}

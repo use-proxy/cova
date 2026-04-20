@@ -1,0 +1,24 @@
+{
+  "room_id": "room-05",
+  "archetype": "Heritage Traditional",
+  "run3_path": "bench/run-3-empty-room/outputs/room-05.webp",
+  "redesign_path": "bench/phase-5-probe-2/redesign/room-05.webp",
+  "empty_room_ssim": 0.9403322327478436,
+  "patch_ssim_run3_vs_redesign": 0.11949813256305566,
+  "patch_position": {
+    "x": 0,
+    "y": 0
+  },
+  "clean_patch_available": true,
+  "mllm_judge": {
+    "style_match": 5,
+    "architectural_fidelity": 5,
+    "furniture_plausibility": 5,
+    "lighting_coherence": 4,
+    "composition": 5,
+    "rationale": "Lamp illumination appears slightly bright relative to ambient lighting distribution. Minor inconsistency in shadow depth between furniture pieces suggests composite lighting rather than purely natural sources, though overall coherence remains strong."
+  },
+  "judge_model": "claude-sonnet-4-5",
+  "latency_s": 34.58410716056824,
+  "cost_usd": 0.07
+}
