@@ -1,0 +1,22 @@
+name: Python smoke tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Install pytest deps
+        run: |
+          pip install --upgrade pip
+          pip install pytest pytest-xdist pytest-asyncio pillow numpy opencv-python-headless scikit-image
+      - name: Run smoke tests (skip Modal-bound)
+        run: pytest tests/python -m "smoke and not modal" --tb=short
