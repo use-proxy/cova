@@ -1,10 +1,10 @@
 # Director Audit (Phase 0 Track 2)
 
-**Audit date:** 2026-04-19
+**Audit date:** 2026-04-19 (B-3 patch: 2026-04-20)
 **Auditor:** Claude Code (autonomous, Opus 4.7)
 **Commit at audit start:** `a52cbdd`
-**Status:** **PARTIAL** — no showstopper blockers, but 3 design issues that gate Phase 3
-**Phase 0 closure status:** Not closed. See "Open BLOCKERs" and "Phase 3 follow-ups".
+**Status:** **PASS** — B-3 active-leak gap patched; B-1, B-2 deferred to Phase 3 with trackable follow-ups.
+**Phase 0 closure status:** **CLOSED** after B-3 resolution commit. See § "B-3 resolution (Phase 0 closure patch)".
 
 ---
 
@@ -643,15 +643,59 @@ Numbered for traceability. Each item is actionable by a future Claude Code sessi
 
 ---
 
-## Open BLOCKERs
+## Open BLOCKERs (resolved / deferred — Phase 0 closed)
 
-None that block Phase 0 closure outright. The Director's hot path is structurally sound; the failures surfaced are all v9-blending prerequisites, not v8-blocker defects.
+- **B-1 (deferred):** Python `generation.py` parity → deferred to Phase 3 Session 1 as [F1.1 in `docs/phase-0/follow-ups-deferred.md`](../phase-0/follow-ups-deferred.md). Phase 5 bench will measure whether the parity gap caps quality.
+- **B-2 (deferred):** `softmaxStyleMatch` replacement → deferred to Phase 3 Session 1 as F3.1. Direction accepted: Gaussian RBF kernel. Gates v9 blending implementation.
+- **B-3 (resolved):** Active forbidden-name leak on Director path → **patched in this commit**. See next section.
 
-Three items warrant explicit Daksh visibility before Phase 3 starts:
+---
 
-- **B-1 (Design decision):** Python `modal_pipeline/generation.py:generate_design_brief` has diverged content from TS `STYLE_DNA_BLOCKS`. Pick F1.1 option a/b/c.
-- **B-2 (Design decision):** `softmaxStyleMatch` is unfit for v9 blending. Adopt F3.1's RBF kernel, or train a learned mapping. Either is fine; Daksh's call.
-- **B-3 (Product decision):** Forbidden-name enforcement has 0.2/5 layers wired to Director. Phase 3 must at minimum implement F6.3 before shipping v9, ideally F6.1–F6.5 before Phase 0 closes. Alternatively, accept the known risk with a documented waiver.
+## B-3 resolution (Phase 0 closure patch)
+
+Executed per Daksh directive 2026-04-20. The four minimum-viable patch items are committed; the remaining two codebase-hygiene layers + log redactor are deferred to Phase 3 as `F6.1`, `F6.2`, `F6.5`, `F6.6` in `follow-ups-deferred.md`.
+
+### Patched layers
+
+| Layer (per research §7.4)                                                | Status (before B-3) | Status (after B-3)                                                                                                      |
+| ------------------------------------------------------------------------ | ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| **3. Runtime prompt sanitizer wrapping active compiler**                 | Wired to legacy `buildFluxPrompt` only | **WIRED.** New `sanitizeForbiddenNames()` in `apps/web/lib/ai/forbidden-names.ts` applied to Haiku 4.5 output in `compilePrompt()` at `prompt-compiler.ts:274-278`. Qualifier-aware (preserves "Warm Japandi", "Coastal Bright"), idempotent. |
+| **4. Zod `.refine` on DesignBrief text fields**                          | Missing             | **WIRED.** `z.object({ design_rationale, smart_suggestions }).refine(!containsForbiddenStyleName)` at `design-director.ts:1079-1105` runs immediately after tool_use extraction, before the brief is returned. Throws with explicit field + hit reporting on violation. |
+| **STYLE_DNA_BLOCKS canonical-language scrub**                            | `cvboh` had bare "Bohemian"; `cvmcm` had "Mid-century modern"; other entries used qualified forms which are allowed | **SCRUBBED.** `cvboh` → "Maximalist eclectic layered interior…"; `cvmcm` → "Retro mid-century interior…". Both are now canonical. CI test asserts no entry contains a bare forbidden token. |
+
+### New shared module
+
+[`apps/web/lib/ai/forbidden-names.ts`](../../apps/web/lib/ai/forbidden-names.ts) — single source of truth for forbidden-name detection + sanitization. Exports:
+
+- `FORBIDDEN_TOKENS` — canonical spec with regex, public name, allowed qualified forms, replacement string.
+- `findForbiddenStyleNames(text): string[]` — returns reported forbidden-name hits (qualified forms suppressed).
+- `containsForbiddenStyleName(text): boolean` — cheap boolean check, used in Zod refine.
+- `sanitizeForbiddenNames(text): string` — idempotent rewrite of bare tokens to descriptive phrases, preserves qualified forms via placeholder-swap.
+
+Qualifier handling: guards "Warm Japandi", "Coastal Bright", "Retro Mid-Century" (+ "Retro Mid-Century Modern") via per-token `qualifiedForms: RegExp[]` specs. Guards are applied by replacing qualified matches with unique placeholders, running bare-token detection/replacement on the guarded string, then restoring placeholders.
+
+### Unit tests
+
+[`apps/web/tests/ai/forbidden-names.test.ts`](../../apps/web/tests/ai/forbidden-names.test.ts) — **21 tests, all passing.** Coverage:
+
+- `findForbiddenStyleNames`: bare tokens flagged, qualified forms allowed, case-insensitive, clean text passes, multi-token detection.
+- `containsForbiddenStyleName`: bare/qualified/clean round-trips.
+- `sanitizeForbiddenNames`: bare-token rewriting, qualified-form preservation, mixed text, idempotency, realistic compiler-output simulation.
+- Zod refine reconstruction: clean input accepted, qualified forms accepted, each of 6 canonical forbidden tokens rejected standalone, `design_rationale` path reported correctly, `smart_suggestions` path reported correctly.
+- `STYLE_DNA_BLOCKS`: no entry contains a bare forbidden token; `cvboh` specifically asserts absence of "Bohemian".
+
+### Verification gate
+
+- `npx vitest run` from `apps/web/`: **14 failed | 731 passed | 28 skipped** (773 total). Baseline was 14 failed | 710 passed; +21 = the new tests in `forbidden-names.test.ts`. **Baseline preserved.** All 14 pre-existing failures are in the known-debt set (quiz-flow, navigation-flow, env.test) listed in `docs/phase-0/baseline-state.md`.
+- `npx tsc --noEmit`: **0 errors** on the edited files (`design-director.ts`, `prompt-compiler.ts`, `forbidden-names.ts`, `forbidden-names.test.ts`). Baseline preserved.
+- No Director production behavior changed for clean inputs. Forbidden-input behavior changed from "silent leak" to "explicit throw" in Call 1 and "sanitized output" in Call 2.
+
+### What's deferred (and why it's safe to defer)
+
+- **F6.1 ESLint rule** — developer-time guard, prevents NEW forbidden-name introductions. Not a leak fix; existing codebase-hygiene audit (`docs/phase-0/forbidden-name-audit.md`) caught the 7 user-facing hits already; Phase 3 UI migration closes them.
+- **F6.2 Husky hook** — same as F6.1, earlier in dev loop. Developer-time only.
+- **F6.5 Log redactor** — telemetry hardening. If layer 3 sanitizer succeeds, telemetry never sees a bare token in Director output. The sanitizer is idempotent and well-tested; log leak requires simultaneous sanitizer bypass AND telemetry emission, which requires a Phase 3 regression test to miss.
+- **F6.6 style-preview route audit** — With `STYLE_DNA_BLOCKS` scrubbed to canonical language, even if the route leaks DNA block text to the UI it is now safe. Route audit becomes a confirmation step, not a fix.
 
 ---
 

@@ -13,6 +13,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { DesignBrief } from "@/lib/ai/design-director";
 import { STYLE_DNA_BLOCKS } from "@/lib/ai/design-director";
+import { sanitizeForbiddenNames } from "@/lib/ai/forbidden-names";
 
 const anthropic = new Anthropic();
 
@@ -267,6 +268,12 @@ export async function compilePrompt(
       throw new Error(msg);
     }
   }
+
+  // Layer 3 (research §7.4): runtime forbidden-name sanitizer on Haiku output.
+  // Idempotent; rewrites standalone forbidden tokens to descriptive phrases.
+  // Applied AFTER validation so the trigger-word check (which expects
+  // cv-prefixed codes, not style names) is unaffected.
+  prompt = sanitizeForbiddenNames(prompt);
 
   const wordCount = prompt.split(/\s+/).filter(Boolean).length;
   console.log(`[prompt-compiler] Compiled prompt: ${wordCount} words`);

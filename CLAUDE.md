@@ -185,6 +185,26 @@ Pre-milestone conversation required before any milestone begins. Nothing gets bu
 | M6        | Full Catalog Completion — all 12 retailers, ~18,000 clean products, IVFFlat rebuilt           | ✅ DONE            |
 | M7        | AI Redesign Pipeline — full pipeline end-to-end, Marble vs SHARP decision                     | ✅ DONE            |
 | **M8**    | **Commerce — cube face detection, CLIP matching, hotspots, product panel, affiliate URLs**    | **🔄 IN PROGRESS** |
+
+### v9 Render Pipeline — Phase Status (overlay on M0-M14)
+
+v9 is the render-pipeline-only rebuild described in `docs/cova-v9-research.pdf`.
+Phases run in parallel to M8 commerce work; their artifacts live in `docs/audit/`,
+`docs/phase-0/`, and `tests/director-audit/`.
+
+| v9 Phase | Description                                                        | Status             |
+| -------- | ------------------------------------------------------------------ | ------------------ |
+| 0        | Audit — LoRAs, Director, Modal, Supabase RLS, tests, pgvector      | ✅ **COMPLETE** (2026-04-20) |
+| 0.5      | 20-room bench build + smoke-test harness                           | Ready to start     |
+| 3        | Director rewrite (6D blending, F1.1 parity, F3.1 RBF, F4.1 schema, F6.1–F6.5 hygiene) | Blocked on 0.5    |
+| 4        | Custom LoRA training (9 remaining archetypes)                      | Blocked on 0       |
+| 5        | Redesign service (NB-Pro primary, FLUX.2 Pro Edit fallback)        | Blocked on 3, 4    |
+| 7+       | Later phases per research doc                                      | —                  |
+
+Phase 0 deliverables landed: `docs/audit/loras.md`, `docs/audit/director.md`,
+`docs/audit/modal.md`, `docs/audit/supabase.md`, `docs/audit/tests.md`,
+`docs/audit/pgvector.md`. Director audit B-3 active-leak patch committed
+2026-04-20. Deferred follow-ups catalogued in `docs/phase-0/follow-ups-deferred.md`.
 | M9        | Chatbot + Analytics + UI Pass 3 — chatbot, PostHog, Sentry, remaining screens                 |                    |
 | M10       | Polish + User Testing — error states, 5 real user tests                                       |                    |
 | M11       | Deployment — Vercel production, covainterior.com                                              |                    |

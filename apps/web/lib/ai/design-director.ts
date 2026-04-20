@@ -9,9 +9,14 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
+import { z } from "zod";
 import type { StyleFingerprint } from "@/types/fingerprint";
 import type { RenderContext } from "@/lib/types/area2";
 import { mergeToV2 } from "@/lib/ai/style-match";
+import {
+  containsForbiddenStyleName,
+  findForbiddenStyleNames,
+} from "@/lib/ai/forbidden-names";
 
 const anthropic = new Anthropic();
 
@@ -142,8 +147,8 @@ export const STYLE_DNA_BLOCKS: Record<string, string> = {
   cvlux: "Refined luxury interior. Honed marble, aged brass, hand-stitched cashmere, directional pendant light.",
   cvcst: "Coastal bright interior. Whitewashed oak, bleached linen, sea glass tones, soft diffused natural light.",
   cvscn: "Nordic minimal interior. Pale ash, natural wool, muted stone, even cool daylight through tall windows.",
-  cvmcm: "Mid-century modern interior. Walnut veneer, teak, hairpin legs, warm amber accent light.",
-  cvboh: "Bohemian layered interior. Woven jute, embroidered textiles, terracotta, low-light lantern warmth.",
+  cvmcm: "Retro mid-century interior. Walnut veneer, teak, hairpin legs, warm amber accent light.",
+  cvboh: "Maximalist eclectic interior. Woven jute, embroidered textiles, terracotta, low-light lantern warmth.",
   cvdco: "Art deco interior. Lacquered surfaces, geometric inlay, velvet jewel tones, dramatic directional light.",
   cvbio: "Biophilic interior. Living walls, natural stone, reclaimed wood beams, abundant plants, filtered green light through canopy.",
   cvfrm: "Farmhouse interior. Reclaimed barn wood, shiplap walls, linen slipcovers, warm Edison pendant light.",
@@ -1060,6 +1065,36 @@ export async function generateDesignBrief(
   }
 
   const brief = toolBlock.input as DesignBrief;
+
+  // Layer 4 (research §7.4): Zod .refine forbidden-name check on Sonnet
+  // free-text fields. These fields ultimately reach rooms.design_brief (JSONB)
+  // and may surface to user on the design-reveal screen. Reject before write.
+  const forbiddenCheck = z.object({
+    design_rationale: z
+      .string()
+      .refine((s) => !containsForbiddenStyleName(s), {
+        message: "design_rationale contains forbidden style name",
+      }),
+    smart_suggestions: z.array(z.string()).refine(
+      (arr) => arr.every((s) => !containsForbiddenStyleName(s)),
+      { message: "smart_suggestions contains forbidden style name" },
+    ),
+  });
+  const zResult = forbiddenCheck.safeParse({
+    design_rationale: brief.design_rationale ?? "",
+    smart_suggestions: brief.smart_suggestions ?? [],
+  });
+  if (!zResult.success) {
+    const rationaleHits = findForbiddenStyleNames(brief.design_rationale ?? "");
+    const suggestionHits = (brief.smart_suggestions ?? [])
+      .flatMap((s) => findForbiddenStyleNames(s))
+      .filter((n, i, arr) => arr.indexOf(n) === i);
+    const hits = [...rationaleHits, ...suggestionHits];
+    throw new Error(
+      `[design-director] Forbidden style name in Sonnet output: ${hits.join(", ")}. ` +
+        `Fields: ${zResult.error.issues.map((i) => i.path.join(".")).join(", ")}`,
+    );
+  }
 
   // Override wall/floor change with actual user input (Claude may guess wrong)
   brief.wall_change_requested = input.context?.wall_change_requested ?? false;
