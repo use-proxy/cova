@@ -61,10 +61,21 @@ export async function GET(request: NextRequest) {
 
       const admin = createAdminSupabaseClient();
 
+      const { data: ownedRoom } = await admin
+        .from("rooms")
+        .select("id")
+        .eq("id", roomId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!ownedRoom) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+
       await admin
         .from("rooms")
         .update({ render_url: finalUrl })
-        .eq("id", roomId);
+        .eq("id", roomId)
+        .eq("user_id", user.id);
 
       await admin.from("render_sessions").insert({
         room_id: roomId,

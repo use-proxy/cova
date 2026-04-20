@@ -92,13 +92,23 @@ export async function POST(request: Request) {
 
       finalRoomId = room.id;
     } else {
+      const { data: owned } = await admin
+        .from("rooms")
+        .select("id")
+        .eq("id", finalRoomId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!owned) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
       await admin
         .from("rooms")
         .update({
           original_photo_url: photoUrl,
           ...(roomType ? { room_type: roomType } : {}),
         })
-        .eq("id", finalRoomId);
+        .eq("id", finalRoomId)
+        .eq("user_id", user.id);
     }
 
     return NextResponse.json({
