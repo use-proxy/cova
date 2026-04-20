@@ -27,9 +27,6 @@ export async function upscaleRender(
           "professional interior design photography, Architectural Digest, " +
           "natural window light, realistic fabric textures, warm ambient lighting, " +
           `photorealistic materials, high detail, ${styleContext}`,
-        negative_prompt:
-          "3d render, CGI, artificial lighting, flat textures, plastic look, " +
-          "blurry, cartoon, illustration, oversaturated",
         scale_factor: 2,
         creativity: 0.25,
         resemblance: 0.85,

@@ -1,0 +1,47 @@
+{
+  "screen": "step-4",
+  "url": "http://localhost:3000/design/step-4",
+  "passed": false,
+  "attempt": 2,
+  "elements": 6,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Duplicate React import statements in step-3/page.tsx causing module build failure (useState and useEffect defined twice). This blocks Fast Refresh and causes hydration errors across the app.",
+      "element": "apps/web/app/design/step-3/page.tsx import block",
+      "root_cause": "The file has two separate import lines from 'react': one with `useState, useEffect` and another with `useCallback, useEffect, useRef, useState`. The SWC compiler rejects duplicate named imports."
+    },
+    {
+      "severity": "major",
+      "description": "Radar chart with 6 dimensions (Warmth, Complexity, Organic, Layered, Heritage, Character) is missing from the step-4 fingerprint reveal screen.",
+      "element": "Radar chart on step-4",
+      "root_cause": "Cannot fully diagnose without step-4/page.tsx source, but the radar chart component is either not imported, not rendered, or its data is not being passed correctly."
+    },
+    {
+      "severity": "major",
+      "description": "Tweak input field is missing from the fingerprint reveal screen.",
+      "element": "Tweak input field on step-4",
+      "root_cause": "Cannot fully diagnose without step-4/page.tsx source, but the tweak input component is either not rendered or conditionally hidden."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "\"use client\"\nimport { useState, useEffect } from 'react';\n\nimport { useCallback, useEffect, useRef, useState } from \"react\";",
+      "new_str": "\"use client\"\nimport { useState, useEffect, useCallback, useRef } from \"react\";",
+      "reason": "Removes the duplicate React import that causes the SWC build error 'name is defined multiple times', which was blocking Fast Refresh and causing widespread hydration errors across the app."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408174697,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408174699,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408177047,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408177049,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408203942,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408203945,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776408229244,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776408229246,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776408254990,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776408254993,\"url\":\"/design/step-4\"}"
+  ]
+}

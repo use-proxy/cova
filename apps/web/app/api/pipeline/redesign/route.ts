@@ -19,7 +19,6 @@ export const maxDuration = 300;
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
-import { compilePromptWithClaude } from "@/lib/ai/prompt-compiler";
 import { buildFluxPrompt, buildAnchorFallbackPrompt } from "@/lib/ai/flux";
 import { fetchTopStyleReference } from "@/lib/ai/style-references";
 import {
@@ -31,6 +30,7 @@ import { assembleDifferentialMap } from "@/lib/ai/mask-assembly";
 import { fetchScoredStyleReferences } from "@/lib/unsplash";
 import { getCuratedReferences } from "@/lib/ai/curated-references";
 import { getLorasFromFluxPrompt } from "@/lib/ai/lora-registry";
+import { getLoraStackFromBlend, getDnaTriggerFromBlend } from "@/lib/styles/lora-registry";
 import { STYLE_DISPLAY_NAMES } from "@/lib/ai/anchor-display";
 import type { StyleFingerprint } from "@/types/fingerprint";
 import type { RenderContext } from "@/lib/types/area2";
@@ -44,11 +44,7 @@ interface KeepRemoveDecision {
   decision: "keep" | "remove" | null;
 }
 
-interface DesignBrief {
-  wall_change_requested?: boolean;
-  floor_change_requested?: boolean;
-  required_objects?: string[];
-}
+import type { DesignBrief } from "@/lib/ai/design-director";
 
 interface RoomRow {
   render_context: RenderContext | null;
@@ -62,6 +58,7 @@ interface RoomRow {
   generation_seed: number | null;
   redesign_status: string | null;
   design_brief: DesignBrief | null;
+  personalization_context: Record<string, unknown> | null;
 }
 
 // Extract a flat chat history string from rooms.render_context.tabStates
@@ -155,7 +152,7 @@ export async function POST(request: Request) {
       admin
         .from("rooms")
         .select(
-          "user_id, render_context, room_type, style_blend, original_image_url, original_photo_url, preprocessed_image_url, keep_remove_decisions, generation_seed, redesign_status, design_brief",
+          "user_id, render_context, room_type, style_blend, original_image_url, original_photo_url, preprocessed_image_url, keep_remove_decisions, generation_seed, redesign_status, design_brief, personalization_context",
         )
         .eq("id", room_id)
         .eq("user_id", userId)
@@ -180,7 +177,17 @@ export async function POST(request: Request) {
     );
   }
 
-  const renderContext: RenderContext | null = room?.render_context ?? null;
+  const renderContextRaw: RenderContext | null = room?.render_context ?? null;
+  // Merge personalization_context (from step-7e/7f/7g/7h) into render context
+  // so the Design Director can read it via ctxRaw.personalization_context
+  const renderContext: RenderContext | null = renderContextRaw
+    ? {
+        ...renderContextRaw,
+        ...(room?.personalization_context
+          ? { personalization_context: room.personalization_context }
+          : {}),
+      } as RenderContext
+    : null;
   const roomType = room?.room_type ?? "room"; // never assume room type; "room" is a safe generic fallback
 
   // Resolve fingerprint — render_context first, then users fallback
@@ -276,7 +283,6 @@ export async function POST(request: Request) {
   // Call 1: vision + fingerprint → staging JSON (design_brief)
   // Call 2: staging JSON → FLUX script 80-120 words (flux_prompt)
   let compiledPrompt: string | null = null;
-  let negativePrompt: string | null = null;
   let promptSource: "design-director" | "claude-compiled" | "fallback" = "fallback";
   let unsplashReferences: string[] = [];
   let designDirectorResult: DesignDirectorOutput | null = null;
@@ -294,28 +300,15 @@ export async function POST(request: Request) {
   const removeCount = removeItems.length;
 
   // Extract chat history as a flat formatted string (highest priority signal for design director)
+  // Try renderContext.tabStates first, fall back to chat_context from POST body
   const tabStates = renderContext?.tabStates as Record<string, unknown> | null | undefined;
-  const chatHistory = extractChatHistoryString(tabStates);
+  const chatHistory = extractChatHistoryString(tabStates)
+    ?? extractChatHistoryString(chat_context as Record<string, unknown> | null | undefined);
 
   if (fingerprint && photoUrlForPipeline) {
     try {
-      // Resolve LoRA trigger from style blend primary key
-      const loraTriggerMap: Record<string, string> = {
-        "warm japandi": "cvwmn",
-        "pure minimal white": "cvscn",
-        "coastal bright": "cvcst",
-        "biophilic jungle": "cvboh",
-        "dark moody glam": "cvlux",
-        "industrial loft": "cvind",
-        "maximalist eclectic": "cvmax",
-        "retro mid-century": "cvmcm",
-        "heritage traditional": "cvdco",
-      };
-      const primaryBlendKey = Object.entries(styleBlendForAnchor ?? {})
-        .filter(([, v]) => typeof v === "number")
-        .sort(([, a], [, b]) => (b as number) - (a as number))[0]?.[0]
-        ?.toLowerCase() ?? "";
-      const loraTrigger = loraTriggerMap[primaryBlendKey] ?? "cvwmn";
+      // Resolve LoRA trigger from style blend using COVA* registry
+      const loraTrigger = getDnaTriggerFromBlend(styleBlendForAnchor);
 
       const ddResult = await runDesignDirector({
         imageUrl: photoUrlForPipeline,
@@ -351,23 +344,21 @@ export async function POST(request: Request) {
 
       designDirectorResult = ddResult;
       compiledPrompt = ddResult.fluxPrompt;
-      negativePrompt = ddResult.negativePrompt;
       promptSource = "design-director";
 
-      // Persist design_brief, flux_prompt, and negative_prompt to rooms table (fire-and-forget)
+      // Persist design_brief and flux_prompt to rooms table (fire-and-forget)
       void admin
         .from("rooms")
         .update({
           design_brief: ddResult.stagingJson as unknown as Record<string, unknown>,
           flux_prompt: compiledPrompt,
-          negative_prompt: negativePrompt,
         })
         .eq("id", room_id)
         .then(({ error }) => {
           if (error)
-            console.error("[redesign] design_brief/flux_prompt/negative_prompt write failed:", error);
+            console.error("[redesign] design_brief/flux_prompt write failed:", error);
           else
-            console.log("[redesign] design_brief + flux_prompt + negative_prompt stored for room", room_id);
+            console.log("[redesign] design_brief + flux_prompt stored for room", room_id);
         });
 
       // Fetch quality-scored Unsplash references for IP-Adapter conditioning
@@ -379,13 +370,16 @@ export async function POST(request: Request) {
       console.log(`[redesign] Unsplash references scored: ${unsplashReferences.length}`);
 
       if (unsplashReferences.length < 3) {
-        // Detect mood from staging JSON
+        // Detect mood from staging JSON palette hex values
         const stagingJson = ddResult?.stagingJson;
-        const isDark = stagingJson?.palette?.dominant?.toLowerCase()
-          .match(/dark|charcoal|black|navy|slate|deep/);
-        const isWarm = stagingJson?.lighting?.colorTemp
-          ?.includes("2700") ||
-          stagingJson?.lighting?.colorTemp?.includes("3000");
+        const primaryHex = stagingJson?.palette?.primary_hex ?? "";
+        const isDark = primaryHex.length >= 7 && (() => {
+          const r = parseInt(primaryHex.slice(1, 3), 16);
+          const g = parseInt(primaryHex.slice(3, 5), 16);
+          const b = parseInt(primaryHex.slice(5, 7), 16);
+          return (r * 299 + g * 587 + b * 114) / 1000 < 100;
+        })();
+        const isWarm = (stagingJson?.lighting?.color_temp_k ?? 4000) <= 3500;
 
         const moodKey = isDark && isWarm ? "dark_warm" :
                         isWarm ? "warm_natural" :
@@ -415,21 +409,24 @@ export async function POST(request: Request) {
         });
 
       // Extract design_memory and store in render_context for refinement continuity (ADDITION 4)
+      const allFurniture = [
+        ...(ddResult.stagingJson.depth_zones?.foreground ?? []),
+        ...(ddResult.stagingJson.depth_zones?.midground ?? []),
+        ...(ddResult.stagingJson.depth_zones?.background ?? []),
+      ];
       const designMemoryObj = {
-        room_type: ddResult.stagingJson.roomType,
+        room_type: ddResult.stagingJson.room_type,
         style_anchor: styleAnchorDisplay,
-        dominant_material: ddResult.stagingJson.materialTension.warm,
+        dominant_material: ddResult.stagingJson.materials?.[0] ?? "natural materials",
         color_palette: {
-          dominant: ddResult.stagingJson.palette.dominant,
-          secondary: ddResult.stagingJson.palette.secondary,
-          accent: ddResult.stagingJson.palette.accent,
+          dominant: ddResult.stagingJson.palette?.primary_hex ?? "neutral",
+          secondary: ddResult.stagingJson.palette?.secondary_hex ?? "neutral",
+          accent: ddResult.stagingJson.palette?.accent_hex ?? "neutral",
         },
-        key_furniture: [
-          ...ddResult.stagingJson.depthLayers.midground.objects,
-          ...ddResult.stagingJson.depthLayers.foreground.objects,
-          ...ddResult.stagingJson.depthLayers.background.objects,
-        ].slice(0, 3).map((obj) => obj.name),
-        lighting_spec: `${ddResult.stagingJson.lighting.source}, ${ddResult.stagingJson.lighting.colorTemp}`,
+        key_furniture: allFurniture.slice(0, 3),
+        lighting_spec: ddResult.stagingJson.lighting
+          ? `${ddResult.stagingJson.lighting.direction}, ${ddResult.stagingJson.lighting.color_temp_k}K`
+          : "natural light",
         lora_trigger: loraTrigger,
       };
       void admin
@@ -459,29 +456,18 @@ export async function POST(request: Request) {
 
   // ── Fallback: existing Claude prompt compiler ───────────────────────────────
   if (!compiledPrompt && fingerprint) {
-    compiledPrompt = await compilePromptWithClaude(
-      renderContext,
-      roomType,
+    compiledPrompt = buildAnchorFallbackPrompt({
       fingerprint,
+      roomType,
+      context: renderContext,
+      styleBlend: styleBlendForAnchor,
       anchorPrompt,
-      roomAnalysis,
-      chat_context ?? null,
-    ).catch(() => null);
+      cameraAngle: roomAnalysis?.cameraAngle ?? undefined,
+      focalLength: roomAnalysis?.focalLength ?? undefined,
+    });
 
-    if (compiledPrompt) promptSource = "claude-compiled";
+    if (compiledPrompt) promptSource = "fallback";
 
-    // Second fallback: anchor-strategy prompt if Claude compile also fails.
-    if (!compiledPrompt) {
-      compiledPrompt = buildAnchorFallbackPrompt({
-        fingerprint,
-        roomType,
-        context: renderContext,
-        styleBlend: styleBlendForAnchor,
-        anchorPrompt,
-        cameraAngle: roomAnalysis?.cameraAngle ?? undefined,
-        focalLength: roomAnalysis?.focalLength ?? undefined,
-      });
-    }
     // Silence unused-import warning for legacy buildFluxPrompt until
     // validation-renders route is re-audited.
     void buildFluxPrompt;
@@ -511,37 +497,31 @@ export async function POST(request: Request) {
   }
 
   // ── LoRA stack resolution ─────────────────────────────────────────────────
-  // Returns a dual-LoRA stack: [detail-enhancer@0.55, realism-lora@0.25] when
-  // no trained LoRA exists (fallback), or [custom@scale, realism@0.25-0.30] when
-  // a trained LoRA is found in style_loras table.
+  // Resolves COVA* trained LoRAs from the style blend.
+  // Fill Pro doesn't accept loras param — trigger words in the prompt are
+  // the primary mechanism. The stack is sent to Modal for trigger word extraction.
   let lorasJson: string;
-  try {
-    // Use flux_prompt trigger extraction — design director embeds the trigger
-    // word (e.g. "cvwmn interior") directly in compiledPrompt, so we match
-    // against the actual prompt rather than the verbose styleAnchor string.
-    const loraResult = await getLorasFromFluxPrompt(compiledPrompt, admin);
+  const covaLoraStack = getLoraStackFromBlend(styleBlendForAnchor);
+
+  if (covaLoraStack.length > 0) {
     console.log(
-      `[redesign] LoRA stack: ${loraResult.loras.map((l) => `${l.name}@${l.scale}`).join(" + ")} ` +
-      `(fallback: ${loraResult.isFallback}, total: ${loraResult.totalScale.toFixed(2)})`,
+      `[redesign] COVA LoRA stack: ${covaLoraStack.map((l) => `${l.name}@${l.scale.toFixed(2)}`).join(" + ")}`,
     );
-    lorasJson = JSON.stringify(
-      loraResult.loras.map((l) => ({ url: l.url, scale: l.scale, name: l.name })),
-    );
-  } catch (loraErr) {
-    console.error("[redesign] LoRA resolution failed — using hard-coded fallback stack:", loraErr);
-    // Matches FALLBACK_LORA_STACK in lora-registry.ts
-    lorasJson = JSON.stringify([
-      {
-        url: "https://huggingface.co/Shakker-Labs/FLUX.1-dev-LoRA-add-details/resolve/main/FLUX-dev-lora-add_details.safetensors",
-        scale: 0.55,
-        name: "detail-enhancer",
-      },
-      {
-        url: "https://huggingface.co/XLabs-AI/flux-RealismLora/resolve/main/lora.safetensors",
-        scale: 0.25,
-        name: "realism-lora",
-      },
-    ]);
+    lorasJson = JSON.stringify(covaLoraStack);
+  } else {
+    // Fallback: try DB-based lookup via flux_prompt trigger extraction
+    try {
+      const loraResult = await getLorasFromFluxPrompt(compiledPrompt, admin);
+      console.log(
+        `[redesign] LoRA stack (DB fallback): ${loraResult.loras.map((l) => `${l.name}@${l.scale}`).join(" + ")}`,
+      );
+      lorasJson = JSON.stringify(
+        loraResult.loras.map((l) => ({ url: l.url, scale: l.scale, name: l.name, trigger: "" })),
+      );
+    } catch (loraErr) {
+      console.error("[redesign] LoRA resolution failed — no LoRAs:", loraErr);
+      lorasJson = JSON.stringify([]);
+    }
   }
 
   // ── Seed management ──────────────────────────────────────────────────────
@@ -721,7 +701,6 @@ export async function POST(request: Request) {
         room_id,
         user_id: userId,
         compiled_prompt: compiledPrompt ?? null,
-        negative_prompt: negativePrompt ?? null,
         anchor_prompt: anchorPrompt ?? null,
         style_reference_url: styleReferenceUrl ?? null,
         chat_context: renderContext?.tabStates ?? null,
@@ -739,6 +718,10 @@ export async function POST(request: Request) {
         kept_item_mask_urls: keptItemMaskUrls.length > 0 ? keptItemMaskUrls : null,
         wall_change_requested: wallChangeRequested,
         floor_change_requested: floorChangeRequested,
+        // Room type — critical for Fill Pro to generate correct furniture
+        room_type: roomType,
+        // Style blend for LoRA resolution on Python side
+        style_blend: room?.style_blend ?? renderContext?.styleBlend ?? null,
       }),
       signal: AbortSignal.timeout(295_000),
     });

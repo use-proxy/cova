@@ -38,8 +38,8 @@ REDESIGN_PROMPT = (
     "Add a tall dried pampas grass arrangement in a wabi-sabi ceramic vase in the corner "
     "near the window. Add a minimal floating oak shelf on the wall with small ceramic objects. "
     "Replace the blue rolling cabinet with a solid oak bedside table with a paper lantern on top. "
-    "Keep the exact room dimensions, window position, ceiling fan, and door position unchanged. "
-    "Keep the DAKSH letters on the wall. Photorealistic interior design magazine photograph, "
+    "Keep the exact room dimensions, window position, ceiling fixtures, and door position unchanged. "
+    "Keep all wall-mounted decorations on the wall. Photorealistic interior design magazine photograph, "
     "24mm lens, soft natural daylight, warm ambient lighting, ultra high quality."
 )
 

@@ -1,0 +1,40 @@
+{
+  "screen": "step-8a",
+  "url": "http://localhost:3000/auth?next=%2Fdesign%2Fstep-8a",
+  "passed": false,
+  "attempt": 1,
+  "elements": 7,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "User is being redirected to the auth page instead of seeing the step-8a render result screen. The URL is /auth?next=%2Fdesign%2Fstep-8a, meaning the middleware or auth guard is blocking access to /design/step-8a and forcing login.",
+      "element": "Entire page — should show render result with before/after slider, but shows auth wall instead",
+      "root_cause": "The /design/step-8a route requires authentication. The middleware at apps/web/middleware.ts (or similar) is redirecting unauthenticated users to /auth. Additionally, console logs show repeated 500 Internal Server Errors which suggest the backend/session check is failing, possibly due to a broken auth API route at apps/web/app/api/auth or a missing session cookie."
+    },
+    {
+      "severity": "critical",
+      "description": "Repeated 500 Internal Server Error responses in console logs. This indicates a server-side crash in an API route, likely the auth session endpoint or the render status endpoint for step-8a.",
+      "element": "API route — server responding with 500",
+      "root_cause": "An API route (likely apps/web/app/api/auth/[...nextauth]/route.ts or a session handler) is throwing an uncaught exception. This prevents successful authentication and blocks access to the render result screen."
+    },
+    {
+      "severity": "major",
+      "description": "Page event logs show 'page:mount' firing for 'auth' page twice on each load, suggesting a double-render or duplicate instrumentation in the auth page component.",
+      "element": "Auth page mount event fired twice per load",
+      "root_cause": "apps/web/app/auth/page.tsx likely has a duplicate useEffect or logger call that fires the page:mount event, or React StrictMode is causing double invocation."
+    }
+  ],
+  "fixes": [],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405465042,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405465044,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405490514,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405490515,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405510135,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405510136,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405535176,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405535177,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405557117,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405557118,\"url\":\"/auth\"}"
+  ]
+}

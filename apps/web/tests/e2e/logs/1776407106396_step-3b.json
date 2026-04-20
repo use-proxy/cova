@@ -1,0 +1,53 @@
+{
+  "screen": "step-3b",
+  "url": "http://localhost:3000/design/step-2",
+  "passed": false,
+  "attempt": 1,
+  "elements": 8,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Wrong page is displaying. The current URL is /design/step-2 but we are evaluating step-3b. The screenshot shows step-1 (room selection), not step-3b (style blend confirmation with percentage bars). The page is either redirecting incorrectly or the router is broken.",
+      "element": "Entire page content - showing room selection instead of style blend confirmation",
+      "root_cause": "The URL shown is /design/step-2 but the page renders step-1 content. Either step-2 redirects to step-1, or the navigation flow is broken. The console logs show page:mount events for step-3 and step-3b, suggesting the app did navigate there but the screenshot was captured at step-2."
+    },
+    {
+      "severity": "critical",
+      "description": "Hydration error in step-3 page: Prop `style` did not match. Server: 'width:5%' Client: 'width:15%'. The percentage bar widths are being calculated differently on server vs client, causing full hydration failure and client re-render.",
+      "element": "Percentage bars in apps/web/app/design/step-3/page.tsx",
+      "root_cause": "In apps/web/app/design/step-3/page.tsx, the width style for percentage bars is computed dynamically (likely from Math.random() or Date-based logic, or reading from localStorage/sessionStorage that isn't available on server). Server renders 5% but client computes 15%, causing mismatch."
+    },
+    {
+      "severity": "critical",
+      "description": "Multiple 'Text content does not match server-rendered HTML' errors causing entire root to switch to client rendering. This means step-3b likely shows broken/flash content.",
+      "element": "Text nodes in step-3 and step-3b pages",
+      "root_cause": "Style names or percentages are being read from client-only storage (localStorage/sessionStorage) or computed with non-deterministic logic during SSR, causing server/client HTML mismatch."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "const [styles, setStyles] = useState([",
+      "new_str": "const [mounted, setMounted] = useState(false);\n  useEffect(() => { setMounted(true); }, []);\n  const [styles, setStyles] = useState([",
+      "reason": "Add a mounted guard so that dynamic/client-only values (percentages) are only rendered after hydration, preventing server/client mismatch."
+    },
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "style={{ width: `${style.percentage}%` }}",
+      "new_str": "style={{ width: mounted ? `${style.percentage}%` : '0%' }}",
+      "reason": "Only apply the dynamic percentage width after client mount to prevent hydration mismatch between server (which can't read client state) and client."
+    },
+    {
+      "file": "apps/web/app/design/step-3b/page.tsx",
+      "old_str": "style={{ width: `${style.percentage}%` }}",
+      "new_str": "style={{ width: mounted ? `${style.percentage}%` : '0%' }}",
+      "reason": "Same hydration fix for step-3b page percentage bars to prevent server/client width mismatch."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407055294,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407055296,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776407080544,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776407080547,\"url\":\"/design/step-3b\"}"
+  ]
+}

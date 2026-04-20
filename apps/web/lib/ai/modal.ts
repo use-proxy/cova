@@ -2,7 +2,6 @@ interface ModalJobPayload {
   photo_url: string;
   depth_map_url: string;
   prompt: string;
-  negative_prompt: string;
   style_strength: number;
   room_id: string;
   render_session_id: string;

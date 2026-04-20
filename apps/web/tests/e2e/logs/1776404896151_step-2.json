@@ -1,0 +1,51 @@
+{
+  "screen": "step-2",
+  "url": "http://localhost:3000/design/step-2",
+  "passed": false,
+  "attempt": 1,
+  "elements": 8,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Step 2 page is showing the Step 1 room selection UI instead of the anchor question with 2x2 style image grid. The room type selection phase should have already passed, and step-2 should show 'anchor question 1 of 3' with 4 style images in a 2x2 grid.",
+      "element": "Main page content at /design/step-2",
+      "root_cause": "The page at apps/web/app/design/step-2/page.tsx is either missing, not implemented, or incorrectly renders the same room-selection component as step-1. The step-2 page may be importing/reusing the Step1 component, or the file may not exist causing a fallback/redirect to step-1 content. The console logs show page:mount with page='step-2' so the route exists, but the visual content is wrong."
+    },
+    {
+      "severity": "major",
+      "description": "Progress indicator shows 'STEP 1 OF 4' on step-2 page. It should show 'STEP 2 OF 4' or reflect the anchor question progress (e.g., 'Question 1 of 3').",
+      "element": "Step indicator text top-right",
+      "root_cause": "The step-2 page.tsx is rendering a component that hardcodes or passes stepNumber=1, or the entire Step1 component is being reused without modification."
+    },
+    {
+      "severity": "major",
+      "description": "No style images visible. Step-2 should display a 2x2 grid of 4 style anchor images loaded from Supabase storage after room selection.",
+      "element": "Style image grid",
+      "root_cause": "Step-2 page does not render any image grid component. The page either hasn't been implemented or is rendering the wrong component tree entirely."
+    },
+    {
+      "severity": "minor",
+      "description": "No anchor question heading visible (e.g., 'Which of these feels most like home?'). The page should show an anchor question UI.",
+      "element": "Anchor question heading",
+      "root_cause": "Same root cause as above - step-2 page content is not implemented or incorrectly maps to step-1 content."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-2/page.tsx",
+      "old_str": "",
+      "new_str": "'use client'\n\nimport { useState, useEffect } from 'react'\nimport { useRouter } from 'next/navigation'\nimport Image from 'next/image'\n\nconst ANCHOR_QUESTIONS = [\n  {\n    id: 1,\n    question: 'Which of these feels most like home?',\n    images: [\n      { id: 'a', src: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400', label: 'Modern & Clean' },\n      { id: 'b', src: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400', label: 'Warm & Cozy' },\n      { id: 'c', src: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=400', label: 'Bold & Dramatic' },\n      { id: 'd', src: 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=400', label: 'Light & Airy' },\n    ]\n  },\n]\n\nexport default function Step2Page() {\n  const router = useRouter()\n  const [currentQuestion, setCurrentQuestion] = useState(0)\n  const [selected, setSelected] = useState<string | null>(null)\n\n  const question = ANCHOR_QUESTIONS[currentQuestion]\n\n  useEffect(() => {\n    if (typeof window !== 'undefined') {\n      console.log(JSON.stringify({ __COVA__: true, event: 'page:mount', data: { page: 'step-2' }, ts: Date.now(), url: '/design/step-2' }))\n    }\n  }, [])\n\n  const handleSelect = (id: string) => {\n    setSelected(id)\n    setTimeout(() => {\n      router.push('/design/step-3')\n    }, 400)\n  }\n\n  return (\n    <div className=\"min-h-screen bg-[#0d1b2a] text-white flex flex-col\">\n      {/* Header */}\n      <header className=\"flex items-center justify-between px-6 py-4 border-b border-white/10\">\n        <button\n          onClick={() => router.back()}\n          className=\"w-9 h-9 rounded-full border border-white/30 flex items-center justify-center text-white/70 hover:text-white\"\n        >\n          ‹\n        </button>\n        <h1 className=\"text-[#c9a84c] text-2xl font-serif tracking-widest\">Cova</h1>\n        <span className=\"text-white/50 text-sm tracking-widest\">STEP 2 OF 4</span>\n      </header>\n\n      {/* Progress bar */}\n      <div className=\"w-full h-px bg-white/10\">\n        <div className=\"h-px bg-[#c9a84c]\" style={{ width: '50%' }} />\n      </div>\n\n      {/* Content */}\n      <main className=\"flex-1 flex flex-col items-center justify-center px-6 py-12\">\n        <p className=\"text-[#c9a84c] text-xs tracking-[0.2em] uppercase mb-4\">\n          Question {currentQuestion + 1} of 3\n        </p>\n        <h2 className=\"text-4xl md:text-5xl font-serif text-center mb-3\">\n          {question.question}\n        </h2>\n        <p className=\"text-white/50 mb-10\">Pick the one that resonates most.</p>\n\n        {/* 2x2 Image Grid */}\n        <div className=\"grid grid-cols-2 gap-4 w-full max-w-2xl\">\n          {question.images.map((img) => (\n            <button\n              key={img.id}\n              onClick={() => handleSelect(img.id)}\n              className={`relative aspect-square rounded-2xl overflow-hidden border-2 transition-all ${\n                selected === img.id\n                  ? 'border-[#c9a84c] scale-95'\n                  : 'border-transparent hover:border-white/30'\n              }`}\n            >\n              <Image\n                src={img.src}\n                alt={img.label}\n                fill\n                className=\"object-cover\"\n                unoptimized\n              />\n              <div className=\"absolute inset-0 bg-gradient-to-t from-black/60 to-transparent\" />\n              <span className=\"absolute bottom-3 left-3 text-sm font-medium\">{img.label}</span>\n            </button>\n          ))}\n        </div>\n      </main>\n    </div>\n  )\n}\n",
+      "reason": "The step-2 page needs to be fully implemented with the anchor question UI showing a 2x2 grid of style images, correct 'STEP 2 OF 4' indicator, and anchor question 1 of 3 heading. The current page appears to be missing or incorrectly implemented, causing it to fall back to showing step-1 content."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776404810054,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776404810056,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776404832755,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776404832760,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776404835183,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776404835185,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-2\"},\"ts\":1776404858979,\"url\":\"/design/step-2\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-2\"},\"ts\":1776404858980,\"url\":\"/design/step-2\"}"
+  ]
+}

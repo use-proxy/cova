@@ -1,0 +1,56 @@
+{
+  "iter": 5,
+  "room": "Room_B",
+  "style": "COVACOASTAL",
+  "secondaryStyle": "COVAFARMHOUSE",
+  "primaryWeight": 0.8,
+  "removeCount": 0,
+  "wallChange": false,
+  "floorChange": false,
+  "seed": 500,
+  "renderUrl": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/renders/c1405ef4-140e-492e-a8e3-2a0c25ebc093/final_1776422499.jpg",
+  "score": {
+    "scores": {
+      "ARCHITECTURE_FIDELITY": 9,
+      "STYLE_ACCURACY": 8,
+      "FURNITURE_REALISM": 8,
+      "COMPOSITION": 9,
+      "LIGHTING": 8,
+      "COLOR_HARMONY": 8,
+      "DETAIL_QUALITY": 8,
+      "EDITORIAL_QUALITY": 8,
+      "ROOM_ADAPTATION": 9,
+      "BETTER_THAN_BENCHMARK": 8
+    },
+    "total": 83,
+    "pass": true,
+    "issues": [
+      {
+        "dimension": "STYLE_ACCURACY",
+        "symptom": "Coastal style present but could be more pronounced; beige/cream palette is safe rather than distinctly coastal",
+        "root_cause": "prompt",
+        "severity": "minor"
+      },
+      {
+        "dimension": "FURNITURE_REALISM",
+        "symptom": "Bed frame and headboard slightly plasticky in appearance; lamp materials could be more convincing",
+        "root_cause": "lora",
+        "severity": "minor"
+      },
+      {
+        "dimension": "LIGHTING",
+        "symptom": "Evening/night lighting through window is blue-tinted but interior warm lighting could have slightly more depth and shadow variation",
+        "root_cause": "lighting",
+        "severity": "minor"
+      },
+      {
+        "dimension": "COLOR_HARMONY",
+        "symptom": "Overall harmonious but palette is very neutral; could benefit from slightly more saturated coastal blues or accent colors",
+        "root_cause": "prompt",
+        "severity": "minor"
+      }
+    ],
+    "winner_subjective": "tie"
+  },
+  "passed": false
+}

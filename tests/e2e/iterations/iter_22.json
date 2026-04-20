@@ -1,0 +1,86 @@
+{
+  "iter": 22,
+  "room": "Room_A",
+  "style": "COVABIOPHILIC",
+  "secondaryStyle": "COVACOASTAL",
+  "primaryWeight": 0.7,
+  "removeCount": 5,
+  "wallChange": true,
+  "floorChange": false,
+  "seed": 2200,
+  "renderUrl": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/renders/cb2e7047-c7ae-4253-bf2b-cc42a6f3a727/final_1776443179.jpg",
+  "score": {
+    "scores": {
+      "ARCHITECTURE_FIDELITY": 3,
+      "STYLE_ACCURACY": 4,
+      "FURNITURE_REALISM": 5,
+      "COMPOSITION": 4,
+      "LIGHTING": 6,
+      "COLOR_HARMONY": 7,
+      "DETAIL_QUALITY": 5,
+      "EDITORIAL_QUALITY": 4,
+      "ROOM_ADAPTATION": 3,
+      "BETTER_THAN_BENCHMARK": 2
+    },
+    "total": 43,
+    "pass": false,
+    "issues": [
+      {
+        "dimension": "ARCHITECTURE_FIDELITY",
+        "symptom": "Original room has open floor plan with distinct zones; render shows generic bedroom. Ceiling fixture, window treatment, and wall proportions differ significantly. Floor appears same but room function completely changed.",
+        "root_cause": "prompt",
+        "severity": "critical"
+      },
+      {
+        "dimension": "STYLE_ACCURACY",
+        "symptom": "COVABIOPHILIC style emphasizes organic materials, biophilic elements, and natural integration. Render shows minimal plant life (single potted plant), minimal natural materials, lacks the warm organic aesthetic requested.",
+        "root_cause": "prompt",
+        "severity": "critical"
+      },
+      {
+        "dimension": "FURNITURE_REALISM",
+        "symptom": "Bed appears flat and dimensionally awkward. Bedding materials lack texture depth. Nightstand proportions seem off relative to bed scale. Chair geometry looks simplified.",
+        "root_cause": "lora",
+        "severity": "major"
+      },
+      {
+        "dimension": "COMPOSITION",
+        "symptom": "Sparse composition with heavy reliance on bed as focal point. Mid-ground and background underpopulated. Lacks layering and visual interest compared to benchmark's balanced multi-zone approach.",
+        "root_cause": "prompt",
+        "severity": "major"
+      },
+      {
+        "dimension": "LIGHTING",
+        "symptom": "Ceiling light is bright but casts minimal shadows. Window light quality inconsistent. Lacks warm accent lighting and layered lighting hierarchy seen in benchmark.",
+        "root_cause": "lighting",
+        "severity": "major"
+      },
+      {
+        "dimension": "DETAIL_QUALITY",
+        "symptom": "Bedding lacks weave texture. Wall art is indistinct. Plant leaf definition poor. Nightstand surface lacks material specificity. Some geometry softening suggests AI smoothing artifacts.",
+        "root_cause": "postprocess",
+        "severity": "major"
+      },
+      {
+        "dimension": "EDITORIAL_QUALITY",
+        "symptom": "Render lacks design intentionality and visual narrative. Appears as generic contemporary bedroom rather than curated space. Color palette uninspired compared to benchmark's cohesive aesthetic.",
+        "root_cause": "composite",
+        "severity": "major"
+      },
+      {
+        "dimension": "ROOM_ADAPTATION",
+        "symptom": "Ignores original room's open-concept, dual-purpose layout. Eliminates DAKSH branding context. Doesn't acknowledge original furniture pieces or spatial configuration.",
+        "root_cause": "prompt",
+        "severity": "critical"
+      },
+      {
+        "dimension": "BETTER_THAN_BENCHMARK",
+        "symptom": "Benchmark demonstrates superior spatial planning, material authenticity, layered styling, and editorial sophistication. Render underperforms across aesthetic and functional dimensions.",
+        "root_cause": "prompt",
+        "severity": "critical"
+      }
+    ],
+    "winner_subjective": "benchmark"
+  },
+  "passed": false
+}

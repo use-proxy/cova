@@ -1,0 +1,74 @@
+{
+  "iter": 10,
+  "room": "Room_A",
+  "style": "COVASCANDINAV",
+  "secondaryStyle": "COVAMINIMAL",
+  "primaryWeight": 0.7,
+  "removeCount": 0,
+  "wallChange": true,
+  "floorChange": false,
+  "seed": 1000,
+  "renderUrl": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/renders/cb2e7047-c7ae-4253-bf2b-cc42a6f3a727/final_1776439804.jpg",
+  "score": {
+    "scores": {
+      "ARCHITECTURE_FIDELITY": 3,
+      "STYLE_ACCURACY": 7,
+      "FURNITURE_REALISM": 6,
+      "COMPOSITION": 5,
+      "LIGHTING": 5,
+      "COLOR_HARMONY": 7,
+      "DETAIL_QUALITY": 6,
+      "EDITORIAL_QUALITY": 5,
+      "ROOM_ADAPTATION": 4,
+      "BETTER_THAN_BENCHMARK": 2
+    },
+    "total": 50,
+    "pass": false,
+    "issues": [
+      {
+        "dimension": "ARCHITECTURE_FIDELITY",
+        "symptom": "IMAGE 1 is a lounge/living room; IMAGE 2 is a bedroom. Completely different room types. Ceiling fixture similar but wall layout, window placement, and overall architecture incompatible.",
+        "root_cause": "composite",
+        "severity": "critical"
+      },
+      {
+        "dimension": "COMPOSITION",
+        "symptom": "IMAGE 1 has couch-centric layout with shelving unit. IMAGE 2 shows centered bed with chair. Spatial arrangement fundamentally different despite same DAKSH branding.",
+        "root_cause": "composite",
+        "severity": "critical"
+      },
+      {
+        "dimension": "LIGHTING",
+        "symptom": "IMAGE 1 has warm-toned ceiling fan light with side window glow. IMAGE 2 has cooler, more directional ceiling light. Direction, temperature, and quality inconsistent.",
+        "root_cause": "lighting",
+        "severity": "major"
+      },
+      {
+        "dimension": "FURNITURE_REALISM",
+        "symptom": "IMAGE 1 sofa lacks material depth; pillows feel flat. Small side table proportions unclear. Compared to IMAGE 2 bed frame and nightstands which have better dimensional clarity.",
+        "root_cause": "lora",
+        "severity": "major"
+      },
+      {
+        "dimension": "ROOM_ADAPTATION",
+        "symptom": "IMAGE 1 appears to be generic lounge render applied to this specific room, not thoughtfully adapted. Lacks contextual residential coherence seen in IMAGE 2.",
+        "root_cause": "prompt",
+        "severity": "major"
+      },
+      {
+        "dimension": "EDITORIAL_QUALITY",
+        "symptom": "IMAGE 1 reads as unfinished iteration with visible desktop clutter (right side), harsh shadows, less polished overall. IMAGE 2 is magazine-ready.",
+        "root_cause": "postprocess",
+        "severity": "major"
+      },
+      {
+        "dimension": "BETTER_THAN_BENCHMARK",
+        "symptom": "IMAGE 2 (CollovAI) is significantly more refined, photorealistic, professional, and contextually appropriate for a residential space.",
+        "root_cause": "composite",
+        "severity": "critical"
+      }
+    ],
+    "winner_subjective": "benchmark"
+  },
+  "passed": false
+}

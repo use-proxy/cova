@@ -1,0 +1,59 @@
+{
+  "screen": "step-4",
+  "url": "http://localhost:3000/design/step-4",
+  "passed": false,
+  "attempt": 1,
+  "elements": 6,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Radar chart with 6 dimensions (Warmth, Complexity, Organic, Layered, Heritage, Character) is completely absent from the visible UI",
+      "element": "Radar/spider chart",
+      "root_cause": "The radar chart component is either not rendered, conditionally hidden, or placed below the fold in the 'YOUR STYLE DNA' / Fingerprint Map section. It may be a client-only component causing hydration mismatch, or the component import/render is missing from apps/web/app/design/step-4/page.tsx"
+    },
+    {
+      "severity": "critical",
+      "description": "Multiple React hydration errors (7 instances) causing entire root to fall back to client rendering. 'Text content does not match server-rendered HTML' repeated 7 times.",
+      "element": "Page hydration",
+      "root_cause": "Dynamic/random values (likely style name, color palette, or radar chart scores) are being computed differently on server vs client. This is likely caused by Math.random() or Date.now() calls at render time, or localStorage access during SSR in apps/web/app/design/step-4/page.tsx or a child component."
+    },
+    {
+      "severity": "major",
+      "description": "Tweak input field is missing from the visible screen — expected per spec but not rendered",
+      "element": "Tweak input field",
+      "root_cause": "The tweak/refinement input field is either not implemented or not rendered in apps/web/app/design/step-4/page.tsx"
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-4/page.tsx",
+      "old_str": "const fingerprint = getFingerprint()",
+      "new_str": "const fingerprint = useMemo(() => getFingerprint(), [])",
+      "reason": "Wrapping fingerprint computation in useMemo (or ensuring it's stable) prevents server/client mismatch that causes hydration errors. If getFingerprint uses random values, this alone won't fix it — see next fix."
+    },
+    {
+      "file": "apps/web/app/design/step-4/page.tsx",
+      "old_str": "'use client'\n",
+      "new_str": "'use client'\nimport { useState, useEffect } from 'react'\n",
+      "reason": "Ensure useEffect/useState are imported so dynamic data can be deferred to client-only rendering, preventing SSR/hydration text mismatch."
+    },
+    {
+      "file": "apps/web/app/design/step-4/page.tsx",
+      "old_str": "const radarData = {",
+      "new_str": "// Radar data must be stable — derive from quiz answers stored in state/context, not random\nconst radarData = {",
+      "reason": "Flag that radar data must be deterministic. If it's computed from Math.random() on each render, it will cause hydration mismatches. This is a placeholder — the actual fix depends on source."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776407677596,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776407677597,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407698413,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407698416,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407700519,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407700521,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407725461,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407725464,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776407751012,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776407751014,\"url\":\"/design/step-4\"}"
+  ]
+}

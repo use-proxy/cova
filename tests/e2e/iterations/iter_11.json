@@ -1,0 +1,44 @@
+{
+  "iter": 11,
+  "room": "Room_B",
+  "style": "COVAJAPANDI",
+  "secondaryStyle": "COVAMIDCENTURY",
+  "primaryWeight": 0.8,
+  "removeCount": 2,
+  "wallChange": false,
+  "floorChange": false,
+  "seed": 1100,
+  "renderUrl": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/renders/c1405ef4-140e-492e-a8e3-2a0c25ebc093/final_1776440112.jpg",
+  "score": {
+    "scores": {
+      "ARCHITECTURE_FIDELITY": 9,
+      "STYLE_ACCURACY": 7,
+      "FURNITURE_REALISM": 8,
+      "COMPOSITION": 8,
+      "LIGHTING": 8,
+      "COLOR_HARMONY": 8,
+      "DETAIL_QUALITY": 8,
+      "EDITORIAL_QUALITY": 8,
+      "ROOM_ADAPTATION": 7,
+      "BETTER_THAN_BENCHMARK": 8
+    },
+    "total": 81,
+    "pass": true,
+    "issues": [
+      {
+        "dimension": "STYLE_ACCURACY",
+        "symptom": "Wood bed frame and furnishings lean more traditional/mid-century modern than japandi minimalism; lacks the zen simplicity and natural material authenticity of true japandi aesthetic",
+        "root_cause": "lora",
+        "severity": "major"
+      },
+      {
+        "dimension": "ROOM_ADAPTATION",
+        "symptom": "Decor choices (formal photo frames, upholstered headboard styling) feel applied superficially rather than integrated into room's existing personality; dissonant with benchmark's lived-in character",
+        "root_cause": "prompt",
+        "severity": "major"
+      }
+    ],
+    "winner_subjective": "tie"
+  },
+  "passed": false
+}

@@ -355,6 +355,7 @@ Write exactly 2-3 sentences describing this style in evocative, sensory language
     try {
       const { createAdminSupabaseClient } = await import("@/lib/supabase/admin");
       const admin = createAdminSupabaseClient();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (admin.from("users") as any).update({
         style_fingerprint: updatedFingerprint,
         style_blend: styleBlend,

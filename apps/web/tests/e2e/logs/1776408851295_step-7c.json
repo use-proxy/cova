@@ -1,0 +1,43 @@
+{
+  "screen": "step-7c",
+  "url": "http://localhost:3000/design/step-7c",
+  "passed": false,
+  "attempt": 1,
+  "elements": 0,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Page is stuck in 'Analyzing your room...' loading state. The pre_detection_result data is not being loaded or the component never transitions out of the loading state. No furniture items, no room image with overlays, no keep/remove toggles, and no Continue button are shown.",
+      "element": "Main content area - entire step-7c page content",
+      "root_cause": "The page component at apps/web/app/design/step-7c/page.tsx is likely reading pre_detection_result from a store or session that is empty/null at render time. The loading state condition never resolves because either: (1) the data key being read from localStorage/sessionStorage doesn't match what was written by the previous step, (2) there's a hydration mismatch causing the client to re-render in a broken state (5+ hydration errors in PAGE ERRORS confirm this), or (3) useEffect that loads the data is not firing or not finding the data. The hydration errors from other pages (step-3) also indicate a broader SSR/client mismatch issue with localStorage access."
+    },
+    {
+      "severity": "major",
+      "description": "Multiple hydration errors (7 instances) across the app. Text content mismatches between server and client rendering, caused by accessing localStorage or other browser-only APIs during SSR.",
+      "element": "Hydration - root document",
+      "root_cause": "Components are reading from localStorage/sessionStorage or using browser APIs during server-side rendering, causing HTML mismatch. The step-7c page likely reads store data without a mounted guard (useEffect + isMounted pattern missing)."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-7c/page.tsx",
+      "old_str": "  const [isLoading, setIsLoading] = useState(true);",
+      "new_str": "  const [isLoading, setIsLoading] = useState(true);\n  const [isMounted, setIsMounted] = useState(false);",
+      "reason": "Add isMounted state to prevent SSR/hydration mismatches from localStorage reads"
+    },
+    {
+      "file": "apps/web/app/design/step-7c/page.tsx",
+      "old_str": "  useEffect(() => {",
+      "new_str": "  useEffect(() => {\n    setIsMounted(true);\n  }, []);\n\n  useEffect(() => {\n    if (!isMounted) return;",
+      "reason": "Guard all data-loading effects behind isMounted to prevent SSR hydration mismatches and ensure localStorage is only accessed client-side"
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776408746591,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776408746593,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776408776893,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776408776897,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776408825780,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776408825782,\"url\":\"/design/step-7c\"}"
+  ]
+}

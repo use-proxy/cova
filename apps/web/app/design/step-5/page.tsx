@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 /**
  * Cova — Step 5: Budget Setup (v8)
@@ -13,6 +13,7 @@ import React, {
   CSSProperties,
 } from "react";
 import { useRouter } from "next/navigation";
+import { flowLog } from "@/lib/debug/flow-logger";
 import { useArea2Store } from "@/lib/stores/area2Store";
 import "../step-1/step1.css";
 import "./step5.css";
@@ -879,6 +880,7 @@ const TIER_TO_BUDGET: Array<{ rangeMin: number; rangeMax: number }> = [
 
 export default function BudgetSetup() {
   const router = useRouter();
+  useEffect(() => { flowLog("page:mount", { page: "step-5" }); }, []);
   const setBudget = useArea2Store((s) => s.setBudget);
   const roomId = useArea2Store((s) => s.roomId);
   const [active, setActive] = useState(0);
@@ -1002,7 +1004,7 @@ export default function BudgetSetup() {
             letterSpacing: "0.09em",
           }}
         >
-                    STEP 3 OF 4         
+                    STEP 5 OF 5         
         </div>
               
       </nav>

@@ -1,0 +1,47 @@
+{
+  "screen": "auth",
+  "url": "http://localhost:3000/auth",
+  "passed": false,
+  "attempt": 3,
+  "elements": 7,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Duplicate React imports in apps/web/app/design/step-3/page.tsx — 'useState' and 'useEffect' are imported twice causing a build failure (Module build failed). This causes Fast Refresh failures and RSC payload fetch errors visible in console logs.",
+      "element": "apps/web/app/design/step-3/page.tsx import statements",
+      "root_cause": "The file has two import lines from 'react': line 2 imports { useState, useEffect } and line 4 imports { useCallback, useEffect, useRef, useState }, resulting in duplicate named imports that the SWC compiler rejects."
+    },
+    {
+      "severity": "major",
+      "description": "Repeated React hydration errors ('Text content does not match server-rendered HTML') causing the entire root to fall back to client rendering. This is likely triggered by the build error in step-3 causing cascading Fast Refresh failures and broken RSC payloads for /auth.",
+      "element": "Hydration on /auth page",
+      "root_cause": "The build failure in step-3/page.tsx causes Fast Refresh to fail and RSC payloads to return 404, which then triggers browser navigation fallback and hydration mismatches across pages including /auth."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "\"use client\"\nimport { useState, useEffect, useCallback, useRef } from \"react\";",
+      "new_str": "\"use client\"\nimport { useState, useEffect, useCallback, useRef } from \"react\";",
+      "reason": "This is already the correct single merged import. The actual file content shows a duplicate import pattern. The fix below removes the duplicate by keeping only one consolidated import line."
+    },
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "\"use client\"\nimport { useState, useEffect } from 'react';\n\nimport { useCallback, useEffect, useRef, useState } from \"react\";",
+      "new_str": "\"use client\"\nimport { useState, useEffect, useCallback, useRef } from \"react\";",
+      "reason": "Removes the duplicate React import lines. The first import line had useState and useEffect, and the second line re-imported them along with useCallback and useRef. Merging into a single import fixes the SWC build error."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776408061156,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776408061158,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776408080000,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776408080002,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408106137,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408106138,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408126368,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408126370,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408151824,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408151826,\"url\":\"/auth\"}"
+  ]
+}

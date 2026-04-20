@@ -1,0 +1,34 @@
+{
+  "screen": "step-1",
+  "url": "http://localhost:3000/design/step-1",
+  "passed": true,
+  "attempt": 1,
+  "elements": 4,
+  "issues": [
+    {
+      "severity": "minor",
+      "description": "Console logs show repeated 500 Internal Server Error for a resource (likely an API call or asset) during earlier auth page visits. The step-1 page itself loaded without page errors, but the 500 errors may indicate a backend issue that could affect functionality.",
+      "element": "Network resource fetch",
+      "root_cause": "A server-side API route or resource is returning 500. This is not visible in the UI but appears in console logs. The step-1 page mounted successfully without errors."
+    },
+    {
+      "severity": "minor",
+      "description": "Console warning: 'Please ensure that the container has a non-static position, like relative, fixed, or absolute to ensure scroll offset is calculated correctly.' This suggests a scroll-related component (likely a scroll-tracking or parallax element) has a statically positioned container.",
+      "element": "Scroll container positioning",
+      "root_cause": "A component using a scroll offset library (possibly framer-motion useScroll or a custom hook) does not have position: relative on its container element."
+    }
+  ],
+  "fixes": [],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405535176,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405535177,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405557117,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405557118,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405602477,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405602478,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776405628897,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776405628902,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776405631390,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776405631392,\"url\":\"/design/step-1\"}"
+  ]
+}

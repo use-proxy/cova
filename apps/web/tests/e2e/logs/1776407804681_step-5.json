@@ -1,0 +1,59 @@
+{
+  "screen": "step-5",
+  "url": "http://localhost:3000/design/step-5",
+  "passed": false,
+  "attempt": 1,
+  "elements": 10,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "React hydration errors causing entire root to switch to client rendering. Text content mismatch between server and client HTML on multiple elements.",
+      "element": "Budget tier cards / price range text",
+      "root_cause": "Likely a currency formatter or number formatter (e.g., toLocaleString()) that produces different output on server vs client, or a Date/random value used in rendering. In apps/web/app/design/step-5/page.tsx, price ranges may be formatted using locale-dependent methods."
+    },
+    {
+      "severity": "major",
+      "description": "Budget tier cards are missing description text — only price range and tier name visible, no descriptive text shown on cards.",
+      "element": "Budget tier card description",
+      "root_cause": "Description text may not be rendered in the card component or is hidden due to card height/overflow constraints in apps/web/app/design/step-5/page.tsx."
+    },
+    {
+      "severity": "major",
+      "description": "Continue button is not visible on screen. Expected a Continue button to proceed to next step.",
+      "element": "Continue button",
+      "root_cause": "Continue button may be positioned below the card carousel and off-screen, or conditionally rendered only after a selection is made. Since no card is selected (no gold border visible on first card despite it being centered), the button may be hidden."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-5/page.tsx",
+      "old_str": "\"use client\"",
+      "new_str": "\"use client\"\nimport { useState, useEffect } from 'react'",
+      "reason": "Ensure client-side hooks are imported to allow suppressing hydration mismatches"
+    },
+    {
+      "file": "apps/web/app/design/step-5/page.tsx",
+      "old_str": "$500 — $2,000",
+      "new_str": "$500–$2,000",
+      "reason": "Replace em-dash with en-dash and ensure the string is a static literal to avoid server/client hydration mismatch from locale-sensitive formatting"
+    },
+    {
+      "file": "apps/web/app/design/step-5/page.tsx",
+      "old_str": "$2,000 — $5,000",
+      "new_str": "$2,000–$5,000",
+      "reason": "Normalize price range separator to static en-dash to prevent hydration mismatch"
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407700519,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407700521,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407725461,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407725464,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776407751012,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776407751014,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407779041,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407779042,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407780608,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407780609,\"url\":\"/design/step-5\"}"
+  ]
+}

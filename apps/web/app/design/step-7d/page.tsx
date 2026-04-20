@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { flowLog } from "@/lib/debug/flow-logger";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { createBrowserClient } from "@/lib/supabase/client";
@@ -141,6 +142,7 @@ const EMPTY_TAB_MESSAGES: TabMessages = {
 
 export default function Step7DPage() {
   const router = useRouter();
+  useEffect(() => { flowLog("page:mount", { page: "step-7d" }); }, []);
   const {
     roomId,
     tabStates,
@@ -445,7 +447,10 @@ export default function Step7DPage() {
             : {}),
         }),
       });
-      if (!res.ok) throw new Error("chat request failed");
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({ detail: res.statusText })) as { error?: string; detail?: string };
+        throw new Error(errBody.detail || errBody.error || `Chat request failed (${res.status})`);
+      }
       const data = (await res.json()) as {
         reply: string;
         extractedData: Record<string, unknown>;
@@ -532,9 +537,12 @@ export default function Step7DPage() {
           messageIndex: nextIndex,
         });
       }
-    } catch {
-      const errorMsg =
-        "Something went wrong on my end. Want to try that again?";
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : "";
+      console.error("[step-7d] Chat error:", detail);
+      const errorMsg = detail.includes("Unauthorized")
+        ? "Your session expired. Please refresh the page and try again."
+        : "Something went wrong on my end. Want to try that again?";
       const withError: TabMessages = {
         ...updatedMessages,
         [activeTab]: [

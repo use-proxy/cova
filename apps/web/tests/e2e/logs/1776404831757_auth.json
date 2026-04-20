@@ -1,0 +1,33 @@
+{
+  "screen": "auth",
+  "url": "http://localhost:3000/auth",
+  "passed": true,
+  "attempt": 1,
+  "elements": 7,
+  "issues": [
+    {
+      "severity": "minor",
+      "description": "Console warning: container element lacks a non-static position (relative/fixed/absolute), causing incorrect scroll offset calculation. This is a layout/positioning warning that could affect scroll-dependent components.",
+      "element": "Page container / wrapper element",
+      "root_cause": "The outermost container div in apps/web/app/auth/page.tsx (or its layout) likely uses default static positioning. A scroll-offset utility or component (possibly a custom scrollable area or third-party component) requires the container to have position: relative, fixed, or absolute."
+    },
+    {
+      "severity": "minor",
+      "description": "Fast Refresh RSC fetch failure for http://localhost:3000/ during hot reload. This is a dev-environment transient error, not a production bug, but indicates the root route may have an issue or the dev server had a momentary disruption.",
+      "element": "Next.js Fast Refresh / root route",
+      "root_cause": "Transient network/server issue during Fast Refresh cycle. Not directly caused by auth page code. Could be root layout or root page.tsx temporarily unavailable during rebuild."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/auth/page.tsx",
+      "old_str": "<div className=\"flex min-h-screen",
+      "new_str": "<div className=\"relative flex min-h-screen",
+      "reason": "Adding 'relative' positioning to the outermost container resolves the console warning about non-static position required for correct scroll offset calculation."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776404810054,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776404810056,\"url\":\"/auth\"}"
+  ]
+}

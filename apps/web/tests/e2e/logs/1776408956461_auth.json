@@ -1,0 +1,47 @@
+{
+  "screen": "auth",
+  "url": "http://localhost:3000/auth",
+  "passed": false,
+  "attempt": 1,
+  "elements": 7,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "setIsMounted is not defined - repeated 14+ times in page errors. This causes hydration failures across the app.",
+      "element": "auth page component",
+      "root_cause": "In apps/web/app/auth/page.tsx, a useEffect or similar hook references setIsMounted but the useState hook for isMounted was not declared, or the state setter was destructured incorrectly."
+    },
+    {
+      "severity": "critical",
+      "description": "React hydration error - text content does not match server-rendered HTML, causing entire root to switch to client rendering. Related to the missing isMounted state.",
+      "element": "Root hydration",
+      "root_cause": "The auth page likely uses isMounted to conditionally render content (e.g., to avoid SSR mismatch), but since setIsMounted is undefined, the state never updates and the server/client HTML diverges."
+    },
+    {
+      "severity": "major",
+      "description": "step-7c page crash with unrecoverable error in NotFoundErrorBoundary, causing full page reload. Component Step7cKeepOrRemove threw an error.",
+      "element": "apps/web/app/design/step-7c/page.tsx",
+      "root_cause": "The Step7cKeepOrRemove component at line 108 throws an error (likely also related to setIsMounted not being defined or another runtime error in that component)."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/auth/page.tsx",
+      "old_str": "  useEffect(() => {\n    setIsMounted(true)\n  }, [])",
+      "new_str": "  const [isMounted, setIsMounted] = useState(false)\n\n  useEffect(() => {\n    setIsMounted(true)\n  }, [])",
+      "reason": "setIsMounted is referenced but the useState declaration for isMounted is missing. Adding the state declaration fixes the ReferenceError and resolves the hydration mismatch."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776408776893,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776408776897,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776408825780,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776408825782,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776408890312,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776408890314,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776408911038,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776408911040,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408937637,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408937638,\"url\":\"/auth\"}"
+  ]
+}

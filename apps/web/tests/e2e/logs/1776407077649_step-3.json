@@ -1,0 +1,39 @@
+{
+  "screen": "step-3",
+  "url": "http://localhost:3000/design/step-3",
+  "passed": false,
+  "attempt": 1,
+  "elements": 5,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Hydration error: progress bar width mismatch between server ('width:5%') and client ('width:15%'). This causes full root re-render with client content, multiple 'Text content does not match server-rendered HTML' errors, and the red '1 error' toast.",
+      "element": "Progress bar div with inline style width",
+      "root_cause": "In apps/web/app/design/step-3/page.tsx, the progress bar width is computed dynamically (likely using state or Math.random() or currentQuestion index) on render. The server renders with one value (5% = question 0 of 20, or similar) while the client renders with a different value (15%), indicating the progress calculation uses client-only state that isn't initialized consistently, or uses something non-deterministic."
+    },
+    {
+      "severity": "major",
+      "description": "Progress counter shows 'Question 1 of 3' on step-3 page. If this is step-3 in the flow, the question counter should either start from a higher number or the step routing is mismatched.",
+      "element": "Question counter text",
+      "root_cause": "The questionIndex state is initialized to 0 on mount, so it always shows 'Question 1 of 3' regardless of which step URL is loaded."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "const [currentQuestion, setCurrentQuestion] = useState(0);",
+      "new_str": "const [currentQuestion, setCurrentQuestion] = useState(0);\n  const [mounted, setMounted] = useState(false);\n  useEffect(() => { setMounted(true); }, []);",
+      "reason": "Track mounted state so progress bar width uses a consistent value during SSR/hydration"
+    },
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "style={{ width: `${progressWidth}%` }}",
+      "new_str": "style={{ width: mounted ? `${progressWidth}%` : '0%' }}",
+      "reason": "Use '0%' on server render to prevent server/client width mismatch that causes hydration error. After mount, the correct client value is used."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407055294,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407055296,\"url\":\"/design/step-3\"}"
+  ]
+}

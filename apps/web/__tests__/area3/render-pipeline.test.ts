@@ -319,6 +319,9 @@ describe("GET /api/render/status", () => {
       from: vi.fn().mockReturnValue({
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
+        maybeSingle: vi
+          .fn()
+          .mockResolvedValue({ data: { id: "room-abc" }, error: null }),
         single: vi.fn().mockResolvedValue({
           data: {
             pipeline_cost_log: costLog,
@@ -884,8 +887,12 @@ describe("GET /api/render/tweak/status", () => {
     vi.doMock("@/lib/supabase/admin", () => ({
       createAdminSupabaseClient: vi.fn().mockReturnValue({
         from: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnThis(),
           update: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
+          maybeSingle: vi
+            .fn()
+            .mockResolvedValue({ data: { id: "room-abc" }, error: null }),
           insert: vi.fn().mockResolvedValue({ data: null, error: null }),
         }),
       }),

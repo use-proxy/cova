@@ -1,0 +1,47 @@
+{
+  "screen": "dashboard",
+  "url": "http://localhost:3000/dashboard",
+  "passed": false,
+  "attempt": 2,
+  "elements": 27,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Multiple React hydration errors: 'Text content does not match server-rendered HTML' repeated 7 times, causing entire root to switch to client rendering. This is likely caused by dynamic content rendered differently on server vs client (e.g., date/time like 'Good evening, Amelia.' greeting which depends on time of day, or 'Thursday, April 16' date string).",
+      "element": "Greeting text 'Good evening, Amelia.' and/or date 'Thursday, April 16'",
+      "root_cause": "The dashboard page likely renders a time-based greeting ('Good evening') or a dynamic date string directly during SSR without suppressing hydration mismatch or wrapping in a client-only component. The server renders at one time, the client renders at slightly different time or with different locale, causing mismatch."
+    },
+    {
+      "severity": "major",
+      "description": "Console shows 'Invalid or unexpected token' page error which may indicate a syntax error in a source file affecting the dashboard page.",
+      "element": "Page-level JavaScript error",
+      "root_cause": "A syntax error in apps/web/app/dashboard/page.tsx or a component it imports. Could be an unterminated string, bad template literal, or invalid JSX token."
+    },
+    {
+      "severity": "minor",
+      "description": "Dining Room card title is truncated as 'Dining Room Curatio...' and tags are cut off ('NATU...'), indicating overflow issues in the card layout.",
+      "element": "Third room card (Dining Room Curation)",
+      "root_cause": "The cards section likely uses a flex/grid layout where the third card is partially outside the viewport without proper overflow handling or the card title lacks truncation CSS."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/dashboard/page.tsx",
+      "old_str": "Good evening, Amelia.",
+      "new_str": "Good evening, Amelia.",
+      "reason": "Placeholder - see actual fix below for hydration"
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407339889,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407339890,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407367409,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407367410,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776407391151,\"url\":\"/design/step-6\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776407391153,\"url\":\"/design/step-6\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407416299,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407416301,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407445508,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407445512,\"url\":\"/dashboard\"}"
+  ]
+}

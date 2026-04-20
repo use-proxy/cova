@@ -1,0 +1,41 @@
+{
+  "screen": "dashboard",
+  "url": "http://localhost:3000/dashboard",
+  "passed": false,
+  "attempt": 1,
+  "elements": 27,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Duplicate React import in step-3/page.tsx causes module build failure. 'useState' and 'useEffect' are defined twice due to two separate import statements from 'react'.",
+      "element": "apps/web/app/design/step-3/page.tsx imports",
+      "root_cause": "The file has two import lines from 'react': line 2 imports { useState, useEffect } and line 3 imports { useState, useEffect, useCallback, useRef }. This causes SWC compiler to throw a redefinition error, breaking the build for step-3."
+    },
+    {
+      "severity": "major",
+      "description": "Multiple React hydration errors on the dashboard page. Text content mismatch between server-rendered HTML and client-side render, likely caused by time-dependent content (e.g., 'Good evening, Amelia.' greeting which depends on time of day).",
+      "element": "Dashboard greeting text / time-based content",
+      "root_cause": "The greeting 'Good evening, Amelia.' is computed based on current time. Server renders at one time, client hydrates at a slightly different moment or with different locale, causing mismatch. This needs suppressHydrationWarning or useEffect to set the greeting client-side only."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "\"use client\"\nimport { useState, useEffect } from 'react'\nimport { useState, useEffect, useCallback, useRef } from \"react\";",
+      "new_str": "\"use client\"\nimport { useState, useEffect, useCallback, useRef } from \"react\";",
+      "reason": "Removes the duplicate first import line that was causing SWC redefinition build error for useState and useEffect."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776408612386,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776408612389,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776408637674,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776408637676,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776408639333,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776408639334,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776408663136,\"url\":\"/design/step-6\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776408663137,\"url\":\"/design/step-6\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776408684788,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776408684790,\"url\":\"/dashboard\"}"
+  ]
+}

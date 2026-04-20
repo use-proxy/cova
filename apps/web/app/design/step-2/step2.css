@@ -908,3 +908,236 @@
 .cova-round-flash.is-active {
   opacity: 1;
 }
+
+/* ── Anchor question phase ─────────────────────────────── */
+
+/* Room selection grid for the room-type step */
+.anchor-room-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  padding: 1.5rem clamp(20px, 4vw, 44px);
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.anchor-room-btn {
+  padding: 2rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(201, 168, 76, 0.22);
+  background: rgba(15, 31, 61, 0.54);
+  color: #f5f0e8;
+  font-size: 1.05rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    border-color 200ms ease-out,
+    background 200ms ease-out,
+    transform 200ms ease-out,
+    box-shadow 200ms ease-out;
+}
+
+.anchor-room-btn:hover {
+  border-color: rgba(201, 168, 76, 0.55);
+  background: rgba(201, 168, 76, 0.08);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* Phase wrapper — handles entrance/exit animation */
+.anchor-phase {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  padding: clamp(20px, 4vh, 40px) 0 32px;
+  gap: 20px;
+}
+
+@keyframes anchorEnter {
+  from { opacity: 0; transform: translateX(28px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes anchorExit {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(-28px); }
+}
+
+.anchor-phase--entering {
+  animation: anchorEnter 300ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.anchor-phase--exiting {
+  animation: anchorExit 200ms ease forwards;
+  pointer-events: none;
+}
+
+/* Progress pips */
+.anchor-pips {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.anchor-pip {
+  width: 28px;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(201, 168, 76, 0.20);
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.anchor-pip--active {
+  width: 44px;
+  background: linear-gradient(90deg, #c9a84c, #f0d080);
+  box-shadow: 0 0 8px rgba(201, 168, 76, 0.5);
+}
+
+.anchor-pip--done {
+  background: #c9a84c;
+  opacity: 0.50;
+}
+
+/* Question counter */
+.anchor-counter {
+  font-family: var(--font-sans, "DM Sans", sans-serif);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #c9a84c;
+  opacity: 0.85;
+  margin: 0;
+}
+
+/* 2×2 image grid — fills available viewport width */
+.anchor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 10px;
+  width: min(100%, 540px);
+  /* Square-ish viewport: each cell is half the grid width */
+  aspect-ratio: 1 / 1;
+  padding: 0 clamp(12px, 3vw, 24px);
+}
+
+/* Individual image cell */
+.anchor-cell {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid transparent;
+  background: #0f1f3d;
+  transition:
+    border-color 200ms ease-out,
+    box-shadow 200ms ease-out,
+    transform 200ms ease-out;
+  /* Remove default button styles */
+  padding: 0;
+}
+
+.anchor-cell:hover {
+  border-color: rgba(201, 168, 76, 0.40);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  transform: scale(1.02);
+}
+
+.anchor-cell--selected {
+  border-color: #c9a84c;
+  box-shadow:
+    0 0 0 2px #c9a84c,
+    0 0 24px rgba(201, 168, 76, 0.35),
+    0 12px 32px rgba(0, 0, 0, 0.45);
+  transform: scale(1.03);
+}
+
+/* Image fills the cell completely — no text labels */
+.anchor-cell__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.anchor-cell:hover .anchor-cell__img {
+  transform: scale(1.05);
+}
+
+.anchor-cell--selected .anchor-cell__img {
+  transform: scale(1.04);
+}
+
+/* Selected checkmark badge */
+.anchor-cell__check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #c9a84c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 10px rgba(201, 168, 76, 0.55);
+  animation: checkPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes checkPop {
+  from { opacity: 0; transform: scale(0.4) rotate(-20deg); }
+  to   { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+/* CTA row — Next button */
+.anchor-cta-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding-top: 4px;
+  min-height: 56px; /* reserve space so layout doesn't shift */
+}
+
+.anchor-next-btn {
+  /* Inherits .cova-round-btn styles, just override width */
+  width: auto;
+  min-width: 200px;
+  animation: anchorEnter 260ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.anchor-loading {
+  font-family: var(--font-sans, "DM Sans", sans-serif);
+  font-size: 13px;
+  color: rgba(201, 168, 76, 0.70);
+  letter-spacing: 0.06em;
+  margin: 0;
+}
+
+/* Mobile: allow grid to be slightly shorter so CTA stays visible */
+@media (max-height: 700px) {
+  .anchor-grid {
+    aspect-ratio: auto;
+    height: min(55vw, 340px);
+  }
+}
+
+@media (max-width: 420px) {
+  .anchor-grid {
+    gap: 6px;
+  }
+
+  .anchor-room-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  .anchor-room-btn {
+    padding: 1.4rem 0.75rem;
+    font-size: 0.95rem;
+  }
+}

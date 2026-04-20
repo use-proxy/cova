@@ -8,6 +8,7 @@
 import type { CSSProperties, MouseEvent as ReactMouseEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { flowLog } from "@/lib/debug/flow-logger";
 import { useRoomStore } from "@/lib/store/room";
 import { useFingerprintStore } from "@/lib/store/fingerprint";
 import "../step-1/step1.css";
@@ -32,6 +33,7 @@ function clamp(value: number, minimum: number, maximum: number) {
 
 export default function RevealStep8A() {
   const router = useRouter();
+  useEffect(() => { flowLog("page:mount", { page: "step-8a" }); }, []);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Store values — read on mount, used as primary source

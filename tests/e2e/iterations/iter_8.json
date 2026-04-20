@@ -1,0 +1,62 @@
+{
+  "iter": 8,
+  "room": "Room_A",
+  "style": "COVAFARMHOUSE",
+  "secondaryStyle": "COVAJAPANDI",
+  "primaryWeight": 0.8,
+  "removeCount": 0,
+  "wallChange": true,
+  "floorChange": true,
+  "seed": 800,
+  "renderUrl": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/renders/cb2e7047-c7ae-4253-bf2b-cc42a6f3a727/final_1776423658.jpg",
+  "score": {
+    "scores": {
+      "ARCHITECTURE_FIDELITY": 9,
+      "STYLE_ACCURACY": 7,
+      "FURNITURE_REALISM": 8,
+      "COMPOSITION": 7,
+      "LIGHTING": 8,
+      "COLOR_HARMONY": 8,
+      "DETAIL_QUALITY": 8,
+      "EDITORIAL_QUALITY": 7,
+      "ROOM_ADAPTATION": 6,
+      "BETTER_THAN_BENCHMARK": 5
+    },
+    "total": 73,
+    "pass": false,
+    "issues": [
+      {
+        "dimension": "STYLE_ACCURACY",
+        "symptom": "Room lacks farmhouse character; sparse decoration, minimal texture, industrial desk/chair clashes with intended style",
+        "root_cause": "prompt",
+        "severity": "major"
+      },
+      {
+        "dimension": "COMPOSITION",
+        "symptom": "Room feels empty with under-furnished space; desk, chair, and small storage unit leave large dead zones; lacks layered visual interest",
+        "root_cause": "prompt",
+        "severity": "major"
+      },
+      {
+        "dimension": "ROOM_ADAPTATION",
+        "symptom": "Design appears generic bedroom furniture swap rather than cohesive style transformation; doesn't leverage room's original purpose or layout",
+        "root_cause": "prompt",
+        "severity": "major"
+      },
+      {
+        "dimension": "EDITORIAL_QUALITY",
+        "symptom": "Sparse, sterile appearance; lacks styling elements (decor, plants, textiles, accessories) that elevate to magazine standard; photorealistic but uninspiring",
+        "root_cause": "prompt",
+        "severity": "major"
+      },
+      {
+        "dimension": "BETTER_THAN_BENCHMARK",
+        "symptom": "Benchmark shows complete, styled, cohesive bedroom with proper scale and accessories; Cova render is emptier, less curated, lower visual impact",
+        "root_cause": "prompt",
+        "severity": "critical"
+      }
+    ],
+    "winner_subjective": "benchmark"
+  },
+  "passed": false
+}

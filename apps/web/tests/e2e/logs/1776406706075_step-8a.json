@@ -1,0 +1,51 @@
+{
+  "screen": "step-8a",
+  "url": "http://localhost:3000/design/step-8a",
+  "passed": false,
+  "attempt": 1,
+  "elements": 0,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "The page is stuck in a loading state and never transitions to the result screen with the AI-redesigned room image and before/after slider. The loading animation never completes and no result content is rendered.",
+      "element": "Loading state / result render",
+      "root_cause": "The step-8a page likely simulates a loading sequence with timers and then sets a state to show the result, but the timer/state transition logic is either missing, broken, or the 'isLoading' state never flips to false. This may be caused by useEffect not running (SSR hydration issues) or a missing setTimeout/interval that advances the loading steps and ultimately shows the result."
+    },
+    {
+      "severity": "major",
+      "description": "Multiple hydration errors logged: 'Text content does not match server-rendered HTML' and 'There was an error while hydrating. The entire root will switch to client rendering.' This indicates dynamic content (like Date.now(), Math.random(), or non-deterministic values) is being rendered during SSR without being wrapped in useEffect or suppressed.",
+      "element": "Hydration / SSR mismatch",
+      "root_cause": "The step-8a page (and possibly step-3) uses values that differ between server and client render — likely a timestamp, random seed, or progress percentage computed at render time rather than inside useEffect with a mounted guard."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-8a/page.tsx",
+      "old_str": "const [currentStep, setCurrentStep] = useState(0);\n  const [isComplete, setIsComplete] = useState(false);",
+      "new_str": "const [currentStep, setCurrentStep] = useState(0);\n  const [isComplete, setIsComplete] = useState(false);\n  const [isMounted, setIsMounted] = useState(false);",
+      "reason": "Add isMounted guard to prevent SSR/client hydration mismatch on dynamic state."
+    },
+    {
+      "file": "apps/web/app/design/step-8a/page.tsx",
+      "old_str": "useEffect(() => {\n    const steps = [0, 1, 2, 3];\n    let i = 0;\n    const interval = setInterval(() => {\n      i++;\n      if (i < steps.length) {\n        setCurrentStep(i);\n      } else {\n        clearInterval(interval);\n        setIsComplete(true);\n      }\n    }, 1500);",
+      "new_str": "useEffect(() => {\n    setIsMounted(true);\n    const steps = [0, 1, 2, 3];\n    let i = 0;\n    const interval = setInterval(() => {\n      i++;\n      if (i < steps.length) {\n        setCurrentStep(i);\n      } else {\n        clearInterval(interval);\n        setIsComplete(true);\n      }\n    }, 1500);",
+      "reason": "Set isMounted to true inside useEffect so it only runs client-side, fixing hydration mismatch and ensuring the loading sequence actually starts and completes."
+    },
+    {
+      "file": "apps/web/app/design/step-8a/page.tsx",
+      "old_str": "if (!isComplete) {",
+      "new_str": "if (!isMounted || !isComplete) {",
+      "reason": "Guard the loading state check with isMounted so the component consistently renders the loading UI on both server and initial client render, preventing hydration mismatch, and ensures the result screen appears once isComplete is true after the timers fire."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776406604615,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776406604617,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776406631198,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776406631201,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776406660597,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776406660598,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776406681767,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776406681769,\"url\":\"/design/step-8a\"}"
+  ]
+}

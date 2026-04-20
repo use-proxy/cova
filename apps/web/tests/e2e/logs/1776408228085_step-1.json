@@ -1,0 +1,47 @@
+{
+  "screen": "step-1",
+  "url": "http://localhost:3000/design/step-1",
+  "passed": false,
+  "attempt": 2,
+  "elements": 4,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Duplicate React import statements in step-3/page.tsx causing module build failure. Two separate import lines from 'react' with overlapping exports (useState, useEffect defined twice), breaking compilation.",
+      "element": "apps/web/app/design/step-3/page.tsx imports",
+      "root_cause": "The file originally had two separate import lines: `import { useState, useEffect } from 'react';` and `import { useCallback, useEffect, useRef, useState } from 'react';`. These duplicate named imports cause a SWC compilation error. The shown source already has this fixed to one line, but the page errors and module build failed log indicate the file on disk still has the duplicate."
+    },
+    {
+      "severity": "major",
+      "description": "Repeated React hydration errors on step-1 page: 'Text content does not match server-rendered HTML'. This causes the entire root to fall back to client rendering, which may suppress the particle animation and cause visual flicker.",
+      "element": "step-1 page hydration",
+      "root_cause": "A component on the step-1 page renders different content on the server vs client (e.g., timestamp, random value, or a non-deterministic expression used in rendered text or particle canvas). Common cause: Date.now() or Math.random() called during render outside useEffect."
+    },
+    {
+      "severity": "critical",
+      "description": "Module build failed for step-3/page.tsx due to duplicate useState and useEffect imports. The file on disk has both `import { useState, useEffect } from 'react'` and `import { useCallback, useEffect, useRef, useState } from 'react'` as separate lines.",
+      "element": "apps/web/app/design/step-3/page.tsx",
+      "root_cause": "Two react import statements with overlapping named exports. SWC compiler rejects redefined bindings."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "\"use client\"\nimport { useState, useEffect } from 'react';\n\nimport { useCallback, useEffect, useRef, useState } from \"react\";",
+      "new_str": "\"use client\"\nimport { useState, useEffect, useCallback, useRef } from \"react\";",
+      "reason": "Remove the duplicate first import line and consolidate all react hooks into a single import statement to fix the SWC 'defined multiple times' compilation error."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408126368,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408126370,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408151824,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408151826,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408174697,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408174699,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408177047,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408177049,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408203942,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408203945,\"url\":\"/design/step-1\"}"
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "screen": "step-3",
+  "url": "http://localhost:3000/design/step-3",
+  "passed": false,
+  "attempt": 1,
+  "elements": 5,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Hydration error: progress bar width mismatches between server and client renders. Server renders 'width:5%' but client renders 'width:15%'. This causes full root hydration failure and multiple 'Text content does not match server-rendered HTML' errors.",
+      "element": "Progress bar div with inline width style",
+      "root_cause": "In apps/web/app/design/step-3/page.tsx, the progress bar width is computed dynamically using state (currentQuestion index or similar) that differs between server and client render. The server has no state so it renders a default/initial value (5%) while client hydrates with a different value (15%)."
+    },
+    {
+      "severity": "major",
+      "description": "Page shows 'Question 1 of 3' text-based surface preference question instead of the expected image comparison pairs (two room images side by side). This is either the wrong question set or the image comparison UI is missing.",
+      "element": "Quiz question content area — missing image pairs",
+      "root_cause": "The page.tsx may be showing a text-only question for question index 0 instead of rendering image comparison pairs. The image comparison component may not be implemented or the question type routing is incorrect."
+    },
+    {
+      "severity": "minor",
+      "description": "Progress bar shows nearly no fill (5% on server) for what should be step-3 in the design flow, indicating incorrect progress calculation.",
+      "element": "Progress bar",
+      "root_cause": "The progress width is calculated from currentQuestion state (0-indexed within step-3's own questions), not from overall flow progress."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "style={{ width: `${Math.round((currentQuestion / totalQuestions) * 100)}%` }}",
+      "new_str": "style={{ width: `${Math.round(((currentQuestion + 1) / totalQuestions) * 100)}%` }}",
+      "reason": "Fix off-by-one in progress calculation so question 1 of 3 shows 33% not ~0%, and align server/client render by ensuring the calculation is deterministic from the same state value."
+    },
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "const [currentQuestion, setCurrentQuestion] = useState(0);",
+      "new_str": "const [currentQuestion, setCurrentQuestion] = useState(0);\n  const [isMounted, setIsMounted] = useState(false);\n  useEffect(() => { setIsMounted(true); }, []);",
+      "reason": "Track mount state to suppress hydration mismatch on progress bar by deferring dynamic width to client only."
+    },
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "style={{ width: `${Math.round(((currentQuestion + 1) / totalQuestions) * 100)}%` }}",
+      "new_str": "style={{ width: isMounted ? `${Math.round(((currentQuestion + 1) / totalQuestions) * 100)}%` : '0%' }}",
+      "reason": "Use isMounted to render consistent width on server (0%) and only show real progress after client hydration, eliminating the server/client mismatch warning and hydration error."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776406921859,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776406921861,\"url\":\"/design/step-3\"}"
+  ]
+}

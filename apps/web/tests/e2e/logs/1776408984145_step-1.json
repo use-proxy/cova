@@ -1,0 +1,53 @@
+{
+  "screen": "step-1",
+  "url": "http://localhost:3000/design/step-1",
+  "passed": false,
+  "attempt": 1,
+  "elements": 4,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "setIsMounted is not defined — ReferenceError thrown repeatedly (14+ times). This causes hydration failure and a full page reload via Fast Refresh.",
+      "element": "Particle animation / mount guard in step-1 page",
+      "root_cause": "In apps/web/app/design/step-1/page.tsx, setIsMounted is referenced (e.g. in useEffect) but the useState declaration `const [isMounted, setIsMounted] = useState(false)` is either missing or the destructuring is wrong (e.g. only `isMounted` was destructured without `setIsMounted`)."
+    },
+    {
+      "severity": "critical",
+      "description": "Hydration mismatch: 'Text content does not match server-rendered HTML' — happens because particle positions or time-based values are generated during server render with different values than client render.",
+      "element": "Gold particle animation canvas / particle text nodes",
+      "root_cause": "Particle coordinates or counts are computed with Math.random() or Date.now() at module/render level rather than inside a useEffect or behind an isMounted guard, causing server HTML to differ from client HTML."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-1/page.tsx",
+      "old_str": "const [isMounted] = useState(false)",
+      "new_str": "const [isMounted, setIsMounted] = useState(false)",
+      "reason": "setIsMounted was not destructured from useState, causing the ReferenceError 'setIsMounted is not defined' on every render."
+    },
+    {
+      "file": "apps/web/app/design/step-1/page.tsx",
+      "old_str": "const particles = Array.from({ length:",
+      "new_str": "const particles = isMounted ? Array.from({ length:",
+      "reason": "Particles must only be generated client-side after mount to prevent hydration mismatch from Math.random() producing different values on server vs client."
+    },
+    {
+      "file": "apps/web/app/design/step-1/page.tsx",
+      "old_str": "  useEffect(() => {\n    setIsMounted(true)\n  }, [])",
+      "new_str": "  useEffect(() => {\n    setIsMounted(true);\n  }, []);",
+      "reason": "Ensures setIsMounted(true) is called after mount — this is likely already present but needs to be confirmed correct; combined with fix #1 this resolves the ReferenceError and hydration error."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776408890312,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776408890314,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776408911038,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776408911040,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408937637,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408937638,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408957752,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408957755,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408959980,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408959982,\"url\":\"/design/step-1\"}"
+  ]
+}

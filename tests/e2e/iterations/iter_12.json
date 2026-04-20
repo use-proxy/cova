@@ -1,0 +1,92 @@
+{
+  "iter": 12,
+  "room": "Room_A",
+  "style": "COVABIOPHILIC",
+  "secondaryStyle": "COVACOASTAL",
+  "primaryWeight": 0.6,
+  "removeCount": 5,
+  "wallChange": true,
+  "floorChange": true,
+  "seed": 1200,
+  "renderUrl": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/renders/cb2e7047-c7ae-4253-bf2b-cc42a6f3a727/final_1776440413.jpg",
+  "score": {
+    "scores": {
+      "ARCHITECTURE_FIDELITY": 3,
+      "STYLE_ACCURACY": 5,
+      "FURNITURE_REALISM": 4,
+      "COMPOSITION": 4,
+      "LIGHTING": 5,
+      "COLOR_HARMONY": 6,
+      "DETAIL_QUALITY": 4,
+      "EDITORIAL_QUALITY": 3,
+      "ROOM_ADAPTATION": 4,
+      "BETTER_THAN_BENCHMARK": 2
+    },
+    "total": 40,
+    "pass": false,
+    "issues": [
+      {
+        "dimension": "ARCHITECTURE_FIDELITY",
+        "symptom": "Cova image appears to be a completely different room - lounge/breakroom space vs benchmark bedroom. Ceiling fan, layout, window placement all different. Same 'DAKSH' branding but entirely different architecture",
+        "root_cause": "composite",
+        "severity": "critical"
+      },
+      {
+        "dimension": "STYLE_ACCURACY",
+        "symptom": "COVABIOPHILIC style poorly expressed. Cova shows industrial/modern elements (black office chair, geometric art blocks) rather than biophilic warmth. Benchmark shows cleaner biophilic elements (pampas grass, botanical art, natural materials)",
+        "root_cause": "prompt",
+        "severity": "critical"
+      },
+      {
+        "dimension": "FURNITURE_REALISM",
+        "symptom": "Orange sofa lacks proper shadow/material definition. Art block swatches on wall appear flat and artificial. Wooden table surface is dull. Benchmark furniture shows superior material authenticity",
+        "root_cause": "postprocess",
+        "severity": "major"
+      },
+      {
+        "dimension": "COMPOSITION",
+        "symptom": "Sparse, unbalanced composition. Large empty wall space. Office chair relegated to corner. Benchmark shows well-distributed foreground/mid/background elements",
+        "root_cause": "prompt",
+        "severity": "major"
+      },
+      {
+        "dimension": "LIGHTING",
+        "symptom": "Harsh overhead lighting creates unflattering shadows on sofa. Illuminated wall art creates odd lighting inconsistency. Benchmark has warm, directional, cohesive lighting",
+        "root_cause": "lighting",
+        "severity": "major"
+      },
+      {
+        "dimension": "COLOR_HARMONY",
+        "symptom": "Orange sofa clashes with cool blue-gray walls. Limited palette. Benchmark demonstrates superior warm/cool balance with cream, natural wood, soft grays",
+        "root_cause": "prompt",
+        "severity": "major"
+      },
+      {
+        "dimension": "DETAIL_QUALITY",
+        "symptom": "Art blocks appear as flat colored rectangles without texture. Sofa fabric lacks weave detail. Ceiling fan is generic. Benchmark shows sharp, detailed textures throughout",
+        "root_cause": "lora",
+        "severity": "major"
+      },
+      {
+        "dimension": "EDITORIAL_QUALITY",
+        "symptom": "Not magazine-worthy. Harsh lighting, awkward composition, poor color choices. Feels like office breakroom rather than curated interior design. Benchmark is polished and publication-ready",
+        "root_cause": "postprocess",
+        "severity": "critical"
+      },
+      {
+        "dimension": "ROOM_ADAPTATION",
+        "symptom": "Appears to be a generic lounge space hastily styled, not thoughtfully adapted. Benchmark shows intentional design choices specific to this bedroom's proportions and natural light",
+        "root_cause": "prompt",
+        "severity": "major"
+      },
+      {
+        "dimension": "BETTER_THAN_BENCHMARK",
+        "symptom": "Benchmark is significantly superior in every measurable dimension: lighting, composition, style fidelity, photorealism, editorial quality, and overall aesthetic appeal",
+        "root_cause": "composite",
+        "severity": "critical"
+      }
+    ],
+    "winner_subjective": "benchmark"
+  },
+  "passed": false
+}

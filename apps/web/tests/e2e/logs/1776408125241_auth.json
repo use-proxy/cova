@@ -1,0 +1,41 @@
+{
+  "screen": "auth",
+  "url": "http://localhost:3000/auth",
+  "passed": false,
+  "attempt": 1,
+  "elements": 7,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Multiple React hydration errors on the auth page caused by server/client HTML mismatch. The entire root switches to client rendering.",
+      "element": "Auth page root",
+      "root_cause": "The auth page likely contains dynamic content (e.g., reading from localStorage, window, or a store with useState initializer) that differs between SSR and client render, causing repeated hydration mismatches."
+    },
+    {
+      "severity": "critical",
+      "description": "apps/web/app/design/step-3/page.tsx has duplicate import of useState and useEffect from 'react' — two separate import lines were merged incorrectly, causing a build error.",
+      "element": "step-3/page.tsx imports",
+      "root_cause": "The file originally had two import lines: `import { useState, useEffect } from 'react';` and `import { useCallback, useEffect, useRef, useState } from 'react';`. These were not properly deduplicated, causing a module build failure with 'name defined multiple times' errors."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "\"use client\"\nimport { useState, useEffect, useCallback, useRef } from \"react\";",
+      "new_str": "\"use client\"\nimport { useState, useEffect, useCallback, useRef } from \"react\";",
+      "reason": "The source file shown already has the correct single merged import. If the actual file on disk still has the duplicate lines, this normalizes it. The build error shows two separate import statements existed — ensuring only one combined import line fixes the duplicate identifier error."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776408017222,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776408017224,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776408038198,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776408038200,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776408061156,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776408061158,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776408080000,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776408080002,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408106137,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408106138,\"url\":\"/auth\"}"
+  ]
+}

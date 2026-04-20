@@ -15,16 +15,25 @@ const ENV_VARS: EnvVar[] = [
   { name: "NEXT_PUBLIC_SUPABASE_URL", required: true },
   { name: "NEXT_PUBLIC_SUPABASE_ANON_KEY", required: true },
   { name: "SUPABASE_SERVICE_ROLE_KEY", required: true, serverOnly: true },
+  { name: "SUPABASE_JWT_SECRET", required: true, serverOnly: true },
   // AI APIs — required for core features
-  { name: "REPLICATE_API_TOKEN", required: true, serverOnly: true },
+  { name: "FAL_KEY", required: true, serverOnly: true },
   { name: "ANTHROPIC_API_KEY", required: true, serverOnly: true },
+  { name: "REPLICATE_API_TOKEN", required: false, serverOnly: true }, // Legacy, being deprecated
+  // Pipeline webhooks — required for render pipeline
+  { name: "REDESIGN_PIPELINE_WEBHOOK_URL", required: true, serverOnly: true },
+  // Search — optional (used for product enrichment)
+  { name: "SERPER_API_KEY", required: false, serverOnly: true },
+  { name: "SEARCHAPI_KEY", required: false, serverOnly: true },
   // Analytics — optional (app works without them)
   { name: "NEXT_PUBLIC_POSTHOG_KEY", required: false },
   { name: "SENTRY_DSN", required: false, serverOnly: true },
   // Affiliates — optional (affiliate URLs degrade gracefully)
   { name: "AMAZON_AFFILIATE_TAG", required: false, serverOnly: true },
-  // Search — optional (used for product enrichment)
-  { name: "SERPER_API_KEY", required: false, serverOnly: true },
+  // External AI — optional (Gemini for room analysis)
+  { name: "GEMINI_API_KEY", required: false, serverOnly: true },
+  // Unsplash — optional (reference images)
+  { name: "UNSPLASH_ACCESS_KEY", required: false, serverOnly: true },
 ];
 
 interface ValidationResult {

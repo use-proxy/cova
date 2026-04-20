@@ -1,8 +1,8 @@
-"use client";
-
+"use client"
 import { Cormorant_Garamond, Manrope } from "next/font/google";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { createBrowserClient } from "@/lib/supabase/client";
+import { flowLog } from "@/lib/debug/flow-logger";
 
 const displayFont = Cormorant_Garamond({
   subsets: ["latin"],
@@ -16,6 +16,7 @@ const bodyFont = Manrope({
 });
 
 export default function CovaLoginPage() {
+  useEffect(() => { flowLog("page:mount", { page: "auth" }); }, []);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);

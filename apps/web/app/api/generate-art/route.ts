@@ -71,10 +71,18 @@ export async function GET(req: Request) {
   if (!roomId) return NextResponse.json({ status: "error" });
 
   const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { data } = await supabase
     .from("rooms")
     .select("personalization")
     .eq("id", roomId)
+    .eq("user_id", user.id)
     .single();
 
   const urls =
@@ -113,6 +121,7 @@ export async function POST(req: Request) {
       .from("rooms")
       .select("personalization")
       .eq("id", roomId)
+      .eq("user_id", user.id)
       .single();
     const existing = (roomData?.personalization ?? {}) as Record<
       string,
@@ -126,7 +135,8 @@ export async function POST(req: Request) {
           artGeneratedUrls: urls,
         },
       })
-      .eq("id", roomId);
+      .eq("id", roomId)
+      .eq("user_id", user.id);
   }
 
   return NextResponse.json({

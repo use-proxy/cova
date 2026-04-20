@@ -77,10 +77,20 @@ export async function POST(req: NextRequest) {
     // Store in rooms table if we got a video URL
     if (videoUrl && room_id) {
       const admin = createAdminSupabaseClient();
+      const { data: owned } = await admin
+        .from("rooms")
+        .select("id")
+        .eq("id", room_id)
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+      if (!owned) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
       await admin
         .from("rooms")
         .update({ parallax_video_url: videoUrl } as Record<string, unknown>)
-        .eq("id", room_id);
+        .eq("id", room_id)
+        .eq("user_id", session.user.id);
     }
 
     return NextResponse.json({ video_url: videoUrl });

@@ -1,0 +1,53 @@
+{
+  "screen": "landing",
+  "url": "http://localhost:3000/dashboard",
+  "passed": false,
+  "attempt": 2,
+  "elements": 27,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Wrong page shown: Current URL is /dashboard but expected screen is the marketing landing page. The landing page (hero image, gold CTA, marketing copy) is not showing at all — instead the authenticated dashboard is rendered.",
+      "element": "Entire page content",
+      "root_cause": "The route / (landing page) is either missing or the app is redirecting to /dashboard automatically. The landing page file apps/web/app/page.tsx may be redirecting authenticated users or the root route doesn't exist."
+    },
+    {
+      "severity": "critical",
+      "description": "Multiple React hydration errors: 'Text content does not match server-rendered HTML' repeated 7 times plus full hydration failure causing client-side re-render. This is likely caused by dynamic date/time rendering (e.g., 'Good evening, Amelia.' greeting which changes based on time-of-day, or 'Thursday, April 16' date) being rendered on the server with a different value than the client.",
+      "element": "Dashboard greeting text and/or date display",
+      "root_cause": "In apps/web/app/dashboard/page.tsx, the greeting ('Good evening') and/or date ('Thursday, April 16') are computed at render time using new Date() or similar, which differs between SSR and client hydration."
+    },
+    {
+      "severity": "major",
+      "description": "Failed to fetch RSC payload after Fast Refresh — browser fell back to full navigation. This is a dev-environment side effect of the hydration error causing a full re-render cycle.",
+      "element": "Next.js RSC fast refresh",
+      "root_cause": "Cascading effect of the hydration error. Fixing the hydration error (issue #2) should resolve this."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/dashboard/page.tsx",
+      "old_str": "const getGreeting = () => {\n    const hour = new Date().getHours();\n    if (hour < 12) return 'Good morning';\n    if (hour < 18) return 'Good afternoon';\n    return 'Good evening';\n  };",
+      "new_str": "const getGreeting = () => {\n    if (typeof window === 'undefined') return 'Good evening';\n    const hour = new Date().getHours();\n    if (hour < 12) return 'Good morning';\n    if (hour < 18) return 'Good afternoon';\n    return 'Good evening';\n  };",
+      "reason": "Prevents SSR/client mismatch by returning a stable default on the server side, avoiding hydration error from time-dependent greeting."
+    },
+    {
+      "file": "apps/web/app/dashboard/page.tsx",
+      "old_str": "const formattedDate = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });",
+      "new_str": "const [formattedDate, setFormattedDate] = React.useState('Thursday, April 16');\n  React.useEffect(() => {\n    setFormattedDate(new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }));\n  }, []);",
+      "reason": "Moves dynamic date computation to client-side effect to prevent SSR/client HTML mismatch causing hydration errors."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776407080544,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776407080547,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776407106992,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776407106994,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776407131124,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776407131125,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407155876,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407155878,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407183949,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407183950,\"url\":\"/dashboard\"}"
+  ]
+}

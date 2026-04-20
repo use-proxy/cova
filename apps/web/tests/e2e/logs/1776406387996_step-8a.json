@@ -1,0 +1,57 @@
+{
+  "screen": "step-8a",
+  "url": "http://localhost:3000/design/step-8a",
+  "passed": false,
+  "attempt": 1,
+  "elements": 0,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Page is stuck in loading state — the AI-redesigned room image and before/after slider are never shown. The loading steps never progress to completion and the result UI never renders.",
+      "element": "Loading state / result render",
+      "root_cause": "The page likely simulates a loading sequence with setTimeout/setInterval steps but either the state machine never transitions to 'complete', or the condition to show the result (image + slider) is gated on data that never arrives (e.g. a missing sessionStorage key, failed API call, or the progress steps complete but isLoading stays true). The hydration errors ('Text content does not match server-rendered HTML') also suggest the loading step text or timer is being rendered on the server with a different value than on the client, causing a full client re-render that may reset state and stall the progress."
+    },
+    {
+      "severity": "critical",
+      "description": "Multiple React hydration errors: 'Text content does not match server-rendered HTML' (7 instances) causing the entire root to switch to client rendering. This likely resets the component's loading progress state on mount.",
+      "element": "Hydration / SSR mismatch",
+      "root_cause": "The step-8a page.tsx likely uses Date.now(), Math.random(), or a non-deterministic value in the initial render, OR renders client-only state (e.g. a step index or timer-driven label) without suppressing SSR or wrapping in useEffect/dynamic import with ssr:false. The server renders one text value and the client renders another, causing hydration failure and a full re-render that resets the loading animation."
+    },
+    {
+      "severity": "major",
+      "description": "No before/after image slider is visible — the primary deliverable of this screen is completely absent.",
+      "element": "Before/after slider component",
+      "root_cause": "The result section containing the slider is conditionally rendered only when loading is complete (e.g. `if (!isLoading) return <ResultScreen />`), but since loading never completes, the slider is never mounted."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-8a/page.tsx",
+      "old_str": "const [currentStep, setCurrentStep] = useState(0);",
+      "new_str": "const [currentStep, setCurrentStep] = useState(0);\n  const [mounted, setMounted] = useState(false);\n\n  useEffect(() => {\n    setMounted(true);\n  }, []);",
+      "reason": "Ensures client-only state is only used after mount, preventing SSR/client mismatch hydration errors that reset state."
+    },
+    {
+      "file": "apps/web/app/design/step-8a/page.tsx",
+      "old_str": "const steps = [",
+      "new_str": "if (!mounted) return null;\n\n  const steps = [",
+      "reason": "Prevents server-rendering the dynamic loading UI entirely, eliminating the hydration mismatch and allowing the client to render fresh, avoiding state resets."
+    },
+    {
+      "file": "apps/web/app/design/step-8a/page.tsx",
+      "old_str": "const [isLoading, setIsLoading] = useState(true);",
+      "new_str": "const [isLoading, setIsLoading] = useState(true);\n\n  useEffect(() => {\n    const totalDuration = 4000;\n    const stepCount = 4;\n    const stepDuration = totalDuration / stepCount;\n    let step = 0;\n    const interval = setInterval(() => {\n      step += 1;\n      setCurrentStep(step);\n      if (step >= stepCount - 1) {\n        clearInterval(interval);\n        setTimeout(() => setIsLoading(false), stepDuration);\n      }\n    }, stepDuration);\n    return () => clearInterval(interval);\n  }, []);",
+      "reason": "Ensures the loading steps actually advance through all 4 stages and then set isLoading=false so the result/slider screen renders. If this useEffect already exists, it may be conflicting — this provides a clean guaranteed progression."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776406183203,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776406183205,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776406208118,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776406208121,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776406232792,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776406232794,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776406357294,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776406357296,\"url\":\"/design/step-8a\"}"
+  ]
+}

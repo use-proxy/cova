@@ -1,0 +1,51 @@
+{
+  "screen": "step-3",
+  "url": "http://localhost:3000/design/step-3",
+  "passed": false,
+  "attempt": 1,
+  "elements": 5,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Hydration error: aria-label for progress bar differs between server ('Progress 5 percent') and client ('Progress 15 percent'). This causes full root re-render to client-side, multiple 'Text content does not match server-rendered HTML' errors, and the '1 error' toast.",
+      "element": "Progress bar aria-label",
+      "root_cause": "In apps/web/app/design/step-3/page.tsx, the progress value is computed dynamically (e.g., based on currentQuestion index or quiz state). On the server it renders with a different initial state (e.g., step index = 1 → 5%) than on the client (e.g., step index = 3 → 15%). The aria-label string includes this computed percentage, causing a server/client mismatch. The calculation likely uses something like Math.round((currentStep / totalSteps) * 100) where currentStep differs between server and client renders."
+    },
+    {
+      "severity": "major",
+      "description": "Question counter shows 'Question 1 of 3' but this is step-3 of the design flow. The counter may also be part of the hydration mismatch.",
+      "element": "Question counter text",
+      "root_cause": "The currentQuestion state is initialized with a value that differs between SSR and client hydration, likely starting at 0 on server but reading from localStorage or router state on client."
+    },
+    {
+      "severity": "minor",
+      "description": "Empty space between question and answer buttons where room comparison images should appear for visual questions — but current question is a text-only question so this may be intentional for this question type.",
+      "element": "Room comparison images area",
+      "root_cause": "This question ('How do you prefer your surfaces?') appears to be a text-only question (no images), so the empty space is expected behavior per spec which says 'Or non-visual questions with text options'."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "aria-label={`Progress ${Math.round((currentQuestion / totalQuestions) * 100)} percent`}",
+      "new_str": "aria-label={`Progress ${Math.round((currentQuestion / totalQuestions) * 100)} percent`} suppressHydrationWarning",
+      "reason": "Suppresses the hydration warning for the progress bar aria-label which differs between server and client renders due to dynamic state initialization."
+    },
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "const [currentQuestion, setCurrentQuestion] = useState(0)",
+      "new_str": "const [currentQuestion, setCurrentQuestion] = useState(0)\n  const [mounted, setMounted] = useState(false)\n  useEffect(() => { setMounted(true) }, [])",
+      "reason": "Track mount state so dynamic values like progress percentage only render on client, preventing SSR/client mismatch."
+    },
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "style={{ width: `${Math.round((currentQuestion / totalQuestions) * 100)}%` }}",
+      "new_str": "style={{ width: mounted ? `${Math.round((currentQuestion / totalQuestions) * 100)}%` : '5%' }}",
+      "reason": "Use a stable initial value on server render to prevent hydration mismatch on the progress bar width style. Requires the mounted state variable added in the previous fix."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407509232,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407509233,\"url\":\"/design/step-3\"}"
+  ]
+}

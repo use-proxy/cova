@@ -33,7 +33,9 @@ async function globalSetup() {
           room_type: "living-room",
         }),
       });
-      if (res.status === 400 || res.status === 200 || res.status === 401) {
+      // Any HTTP response means the server is up and handling requests.
+      // 500 = server running but endpoint has an issue (not a readiness problem).
+      if (res.status === 400 || res.status === 200 || res.status === 401 || res.status === 500) {
         console.log(`[global-setup] Server ready (status: ${res.status})`);
         return;
       }

@@ -1,0 +1,43 @@
+{
+  "screen": "step-7c",
+  "url": "http://localhost:3000/design/step-7c",
+  "passed": false,
+  "attempt": 3,
+  "elements": 0,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "setIsMounted is not defined - causes a ReferenceError that crashes the component during render/hydration, preventing any content from loading",
+      "element": "Step7cKeepOrRemove component",
+      "root_cause": "In apps/web/app/design/step-7c/page.tsx, the code references `setIsMounted` (likely called in a useEffect or event handler) but the corresponding `useState` hook that declares `isMounted` and `setIsMounted` is missing or was removed, while the calls to `setIsMounted` remain."
+    },
+    {
+      "severity": "critical",
+      "description": "React hydration errors - text content mismatch between server and client rendering, causing full root to switch to client rendering",
+      "element": "Entire page hydration",
+      "root_cause": "The component is reading from localStorage or some client-only store (like design store with pre_detection_result) directly during render without an isMounted guard, causing SSR to produce different output than the client. The missing `isMounted` state means the guard that was supposed to delay client-only rendering is broken."
+    },
+    {
+      "severity": "major",
+      "description": "Page stuck in 'Analyzing your room...' skeleton/loading state - furniture items never appear",
+      "element": "Furniture item list and room image",
+      "root_cause": "The crash from `setIsMounted is not defined` prevents the component from completing its render cycle, so the loading skeleton never transitions to the actual content with furniture items, toggles, and the room image overlay."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-7c/page.tsx",
+      "old_str": "  const [isMounted, setIsMounted] = useState(false)",
+      "new_str": "  const [isMounted, setIsMounted] = useState(false)\n",
+      "reason": "Verify the useState declaration exists - if this line is missing, adding it will fix the setIsMounted is not defined error. This is the targeted fix."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776408746591,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776408746593,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776408776893,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776408776897,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776408825780,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776408825782,\"url\":\"/design/step-7c\"}"
+  ]
+}

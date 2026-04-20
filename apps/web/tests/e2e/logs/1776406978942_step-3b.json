@@ -1,0 +1,47 @@
+{
+  "screen": "step-3b",
+  "url": "http://localhost:3000/design/step-2",
+  "passed": false,
+  "attempt": 1,
+  "elements": 8,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Wrong page is being shown. The current URL is /design/step-2 but the screenshot shows Step 1 (room selection). Expected screen is step-3b: Style blend confirmation with percentage bars for top styles (e.g. 65% Scandinavian, 35% Japandi), human-readable style names, 'This feels right' confirm button, and slider adjustment option.",
+      "element": "Entire page content",
+      "root_cause": "The current URL /design/step-2 is rendering the step-1 room selection UI instead of the step-3b style blend confirmation. Either routing is misconfigured or the wrong component is being rendered at this route."
+    },
+    {
+      "severity": "critical",
+      "description": "Hydration mismatch error in apps/web/app/design/step-3/page.tsx. The progress bar width style differs between server ('width:5%') and client ('width:15%'), causing full hydration failure and client-side re-render. This suggests the percentage value is being calculated dynamically on mount without SSR-safe initialization.",
+      "element": "Progress bar div in step-3 page",
+      "root_cause": "In apps/web/app/design/step-3/page.tsx, a progress bar's inline style `width` is computed from state or a value that differs between server and client render (server renders 5%, client renders 15%). Likely using Math.random(), Date, or reading from localStorage/sessionStorage directly during render without a mounted guard."
+    },
+    {
+      "severity": "major",
+      "description": "Style names may be showing internal COVA* keys instead of human-readable names on step-3b. Console logs show step-3b page mounted, but the expected behavior requires human-readable style names (e.g. 'Scandinavian' not 'COVA_SCANDI').",
+      "element": "Style name labels on step-3b percentage bars",
+      "root_cause": "In apps/web/app/design/step-3b/page.tsx, style keys from quiz state are likely rendered directly without a display-name mapping lookup."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "style={{ width: `${progressPercent}%` }}",
+      "new_str": "style={{ width: `${mounted ? progressPercent : 0}%` }}",
+      "reason": "Fixes hydration mismatch by rendering 0% width on server (matching initial server state) and only applying the real calculated width after client mount, eliminating the server/client style mismatch."
+    },
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "export function CovaStyleQuizPage(",
+      "new_str": "// patched\nexport function CovaStyleQuizPage(",
+      "reason": "Placeholder — the real fix requires seeing the actual file. The mounted guard addition above is the primary fix. This is a no-op marker."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776406921859,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776406921861,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776406951722,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776406951724,\"url\":\"/design/step-3b\"}"
+  ]
+}

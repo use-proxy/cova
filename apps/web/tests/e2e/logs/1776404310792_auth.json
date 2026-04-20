@@ -1,0 +1,39 @@
+{
+  "screen": "auth",
+  "url": "http://localhost:3000/auth",
+  "passed": true,
+  "attempt": 1,
+  "elements": 7,
+  "issues": [
+    {
+      "severity": "minor",
+      "description": "Console warning: container does not have a non-static position for scroll offset calculation. This is a non-blocking warning but indicates a layout/positioning issue that could affect scroll behavior in some components.",
+      "element": "Container element (likely a wrapper div)",
+      "root_cause": "A component using a scroll-offset library (e.g., react-scroll, framer-motion scroll, or a custom hook) is mounted inside a statically-positioned container div. The container CSS likely lacks 'position: relative' or equivalent."
+    },
+    {
+      "severity": "minor",
+      "description": "page:mount event fires twice in console logs (ts: 1776404288740 and 1776404288742). This suggests the auth page component mounts twice, possibly due to React StrictMode double-invoking effects or a duplicate route render.",
+      "element": "Auth page component mount lifecycle",
+      "root_cause": "React StrictMode in development intentionally double-invokes effects, or there is a duplicate analytics/telemetry call in useEffect without a cleanup or guard. If this is not StrictMode, it could be a route misconfiguration rendering the component twice."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "src/components/layout/AuthContainer.tsx",
+      "old_str": "<div className=\"auth-container\">",
+      "new_str": "<div className=\"auth-container\" style={{ position: 'relative' }}>",
+      "reason": "Adds non-static positioning to resolve the scroll offset console warning from whichever scroll utility is used inside the auth layout."
+    },
+    {
+      "file": "src/pages/auth/index.tsx",
+      "old_str": "useEffect(() => {\n    trackEvent({ event: 'page:mount', data: { page: 'auth' } });\n  });",
+      "new_str": "useEffect(() => {\n    trackEvent({ event: 'page:mount', data: { page: 'auth' } });\n  }, []);",
+      "reason": "Adding an empty dependency array ensures the page:mount event fires only once on initial mount, preventing duplicate telemetry events caused by effect re-runs."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776404288740,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776404288742,\"url\":\"/auth\"}"
+  ]
+}

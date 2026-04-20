@@ -1,0 +1,47 @@
+{
+  "screen": "step-4",
+  "url": "http://localhost:3000/design/step-4",
+  "passed": false,
+  "attempt": 1,
+  "elements": 6,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Radar chart with 6 dimensions (Warmth, Complexity, Organic, Layered, Heritage, Character) is completely absent from the screen",
+      "element": "Radar/spider chart component",
+      "root_cause": "The radar chart component is either not imported/rendered in apps/web/app/design/step-4/page.tsx, or it fails silently due to a missing dependency or hydration error causing the chart to not render"
+    },
+    {
+      "severity": "critical",
+      "description": "Multiple hydration errors on page (Text content does not match server-rendered HTML, entire root switching to client rendering). Also auth/page.tsx has duplicate useEffect and useState imports causing build errors.",
+      "element": "apps/web/app/auth/page.tsx duplicate imports",
+      "root_cause": "apps/web/app/auth/page.tsx has two import statements importing useEffect and useState from react — one at line 2 (`import { useEffect, useState } from 'react'`) and another at line 5 (`import { FormEvent, useEffect, useMemo, useState } from 'react'`). This causes a build error."
+    },
+    {
+      "severity": "major",
+      "description": "Tweak input field is missing from the fingerprint reveal screen",
+      "element": "Tweak input field",
+      "root_cause": "The tweak/refinement input field is not rendered in apps/web/app/design/step-4/page.tsx — it may have been omitted during implementation"
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/auth/page.tsx",
+      "old_str": "import { useEffect, useState } from 'react';\n\nimport { Cormorant_Garamond, Manrope } from \"next/font/google\";\nimport { FormEvent, useEffect, useMemo, useState } from \"react\";",
+      "new_str": "import { Cormorant_Garamond, Manrope } from \"next/font/google\";\nimport { FormEvent, useEffect, useMemo, useState } from \"react\";",
+      "reason": "Remove the duplicate first import line that re-declares useEffect and useState, keeping only the more complete second import that also includes FormEvent and useMemo"
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776407245104,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776407245106,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407264929,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407264932,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407266925,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407266928,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407292288,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407292291,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776407312619,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776407312621,\"url\":\"/design/step-4\"}"
+  ]
+}

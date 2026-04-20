@@ -1,0 +1,41 @@
+{
+  "screen": "step-1",
+  "url": "http://localhost:3000/design/step-1",
+  "passed": false,
+  "attempt": 1,
+  "elements": 4,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Duplicate React imports in step-3/page.tsx — line 1 has a stale 'use client' + partial import from 'react' (useState, useEffect) followed immediately by the full import on line 3. This causes a compile error: 'useState is defined multiple times' and 'useEffect is defined multiple times', resulting in a 500 error on any route that triggers this module.",
+      "element": "apps/web/app/design/step-3/page.tsx — duplicate import lines",
+      "root_cause": "Two import statements from 'react' exist at the top of the file. Line 2: `import { useState, useEffect } from 'react'` is a leftover/duplicate of line 3: `import { useState, useEffect, useCallback, useRef } from 'react'`. The SWC compiler rejects duplicate named imports."
+    },
+    {
+      "severity": "major",
+      "description": "React hydration errors on step-1 page — 'Text content does not match server-rendered HTML' repeated multiple times. Likely caused by dynamic/time-dependent content or particle animation canvas rendered differently on server vs client.",
+      "element": "step-1 page hydration",
+      "root_cause": "Some text or rendered output in apps/web/app/design/step-1/page.tsx differs between SSR and client render — commonly caused by Date.now(), Math.random(), or similar non-deterministic values used during render without suppressing hydration mismatch."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "\"use client\"\nimport { useState, useEffect } from 'react'\nimport { useState, useEffect, useCallback, useRef } from \"react\";",
+      "new_str": "\"use client\"\nimport { useState, useEffect, useCallback, useRef } from \"react\";",
+      "reason": "Removes the duplicate partial React import that causes the SWC compile error 'useState/useEffect defined multiple times', fixing the 500 error on step-3 and the cascading Fast Refresh failures."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776408502683,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776408502685,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408525712,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408525714,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408567931,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408567932,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408588948,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408588950,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408591009,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408591011,\"url\":\"/design/step-1\"}"
+  ]
+}

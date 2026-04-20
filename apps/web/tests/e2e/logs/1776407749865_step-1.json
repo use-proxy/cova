@@ -1,0 +1,41 @@
+{
+  "screen": "step-1",
+  "url": "http://localhost:3000/design/step-1",
+  "passed": false,
+  "attempt": 2,
+  "elements": 4,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "React hydration error: 'Text content does not match server-rendered HTML' causing the entire root to switch to client rendering. This is repeated multiple times and causes instability.",
+      "element": "Particle animation canvas or dynamic text content in step-1 page",
+      "root_cause": "A component in apps/web/app/design/step-1/page.tsx (or a child component) is generating different content on the server vs client — most likely a canvas-based particle animation or Math.random()/Date.now() values computed at render time without being wrapped in useEffect or guarded with 'use client' + suppressHydrationWarning. The particle positions or counts are likely computed during render and differ between SSR and CSR."
+    },
+    {
+      "severity": "major",
+      "description": "Gold particle animation on dark navy canvas is not visible — the expected animated particle background is absent or not rendering.",
+      "element": "Canvas particle animation background",
+      "root_cause": "The hydration error causes the entire root to fall back to client-only rendering, which may prevent the canvas animation from initializing properly. Additionally, if the particle canvas component uses Math.random() at render time (outside useEffect), SSR output won't match and the component may fail to mount correctly."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-1/page.tsx",
+      "old_str": "import ParticleCanvas from",
+      "new_str": "import dynamic from 'next/dynamic';\nconst ParticleCanvas = dynamic(() => import(",
+      "reason": "PLACEHOLDER — see next_action. Cannot apply without seeing actual source. The real fix is to dynamically import the particle canvas component with ssr: false to prevent SSR/CSR mismatch."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407651616,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407651617,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776407677596,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776407677597,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407698413,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407698416,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407700519,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407700521,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407725461,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407725464,\"url\":\"/design/step-1\"}"
+  ]
+}

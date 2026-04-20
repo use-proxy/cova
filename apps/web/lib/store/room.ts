@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
+import { persist } from "zustand/middleware";
 
 export interface Detection {
   type: string;
@@ -173,7 +173,14 @@ export const useRoomStore = create<RoomState>()(
     }),
     {
       name: "cova-room-v1",
-      storage: createJSONStorage(() => sessionStorage),
+      // Use in-memory storage instead of sessionStorage (CLAUDE.md Rule 1: NEVER
+      // use localStorage or sessionStorage). State is ephemeral per page session
+      // which is the correct behavior — room state should not persist across tabs.
+      storage: {
+        getItem: () => null,
+        setItem: () => {},
+        removeItem: () => {},
+      },
       partialize: (state) => ({
         roomId: state.roomId,
         originalPhotoUrl: state.originalPhotoUrl,

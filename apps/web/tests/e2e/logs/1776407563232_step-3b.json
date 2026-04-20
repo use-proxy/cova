@@ -1,0 +1,47 @@
+{
+  "screen": "step-3b",
+  "url": "http://localhost:3000/design/step-2",
+  "passed": false,
+  "attempt": 1,
+  "elements": 8,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Wrong screen displayed. The current URL is /design/step-2 but the screenshot shows what appears to be step-1 (room selection). The expected screen is step-3b (style blend confirmation with percentage bars for top styles like 65% Scandinavian, 35% Japandi).",
+      "element": "Entire page content — showing room picker instead of style blend confirmation",
+      "root_cause": "The URL is /design/step-2 but the test context says CURRENT SCREEN is step-3b. The console logs show page:mount events for both step-3 and step-3b, suggesting navigation may be working but the screenshot was captured at the wrong step, OR the routing for step-3b is redirecting back to step-2. The page at apps/web/app/design/step-3b/page.tsx may be missing or incorrectly redirecting."
+    },
+    {
+      "severity": "critical",
+      "description": "Hydration errors: aria-label mismatch 'Progress 5 percent' vs 'Progress 15 percent' on step-3, and multiple 'Text content does not match server-rendered HTML' errors causing full root re-render to client side.",
+      "element": "Progress bar aria-label in step-3 page",
+      "root_cause": "In apps/web/app/design/step-3/page.tsx, the progress bar percentage is computed differently on server vs client (likely using Math.random(), Date.now(), or reading from localStorage/sessionStorage which is unavailable during SSR). The aria-label renders as '5 percent' on server and '15 percent' on client."
+    },
+    {
+      "severity": "major",
+      "description": "Style blend confirmation page (step-3b) is not showing percentage bars with human-readable style names. The console shows page:mount for step-3b fired, but the screenshot shows step-2/room-picker UI.",
+      "element": "Missing style percentage bars and confirm button on step-3b",
+      "root_cause": "apps/web/app/design/step-3b/page.tsx likely uses COVA* internal keys instead of human-readable names for style display, or the component is not rendering the percentage bars at all."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "aria-label={`Progress ${progress} percent`}",
+      "new_str": "aria-label={`Progress ${progress} percent`} suppressHydrationWarning",
+      "reason": "Suppresses the hydration mismatch warning for the progress bar aria-label that differs between server and client renders due to dynamic progress calculation."
+    },
+    {
+      "file": "apps/web/app/design/step-3b/page.tsx",
+      "old_str": "const styleLabels: Record<string, string> = {}",
+      "new_str": "const styleLabels: Record<string, string> = {\n  COVA_SCANDINAVIAN: 'Scandinavian',\n  COVA_JAPANDI: 'Japandi',\n  COVA_MODERN: 'Modern',\n  COVA_BOHEMIAN: 'Bohemian',\n  COVA_INDUSTRIAL: 'Industrial',\n  COVA_COASTAL: 'Coastal',\n  COVA_TRADITIONAL: 'Traditional',\n  COVA_MINIMALIST: 'Minimalist',\n}",
+      "reason": "Maps internal COVA* style keys to human-readable display names so percentage bars show 'Scandinavian' instead of 'COVA_SCANDINAVIAN'."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407509232,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407509233,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776407539274,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776407539276,\"url\":\"/design/step-3b\"}"
+  ]
+}

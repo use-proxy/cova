@@ -12,8 +12,6 @@ import {
   buildPreservationInstructions,
 } from "@/lib/ai/room-analyzer";
 import { fetchTopStyleReference } from "@/lib/ai/style-references";
-import { compilePromptWithClaude } from "@/lib/ai/prompt-compiler";
-import type { RenderContext } from "@/lib/types/area2";
 import type { RoomAnalysis } from "@/lib/store/room";
 import { generateInpaintingMask } from "@/lib/ai/inpainting";
 import { checkRateLimit } from "@/lib/rateLimit";
@@ -173,31 +171,8 @@ export async function POST(request: Request) {
       fetchTopStyleReference(fingerprint_vector, room_type),
     ]);
 
-    // Read render_context from DB if available — this is the rich Area 2
-    // context assembled client-side with all 10 data sources.
-    const { data: roomRow } = await supabase
-      .from("rooms")
-      .select("render_context")
-      .eq("id", room_id)
-      .single();
-
-    const renderContext =
-      ((roomRow as { render_context?: unknown } | null)
-        ?.render_context as RenderContext | null) ?? null;
-
-    // Claude compile always runs when a fingerprint is available, even when
-    // render_context is null — the server-side fingerprint fallback is enough
-    // to drive the rich prompt path. render_context, when present, adds the
-    // Area 2 layers (roomConstraints, sensory, identity, etc).
     const anchorPrompt = topStyleRef?.flux_prompt ?? null;
-    const compiled = await compilePromptWithClaude(
-      renderContext,
-      room_type,
-      fingerprint_vector,
-      anchorPrompt,
-    );
     const positiveBase =
-      compiled ??
       buildFluxPrompt({
         fingerprint: fingerprint_vector,
         roomType: room_type,

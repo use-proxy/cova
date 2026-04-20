@@ -1,13 +1,16 @@
-"use client";
+"use client"
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { flowLog } from "@/lib/debug/flow-logger";
 import "./step1.css";
 
 export default function StepOnePage() {
   const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const roomFrameRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => { flowLog("page:mount", { page: "step-1" }); }, []);
 
   // Particle field
   useEffect(() => {
@@ -157,7 +160,7 @@ export default function StepOnePage() {
 
   return (
     <div className="step1-wrapper">
-      <canvas ref={canvasRef} className="particle-canvas" />
+      <canvas suppressHydrationWarning ref={canvasRef} className="particle-canvas" />
       <div className="radial-glow" />
 
       <div className="page-wrapper">

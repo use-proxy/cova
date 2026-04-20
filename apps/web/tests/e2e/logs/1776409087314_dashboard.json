@@ -1,0 +1,59 @@
+{
+  "screen": "dashboard",
+  "url": "http://localhost:3000/dashboard",
+  "passed": false,
+  "attempt": 1,
+  "elements": 27,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Multiple hydration errors: 'Text content does not match server-rendered HTML' and 'setIsMounted is not defined'. The greeting 'Good evening, Amelia.' is time-dependent and renders differently on server vs client. Also setIsMounted state setter is referenced but not declared.",
+      "element": "Dashboard greeting text and isMounted state",
+      "root_cause": "The dashboard page likely computes a time-based greeting ('Good evening/morning/afternoon') during server render, but the client renders at a different time or with different logic. Additionally, setIsMounted is called but the useState hook for it is missing or the variable is out of scope."
+    },
+    {
+      "severity": "major",
+      "description": "'setIsMounted is not defined' repeated 14 times in console errors, indicating a ReferenceError that causes hydration failure and fallback to full client rendering.",
+      "element": "isMounted state in dashboard page",
+      "root_cause": "In apps/web/app/dashboard/page.tsx, setIsMounted is called (likely in a useEffect) but the corresponding useState declaration `const [isMounted, setIsMounted] = useState(false)` is missing."
+    },
+    {
+      "severity": "minor",
+      "description": "Dining Room card tag is truncated as 'NATU...' indicating the card width is too narrow to show all tags, but this may be intentional due to the carousel/scroll layout.",
+      "element": "Dining Room card tags",
+      "root_cause": "CSS overflow/truncation on the third card which is partially cut off by the viewport — likely intentional to hint scrollability."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/dashboard/page.tsx",
+      "old_str": "const [isMounted, setIsMounted] = useState(false)",
+      "new_str": "const [isMounted, setIsMounted] = useState(false)",
+      "reason": "Verify this line exists — if missing, this is the fix needed"
+    },
+    {
+      "file": "apps/web/app/dashboard/page.tsx",
+      "old_str": "function getGreeting() {\n    const hour = new Date().getHours()\n    if (hour < 12) return 'Good morning'\n    if (hour < 18) return 'Good afternoon'\n    return 'Good evening'\n  }",
+      "new_str": "function getGreeting(mounted: boolean) {\n    if (!mounted) return 'Good evening'\n    const hour = new Date().getHours()\n    if (hour < 12) return 'Good morning'\n    if (hour < 18) return 'Good afternoon'\n    return 'Good evening'\n  }",
+      "reason": "Return a static default greeting during SSR to prevent server/client HTML mismatch hydration error"
+    },
+    {
+      "file": "apps/web/app/dashboard/page.tsx",
+      "old_str": "useEffect(() => {\n    setIsMounted(true)\n  }, [])",
+      "new_str": "const [isMounted, setIsMounted] = useState(false)\n\n  useEffect(() => {\n    setIsMounted(true)\n  }, [])",
+      "reason": "Add the missing useState declaration for isMounted so setIsMounted is defined, fixing the ReferenceError and hydration crash"
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776408985060,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776408985062,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776409009224,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776409009225,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776409010728,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776409010729,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776409039659,\"url\":\"/design/step-6\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776409039660,\"url\":\"/design/step-6\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776409059793,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776409059795,\"url\":\"/dashboard\"}"
+  ]
+}

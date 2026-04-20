@@ -1,7 +1,8 @@
-"use client";
-
-import { useCallback, useEffect, useRef, useState } from "react";
+"use client"
+// hydration-safe
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { flowLog } from "@/lib/debug/flow-logger";
 import {
   useFingerprintStore,
   type StyleFingerprint,
@@ -53,10 +54,11 @@ type FingerprintResult = {
 
 const TOTAL_PAIRS = 24;
 const MAX_ANCHOR_PICKS = 3;
-const COMPLETION_ROUTE = "/design/step-4";
+const COMPLETION_ROUTE = "/design/step-3b";
 
 export default function CovaStyleQuizPage() {
   const router = useRouter();
+  useEffect(() => { flowLog("page:mount", { page: "step-3" }); }, []);
   const roomType = useFingerprintStore((s) => s.roomType);
   // Start at "pairs" when step-2 already ran NLP and set a fingerprint.
   // Start at "non_visual" as fallback for direct navigation without step-2.
@@ -289,6 +291,8 @@ export default function CovaStyleQuizPage() {
           room_type: store.roomType ?? "living_room",
           tiebreaker_deltas: store.tiebreakerDeltas ?? null,
           entry_path: "pairs",
+          // V3 anchor prior from step-2 (if available)
+          ...(store.anchorPrior ? { anchor_prior: store.anchorPrior } : {}),
         }),
       });
       if (!res.ok) throw new Error(`fingerprint ${res.status}`);
@@ -331,11 +335,11 @@ export default function CovaStyleQuizPage() {
       <section className="cova-page">
         <div
           className="cova-progress-rail"
-          aria-label={`Progress ${Math.round(progressValue)} percent`}
+          suppressHydrationWarning aria-label={`Progress ${Math.round(progressValue)} percent`}
         >
           <div
             className="cova-progress-fill"
-            style={{ width: `${progressValue}%` }}
+            suppressHydrationWarning style={{ width: `${progressValue}%` }}
           />
         </div>
 
@@ -366,7 +370,7 @@ export default function CovaStyleQuizPage() {
             <div className="cova-progress-copy">
               {phase === "room_type" && "Which room are we designing?"}
               {phase === "anchors" && "Choose what resonates"}
-              {phase === "non_visual" && "A few quick questions"}
+              {phase === "non_visual" && "Style Quiz"}
               {phase === "pairs" && `${pairsAnswered} of ${TOTAL_PAIRS}`}
               {phase === "compute" && "Analyzing your style..."}
             </div>

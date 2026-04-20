@@ -1,0 +1,43 @@
+{
+  "screen": "step-7c",
+  "url": "http://localhost:3000/design/step-7c",
+  "passed": false,
+  "attempt": 1,
+  "elements": 0,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Page is stuck in 'Analyzing your room...' loading state indefinitely. The pre_detection_result data is never loaded or is not being read from store/localStorage, so the furniture items never render and the skeleton state never resolves.",
+      "element": "Entire step-7c page content — room image with overlays, furniture item list, keep/remove toggles, Continue button",
+      "root_cause": "The page component at apps/web/app/design/step-7c/page.tsx likely reads pre_detection_result from a store or async source. Either the data is not present in localStorage/store at this point in the flow (coming from step-3b without going through the full upload+detection pipeline), or there is a hydration mismatch causing the component to stay in loading state. The multiple 'Text content does not match server-rendered HTML' hydration errors confirm that server and client renders diverge, which can cause the client to get stuck. The page is showing skeleton UI indefinitely because isLoading never becomes false or items array is always empty."
+    },
+    {
+      "severity": "major",
+      "description": "Multiple React hydration errors across the app (step-3, step-3b, step-7c) causing 'entire root will switch to client rendering'. The step-3 page has a known width mismatch (5% vs 15%). These hydration errors can cascade and prevent proper state initialization in step-7c.",
+      "element": "Hydration — server/client HTML mismatch",
+      "root_cause": "apps/web/app/design/step-3/page.tsx uses dynamic/random values or browser-only APIs during SSR render, producing different HTML on server vs client. This triggers full root re-render and can corrupt shared state."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-7c/page.tsx",
+      "old_str": "const [isLoading, setIsLoading] = useState(true);",
+      "new_str": "const [isLoading, setIsLoading] = useState(false);",
+      "reason": "If pre_detection_result is read synchronously from localStorage/store on mount, initializing isLoading to true and never setting it false when data is already available causes the permanent skeleton state. Setting it to false by default and letting the effect set it true only during actual async fetching fixes the stuck loading state. NOTE: This is a targeted fix; the actual initialization logic may need review."
+    },
+    {
+      "file": "apps/web/app/design/step-7c/page.tsx",
+      "old_str": "const preDetectionResult = useDesignStore((state) => state.pre_detection_result);",
+      "new_str": "const preDetectionResult = useDesignStore((state) => state.pre_detection_result) ?? useDesignStore.getState().pre_detection_result;",
+      "reason": "Ensures pre_detection_result is read even if Zustand subscription hasn't fired yet on initial render, preventing the component from staying in loading state when data exists in the store."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776406921859,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776406921861,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776406951722,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776406951724,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776406979728,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776406979730,\"url\":\"/design/step-7c\"}"
+  ]
+}

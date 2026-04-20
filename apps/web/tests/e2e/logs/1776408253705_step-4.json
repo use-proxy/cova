@@ -1,0 +1,47 @@
+{
+  "screen": "step-4",
+  "url": "http://localhost:3000/design/step-4",
+  "passed": false,
+  "attempt": 1,
+  "elements": 6,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Radar chart with 6 dimensions (Warmth, Complexity, Organic, Layered, Heritage, Character) is completely missing from the fingerprint reveal screen",
+      "element": "Radar chart / spider chart",
+      "root_cause": "The step-4 page.tsx likely does not render a radar chart component, or the chart component is missing/not imported. The expected behavior explicitly requires a radar chart with 6 dimensions."
+    },
+    {
+      "severity": "critical",
+      "description": "Duplicate import statements in step-3/page.tsx causing a module build failure — 'useEffect' and 'useState' are defined twice. This breaks the entire module compilation pipeline and causes hydration errors across multiple pages.",
+      "element": "apps/web/app/design/step-3/page.tsx import block",
+      "root_cause": "The file originally had two separate import lines: one with 'useState, useEffect' and another with 'useCallback, useEffect, useRef, useState'. These were merged incorrectly leaving both lines present."
+    },
+    {
+      "severity": "major",
+      "description": "Tweak input field is missing from the fingerprint reveal screen",
+      "element": "Tweak input field on step-4",
+      "root_cause": "The step-4 page.tsx does not render a text input for style tweaking per the expected behavior spec."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "\"use client\"\nimport { useState, useEffect, useCallback, useRef } from \"react\";\nimport { useRouter } from \"next/navigation\";",
+      "new_str": "\"use client\"\nimport { useState, useEffect, useCallback, useRef } from \"react\";\nimport { useRouter } from \"next/navigation\";",
+      "reason": "The file currently has duplicate import lines for react hooks (useState and useEffect defined twice). This consolidated single import line removes the duplication that was causing the module build failure and hydration errors. NOTE: The actual broken file likely has two separate import lines that need to be merged into one."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408151824,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408151826,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408174697,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408174699,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408177047,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408177049,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408203942,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408203945,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776408229244,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776408229246,\"url\":\"/design/step-4\"}"
+  ]
+}

@@ -41,7 +41,6 @@ export async function POST(req: NextRequest) {
       redesign_status: "pending",
       flux_prompt: null,
       design_brief: null,
-      negative_prompt: null,
     })
     .eq("id", room_id);
 

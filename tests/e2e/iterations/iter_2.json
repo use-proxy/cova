@@ -1,0 +1,68 @@
+{
+  "iter": 2,
+  "room": "Room_A",
+  "style": "COVABIOPHILIC",
+  "secondaryStyle": "COVACOASTAL",
+  "primaryWeight": 0.8,
+  "removeCount": 5,
+  "wallChange": true,
+  "floorChange": false,
+  "seed": 200,
+  "renderUrl": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/renders/cb2e7047-c7ae-4253-bf2b-cc42a6f3a727/final_1776421407.jpg",
+  "score": {
+    "scores": {
+      "ARCHITECTURE_FIDELITY": 9,
+      "STYLE_ACCURACY": 6,
+      "FURNITURE_REALISM": 7,
+      "COMPOSITION": 8,
+      "LIGHTING": 8,
+      "COLOR_HARMONY": 7,
+      "DETAIL_QUALITY": 7,
+      "EDITORIAL_QUALITY": 7,
+      "ROOM_ADAPTATION": 5,
+      "BETTER_THAN_BENCHMARK": 4
+    },
+    "total": 68,
+    "pass": false,
+    "issues": [
+      {
+        "dimension": "STYLE_ACCURACY",
+        "symptom": "Image 1 lacks biophilic elements; no plants, natural materials, or organic elements. CollovAI render includes potted plant and natural textures.",
+        "root_cause": "prompt",
+        "severity": "critical"
+      },
+      {
+        "dimension": "ROOM_ADAPTATION",
+        "symptom": "Cova render shows child's bedroom with gaming setup (office chair, storage cubbies). CollovAI shows adult bedroom. Not adapted to same space contextually.",
+        "root_cause": "prompt",
+        "severity": "critical"
+      },
+      {
+        "dimension": "FURNITURE_REALISM",
+        "symptom": "Bedding wrinkles and pillows in Image 1 appear less refined. Nightstand storage unit looks plastic-rendered rather than photorealistic.",
+        "root_cause": "lora",
+        "severity": "major"
+      },
+      {
+        "dimension": "COLOR_HARMONY",
+        "symptom": "Image 1 uses cooler tone blue-gray; clashes with warm orange bedding. CollovAI maintains cohesive neutral warm palette.",
+        "root_cause": "postprocess",
+        "severity": "major"
+      },
+      {
+        "dimension": "EDITORIAL_QUALITY",
+        "symptom": "Image 1 lacks sophistication. Scattered clothing on floor, messy bedding, visible clutter reduce magazine appeal vs. CollovAI's curated aesthetic.",
+        "root_cause": "composite",
+        "severity": "major"
+      },
+      {
+        "dimension": "BETTER_THAN_BENCHMARK",
+        "symptom": "CollovAI superior in styling, cleanliness, biophilic integration, and editorial presentation. Cova appears as before-photo rather than design iteration.",
+        "root_cause": "prompt",
+        "severity": "critical"
+      }
+    ],
+    "winner_subjective": "benchmark"
+  },
+  "passed": false
+}

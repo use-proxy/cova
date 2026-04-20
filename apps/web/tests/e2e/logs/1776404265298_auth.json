@@ -1,0 +1,39 @@
+{
+  "screen": "auth",
+  "url": "http://localhost:3000/auth",
+  "passed": true,
+  "attempt": 1,
+  "elements": 7,
+  "issues": [
+    {
+      "severity": "minor",
+      "description": "Console warning: container has non-static position warning from a scroll offset calculation library (likely react-scroll or similar). Not visible to user but indicates a layout/CSS configuration issue.",
+      "element": "Page container / scroll wrapper",
+      "root_cause": "A scroll-offset library (e.g., react-scroll, framer-motion scroll, or a custom hook) is referencing a parent container that has 'position: static' (the default). The library requires 'position: relative', 'fixed', or 'absolute' on that container to correctly compute scroll offsets."
+    },
+    {
+      "severity": "minor",
+      "description": "Double page:mount event fired (ts difference is 1ms apart — ts:1776404240784 and ts:1776404240785). Suggests the auth page component is mounted twice, possibly due to React StrictMode double-invocation in development or a duplicate analytics call.",
+      "element": "Auth page analytics/mount event",
+      "root_cause": "In React 18 StrictMode, effects fire twice in development. If the page:mount tracking event is fired inside a useEffect without proper cleanup or inside the component body directly, it will fire twice. Alternatively, the component is rendered in two places in the tree."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "src/pages/auth/index.tsx",
+      "old_str": "export default function AuthPage() {\n  useEffect(() => {\n    trackEvent('page:mount', { page: 'auth' });\n  });\n",
+      "new_str": "export default function AuthPage() {\n  useEffect(() => {\n    trackEvent('page:mount', { page: 'auth' });\n  }, []);\n",
+      "reason": "Adding the empty dependency array ensures the page:mount event fires only once on initial mount, not on every render. This prevents the duplicate event log entries observed in the console."
+    },
+    {
+      "file": "src/components/layout/AuthLayout.tsx",
+      "old_str": "<div className=\"auth-container\">",
+      "new_str": "<div className=\"auth-container\" style={{ position: 'relative' }}>",
+      "reason": "Adding 'position: relative' to the auth container resolves the console warning about scroll offset calculation requiring a non-static positioned container."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776404240784,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776404240785,\"url\":\"/auth\"}"
+  ]
+}

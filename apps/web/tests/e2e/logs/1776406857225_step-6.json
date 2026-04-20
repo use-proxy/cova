@@ -1,0 +1,47 @@
+{
+  "screen": "step-6",
+  "url": "http://localhost:3000/design/step-6",
+  "passed": false,
+  "attempt": 1,
+  "elements": 5,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Multiple React hydration errors - text content mismatch between server and client rendering",
+      "element": "Entire page root",
+      "root_cause": "Likely caused by dynamic content (e.g. Date, Math.random, or browser-only APIs) being rendered during SSR that produces different output on client. Could also be caused by conditional rendering based on typeof window or localStorage access without useEffect/useState guard in apps/web/app/design/step-6/page.tsx"
+    },
+    {
+      "severity": "major",
+      "description": "Step indicator shows 'STEP 4 OF 4' but current screen is step-6, which should likely show a different step number",
+      "element": "STEP 4 OF 4 text in top-right",
+      "root_cause": "The step counter in apps/web/app/design/step-6/page.tsx is hardcoded or incorrectly calculated, showing step 4 instead of the correct step for step-6"
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-6/page.tsx",
+      "old_str": "STEP 4 OF 4",
+      "new_str": "STEP 6 OF 6",
+      "reason": "The step indicator is wrong - this is step-6 so it should reflect the correct step number"
+    },
+    {
+      "file": "apps/web/app/design/step-6/page.tsx",
+      "old_str": "\"use client\"",
+      "new_str": "\"use client\"\nimport dynamic from 'next/dynamic'",
+      "reason": "Prepare for suppressing hydration issues by ensuring client-only rendering where needed - first step of fix"
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776406755435,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776406755437,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776406778901,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776406778903,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776406809900,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776406809901,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776406811630,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776406811631,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776406838778,\"url\":\"/design/step-6\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776406838780,\"url\":\"/design/step-6\"}"
+  ]
+}

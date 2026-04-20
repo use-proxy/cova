@@ -1,13 +1,11 @@
 /**
- * Design Director — Session 4
+ * Design Director — Call 1: Vision Analyzer
  *
- * Two Claude Sonnet calls that convert a room photo + style fingerprint +
- * user preferences into a structured staging brief and FLUX script.
+ * Uses Claude Sonnet 4.6 with forced tool_choice to analyze a room photo
+ * and emit a structured DesignBrief. The tool schema guarantees valid
+ * structured output — no JSON parsing needed.
  *
- * Call 1: room image + fingerprint + context → staging JSON (design_brief)
- * Call 2: staging JSON → FLUX staging script, 80-145 words (flux_prompt)
- *
- * Model: claude-sonnet-4-5 (pinned — do not change)
+ * Call 2 (DesignBrief -> FLUX prompt) lives in prompt-compiler.ts.
  */
 
 import Anthropic from "@anthropic-ai/sdk";
@@ -19,464 +17,124 @@ const anthropic = new Anthropic();
 
 // ── Type definitions ──────────────────────────────────────────────────────────
 
-export interface DesignObject {
-  name: string;
-  material: string; // always specific: "walnut" not "wood", "bouclé" not "fabric"
-  position: string; // spatial descriptor: "left foreground beside sofa"
-}
-
-export interface DepthLayer {
-  zone: "foreground" | "midground" | "background";
-  distance: string; // "0-3ft" | "4-8ft" | "8ft+"
-  objects: DesignObject[];
-}
+export type RoomType =
+  | "bedroom"
+  | "living_room"
+  | "kitchen"
+  | "bathroom"
+  | "home_office"
+  | "dining"
+  | "entryway";
 
 export interface DesignBrief {
-  roomType: string;
-  styleAnchor: string;
-  weaknesses: string[];         // visual weaknesses identified from photo
-  compensations: string[];      // design moves that address each weakness
+  room_type: RoomType;
+  architecture_preserved: {
+    walls: string;
+    windows: string;
+    ceiling_height_est_ft: number;
+    floor_type: string;
+    camera_pov: string;
+  };
+  anchor: {
+    category: string;
+    material: string;
+    color: string;
+    scale: string;
+  };
   palette: {
-    dominant: string;           // 60% — walls/floor
-    secondary: string;          // 30% — primary furniture
-    accent: string;             // 10% — accessories/highlights
+    primary_hex: string;
+    secondary_hex: string;
+    accent_hex: string;
+    neutral_hex: string;
   };
+  materials: string[];
   lighting: {
-    source: string;             // "floor lamp" | "pendant" | "natural" etc.
-    quality: string;            // "warm diffused" | "raked directional" etc.
-    colorTemp: string;          // "2700K Edison" | "3000K warm-white" | "5000K"
-    shadows: string;            // shadow quality/direction
+    direction: string;
+    fixture: string;
+    color_temp_k: number;
+    shadow_intensity: "soft" | "medium" | "hard";
   };
-  materialTension: {
-    warm: string;               // e.g. "brushed brass" — always specific
-    cool: string;               // e.g. "honed slate" — always specific
+  depth_zones: {
+    foreground: string[];
+    midground: string[];
+    background: string[];
   };
-  depthLayers: {
-    foreground: DepthLayer;     // 0-3ft
-    midground: DepthLayer;      // 4-8ft
-    background: DepthLayer;     // 8ft+
+  style_weights: {
+    primary_lora: string;
+    primary_scale: number;
+    secondary_lora?: string;
+    secondary_scale?: number;
   };
-  decorObjects: Array<
-    DesignObject & { depthZone: "foreground" | "midground" | "background" }
-  >;
-  budgetTier: "ikea" | "west-elm" | "designer";
-  totalObjectCount: number;
-  wall_change_requested?: boolean;
-  floor_change_requested?: boolean;
-  wall_color?: string;
-  removal_targets?: string[];   // specific visible objects to remove (clutter, dated fixtures, visual harm)
+  hard_constraints: string[];
+
+  // ── Session 8 additions ─────────────────────────────────────────────────────
+  focal_point: {
+    description: string;
+    position: string;
+    viewer_eye_path: string;
+  };
+  color_story: {
+    primary: { name: string; hex: string; coverage_pct: number };
+    secondary: { name: string; hex: string; coverage_pct: number };
+    accent: { name: string; hex: string; coverage_pct: number };
+    neutral_ground: { name: string; hex: string; coverage_pct: number };
+  };
+  three_materials: Array<{ name: string; finish: string; application: string }>;
+  lighting_concept: {
+    natural_light: string;
+    artificial_light: string[];
+  };
+  object_hierarchy: {
+    hero: { item: string; position: string };
+    supporting: Array<{ item: string; position: string }>;
+    accessories: Array<{ item: string; position: string }>;
+  };
+  negative_space: {
+    instruction: string;
+    forbidden_zones: string[];
+  };
+  statement_piece: { description: string; position: string };
+  design_rationale: string;
+  smart_suggestions: string[];
+  wall_change_requested: boolean;
+  floor_change_requested: boolean;
+  room_scale: "small" | "medium" | "large";
+
+  // Auxiliary fields (set programmatically after tool call, not from Claude)
   required_objects?: string[];
+  kept_item_palette?: Array<{
+    label: string;
+    material: string;
+    color: string;
+    dominant_hex?: string;
+  }>;
 }
 
 export interface DesignDirectorInput {
   imageUrl: string;
   fingerprint: StyleFingerprint;
   roomType: string;
-  styleAnchor: string;          // e.g. "Warm & Grounded"
-  loraTrigger: string;          // e.g. "cvwmn"
+  styleAnchor: string;
+  loraTrigger: string;
   budgetMin: number;
   budgetMax: number;
   context?: RenderContext | null;
-  removeItems?: string[];       // labels from step-7c user remove selections
-  keepItems?: string[];         // labels from step-7c user keep selections
-  chatHistory?: string | null;  // formatted chat string (highest priority — overrides all)
-  chatContext?: Record<string, unknown> | null; // tabStates from step-7d chat (fallback)
+  removeItems?: string[];
+  keepItems?: string[];
+  chatHistory?: string | null;
+  chatContext?: Record<string, unknown> | null;
   roomId?: string;
 }
 
 export interface DesignDirectorOutput {
   stagingJson: DesignBrief;
   fluxPrompt: string;
-  negativePrompt: string;
 }
 
-// ── System prompt: Call 1 — Vision → Staging JSON ────────────────────────────
-const CALL1_SYSTEM = `You are an expert interior designer with 20 years of Architectural Digest experience.
+// ── Style DNA blocks — lock style before room-specific content ───────────────
+// Exported for quiz/style-preview route. Each trigger maps to a concise
+// material-first block that FLUX weighs heavily in early token positions.
 
-━━━ PRIORITY HIERARCHY — READ BEFORE ALL ELSE ━━━
-
-When an "AUTHORITATIVE CLIENT DIRECTIVES" section appears in the user message,
-it is the HIGHEST priority input. It overrides everything below it:
-  → Your aesthetic judgment
-  → The style fingerprint values
-  → Style anchor defaults
-  → Interior design best practices
-  → Everything else in the user message
-
-Rules that are ABSOLUTE when client directives are present:
-1. Named products MUST appear verbatim in your JSON output.
-   "65 inch Samsung Frame TV" → appears as "65 inch Samsung Frame TV wall-mounted"
-   in the appropriate depthLayers objects array. Never paraphrase or generalize named products.
-2. "keep the carpet/walls/floor" → set wall_change_requested: false AND/OR floor_change_requested: false AND
-   the kept element MUST be noted in the compensations array with its current material/color preserved.
-   Default wall_change_requested = true (allow change).
-   Default floor_change_requested = false (preserve unless the user explicitly asked to change the floor material or color).
-3. Material preferences ("dark sleek wood") override the style anchor's defaults for that category.
-
-━━━ INTERIOR DESIGN PRINCIPLES (apply only when not overridden by client) ━━━
-
-You will receive:
-1. A room photo (the user's actual space)
-2. A 12-dimensional style fingerprint
-3. Unsplash reference images (professional interior photos matching the target style)
-
-YOUR JOB: Analyze everything and produce a staging JSON that would make this specific room look like it belongs on the cover of Architectural Digest.
-
-════════════════════════════════════════════════
-REFERENCE IMAGE ANALYSIS (do this first)
-════════════════════════════════════════════════
-
-Before doing anything else, deeply analyze each Unsplash reference image provided. Extract and learn from:
-
-DECORATION DENSITY: Count the exact number of objects on every surface. Note which surfaces are styled vs bare. Your staging must match this density exactly.
-
-LAYERING TECHNIQUE: How many layers of objects exist on each surface? (e.g. coffee table: tray → books → object on books → vase). Replicate this layering depth.
-
-MATERIAL COMBINATIONS: List every material visible and how they are combined. Note warm/cool pairings, matte/shiny contrasts, rough/smooth relationships. Use these exact combinations.
-
-PLANT PLACEMENT: Where exactly are plants positioned? What species, what pot material, what size relative to surrounding furniture? Replicate placement logic.
-
-LIGHTING SOURCES: Count every light source visible. Note color temperature, direction, and shadow patterns. Replicate the lighting layer count.
-
-TEXTILE TECHNIQUE: How are throws draped? How are pillows arranged and in what quantities? What textures are mixed? Copy this exactly.
-
-COLOR DISTRIBUTION: Where does the dominant color sit? Where does the accent appear? Map the 60-30-10 distribution across the actual room geometry.
-
-NEGATIVE SPACE: Which areas are intentionally left empty? Why? Learn the rhythm of styled vs empty in these references.
-
-════════════════════════════════════════════════
-ROOM PHOTO ANALYSIS
-════════════════════════════════════════════════
-
-Analyze the user's room photo for:
-
-ARCHITECTURAL BONES: Ceiling height, window placement and size, door positions, alcoves, built-ins, ceiling features. These are fixed constraints.
-
-CURRENT FURNITURE FOOTPRINT: What exists, where it sits, approximate dimensions. This establishes the spatial logic.
-
-LIGHT QUALITY: Direction of natural light, time of day apparent, existing artificial sources, shadow patterns.
-
-ROOM WEAKNESSES (identify minimum 4, maximum 7):
-- Empty wall voids (walls with nothing on them)
-- Bare floor zones (carpet/floor with no rug or furniture)
-- Lighting flatness (single source, no layers)
-- Corner dead zones (unused corners)
-- Surface clutter vs intentional styling
-- Scale mismatches (furniture too small for wall)
-- Missing vertical elements (nothing drawing eye upward)
-- Color temperature conflicts
-- Missing foreground anchor
-- Missing background depth element
-- Textile poverty (no throws, cushions, rugs)
-- Plant absence
-- Art absence
-
-════════════════════════════════════════════════
-INTERIOR DESIGN PRINCIPLES — NON-NEGOTIABLE
-════════════════════════════════════════════════
-
-60-30-10 COLOR RULE:
-60% dominant: walls + largest furniture + floor
-30% secondary: sofa/bed upholstery + rugs + curtains
-10% accent: cushions + vases + art + small objects
-Never deviate from this ratio.
-
-THREE DEPTH LAYERS — ALL MUST BE POPULATED:
-Foreground (0-3ft from camera): rug edge, coffee table styling, floor object, pouffe, plant at lens level
-Midground (4-8ft): primary furniture, main lighting, primary art, main textile moment
-Background (8ft+): wall treatment, tall plant, floor lamp behind furniture, art grouping, architectural detail
-
-MATERIAL TENSION SYSTEM:
-Always pair one warm material with one cool/contrasting:
-- Warm: walnut, brass, amber glass, terracotta, linen, rattan
-- Cool: marble, concrete, steel, glass, slate, bouclé white
-- Bridge: a third material that connects both (jute, leather, aged brass, natural stone)
-Never use just warm or just cool — tension creates interest.
-
-SURFACE STYLING RULES:
-Coffee table: always tray + 2-3 objects of varying height + one organic element (plant/stone/coral)
-Nightstand: lamp + 1-2 small objects maximum, never bare
-Shelves: books horizontal + vertical + object in front + plant trailing or upright at end
-Windowsill: one object only, never cluttered
-Floor: rug always, never bare carpet in the midground
-
-PLANT RULES:
-- density > 0.6: minimum 3 plants of different species and scale
-- Always vary: one tall (fiddle leaf/monstera/snake plant), one trailing (pothos/string of pearls), one small (succulent/cactus/air plant in vessel)
-- Always specify pot material (terracotta/ceramic/woven basket/concrete/brass)
-- Never say "plant" — always name the species
-
-LIGHTING LAYERS (minimum 2 sources always):
-Primary: overhead ambient (pendant/chandelier/fan with light)
-Secondary: floor lamp OR table lamp (always specify bulb type)
-Accent optional: wall sconce/LED strip/candles
-Always specify color temperature (2700K/3000K/4000K)
-Always specify shadow direction relative to camera
-
-TEXTILE RULES:
-Bed: always duvet + throw + minimum 4 pillows in 2-3 sizes
-Sofa: always minimum 2 throws (one draped arm, one folded) + 3 or 5 pillows never 2 or 4
-Rug: always extend 12-18 inches beyond furniture edge, specify pile height (low/medium/high) and pattern
-
-ACCESSORY GROUPING RULES:
-Groups of 3 or 5 ONLY — never 2, never 4, never 6
-Vary: height + material + shape in every group
-Rule of odds: tallest in back or center, shortest in front
-Triangle composition: objects form invisible triangle
-
-ART RULES:
-Hang art so center is at 57 inches from floor (gallery standard)
-Above sofa: art width = 2/3 of sofa width minimum
-Bedrooms: art above headboard centered, width = headboard width
-Gallery walls: minimum 5 pieces, consistent frame material
-Always specify: frame material + artwork style + dominant color
-
-SCALE RULES:
-Largest furniture anchors the room — everything scales from it
-Pendant light diameter = 1/2 the table/surface below it
-Rug should be large enough that front legs of all furniture sit on it
-Floor plant minimum 4ft tall in rooms with 8ft+ ceilings
-
-════════════════════════════════════════════════
-ROOM TYPE SPECIFIC RULES
-════════════════════════════════════════════════
-
-BEDROOM:
-Primary focal point: headboard wall — always fully styled
-Headboard: upholstered or statement wood, touches ceiling or has art directly above it
-Bedside symmetry: matching or complementary lamps both sides
-Throw: always draped diagonally across foot of bed, never folded flat
-Pillow architecture: 2 euro shams (26x26) + 2 standard (20x20) + 2-3 lumbar/decorative minimum
-Bench or ottoman at foot of bed: always in rooms with space
-Dresser/chest: always has tray + perfume/watch dish + small plant + one tall object (candle/sculpture)
-Full length mirror: lean against wall at angle, never centered flat
-Window treatment: floor to ceiling curtains always, hung 6 inches above window frame to maximize perceived height
-Morning light simulation: describe light as coming from window side, casting soft diagonal shadows across bed
-Ceiling: if fan exists describe as architectural element, add pendant or sconce as secondary source
-
-LIVING ROOM:
-Sofa placement: always floating (not against wall) unless room under 10ft wide
-Coffee table: always centered, styled with tray system
-Side table: one beside sofa arm, one beside chair
-Console/sofa table behind floating sofa: always styled with lamp + art leaning + 3 objects
-TV wall: always flanked by built-ins or shelving or large plants to avoid visual isolation
-Rug: large enough that front legs of sofa AND chairs sit on it
-Throw blanket: one draped over sofa arm, one folded on ottoman
-Curtains: floor to ceiling, hung at ceiling height
-Gallery wall or single oversized piece: always above sofa
-
-OFFICE/STUDY:
-Desk surface: laptop/monitor centered + task lamp right side + small plant left + pen cup + one personal object
-Desk chair: always described (material + color)
-Behind desk wall: either large art centered above monitor OR floating shelves with books + objects + small plant
-Second seating: always include if room allows (reading chair + floor lamp)
-Cable management: described as hidden/managed
-Window: desk perpendicular to window for natural side light
-Bookshelf: books arranged by color AND object groups between sections, trailing plant from top shelf
-
-DINING ROOM:
-Table centerpiece: always present — candles + low vessel + botanical element, never blocking sightlines
-Pendant: always directly above table center, hung 30-34 inches above table surface, diameter = 1/2 table width
-Chairs: always specify material + upholstery if applicable
-Sideboard/buffet: always include if wall allows — styled with art above + objects on surface
-Place settings: if room is staged, describe as set for 2 or 4 with placemats + napkin rings
-Wine/bar cart: always include if budget allows
-
-KITCHEN:
-Counter styling: one side styled, one side functional
-Styled section: fruit bowl or cutting board + herb pots + utensil jar in ceramic + cookbook leaning
-Open shelving: books + ceramics + glass vessels + plants alternating
-Pendant lights above island: always in pairs, specify material
-Backsplash: always describe material and pattern
-
-════════════════════════════════════════════════
-BUDGET TIER MATERIAL GUIDE
-════════════════════════════════════════════════
-
-UNDER $500 (IKEA tier):
-Furniture: IKEA birch/pine, cotton canvas, ceramic from Target, jute rugs, rattan
-Accessories: H&M Home ceramics, IKEA glass vessels, cotton throws, affordable art prints in simple frames
-Never specify designer brands at this tier
-
-$500-2000 (West Elm / CB2 tier):
-Furniture: Article bouclé, West Elm walnut, CB2 brass accents, wool-blend rugs, linen upholstery
-Accessories: CB2 amber glass, West Elm ceramic vessels, quality cotton-linen throws, art prints in wood frames
-Lighting: West Elm pendants, CB2 floor lamps, brass fixtures
-
-OVER $2000 (Designer tier):
-Furniture: custom millwork, Restoration Hardware leather, designer upholstery fabrics, hand-knotted wool rugs
-Accessories: handblown glass, designer ceramics, original art or quality reproduction, cashmere throws
-Lighting: designer pendants, sculptural floor lamps, custom shades
-Specify brand names at this tier (Flos, Hay, Menu, Fritz Hansen, Muuto)
-
-════════════════════════════════════════════════
-USER CHAT INSTRUCTIONS (highest priority — always follow these)
-════════════════════════════════════════════════
-
-When provided in the user message under "USER EXPLICIT PREFERENCES FROM CHAT:", these are the user's own words and MUST override all fingerprint defaults and style assumptions:
-
-- If user said a style direction (e.g. "dark sleek wood", "luxurious", "light and airy") → anchor the ENTIRE design around it. The fingerprint is secondary.
-- If user said "keep walls the same" or similar → set wall_change_requested: false and preserve existing wall color exactly
-- If user mentioned specific wall or floor colors (e.g. "light blue walls", "brown carpet") → note them and do NOT change them
-- If user mentioned specific furniture → incorporate it as a named object in the appropriate depth layer
-- If user specified tech (TV size, mount type, audio) → include as named objects in the staging brief
-- If user gave keep instructions → honor them; do not redesign what they want kept
-
-════════════════════════════════════════════════
-WEAKNESS COMPENSATION SYSTEM
-════════════════════════════════════════════════
-
-For EACH weakness identified, provide an EXACT compensation:
-
-Empty wall void → oversized art (specify exact dimensions relative to wall width) OR gallery wall (specify piece count) OR large-scale architectural mirror
-
-Flat overhead lighting → add floor lamp behind primary furniture + table lamp on surface + specify both at 2700K to create warm layered glow with diagonal shadow play
-
-Bare floor zone → layer rugs (jute base + smaller patterned on top) OR extend existing rug + add floor plant anchor
-
-Corner dead zone → floor plant minimum 4ft + woven basket beneath + wall sconce above OR floor lamp + side table + small plant grouping
-
-Missing vertical element → floor-to-ceiling curtains hung at ceiling + tall plant + vertical art OR tall floor lamp
-
-Scale mismatch → specify larger replacement furniture OR add visual weight with oversized art to correct proportion
-
-Missing foreground → rug edge at camera + floor object (tray with candle grouping / stack of books / large plant)
-
-════════════════════════════════════════════════
-ROOM-TYPE STAGING RULES:
-
-BEDROOM:
-- Primary focal point: bed headboard wall
-- Camera: foot-of-bed level, slightly elevated
-- Nightstands must be symmetrical if two are present
-- Throw placed diagonally across lower third of bed
-- Art centered above headboard at 57 inches from floor
-- Always include: pillow layering system, one bedside light source
-
-LIVING ROOM:
-- Primary focal point: sofa wall or fireplace
-- Camera: standing eye level (5ft), wide angle
-- Coffee table objects in triangle arrangement
-- Rug must extend 18 inches beyond sofa on each side
-- Always include: throw on sofa arm, coffee table object grouping
-
-HOME OFFICE:
-- Primary focal point: desk wall
-- Camera: slightly above desk level
-- Monitor or screen always present as named object
-- Task lighting required as named object
-- Always include: one plant, one desk accessory grouping
-
-KITCHEN:
-- Primary focal point: counter or island
-- Camera: counter height (36 inches)
-- Always include: fruit bowl or plant on counter, open cookbook or cutting board, pendant lighting above island
-
-BATHROOM:
-- Camera: sink level
-- Always include: folded towels, single plant, soap dispenser
-
-════════════════════════════════════════════════
-FINGERPRINT DIMENSION MAPPINGS — apply all thresholds:
-- colorTemperature > 0.7   → warm amber/honey palette, 2700K Edison lighting
-- colorTemperature 0.4-0.7 → balanced neutrals, 3000K warm-white lighting
-- colorTemperature < 0.4   → cool crisp slate palette, 5000K blue-white lighting
-- density > 0.7            → MAXIMUM 12 objects, MINIMUM 8 objects in decorObjects array. Count before submitting — over 12 is a violation.
-- density 0.4-0.7          → MAXIMUM 8 objects, MINIMUM 5 objects in decorObjects array. Count before submitting — over 8 is a violation.
-- density < 0.4            → MAXIMUM 4 objects, MINIMUM 2 objects in decorObjects array. Count before submitting — over 4 is a violation.
-- nature > 0.7             → 3 or more named plant species, natural materials dominate
-- texture > 0.7            → woven, rough, handcraft materials throughout
-- material > 0.7           → designer-quality materials only, no accessible-tier substitutes
-- spatial_openness > 0.7   → furniture floats with generous breathing room between pieces
-
-FORBIDDEN WORDS — never output these in any field:
-beautiful, stunning, gorgeous, modern, contemporary, cozy, luxurious, amazing, elegant, chic, stylish, nice, lovely, perfect, exquisite
-
-MATERIAL SPECIFICITY — never use generic names:
-- never "wood"   → always "walnut", "white oak", "teak", "maple"
-- never "fabric" → always "bouclé", "linen", "velvet", "cashmere"
-- never "stone"  → always "Carrara marble", "raw concrete", "honed slate"
-- never "metal"  → always "brushed brass", "aged steel", "matte black iron"
-- never "plant"  → always name the species
-
-════════════════════════════════════════════════
-REMOVAL TARGETS — populate from actual photo analysis
-════════════════════════════════════════════════
-
-Identify 3-6 specific objects visible in the photo that are clutter, dated, or visually harmful.
-Name the actual object — not "clutter". Examples: "ceiling fan", "wall decal", "fluorescent strip light", "visible power cord", "popcorn ceiling", "dated valance", "mini blinds".
-Do NOT include furniture or items the user may want to keep.
-Do NOT include fixed architectural elements (windows, doors, load-bearing walls).
-Aim for 3-6 named objects. If fewer than 3 are visible, list only what you see.
-
-OUTPUT: Return ONLY a valid JSON object matching this exact schema.
-No markdown fences, no explanation, no preamble. Only the JSON.
-
-{
-  "roomType": string,
-  "styleAnchor": string,
-  "weaknesses": [string, ...],
-  "compensations": [string, ...],
-  "palette": {
-    "dominant": string,
-    "secondary": string,
-    "accent": string
-  },
-  "lighting": {
-    "source": string,
-    "quality": string,
-    "colorTemp": string,
-    "shadows": string
-  },
-  "materialTension": {
-    "warm": string,
-    "cool": string
-  },
-  "depthLayers": {
-    "foreground": {
-      "zone": "foreground",
-      "distance": "0-3ft",
-      "objects": [{ "name": string, "material": string, "position": string }]
-    },
-    "midground": {
-      "zone": "midground",
-      "distance": "4-8ft",
-      "objects": [{ "name": string, "material": string, "position": string }]
-    },
-    "background": {
-      "zone": "background",
-      "distance": "8ft+",
-      "objects": [{ "name": string, "material": string, "position": string }]
-    }
-  },
-  "decorObjects": [
-    {
-      "name": string,
-      "material": string,
-      "position": string,
-      "depthZone": "foreground" | "midground" | "background"
-    }
-  ],
-  "budgetTier": "ikea" | "west-elm" | "designer",
-  "totalObjectCount": number,
-  "wall_change_requested": boolean,
-  "floor_change_requested": boolean,
-  "wall_color": "new wall color and finish description — only populated if wall_change_requested is true, empty string otherwise",
-  "removal_targets": [
-    "specific visible object name (ceiling fan, wall decal, power cord, etc.)",
-    ...
-  ]
-}`;
-
-// ── Universal quality guards — always last in negative_prompt ────────────────
-const UNIVERSAL_QUALITY_GUARDS =
-  "warped geometry, floating furniture, inconsistent lighting, overexposed windows, " +
-  "blown highlights, blurry textures, watermark, text overlay, people, cartoonish, " +
-  "illustration style, render artifact, fisheye distortion";
-
-// ── Style DNA blocks — open every prompt with the style's visual signature ────
-// FLUX weighs earlier tokens heavily. These 13-18 word blocks lock style before
-// any room-specific content. Use VERBATIM — no paraphrasing.
 export const STYLE_DNA_BLOCKS: Record<string, string> = {
   cvwmn: "Warm japandi interior. White oak, cream linen, terracotta clay, brushed brass. Soft diffused morning light through sheer curtains.",
   cvmax: "Maximalist layered interior. Jewel-toned velvet, patterned textiles, gallery wall, collected objects.",
@@ -487,184 +145,448 @@ export const STYLE_DNA_BLOCKS: Record<string, string> = {
   cvmcm: "Mid-century modern interior. Walnut veneer, teak, hairpin legs, warm amber accent light.",
   cvboh: "Bohemian layered interior. Woven jute, embroidered textiles, terracotta, low-light lantern warmth.",
   cvdco: "Art deco interior. Lacquered surfaces, geometric inlay, velvet jewel tones, dramatic directional light.",
+  cvbio: "Biophilic interior. Living walls, natural stone, reclaimed wood beams, abundant plants, filtered green light through canopy.",
+  cvfrm: "Farmhouse interior. Reclaimed barn wood, shiplap walls, linen slipcovers, warm Edison pendant light.",
 };
 
-// ── System prompt: Call 2 — Staging JSON → FLUX Script (plain text) ─────────
-const CALL2_SYSTEM = `You are a FLUX.1-dev prompt engineer specializing in interior design photography.
-Convert a design brief JSON into a FLUX-optimized staging script.
+// ── Tool schema for forced structured output ────────────────────────────────
 
-━━━ FLUX PROMPT RULES ━━━
+const EMIT_DESIGN_BRIEF_TOOL: Anthropic.Messages.Tool = {
+  name: "emit_design_brief",
+  description: "Emit a structured design brief for the room redesign pipeline.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      room_type: {
+        type: "string",
+        enum: [
+          "bedroom",
+          "living_room",
+          "kitchen",
+          "bathroom",
+          "home_office",
+          "dining",
+          "entryway",
+        ],
+      },
+      architecture_preserved: {
+        type: "object",
+        properties: {
+          walls: {
+            type: "string",
+            description:
+              "Wall color, texture, and finish (e.g. 'smooth warm beige walls with matte finish')",
+          },
+          windows: {
+            type: "string",
+            description:
+              "Count, direction, size, and treatment (e.g. '2 east-facing windows with white horizontal blinds')",
+          },
+          ceiling_height_est_ft: {
+            type: "number",
+            description: "Estimated ceiling height in feet",
+          },
+          floor_type: {
+            type: "string",
+            description:
+              "Floor material and color (e.g. 'medium oak hardwood', 'beige loop carpet', 'grey porcelain tile')",
+          },
+          camera_pov: {
+            type: "string",
+            description:
+              "Camera position and facing direction (e.g. 'eye-level, facing bed wall from doorway')",
+          },
+        },
+        required: [
+          "walls",
+          "windows",
+          "ceiling_height_est_ft",
+          "floor_type",
+          "camera_pov",
+        ],
+      },
+      anchor: {
+        type: "object",
+        description:
+          "Room-type-specific anchor piece. bedroom=bed, living_room=sofa, kitchen=island or cabinetry_run, bathroom=vanity, home_office=desk, dining=dining_table, entryway=console.",
+        properties: {
+          category: {
+            type: "string",
+            description:
+              "Anchor category matching room type (bed, sofa, island, cabinetry_run, vanity, desk, dining_table, console)",
+          },
+          material: {
+            type: "string",
+            description:
+              "Specific materials (e.g. 'dark walnut frame with cream linen headboard')",
+          },
+          color: { type: "string", description: "Dominant color(s)" },
+          scale: {
+            type: "string",
+            description: "Size description (e.g. 'queen, 60x80')",
+          },
+        },
+        required: ["category", "material", "color", "scale"],
+      },
+      palette: {
+        type: "object",
+        description:
+          "60-30-10 color palette as hex. primary=walls/floor (60%), secondary=furniture (30%), accent=accessories (10%), neutral=bridge tone.",
+        properties: {
+          primary_hex: { type: "string" },
+          secondary_hex: { type: "string" },
+          accent_hex: { type: "string" },
+          neutral_hex: { type: "string" },
+        },
+        required: ["primary_hex", "secondary_hex", "accent_hex", "neutral_hex"],
+      },
+      materials: {
+        type: "array",
+        items: { type: "string" },
+        description:
+          "3-6 specific material names for the redesign (e.g. 'walnut', 'brushed brass', 'boucle', 'travertine', 'linen')",
+      },
+      lighting: {
+        type: "object",
+        properties: {
+          direction: {
+            type: "string",
+            description: "Natural light direction (e.g. 'east morning light')",
+          },
+          fixture: {
+            type: "string",
+            description:
+              "Primary artificial fixture (e.g. 'brass arc floor lamp')",
+          },
+          color_temp_k: {
+            type: "number",
+            description: "Color temperature in Kelvin (e.g. 2700, 4000, 5600)",
+          },
+          shadow_intensity: {
+            type: "string",
+            enum: ["soft", "medium", "hard"],
+          },
+        },
+        required: [
+          "direction",
+          "fixture",
+          "color_temp_k",
+          "shadow_intensity",
+        ],
+      },
+      depth_zones: {
+        type: "object",
+        description:
+          "Objects to place in each depth zone. foreground=0-3ft from camera, midground=3-8ft, background=8ft+.",
+        properties: {
+          foreground: {
+            type: "array",
+            items: { type: "string" },
+            description: "Items closest to camera (area rug, plants, accent pieces)",
+          },
+          midground: {
+            type: "array",
+            items: { type: "string" },
+            description: "Primary furniture, side tables, lamps",
+          },
+          background: {
+            type: "array",
+            items: { type: "string" },
+            description: "Wall art, shelving, tall plants",
+          },
+        },
+        required: ["foreground", "midground", "background"],
+      },
+      style_weights: {
+        type: "object",
+        properties: {
+          primary_lora: {
+            type: "string",
+            description: "LoRA trigger word provided in context",
+          },
+          primary_scale: {
+            type: "number",
+            description: "LoRA scale 0.0-1.0 (default 0.8)",
+          },
+          secondary_lora: { type: "string" },
+          secondary_scale: { type: "number" },
+        },
+        required: ["primary_lora", "primary_scale"],
+      },
+      hard_constraints: {
+        type: "array",
+        items: { type: "string" },
+        description:
+          "What MUST NOT appear or change. Include architecture preservation, kept-item constraints, and exclusions.",
+      },
+      focal_point: {
+        type: "object",
+        description: "The room's visual focal point and how the viewer's eye travels.",
+        properties: {
+          description: { type: "string", description: "What the focal point is" },
+          position: { type: "string", description: "Where it is (back wall, left corner, etc.)" },
+          viewer_eye_path: { type: "string", description: "Where the eye travels after the focal point" },
+        },
+        required: ["description", "position", "viewer_eye_path"],
+      },
+      color_story: {
+        type: "object",
+        description: "60-30-10 color story with named colors and coverage percentages.",
+        properties: {
+          primary: {
+            type: "object",
+            properties: {
+              name: { type: "string" }, hex: { type: "string" }, coverage_pct: { type: "number" },
+            },
+            required: ["name", "hex", "coverage_pct"],
+          },
+          secondary: {
+            type: "object",
+            properties: {
+              name: { type: "string" }, hex: { type: "string" }, coverage_pct: { type: "number" },
+            },
+            required: ["name", "hex", "coverage_pct"],
+          },
+          accent: {
+            type: "object",
+            properties: {
+              name: { type: "string" }, hex: { type: "string" }, coverage_pct: { type: "number" },
+            },
+            required: ["name", "hex", "coverage_pct"],
+          },
+          neutral_ground: {
+            type: "object",
+            properties: {
+              name: { type: "string" }, hex: { type: "string" }, coverage_pct: { type: "number" },
+            },
+            required: ["name", "hex", "coverage_pct"],
+          },
+        },
+        required: ["primary", "secondary", "accent", "neutral_ground"],
+      },
+      three_materials: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            name: { type: "string", description: "Material name (e.g., 'white oak')" },
+            finish: { type: "string", description: "Surface finish (e.g., 'matte', 'brushed', 'honed')" },
+            application: { type: "string", description: "Where it's used (e.g., 'bed frame', 'accent table')" },
+          },
+          required: ["name", "finish", "application"],
+        },
+        minItems: 3,
+        maxItems: 3,
+        description: "Exactly 3 materials — no more. Trade-name specificity required.",
+      },
+      lighting_concept: {
+        type: "object",
+        properties: {
+          natural_light: { type: "string", description: "Direction, quality, time of day (e.g., 'warm afternoon light from south-facing window')" },
+          artificial_light: {
+            type: "array",
+            items: { type: "string" },
+            description: "Fixtures and their positions (e.g., 'brass arc floor lamp behind sofa')",
+          },
+        },
+        required: ["natural_light", "artificial_light"],
+      },
+      object_hierarchy: {
+        type: "object",
+        description: "Furniture hierarchy: one hero anchor, 2-4 supporting, 3-7 accessories. Total must respect room_scale max.",
+        properties: {
+          hero: {
+            type: "object",
+            properties: {
+              item: { type: "string" }, position: { type: "string" },
+            },
+            required: ["item", "position"],
+          },
+          supporting: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: { item: { type: "string" }, position: { type: "string" } },
+              required: ["item", "position"],
+            },
+            description: "2-4 supporting pieces",
+          },
+          accessories: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: { item: { type: "string" }, position: { type: "string" } },
+              required: ["item", "position"],
+            },
+            description: "3-7 small accessory items",
+          },
+        },
+        required: ["hero", "supporting", "accessories"],
+      },
+      negative_space: {
+        type: "object",
+        properties: {
+          instruction: { type: "string", description: "How to handle empty space intentionally" },
+          forbidden_zones: {
+            type: "array",
+            items: { type: "string" },
+            description: "Areas that MUST remain empty (e.g., 'center of room', '2ft around bed')",
+          },
+        },
+        required: ["instruction", "forbidden_zones"],
+      },
+      statement_piece: {
+        type: "object",
+        description: "One unexpected element that makes the room memorable.",
+        properties: {
+          description: { type: "string" },
+          position: { type: "string" },
+        },
+        required: ["description", "position"],
+      },
+      design_rationale: {
+        type: "string",
+        description: "Exactly 3 sentences explaining the key design decisions and why they work for this room.",
+      },
+      smart_suggestions: {
+        type: "array",
+        items: { type: "string" },
+        description: "3-5 specific refinement options the user could request (e.g., 'swap oak for walnut', 'add a reading nook').",
+        minItems: 3,
+        maxItems: 5,
+      },
+      wall_change_requested: {
+        type: "boolean",
+        description: "Whether the user requested wall changes. Default false — preserve existing walls.",
+      },
+      floor_change_requested: {
+        type: "boolean",
+        description: "Whether the user requested floor changes. Default false — preserve existing floor.",
+      },
+      room_scale: {
+        type: "string",
+        enum: ["small", "medium", "large"],
+        description: "Estimated room scale: small (<12m²), medium (12-25m²), large (>25m²). Determines max furniture count.",
+      },
+    },
+    required: [
+      "room_type",
+      "architecture_preserved",
+      "anchor",
+      "palette",
+      "materials",
+      "lighting",
+      "depth_zones",
+      "style_weights",
+      "hard_constraints",
+      "focal_point",
+      "color_story",
+      "three_materials",
+      "lighting_concept",
+      "object_hierarchy",
+      "negative_space",
+      "statement_piece",
+      "design_rationale",
+      "smart_suggestions",
+      "wall_change_requested",
+      "floor_change_requested",
+      "room_scale",
+    ],
+  },
+};
 
-OUTPUT: Only the prompt text. Nothing else. No labels. No markdown. No JSON wrapper.
+// ── System prompt for Call 1 ────────────────────────────────────────────────
 
-LENGTH: 60-90 words. Research confirms this is the sweet spot for interior design.
-Longer prompts exceed FLUX's effective processing window — more is not better.
+const CALL1_SYSTEM = `You are a senior interior designer analyzing a room photo for a redesign pipeline. Look at the architecture, lighting, existing furniture, and the user's target style. Emit a design_brief via the emit_design_brief tool.
 
-FORMAT: Natural language prose — NOT comma-separated keywords.
-FLUX uses a T5 text encoder that processes natural language. Keyword lists perform
-worse than descriptive sentences. Write how a photographer would brief a shot.
+REASONING CHAIN (answer these 5 questions INTERNALLY before generating the brief):
+  1. "What is the single worst design problem in this room worth fixing?"
+  2. "What is the single best thing worth preserving or celebrating?"
+  3. "What design decision will have the biggest visual impact?"
+  4. "What would a professional designer NEVER place here given these proportions?"
+  5. "What unexpected element would make this room memorable?"
 
-TOKEN WEIGHT: FLUX weighs earlier tokens more heavily.
-The style DNA block MUST come first — it gets maximum weight and locks the aesthetic.
-Structure: DNA block → dominant material → key objects → lighting → camera spec.
+ROOM SCALE RULES (enforce in object_hierarchy):
+  Estimate room_scale from the photo:
+    small (<12m²): max 4 furniture pieces total (hero=1, supporting=1-2, accessories=1-2)
+    medium (12-25m²): max 7 pieces total (hero=1, supporting=2-3, accessories=3-4)
+    large (>25m²): max 10 pieces total (hero=1, supporting=3-4, accessories=5-7)
+  Total pieces = 1 hero + len(supporting) + len(accessories). Must not exceed room_scale max.
 
-FORBIDDEN WORDS: beautiful, stunning, gorgeous, amazing, cozy, luxurious, modern,
-contemporary, nice, elegant, perfect. These are meaningless to FLUX's T5 encoder.
+ROOM-TYPE ANCHOR RULES (anchor.category MUST match):
+  bedroom -> anchor.category = "bed" (specify headboard material, frame, bedding)
+  living_room -> "sofa" (2/3-seater, upholstery material, color)
+  kitchen -> "island" or "cabinetry_run" (countertop material, cabinet finish)
+  bathroom -> "vanity" (basin, countertop material, cabinet finish)
+  home_office -> "desk" (surface material, dimensions)
+  dining -> "dining_table" (material, shape, seating count)
+  entryway -> "console" (material, width, leg style)
 
-DO NOT OUTPUT a negative prompt. FLUX does not support them and they throw API errors.
-Write positive descriptions only: "clean minimal surfaces" not "no clutter".
+MATERIAL SPECIFICITY (non-negotiable):
+  Never use generic words. Always use trade-name specificity:
+  "walnut" not "wood", "boucle" not "fabric", "brushed brass" not "metal",
+  "travertine" not "stone", "linen" not "cloth", "oak" not "timber".
 
-━━━ REQUIRED PROMPT STRUCTURE ━━━
+DEPTH ZONES (all three MUST be populated):
+  foreground (0-3ft from camera): area rug, plants, accent pieces
+  midground (3-8ft): primary furniture (anchor piece), side tables, lamps
+  background (8ft+): wall art, shelving, tall plants, architectural details
 
-Follow this EXACT order (adapt prose to match the brief):
+COLOR COHERENCE (apply to palette):
+  Use the 60-30-10 rule: primary_hex = existing walls/floor (60%), secondary_hex = furniture (30%), accent_hex = accessories (10%), neutral_hex = bridge tone.
+  If walls are cool (blue/grey/green): do NOT use warm orange or rust for secondary. Use cream, sand, warm white, natural linen.
+  If walls are warm (cream/beige/yellow): do NOT use cool grey or icy blue for secondary.
 
-[STYLE DNA BLOCK — copy verbatim from the "DNA block" field in the user message].
-[DOMINANT MATERIAL or KEY ARCHITECTURAL FEATURE of this room].
-[PRIMARY FURNITURE with exact position and specific material].
-[REQUIRED VERBATIM OBJECTS — if any were specified, include them EXACTLY].
-[ONE LIVED-IN DETAIL — a specific object that makes the space feel inhabited, not staged].
-[LIGHTING: direction, quality, interaction with a specific surface].
-[STYLE TRIGGER WORD embedded naturally + CAMERA SPEC at the very end].
+KEPT ITEM HANDLING:
+  For each item the user wants to KEEP, add to hard_constraints:
+    "do not replace, obscure, or cover [item name]"
+  If kept item is window blinds/shutters/shades, ALSO add:
+    "no curtains, drapes, sheers, or valances"
 
-━━━ RULES FOR EACH ELEMENT ━━━
+HARD CONSTRAINTS (always include these universal entries):
+  - "keep all walls, windows, door frames, ceiling, and flooring exactly as shown"
+  - One entry per KEPT item
+  - "no television, no screens, no monitors" (unless user explicitly requested TV)
 
-DNA BLOCK (required — first tokens, verbatim):
-Copy the exact DNA block from the user message. Do not modify it.
-It establishes the style signature before FLUX processes any room details.
-If user chat overrides specific materials (e.g. "dark wood" vs DNA's "white oak"),
-keep the DNA block verbatim and let the room-specific content override downstream.
+FINGERPRINT INTERPRETATION:
+  The user message includes style dimension scores (0-1 scale, 0.5 = neutral).
+  Use dimensions that deviate from 0.5 to guide material and object choices:
+  warmth > 0.65 -> warm wood tones, amber lighting, earth accents
+  warmth < 0.35 -> cool tones, grey-blue palette, crisp whites
+  visual_complexity > 0.65 -> layered textures, gallery walls, pattern mixing
+  visual_complexity < 0.35 -> clean surfaces, minimal decoration
+  organicness > 0.65 -> natural materials (linen, jute, raw wood), plants
+  organicness < 0.35 -> manufactured (steel, glass, concrete)
+  density > 0.65 -> fully furnished, layered accessories (8+ objects in depth zones)
+  density < 0.35 -> sparse, generous negative space (4-5 objects max)
+  traditionalism > 0.65 -> classic forms, heritage details
+  traditionalism < 0.35 -> contemporary lines, forward-looking
+  character > 0.65 -> personal expression, cultural references, art-forward
+  character < 0.35 -> quiet, understated, lets materials speak
 
-CAMERA SPEC (required — at the END, not the beginning):
-Use a real camera + lens that matches the aesthetic:
-- Japandi/minimal: "Shot on Hasselblad X2D 100C, 24mm tilt-shift at f/8"
-- Industrial/dark: "Shot on Sony A7R V, 16mm at f/5.6"
-- Luxury/editorial: "Shot on Phase One IQ4 150MP, 28mm tilt-shift at f/8"
-- Bright/airy: "Shot on Fujifilm GFX 100S, 23mm at f/11"
-"Tilt-shift" corrects vertical distortion (architectural photography standard).
-"f/8" gives deep focus across the whole room.
+PERSONALIZATION CONSTRAINTS (hard — override style defaults when present):
+  If personalization_context is provided:
+  - Smart tech items marked accepted=true MUST appear in the final design at their placement zone
+  - Art layout_type MUST be honored exactly — do not suggest a different art arrangement
+  - Lifestyle constraints override fingerprint-based density and lighting:
+      works_from_room=true -> add task lighting and desk area to the brief
+      time_preference=morning -> maximize natural light, cool morning palette, color_temp_k >= 5000K
+      time_preference=evening -> warm ambient lighting, color_temp_k <= 2700K
+      density=minimalist -> reduce max objects to 4 regardless of room_scale
+      density=collector -> increase to upper bound of room_scale range
+  - required_object is THE hero anchor — build the entire design around it
+      It overrides the default room-type anchor if present
+      Set object_hierarchy.hero to the required_object description`;
 
-MATERIALS (required — specific, never generic):
-✓ "warm walnut with visible grain" ✗ "wood"
-✓ "aged terracotta glaze" ✗ "ceramic"
-✓ "cream bouclé" ✗ "fabric"
-✓ "brushed unlacquered brass" ✗ "metal"
-✓ "pale ash veneer" ✗ "light wood"
+// ── Fingerprint dimension helpers ────────────────────────────────────────────
 
-LIVED-IN DETAIL (required — prevents sterile showroom look):
-One specific small object that implies human habitation:
-✓ "a stack of art books on the coffee table"
-✓ "a wool throw draped over the armrest"
-✓ "a ceramic carafe on the bedside table"
-Must be plausible for the room's budget tier.
-
-LIGHTING (required — describe interaction with surfaces):
-✓ "soft morning light raking across the linen headboard"
-✓ "warm Edison light casting long shadows across reclaimed oak"
-✗ "good lighting" (meaningless)
-Include light direction: "from the left window" / "overhead" / "low angle afternoon"
-
-STYLE TRIGGER (required if LoRA trigger provided):
-Embed the trigger word NATURALLY in the prose — not bolted on at the end.
-✓ "...warm cvwmn interior, Japanese joinery..."
-✗ "...photorealistic interior. cvwmn interior."
-
-NAMED PRODUCTS (from client directives):
-If the staging JSON depthLayers contain named client products, include them VERBATIM:
-✓ "65 inch Samsung Frame TV wall-mounted above low credenza"
-✗ "large smart TV on the wall"
-
-WALL COLORS: Read wall_change_requested from staging JSON.
-- If true: name the new wall color/finish early in the prompt.
-- If false or absent: do NOT mention wall color — omit walls entirely.
-
-FLOORING: Never describe floor material. Only describe objects ON the floor (rugs, furniture legs).
-
-EDITORIAL QUALITY CUE (end with one of these):
-- "Architectural Digest editorial photograph"
-- "architectural photography, photorealistic"
-- "interior design editorial, photorealistic"
-
-━━━ VERIFY BEFORE RESPONDING ━━━
-☐ Output is plain text only — no JSON, no markdown, no labels
-☐ Word count is 60-90 (count every word)
-☐ Starts with style DNA block (verbatim from user message — first word must match)
-☐ Camera spec is at the END, not the beginning
-☐ Required verbatim objects included exactly as specified
-☐ Contains at least one lived-in detail
-☐ Trigger word embedded naturally in prose
-☐ No forbidden words
-☐ All materials specific — no "wood", "fabric", "stone", "metal"
-☐ No negative language anywhere
-☐ Ends with "Architectural Digest editorial photograph" or equivalent`;
-
-// ── Word ceiling enforcement ──────────────────────────────────────────────────
-
-/**
- * Trims a FLUX prompt to maxWords while preserving the camera spec ending.
- * The camera spec begins at the last "Shot on" occurrence.
- */
-function enforceWordCeiling(prompt: string, maxWords: number = 90): string {
-  const words = prompt.split(/\s+/).filter(Boolean);
-  if (words.length <= maxWords) return prompt;
-
-  const shotOnIdx = prompt.lastIndexOf("Shot on");
-  if (shotOnIdx === -1) {
-    // No camera spec — hard truncate at word boundary
-    return words.slice(0, maxWords).join(" ");
-  }
-
-  const cameraSpec = prompt.slice(shotOnIdx);
-  const cameraSpecWordCount = cameraSpec.split(/\s+/).filter(Boolean).length;
-  const bodyBudget = maxWords - cameraSpecWordCount;
-
-  const bodyText = prompt.slice(0, shotOnIdx).trimEnd();
-  // Split on sentence boundaries
-  const sentences = bodyText.match(/[^.!?]*[.!?]+\s*/g) ?? [bodyText];
-
-  let kept = "";
-  let wordsSoFar = 0;
-  for (const sentence of sentences) {
-    const sw = sentence.split(/\s+/).filter(Boolean).length;
-    if (wordsSoFar + sw <= bodyBudget) {
-      kept += sentence;
-      wordsSoFar += sw;
-    } else {
-      break;
-    }
-  }
-
-  return (kept.trimEnd() + " " + cameraSpec).trim();
-}
-
-// ── Density-based object count limits ────────────────────────────────────────
-
-function getMaxObjectsForDensity(density: number): number {
-  if (density > 0.7) return 12;
-  if (density >= 0.4) return 8;
-  return 4;
-}
-
-// ── Fingerprint dimension helpers ─────────────────────────────────────────────
-
-function resolveBudgetTier(
-  min: number,
-  max: number,
-): "ikea" | "west-elm" | "designer" {
-  const mid = (min + max) / 2;
-  if (mid < 500) return "ikea";
-  if (mid <= 2000) return "west-elm";
-  return "designer";
-}
-
-// V2 6-dimension descriptive bands.
-// Order: warmth, visual_complexity, organicness, density, traditionalism, character
 type V2Band = "low" | "moderate" | "high";
 
 const V2_DIM_DESCRIPTIONS: Record<string, Record<V2Band, string>> = {
   warmth: {
     low: "cool tones, grey-blue palette, crisp whites",
     moderate: "balanced warm-cool, neutral base",
-    high: "warm amber tones, honey oak, terracotta accents",
+    high: "warm amber tones, honey oak, earth accents",
   },
   visual_complexity: {
     low: "minimal, clean surfaces, restrained decoration",
@@ -708,13 +630,9 @@ function bandFor(value: number): V2Band {
   return "moderate";
 }
 
-/** Extract 6-dim V2 vector from a fingerprint that may be V1 or V2. */
 function extractV2Vector(fp: StyleFingerprint): number[] {
   const d = fp.dimensions as Record<string, number>;
   if (fp.fingerprint_version === "v2") {
-    // V2 fingerprints store dims in the first 6 legacy slots:
-    // colorTemperature=warmth, colorSaturation=visual_complexity,
-    // formality=organicness, density=density, era=traditionalism, material=character
     return [
       d.colorTemperature ?? 0.5,
       d.colorSaturation ?? 0.5,
@@ -724,7 +642,6 @@ function extractV2Vector(fp: StyleFingerprint): number[] {
       d.material ?? 0.5,
     ];
   }
-  // V1 — merge to V2
   return mergeToV2(d);
 }
 
@@ -736,206 +653,382 @@ function buildFingerprintContext(fp: StyleFingerprint): string {
     const value = v2[i] ?? 0.5;
     const band = bandFor(value);
     const description = V2_DIM_DESCRIPTIONS[dimName]![band];
-    parts.push(`${description} (${dimName}: ${band})`);
+    parts.push(`${dimName}: ${value.toFixed(2)} (${band}) -> ${description}`);
   }
-  return `User style preferences: ${parts.join(", ")}`;
+  return parts.join("\n");
 }
 
-// ── Call 1: Vision analysis → staging JSON ───────────────────────────────────
+function resolveBudgetTier(
+  min: number,
+  max: number,
+): "ikea" | "west-elm" | "designer" {
+  const mid = (min + max) / 2;
+  if (mid < 500) return "ikea";
+  if (mid <= 2000) return "west-elm";
+  return "designer";
+}
 
-async function callDesignBriefFromImage(
-  input: DesignDirectorInput,
-): Promise<DesignBrief> {
-  const { imageUrl, fingerprint, roomType, styleAnchor, budgetMin, budgetMax, context, chatContext } = input;
+// ── Required object extractor — named products from chat history ─────────────
+
+function extractRequiredObjects(chatHistory: string): string[] {
+  const objects: string[] = [];
+
+  const tvMatches = Array.from(
+    chatHistory.matchAll(
+      /(\d{2,3})\s*["\s'-]*(?:inch|"|in\b)?\s*(?:-\s*)?([A-Z][A-Za-z0-9]+(?:\s+[A-Za-z0-9]+){0,3}?\s+(?:Frame\s+TV|OLED\s+TV|Smart\s+TV|TV|Television|OLED|Screen|Monitor))/g,
+    ),
+  );
+  for (const m of tvMatches) {
+    objects.push(`${m[1]} inch ${m[2]!.trim()}`);
+  }
+
+  const audioMatches = Array.from(
+    chatHistory.matchAll(
+      /\b(Sonos|Bose|Bang\s*(?:&|and)\s*Olufsen|Harman\s+Kardon|Denon|Yamaha|JBL|KEF|Devialet)\s+([A-Z][a-zA-Z0-9]+(?:\s+[a-zA-Z0-9]+)?)\b/g,
+    ),
+  );
+  for (const m of audioMatches) {
+    objects.push(`${m[1]} ${m[2]!.trim()}`);
+  }
+
+  const furnitureMatches = Array.from(
+    chatHistory.matchAll(
+      /\b(Herman\s+Miller|Eames|Knoll|Fritz\s+Hansen|Hay\s+Sofa|Muuto)\s+([A-Z][a-zA-Z0-9\s]{2,30})/g,
+    ),
+  );
+  for (const m of furnitureMatches) {
+    objects.push(`${m[1]} ${m[2]!.trim()}`);
+  }
+
+  return Array.from(new Set(objects)).filter(Boolean);
+}
+
+// ── Build user message for Call 1 ───────────────────────────────────────────
+
+function buildUserMessage(input: DesignDirectorInput): string {
+  const {
+    fingerprint,
+    styleAnchor,
+    loraTrigger,
+    budgetMin,
+    budgetMax,
+    context,
+  } = input;
 
   const budgetTier = resolveBudgetTier(budgetMin, budgetMax);
   const fingerprintContext = buildFingerprintContext(fingerprint);
 
-  // Build context summary from RenderContext if available
-  const contextSummary: string[] = [];
-  if (context?.artBrief?.hasArtDirection) {
-    contextSummary.push(
-      `Art direction: ${context.artBrief.visualDirection ?? "not specified"}`,
-    );
-  }
-  if (context?.techSpec?.smartLighting) {
-    contextSummary.push("Smart lighting integration requested");
-  }
-  if (context?.sensoryProfile?.hasRug) {
-    contextSummary.push(
-      `Rug requested: ${context.sensoryProfile.rugStyle ?? "any style"}, ${context.sensoryProfile.rugSize ?? "any size"}`,
-    );
-  }
-  if (context?.sensoryProfile?.plantPresence) {
-    contextSummary.push(
-      `Plants requested: ${context.sensoryProfile.plantSpecies?.join(", ") ?? "any species"}`,
-    );
-  }
-  if (context?.identityBrief?.moodTarget) {
-    contextSummary.push(`Mood target: ${context.identityBrief.moodTarget}`);
-  }
-  // Wall color change preference
-  if (context?.wall_change_requested) {
-    contextSummary.push(
-      `Wall color change requested: yes${context.wall_color_preference ? `. Requested wall color: ${context.wall_color_preference}` : ""}`,
-    );
-  } else {
-    contextSummary.push("Wall color change requested: no");
-  }
+  const sections: string[] = [];
 
-  // Check for design_memory in render_context for refinement continuity
-  const designMemory = (context as Record<string, unknown> | null)?.design_memory as {
-    room_type: string;
-    style_anchor: string;
-    dominant_material: string;
-    color_palette: { dominant: string; secondary: string; accent: string };
-    key_furniture: string[];
-    lighting_spec: string;
-    lora_trigger: string;
-  } | null | undefined;
-
-  const designMemoryBlock = designMemory
-    ? `\n\nORIGINAL DESIGN CONTEXT (refinement — maintain continuity):
-- Room type: ${designMemory.room_type}
-- Style anchor: ${designMemory.style_anchor}
-- Dominant material: ${designMemory.dominant_material}
-- Color palette: dominant ${designMemory.color_palette.dominant}, secondary ${designMemory.color_palette.secondary}, accent ${designMemory.color_palette.accent}
-- Key furniture: ${designMemory.key_furniture.join(", ")}
-- Lighting: ${designMemory.lighting_spec}
-- LoRA trigger: ${designMemory.lora_trigger}
-
-Build the refinement consistently with the above — do not restart from scratch.`
-    : "";
-
-  // ── Extract explicit user preferences from 7d chat tabs ──────────────────
-  let chatContextBlock = "";
-  if (chatContext && typeof chatContext === "object") {
-    const lines: string[] = [];
-
-    // "all" tab — style direction, keep instructions, color context
-    const allTab = (chatContext as Record<string, unknown>)["all"] as Record<string, unknown> | undefined;
-    if (allTab) {
-      const allMessages = (allTab.messages ?? allTab.conversation ?? []) as Array<{ role: string; content: string }>;
-      const userMsgs = allMessages.filter((m) => m.role === "user").map((m) => m.content).join(" ");
-      if (userMsgs.trim()) {
-        // Style direction — any strong descriptor the user gave
-        const styleMatch = userMsgs.match(/(?:want|like|make it|going for|style[:\s]+)([^.!?\n]{5,60})/i);
-        if (styleMatch) lines.push(`Style direction: ${styleMatch[1].trim()}`);
-
-        // Keep instructions
-        const keepMatch = userMsgs.match(/keep[^.!?\n]{0,80}/gi);
-        if (keepMatch) lines.push(`Keep unchanged: ${keepMatch.slice(0, 3).join("; ")}`);
-
-        // Color context
-        const colorMatch = userMsgs.match(/(?:walls?|floor|carpet|ceiling)[^.!?\n]{0,60}/gi);
-        if (colorMatch) lines.push(`Color context: ${colorMatch.slice(0, 2).join("; ")}`);
-
-        // Full style dump if short enough
-        if (userMsgs.length < 300) lines.push(`Full user direction: ${userMsgs}`);
-      }
-    }
-
-    // "tech" tab — TV, audio, smart home
-    const techTab = (chatContext as Record<string, unknown>)["tech"] as Record<string, unknown> | undefined;
-    if (techTab) {
-      const techExtracted = techTab.extractedData as Record<string, unknown> | undefined;
-      const techLines: string[] = [];
-      if (techExtracted?.hasTV) {
-        const tvSize = techExtracted.tvSizeInches ? `${techExtracted.tvSizeInches}"` : "";
-        const mount = techExtracted.tvMountType ? String(techExtracted.tvMountType) : "";
-        techLines.push(`TV: ${[tvSize, mount].filter(Boolean).join(", ") || "requested"}`);
-      }
-      if (techExtracted?.audioSetup) techLines.push(`Audio: ${techExtracted.audioSetup}`);
-
-      // Also scan tech tab user messages for TV mentions
-      const techMessages = (techTab.messages ?? techTab.conversation ?? []) as Array<{ role: string; content: string }>;
-      const techUserText = techMessages.filter((m) => m.role === "user").map((m) => m.content).join(" ");
-      const tvMention = techUserText.match(/(\d{2,3})["\s-]*(?:inch|")\s*(?:tv|television|frame|screen)/i);
-      if (tvMention && !techExtracted?.tvSizeInches) techLines.push(`TV: ${tvMention[1]}" (from chat)`);
-
-      if (techLines.length > 0) lines.push(`Tech: ${techLines.join(", ")}`);
-    }
-
-    if (lines.length > 0) {
-      chatContextBlock = lines.join("\n");
-    }
-  }
-
-  // Resolve chat history: prefer explicit chatHistory string, fall back to parsed chatContext
-  const resolvedChatHistory = input.chatHistory?.trim() || chatContextBlock || null;
-
-  // ── Section 1: Client directives (HIGHEST PRIORITY — always first) ──────────
-  const chatSection = resolvedChatHistory
-    ? `CRITICAL: The following user preferences are authoritative and override all fingerprint data, style defaults, and room analysis below.
-
-━━━ AUTHORITATIVE CLIENT DIRECTIVES ━━━
-
-VERBATIM CLIENT CHAT:
-"""
-${resolvedChatHistory}
-"""
-
-Parse and enforce ALL of these constraints in your JSON:
-- Any named product (TV brands, audio brands, furniture) → MUST appear verbatim in depthLayers objects
-- Any "keep X" instruction → preserve it; do NOT redesign what they want kept
-- Any material preference ("dark wood", "walnut", "marble") → overrides style anchor defaults for that category
-- Any color preference → overrides fingerprint color values
-- "keep walls/floor/carpet" → set wall_change_requested: false and floor_change_requested: false; record current colors
-- Style adjectives ("dark", "sleek", "minimal", "bold") → anchor the ENTIRE design around them
-
-`
-    : `━━━ CLIENT CHAT ━━━
-No explicit preferences provided. Use fingerprint and style anchor as primary guides.
-
-`;
-
-  // ── Section 2: Keep/remove from step-7c UI ──────────────────────────────────
-  const keepItems = input.keepItems ?? [];
-  const keepRemoveSection = (keepItems.length + (input.removeItems ?? []).length) > 0
-    ? `━━━ KEEP / REMOVE (from step-7c UI) ━━━
-Keep unchanged: ${keepItems.length > 0 ? keepItems.join(", ") : "none"}
-Remove and replace: ${(input.removeItems ?? []).length > 0 ? (input.removeItems ?? []).join(", ") : "none"}
-
-`
-    : "";
-
-  // ── Section 3: Style + fingerprint ──────────────────────────────────────────
-  const fingerprintSection = `━━━ STYLE FINGERPRINT ━━━
-(Secondary to client directives above. Override when client specified preference.)
-
+  // Style context
+  sections.push(`STYLE CONTEXT:
 Style anchor: ${styleAnchor}
-LoRA trigger: "${input.loraTrigger}"
-Room type: ${roomType}
-Budget: $${budgetMin}–$${budgetMax} (${budgetTier} tier)
+LoRA trigger: ${loraTrigger}
+Budget: $${budgetMin}-$${budgetMax} (${budgetTier} tier)
 
-Fingerprint dimensions (apply all thresholds):
-${fingerprintContext}
+FINGERPRINT DIMENSIONS (0-1 scale, 0.5 = neutral):
+${fingerprintContext}`);
 
-`;
+  // Keep/remove decisions
+  const keepItems = input.keepItems ?? [];
+  const removeItems = input.removeItems ?? [];
+  if (keepItems.length + removeItems.length > 0) {
+    sections.push(`KEEP/REMOVE DECISIONS (from user):
+Items to KEEP unchanged: ${keepItems.length > 0 ? keepItems.join(", ") : "none"}
+Items to REMOVE: ${removeItems.length > 0 ? removeItems.join(", ") : "none"}`);
+  }
 
-  // ── Section 4: Additional preferences from render context ───────────────────
-  const prefsSection = contextSummary.length > 0
-    ? `━━━ ADDITIONAL PREFERENCES ━━━
-${contextSummary.join("\n")}
+  // Wall/floor preferences
+  const wallChange = context?.wall_change_requested ?? false;
+  const wallPref = wallChange
+    ? "Wall change: yes (user requested)"
+    : "Wall change: no (preserve existing walls)";
+  sections.push(`${wallPref}
+Floor change: no (preserve existing floor unless user explicitly asked)`);
 
-`
-    : "";
+  // Personalization from render context
+  const ctxRaw = context as Record<string, unknown> | null;
+  const personalizationParts: string[] = [];
 
-  // ── Section 5: Design memory for refinement continuity ──────────────────────
-  const memorySection = designMemoryBlock ? `${designMemoryBlock}\n\n` : "";
+  const techSpec = ctxRaw?.techSpec as Record<string, unknown> | null | undefined;
+  if (techSpec) {
+    const techLines: string[] = [];
+    if (techSpec.hasTV === true)
+      techLines.push(`hasTV: true (${techSpec.tvSizeInches ?? 55} inch)`);
+    else if (techSpec.hasTV === false)
+      techLines.push("hasTV: false - NO television");
+    if (techSpec.audioSetup && techSpec.audioSetup !== "none")
+      techLines.push(`audioSetup: ${techSpec.audioSetup}`);
+    if (techSpec.smartLighting) techLines.push("smartLighting: true");
+    if (techSpec.hasGamingSetup) techLines.push("hasGamingSetup: true");
+    if (techSpec.hasWorkFromHome) techLines.push("hasWorkFromHome: true");
+    if (techLines.length > 0)
+      personalizationParts.push(`Tech preferences:\n${techLines.join("\n")}`);
+  }
 
-  // ── Section 6: Task instruction ──────────────────────────────────────────────
-  const instruction = `━━━ YOUR TASK ━━━
-Analyze the attached room photo + all inputs above.
+  const sensoryProfile = ctxRaw?.sensoryProfile as Record<string, unknown> | null | undefined;
+  if (sensoryProfile) {
+    const sensoryLines: string[] = [];
+    if (sensoryProfile.plantPresence)
+      sensoryLines.push(`plantPresence: ${sensoryProfile.plantPresence}`);
+    if (sensoryProfile.throwCushionDensity)
+      sensoryLines.push(
+        `throwCushionDensity: ${sensoryProfile.throwCushionDensity}/5`,
+      );
+    if (sensoryProfile.windowTreatments)
+      sensoryLines.push(
+        `windowTreatments: ${sensoryProfile.windowTreatments}`,
+      );
+    if (sensoryProfile.hasRug)
+      sensoryLines.push(
+        `rug: yes${sensoryProfile.rugStyle ? ` (${sensoryProfile.rugStyle})` : ""}`,
+      );
+    if (sensoryLines.length > 0)
+      personalizationParts.push(
+        `Sensory preferences:\n${sensoryLines.join("\n")}`,
+      );
+  }
 
-Output ONLY valid JSON matching the schema. No markdown fences. No preamble. No explanation.
-Ensure all named client products appear verbatim in the appropriate depthLayers objects array.`;
+  const artBrief = ctxRaw?.artBrief as Record<string, unknown> | null | undefined;
+  if (artBrief?.hasArtDirection) {
+    const artLines: string[] = [];
+    if (artBrief.visualDirection)
+      artLines.push(`Art direction: ${artBrief.visualDirection}`);
+    if (artBrief.frameStyle)
+      artLines.push(`Frame style: ${artBrief.frameStyle}`);
+    if (artBrief.galleryWall) artLines.push("Gallery wall: yes");
+    if (artLines.length > 0)
+      personalizationParts.push(artLines.join("\n"));
+  }
 
-  const userMessage = chatSection + keepRemoveSection + fingerprintSection + prefsSection + memorySection + instruction;
+  const identityBrief = ctxRaw?.identityBrief as Record<string, unknown> | null | undefined;
+  if (identityBrief?.moodTarget)
+    personalizationParts.push(`Mood target: ${identityBrief.moodTarget}`);
+  if (
+    Array.isArray(identityBrief?.moodKeywords) &&
+    (identityBrief.moodKeywords as string[]).length > 0
+  )
+    personalizationParts.push(
+      `Mood keywords: ${(identityBrief.moodKeywords as string[]).join(", ")}`,
+    );
+
+  if (personalizationParts.length > 0) {
+    sections.push(
+      `PERSONALIZATION CONTEXT:\n${personalizationParts.join("\n\n")}`,
+    );
+  }
+
+  // Personalization moments (from step-7e/7f/7g/7h screens)
+  const personalizationContext = ctxRaw?.personalization_context as Record<string, unknown> | null | undefined;
+  if (personalizationContext && Object.keys(personalizationContext).length > 0) {
+    const momentParts: string[] = [];
+
+    // Smart tech (step-7e)
+    const smartTech = personalizationContext.smart_tech as Array<{
+      item: string;
+      accepted: boolean;
+      placement_zone: string;
+    }> | undefined;
+    if (smartTech && smartTech.length > 0) {
+      const accepted = smartTech.filter((t) => t.accepted);
+      if (accepted.length > 0) {
+        momentParts.push(
+          `REQUIRED SMART TECH (must appear in design):\n${accepted.map((t) => `- ${t.item} at ${t.placement_zone}`).join("\n")}`,
+        );
+      }
+    }
+
+    // Art layout (step-7f)
+    const artLayout = personalizationContext.art as {
+      layout_type: string;
+      poster_urls?: string[];
+      selected_poster_url?: string;
+      position?: string;
+    } | undefined;
+    if (artLayout && artLayout.layout_type !== "none") {
+      const layoutDescriptions: Record<string, string> = {
+        gallery_wall: "Gallery wall arrangement with 6 framed pieces in a grid",
+        statement_piece: "One large statement artwork as focal point",
+        triptych: "Three connected pieces in a horizontal triptych",
+        salon_wall: "Asymmetric salon-style mix of different sized frames",
+      };
+      momentParts.push(
+        `ART ARRANGEMENT (honor exactly): ${layoutDescriptions[artLayout.layout_type] ?? artLayout.layout_type} on ${artLayout.position ?? "focal wall"}`,
+      );
+    }
+
+    // Lifestyle signals (step-7g)
+    const lifestyle = personalizationContext.lifestyle as {
+      works_from_room: boolean | string;
+      time_preference: string;
+      density: string;
+    } | undefined;
+    if (lifestyle) {
+      const lifestyleLines: string[] = [];
+      if (lifestyle.works_from_room === true || lifestyle.works_from_room === "sometimes") {
+        lifestyleLines.push("Task lighting required, define a desk/work area in the design");
+      }
+      if (lifestyle.time_preference === "morning") {
+        lifestyleLines.push("Maximize natural light, cool morning palette, color_temp_k >= 5000K");
+      } else if (lifestyle.time_preference === "evening") {
+        lifestyleLines.push("Warm ambient lighting, color_temp_k <= 2700K, layered light sources");
+      }
+      if (lifestyle.density === "minimalist") {
+        lifestyleLines.push("MINIMALIST: reduce max objects to 4 total regardless of room_scale");
+      } else if (lifestyle.density === "collector") {
+        lifestyleLines.push("COLLECTOR: maximize objects to upper bound of room_scale, layer accessories");
+      }
+      if (lifestyleLines.length > 0) {
+        momentParts.push(`LIFESTYLE CONSTRAINTS (override style defaults):\n${lifestyleLines.join("\n")}`);
+      }
+    }
+
+    // Required object anchor (step-7h)
+    const requiredObject = personalizationContext.required_object as {
+      description: string;
+      is_override_anchor: boolean;
+    } | undefined;
+    if (requiredObject?.description) {
+      momentParts.push(
+        `HERO ANCHOR (build entire design around this): "${requiredObject.description}"\nThis is the user's #1 priority. Set object_hierarchy.hero to incorporate this element.`,
+      );
+    }
+
+    if (momentParts.length > 0) {
+      sections.push(
+        `PERSONALIZATION MOMENTS (hard constraints from user screens):\n${momentParts.join("\n\n")}`,
+      );
+    }
+  }
+
+  // Chat history (highest priority signal)
+  const chatHistory = input.chatHistory?.trim();
+  if (chatHistory) {
+    sections.push(`USER PREFERENCES (highest priority - overrides style defaults):
+${chatHistory}
+
+Parse these preferences and incorporate into hard_constraints and depth_zones.
+Named products MUST appear in the appropriate depth zone.`);
+  }
+
+  // Design memory for refinement continuity
+  const designMemory = ctxRaw?.design_memory as Record<string, unknown> | null | undefined;
+  if (designMemory) {
+    const palette = designMemory.color_palette as Record<string, string> | undefined;
+    const furniture = designMemory.key_furniture as string[] | undefined;
+    sections.push(`PRIOR DESIGN (refinement - maintain continuity):
+Prior palette: ${palette?.dominant ?? "?"}, ${palette?.secondary ?? "?"}, ${palette?.accent ?? "?"}
+Prior furniture: ${furniture?.join(", ") ?? "none"}
+Maintain consistency with prior design unless user requested changes.`);
+  }
+
+  // Final instruction
+  sections.push(
+    "Analyze the attached room photo and emit the design_brief via the emit_design_brief tool.",
+  );
+
+  return sections.join("\n\n");
+}
+
+// ── Hard constraint enforcement (post-tool-call) ────────────────────────────
+
+function enforceHardConstraints(
+  brief: DesignBrief,
+  input: DesignDirectorInput,
+): void {
+  const constraints = brief.hard_constraints;
+  const lc = constraints.map((c) => c.toLowerCase()).join(" ");
+
+  // Universal: architecture preservation
+  if (!lc.includes("keep all walls")) {
+    constraints.unshift(
+      "keep all walls, windows, door frames, ceiling, and flooring exactly as shown",
+    );
+  }
+
+  // Kept items
+  const keepItems = input.keepItems ?? [];
+  for (const item of keepItems) {
+    const itemLower = item.toLowerCase();
+    if (!lc.includes(itemLower)) {
+      constraints.push(`do not replace, obscure, or cover ${item}`);
+    }
+    // Window treatment protection
+    if (/\b(blind|blinds|shutter|shutters|shade|shades)\b/i.test(item)) {
+      if (!lc.includes("no curtains")) {
+        constraints.push("no curtains, drapes, sheers, or valances");
+      }
+    }
+  }
+
+  // TV constraint — check both techSpec and personalization_context.smart_tech
+  const ctxRaw = input.context as Record<string, unknown> | null;
+  const techSpec = ctxRaw?.techSpec as Record<string, unknown> | null | undefined;
+  const hasTV = techSpec?.hasTV;
+  // Check if user accepted a TV via smart tech discovery (step-7e)
+  const pCtx = ctxRaw?.personalization_context as Record<string, unknown> | null | undefined;
+  const smartTech = pCtx?.smart_tech as Array<{ item: string; accepted: boolean }> | undefined;
+  const acceptedTV = smartTech?.some(
+    (t) => t.accepted && /tv|television|projector|frame/i.test(t.item),
+  );
+  if (hasTV === false && !acceptedTV && !lc.includes("no television")) {
+    constraints.push("no television, no screens, no monitors");
+  }
+
+  // Bedroom ceiling fan
+  if (
+    brief.room_type === "bedroom" &&
+    hasTV !== true &&
+    !lc.includes("no ceiling fan")
+  ) {
+    const userRequestedFan = (input.chatHistory ?? "")
+      .toLowerCase()
+      .includes("ceiling fan");
+    if (!userRequestedFan) {
+      constraints.push("no ceiling fan");
+    }
+  }
+
+  // Color introduction guard: if palette has no blue, don't introduce blue
+  const hexes = [
+    brief.palette.primary_hex,
+    brief.palette.secondary_hex,
+    brief.palette.accent_hex,
+    brief.palette.neutral_hex,
+  ];
+  const hasBlue = hexes.some((hex) => {
+    if (!hex || hex.length < 7) return false;
+    const b = parseInt(hex.slice(5, 7), 16);
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    return b > 150 && b > r * 1.3 && b > g * 1.3;
+  });
+  if (!hasBlue && !lc.includes("do not introduce blue")) {
+    constraints.push("do not introduce blue");
+  }
+
+  brief.hard_constraints = constraints;
+}
+
+// ── Main export: generateDesignBrief ────────────────────────────────────────
+
+export async function generateDesignBrief(
+  input: DesignDirectorInput,
+): Promise<DesignBrief> {
+  const { imageUrl } = input;
+
+  console.log(
+    `[design-director] Call 1 starting — room: ${input.roomType}, anchor: ${input.styleAnchor}`,
+  );
+
+  const userMessage = buildUserMessage(input);
 
   const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-5",
-    max_tokens: 4096,
+    model: "claude-sonnet-4-6",
+    max_tokens: 8192,
+    thinking: { type: "enabled", budget_tokens: 4096 },
+    tool_choice: { type: "tool", name: "emit_design_brief" },
+    tools: [EMIT_DESIGN_BRIEF_TOOL],
     system: CALL1_SYSTEM,
     messages: [
       {
@@ -943,10 +1036,7 @@ Ensure all named client products appear verbatim in the appropriate depthLayers 
         content: [
           {
             type: "image",
-            source: {
-              type: "url",
-              url: imageUrl,
-            },
+            source: { type: "url", url: imageUrl },
           },
           {
             type: "text",
@@ -957,211 +1047,83 @@ Ensure all named client products appear verbatim in the appropriate depthLayers 
     ],
   });
 
-  const block = response.content[0];
-  if (!block || block.type !== "text" || !block.text.trim()) {
-    throw new Error("[design-director] Call 1 returned empty response");
-  }
+  // Extract tool_use block from response
+  const toolBlock = response.content.find(
+    (block): block is Anthropic.Messages.ToolUseBlock =>
+      block.type === "tool_use" && block.name === "emit_design_brief",
+  );
 
-  // Strip markdown fences if Claude wrapped the JSON anyway
-  const raw = block.text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
-
-  let brief: DesignBrief;
-  try {
-    brief = JSON.parse(raw) as DesignBrief;
-  } catch {
+  if (!toolBlock) {
     throw new Error(
-      `[design-director] Call 1 JSON parse failed. Raw output:\n${raw.slice(0, 500)}`,
+      "[design-director] Call 1 did not return emit_design_brief tool call",
     );
   }
 
-  // Validate and enforce density-based object count limits
-  const density = fingerprint.dimensions.density;
-  const maxObjects = getMaxObjectsForDensity(density);
-  if (brief.decorObjects && brief.decorObjects.length > maxObjects) {
-    console.warn(
-      `[design-director] Call 1 object count ${brief.decorObjects.length} exceeds max ${maxObjects} for density=${density.toFixed(2)} — truncating to ${maxObjects}`,
-    );
-    brief.decorObjects = brief.decorObjects.slice(0, maxObjects);
-    brief.totalObjectCount = maxObjects;
+  const brief = toolBlock.input as DesignBrief;
+
+  // Override wall/floor change with actual user input (Claude may guess wrong)
+  brief.wall_change_requested = input.context?.wall_change_requested ?? false;
+  brief.floor_change_requested = false;
+
+  // Extract required objects from chat
+  if (input.chatHistory) {
+    brief.required_objects = extractRequiredObjects(input.chatHistory);
   }
+
+  // Ensure style_weights reflect input (Claude may echo these, but override to be safe)
+  brief.style_weights.primary_lora = input.loraTrigger;
+  if (!brief.style_weights.primary_scale) {
+    brief.style_weights.primary_scale = 0.8;
+  }
+
+  // Enforce hard constraints programmatically
+  enforceHardConstraints(brief, input);
+
+  const totalPieces = 1 + (brief.object_hierarchy?.supporting?.length ?? 0) + (brief.object_hierarchy?.accessories?.length ?? 0);
+  console.log(
+    `[design-director] Call 1 complete — room: ${brief.room_type}, anchor: ${brief.anchor.category}`,
+    `| scale: ${brief.room_scale}, pieces: ${totalPieces}`,
+    `| materials: ${brief.three_materials?.length ?? brief.materials.length}`,
+    `| constraints: ${brief.hard_constraints.length}`,
+    `| focal: ${brief.focal_point?.position ?? "?"}`,
+    `| suggestions: ${brief.smart_suggestions?.length ?? 0}`,
+  );
 
   return brief;
 }
 
-// ── Required object extractor — finds named products in chat history ─────────
-function extractRequiredObjects(chatHistory: string): string[] {
-  const objects: string[] = [];
-
-  // TV: "65 inch Samsung Frame TV", "65" Frame TV", "65-inch OLED"
-  // Suffix list includes multi-word endings (Frame TV) before single-word ones so regex
-  // tries the longer match first — prevents "Samsung Frame" from being captured instead
-  // of "Samsung Frame TV".
-  const tvMatches = Array.from(
-    chatHistory.matchAll(
-      /(\d{2,3})\s*["\s'-]*(?:inch|"|in\b)?\s*(?:-\s*)?([A-Z][A-Za-z0-9]+(?:\s+[A-Za-z0-9]+){0,3}?\s+(?:Frame\s+TV|OLED\s+TV|Smart\s+TV|TV|Television|OLED|Screen|Monitor))/g,
-    ),
-  );
-  for (const m of tvMatches) {
-    const size = m[1];
-    const model = m[2].trim();
-    objects.push(`${size} inch ${model}`);
-  }
-
-  // Named audio: Sonos Beam/Arc/Ray, Bose SoundLink, Bang & Olufsen, etc.
-  const audioMatches = Array.from(
-    chatHistory.matchAll(
-      /\b(Sonos|Bose|Bang\s*(?:&|and)\s*Olufsen|Harman\s+Kardon|Denon|Yamaha|JBL|KEF|Devialet)\s+([A-Z][a-zA-Z0-9]+(?:\s+[a-zA-Z0-9]+)?)\b/g,
-    ),
-  );
-  for (const m of audioMatches) {
-    objects.push(`${m[1]} ${m[2].trim()}`);
-  }
-
-  // Named furniture/appliance brands
-  const furnitureMatches = Array.from(
-    chatHistory.matchAll(
-      /\b(Herman\s+Miller|Eames|Knoll|Fritz\s+Hansen|Hay\s+Sofa|Muuto)\s+([A-Z][a-zA-Z0-9\s]{2,30})/g,
-    ),
-  );
-  for (const m of furnitureMatches) {
-    objects.push(`${m[1]} ${m[2].trim()}`);
-  }
-
-  return Array.from(new Set(objects)).filter(Boolean);
-}
-
-// ── Call 2: Staging JSON → FLUX script + negative prompt ─────────────────────
-
-async function callFluxScriptFromBrief(
-  brief: DesignBrief,
-  loraTrigger: string,
-  removeLabels: string[],
-  styleAnchor: string,
-  requiredObjects: string[],
-): Promise<{ fluxPrompt: string; negativePrompt: string }> {
-  // Note: CALL2_SYSTEM now outputs plain text only — no negative_prompt from Claude.
-  // FLUX does not support negative prompts (throws API errors). We build one server-side
-  // from removal targets + quality guards so Modal can use it if the pipeline supports it.
-
-  // Resolve DNA block for this style/trigger
-  const dnaBlock = STYLE_DNA_BLOCKS[loraTrigger] ?? null;
-
-  const dnaSection = dnaBlock
-    ? `DNA block (copy verbatim as the FIRST sentence of your output):
-"${dnaBlock}"
-
-`
-    : "";
-
-  const requiredSection =
-    requiredObjects.length > 0
-      ? `REQUIRED VERBATIM OBJECTS (include these EXACTLY — no paraphrasing):
-${requiredObjects.map((o) => `- ${o}`).join("\n")}
-
-`
-      : "";
-
-  const userMessage = `${dnaSection}${requiredSection}Staging brief:
-${JSON.stringify(brief, null, 2)}
-
-LoRA trigger word: "${loraTrigger}"
-Style anchor: "${styleAnchor}"
-
-Write the FLUX prompt now. ${dnaBlock ? "BEGIN with the DNA block above verbatim, then: dominant material → key objects → lighting → camera spec." : "Start with camera spec."} 60-90 words total. Plain text only.`;
-
-  const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-5",
-    max_tokens: 500,
-    system: CALL2_SYSTEM,
-    messages: [{ role: "user", content: userMessage }],
-  });
-
-  const block = response.content[0];
-  if (!block || block.type !== "text" || !block.text.trim()) {
-    throw new Error("[design-director] Call 2 returned empty response");
-  }
-
-  // Output is plain text — strip any accidental markdown fences
-  let fluxPrompt = block.text.trim().replace(/^```[^\n]*\n?/i, "").replace(/\n?```$/i, "").trim();
-
-  // Enforce 90-word hard ceiling on flux_prompt
-  const rawWordCount = fluxPrompt.split(/\s+/).filter(Boolean).length;
-  if (rawWordCount > 90) {
-    console.warn(
-      `[design-director] Call 2 flux_prompt ${rawWordCount} words exceeds 90-word ceiling — trimming`,
-    );
-    fluxPrompt = enforceWordCeiling(fluxPrompt, 90);
-    const trimmedCount = fluxPrompt.split(/\s+/).filter(Boolean).length;
-    console.log(`[design-director] After trim: ${trimmedCount} words`);
-  }
-
-  // Warn if suspiciously short
-  const finalWordCount = fluxPrompt.split(/\s+/).filter(Boolean).length;
-  if (finalWordCount < 40) {
-    console.warn(
-      `[design-director] Call 2 flux_prompt ${finalWordCount} words is suspiciously short — check output quality`,
-    );
-  }
-
-  // Build negative_prompt server-side (FLUX doesn't use it, but Modal pipeline may)
-  const negParts: string[] = [];
-  if (removeLabels.length > 0) negParts.push(removeLabels.join(", "));
-  if (brief.removal_targets && brief.removal_targets.length > 0) {
-    negParts.push(brief.removal_targets.join(", "));
-  }
-  negParts.push(UNIVERSAL_QUALITY_GUARDS);
-  const negativePrompt = negParts.join(", ");
-
-  console.log(
-    `[design-director] negative_prompt assembled server-side: ${negParts.length} segments`,
-  );
-
-  return { fluxPrompt, negativePrompt };
-}
-
-// ── Public entry point ────────────────────────────────────────────────────────
+// ── Convenience wrapper (calls both generateDesignBrief + compilePrompt) ────
 
 export async function runDesignDirector(
   input: DesignDirectorInput,
 ): Promise<DesignDirectorOutput> {
-  console.log("[design-director] Starting — room:", input.roomType, "| anchor:", input.styleAnchor);
+  // Import here to avoid circular dependency at module load time
+  const { compilePrompt } = await import("@/lib/ai/prompt-compiler");
 
-  // Call 1: vision → staging JSON
-  const stagingJson = await callDesignBriefFromImage(input);
-  const objectCount = stagingJson.totalObjectCount ?? stagingJson.decorObjects?.length ?? 0;
   console.log(
-    `[design-director] Call 1 complete — ${objectCount} objects, tier: ${stagingJson.budgetTier}`,
-    `| removal_targets: ${stagingJson.removal_targets?.length ?? 0}`,
-  );
-
-  // Assemble remove labels: step-7c user selections come first
-  const removeLabels = input.removeItems ?? [];
-  if (removeLabels.length > 0) {
-    console.log(`[design-director] User remove selections: ${removeLabels.join(", ")}`);
-  }
-
-  // Extract required objects from chat history (named products that MUST appear verbatim)
-  const requiredObjects = input.chatHistory
-    ? extractRequiredObjects(input.chatHistory)
-    : [];
-  if (requiredObjects.length > 0) {
-    console.log(`[design-director] Required objects extracted from chat: ${requiredObjects.join(", ")}`);
-  }
-
-  // Persist required_objects on the staging brief so the redesign route can
-  // merge with prior runs and so the design_brief JSONB carries them forward.
-  stagingJson.required_objects = requiredObjects;
-
-  // Call 2: staging JSON → flux_prompt (additive) + negative_prompt
-  const { fluxPrompt, negativePrompt } = await callFluxScriptFromBrief(
-    stagingJson,
-    input.loraTrigger,
-    removeLabels,
+    "[design-director] Starting — room:",
+    input.roomType,
+    "| anchor:",
     input.styleAnchor,
-    requiredObjects,
   );
-  const wordCount = fluxPrompt.split(/\s+/).filter(Boolean).length;
-  console.log(`[design-director] Call 2 complete — flux_prompt: ${wordCount} words`);
 
-  return { stagingJson, fluxPrompt, negativePrompt };
+  // Call 1: vision -> design brief
+  const stagingJson = await generateDesignBrief(input);
+
+  // Extract required objects from chat and merge with prior
+  const requiredObjects = stagingJson.required_objects ?? [];
+  if (requiredObjects.length > 0) {
+    console.log(
+      `[design-director] Required objects from chat: ${requiredObjects.join(", ")}`,
+    );
+  }
+
+  // Call 2: design brief -> FLUX prompt
+  const fluxPrompt = await compilePrompt(stagingJson);
+  const wordCount = fluxPrompt.split(/\s+/).filter(Boolean).length;
+  console.log(
+    `[design-director] Call 2 complete — flux_prompt: ${wordCount} words`,
+  );
+
+  return { stagingJson, fluxPrompt };
 }

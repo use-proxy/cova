@@ -1,0 +1,31 @@
+{
+  "screen": "step-7c",
+  "url": "http://localhost:3000/design/step-7c",
+  "passed": false,
+  "attempt": 2,
+  "elements": 0,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "ReferenceError: setIsMounted is not defined — the component calls setIsMounted(true) inside a useEffect but never declares the corresponding useState hook",
+      "element": "useEffect at line 149-151 in apps/web/app/design/step-7c/page.tsx",
+      "root_cause": "The useState declaration for isMounted/setIsMounted is missing. The developer wrote `setIsMounted(true)` in a useEffect but forgot to add `const [isMounted, setIsMounted] = useState(false);` at the top of the component."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-7c/page.tsx",
+      "old_str": "  const router = useRouter();\n  useEffect(() => {\n    setIsMounted(true);",
+      "new_str": "  const [isMounted, setIsMounted] = useState(false);\n  const router = useRouter();\n  useEffect(() => {\n    setIsMounted(true);",
+      "reason": "Adds the missing useState declaration for isMounted so setIsMounted is defined before it is called inside the useEffect."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776408746591,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776408746593,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776408776893,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776408776897,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776408825780,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776408825782,\"url\":\"/design/step-7c\"}"
+  ]
+}

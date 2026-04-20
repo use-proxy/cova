@@ -1,0 +1,34 @@
+{
+  "screen": "auth",
+  "url": "http://localhost:3000/auth",
+  "passed": true,
+  "attempt": 1,
+  "elements": 7,
+  "issues": [
+    {
+      "severity": "minor",
+      "description": "Console warning: container has non-static position for scroll offset calculation. Not visible to user but indicates a positioning issue in a component.",
+      "element": "Scroll container",
+      "root_cause": "A component (likely a dropdown or scroll container) is missing a relative/fixed/absolute position style, logged in console but not causing visible UI issues."
+    },
+    {
+      "severity": "minor",
+      "description": "A 400 status resource failed to load once in console logs - likely a transient network request (possibly Google OAuth config check or analytics) that does not affect visible UI.",
+      "element": "Network request",
+      "root_cause": "A fetch/XHR request to an external or local endpoint returned HTTP 400. Could be a Google OAuth client ID misconfiguration or an API preflight check."
+    }
+  ],
+  "fixes": [],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405772080,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405772081,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405793146,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405793148,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405814630,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405814631,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405836664,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405836665,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405881949,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405881951,\"url\":\"/auth\"}"
+  ]
+}

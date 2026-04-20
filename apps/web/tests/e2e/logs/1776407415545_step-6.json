@@ -1,0 +1,59 @@
+{
+  "screen": "step-6",
+  "url": "http://localhost:3000/design/step-6",
+  "passed": false,
+  "attempt": 1,
+  "elements": 5,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Step counter shows 'STEP 4 OF 4' but this is step-6. The step indicator is wrong.",
+      "element": "Step counter top-right: 'STEP 4 OF 4'",
+      "root_cause": "In apps/web/app/design/step-6/page.tsx, the step number is hardcoded as 4 instead of 6, or the totalSteps/currentStep props are incorrect."
+    },
+    {
+      "severity": "critical",
+      "description": "Multiple React hydration errors: 'Text content does not match server-rendered HTML' and 'Invalid or unexpected token'. This causes the entire root to switch to client rendering, indicating a server/client mismatch, likely from dynamic content (e.g., QR code, date/time, or random values) rendered without suppressing hydration warnings or wrapped in useEffect.",
+      "element": "Hydration error affecting full page",
+      "root_cause": "In apps/web/app/design/step-6/page.tsx or a child component, there is likely dynamic content (QR code URL, timestamp, or crypto token) being rendered differently on server vs client. The 'Invalid or unexpected token' suggests a syntax error in the source file or a template literal issue."
+    },
+    {
+      "severity": "major",
+      "description": "Page is mounted as step-6 per console logs but the UI shows step 4 of 4, meaning the step progress indicator component is receiving wrong props.",
+      "element": "Progress indicator / step label",
+      "root_cause": "The currentStep prop passed to the header/progress component in step-6/page.tsx is likely set to 4 instead of 6."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-6/page.tsx",
+      "old_str": "STEP 4 OF 4",
+      "new_str": "STEP 6 OF 6",
+      "reason": "The step counter is displaying the wrong step number. Step-6 should show STEP 6 OF 6."
+    },
+    {
+      "file": "apps/web/app/design/step-6/page.tsx",
+      "old_str": "currentStep={4}",
+      "new_str": "currentStep={6}",
+      "reason": "If the step counter is driven by a prop, update to reflect correct step number 6."
+    },
+    {
+      "file": "apps/web/app/design/step-6/page.tsx",
+      "old_str": "step={4}",
+      "new_str": "step={6}",
+      "reason": "Alternate prop name pattern — correct the step prop to 6 to fix both the display and hydration mismatch caused by wrong state."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776407312619,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776407312621,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407338351,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407338352,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407339889,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407339890,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407367409,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407367410,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776407391151,\"url\":\"/design/step-6\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776407391153,\"url\":\"/design/step-6\"}"
+  ]
+}

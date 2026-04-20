@@ -1,0 +1,43 @@
+{
+  "screen": "step-3",
+  "url": "http://localhost:3000/design/step-3",
+  "passed": false,
+  "attempt": 3,
+  "elements": 5,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Duplicate React imports causing build failure - useState and useEffect imported twice from 'react'",
+      "element": "Import statements at top of page.tsx",
+      "root_cause": "Line 2 has 'import { useState, useEffect } from react' and line 4 has 'import { useCallback, useEffect, useRef, useState } from react' - two separate import statements importing the same hooks. The source file shown only has line 4, but the console logs reveal line 2 also exists in the actual file on disk."
+    },
+    {
+      "severity": "major",
+      "description": "Hydration mismatch - server renders 'Which room are we designing?' but client renders 'Style Quiz'",
+      "element": "Page header/title content",
+      "root_cause": "The phase state is initialized with a function that reads from useFingerprintStore, but the server doesn't have access to client-side store state, causing server to render a different phase than the client."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "\"use client\"\nimport { useState, useEffect } from 'react';\n\nimport { useCallback, useEffect, useRef, useState } from \"react\";",
+      "new_str": "\"use client\"\nimport { useCallback, useEffect, useRef, useState } from \"react\";",
+      "reason": "Remove the duplicate import line that imports useState and useEffect from 'react' a second time, keeping only the consolidated import with all needed hooks."
+    },
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "  const [phase, setPhase] = useState<Phase>(() => {\n    const store = useFingerprintStore.getState();\n    if (!store.roomType) return \"room_type\";\n    if (store.fingerprint) {\n      const isConfident = store.blendRatio >= 0.72 && store.competingStyles.length <= 1;\n      if (isConfident) return \"compute\";\n      return \"pairs\";\n    }\n    return \"non_visual\";\n  });",
+      "new_str": "  const [phase, setPhase] = useState<Phase>(\"non_visual\");\n\n  useEffect(() => {\n    const store = useFingerprintStore.getState();\n    if (!store.roomType) { setPhase(\"room_type\"); return; }\n    if (store.fingerprint) {\n      const isConfident = store.blendRatio >= 0.72 && store.competingStyles.length <= 1;\n      setPhase(isConfident ? \"compute\" : \"pairs\");\n      return;\n    }\n    setPhase(\"non_visual\");\n  }, []);",
+      "reason": "Fix hydration mismatch by initializing phase to a static default value on both server and client, then updating it client-side in a useEffect after mount. This prevents server/client HTML mismatch."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407902076,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407902078,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407928223,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407928225,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407948069,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407948071,\"url\":\"/design/step-3\"}"
+  ]
+}

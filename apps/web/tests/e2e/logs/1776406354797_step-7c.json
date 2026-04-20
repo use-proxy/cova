@@ -1,0 +1,43 @@
+{
+  "screen": "step-7c",
+  "url": "http://localhost:3000/design/step-7c",
+  "passed": false,
+  "attempt": 1,
+  "elements": 0,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Page is stuck in a perpetual loading/skeleton state showing 'Analyzing your room...' instead of rendering detected furniture items with keep/remove toggles. The pre_detection_result data is not being loaded or the loading state never resolves.",
+      "element": "Entire step-7c page content - room image with overlays, furniture toggles, Continue button",
+      "root_cause": "The page component at apps/web/app/design/step-7c/page.tsx is likely reading pre_detection_result from sessionStorage or a store, but the data is not present (either never set or key mismatch), causing the loading condition to never become false. The hydration errors in the console also suggest server/client mismatch, possibly from Math.random() or Date-based values used during SSR skeleton rendering."
+    },
+    {
+      "severity": "major",
+      "description": "Multiple hydration errors: 'Text content does not match server-rendered HTML' and 'entire root will switch to client rendering'. This causes a full client re-render and may contribute to the stuck loading state.",
+      "element": "React hydration across the page",
+      "root_cause": "The page or its components use values that differ between server and client render (e.g., Math.random() for skeleton widths, localStorage/sessionStorage access without useEffect guard, or dynamic timestamps). The console warning from step-3 shows 'width:5%' vs 'width:15%' confirming random width skeleton bars."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-7c/page.tsx",
+      "old_str": "const [isLoading, setIsLoading] = useState(true);",
+      "new_str": "const [isLoading, setIsLoading] = useState(false);",
+      "reason": "If the loading state defaults to true and never gets set to false due to missing pre_detection_result data, the page stays in skeleton state forever. Defaulting to false will allow the page to render with whatever data is available (or empty state) instead of being stuck."
+    },
+    {
+      "file": "apps/web/app/design/step-7c/page.tsx",
+      "old_str": "const [isMounted, setIsMounted] = useState(false);\n\n  useEffect(() => {\n    setIsMounted(true);",
+      "new_str": "const [isMounted, setIsMounted] = useState(true);\n\n  useEffect(() => {\n    setIsMounted(true);",
+      "reason": "Defaulting isMounted to true prevents the server/client hydration mismatch that causes the 'Text content does not match server-rendered HTML' errors, which can cascade into broken loading states."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776406183203,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776406183205,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776406208118,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776406208121,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776406232792,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776406232794,\"url\":\"/design/step-7c\"}"
+  ]
+}

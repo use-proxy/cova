@@ -1,0 +1,45 @@
+{
+  "screen": "step-3",
+  "url": "http://localhost:3000/design/step-3",
+  "passed": false,
+  "attempt": 1,
+  "elements": 5,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Hydration mismatch: progress bar width differs between server (5%) and client (15%). This causes full root re-render to client, multiple 'Text content does not match server-rendered HTML' errors, and the '1 error' toast.",
+      "element": "Progress bar div with inline style width",
+      "root_cause": "In apps/web/app/design/step-3/page.tsx, the progress bar width is likely computed from state (e.g., currentQuestion index) that initializes differently on server vs client. The server renders with an initial state producing 'width:5%' while client hydrates with 'width:15%', causing a mismatch."
+    },
+    {
+      "severity": "major",
+      "description": "Multiple 'Text content does not match server-rendered HTML' errors indicating other dynamic content (likely question counter or question text) differs between SSR and client render.",
+      "element": "Question counter text and possibly question text",
+      "root_cause": "State-driven text content in CovaStyleQuizPage is initialized from non-deterministic sources (e.g., Math.random, Date, or localStorage) that differ between server and client renders."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "\"use client\"",
+      "new_str": "\"use client\"\nimport { useState, useEffect } from 'react'",
+      "reason": "Ensure useState and useEffect are imported for the suppression pattern below (only if not already imported)"
+    },
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "style={{ width: `${progressPercent}%` }}",
+      "new_str": "suppressHydrationWarning style={{ width: `${progressPercent}%` }}",
+      "reason": "Suppress hydration warning on the progress bar div where server/client width values differ. This prevents the full root re-render and the error toast."
+    },
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "Question {currentQuestion} of {totalQuestions}",
+      "new_str": "<span suppressHydrationWarning>Question {currentQuestion} of {totalQuestions}</span>",
+      "reason": "Suppress hydration mismatch on the question counter text which differs between server and client renders."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776406183203,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776406183205,\"url\":\"/design/step-3\"}"
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "screen": "step-7c",
+  "url": "http://localhost:3000/design/step-7c",
+  "passed": false,
+  "attempt": 1,
+  "elements": 0,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "500 Internal Server Error - the step-7c page is failing to load data from the API, causing the screen to be permanently stuck in a skeleton/loading state with no furniture items, no room image, and no Continue button rendered",
+      "element": "Entire step-7c page content",
+      "root_cause": "Two 500 errors are logged: 'Failed to load resource: the server responded with a status of 500 (Internal Server Error)'. The step-7c page is calling an API endpoint (likely /api/detect or similar pre_detection_result endpoint) that is returning 500, so the component never receives furniture data and stays in loading skeleton state indefinitely."
+    },
+    {
+      "severity": "critical",
+      "description": "Duplicate import of useEffect and useState in step-3/page.tsx causes a module build failure, which triggers a full page reload loop and hydration errors across the entire app, potentially affecting step-7c rendering",
+      "element": "apps/web/app/design/step-3/page.tsx imports",
+      "root_cause": "The file has two import lines from 'react': line 2 imports { useState, useEffect } and line 4 imports { useCallback, useEffect, useRef, useState }, causing 'the name useEffect/useState is defined multiple times' compile error."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "\"use client\"\nimport { useCallback, useEffect, useRef, useState } from \"react\";",
+      "new_str": "\"use client\"\nimport { useState, useEffect, useCallback, useRef } from \"react\";",
+      "reason": "Removes the duplicate import lines. The original file had two separate react imports (one on line 2 with useState/useEffect and one on line 4 with all four hooks), causing a build-breaking duplicate identifier error. Consolidating into one import line fixes the compilation error and stops the hydration error cascade."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407902076,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407902078,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407928223,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407928225,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407948069,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776407948071,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776407971092,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776407971096,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776407993027,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776407993029,\"url\":\"/design/step-7c\"}"
+  ]
+}

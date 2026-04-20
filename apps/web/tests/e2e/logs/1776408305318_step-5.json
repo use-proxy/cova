@@ -1,0 +1,47 @@
+{
+  "screen": "step-5",
+  "url": "http://localhost:3000/design/step-5",
+  "passed": false,
+  "attempt": 1,
+  "elements": 10,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Hydration errors: 'Text content does not match server-rendered HTML' causing the entire root to switch to client rendering. Multiple hydration mismatches detected across the app.",
+      "element": "Page root / SSR mismatch",
+      "root_cause": "apps/web/app/design/step-3/page.tsx previously had duplicate imports of useState and useEffect (two separate import lines). Although the source file shown has been partially fixed to a single combined import, the build error logs show the duplicate import error still existed. The hydration errors on step-5 are likely caused by state initialization using `useFingerprintStore.getState()` inside `useState` initializer which may differ between server and client."
+    },
+    {
+      "severity": "critical",
+      "description": "Build error in step-3/page.tsx: 'useEffect is defined multiple times' and 'useState is defined multiple times' — duplicate React imports causing module build failure.",
+      "element": "apps/web/app/design/step-3/page.tsx imports",
+      "root_cause": "The file has two import lines from 'react': one legacy `import { useState, useEffect } from 'react'` on line 2, and a second `import { useCallback, useEffect, useRef, useState } from 'react'` on line 4. The source file shown already has this merged, but the build logs confirm the duplicate existed and caused a 404 on step-4 RSC payload."
+    },
+    {
+      "severity": "major",
+      "description": "No Continue button visible on step-5. The expected behavior requires a Continue button to proceed after selecting a budget tier.",
+      "element": "Continue button on step-5",
+      "root_cause": "Cannot determine without seeing apps/web/app/design/step-5/page.tsx source. The Continue button may be conditionally rendered only after a selection is made, or may be rendered below the fold / outside the viewport due to layout issues caused by hydration failure switching to client rendering."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "\"use client\"\nimport { useState, useEffect } from 'react';\n\nimport { useCallback, useEffect, useRef, useState } from \"react\";",
+      "new_str": "\"use client\"\nimport { useState, useEffect, useCallback, useRef } from \"react\";",
+      "reason": "Removes the duplicate import lines that caused the module build failure with 'useEffect/useState defined multiple times' error, which cascaded into 404s and hydration failures across the flow."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408203942,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408203945,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776408229244,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776408229246,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776408254990,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776408254993,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776408278756,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776408278757,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776408280523,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776408280524,\"url\":\"/design/step-5\"}"
+  ]
+}

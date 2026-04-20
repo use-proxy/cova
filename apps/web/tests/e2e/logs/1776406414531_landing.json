@@ -1,0 +1,53 @@
+{
+  "screen": "landing",
+  "url": "http://localhost:3000/dashboard",
+  "passed": false,
+  "attempt": 1,
+  "elements": 27,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Wrong page is being displayed. The current URL http://localhost:3000/dashboard is showing the authenticated dashboard instead of the marketing landing page. The root route '/' should show the landing page with hero image, gold CTA button, and marketing content.",
+      "element": "Entire page - showing dashboard instead of landing page",
+      "root_cause": "The root route '/' likely redirects to '/dashboard' without checking authentication, or the landing page at apps/web/app/page.tsx redirects authenticated/unauthenticated users directly to /dashboard instead of showing the marketing page."
+    },
+    {
+      "severity": "critical",
+      "description": "Multiple React hydration errors: 'Text content does not match server-rendered HTML' appearing 7 times, causing entire root to switch to client rendering. Likely caused by dynamic date/time content (e.g., 'Good evening, Amelia.' greeting or 'Thursday, April 16' date) being rendered differently on server vs client.",
+      "element": "Dashboard page - greeting text and/or date display",
+      "root_cause": "In apps/web/app/dashboard/page.tsx, dynamic content like time-based greeting ('Good evening') or date ('Thursday, April 16') is computed during SSR with a different value than during client hydration. Using new Date() or similar without suppressing hydration or using useEffect causes this mismatch."
+    },
+    {
+      "severity": "major",
+      "description": "Failed to fetch RSC payload for /design/step-7d - page likely missing or has a server error, causing browser fallback navigation.",
+      "element": "Design flow step-7d page",
+      "root_cause": "apps/web/app/design/step-7d/page.tsx either doesn't exist or has a runtime error preventing the RSC payload from being served."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/dashboard/page.tsx",
+      "old_str": "const hour = new Date().getHours();\n  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';",
+      "new_str": "const [greeting, setGreeting] = React.useState('Good evening');\n  React.useEffect(() => {\n    const hour = new Date().getHours();\n    setGreeting(hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening');\n  }, []);",
+      "reason": "Fix hydration mismatch by computing time-based greeting only on client side via useEffect, initializing with a default value that matches SSR output."
+    },
+    {
+      "file": "apps/web/app/dashboard/page.tsx",
+      "old_str": "const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });",
+      "new_str": "const [dateStr, setDateStr] = React.useState('');\n  React.useEffect(() => {\n    setDateStr(new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }));\n  }, []);",
+      "reason": "Fix hydration mismatch for date string by computing it only on the client side via useEffect to ensure server and client render the same initial value."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776406183203,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776406183205,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776406208118,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776406208121,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776406232792,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776406232794,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776406357294,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776406357296,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776406389528,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776406389530,\"url\":\"/dashboard\"}"
+  ]
+}

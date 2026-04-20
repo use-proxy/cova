@@ -1,0 +1,48 @@
+{
+  "screen": "landing",
+  "url": "http://localhost:3000/",
+  "passed": false,
+  "attempt": 1,
+  "elements": 34,
+  "issues": [
+    {
+      "severity": "minor",
+      "description": "Console warning: 'Please ensure that the container has a non-static position, like relative, fixed, or absolute to ensure scroll offset is calculated correctly.' This indicates a scroll-related container (likely a scroll spy, parallax, or sticky element) is missing a non-static CSS position property.",
+      "element": "Unknown scroll container component — likely a parallax wrapper, sticky nav, or scroll-tracking div",
+      "root_cause": "A component using a scroll offset calculation library (e.g., react-scrollspy, framer-motion scroll, or a custom useScroll hook) is attached to a container that has default static positioning. The container needs position: relative (or fixed/absolute) set explicitly."
+    },
+    {
+      "severity": "minor",
+      "description": "Background color behind the hero section appears as a dark charcoal/near-black rather than the specified dark navy #091829. The overlay may be too dark or a different color value is used, washing out the navy tone.",
+      "element": "Hero section background / page background color",
+      "root_cause": "The global background or hero wrapper likely has a CSS background-color that differs from #091829, or an overlay div with opacity/color is too dark, overriding the intended navy hue."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/page.tsx",
+      "old_str": "<section className=\"relative",
+      "new_str": "<section className=\"relative",
+      "reason": "Placeholder — the actual hero section should already have relative. Verify the scroll container specifically."
+    },
+    {
+      "file": "apps/web/app/globals.css",
+      "old_str": "background-color: #0a0a0a",
+      "new_str": "background-color: #091829",
+      "reason": "Ensures the page background matches the spec of dark navy #091829 instead of near-black."
+    },
+    {
+      "file": "apps/web/app/globals.css",
+      "old_str": "background: #0a0a0a",
+      "new_str": "background: #091829",
+      "reason": "Secondary match for background shorthand property to enforce the correct navy color."
+    },
+    {
+      "file": "apps/web/app/page.tsx",
+      "old_str": "<div className=\"overflow-y-auto",
+      "new_str": "<div className=\"relative overflow-y-auto",
+      "reason": "Fixes the console warning about non-static positioning on the scroll container. Adding 'relative' ensures scroll offset calculations work correctly."
+    }
+  ],
+  "flowLogs": []
+}

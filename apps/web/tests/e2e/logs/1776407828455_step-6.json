@@ -1,0 +1,47 @@
+{
+  "screen": "step-6",
+  "url": "http://localhost:3000/design/step-6",
+  "passed": false,
+  "attempt": 1,
+  "elements": 5,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Step counter shows 'STEP 4 OF 4' but this is step-6. The step indicator is wrong.",
+      "element": "STEP 4 OF 4 header text",
+      "root_cause": "apps/web/app/design/step-6/page.tsx likely has hardcoded 'STEP 4 OF 4' instead of the correct step number, or the step configuration maps step-6 to step 4."
+    },
+    {
+      "severity": "critical",
+      "description": "Multiple React hydration errors: 'Text content does not match server-rendered HTML' and 'entire root will switch to client rendering'. This indicates dynamic content (e.g. dates, random values, or QR code data) differs between SSR and client.",
+      "element": "Entire page hydration",
+      "root_cause": "apps/web/app/design/step-6/page.tsx likely renders something dynamic (e.g. QR code URL with timestamp, Math.random(), or Date) during SSR that differs on the client."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-6/page.tsx",
+      "old_str": "STEP 4 OF 4",
+      "new_str": "STEP 6 OF 6",
+      "reason": "The step counter is hardcoded to 'STEP 4 OF 4' but this is step-6. Fix it to reflect the correct step."
+    },
+    {
+      "file": "apps/web/app/design/step-6/page.tsx",
+      "old_str": "const qrValue = `${window.location.origin}/upload/`,",
+      "new_str": "const qrValue = `${typeof window !== 'undefined' ? window.location.origin : ''}/upload/`,",
+      "reason": "If QR code URL uses window.location on server side, it causes hydration mismatch. Guard with typeof window check."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407725461,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407725464,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776407751012,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776407751014,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407779041,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407779042,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407780608,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407780609,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776407807104,\"url\":\"/design/step-6\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776407807106,\"url\":\"/design/step-6\"}"
+  ]
+}

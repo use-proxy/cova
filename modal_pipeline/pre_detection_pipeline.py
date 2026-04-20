@@ -14,6 +14,7 @@ app = modal.App("cova-pre-detection")
 image = (
     modal.Image.debian_slim(python_version="3.10")
     .pip_install("requests", "Pillow", "fastapi[standard]")
+    .add_local_file("modal_pipeline/utils.py", "/root/utils.py")
 )
 
 
@@ -60,27 +61,46 @@ def detect_furniture(room_id: str, photo_url: str) -> dict:
         raise RuntimeError(f"Failed to download room photo: {last_err}")
     img_data = base64.standard_b64encode(img_resp.content).decode("utf-8")
 
-    prompt = """Analyze this room photo and identify every distinct furniture piece visible.
+    prompt = """Analyze this room photo and identify EVERY distinct object visible — furniture, structural elements, fixtures, decor, and clutter alike. Be exhaustive. Do not skip small, mounted, ceiling-height, or corner items.
 
-For each piece, provide:
-1. label: concise name (e.g. "sofa", "coffee table", "floor lamp", "bed", "desk")
-2. azimuth_degrees: estimated horizontal angle from room center where this piece sits
-   - 0° = directly ahead (center of this photo)
-   - Adjust for pieces to the left (negative) or right (positive) within ±90°
-3. elevation_degrees: vertical angle from eye level
-   - 0° = eye level
-   - Negative = below eye level (floor furniture: -20 to -40°)
-   - Positive = above eye level (wall art: +10 to +30°, ceiling light: +60 to +80°)
-4. is_fixed: true if this is structural/immovable (built-in shelving, radiator, fireplace, built-in desk) — false if movable/decorative
-5. confidence: 0.0-1.0 how confident you are in the detection
-6. category: one of [sofa, chair, table, desk, bed, storage, lighting, rug, wall_art, plant, decorative, appliance, other]
-7. dominant_color: the primary color in plain language (e.g. "warm gray", "natural oak", "cream linen", "charcoal")
-8. material: inferred material in plain language (e.g. "linen upholstery", "solid oak", "wool", "powder-coated steel")
-9. size_in_room: one of "large", "medium", or "small" relative to the room
-10. style_descriptors: an array of 2-3 short descriptor phrases capturing the item's silhouette, form, and detail (e.g. ["low-profile", "tufted back", "tapered legs"])
+Detect ALL of the following when present:
+- Seating (sofa, chair, bench, stool, ottoman)
+- Tables/desks (coffee, dining, side, console, desk)
+- Storage (bookshelf, dresser, cabinet, wardrobe, nightstand, media unit)
+- Beds and bedding (bed frame, mattress, headboard)
+- Rugs and floor coverings
+- Lighting (floor lamp, table lamp, pendant, chandelier, ceiling fan, wall sconce, track light, recessed light)
+- Wall-mounted items (art, photos, mirrors, TVs, shelves, wall decals, letters, text, signage, tapestries, clocks)
+- Ceiling fixtures (fans, pendants, chandeliers, flush mounts)
+- Built-ins (built-in shelving, radiators, fireplaces, built-in wardrobes)
+- Windows, doors, and their treatments (curtains, blinds, shades)
+- Plants and planters
+- Decor (vases, books, candles, sculptures)
+- Appliances
+- Clutter (visible cables, power cords, bags, clothing on floor, trash, random items)
+
+For each detected object provide:
+1. label: concise generic name (e.g. "sofa", "ceiling fan", "wall art", "power cord")
+2. estimated_bbox_pct: object with {x, y, w, h} as fractions (0.0-1.0) of image dimensions
+   - x,y = top-left corner of bounding box as fraction of image width/height
+   - w,h = bounding box width/height as fraction of image width/height
+   - This is a rough visual estimate — it is only used as a fallback indicator when pixel-perfect masks are not ready.
+3. is_fixed: true if structural/immovable (walls, floor, ceiling, windows, doors, built-ins, radiators, fireplaces) — false otherwise
+4. confidence: 0.0-1.0
+5. category: one of [sofa, chair, table, desk, bed, storage, lighting, rug, wall_art, plant, decorative, appliance, ceiling, wall, floor, window, door, built_in_shelving, radiator, fireplace, built_in_wardrobe, cable, power_cord, bag, clothing_on_floor, trash, random_item, other]
+6. dominant_color: primary color in plain language
+7. material: inferred material in plain language
+8. size_in_room: "large", "medium", or "small"
+9. style_descriptors: array of 2-3 short descriptor phrases
 
 Return ONLY a JSON array. No preamble, no explanation, no markdown.
-Example: [{"label":"sofa","azimuth_degrees":-15,"elevation_degrees":-25,"is_fixed":false,"confidence":0.95,"category":"sofa","dominant_color":"cream linen","material":"linen upholstery","size_in_room":"large","style_descriptors":["low-profile","tufted back","tapered oak legs"]}]"""
+Example: [{"label":"sofa","estimated_bbox_pct":{"x":0.15,"y":0.45,"w":0.4,"h":0.35},"is_fixed":false,"confidence":0.95,"category":"sofa","dominant_color":"cream linen","material":"linen upholstery","size_in_room":"large","style_descriptors":["low-profile","tufted back","tapered legs"]}]"""
+
+    ceiling_prompt = """Look ONLY at the top portion of this room image. Identify every ceiling-mounted or high-wall fixture: ceiling fans, pendant lights, chandeliers, flush-mount lights, track lighting, recessed lights, exposed beams, skylights, ceiling medallions, smoke detectors, vents, fire sprinklers, tall wall art above eye level.
+
+For each provide: label, estimated_bbox_pct {x,y,w,h} as fractions of the ORIGINAL full image (the crop is the top 35% — so y values should be within 0.0-0.35), is_fixed (true if structural, e.g. beam or recessed light; false if a fixture like a fan or pendant), confidence, category (ceiling, lighting, wall_art, etc.), dominant_color, material, size_in_room, style_descriptors.
+
+Return ONLY a JSON array. No preamble, no markdown. Empty array [] if nothing is present."""
 
     # Detect media type from URL or content
     media_type = "image/jpeg"
@@ -89,67 +109,138 @@ Example: [{"label":"sofa","azimuth_degrees":-15,"elevation_degrees":-25,"is_fixe
     elif photo_url.lower().endswith(".webp"):
         media_type = "image/webp"
 
-    # Call Claude Vision with one retry for transient failures.
-    response = None
-    last_err = None
-    for attempt in (1, 2):
-        try:
-            response = requests.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={
-                    "x-api-key": anthropic_key,
-                    "anthropic-version": "2023-06-01",
-                    "content-type": "application/json",
-                },
-                json={
-                    "model": "claude-sonnet-4-20250514",
-                    "max_tokens": 1024,
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": [
-                                {
-                                    "type": "image",
-                                    "source": {
-                                        "type": "base64",
-                                        "media_type": media_type,
-                                        "data": img_data,
+    def _call_vision(img_b64: str, media: str, text_prompt: str) -> list:
+        resp = None
+        last = None
+        for attempt in (1, 2):
+            try:
+                resp = requests.post(
+                    "https://api.anthropic.com/v1/messages",
+                    headers={
+                        "x-api-key": anthropic_key,
+                        "anthropic-version": "2023-06-01",
+                        "content-type": "application/json",
+                    },
+                    json={
+                        "model": "claude-sonnet-4-20250514",
+                        "max_tokens": 2048,
+                        "messages": [
+                            {
+                                "role": "user",
+                                "content": [
+                                    {
+                                        "type": "image",
+                                        "source": {
+                                            "type": "base64",
+                                            "media_type": media,
+                                            "data": img_b64,
+                                        },
                                     },
-                                },
-                                {"type": "text", "text": prompt},
-                            ],
-                        }
-                    ],
-                },
-                timeout=25,
-            )
-            response.raise_for_status()
-            break
+                                    {"type": "text", "text": text_prompt},
+                                ],
+                            }
+                        ],
+                    },
+                    timeout=25,
+                )
+                resp.raise_for_status()
+                break
+            except Exception as e:
+                last = e
+                print(f"[pre-detection] room {room_id}: Anthropic attempt {attempt} failed: {e}")
+                if attempt < 2:
+                    time.sleep(5)
+        if resp is None:
+            raise RuntimeError(f"Anthropic Vision call failed: {last}")
+        rj = resp.json()
+        if "error" in rj:
+            raise RuntimeError(f"Anthropic API error: {rj['error']}")
+        text = rj["content"][0]["text"].strip()
+        clean = text.replace("```json", "").replace("```", "").strip()
+        try:
+            return json.loads(clean)
         except Exception as e:
-            last_err = e
-            print(f"[pre-detection] room {room_id}: Anthropic attempt {attempt} failed: {e}")
-            if attempt < 2:
-                time.sleep(5)
-    if response is None:
-        raise RuntimeError(f"Anthropic Vision call failed: {last_err}")
+            print(f"[pre-detection] room {room_id}: parse failure: {e}")
+            return []
 
+    # Pass 1: full-image exhaustive detection
+    furniture_list = _call_vision(img_data, media_type, prompt)
+
+    # Pass 2: targeted ceiling/high-wall detection on top 35% crop
     try:
-        resp_json = response.json()
-        if "error" in resp_json:
-            raise RuntimeError(f"Anthropic API error: {resp_json['error']}")
-        result_text = resp_json["content"][0]["text"].strip()
-        clean = result_text.replace("```json", "").replace("```", "").strip()
-        furniture_list = json.loads(clean)
+        from PIL import Image as _PILImage
+        import io as _io
+        _img = _PILImage.open(_io.BytesIO(img_resp.content))
+        _w, _h = _img.size
+        _crop = _img.crop((0, 0, _w, int(_h * 0.35)))
+        _buf = _io.BytesIO()
+        _fmt = "PNG" if media_type == "image/png" else "JPEG"
+        _crop.save(_buf, format=_fmt)
+        _crop_b64 = base64.standard_b64encode(_buf.getvalue()).decode("utf-8")
+        ceiling_list = _call_vision(_crop_b64, media_type, ceiling_prompt)
     except Exception as e:
-        print(f"[pre-detection] room {room_id}: parse failure: {e}")
-        raise
+        print(f"[pre-detection] room {room_id}: ceiling pass skipped: {e}")
+        ceiling_list = []
 
-    required_fields = {"label", "azimuth_degrees", "elevation_degrees", "is_fixed", "confidence", "category"}
+    # Merge + dedupe by normalized label similarity
+    def _norm(s):
+        return "".join(ch for ch in (s or "").lower() if ch.isalnum())
+
+    merged = list(furniture_list) if isinstance(furniture_list, list) else []
+    seen = {_norm(f.get("label")) for f in merged if isinstance(f, dict)}
+    if isinstance(ceiling_list, list):
+        for c in ceiling_list:
+            if not isinstance(c, dict):
+                continue
+            k = _norm(c.get("label"))
+            if k and k not in seen:
+                merged.append(c)
+                seen.add(k)
+
+    from utils import HARD_STRUCTURAL as STRUCTURAL_CATS
+    from utils import normalize_label_key
+
+    CLUTTER_CATS = {
+        "cable", "power_cord", "bag", "clothing_on_floor", "trash", "random_item",
+    }
+
+    required_fields = {"label", "is_fixed", "confidence", "category"}
     validated = []
-    for f in furniture_list:
-        if not required_fields.issubset(f.keys()):
+    for f in merged:
+        if not isinstance(f, dict) or not required_fields.issubset(f.keys()):
             continue
-        # Enriched fields — optional, default to None if model omitted them
+
+        cat = normalize_label_key(str(f.get("category") or ""))
+
+        # Auto-classify structural and clutter categories for downstream UI
+        if cat in STRUCTURAL_CATS:
+            f["is_fixed"] = True
+            f["auto_decision"] = "keep"
+        elif cat in CLUTTER_CATS:
+            f["is_fixed"] = False
+            f["auto_decision"] = "remove"
+        else:
+            f.setdefault("auto_decision", None)
+
+        # Normalize estimated_bbox_pct; fall back to center if missing or malformed
+        bbox = f.get("estimated_bbox_pct")
+        if not (
+            isinstance(bbox, dict)
+            and all(isinstance(bbox.get(k), (int, float)) for k in ("x", "y", "w", "h"))
+        ):
+            bbox = {"x": 0.4, "y": 0.4, "w": 0.2, "h": 0.2}
+        f["estimated_bbox_pct"] = {
+            "x": max(0.0, min(1.0, float(bbox["x"]))),
+            "y": max(0.0, min(1.0, float(bbox["y"]))),
+            "w": max(0.01, min(1.0, float(bbox["w"]))),
+            "h": max(0.01, min(1.0, float(bbox["h"]))),
+        }
+
+        # Strip legacy angular fields — they are no longer used
+        f.pop("azimuth_degrees", None)
+        f.pop("elevation_degrees", None)
+
+        # Enriched fields — optional
         f.setdefault("dominant_color", None)
         f.setdefault("material", None)
         f.setdefault("size_in_room", None)

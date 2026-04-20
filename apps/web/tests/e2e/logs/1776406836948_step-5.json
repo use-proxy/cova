@@ -1,0 +1,53 @@
+{
+  "screen": "step-5",
+  "url": "http://localhost:3000/design/step-5",
+  "passed": false,
+  "attempt": 1,
+  "elements": 10,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "React hydration errors - 'Text content does not match server-rendered HTML' repeated 7 times, causing entire root to switch to client rendering. This is the most critical bug.",
+      "element": "Page hydration / text content",
+      "root_cause": "Likely a currency formatter or number formatter using locale-specific formatting (e.g., Intl.NumberFormat or toLocaleString()) that produces different output on server vs client. Price values like '$500', '$2,000', '$5,000' rendered with locale-dependent formatting will differ between Node.js SSR and browser environments."
+    },
+    {
+      "severity": "major",
+      "description": "Step indicator shows 'STEP 3 OF 4' but this is step-5 page at /design/step-5. The step counter is wrong — either the total is wrong (should be more steps) or the current step number is miscounted.",
+      "element": "Step counter header 'STEP 3 OF 4'",
+      "root_cause": "The step-5 page component hardcodes or passes wrong step number (3) and wrong total (4) to the step indicator component. Should be step 3 of 5 or similar depending on total flow."
+    },
+    {
+      "severity": "minor",
+      "description": "Only 2 budget tier cards are visible (Essential and partially a second one). Expected 4-5 tiers: Essential, Elevated, Refined, Prestige, Signature. While this could be by swipeable carousel design, it should be verified all cards are present.",
+      "element": "Budget tier cards carousel",
+      "root_cause": "Carousel/swiper component may be working correctly with hidden cards off-screen, but hydration errors may also be preventing full render."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-5/page.tsx",
+      "old_str": "const formatPrice = (price: number) => price.toLocaleString()",
+      "new_str": "const formatPrice = (price: number) => price.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',')",
+      "reason": "Replace locale-dependent toLocaleString() with a locale-independent formatter to fix hydration mismatch between SSR and client rendering."
+    },
+    {
+      "file": "apps/web/app/design/step-5/page.tsx",
+      "old_str": "STEP 3 OF 4",
+      "new_str": "STEP 3 OF 5",
+      "reason": "If the design flow has 5 steps (step-1 through step-5), the total should be 5, not 4."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776406753045,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776406753047,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776406755435,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776406755437,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776406778901,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776406778903,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776406809900,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776406809901,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776406811630,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776406811631,\"url\":\"/design/step-5\"}"
+  ]
+}

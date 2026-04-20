@@ -1,0 +1,62 @@
+{
+  "iter": 21,
+  "room": "Room_B",
+  "style": "COVAJAPANDI",
+  "secondaryStyle": "COVAMIDCENTURY",
+  "primaryWeight": 0.6,
+  "removeCount": 2,
+  "wallChange": false,
+  "floorChange": false,
+  "seed": 2100,
+  "renderUrl": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/renders/c1405ef4-140e-492e-a8e3-2a0c25ebc093/final_1776442863.jpg",
+  "score": {
+    "scores": {
+      "ARCHITECTURE_FIDELITY": 9,
+      "STYLE_ACCURACY": 7,
+      "FURNITURE_REALISM": 8,
+      "COMPOSITION": 8,
+      "LIGHTING": 8,
+      "COLOR_HARMONY": 7,
+      "DETAIL_QUALITY": 8,
+      "EDITORIAL_QUALITY": 7,
+      "ROOM_ADAPTATION": 7,
+      "BETTER_THAN_BENCHMARK": 6
+    },
+    "total": 75,
+    "pass": false,
+    "issues": [
+      {
+        "dimension": "STYLE_ACCURACY",
+        "symptom": "Contemporary mid-century aesthetic does not strongly embody Japandi principles; lacks minimalist restraint, natural textures, and zen-like calm characteristic of Japandi fusion",
+        "root_cause": "prompt",
+        "severity": "major"
+      },
+      {
+        "dimension": "COLOR_HARMONY",
+        "symptom": "Palette leans warm/traditional (cream, wood tones) rather than cool-neutral with warm accents typical of Japandi; insufficient use of greiges, soft grays, or muted earth tones",
+        "root_cause": "lora",
+        "severity": "major"
+      },
+      {
+        "dimension": "ROOM_ADAPTATION",
+        "symptom": "Style application feels generic contemporary rather than specifically tailored to this room's existing architectural features (crown molding, window placement, wall color)",
+        "root_cause": "composite",
+        "severity": "major"
+      },
+      {
+        "dimension": "EDITORIAL_QUALITY",
+        "symptom": "While clean, lacks the refined, curated editorial polish of high-end interior design photography; styling feels student-project rather than professional publication",
+        "root_cause": "postprocess",
+        "severity": "minor"
+      },
+      {
+        "dimension": "BETTER_THAN_BENCHMARK",
+        "symptom": "Original photograph demonstrates superior spatial authenticity, material authenticity, and personal curation; render reads as generic despite technical competence",
+        "root_cause": "composite",
+        "severity": "major"
+      }
+    ],
+    "winner_subjective": "benchmark"
+  },
+  "passed": false
+}

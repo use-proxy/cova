@@ -1,0 +1,15 @@
+{
+  "screen": "landing",
+  "url": "http://localhost:3000/",
+  "passed": false,
+  "attempt": 1,
+  "elements": 34,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Claude API error: 400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"messages.0.content.0.image.source.base64.data: At least one of the image dimensions exceed max allowed size: 8000 pixels\"},\"request_id\":\"req_011Ca8oXBSJK9b4C4N3G8QdP\"}"
+    }
+  ],
+  "fixes": [],
+  "flowLogs": []
+}

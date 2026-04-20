@@ -1,0 +1,47 @@
+{
+  "screen": "step-4",
+  "url": "http://localhost:3000/design/step-4",
+  "passed": false,
+  "attempt": 1,
+  "elements": 6,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "setIsMounted is not defined - multiple ReferenceErrors in console indicating a useState hook for isMounted was removed or never declared, causing hydration failures",
+      "element": "Page component mount state",
+      "root_cause": "In apps/web/app/design/step-4/page.tsx, setIsMounted is called somewhere in the component but the useState declaration `const [isMounted, setIsMounted] = useState(false)` is missing or was deleted, causing ReferenceError on every render"
+    },
+    {
+      "severity": "critical",
+      "description": "Radar chart with 6 dimensions (Warmth, Complexity, Organic, Layered, Heritage, Character) is completely missing from the screen",
+      "element": "Radar/spider chart component",
+      "root_cause": "The radar chart is likely conditionally rendered based on `isMounted` state (to avoid SSR issues with canvas/SVG), but since setIsMounted is not defined, isMounted never becomes true, so the chart never renders"
+    },
+    {
+      "severity": "major",
+      "description": "Tweak input field is missing from the page",
+      "element": "Tweak input field",
+      "root_cause": "Same isMounted issue may be hiding this component, or it may be missing from the JSX entirely"
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-4/page.tsx",
+      "old_str": "export function",
+      "new_str": "// see targeted fix below\nexport function",
+      "reason": "placeholder - see actual fix below"
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776408911038,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776408911040,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408937637,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776408937638,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408957752,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408957755,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408959980,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408959982,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776408985060,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776408985062,\"url\":\"/design/step-4\"}"
+  ]
+}

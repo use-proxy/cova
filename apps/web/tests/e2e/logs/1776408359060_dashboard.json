@@ -1,0 +1,53 @@
+{
+  "screen": "dashboard",
+  "url": "http://localhost:3000/dashboard",
+  "passed": false,
+  "attempt": 1,
+  "elements": 27,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Duplicate React import statements in step-3/page.tsx causing module build failure. Two import lines exist: an old 'import { useState, useEffect } from react' and a new combined import, causing duplicate identifier errors.",
+      "element": "apps/web/app/design/step-3/page.tsx imports",
+      "root_cause": "The file has a stale first line 'import { useState, useEffect } from react' followed by a second import line 'import { useCallback, useEffect, useRef, useState } from react'. The source file shown already has this fixed to a single combined import, but the console log shows the build error still exists — the actual file on disk still has the duplicate. The provided source shows it was partially fixed but the original duplicate import is still present in the real file."
+    },
+    {
+      "severity": "critical",
+      "description": "Multiple React hydration errors on dashboard page — text content mismatch between server-rendered HTML and client rendering, causing entire root to fall back to client rendering.",
+      "element": "Dashboard page hydration",
+      "root_cause": "Likely caused by dynamic content (e.g., 'Good evening, Amelia.' greeting uses time-of-day which differs between server and client render, or date display 'Thursday, April 16' computed differently server vs client)."
+    },
+    {
+      "severity": "major",
+      "description": "404 error for /design/step-4 RSC payload causing fallback to browser navigation, indicating a missing or broken step-4 page route.",
+      "element": "/design/step-4 route",
+      "root_cause": "Console log shows 'Failed to load resource: 404' and 'Failed to fetch RSC payload for /design/step-4', meaning the step-4 page file is missing or has a build error preventing it from being served."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "\"use client\"\nimport { useState, useEffect } from 'react';\n\nimport { useCallback, useEffect, useRef, useState } from \"react\";",
+      "new_str": "\"use client\"\nimport { useState, useEffect, useCallback, useRef } from \"react\";",
+      "reason": "Remove the duplicate first import line that causes the 'name is defined multiple times' build error. The combined import on line 4 already has all needed hooks."
+    },
+    {
+      "file": "apps/web/app/dashboard/page.tsx",
+      "old_str": "Good evening, Amelia.",
+      "new_str": "Good evening, Amelia.",
+      "reason": "Placeholder — the actual hydration fix requires wrapping the time-of-day greeting in a useEffect/useState with suppressHydrationWarning or using a client-only component. Cannot determine exact code without seeing dashboard/page.tsx source."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776408254990,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776408254993,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776408278756,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776408278757,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776408280523,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776408280524,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776408307483,\"url\":\"/design/step-6\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776408307485,\"url\":\"/design/step-6\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776408329515,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776408329517,\"url\":\"/dashboard\"}"
+  ]
+}

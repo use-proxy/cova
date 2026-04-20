@@ -8,6 +8,10 @@ import {
   STYLES,
   mergeToV2,
 } from "@/lib/ai/style-match";
+import {
+  type BayesianState,
+  needsBonusSwipes,
+} from "@/lib/quiz/bayes";
 
 // ── /api/quiz/next-pair ──────────────────────────────────────────────────────
 // Phase B selector (V2). Returns one validated comparison pair from
@@ -35,6 +39,12 @@ interface NextPairRequest {
   responseCount?: number;
   room_type?: string;
   competing_styles?: string[]; // raw style names from softmaxStyleMatch e.g. ["biophilic_jungle", "coastal_bright"]
+  /** V3 anchor prior from step-2. When present, activates V3 Bayesian pair selection. */
+  anchor_prior?: Record<string, number>;
+  /** V3 Bayesian state passed from client for stateless updates. */
+  bayesian_state?: BayesianState;
+  /** Whether the user already accepted bonus swipes. */
+  in_bonus_phase?: boolean;
 }
 
 interface PairRow {
@@ -140,8 +150,31 @@ export async function POST(request: Request) {
         contestedV2Dims = null; // let normal flow handle it
       }
     }
+    // ── V3 Bayesian bonus swipe check ─────────────────────────────────────
+    const isV3 = body.anchor_prior != null;
+    const inBonusPhase = body.in_bonus_phase ?? false;
+    const BONUS_SWIPES = 4;
+    const maxSwipes = inBonusPhase ? TOTAL_PAIRS + BONUS_SWIPES : TOTAL_PAIRS;
+
     // Quiz complete by count
-    if (responseCount >= TOTAL_PAIRS) {
+    if (responseCount >= maxSwipes) {
+      return NextResponse.json({ pair: null, quizComplete: true });
+    }
+
+    // At the 24-swipe boundary for V3: check if bonus swipes needed
+    if (isV3 && responseCount >= TOTAL_PAIRS && !inBonusPhase) {
+      const bayesState = body.bayesian_state;
+      if (bayesState && needsBonusSwipes(bayesState)) {
+        return NextResponse.json({
+          pair: null,
+          quizComplete: false,
+          bonusSwipesNeeded: true,
+          uncertainDimCount: Object.values(bayesState.variance).filter(
+            v => Math.sqrt(v) > 0.25,
+          ).length,
+        });
+      }
+      // No bonus needed — quiz complete
       return NextResponse.json({ pair: null, quizComplete: true });
     }
 

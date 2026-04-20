@@ -1,0 +1,77 @@
+{
+  "screen": "step-5",
+  "url": "http://localhost:3000/design/step-5",
+  "passed": false,
+  "attempt": 1,
+  "elements": 10,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Step indicator mismatch: header shows 'STEP 3 OF 4' but the URL is /design/step-5 and the page is expected to be a later step in the flow. The step counter is either hardcoded incorrectly or not dynamically reflecting the actual step.",
+      "element": "Step counter in top-right header",
+      "root_cause": "In the step-5 page component (likely pages/design/step-5.tsx or similar), the StepIndicator/Header component is being passed hardcoded props `currentStep={3}` and `totalSteps={4}` instead of the correct values for step 5. Alternatively, a shared layout is not receiving the correct step number for this page."
+    },
+    {
+      "severity": "critical",
+      "description": "Multiple React hydration errors: 'Text content does not match server-rendered HTML' causing the entire root to switch to client rendering. This affects all text content on the page and indicates SSR/CSR mismatch, likely from dynamic price formatting (currency symbols, locale-specific number formatting) or carousel index state being initialized differently on server vs client.",
+      "element": "Entire page - hydration",
+      "root_cause": "Price range strings like '$500 – $2,000' may be formatted using locale-aware APIs (toLocaleString, Intl.NumberFormat) that produce different output on the Node.js server vs the browser. Alternatively, the carousel's initial active index or selected state is being set from localStorage/sessionStorage which is not available during SSR, causing server to render index 0 and client to render a different index."
+    },
+    {
+      "severity": "major",
+      "description": "The carousel layout shows only 1 card fully visible and a sliver of the next card, which is the expected swipeable UX, but the expected behavior specification says '4-5 budget tier cards' should be visible with descriptions. Cards appear to lack description text — only the price range and tier name are visible on the card, no description copy is shown inside the card body.",
+      "element": "Budget tier cards — missing description text",
+      "root_cause": "The card component for budget tiers likely has a description field in the data array that is either not being rendered in the JSX, or the card height is insufficient and the description is being clipped/hidden due to overflow:hidden or a fixed height constraint."
+    },
+    {
+      "severity": "major",
+      "description": "Page is mounted as 'step-5' per console logs but the URL mapping and step counter both show step 3, suggesting a routing or props configuration error where the step-5 page file is reusing the step-3 layout/component with incorrect step metadata.",
+      "element": "Page routing / step metadata",
+      "root_cause": "The page file at pages/design/step-5.tsx likely has `<StepHeader step={3} total={4} />` or passes incorrect step props. The console log shows page:mount with page:'step-5' which is correct, but the rendered UI shows STEP 3 OF 4."
+    },
+    {
+      "severity": "minor",
+      "description": "The 'See My Matches' button label may be inconsistent with expected 'Continue' button label per the expected behavior specification which says 'Continue button'.",
+      "element": "CTA Button text",
+      "root_cause": "The button in the step-5 component has text 'See My Matches →' instead of 'Continue' as specified. This may be intentional UX copy but contradicts the spec."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "app/design/step-5/page.tsx",
+      "old_str": "<StepIndicator currentStep={3} totalSteps={4} />",
+      "new_str": "<StepIndicator currentStep={5} totalSteps={5} />",
+      "reason": "Fix the step counter to reflect the actual position in the flow. If total steps is 4 and this maps to step 4, adjust accordingly, but must not show STEP 3 OF 4 on step-5 page."
+    },
+    {
+      "file": "app/design/step-5/page.tsx",
+      "old_str": "const formatPrice = (price: number) => price.toLocaleString('en-US', { style: 'currency', currency: 'USD' })",
+      "new_str": "const formatPrice = (price: number) => `$${price.toLocaleString('en-US')}`",
+      "reason": "Avoid locale-specific formatting that differs between Node.js SSR and browser environments, which causes hydration mismatches. Use a consistent format that produces the same output server and client side."
+    },
+    {
+      "file": "app/design/step-5/page.tsx",
+      "old_str": "const [selectedIndex, setSelectedIndex] = useState(() => {\n    const saved = localStorage.getItem('budgetTier');\n    return saved ? parseInt(saved) : 0;\n  });",
+      "new_str": "const [selectedIndex, setSelectedIndex] = useState(0);\n\n  useEffect(() => {\n    const saved = localStorage.getItem('budgetTier');\n    if (saved) setSelectedIndex(parseInt(saved));\n  }, []);",
+      "reason": "localStorage is not available during SSR. Initializing state from localStorage in useState causes server/client mismatch and hydration errors. Move the localStorage read into a useEffect that runs only on the client after mount."
+    },
+    {
+      "file": "components/BudgetTierCard.tsx",
+      "old_str": "  return (\n    <div className={`budget-card ${isSelected ? 'selected' : ''}`}>\n      <h2>{priceRange}</h2>\n      <h3>{tierName}</h3>\n    </div>\n  );",
+      "new_str": "  return (\n    <div className={`budget-card ${isSelected ? 'selected' : ''}`}>\n      <h2>{priceRange}</h2>\n      <h3>{tierName}</h3>\n      {description && <p className=\"budget-card__description\">{description}</p>}\n    </div>\n  );",
+      "reason": "Add rendering of the description prop which is present in the data but not being displayed in the card component, as per the expected behavior specification."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776404415140,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776404415143,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-2\"},\"ts\":1776404415346,\"url\":\"/design/step-2\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-2\"},\"ts\":1776404415346,\"url\":\"/design/step-2\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776404463656,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776404463659,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776404528973,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776404528975,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776404531071,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776404531073,\"url\":\"/design/step-5\"}"
+  ]
+}

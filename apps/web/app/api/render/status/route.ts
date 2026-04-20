@@ -178,7 +178,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ status: "processing" });
   }
 
+  const userId = user.id;
   const admin = createAdminSupabaseClient();
+
+  // Verify room ownership before any admin writes bypass RLS
+  const { data: ownedRoom } = await admin
+    .from("rooms")
+    .select("id")
+    .eq("id", roomId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!ownedRoom) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   // Fetch room metadata up front so we can route into the two-pass branch
   // before touching Replicate. The two-pass flow needs to poll pass 2's
@@ -188,6 +200,7 @@ export async function GET(request: NextRequest) {
     .from("rooms")
     .select("pipeline_cost_log, inpainting_mask_url, original_photo_url")
     .eq("id", roomId)
+    .eq("user_id", userId)
     .single();
 
   type CostLog = {
@@ -271,11 +284,13 @@ export async function GET(request: NextRequest) {
         await admin
           .from("rooms")
           .update({ render_url: fallbackUrl })
-          .eq("id", roomId);
+          .eq("id", roomId)
+          .eq("user_id", userId);
         await admin
           .from("rooms")
           .update({ redesign_status: "complete" })
           .eq("id", roomId!)
+          .eq("user_id", userId)
           .or("redesign_status.eq.pending,redesign_status.is.null");
         const fallbackSession: InsertTables<"render_sessions"> = {
           room_id: roomId!,
@@ -327,7 +342,8 @@ export async function GET(request: NextRequest) {
             redesign_status: "complete",
             pipeline_cost_log: { ...costLog, pass2_url: finalUrl },
           } as Record<string, unknown>)
-          .eq("id", roomId);
+          .eq("id", roomId)
+          .eq("user_id", userId);
 
         const finalSession: InsertTables<"render_sessions"> = {
           room_id: roomId!,
@@ -395,11 +411,13 @@ export async function GET(request: NextRequest) {
         await admin
           .from("rooms")
           .update({ render_url: pass1Url })
-          .eq("id", roomId);
+          .eq("id", roomId)
+          .eq("user_id", userId);
         await admin
           .from("rooms")
           .update({ redesign_status: "complete" })
           .eq("id", roomId!)
+          .eq("user_id", userId)
           .or("redesign_status.eq.pending,redesign_status.is.null");
         triggerDetectionThenMatching(roomId!, pass1Url);
         return NextResponse.json({ status: "complete", render_url: pass1Url });
@@ -420,11 +438,13 @@ export async function GET(request: NextRequest) {
         await admin
           .from("rooms")
           .update({ render_url: pass1Url })
-          .eq("id", roomId);
+          .eq("id", roomId)
+          .eq("user_id", userId);
         await admin
           .from("rooms")
           .update({ redesign_status: "complete" })
           .eq("id", roomId!)
+          .eq("user_id", userId)
           .or("redesign_status.eq.pending,redesign_status.is.null");
         triggerDetectionThenMatching(roomId!, pass1Url);
         return NextResponse.json({
@@ -443,7 +463,8 @@ export async function GET(request: NextRequest) {
             pass2_prediction_id: pass2Id,
           },
         } as Record<string, unknown>)
-        .eq("id", roomId);
+        .eq("id", roomId)
+        .eq("user_id", userId);
 
       return NextResponse.json({ status: "processing", preview_url: pass1Url });
     }
@@ -543,7 +564,8 @@ export async function GET(request: NextRequest) {
           original_render_url: renderUrl,
         },
       } as Record<string, unknown>)
-      .eq("id", roomId);
+      .eq("id", roomId)
+      .eq("user_id", userId);
 
     // Re-detect on the rendered image (async — don't block response)
     // Rendered images are clean AI images, detection works better on them

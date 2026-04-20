@@ -1,0 +1,41 @@
+{
+  "screen": "auth",
+  "url": "http://localhost:3000/auth",
+  "passed": false,
+  "attempt": 2,
+  "elements": 7,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Duplicate import statements in auth/page.tsx — useEffect and useState are imported twice from 'react', causing a compilation error and preventing Fast Refresh from working correctly.",
+      "element": "Top of apps/web/app/auth/page.tsx",
+      "root_cause": "Two separate import lines from 'react': line 2 imports `{ useEffect, useState }` and line 5 imports `{ FormEvent, useEffect, useMemo, useState }`. The compiler throws 'name is defined multiple times' errors for useEffect and useState."
+    },
+    {
+      "severity": "major",
+      "description": "Hydration errors — multiple 'Text content does not match server-rendered HTML' errors, likely caused by the duplicate imports causing inconsistent render between server and client.",
+      "element": "Entire page hydration",
+      "root_cause": "The compilation error from duplicate imports causes unstable rendering, leading to hydration mismatches between SSR and client."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/auth/page.tsx",
+      "old_str": "import { useEffect, useState } from 'react';\n\nimport { Cormorant_Garamond, Manrope } from \"next/font/google\";\nimport { FormEvent, useEffect, useMemo, useState } from \"react\";",
+      "new_str": "import { Cormorant_Garamond, Manrope } from \"next/font/google\";\nimport { FormEvent, useEffect, useMemo, useState } from \"react\";",
+      "reason": "Remove the duplicate first import of useEffect and useState from 'react'. Keep only the more complete second import that also includes FormEvent and useMemo."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776407106992,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-7c\"},\"ts\":1776407106994,\"url\":\"/design/step-7c\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776407131124,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776407131125,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407155876,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407155878,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407183949,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407183950,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776407210369,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776407210371,\"url\":\"/auth\"}"
+  ]
+}

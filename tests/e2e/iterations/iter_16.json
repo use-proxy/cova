@@ -1,0 +1,92 @@
+{
+  "iter": 16,
+  "room": "Room_A",
+  "style": "COVABOHEMIAN",
+  "secondaryStyle": "COVAARTDECO",
+  "primaryWeight": 0.7,
+  "removeCount": 2,
+  "wallChange": true,
+  "floorChange": true,
+  "seed": 1600,
+  "renderUrl": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/renders/cb2e7047-c7ae-4253-bf2b-cc42a6f3a727/final_1776441549.jpg",
+  "score": {
+    "scores": {
+      "ARCHITECTURE_FIDELITY": 3,
+      "STYLE_ACCURACY": 4,
+      "FURNITURE_REALISM": 5,
+      "COMPOSITION": 4,
+      "LIGHTING": 5,
+      "COLOR_HARMONY": 6,
+      "DETAIL_QUALITY": 5,
+      "EDITORIAL_QUALITY": 4,
+      "ROOM_ADAPTATION": 3,
+      "BETTER_THAN_BENCHMARK": 2
+    },
+    "total": 41,
+    "pass": false,
+    "issues": [
+      {
+        "dimension": "ARCHITECTURE_FIDELITY",
+        "symptom": "Cova image shows different room entirely - appears to be a lounge/living room with sofa, while benchmark is a bedroom. Window treatment, ceiling fixture, wall dimensions completely different.",
+        "root_cause": "composite",
+        "severity": "critical"
+      },
+      {
+        "dimension": "STYLE_ACCURACY",
+        "symptom": "Cova renders eclectic/casual bohemian with orange sofa and string lights. Benchmark shows calm, minimalist scandinavian-modern aesthetic with neutral palette and tailored furnishings.",
+        "root_cause": "prompt",
+        "severity": "critical"
+      },
+      {
+        "dimension": "FURNITURE_REALISM",
+        "symptom": "Cova sofa appears flat and lacking dimension. Cushions don't show realistic fabric draping. Benchmark bed has superior material photorealism and textural detail.",
+        "root_cause": "lora",
+        "severity": "major"
+      },
+      {
+        "dimension": "COMPOSITION",
+        "symptom": "Cova composition sparse and unbalanced - large empty wall space, minimal layering. Benchmark uses thoughtful foreground (nightstand), mid (bed), background (artwork) distribution.",
+        "root_cause": "prompt",
+        "severity": "major"
+      },
+      {
+        "dimension": "LIGHTING",
+        "symptom": "Cova lighting appears diffuse and flat with inconsistent window backlighting. Benchmark features cohesive warm overhead light with natural window fill and clear shadow definition.",
+        "root_cause": "lighting",
+        "severity": "major"
+      },
+      {
+        "dimension": "COLOR_HARMONY",
+        "symptom": "Cova palette jarring - orange sofa against blue-grey walls creates tension. Benchmark's cream/beige/grey/natural wood palette is sophisticated and unified.",
+        "root_cause": "lora",
+        "severity": "major"
+      },
+      {
+        "dimension": "DETAIL_QUALITY",
+        "symptom": "Cova shows soft edges and lacks detail refinement in furniture, decor, and textiles. Benchmark exhibits crisp details: pillow stitching, nightstand hardware, artwork framing, pampas grass definition.",
+        "root_cause": "postprocess",
+        "severity": "major"
+      },
+      {
+        "dimension": "EDITORIAL_QUALITY",
+        "symptom": "Cova appears amateur with unrefined composition and styling choices. Benchmark is polished, magazine-ready interior design photograph.",
+        "root_cause": "prompt",
+        "severity": "critical"
+      },
+      {
+        "dimension": "ROOM_ADAPTATION",
+        "symptom": "Cova is generic lounge space unrelated to original brief. Benchmark thoughtfully adapts minimalist style to bedroom context with appropriate furnishings and scale.",
+        "root_cause": "composite",
+        "severity": "critical"
+      },
+      {
+        "dimension": "BETTER_THAN_BENCHMARK",
+        "symptom": "Benchmark is substantially superior in every measurable dimension: photorealism, cohesion, editorial quality, and design coherence.",
+        "root_cause": "composite",
+        "severity": "critical"
+      }
+    ],
+    "winner_subjective": "benchmark"
+  },
+  "passed": false
+}

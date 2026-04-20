@@ -1,0 +1,47 @@
+{
+  "screen": "step-5",
+  "url": "http://localhost:3000/design/step-5",
+  "passed": false,
+  "attempt": 1,
+  "elements": 10,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Hydration error: 'Text content does not match server-rendered HTML' repeated 7 times, causing entire root to switch to client rendering. This is likely caused by price formatting using locale-specific number formatting (toLocaleString) or a Date-dependent value that differs between server and client.",
+      "element": "Budget tier cards price display",
+      "root_cause": "apps/web/app/design/step-5/page.tsx likely uses something like number.toLocaleString() or new Date() during render, which produces different output on server vs client."
+    },
+    {
+      "severity": "critical",
+      "description": "Duplicate import of useState and useEffect in step-3/page.tsx causes module build failure. The file has two import lines from 'react' — one bare import and one full import — causing 'the name useState is defined multiple times' build error.",
+      "element": "apps/web/app/design/step-3/page.tsx imports",
+      "root_cause": "Line 1-2 of step-3/page.tsx has 'use client' then `import { useState, useEffect } from 'react'` followed immediately by `import { useState, useEffect, useCallback, useRef } from 'react'` — duplicate named imports."
+    },
+    {
+      "severity": "major",
+      "description": "No card descriptions visible on budget tier cards. Expected behavior specifies each card should have a description text. The cards appear to only show price range and tier name.",
+      "element": "Budget tier card description text",
+      "root_cause": "Card component in step-5/page.tsx may not be rendering description field, or description content is hidden below the fold due to card height constraints."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-3/page.tsx",
+      "old_str": "\"use client\"\nimport { useState, useEffect } from 'react'\nimport { useState, useEffect, useCallback, useRef } from \"react\";",
+      "new_str": "\"use client\"\nimport { useState, useEffect, useCallback, useRef } from \"react\";",
+      "reason": "Removes the duplicate first import line that causes the build failure. The second import is more complete (includes useCallback and useRef) so we keep it and remove the redundant first one."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408588948,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408588950,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408591009,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776408591011,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776408612386,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776408612389,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776408637674,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776408637676,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776408639333,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776408639334,\"url\":\"/design/step-5\"}"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "screen": "step-2",
+  "url": "http://localhost:3000/auth?next=%2Fdesign%2Fstep-2",
+  "passed": false,
+  "attempt": 1,
+  "elements": 7,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "The current screen is the Auth/Sign-in page instead of the expected Step-2 room type selection page. The URL shows /auth?next=%2Fdesign%2Fstep-2, meaning the user is being redirected to auth before reaching step-2. The expected behavior is: 6 room type buttons (Living Room, Bedroom, Dining Room, Home Office, Kitchen, Bathroom), followed by a 2x2 grid of style images for anchor question 1 of 3, with progress indicator and gold accent styling.",
+      "element": "Entire page content — showing auth form instead of room type selection UI",
+      "root_cause": "The /design/step-2 route has a middleware or page-level auth guard that redirects unauthenticated users to /auth?next=/design/step-2. Either the test session is not authenticated, or the middleware at apps/web/middleware.ts is protecting the /design/step-2 route and redirecting before the page can render. The page itself (apps/web/app/design/step-2/page.tsx) is not being reached."
+    }
+  ],
+  "fixes": [],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405749361,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776405749363,\"url\":\"/auth\"}"
+  ]
+}

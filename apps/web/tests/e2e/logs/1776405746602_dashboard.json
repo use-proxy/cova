@@ -1,0 +1,40 @@
+{
+  "screen": "dashboard",
+  "url": "http://localhost:3000/dashboard",
+  "passed": false,
+  "attempt": 1,
+  "elements": 27,
+  "issues": [
+    {
+      "severity": "major",
+      "description": "Style Profile section with radar chart is not visible on the dashboard. The expected behavior states there should be a Style Profile with radar chart visible on the dashboard.",
+      "element": "Style Profile radar chart section",
+      "root_cause": "The Style Profile radar chart section may not be implemented in the dashboard page, or it may be rendered below the fold and not included in the screenshot. The dashboard page at apps/web/app/dashboard/page.tsx likely lacks a RadarChart component or the section is missing entirely."
+    },
+    {
+      "severity": "minor",
+      "description": "Dining Room card title is truncated as 'Dining Room Curatio...' and tags are cut off ('NATU...'), indicating overflow/clipping on the third card.",
+      "element": "Third room card - Dining Room Curation title and tags",
+      "root_cause": "The room cards row likely uses a fixed-width container without proper overflow handling, or the card grid doesn't account for the third card being partially visible. The card component may be using text-overflow:ellipsis or the container clips overflowing content."
+    },
+    {
+      "severity": "minor",
+      "description": "'Failed to fetch RSC payload for /design/step-5' error in console logs indicating a network/hot-reload issue during development. This is a dev-only issue and not a production bug, but worth noting.",
+      "element": "Console error - RSC payload fetch failure",
+      "root_cause": "Next.js hot-reload attempted to fetch RSC payload for step-5 during fast refresh and the dev server momentarily dropped the connection. This is a transient dev environment issue, not a code bug."
+    }
+  ],
+  "fixes": [],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776405651598,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776405651600,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776405676312,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776405676312,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776405678061,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776405678063,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776405702234,\"url\":\"/design/step-6\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776405702236,\"url\":\"/design/step-6\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776405722935,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776405722937,\"url\":\"/dashboard\"}"
+  ]
+}

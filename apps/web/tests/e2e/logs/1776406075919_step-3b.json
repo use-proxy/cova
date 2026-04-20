@@ -1,0 +1,24 @@
+{
+  "screen": "step-3b",
+  "url": "http://localhost:3000/auth?next=%2Fdesign%2Fstep-3b",
+  "passed": false,
+  "attempt": 1,
+  "elements": 7,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "The user is being redirected to the /auth page instead of being shown step-3b. The URL is /auth?next=%2Fdesign%2Fstep-3b, meaning the auth middleware is blocking unauthenticated access to /design/step-3b and forcing a sign-in. The step-3b page never renders.",
+      "element": "Entire page — showing /auth instead of /design/step-3b style blend confirmation screen",
+      "root_cause": "The route /design/step-3b is protected by authentication middleware (likely apps/web/middleware.ts or similar). When an unauthenticated user (or the QA agent) navigates to /design/step-3b, they are redirected to /auth?next=%2Fdesign%2Fstep-3b. The step-3b page itself cannot be evaluated until either auth is bypassed for QA or a valid session exists."
+    }
+  ],
+  "fixes": [],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406012814,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406012816,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406033900,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406033901,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406057994,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406057996,\"url\":\"/auth\"}"
+  ]
+}

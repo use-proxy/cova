@@ -1,0 +1,41 @@
+{
+  "screen": "step-1",
+  "url": "http://localhost:3000/design/step-1",
+  "passed": false,
+  "attempt": 2,
+  "elements": 4,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Duplicate imports in auth/page.tsx — useEffect and useState are imported twice from 'react', causing a compile error that breaks Fast Refresh and triggers RSC fetch failures",
+      "element": "apps/web/app/auth/page.tsx imports",
+      "root_cause": "Line 2 imports `{ useEffect, useState }` from 'react', and line 5 also imports `{ FormEvent, useEffect, useMemo, useState }` from 'react'. Two separate import statements for the same module with overlapping named exports causes the 'defined multiple times' SWC error."
+    },
+    {
+      "severity": "major",
+      "description": "React hydration mismatch on step-1 page causing entire root to switch to client rendering",
+      "element": "apps/web/app/design/step-1/page.tsx",
+      "root_cause": "Text content rendered on server does not match client-side render, likely due to dynamic/random values (e.g. particle positions, timestamps, Math.random()) computed at render time without being wrapped in a client-only block or suppressing hydration warnings."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/auth/page.tsx",
+      "old_str": "import { useEffect, useState } from 'react';\n\nimport { Cormorant_Garamond, Manrope } from \"next/font/google\";\nimport { FormEvent, useEffect, useMemo, useState } from \"react\";",
+      "new_str": "import { Cormorant_Garamond, Manrope } from \"next/font/google\";\nimport { FormEvent, useEffect, useMemo, useState } from \"react\";",
+      "reason": "Remove the duplicate first import of useEffect and useState. Consolidate into the single import on line 5 that already includes FormEvent and useMemo."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776407210369,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776407210371,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776407245104,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776407245106,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407264929,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407264932,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407266925,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407266928,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407292288,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776407292291,\"url\":\"/design/step-1\"}"
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "screen": "step-5",
+  "url": "http://localhost:3000/design/step-5",
+  "passed": false,
+  "attempt": 1,
+  "elements": 10,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Step indicator shows 'STEP 3 OF 4' but this is step-5. The page is being routed to step-5 but rendering step-3's content or the step counter is hardcoded incorrectly.",
+      "element": "Step indicator top-right showing 'STEP 3 OF 4'",
+      "root_cause": "In apps/web/app/design/step-5/page.tsx, the step number is likely hardcoded as 3 instead of 5, or the total is wrong (should be STEP 5 OF 5 or similar). Also possible the wrong page component is being rendered."
+    },
+    {
+      "severity": "critical",
+      "description": "Multiple React hydration errors: 'Text content does not match server-rendered HTML'. This is likely caused by dynamic content (price ranges or card text) being rendered differently on server vs client, possibly due to locale-based number formatting or a useState with no SSR guard.",
+      "element": "Price range text in budget tier cards (e.g. '$500 — $2,000')",
+      "root_cause": "In apps/web/app/design/step-5/page.tsx, price values or card content is likely rendered using Math.random(), Date, or locale-dependent formatting that differs between server and client render. Needs 'use client' directive or suppressHydrationWarning."
+    },
+    {
+      "severity": "major",
+      "description": "No Continue button visible at the bottom of the screen. Expected behavior requires a Continue button after selecting a budget tier.",
+      "element": "Continue button (missing)",
+      "root_cause": "The Continue button may be hidden below the fold due to the swipe carousel taking too much vertical space, or it may be conditionally rendered only when a tier is selected but the selection state isn't working due to hydration failure."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-5/page.tsx",
+      "old_str": "STEP 3 OF 4",
+      "new_str": "STEP 5 OF 5",
+      "reason": "Step indicator is hardcoded incorrectly. This is step 5, should display STEP 5 OF 5."
+    },
+    {
+      "file": "apps/web/app/design/step-5/page.tsx",
+      "old_str": "\"use client\"",
+      "new_str": "\"use client\"\n// hydration fix applied",
+      "reason": "Verify 'use client' is present. If the file lacks this directive, server/client mismatch causes hydration errors on dynamic content like price formatting."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776406435782,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776406435784,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776406437915,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776406437918,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776406466838,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776406466840,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776406490591,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776406490592,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776406492146,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776406492148,\"url\":\"/design/step-5\"}"
+  ]
+}

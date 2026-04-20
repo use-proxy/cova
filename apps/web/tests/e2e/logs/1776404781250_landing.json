@@ -1,0 +1,36 @@
+{
+  "screen": "landing",
+  "url": "http://localhost:3000/",
+  "passed": false,
+  "attempt": 2,
+  "elements": 34,
+  "issues": [
+    {
+      "severity": "minor",
+      "description": "Console warning: 'Please ensure that the container has a non-static position, like relative, fixed, or absolute to ensure scroll offset is calculated correctly.' This appears twice, indicating a scroll-related component (likely a parallax or scroll observer) has a statically positioned container.",
+      "element": "Scroll container / parallax wrapper",
+      "root_cause": "A component using a scroll offset library (e.g., react-scroll, framer-motion scroll, or a custom IntersectionObserver) has its parent container missing a non-static CSS position property. The container div in the landing page hero or scroll indicator section likely lacks position: relative."
+    },
+    {
+      "severity": "minor",
+      "description": "Background color may not be exactly #091829 (dark navy) as specified. The hero section background appears to be dominated by the room photo with a dark overlay, but the actual body/page background color behind the image is not verifiable as pure #091829 from the screenshot alone.",
+      "element": "Page background / body",
+      "root_cause": "The global CSS or layout file may not explicitly set background-color: #091829 on the html/body or the main container, relying only on the hero image overlay."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/page.tsx",
+      "old_str": "<section className=\"hero",
+      "new_str": "<section className=\"hero relative",
+      "reason": "Adding 'relative' position to the hero section container resolves the console warning about non-static position for scroll offset calculation. The exact className string may vary; the key fix is ensuring position: relative is applied to the outermost scroll-tracked container."
+    },
+    {
+      "file": "apps/web/app/globals.css",
+      "old_str": "body {",
+      "new_str": "body {\n  background-color: #091829;",
+      "reason": "Ensures the dark navy background color #091829 is explicitly set on the body, so it shows through before images load and in any gaps between sections."
+    }
+  ],
+  "flowLogs": []
+}

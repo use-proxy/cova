@@ -26,8 +26,19 @@ export const STYLE_ANCHOR_TO_TRIGGER: Record<string, string> = {
   "Dark & Moody":           "cvlux interior",
   "Urban Industrial":       "cvind interior",
   "Classic Traditional":    "cvdco interior",
-  "Biophilic":              "cvboh interior",
+  "Biophilic":              "cvbio interior",
   "Balanced Contemporary":  "cvscn interior",
+  // V3 COVA* style names → trigger words
+  "COVASCANDINAV":          "cvscn interior",
+  "COVAJAPANDI":            "cvwmn interior",
+  "COVABIOPHILIC":          "cvbio interior",
+  "COVAMINIMAL":            "cvscn interior",
+  "COVAMIDCENTURY":         "cvmcm interior",
+  "COVACOASTAL":            "cvcst interior",
+  "COVABOHEMIAN":           "cvboh interior",
+  "COVAINDUSTRIAL":         "cvind interior",
+  "COVAFARMHOUSE":          "cvfrm interior",
+  "COVAARTDECO":            "cvdco interior",
 };
 
 /**

@@ -16,10 +16,9 @@ const replicate = new Replicate({
 // FLUX Kontext Pro is an image-edit model: it takes `input_image` (singular)
 // and preserves the composition, camera angle, and architecture of the input
 // while modifying the scene according to the prompt. This is exactly what
-// Cova promises: "Your room, redesigned". Verified 2026-04-08 with Daksh's
-// actual bedroom (blue walls, ceiling fan, DAKSH letters) — output preserved
-// all architecture and only swapped the rug/decor. DO NOT swap this model
-// without re-running the live architecture-preservation test.
+// Cova promises: "Your room, redesigned". Verified 2026-04-08 with a live
+// room photo — output preserved all architecture and only swapped furniture/decor.
+// DO NOT swap this model without re-running the live architecture-preservation test.
 //
 // FLUX Schnell is a text-to-image model used for the fast preview during
 // render loading. It does NOT support input_image and is not expected to
@@ -117,11 +116,10 @@ const BUDGET_MODIFIERS: Record<string, string> = {
 // ── buildFluxPrompt ───────────────────────────────────────────────────────────
 //
 // Kontext Pro is an edit-instruction model, not a scene-description model.
-// Live-tested 2026-04-08 against Daksh's actual bedroom (IMG_2093): a
-// transformation-first structure produced a 9/10 coastal redesign that
-// preserved the ceiling fan, DAKSH letters, photo string, window blinds,
-// bed frame, wall color and carpet, while swapping in rattan chairs,
-// nightstand with lamp, coastal art, jute rug and fresh bedding.
+// Live-tested 2026-04-08: a transformation-first structure produced a 9/10
+// coastal redesign that preserved all structural elements (ceiling fixtures,
+// wall-mounted decorations, window treatments, wall color and carpet)
+// while swapping in new furniture and decor.
 //
 // The winning structure:
 //
@@ -634,7 +632,8 @@ export async function submitMultiImageRender(
   return prediction.id;
 }
 
-// ── submitRender — Kontext Pro edit on the user's actual room photo ──────────
+// ── submitRender — LEGACY Replicate Kontext Pro path ─────────────────────────
+// LEGACY - do not add new calls here. Phase 4b uses fal.ai Kontext Pro via Modal.
 // Takes the original room photo as `input_image` so the model preserves the
 // composition and architecture. Returns prediction_id immediately — the
 // status route polls until the render completes.
@@ -767,9 +766,8 @@ export async function submitArchitectureCorrection(
   return prediction.id;
 }
 
-// ── submitFillRender — FLUX Fill Pro inpainting ───────────────────────────────
-// Used for furniture swaps where a bbox mask is provided.
-// white pixels in the mask = regions to inpaint; black = preserve.
+// ── submitFillRender — LEGACY Replicate path, do not add new calls here ───────
+// LEGACY - do not add new calls here. Phase 4b uses fal.ai Fill Pro via Modal.
 export async function submitFillRender(
   imageUrl: string,
   maskUrl: string,
@@ -1277,8 +1275,7 @@ export function buildFluxPromptFromContext(context: RenderContext): string {
     const floorLower = (rc.floorMaterial ?? "").toLowerCase();
     const isHardwood =
       floorLower.includes("hardwood") || floorLower.includes("wood");
-    const keepFlooring =
-      cons?.wallPermanence !== "renting-no-paint" ? true : true; // default keep
+    const keepFlooring = true; // Always preserve flooring
     let floorDesc: string;
     if (isHardwood && keepFlooring) {
       floorDesc = `PRESERVE existing ${rc.floorMaterial} flooring exactly — do not replace or cover the ${rc.floorColor} hardwood, natural patina retained`;
@@ -1591,6 +1588,91 @@ export function buildFluxPromptFromContext(context: RenderContext): string {
 
   return assembled;
 }
+// ── Phase 4b: fal.ai direct endpoints ────────────────────────────────────────
+// These are used by Modal pipeline (generation.py) directly via fal-client.
+// TypeScript wrappers provided here for potential direct-call paths from
+// the web app (e.g., test routes, quick previews).
+
+/**
+ * Submit a Kontext Pro render via fal.ai (Route B: style transfer, no mask).
+ * Endpoint: fal-ai/flux-pro/kontext
+ * Returns: { requestId: string } for polling via fal.ai queue API.
+ */
+export async function submitFalKontextRender(params: {
+  imageUrl: string;
+  prompt: string;
+  seed?: number;
+}): Promise<{ requestId: string }> {
+  const falKey = process.env.FAL_KEY;
+  if (!falKey) throw new Error("FAL_KEY not configured");
+
+  const resp = await fetch("https://queue.fal.run/fal-ai/flux-pro/kontext", {
+    method: "POST",
+    headers: {
+      Authorization: `Key ${falKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      image_url: params.imageUrl,
+      prompt: params.prompt,
+      num_inference_steps: 30,
+      guidance_scale: 5.5,
+      seed: params.seed ?? Math.floor(Math.random() * 999999),
+      output_format: "jpeg",
+      safety_tolerance: "5",
+    }),
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => resp.statusText);
+    throw new Error(`fal.ai Kontext submit failed: ${resp.status} ${text}`);
+  }
+
+  const data = (await resp.json()) as { request_id: string };
+  return { requestId: data.request_id };
+}
+
+/**
+ * Submit a Fill Pro render via fal.ai (Route A: inpainting with mask).
+ * Endpoint: fal-ai/flux-pro/v1/fill
+ * Returns: { requestId: string } for polling via fal.ai queue API.
+ */
+export async function submitFalFillRender(params: {
+  imageUrl: string;
+  maskUrl: string;
+  prompt: string;
+  seed?: number;
+}): Promise<{ requestId: string }> {
+  const falKey = process.env.FAL_KEY;
+  if (!falKey) throw new Error("FAL_KEY not configured");
+
+  const resp = await fetch("https://queue.fal.run/fal-ai/flux-pro/v1/fill", {
+    method: "POST",
+    headers: {
+      Authorization: `Key ${falKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      image_url: params.imageUrl,
+      mask_url: params.maskUrl,
+      prompt: params.prompt,
+      num_inference_steps: 30,
+      guidance_scale: 30,
+      seed: params.seed ?? Math.floor(Math.random() * 999999),
+      output_format: "jpeg",
+      safety_tolerance: "5",
+    }),
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => resp.statusText);
+    throw new Error(`fal.ai Fill Pro submit failed: ${resp.status} ${text}`);
+  }
+
+  const data = (await resp.json()) as { request_id: string };
+  return { requestId: data.request_id };
+}
+
 // ── Re-export RoomPhysicalContext for backward compat ────────────────────────
 
 export type RoomPhysicalContext = {

@@ -1,0 +1,89 @@
+{
+  "screen": "step-5",
+  "url": "http://localhost:3000/design/step-5",
+  "passed": false,
+  "attempt": 1,
+  "elements": 10,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Step counter mismatch: URL is /design/step-5 but the header displays 'STEP 3 OF 4'. The step numbering is wrong and the total steps shown is 4 instead of the expected number.",
+      "element": "STEP 3 OF 4 header indicator",
+      "root_cause": "The step-5 page component is hardcoding or incorrectly computing the current step number. Either the STEP_NUMBER constant is wrong (set to 3 instead of 5) or the total steps count is 4 instead of 5+. Likely in the page component at app/design/step-5/page.tsx or a shared ProgressBar/StepIndicator component receiving wrong props."
+    },
+    {
+      "severity": "critical",
+      "description": "Multiple React hydration errors: 'Text content does not match server-rendered HTML' appearing 7 times, causing the entire root to switch to client rendering. This indicates server and client render different content, likely due to price formatting using locale-specific number formatting (toLocaleString) or a random/Date-dependent value rendered during SSR vs client.",
+      "element": "Budget price text ($500, $2,000, $5,000 values in cards)",
+      "root_cause": "Price values are likely formatted using toLocaleString() or Intl.NumberFormat which can produce different results server-side (Node.js locale) vs client-side (browser locale). Or a dynamic value like Math.random() or Date is used during render. The currency symbols or comma formatting differs between server and client render."
+    },
+    {
+      "severity": "critical",
+      "description": "Continue button is completely missing from the visible screen. The expected behavior specifies a Continue button should be present.",
+      "element": "Continue button",
+      "root_cause": "The Continue button may be conditionally rendered only after a card is selected (no default selection), or it is rendered below the fold with no scroll, or it was omitted from the component. Given no card appears selected (no gold highlight on Essential card border), the button may be hidden until selection."
+    },
+    {
+      "severity": "major",
+      "description": "Card descriptions are missing. Expected behavior states each card has a description, but only the price range and tier name are visible with no descriptive text.",
+      "element": "Budget tier card description text",
+      "root_cause": "The card component may not be rendering the description prop, or the description field is missing from the data/config array for budget tiers, or the card height is too small and text is being clipped."
+    },
+    {
+      "severity": "major",
+      "description": "Only 2 of the expected 4-5 budget tier cards are visible. The carousel shows Essential and a partial second card. It is unclear if all 4-5 tiers (Essential, Elevated, Refined, Prestige, Signature) exist in the data.",
+      "element": "Budget tier cards carousel",
+      "root_cause": "The cards array in the step-5 component may be incomplete (only 2 entries defined), or the carousel is not rendering all items. Also the swipe/carousel UX hides cards which is acceptable, but the data completeness is suspect."
+    },
+    {
+      "severity": "minor",
+      "description": "The Essential card does not appear visually selected (no prominent gold border/highlight) even though it is the first/default card shown. The small circle indicator at bottom right of the card is ambiguous.",
+      "element": "Essential card selected state styling",
+      "root_cause": "No default selection state is set in useState for the budget tier, so no card has the gold selected styling applied. The initial state is null/undefined."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "app/design/step-5/page.tsx",
+      "old_str": "currentStep={3}\n      totalSteps={4}",
+      "new_str": "currentStep={5}\n      totalSteps={5}",
+      "reason": "Fix the step counter to correctly show STEP 5 OF 5 (or appropriate total) instead of STEP 3 OF 4"
+    },
+    {
+      "file": "app/design/step-5/page.tsx",
+      "old_str": "const budgetTiers = [\n  {\n    id: 'essential',\n    name: 'Essential',\n    min: 500,\n    max: 2000,\n  },\n  {\n    id: 'elevated',\n    name: 'Elevated',\n    min: 2000,\n    max: 5000,\n  },\n]",
+      "new_str": "const budgetTiers = [\n  {\n    id: 'essential',\n    name: 'Essential',\n    min: 500,\n    max: 2000,\n    description: 'Curated essentials to refresh your space with style and function.',\n  },\n  {\n    id: 'elevated',\n    name: 'Elevated',\n    min: 2000,\n    max: 5000,\n    description: 'A balanced mix of quality pieces that elevate every corner.',\n  },\n  {\n    id: 'refined',\n    name: 'Refined',\n    min: 5000,\n    max: 10000,\n    description: 'Premium selections crafted for discerning taste and lasting appeal.',\n  },\n  {\n    id: 'prestige',\n    name: 'Prestige',\n    min: 10000,\n    max: 20000,\n    description: 'Luxury furnishings and bespoke pieces for an exceptional home.',\n  },\n  {\n    id: 'signature',\n    name: 'Signature',\n    min: 20000,\n    max: null,\n    description: 'Unlimited curation of the world\\'s finest design, tailored exclusively for you.',\n  },\n]",
+      "reason": "Add all 5 required budget tiers with descriptions as specified in expected behavior"
+    },
+    {
+      "file": "app/design/step-5/page.tsx",
+      "old_str": "const [selectedTier, setSelectedTier] = useState(null)",
+      "new_str": "const [selectedTier, setSelectedTier] = useState('essential')",
+      "reason": "Set a default selected tier so the first card shows gold styling and the Continue button is visible on mount"
+    },
+    {
+      "file": "app/design/step-5/page.tsx",
+      "old_str": "formatPrice(amount) {\n    return `$${amount.toLocaleString()}`\n  }",
+      "new_str": "formatPrice(amount: number) {\n    return `$${amount.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',')}`\n  }",
+      "reason": "Replace toLocaleString() with a locale-independent formatter to fix React hydration mismatch between server (Node) and client (browser) locale formatting"
+    },
+    {
+      "file": "components/BudgetCard.tsx",
+      "old_str": "  <div className=\"card-header\">\n    <span className=\"price-range\">{priceLabel}</span>\n    <span className=\"tier-name\">{name}</span>\n  </div>",
+      "new_str": "  <div className=\"card-header\">\n    <span className=\"price-range\">{priceLabel}</span>\n    <span className=\"tier-name\">{name}</span>\n    {description && <p className=\"card-description\">{description}</p>}\n  </div>",
+      "reason": "Render the description field in the card component so each tier shows its descriptive text"
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776404435017,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776404435020,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-2\"},\"ts\":1776404435199,\"url\":\"/design/step-2\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-2\"},\"ts\":1776404435199,\"url\":\"/design/step-2\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776404477880,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776404477882,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776404525242,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776404525243,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776404526765,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776404526767,\"url\":\"/design/step-5\"}"
+  ]
+}

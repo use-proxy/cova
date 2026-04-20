@@ -1,0 +1,28 @@
+{
+  "screen": "step-3",
+  "url": "http://localhost:3000/auth?next=%2Fdesign%2Fstep-3",
+  "passed": false,
+  "attempt": 1,
+  "elements": 7,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Wrong page is being shown. The expected screen is step-3 (style quiz with comparison pairs / room image selection), but the auth page is being displayed instead. The URL confirms redirect to /auth?next=%2Fdesign%2Fstep-3, meaning the user is not authenticated and is being redirected to auth before reaching step-3.",
+      "element": "Entire page content - showing auth instead of style quiz",
+      "root_cause": "The /design/step-3 route has authentication middleware or a guard that redirects unauthenticated users to /auth. The middleware at apps/web/middleware.ts (or similar) is intercepting the request and redirecting to /auth with next=/design/step-3. This is expected auth behavior, but from a QA perspective the test session is not authenticated, so step-3 cannot be reached."
+    },
+    {
+      "severity": "major",
+      "description": "Console logs show 'page:mount' event firing twice for the auth page on each load (duplicate mount events), indicating a possible StrictMode double-mount or a component re-mounting unexpectedly.",
+      "element": "Auth page mount event",
+      "root_cause": "In apps/web/app/auth/page.tsx, the analytics/logging useEffect or page:mount event is likely firing inside a useEffect without proper cleanup, or the component is wrapped in React.StrictMode causing double invocation in development."
+    }
+  ],
+  "fixes": [],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406012814,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406012816,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406033900,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406033901,\"url\":\"/auth\"}"
+  ]
+}

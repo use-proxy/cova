@@ -1,0 +1,59 @@
+{
+  "screen": "step-1",
+  "url": "http://localhost:3000/design/step-1",
+  "passed": false,
+  "attempt": 1,
+  "elements": 4,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "React hydration error: 'Text content does not match server-rendered HTML' firing repeatedly, causing entire root to switch to client rendering. This indicates dynamic/random content (likely particle positions or counts) is being rendered during SSR and differs from client render.",
+      "element": "Gold particle animation canvas or any component using Math.random() / Date.now() at render time",
+      "root_cause": "The particle animation component likely initializes particle positions using Math.random() at module/render level (outside useEffect), causing SSR-rendered HTML to have different values than the client hydration pass. This triggers the hydration mismatch cascade."
+    },
+    {
+      "severity": "major",
+      "description": "Gold particle animation is not visibly animating on the canvas — the background appears as a flat dark navy color with no visible particle effects.",
+      "element": "Particle canvas background animation",
+      "root_cause": "Likely the canvas/particle component is either not mounted (due to hydration error killing client render), or the animation uses window/requestAnimationFrame without being wrapped in useEffect with a client-only guard, causing it to silently fail."
+    },
+    {
+      "severity": "minor",
+      "description": "Failed to fetch RSC payload for /design/step-7d — a non-existent route was navigated to, resulting in a 404 fallback. Not blocking current screen but indicates a broken link somewhere in the app.",
+      "element": "Navigation link to /design/step-7d",
+      "root_cause": "Some component contains a hardcoded or incorrectly constructed href pointing to '/design/step-7d' which does not exist as a page route."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-1/page.tsx",
+      "old_str": "const particles = Array.from({ length: 60 }, () => ({\n    x: Math.random() * 100,\n    y: Math.random() * 100,",
+      "new_str": "const particles = Array.from({ length: 60 }, (_, i) => ({\n    x: ((i * 37.3) % 100),\n    y: ((i * 61.8) % 100),",
+      "reason": "Replace Math.random() with deterministic values so SSR and client produce identical HTML, eliminating the hydration mismatch. The golden-ratio-derived offsets distribute particles pseudo-randomly but consistently."
+    },
+    {
+      "file": "apps/web/app/design/step-1/page.tsx",
+      "old_str": "const ParticleCanvas = () => {\n  const canvasRef = useRef<HTMLCanvasElement>(null);\n\n  useEffect(() => {",
+      "new_str": "const ParticleCanvas = () => {\n  const canvasRef = useRef<HTMLCanvasElement>(null);\n  const [mounted, setMounted] = useState(false);\n\n  useEffect(() => {\n    setMounted(true);\n  }, []);\n\n  useEffect(() => {\n    if (!mounted) return;",
+      "reason": "Add a mounted guard so the canvas animation only initializes on the client after hydration is complete, preventing any window/requestAnimationFrame access during SSR and ensuring the animation actually runs."
+    },
+    {
+      "file": "apps/web/app/design/step-1/page.tsx",
+      "old_str": "import React, { useRef, useEffect } from 'react';",
+      "new_str": "import React, { useRef, useEffect, useState } from 'react';",
+      "reason": "Add useState import required by the mounted guard fix above."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776406357294,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-8a\"},\"ts\":1776406357296,\"url\":\"/design/step-8a\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776406389528,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776406389530,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406415289,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776406415290,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776406435782,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776406435784,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776406437915,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776406437918,\"url\":\"/design/step-1\"}"
+  ]
+}

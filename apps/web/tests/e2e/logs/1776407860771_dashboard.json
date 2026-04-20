@@ -1,0 +1,59 @@
+{
+  "screen": "dashboard",
+  "url": "http://localhost:3000/dashboard",
+  "passed": false,
+  "attempt": 1,
+  "elements": 27,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Multiple React hydration errors — 'Text content does not match server-rendered HTML' repeated 7 times, causing entire root to switch to client rendering. Likely caused by time-dependent content (e.g., 'Good evening, Amelia.' greeting uses server-side time that differs from client render time, or date display 'Thursday, April 16' computed differently on server vs client).",
+      "element": "Greeting text 'Good evening, Amelia.' and/or date 'Thursday, April 16'",
+      "root_cause": "The greeting ('Good morning/afternoon/evening') and/or the date string are computed using `new Date()` directly in the render function of a Server Component or without suppressing hydration. The server renders at one time, the client re-renders at a slightly different time or timezone, causing mismatch. Should use suppressHydrationWarning or move to a client component with useEffect."
+    },
+    {
+      "severity": "major",
+      "description": "Style Profile radar chart is not visible on the dashboard — expected per spec but absent from the screenshot.",
+      "element": "Style Profile radar chart section",
+      "root_cause": "The radar chart component may not be rendered in the dashboard page, or it exists below the fold and is not shown, or it failed to render due to the hydration error causing client-side only rendering to skip it."
+    },
+    {
+      "severity": "minor",
+      "description": "Third room card 'Dining Room Curatio...' is cut off — title and tags are truncated due to overflow.",
+      "element": "Dining Room card in My Rooms section",
+      "root_cause": "The rooms grid uses overflow:hidden or a fixed-width container without proper text truncation handling, causing the card to be clipped at the viewport edge rather than wrapping or scrolling properly."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/dashboard/page.tsx",
+      "old_str": "const getGreeting = () => {\n    const hour = new Date().getHours();\n    if (hour < 12) return 'Good morning';\n    if (hour < 18) return 'Good afternoon';\n    return 'Good evening';\n  };",
+      "new_str": "const getGreeting = () => {\n    const hour = new Date().getHours();\n    if (hour < 12) return 'Good morning';\n    if (hour < 18) return 'Good afternoon';\n    return 'Good evening';\n  };",
+      "reason": "Targeting greeting function — actual fix is to wrap the greeting and date in a client component with suppressHydrationWarning"
+    },
+    {
+      "file": "apps/web/app/dashboard/page.tsx",
+      "old_str": "<p className=\"text-2xl font-serif\">{getGreeting()}, {user?.name?.split(' ')[0]}.</p>",
+      "new_str": "<p className=\"text-2xl font-serif\" suppressHydrationWarning>{getGreeting()}, {user?.name?.split(' ')[0]}.</p>",
+      "reason": "Adding suppressHydrationWarning to the greeting element prevents the hydration mismatch when server and client compute different times of day"
+    },
+    {
+      "file": "apps/web/app/dashboard/page.tsx",
+      "old_str": "<span>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>",
+      "new_str": "<span suppressHydrationWarning>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>",
+      "reason": "Date string computed with new Date() will differ between server and client renders; suppressHydrationWarning prevents the cascading hydration failure"
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776407751012,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-4\"},\"ts\":1776407751014,\"url\":\"/design/step-4\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407779041,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407779042,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407780608,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-5\"},\"ts\":1776407780609,\"url\":\"/design/step-5\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776407807104,\"url\":\"/design/step-6\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-6\"},\"ts\":1776407807106,\"url\":\"/design/step-6\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407829374,\"url\":\"/dashboard\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"dashboard\"},\"ts\":1776407829376,\"url\":\"/dashboard\"}"
+  ]
+}

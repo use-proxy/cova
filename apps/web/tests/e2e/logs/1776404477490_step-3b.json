@@ -1,0 +1,89 @@
+{
+  "screen": "step-3b",
+  "url": "http://localhost:3000/design/step-2",
+  "passed": false,
+  "attempt": 1,
+  "elements": 8,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Wrong page rendered: The current screen (step-3b) is supposed to show Style Blend Confirmation with percentage bars (e.g., 65% Scandinavian, 35% Japandi), a confirm button, and slider adjustment options. Instead, the Step 1 room selection UI is being displayed.",
+      "element": "Main page content area",
+      "root_cause": "Console logs show page:mount events firing for both step-3b AND step-2 simultaneously at the same timestamp (ts:1776404435017 and ts:1776404435199). This indicates a routing/redirect issue: step-3b is mounting but then immediately redirecting back to step-2, which then falls back to rendering step-1 UI due to state loss. The URL shown is /design/step-2 but the page content appears to be step-1, suggesting the state management (likely Zustand or Context) is being reset on navigation, causing the wizard to restart at step-1."
+    },
+    {
+      "severity": "critical",
+      "description": "Hydration mismatch on percentage bar width: Console warning shows Prop `style` did not match. Server: 'width:5%' Client: 'width:15%'. This indicates the style percentage values are being computed differently on server vs client, causing SSR/CSR mismatch on step-3 percentage bars.",
+      "element": "Style percentage bar div in step-3/page.tsx",
+      "root_cause": "In app/design/step-3/page.tsx around line 59, a div has style={{width: `${percentage}%`}} where the percentage value is derived from state or random computation that differs between server render and client hydration. The server computes 5% and client computes 15%, indicating the percentage is read from non-deterministic or client-only state (localStorage, sessionStorage, or Math.random()) during SSR."
+    },
+    {
+      "severity": "critical",
+      "description": "Multiple hydration errors: 'Text content does not match server-rendered HTML' errors appearing 7 times, and 'entire root will switch to client rendering'. This causes full SSR breakdown.",
+      "element": "Multiple text nodes across step-3 and step-3b pages",
+      "root_cause": "Style names or percentage values rendered as text content differ between server and client renders, likely because style data is sourced from client-side storage (localStorage/sessionStorage/cookies) or non-seeded random functions that produce different results on server vs client."
+    },
+    {
+      "severity": "major",
+      "description": "Step-3b page immediately redirects/falls back to step-2 then step-1: The page:mount events show step-3b mounting at ts:1776404435017 and step-2 mounting at ts:1776404435199 — only 182ms later. This means step-3b has a guard/redirect that is sending users back.",
+      "element": "app/design/step-3b/page.tsx routing guard",
+      "root_cause": "step-3b likely has a useEffect or top-level redirect that checks if prior steps are complete (step-1 room selection, step-2 quiz answers, step-3 style detection). Due to hydration failure wiping client state, these checks fail and redirect the user backward through the wizard."
+    },
+    {
+      "severity": "major",
+      "description": "Style keys showing as COVA* internal keys instead of human-readable names (potential — cannot visually confirm since wrong page rendered, but noted in expected behavior spec as a known risk).",
+      "element": "Style name labels on step-3b percentage bars",
+      "root_cause": "If a styleKeyToLabel mapping or i18n lookup is missing or incorrectly keyed, raw keys like COVA_SCANDI or COVA_JAPANDI would render instead of 'Scandinavian' or 'Japandi'."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "app/design/step-3/page.tsx",
+      "old_str": "style={{ width: `${percentage}%` }}",
+      "new_str": "style={{ width: `${percentage}%` }} suppressHydrationWarning",
+      "reason": "Suppresses the SSR/CSR hydration mismatch warning for the dynamic percentage width while the root cause (non-deterministic state) is fixed. This is a temporary mitigation."
+    },
+    {
+      "file": "app/design/step-3/page.tsx",
+      "old_str": "const percentage = styleData[style].percentage",
+      "new_str": "const percentage = typeof window !== 'undefined' ? styleData[style].percentage : 0",
+      "reason": "Prevents server-side rendering of dynamic percentage values that differ from client state, avoiding hydration mismatch. Renders 0 on server, actual value on client after hydration."
+    },
+    {
+      "file": "app/design/step-3b/page.tsx",
+      "old_str": "if (!quizComplete) {\n  router.push('/design/step-2')\n  return null\n}",
+      "new_str": "const [mounted, setMounted] = useState(false)\nuseEffect(() => { setMounted(true) }, [])\nif (!mounted) return null\nif (!quizComplete) {\n  router.push('/design/step-2')\n  return null\n}",
+      "reason": "Delays the route guard check until after client-side hydration is complete, preventing premature redirects caused by state being unavailable during SSR/initial render."
+    },
+    {
+      "file": "app/design/step-3b/page.tsx",
+      "old_str": "const styleLabels: Record<string, string> = {}",
+      "new_str": "const styleLabels: Record<string, string> = {\n  COVA_SCANDI: 'Scandinavian',\n  COVA_JAPANDI: 'Japandi',\n  COVA_MID_CENTURY: 'Mid-Century Modern',\n  COVA_BOHO: 'Bohemian',\n  COVA_INDUSTRIAL: 'Industrial',\n  COVA_MINIMALIST: 'Minimalist',\n  COVA_COASTAL: 'Coastal',\n  COVA_TRADITIONAL: 'Traditional'\n}",
+      "reason": "Ensures all COVA* internal style keys are mapped to human-readable display names, preventing raw keys from appearing in the UI as specified in expected behavior."
+    },
+    {
+      "file": "lib/store/designStore.ts",
+      "old_str": "const useDesignStore = create((set) => ({",
+      "new_str": "const useDesignStore = create(\n  persist(\n    (set) => ({",
+      "reason": "Wraps the Zustand store with persist middleware so that wizard state (room selection, quiz answers, style scores) survives page navigation and is available when step-3b mounts, preventing the redirect loop back to step-1."
+    },
+    {
+      "file": "lib/store/designStore.ts",
+      "old_str": "}))",
+      "new_str": "    }),\n    {\n      name: 'cova-design-store',\n      storage: createJSONStorage(() => sessionStorage)\n    }\n  )\n)",
+      "reason": "Completes the persist middleware configuration using sessionStorage so state persists across route changes within the same browser session but clears when the session ends."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776404314268,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776404314271,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-2\"},\"ts\":1776404352307,\"url\":\"/design/step-2\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-2\"},\"ts\":1776404352309,\"url\":\"/design/step-2\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776404393992,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776404393994,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776404435017,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776404435020,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-2\"},\"ts\":1776404435199,\"url\":\"/design/step-2\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-2\"},\"ts\":1776404435199,\"url\":\"/design/step-2\"}"
+  ]
+}

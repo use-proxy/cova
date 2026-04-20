@@ -42,7 +42,15 @@ export default defineConfig({
       // short-circuits the slower UI run.
       name: "e2e",
       testMatch: "e2e/**/*.spec.ts",
+      testIgnore: "e2e/webhook-smoke.spec.ts",
       dependencies: ["api-contracts"],
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      // Smoke test — direct pipeline trigger, no browser UI needed.
+      // No dependency on api-contracts, no global setup required.
+      name: "smoke",
+      testMatch: "e2e/webhook-smoke.spec.ts",
       use: { ...devices["Desktop Chrome"] },
     },
   ],

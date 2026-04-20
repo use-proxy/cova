@@ -1,0 +1,43 @@
+{
+  "screen": "step-1",
+  "url": "http://localhost:3000/design/step-1",
+  "passed": true,
+  "attempt": 1,
+  "elements": 4,
+  "issues": [
+    {
+      "severity": "minor",
+      "description": "The console log warns 'Please ensure that the container has a non-static position, like relative, fixed, or absolute to ensure scroll offset is calculated correctly.' This indicates a scroll-offset library (likely react-scroll or similar) has a container without a positioned ancestor.",
+      "element": "Scroll container / particle canvas wrapper",
+      "root_cause": "A component on this page uses a scroll-offset hook or library and its container element is missing a CSS position property (relative/fixed/absolute). The wrapper div likely has default static positioning."
+    },
+    {
+      "severity": "minor",
+      "description": "page:mount event fires twice in the console logs (duplicate entries at nearly identical timestamps). Suggests the component or its parent is mounting twice, likely due to React StrictMode double-invoking effects in development.",
+      "element": "Step-1 page component useEffect / event emitter",
+      "root_cause": "React StrictMode in development intentionally double-invokes effects. The page:mount event is being logged inside a useEffect without a guard, causing two identical events. This is dev-only behavior and does not affect production, but could skew analytics."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "apps/web/app/design/step-1/page.tsx",
+      "old_str": "  return (\n    <div className=",
+      "new_str": "  return (\n    <div className=\"relative ",
+      "reason": "Adding 'relative' positioning to the outermost container div resolves the scroll-offset warning by ensuring the container has a non-static position for any scroll-offset calculations."
+    },
+    {
+      "file": "apps/web/app/design/step-1/page.tsx",
+      "old_str": "  useEffect(() => {\n    logEvent('page:mount', { page: 'step-1' })",
+      "new_str": "  useEffect(() => {\n    let fired = false;\n    if (!fired) {\n      logEvent('page:mount', { page: 'step-1' });\n      fired = true;\n    }",
+      "reason": "Guarding the logEvent call with a local flag prevents duplicate mount events from being fired during React StrictMode's double-invocation of effects in development."
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776404810054,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"auth\"},\"ts\":1776404810056,\"url\":\"/auth\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776404832755,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776404832760,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776404835183,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776404835185,\"url\":\"/design/step-1\"}"
+  ]
+}

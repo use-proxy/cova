@@ -1,0 +1,68 @@
+{
+  "iter": 6,
+  "room": "Room_A",
+  "style": "COVABOHEMIAN",
+  "secondaryStyle": "COVAARTDECO",
+  "primaryWeight": 0.6,
+  "removeCount": 2,
+  "wallChange": true,
+  "floorChange": false,
+  "seed": 600,
+  "renderUrl": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/renders/cb2e7047-c7ae-4253-bf2b-cc42a6f3a727/final_1776422906.jpg",
+  "score": {
+    "scores": {
+      "ARCHITECTURE_FIDELITY": 9,
+      "STYLE_ACCURACY": 4,
+      "FURNITURE_REALISM": 7,
+      "COMPOSITION": 6,
+      "LIGHTING": 8,
+      "COLOR_HARMONY": 7,
+      "DETAIL_QUALITY": 7,
+      "EDITORIAL_QUALITY": 5,
+      "ROOM_ADAPTATION": 3,
+      "BETTER_THAN_BENCHMARK": 2
+    },
+    "total": 58,
+    "pass": false,
+    "issues": [
+      {
+        "dimension": "STYLE_ACCURACY",
+        "symptom": "COVABOHEMIAN style not evident; image shows minimal bohemian elements (some small photos, basic bedding). Missing macramé, plants, textiles, eclectic patterns, warm earthy tones characteristic of bohemian design",
+        "root_cause": "prompt",
+        "severity": "critical"
+      },
+      {
+        "dimension": "ROOM_ADAPTATION",
+        "symptom": "Render appears to be a completely different room - proper bed frame vs trundle bed, organized vs cluttered, stylized furniture placement vs actual existing layout. Not an adaptation of the source room",
+        "root_cause": "composite",
+        "severity": "critical"
+      },
+      {
+        "dimension": "COMPOSITION",
+        "symptom": "Benchmark shows balanced layered composition with accent chair, plant, artwork, nightstand. Cova render is sparse with excessive empty floor space and minimal layering",
+        "root_cause": "prompt",
+        "severity": "major"
+      },
+      {
+        "dimension": "FURNITURE_REALISM",
+        "symptom": "Bed frame and headboard appear generic and lack material detail. Bedding folds are somewhat stiff. Nightstand lacks dimensionality compared to benchmark",
+        "root_cause": "lora",
+        "severity": "minor"
+      },
+      {
+        "dimension": "EDITORIAL_QUALITY",
+        "symptom": "Feels sparse and underdeveloped. Benchmark achieves magazine-quality through thoughtful styling, layering, and cohesive design narrative. Cova lacks visual interest and sophistication",
+        "root_cause": "prompt",
+        "severity": "major"
+      },
+      {
+        "dimension": "BETTER_THAN_BENCHMARK",
+        "symptom": "Benchmark vastly superior in design coherence, styling sophistication, and aesthetic appeal. Benchmark clearly curated and styled; Cova minimal and generic",
+        "root_cause": "prompt",
+        "severity": "critical"
+      }
+    ],
+    "winner_subjective": "benchmark"
+  },
+  "passed": false
+}

@@ -1,0 +1,42 @@
+{
+  "screen": "landing",
+  "url": "http://localhost:3000/",
+  "passed": true,
+  "attempt": 1,
+  "elements": 34,
+  "issues": [
+    {
+      "severity": "minor",
+      "description": "Console warning: 'Please ensure that the container has a non-static position, like relative, fixed, or absolute to ensure scroll offset is calculated correctly.' This indicates a scroll-related component (likely a parallax, scroll indicator, or intersection observer component) has a statically-positioned container.",
+      "element": "Scroll indicator or parallax container component",
+      "root_cause": "A component using scroll offset calculation (possibly the 'See how it works ↓ SCROLL' element, a parallax hero, or a scroll progress indicator) is mounted inside a container with default 'position: static'. The library or custom hook computing scroll offset requires a positioned ancestor."
+    },
+    {
+      "severity": "minor",
+      "description": "Background color cannot be fully verified as exactly #091829 from screenshot due to the hero image overlay, but the visible dark tone appears consistent with the spec. No definitive failure but worth a CSS audit.",
+      "element": "Body / hero section background",
+      "root_cause": "The background image overlay may be masking the actual background-color value, making visual verification ambiguous. If the image fails to load in production, the fallback color must be #091829."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "src/components/ScrollIndicator.jsx",
+      "old_str": "<div className=\"scroll-indicator-container\">",
+      "new_str": "<div className=\"scroll-indicator-container\" style={{ position: 'relative' }}>",
+      "reason": "Adds a non-static position to the scroll indicator container so that scroll offset is calculated correctly, resolving the console warning."
+    },
+    {
+      "file": "src/components/HeroSection.jsx",
+      "old_str": "<div className=\"hero-scroll-wrapper\">",
+      "new_str": "<div className=\"hero-scroll-wrapper\" style={{ position: 'relative' }}>",
+      "reason": "Alternative fix if the warning originates from the hero section's scroll wrapper rather than a dedicated ScrollIndicator component."
+    },
+    {
+      "file": "src/styles/global.css",
+      "old_str": "body {\n  background-color:",
+      "new_str": "body {\n  background-color: #091829;",
+      "reason": "Ensures the body fallback background is explicitly set to #091829 as specified, so if the hero image fails to load the correct dark navy color is shown."
+    }
+  ],
+  "flowLogs": []
+}

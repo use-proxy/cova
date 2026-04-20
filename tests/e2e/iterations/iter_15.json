@@ -1,0 +1,56 @@
+{
+  "iter": 15,
+  "room": "Room_B",
+  "style": "COVACOASTAL",
+  "secondaryStyle": "COVAFARMHOUSE",
+  "primaryWeight": 0.6,
+  "removeCount": 0,
+  "wallChange": false,
+  "floorChange": false,
+  "seed": 1500,
+  "renderUrl": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/renders/c1405ef4-140e-492e-a8e3-2a0c25ebc093/final_1776441305.jpg",
+  "score": {
+    "scores": {
+      "ARCHITECTURE_FIDELITY": 9,
+      "STYLE_ACCURACY": 8,
+      "FURNITURE_REALISM": 9,
+      "COMPOSITION": 8,
+      "LIGHTING": 8,
+      "COLOR_HARMONY": 8,
+      "DETAIL_QUALITY": 8,
+      "EDITORIAL_QUALITY": 8,
+      "ROOM_ADAPTATION": 9,
+      "BETTER_THAN_BENCHMARK": 8
+    },
+    "total": 83,
+    "pass": true,
+    "issues": [
+      {
+        "dimension": "STYLE_ACCURACY",
+        "symptom": "Coastal style present but slightly reserved; could feature more textural elements or woven/natural materials in focal areas",
+        "root_cause": "prompt",
+        "severity": "minor"
+      },
+      {
+        "dimension": "COMPOSITION",
+        "symptom": "Right side of room sparse; foreground-midground-background layering could be more deliberate",
+        "root_cause": "composite",
+        "severity": "minor"
+      },
+      {
+        "dimension": "LIGHTING",
+        "symptom": "Window light slightly inconsistent with time of day; shadows on bed lack slight warmth from afternoon sun",
+        "root_cause": "lighting",
+        "severity": "minor"
+      },
+      {
+        "dimension": "COLOR_HARMONY",
+        "symptom": "Blue and cream palette cohesive but slightly cool; could warm slightly for coastal feel",
+        "root_cause": "postprocess",
+        "severity": "minor"
+      }
+    ],
+    "winner_subjective": "tie"
+  },
+  "passed": false
+}

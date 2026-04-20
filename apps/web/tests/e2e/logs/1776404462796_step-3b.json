@@ -1,0 +1,83 @@
+{
+  "screen": "step-3b",
+  "url": "http://localhost:3000/design/step-2",
+  "passed": false,
+  "attempt": 1,
+  "elements": 8,
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Wrong page rendered: Step 3b style blend confirmation screen is expected but Step 1 (room selection) is displayed instead. The URL shows /design/step-2 but the page:mount event fires for step-2 after step-3b, suggesting a redirect/routing loop is sending the user back to step-1 or step-2.",
+      "element": "Entire page content",
+      "root_cause": "Console logs show page:mount firing for step-3b then immediately for step-2 (timestamps 1776404415140 and 1776404415346 — only 206ms apart), indicating a programmatic redirect in step-3b/page.tsx or middleware is bouncing back to step-2. Likely the page guards session/state and if style quiz answers are missing from state/localStorage it redirects back. The hydration error on width (Server: 5%, Client: 15%) on step-3 also suggests SSR state mismatch causing the app to reset flow state."
+    },
+    {
+      "severity": "critical",
+      "description": "React hydration error: Prop 'style' did not match — Server: 'width:5%' Client: 'width:15%'. The percentage bar width is computed differently on server vs client (likely from Math.random() or uninitialized state), causing full root re-render and potentially corrupting navigation state.",
+      "element": "Style percentage bar <div> in step-3/page.tsx around line 59",
+      "root_cause": "In app/design/step-3/page.tsx the style blend percentage bar width is derived from a value that differs between SSR and CSR — e.g. reading from localStorage, using Math.random(), or reading from a Zustand/context store that is not initialized during SSR. This produces width:5% server-side and width:15% client-side."
+    },
+    {
+      "severity": "critical",
+      "description": "Multiple 'Text content does not match server-rendered HTML' hydration errors (7 instances). Root switches to full client rendering, which may clear persisted state and trigger redirect guards back to step-1.",
+      "element": "Multiple text nodes across step-3/page.tsx and step-3b/page.tsx",
+      "root_cause": "Percentage values and/or style label text rendered directly on the server from uninitialized state (empty string or 0) differ from client-computed values read from store/localStorage after hydration."
+    },
+    {
+      "severity": "major",
+      "description": "Style names must be human-readable (e.g. 'Scandinavian', 'Japandi') but if COVA* internal keys leak through the key-to-label mapping on the server render vs client render mismatch, text hydration errors would result and raw keys could flash.",
+      "element": "Style name text nodes in step-3b",
+      "root_cause": "Style label lookup likely reads from a map that is populated client-side only (e.g. fetched from API or read from store), so SSR renders the raw key while CSR renders the human label."
+    },
+    {
+      "severity": "major",
+      "description": "page:mount fires twice for both step-3b (ts:…140, …143) and step-2 (ts:…346, …346) — double mount and immediate back-navigation indicate the redirect guard in step-3b fires on every render including initial, causing a loop back to step-2 which re-renders step-1 UI.",
+      "element": "Navigation/routing guard in app/design/step-3b/page.tsx",
+      "root_cause": "The useEffect redirect guard likely runs before hydration completes or checks a store value that is undefined on first render, treating missing state as 'not ready' and pushing back to /design/step-2."
+    }
+  ],
+  "fixes": [
+    {
+      "file": "app/design/step-3/page.tsx",
+      "old_str": "style={{ width: `${stylePercent}%` }}",
+      "new_str": "style={{ width: typeof window === 'undefined' ? '0%' : `${stylePercent}%` }}",
+      "reason": "Prevents SSR/CSR mismatch on the percentage bar by rendering 0% on server and the real value on client, eliminating the hydration prop mismatch warning. A better long-term fix is to wrap the bar in a client component with suppressHydrationWarning or use useEffect to set the width after mount."
+    },
+    {
+      "file": "app/design/step-3/page.tsx",
+      "old_str": "<div\n        style={{ width: `${stylePercent}%` }}",
+      "new_str": "<div\n        suppressHydrationWarning\n        style={{ width: `${stylePercent}%` }}",
+      "reason": "suppressHydrationWarning on the specific bar div suppresses the noisy React warning for this intentional SSR/CSR value difference while the underlying state initialization is fixed."
+    },
+    {
+      "file": "app/design/step-3b/page.tsx",
+      "old_str": "  const router = useRouter();\n\n  useEffect(() => {\n    if (!styleBlend || styleBlend.length === 0) {\n      router.push('/design/step-2');\n    }\n  });",
+      "new_str": "  const router = useRouter();\n  const [hydrated, setHydrated] = useState(false);\n\n  useEffect(() => {\n    setHydrated(true);\n  }, []);\n\n  useEffect(() => {\n    if (!hydrated) return;\n    if (!styleBlend || styleBlend.length === 0) {\n      router.push('/design/step-2');\n    }\n  }, [hydrated, styleBlend, router]);",
+      "reason": "Guards the redirect until after hydration is complete by gating on a hydrated flag set in a separate useEffect. This prevents the redirect from firing during SSR or before client state is rehydrated from localStorage/store, stopping the redirect loop."
+    },
+    {
+      "file": "app/design/step-3b/page.tsx",
+      "old_str": "const styleLabel = styleKey;",
+      "new_str": "const STYLE_LABELS: Record<string, string> = {\n  SCANDI: 'Scandinavian',\n  JAPANDI: 'Japandi',\n  BOHO: 'Bohemian',\n  MID_CENTURY: 'Mid-Century Modern',\n  INDUSTRIAL: 'Industrial',\n  COASTAL: 'Coastal',\n  MINIMALIST: 'Minimalist',\n  MAXIMALIST: 'Maximalist',\n};\nconst styleLabel = STYLE_LABELS[styleKey] ?? styleKey;",
+      "reason": "Ensures COVA* internal style keys are always mapped to human-readable names on both server and client, preventing raw keys from being displayed and eliminating text-content hydration mismatches caused by key-to-label resolution differences between SSR and CSR."
+    },
+    {
+      "file": "store/designStore.ts",
+      "old_str": "export const useDesignStore = create<DesignState>()((",
+      "new_str": "export const useDesignStore = create<DesignState>()(\n  persist(",
+      "reason": "If the store is not persisted, state is lost on navigation/hydration and redirect guards fire incorrectly. Wrapping with zustand/middleware persist ensures style blend state survives page transitions and hydration cycles. (Complete the persist wrapper with storage: createJSONStorage(() => localStorage) and the closing parentheses.)"
+    }
+  ],
+  "flowLogs": [
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776404299367,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-1\"},\"ts\":1776404299369,\"url\":\"/design/step-1\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-2\"},\"ts\":1776404333486,\"url\":\"/design/step-2\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-2\"},\"ts\":1776404333487,\"url\":\"/design/step-2\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776404375620,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3\"},\"ts\":1776404375622,\"url\":\"/design/step-3\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776404415140,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-3b\"},\"ts\":1776404415143,\"url\":\"/design/step-3b\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-2\"},\"ts\":1776404415346,\"url\":\"/design/step-2\"}",
+    "{\"__COVA__\":true,\"event\":\"page:mount\",\"data\":{\"page\":\"step-2\"},\"ts\":1776404415346,\"url\":\"/design/step-2\"}"
+  ]
+}
