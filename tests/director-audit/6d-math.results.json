@@ -1,0 +1,942 @@
+{
+  "timestamp": "2026-04-20T06:35:21.677Z",
+  "source_function": "softmaxStyleMatch in apps/web/lib/ai/style-match.ts",
+  "anchor_source": "STYLES[].v2Center (10 anchors, 6 dimensions)",
+  "parameters": {
+    "temperature_T": 4.5,
+    "weights": [
+      1.4,
+      1.3,
+      1.2,
+      1.1,
+      1,
+      0.9
+    ],
+    "neutral_midpoint": 0.5
+  },
+  "check_3_1_continuity": {
+    "axisResults": [
+      {
+        "axis": "warmth",
+        "max": 0.44708,
+        "median": 0,
+        "mean": 0.00823,
+        "std": 0.05784,
+        "outlier3sigma": true,
+        "pass": false
+      },
+      {
+        "axis": "visual_complexity",
+        "max": 0.38449,
+        "median": 0,
+        "mean": 0.00748,
+        "std": 0.05237,
+        "outlier3sigma": true,
+        "pass": false
+      },
+      {
+        "axis": "organicness",
+        "max": 0.50701,
+        "median": 0,
+        "mean": 0.00955,
+        "std": 0.067,
+        "outlier3sigma": true,
+        "pass": false
+      },
+      {
+        "axis": "density",
+        "max": 0.33858,
+        "median": 0,
+        "mean": 0.0066,
+        "std": 0.04621,
+        "outlier3sigma": true,
+        "pass": false
+      },
+      {
+        "axis": "traditionalism",
+        "max": 0.56118,
+        "median": 0,
+        "mean": 0.00811,
+        "std": 0.06087,
+        "outlier3sigma": true,
+        "pass": false
+      },
+      {
+        "axis": "character",
+        "max": 0.3808,
+        "median": 0,
+        "mean": 0.00697,
+        "std": 0.04898,
+        "outlier3sigma": true,
+        "pass": false
+      }
+    ],
+    "pass": false,
+    "threshold": 0.02
+  },
+  "check_3_2_monotonicity": {
+    "anchorResults": [
+      {
+        "anchor": "Warm Japandi",
+        "pass": false,
+        "perAxis": [
+          {
+            "axis": "warmth",
+            "anchorValue": 0.75,
+            "side": "high",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0039,
+              0.1564
+            ]
+          },
+          {
+            "axis": "visual_complexity",
+            "anchorValue": 0.2,
+            "side": "low",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0025,
+              0.1452
+            ]
+          },
+          {
+            "axis": "organicness",
+            "anchorValue": 0.8,
+            "side": "high",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0028,
+              0.1894
+            ]
+          },
+          {
+            "axis": "density",
+            "anchorValue": 0.25,
+            "side": "low",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0057,
+              0.137
+            ]
+          },
+          {
+            "axis": "traditionalism",
+            "anchorValue": 0.3,
+            "side": "low",
+            "violations": 1,
+            "near": false,
+            "pass": false,
+            "weightsStartEnd": [
+              0.0088,
+              0.0988
+            ]
+          },
+          {
+            "axis": "character",
+            "anchorValue": 0.7,
+            "side": "high",
+            "violations": 1,
+            "near": false,
+            "pass": false,
+            "weightsStartEnd": [
+              0.0117,
+              0.0741
+            ]
+          }
+        ]
+      },
+      {
+        "anchor": "Dark Moody Glam",
+        "pass": true,
+        "perAxis": [
+          {
+            "axis": "warmth",
+            "anchorValue": 0.25,
+            "side": "low",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0024,
+              0.2551
+            ]
+          },
+          {
+            "axis": "visual_complexity",
+            "anchorValue": 0.75,
+            "side": "high",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0018,
+              0.208
+            ]
+          },
+          {
+            "axis": "organicness",
+            "anchorValue": 0.3,
+            "side": "low",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0042,
+              0.1285
+            ]
+          },
+          {
+            "axis": "density",
+            "anchorValue": 0.7,
+            "side": "high",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.005,
+              0.1569
+            ]
+          },
+          {
+            "axis": "traditionalism",
+            "anchorValue": 0.65,
+            "side": "high",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0085,
+              0.1014
+            ]
+          },
+          {
+            "axis": "character",
+            "anchorValue": 0.8,
+            "side": "high",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.005,
+              0.1749
+            ]
+          }
+        ]
+      },
+      {
+        "anchor": "Coastal Bright",
+        "pass": false,
+        "perAxis": [
+          {
+            "axis": "warmth",
+            "anchorValue": 0.65,
+            "side": "high",
+            "violations": 1,
+            "near": false,
+            "pass": false,
+            "weightsStartEnd": [
+              0.0071,
+              0.0861
+            ]
+          },
+          {
+            "axis": "visual_complexity",
+            "anchorValue": 0.2,
+            "side": "low",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0018,
+              0.2096
+            ]
+          },
+          {
+            "axis": "organicness",
+            "anchorValue": 0.55,
+            "side": "high",
+            "violations": 1,
+            "near": false,
+            "pass": false,
+            "weightsStartEnd": [
+              0.0164,
+              0.0325
+            ]
+          },
+          {
+            "axis": "density",
+            "anchorValue": 0.25,
+            "side": "low",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0043,
+              0.1816
+            ]
+          },
+          {
+            "axis": "traditionalism",
+            "anchorValue": 0.25,
+            "side": "low",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0048,
+              0.1802
+            ]
+          },
+          {
+            "axis": "character",
+            "anchorValue": 0.25,
+            "side": "low",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0034,
+              0.2592
+            ]
+          }
+        ]
+      },
+      {
+        "anchor": "Industrial Loft",
+        "pass": false,
+        "perAxis": [
+          {
+            "axis": "warmth",
+            "anchorValue": 0.2,
+            "side": "low",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0014,
+              0.4413
+            ]
+          },
+          {
+            "axis": "visual_complexity",
+            "anchorValue": 0.65,
+            "side": "high",
+            "violations": 1,
+            "near": false,
+            "pass": false,
+            "weightsStartEnd": [
+              0.004,
+              0.0936
+            ]
+          },
+          {
+            "axis": "organicness",
+            "anchorValue": 0.15,
+            "side": "low",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0011,
+              0.4912
+            ]
+          },
+          {
+            "axis": "density",
+            "anchorValue": 0.55,
+            "side": "high",
+            "violations": 1,
+            "near": false,
+            "pass": false,
+            "weightsStartEnd": [
+              0.0159,
+              0.0493
+            ]
+          },
+          {
+            "axis": "traditionalism",
+            "anchorValue": 0.35,
+            "side": "low",
+            "violations": 1,
+            "near": false,
+            "pass": false,
+            "weightsStartEnd": [
+              0.0103,
+              0.0836
+            ]
+          },
+          {
+            "axis": "character",
+            "anchorValue": 0.4,
+            "side": "low",
+            "violations": 1,
+            "near": false,
+            "pass": false,
+            "weightsStartEnd": [
+              0.01,
+              0.0865
+            ]
+          }
+        ]
+      },
+      {
+        "anchor": "Maximalist Eclectic",
+        "pass": false,
+        "perAxis": [
+          {
+            "axis": "warmth",
+            "anchorValue": 0.65,
+            "side": "high",
+            "violations": 1,
+            "near": false,
+            "pass": false,
+            "weightsStartEnd": [
+              0.0096,
+              0.064
+            ]
+          },
+          {
+            "axis": "visual_complexity",
+            "anchorValue": 0.9,
+            "side": "high",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0009,
+              0.3937
+            ]
+          },
+          {
+            "axis": "organicness",
+            "anchorValue": 0.65,
+            "side": "high",
+            "violations": 1,
+            "near": false,
+            "pass": false,
+            "weightsStartEnd": [
+              0.0093,
+              0.0575
+            ]
+          },
+          {
+            "axis": "density",
+            "anchorValue": 0.85,
+            "side": "high",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0026,
+              0.3038
+            ]
+          },
+          {
+            "axis": "traditionalism",
+            "anchorValue": 0.3,
+            "side": "low",
+            "violations": 1,
+            "near": false,
+            "pass": false,
+            "weightsStartEnd": [
+              0.0099,
+              0.0877
+            ]
+          },
+          {
+            "axis": "character",
+            "anchorValue": 0.85,
+            "side": "high",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0055,
+              0.1567
+            ]
+          }
+        ]
+      },
+      {
+        "anchor": "Heritage Traditional",
+        "pass": false,
+        "perAxis": [
+          {
+            "axis": "warmth",
+            "anchorValue": 0.7,
+            "side": "high",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.005,
+              0.1218
+            ]
+          },
+          {
+            "axis": "visual_complexity",
+            "anchorValue": 0.7,
+            "side": "high",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0028,
+              0.1301
+            ]
+          },
+          {
+            "axis": "organicness",
+            "anchorValue": 0.65,
+            "side": "high",
+            "violations": 1,
+            "near": false,
+            "pass": false,
+            "weightsStartEnd": [
+              0.0076,
+              0.0701
+            ]
+          },
+          {
+            "axis": "density",
+            "anchorValue": 0.75,
+            "side": "high",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0036,
+              0.2205
+            ]
+          },
+          {
+            "axis": "traditionalism",
+            "anchorValue": 0.9,
+            "side": "high",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0014,
+              0.6049
+            ]
+          },
+          {
+            "axis": "character",
+            "anchorValue": 0.35,
+            "side": "low",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0075,
+              0.1165
+            ]
+          }
+        ]
+      },
+      {
+        "anchor": "Pure Minimal White",
+        "pass": false,
+        "perAxis": [
+          {
+            "axis": "warmth",
+            "anchorValue": 0.3,
+            "side": "low",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0057,
+              0.1069
+            ]
+          },
+          {
+            "axis": "visual_complexity",
+            "anchorValue": 0.1,
+            "side": "low",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0019,
+              0.1957
+            ]
+          },
+          {
+            "axis": "organicness",
+            "anchorValue": 0.25,
+            "side": "low",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0045,
+              0.1178
+            ]
+          },
+          {
+            "axis": "density",
+            "anchorValue": 0.1,
+            "side": "low",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0031,
+              0.2557
+            ]
+          },
+          {
+            "axis": "traditionalism",
+            "anchorValue": 0.4,
+            "side": "low",
+            "violations": 1,
+            "near": false,
+            "pass": false,
+            "weightsStartEnd": [
+              0.0188,
+              0.0459
+            ]
+          },
+          {
+            "axis": "character",
+            "anchorValue": 0.15,
+            "side": "low",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0032,
+              0.2703
+            ]
+          }
+        ]
+      },
+      {
+        "anchor": "Biophilic Jungle",
+        "pass": false,
+        "perAxis": [
+          {
+            "axis": "warmth",
+            "anchorValue": 0.6,
+            "side": "high",
+            "violations": 1,
+            "near": false,
+            "pass": false,
+            "weightsStartEnd": [
+              0.0117,
+              0.0524
+            ]
+          },
+          {
+            "axis": "visual_complexity",
+            "anchorValue": 0.4,
+            "side": "low",
+            "violations": 1,
+            "near": false,
+            "pass": false,
+            "weightsStartEnd": [
+              0.0107,
+              0.0347
+            ]
+          },
+          {
+            "axis": "organicness",
+            "anchorValue": 0.9,
+            "side": "high",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.001,
+              0.5443
+            ]
+          },
+          {
+            "axis": "density",
+            "anchorValue": 0.65,
+            "side": "high",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0075,
+              0.1052
+            ]
+          },
+          {
+            "axis": "traditionalism",
+            "anchorValue": 0.2,
+            "side": "low",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0036,
+              0.2403
+            ]
+          },
+          {
+            "axis": "character",
+            "anchorValue": 0.7,
+            "side": "high",
+            "violations": 1,
+            "near": false,
+            "pass": false,
+            "weightsStartEnd": [
+              0.0102,
+              0.0853
+            ]
+          }
+        ]
+      },
+      {
+        "anchor": "Retro Mid-Century",
+        "pass": false,
+        "perAxis": [
+          {
+            "axis": "warmth",
+            "anchorValue": 0.7,
+            "side": "high",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0015,
+              0.4189
+            ]
+          },
+          {
+            "axis": "visual_complexity",
+            "anchorValue": 0.55,
+            "side": "high",
+            "violations": 1,
+            "near": false,
+            "pass": false,
+            "weightsStartEnd": [
+              0.0073,
+              0.0506
+            ]
+          },
+          {
+            "axis": "organicness",
+            "anchorValue": 0.4,
+            "side": "low",
+            "violations": 1,
+            "near": false,
+            "pass": false,
+            "weightsStartEnd": [
+              0.0054,
+              0.0985
+            ]
+          },
+          {
+            "axis": "density",
+            "anchorValue": 0.5,
+            "side": "low",
+            "violations": 1,
+            "near": true,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0328,
+              0.0239
+            ]
+          },
+          {
+            "axis": "traditionalism",
+            "anchorValue": 0.55,
+            "side": "high",
+            "violations": 1,
+            "near": false,
+            "pass": false,
+            "weightsStartEnd": [
+              0.014,
+              0.0618
+            ]
+          },
+          {
+            "axis": "character",
+            "anchorValue": 0.75,
+            "side": "high",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0021,
+              0.4043
+            ]
+          }
+        ]
+      },
+      {
+        "anchor": "Nordic Scandi",
+        "pass": false,
+        "perAxis": [
+          {
+            "axis": "warmth",
+            "anchorValue": 0.55,
+            "side": "high",
+            "violations": 1,
+            "near": false,
+            "pass": false,
+            "weightsStartEnd": [
+              0.0177,
+              0.0347
+            ]
+          },
+          {
+            "axis": "visual_complexity",
+            "anchorValue": 0.15,
+            "side": "low",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0011,
+              0.3404
+            ]
+          },
+          {
+            "axis": "organicness",
+            "anchorValue": 0.45,
+            "side": "low",
+            "violations": 1,
+            "near": true,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0138,
+              0.0386
+            ]
+          },
+          {
+            "axis": "density",
+            "anchorValue": 0.2,
+            "side": "low",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0028,
+              0.282
+            ]
+          },
+          {
+            "axis": "traditionalism",
+            "anchorValue": 0.25,
+            "side": "low",
+            "violations": 0,
+            "near": false,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0047,
+              0.1853
+            ]
+          },
+          {
+            "axis": "character",
+            "anchorValue": 0.45,
+            "side": "low",
+            "violations": 1,
+            "near": true,
+            "pass": true,
+            "weightsStartEnd": [
+              0.0144,
+              0.0601
+            ]
+          }
+        ]
+      }
+    ],
+    "pass": false
+  },
+  "check_3_3_reconstruction": {
+    "n": 1000,
+    "seed": 74565,
+    "mean": 0.5321,
+    "p50": 0.5292,
+    "p95": 0.7827,
+    "max": 1.0353,
+    "meanThreshold": 0.1,
+    "p95Threshold": 0.15,
+    "pass": false
+  },
+  "check_3_4_coverage": {
+    "n": 1000,
+    "seed": 74565,
+    "topN": 3,
+    "floor": 30,
+    "perAnchor": [
+      {
+        "anchor": "Warm Japandi",
+        "topNCount": 291,
+        "fraction": 0.291,
+        "pass": true
+      },
+      {
+        "anchor": "Dark Moody Glam",
+        "topNCount": 325,
+        "fraction": 0.325,
+        "pass": true
+      },
+      {
+        "anchor": "Coastal Bright",
+        "topNCount": 280,
+        "fraction": 0.28,
+        "pass": true
+      },
+      {
+        "anchor": "Industrial Loft",
+        "topNCount": 314,
+        "fraction": 0.314,
+        "pass": true
+      },
+      {
+        "anchor": "Maximalist Eclectic",
+        "topNCount": 316,
+        "fraction": 0.316,
+        "pass": true
+      },
+      {
+        "anchor": "Heritage Traditional",
+        "topNCount": 295,
+        "fraction": 0.295,
+        "pass": true
+      },
+      {
+        "anchor": "Pure Minimal White",
+        "topNCount": 339,
+        "fraction": 0.339,
+        "pass": true
+      },
+      {
+        "anchor": "Biophilic Jungle",
+        "topNCount": 296,
+        "fraction": 0.296,
+        "pass": true
+      },
+      {
+        "anchor": "Retro Mid-Century",
+        "topNCount": 246,
+        "fraction": 0.246,
+        "pass": true
+      },
+      {
+        "anchor": "Nordic Scandi",
+        "topNCount": 298,
+        "fraction": 0.298,
+        "pass": true
+      }
+    ],
+    "pass": true
+  }
+}
