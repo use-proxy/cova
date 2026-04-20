@@ -1,0 +1,158 @@
+{
+  "room_id": "room-02",
+  "input_path": "bench/rooms/room-02_livingroom-piano-joydivision.webp",
+  "output_path": "bench/run-1-5-empty-room/outputs/room-02.webp",
+  "mask_path": "bench/run-1-5-empty-room/masks/room-02_mask.png",
+  "stratification": {
+    "clutter": "medium",
+    "geometry": "long-perspective",
+    "texture": "plank-floor",
+    "lighting": "soft-overcast"
+  },
+  "mask_source": "sam-3",
+  "mask_coverage_raw_pct": 15.021975003433594,
+  "mask_coverage_dilated_pct": 23.453623586503685,
+  "low_coverage_flag": false,
+  "per_prompt_mask_info": {
+    "chair": {
+      "hits": 2,
+      "best_score": 0.9249285459518433,
+      "coverage_pct": 2.8434738817927943
+    },
+    "bed": {
+      "hits": 0
+    },
+    "cabinet": {
+      "hits": 0
+    },
+    "table": {
+      "hits": 3,
+      "best_score": 0.8647072911262512,
+      "coverage_pct": 0.6522684612919472
+    },
+    "rug": {
+      "hits": 1,
+      "best_score": 0.9259509444236755,
+      "coverage_pct": 2.510529689145264
+    },
+    "lamp": {
+      "hits": 3,
+      "best_score": 0.7843496799468994,
+      "coverage_pct": 0.10632696973858903
+    },
+    "plant": {
+      "hits": 4,
+      "best_score": 0.8446097373962402,
+      "coverage_pct": 0.16435471318042394
+    },
+    "ottoman": {
+      "hits": 0
+    },
+    "bookshelf": {
+      "hits": 3,
+      "best_score": 0.8553097248077393,
+      "coverage_pct": 0.847868882479513
+    },
+    "tv": {
+      "hits": 1,
+      "best_score": 0.8752473592758179,
+      "coverage_pct": 0.8467243510506799
+    },
+    "desk": {
+      "hits": 2,
+      "best_score": 0.7834497690200806,
+      "coverage_pct": 0.46261960353431303
+    },
+    "fireplace insert": {
+      "hits": 0
+    },
+    "mirror": {
+      "hits": 0
+    },
+    "artwork": {
+      "hits": 2,
+      "best_score": 0.9476743936538696,
+      "coverage_pct": 0.8387126310488485
+    },
+    "dresser": {
+      "hits": 1,
+      "best_score": 0.796832263469696,
+      "coverage_pct": 1.0052419539440554
+    },
+    "curtains": {
+      "hits": 2,
+      "best_score": 0.9463521242141724,
+      "coverage_pct": 1.14121228768942
+    },
+    "media unit": {
+      "hits": 0
+    },
+    "bench": {
+      "hits": 0
+    },
+    "radiator": {
+      "hits": 2,
+      "best_score": 0.9356281161308289,
+      "coverage_pct": 0.6186192372842558
+    },
+    "sofa": {
+      "hits": 1,
+      "best_score": 0.9418310523033142,
+      "coverage_pct": 2.9850524195394406
+    }
+  },
+  "ghost_per_prompt": {
+    "chair": {
+      "biggest_mask_pct": 0.0
+    },
+    "bed": {
+      "biggest_mask_pct": 0.0
+    },
+    "sofa": {
+      "biggest_mask_pct": 0.0
+    },
+    "table": {
+      "biggest_mask_pct": 0.7894977796090281
+    },
+    "rug": {
+      "biggest_mask_pct": 0.0
+    },
+    "lamp": {
+      "biggest_mask_pct": 0.08778556059149384
+    },
+    "plant": {
+      "biggest_mask_pct": 1.5594240717850112
+    },
+    "cabinet": {
+      "biggest_mask_pct": 0.0
+    }
+  },
+  "metrics": {
+    "ssim_unmasked": 0.9269083338753112,
+    "ghost_furniture_detected": true,
+    "ghost_furniture_area_pct": 2.3489218513940395,
+    "vp_shift_pct": 4.5102081298828125,
+    "edge_density_ratio": 1.0957535387177353,
+    "bria_latency_s": 10.28906774520874,
+    "total_latency_s": 42.08386206626892,
+    "cost_usd": 0.18000000000000002
+  },
+  "thresholds": {
+    "ssim_unmasked_min": 0.985,
+    "ghost_area_max_pct": 0.5,
+    "vp_shift_max_pct": 2.0,
+    "edge_density_min": 0.7,
+    "edge_density_max": 1.3,
+    "latency_p95_max_s": 90.0,
+    "cost_max_usd_per_room": 0.5
+  },
+  "pass_per_metric": {
+    "ssim_unmasked": false,
+    "ghost_furniture": false,
+    "vp_shift": false,
+    "edge_density": true,
+    "latency": true,
+    "cost": true
+  },
+  "overall_pass": false
+}

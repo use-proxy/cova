@@ -1,7 +1,7 @@
-"""Phase 0.5 Run 1 — Empty-room bench harness (Bria Eraser primary path).
+"""Phase 0.5 Run 1.5 — Empty-room bench harness (Bria Eraser primary path).
 
 Per docs/cova-v9-research.pdf §3.4–§3.5 and §9.5:
-  Stage E1: SAM 3 text-prompted furniture mask
+  Stage E1: SAM 3 text-prompted furniture mask (widened prompt list)
   Stage E2: Morphological dilation +16px
   Stage E3: fal-ai/bria/eraser  ← PRIMARY
   Stage E4: Ghost gate — SAM 3 rerun + SSIM + VP-shift + edge density
@@ -13,6 +13,7 @@ Acceptance thresholds (§3.4):
 Invocation:
   python3 bench/scripts/run_empty_room_bench.py           # all 15 rooms
   python3 bench/scripts/run_empty_room_bench.py room-01   # single pilot
+  python3 bench/scripts/run_empty_room_bench.py --repeat room-06 N=4  # noise-floor
 """
 from __future__ import annotations
 
@@ -35,17 +36,24 @@ from skimage.metrics import structural_similarity as ssim  # type: ignore
 ROOT = Path(__file__).resolve().parent.parent.parent
 BENCH = ROOT / "bench"
 ROOMS_DIR = BENCH / "rooms"
-OUT_ROOT = BENCH / "run-1-empty-room"
+OUT_ROOT = BENCH / "run-1-5-empty-room"
 OUTPUTS_DIR = OUT_ROOT / "outputs"
 MASKS_DIR = OUT_ROOT / "masks"
 METRICS_DIR = OUT_ROOT / "metrics"
+NOISE_FLOOR_DIR = OUT_ROOT / "noise-floor"
 
-# Primary-mask furniture prompts (superset of ghost-detection list, with common
-# extras). Each is a single SAM-3 call; masks are unioned then dilated.
+# Primary-mask furniture prompts (widened from Run 1 — 20 unique prompts).
+# Run 1 had 11; added: ottoman, bookshelf, curtains, artwork, mirror,
+# fireplace insert, radiator, media unit, bench  (cabinet already present).
 FURNITURE_PROMPTS = [
     "sofa", "chair", "table", "bed", "lamp", "rug", "cabinet",
     "plant", "dresser", "desk", "tv",
+    "ottoman", "bookshelf", "curtains", "artwork", "mirror",
+    "fireplace insert", "radiator", "media unit", "bench",
 ]
+assert len(FURNITURE_PROMPTS) == 20, f"Expected 20 prompts, got {len(FURNITURE_PROMPTS)}"
+assert len(set(FURNITURE_PROMPTS)) == 20, "Duplicate prompts detected"
+
 # Ghost-detection prompts — exact list from §3.4.
 GHOST_PROMPTS = ["sofa", "chair", "table", "bed", "lamp", "rug", "cabinet", "plant"]
 
@@ -54,7 +62,7 @@ COST_SAM3 = 0.005     # per §3.3
 DILATION_PX = 16      # per §3.3 sweet spot
 SAM3_SCORE_THRESHOLD = 0.30
 MAX_PARALLEL_ROOMS = 3
-HARD_COST_CAP = 10.0  # USD
+HARD_COST_CAP = 6.0   # USD — hard stop
 
 THRESHOLDS = {
     "ssim_unmasked_min": 0.985,
@@ -321,11 +329,16 @@ def metric_edge_density_ratio(out_arr: np.ndarray, mask: np.ndarray, ring_px: in
 
 
 # ── Per-room pipeline ─────────────────────────────────────────────────────────
-def process_room(room: dict) -> dict:
+def process_room(room: dict, metrics_out_dir: Path | None = None) -> dict:
+    """Run the full E1-E4 pipeline for a single room.
+
+    metrics_out_dir: override where metrics JSON is written (used by noise-floor mode).
+    """
     room_id = room["id"]
     filename = room["filename"]
     input_path = ROOMS_DIR / filename
-    out_metrics_path = METRICS_DIR / f"{room_id}.json"
+    out_dir = metrics_out_dir if metrics_out_dir is not None else METRICS_DIR
+    out_metrics_path = out_dir / f"{room_id}.json"
 
     t0 = time.time()
     cost = 0.0
@@ -443,16 +456,109 @@ def process_room(room: dict) -> dict:
     return result
 
 
+# ── Noise-floor mode ──────────────────────────────────────────────────────────
+def run_noise_floor(room_id_arg: str, n_repeats: int, manifest: dict) -> int:
+    """Run room_id N times under the new widened-prompt pipeline.
+
+    Writes metrics to noise-floor/room-<id>_run{1..N}.json.
+    All runs are fresh — Run 1 numbers are NOT reused.
+    """
+    rooms_by_id = {r["id"]: r for r in manifest["rooms"]}
+    if room_id_arg not in rooms_by_id:
+        print(f"ERROR: room '{room_id_arg}' not found in manifest")
+        return 1
+
+    room = rooms_by_id[room_id_arg]
+    NOISE_FLOOR_DIR.mkdir(parents=True, exist_ok=True)
+    OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
+    MASKS_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Cost guard: each run costs ~(20 SAM3 + 8 ghost SAM3 + 1 Bria) = 28×0.005 + 0.04 = 0.18
+    per_run_cost = len(FURNITURE_PROMPTS) * COST_SAM3 + len(GHOST_PROMPTS) * COST_SAM3 + COST_BRIA
+    projected = per_run_cost * n_repeats
+    print(f"Noise-floor mode: {n_repeats} repeats of {room_id_arg}")
+    print(f"Projected cost: ${projected:.2f} (hard cap ${HARD_COST_CAP:.2f})")
+    if projected > HARD_COST_CAP:
+        print(f"BLOCKER: projected ${projected:.2f} > hard cap ${HARD_COST_CAP:.2f}")
+        return 2
+
+    total_cost = 0.0
+    ssim_values: list[float] = []
+
+    for run_idx in range(1, n_repeats + 1):
+        print(f"\n═══ Noise-floor run {run_idx}/{n_repeats} ═══")
+        out_path = NOISE_FLOOR_DIR / f"{room_id_arg}_run{run_idx}.json"
+
+        result = process_room(room, metrics_out_dir=None)  # compute normally
+
+        # Write to noise-floor dir with run suffix
+        out_path.write_text(json.dumps(result, indent=2))
+
+        run_cost = result.get("metrics", {}).get("cost_usd", result.get("cost_usd", 0.0))
+        total_cost += run_cost
+
+        ssim_val = result.get("metrics", {}).get("ssim_unmasked")
+        if ssim_val is not None:
+            ssim_values.append(ssim_val)
+            print(f"  run {run_idx}: ssim={ssim_val:.4f}")
+
+        if total_cost > HARD_COST_CAP:
+            print(f"WARN: cumulative cost ${total_cost:.2f} exceeded hard cap ${HARD_COST_CAP:.2f} — aborting")
+            break
+
+    # Compute noise-floor stats
+    if ssim_values:
+        mean_ssim = float(np.mean(ssim_values))
+        sigma_ssim = float(np.std(ssim_values, ddof=0))
+        calibrated_threshold = round(mean_ssim - 2 * sigma_ssim, 3)
+        print(f"\nNoise-floor: n={len(ssim_values)} mean={mean_ssim:.4f} σ={sigma_ssim:.4f}")
+        print(f"Calibrated SSIM threshold (mean - 2σ) = {calibrated_threshold}")
+
+        stats = {
+            "room_id": room_id_arg,
+            "n_repeats": len(ssim_values),
+            "ssim_values": ssim_values,
+            "mean_ssim": mean_ssim,
+            "sigma_ssim": sigma_ssim,
+            "calibrated_threshold": calibrated_threshold,
+            "total_cost_usd": total_cost,
+        }
+        (NOISE_FLOOR_DIR / "stats.json").write_text(json.dumps(stats, indent=2))
+
+    return 0
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 def main() -> int:
-    for d in (OUT_ROOT, OUTPUTS_DIR, MASKS_DIR, METRICS_DIR):
+    for d in (OUT_ROOT, OUTPUTS_DIR, MASKS_DIR, METRICS_DIR, NOISE_FLOOR_DIR):
         d.mkdir(parents=True, exist_ok=True)
 
     manifest = json.loads((BENCH / "manifest.json").read_text())
     rooms: list[dict] = manifest["rooms"]
 
-    if len(sys.argv) > 1:
-        arg = sys.argv[1]
+    # ── CLI parsing ──
+    args = sys.argv[1:]
+
+    # --repeat room-XX N=4  → noise-floor mode
+    if args and args[0] == "--repeat":
+        if len(args) < 3:
+            print("Usage: --repeat <room-id> N=<count>")
+            return 1
+        room_id_arg = args[1]
+        n_str = args[2]
+        if not n_str.startswith("N="):
+            print(f"Expected N=<int>, got '{n_str}'")
+            return 1
+        try:
+            n_repeats = int(n_str.split("=", 1)[1])
+        except ValueError:
+            print(f"Invalid N value: '{n_str}'")
+            return 1
+        return run_noise_floor(room_id_arg, n_repeats, manifest)
+
+    # Normal run
+    if args:
+        arg = args[0]
         if arg == "--skip-existing":
             rooms = [r for r in rooms if not (METRICS_DIR / f"{r['id']}.json").exists()]
         else:
@@ -485,8 +591,12 @@ def main() -> int:
     order = {r["id"]: i for i, r in enumerate(manifest["rooms"])}
     results.sort(key=lambda x: order.get(x.get("room_id"), 999))
 
-    # Cost log
+    # Soft-cap warning (logged, not aborted)
     total_cost = sum(r.get("metrics", {}).get("cost_usd", r.get("cost_usd", 0.0)) for r in results)
+    if total_cost > 4.0:
+        print(f"WARN: total cost ${total_cost:.2f} exceeded soft cap $4.00")
+
+    # Cost log
     cost_log = {
         "total_cost_usd": total_cost,
         "per_room": [
