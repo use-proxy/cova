@@ -114,6 +114,18 @@ d("RLS negative tests — cross-user access must be denied", () => {
       .from("token_transactions")
       .insert({ user_id: userB.id, delta: 0, reason: "seed" })
       .then(() => null, () => null);
+
+    // Phase 1: seed one sam_embeddings row for userB.
+    await admin
+      .from("sam_embeddings")
+      .insert({
+        user_id: userB.id,
+        image_hash: `seed-${userB.id}`,
+        // postgres-js translates Uint8Array → bytea hex literal.
+        embedding: new Uint8Array([0xde, 0xad, 0xbe, 0xef]),
+      })
+      .then(() => null, () => null);
+
     if (userB.roomId) {
       await admin
         .from("render_sessions")
@@ -353,6 +365,42 @@ d("RLS negative tests — cross-user access must be denied", () => {
       .select("user_id")
       .eq("user_id", userB.id);
     expect(data?.length ?? 0).toBe(0);
+  });
+
+  // 15. sam_embeddings (Phase 1 — SAM 2 cache table, 30-day TTL, RLS).
+  it("15.1 User A cannot SELECT User B's sam_embeddings", async () => {
+    const { data } = await userA.client
+      .from("sam_embeddings")
+      .select("id")
+      .eq("user_id", userB.id);
+    expect(data?.length ?? 0).toBe(0);
+  });
+  it("15.2 User A cannot INSERT sam_embeddings with B's user_id", async () => {
+    const { error } = await userA.client.from("sam_embeddings").insert({
+      user_id: userB.id,
+      image_hash: `inject-${Date.now()}`,
+      embedding: new Uint8Array([0x01, 0x02, 0x03]),
+    });
+    // RLS with-check rejects: either an error surfaces or the row is
+    // silently suppressed. Both satisfy "insert did not succeed as B".
+    const rowAsB = await admin
+      .from("sam_embeddings")
+      .select("id")
+      .eq("user_id", userB.id)
+      .like("image_hash", "inject-%");
+    expect(error !== null || (rowAsB.data?.length ?? 0) === 0).toBe(true);
+  });
+  it("15.3 User A cannot DELETE User B's sam_embeddings", async () => {
+    await userA.client
+      .from("sam_embeddings")
+      .delete()
+      .eq("user_id", userB.id);
+    const { data } = await admin
+      .from("sam_embeddings")
+      .select("id")
+      .eq("user_id", userB.id)
+      .eq("image_hash", `seed-${userB.id}`);
+    expect(data?.length ?? 0).toBe(1);
   });
 });
 
