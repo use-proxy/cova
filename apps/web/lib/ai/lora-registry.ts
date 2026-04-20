@@ -71,6 +71,7 @@ export interface LoraConfig {
   url: string;
   scale: number;
   name: string;
+  backupUrl?: string;
 }
 
 export interface LoraResult {
@@ -120,9 +121,23 @@ export async function getLorasForStyle(
         `[LoRA] Trained "${styleAnchor}": ${customScale} + realism: ${realismScale} = ${customScale + realismScale} total`,
       );
 
+      // Supabase backup URLs for custom COVA LoRAs (service-role-only access)
+      const BACKUP_URLS: Record<string, string> = {
+        COVASCANDINAV:  'https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/lora-backups/COVASCANDINAV_2026-04-17.safetensors',
+        COVAJAPANDI:    'https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/lora-backups/COVAJAPANDI_2026-04-17.safetensors',
+        COVABIOPHILIC:  'https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/lora-backups/COVABIOPHILIC_2026-04-17.safetensors',
+        COVAMINIMAL:    'https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/lora-backups/COVAMINIMAL_2026-04-17.safetensors',
+        COVAMIDCENTURY: 'https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/lora-backups/COVAMIDCENTURY_2026-04-17.safetensors',
+        COVACOASTAL:    'https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/lora-backups/COVACOASTAL_2026-04-17.safetensors',
+        COVABOHEMIAN:   'https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/lora-backups/COVABOHEMIAN_2026-04-17.safetensors',
+        COVAINDUSTRIAL: 'https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/lora-backups/COVAINDUSTRIAL_2026-04-17.safetensors',
+        COVAFARMHOUSE:  'https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/lora-backups/COVAFARMHOUSE_2026-04-17.safetensors',
+        COVAARTDECO:    'https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/lora-backups/COVAARTDECO_2026-04-17.safetensors',
+      };
+
       return {
         loras: [
-          { url: data.lora_url, scale: customScale, name: data.style_name },
+          { url: data.lora_url, scale: customScale, name: data.style_name, backupUrl: BACKUP_URLS[data.style_name as string] },
           { url: FALLBACK_LORA_STACK[1].url, scale: realismScale, name: "realism-lora" },
         ],
         isFallback: false,
