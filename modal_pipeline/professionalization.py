@@ -1,3 +1,11 @@
+# DORMANT — FLUX img2img cleanup pass
+# Removed from active orchestrator on 2026-04-19 after Modal dashboard confirmed
+# the app was Inactive (State 2: deployed but not running, errors silently
+# swallowed by orchestrator try/except).
+# Preserved for possible v1.x revival if professionalization adds value.
+# Last reviewed: 2026-04-19
+# See docs/phase-0/professionalization-investigation.md
+#
 # DISABLED 2026-04-13: FLUX img2img cannot do targeted cleanup.
 # Professional quality achieved via:
 # - Design director staging script (Session 4)

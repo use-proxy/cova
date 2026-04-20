@@ -200,46 +200,13 @@ def orchestrate_pipeline(
             print(f"[orchestrator] Stage 1 FAILED — using raw image_url as fallback: {prep_err}")
             preprocessed_url = image_url  # non-critical, continue
 
-    # ── STAGE 2: Professionalization (runs BEFORE depth extraction) ───────────
-    # Moved before structural extraction so depth is computed from cleaned image.
-    # Check: rooms.professionalized_image_url
-    professionalized_url: str = row.get("professionalized_image_url") or ""
-    if professionalized_url:
-        print(f"[orchestrator] Stage 2 SKIP — professionalized_image_url already set")
-    else:
-        print(f"[orchestrator] Stage 2 START — professionalization for room {room_id}")
-        client.table("rooms").update(
-            {"redesign_status": "professionalizing"}
-        ).eq("id", room_id).execute()
-
-        try:
-            prof_fn = _modal.Function.from_name(
-                "cova-professionalization", "professionalize_room"
-            )
-            # Depth and edge not yet available at this stage — pass preprocessed_url as fallback.
-            # professionalize_room uses them for ControlNet; preprocessed image is a safe proxy.
-            professionalized_url = prof_fn.remote(
-                preprocessed_url,
-                preprocessed_url,   # depth fallback
-                preprocessed_url,   # edge fallback
-                room_id,
-                removal_target_count=remove_count,
-            )
-            print(f"[orchestrator] Stage 2 DONE: {professionalized_url[:80]}...")
-
-            # professionalize_room writes professionalized_image_url to DB internally.
-            # We also persist it here for certainty (quality-gate skip path returns
-            # preprocessed_url without updating DB).
-            try:
-                client.table("rooms").update(
-                    {"professionalized_image_url": professionalized_url}
-                ).eq("id", room_id).execute()
-            except Exception as e:
-                print(f"[orchestrator] Warning: could not persist professionalized_image_url: {e}")
-
-        except Exception as prof_err:
-            print(f"[orchestrator] Stage 2 FAILED — using preprocessed as fallback: {prof_err}")
-            professionalized_url = preprocessed_url
+    # ── STAGE 2: Professionalization — REMOVED 2026-04-19 ────────────────────
+    # Professionalization stage removed 2026-04-19.
+    # Modal app cova-professionalization was Inactive (State 2) per investigation.
+    # See docs/phase-0/professionalization-investigation.md
+    # Pass preprocessed_url straight through as professionalized_url so downstream
+    # stages (structural extraction, vision director inputs) keep working unchanged.
+    professionalized_url: str = row.get("professionalized_image_url") or preprocessed_url
 
     # ── STAGE 3: Structural Extraction (depth + edges from professionalized image) ──
     # Skip only if depth + edge already exist AND they were extracted from the
