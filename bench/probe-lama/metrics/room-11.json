@@ -1,0 +1,53 @@
+{
+  "room_id": "room-11",
+  "input_path": "bench/rooms/room-11_green-velvet-gallery.webp",
+  "output_path": "bench/probe-lama/outputs/room-11.webp",
+  "mask_path": "bench/run-2-empty-room/masks/room-11_mask.png",
+  "mask_source": "run-2-reused",
+  "mask_coverage_pct": 50.714220393232736,
+  "patch_coords": [
+    101,
+    745
+  ],
+  "patch_size": 200,
+  "patch_texture_std": 59.19676083979912,
+  "metrics": {
+    "ssim_whole": 0.5212991075633334,
+    "ssim_unmasked": 0.71418518397061,
+    "ssim_patch": 0.7948491610894545,
+    "patch_mask_fraction": 0.0,
+    "ghost_furniture_area_pct": 8.084133516232281,
+    "vp_shift_pct": 14.718633651733398,
+    "edge_density_ratio": 0.7284294234592446,
+    "lama_latency_s": 23.367549180984497,
+    "total_latency_s": 30.88915777206421,
+    "cost_usd": 0.08
+  },
+  "ghost_per_prompt": {
+    "bed": {
+      "biggest_mask_pct": 0.0
+    },
+    "table": {
+      "biggest_mask_pct": 0.0
+    },
+    "chair": {
+      "biggest_mask_pct": 0.0
+    },
+    "sofa": {
+      "biggest_mask_pct": 4.686328303612254
+    },
+    "lamp": {
+      "biggest_mask_pct": 0.28703703703703703
+    },
+    "rug": {
+      "biggest_mask_pct": 1.417695473251029
+    },
+    "cabinet": {
+      "biggest_mask_pct": 0.0
+    },
+    "plant": {
+      "biggest_mask_pct": 1.9801097393689986
+    }
+  },
+  "endpoint": "fal-ai/lama"
+}

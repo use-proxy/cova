@@ -1,0 +1,23 @@
+{
+  "total_cost_usd": 0.24000000000000002,
+  "hard_cap_usd": 2.0,
+  "soft_cap_usd": 1.0,
+  "endpoint": "fal-ai/lama",
+  "per_room": [
+    {
+      "room_id": "room-01",
+      "cost_usd": 0.08,
+      "error": null
+    },
+    {
+      "room_id": "room-09",
+      "cost_usd": 0.08,
+      "error": null
+    },
+    {
+      "room_id": "room-11",
+      "cost_usd": 0.08,
+      "error": null
+    }
+  ]
+}
