@@ -227,3 +227,30 @@ Once the state is known, the code action is trivial:
 
 **Action in this prompt: commit the investigation doc only. Skip
 Commit Checkpoint 2.**
+
+---
+
+## Resolution (2026-04-19)
+
+- **State determined:** State 2 (Inactive). Modal dashboard confirmed
+  `cova-professionalization` was deployed but Inactive: 0 containers, 0 calls,
+  "No activity". Orchestrator try/except was silently swallowing every
+  invocation failure and falling back to `preprocessed_url`.
+- **Action taken:**
+  - Removed the Stage 2 professionalization call from
+    `modal_pipeline/redesign_pipeline.py` (replaced with a pass-through so
+    `professionalized_url = preprocessed_url`, keeping downstream stages
+    unchanged).
+  - Tagged `modal_pipeline/professionalization.py` as `DORMANT`. File
+    preserved for possible v1.x revival.
+- **Commits:**
+  - `bb12bbf` — investigation doc with Modal evidence
+  - `30bbdb7` — orchestrator call removed + DORMANT tag
+  - (this commit) — resolution summary
+- **Cost impact:** $0 saved (already $0 — no successful invocations). Latency
+  reduction per render: ~50–200ms (no failed Modal call attempt + fallback
+  branch).
+- **Open follow-ups:** If professionalization is ever revived, investigate
+  why it failed silently in v8 — no log trail, try/except masked the real
+  failure mode. Any revival should remove the blanket try/except so
+  invocation errors surface loudly.
