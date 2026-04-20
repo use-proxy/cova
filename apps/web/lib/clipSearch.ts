@@ -9,6 +9,8 @@
  * Uses existing Modal CLIP endpoint and Supabase pgvector RPC.
  */
 
+import { logCatalogAccess } from "@/lib/ai/catalog-guard";
+
 export interface ProductMatch {
   id: string;
   name: string;
@@ -70,6 +72,10 @@ export async function searchProductsByEmbedding(
   supabaseKey: string,
   matchCount: number = 3,
 ): Promise<ProductMatch[]> {
+  logCatalogAccess(
+    "clipSearch.searchProductsByEmbedding",
+    "search_products_by_embedding RPC",
+  );
   const fetchCount = category ? matchCount * 5 : matchCount;
   const resp = await fetch(
     `${supabaseUrl}/rest/v1/rpc/search_products_by_embedding`,
@@ -123,6 +129,10 @@ async function searchProductsByFusionEmbedding(
   supabaseKey: string,
   matchCount: number = 3,
 ): Promise<ProductMatch[]> {
+  logCatalogAccess(
+    "clipSearch.searchProductsByFusionEmbedding",
+    "search_products_by_fusion_embedding RPC",
+  );
   const fetchCount = category ? matchCount * 5 : matchCount;
   const resp = await fetch(
     `${supabaseUrl}/rest/v1/rpc/search_products_by_fusion_embedding`,
