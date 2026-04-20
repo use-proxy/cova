@@ -69,3 +69,20 @@ swipe-pairs/manifest.json
 anchor-images/manifest.json
 training-data/*/manifest.json
 SESSION_NOTES.md
+
+# Phase 0 additions
+
+# Large local LoRA backups (867 MB) - safely hosted in Supabase, never commit
+lora-backups/
+
+# Phase 0 experiment outputs
+experiments/
+
+# Runtime artifacts
+tests/e2e/renders/
+tests/e2e/v*_test_urls.txt
+tests/e2e/budget.json
+tests/e2e/progress.log
+
+# Claude Code worktrees
+.claude/worktrees/
