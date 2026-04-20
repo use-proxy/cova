@@ -1,0 +1,119 @@
+{
+  "room_id": "room-08",
+  "input_path": "bench/rooms/room-08_livingroom-papasan-floral.webp",
+  "output_path": "bench/run-1-empty-room/outputs/room-08.webp",
+  "mask_path": "bench/run-1-empty-room/masks/room-08_mask.png",
+  "stratification": {
+    "clutter": "medium",
+    "geometry": "long-perspective",
+    "texture": "floral-rug",
+    "lighting": "soft-overcast"
+  },
+  "mask_source": "sam-3",
+  "mask_coverage_raw_pct": 42.003429355281206,
+  "mask_coverage_dilated_pct": 51.92112482853224,
+  "low_coverage_flag": false,
+  "per_prompt_mask_info": {
+    "bed": {
+      "hits": 0
+    },
+    "chair": {
+      "hits": 1,
+      "best_score": 0.8462756276130676,
+      "coverage_pct": 4.850823045267489
+    },
+    "sofa": {
+      "hits": 1,
+      "best_score": 0.9585088491439819,
+      "coverage_pct": 7.089506172839506
+    },
+    "lamp": {
+      "hits": 2,
+      "best_score": 0.9523360729217529,
+      "coverage_pct": 0.7634887974394147
+    },
+    "rug": {
+      "hits": 1,
+      "best_score": 0.958365797996521,
+      "coverage_pct": 24.720621856424327
+    },
+    "table": {
+      "hits": 3,
+      "best_score": 0.903111457824707,
+      "coverage_pct": 3.371170553269319
+    },
+    "dresser": {
+      "hits": 0
+    },
+    "plant": {
+      "hits": 0
+    },
+    "cabinet": {
+      "hits": 1,
+      "best_score": 0.5094938278198242,
+      "coverage_pct": 0.5187471422039324
+    },
+    "tv": {
+      "hits": 0
+    },
+    "desk": {
+      "hits": 1,
+      "best_score": 0.5835866332054138,
+      "coverage_pct": 0.6890717878372199
+    }
+  },
+  "ghost_per_prompt": {
+    "sofa": {
+      "biggest_mask_pct": 0.0
+    },
+    "table": {
+      "biggest_mask_pct": 0.0
+    },
+    "bed": {
+      "biggest_mask_pct": 0.0
+    },
+    "rug": {
+      "biggest_mask_pct": 0.0
+    },
+    "lamp": {
+      "biggest_mask_pct": 0.42421124828532236
+    },
+    "cabinet": {
+      "biggest_mask_pct": 0.0
+    },
+    "chair": {
+      "biggest_mask_pct": 1.8404206675811614
+    },
+    "plant": {
+      "biggest_mask_pct": 0.0
+    }
+  },
+  "metrics": {
+    "ssim_unmasked": 0.9366904035918368,
+    "ghost_furniture_detected": true,
+    "ghost_furniture_area_pct": 1.8404206675811614,
+    "vp_shift_pct": 7.797894477844238,
+    "edge_density_ratio": 0.9048421052631579,
+    "bria_latency_s": 7.961132049560547,
+    "total_latency_s": 21.566542148590088,
+    "cost_usd": 0.135
+  },
+  "thresholds": {
+    "ssim_unmasked_min": 0.985,
+    "ghost_area_max_pct": 0.5,
+    "vp_shift_max_pct": 2.0,
+    "edge_density_min": 0.7,
+    "edge_density_max": 1.3,
+    "latency_p95_max_s": 90.0,
+    "cost_max_usd_per_room": 0.5
+  },
+  "pass_per_metric": {
+    "ssim_unmasked": false,
+    "ghost_furniture": false,
+    "vp_shift": false,
+    "edge_density": true,
+    "latency": true,
+    "cost": true
+  },
+  "overall_pass": false
+}
