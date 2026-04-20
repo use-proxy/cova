@@ -583,6 +583,44 @@ def build_fill_prompt(style_prompt: str, removed_items: list, kept_items: list =
 
 
 # ---------------------------------------------------------------------------
+# Forbidden-name sanitizer (CLAUDE.md Rule 8 — Python mirror of TS
+# sanitizeForbiddenStyleNames in apps/web/lib/ai/flux.ts). Replaces bare
+# forbidden style labels with descriptive phrases before the prompt reaches
+# fal.ai or Supabase rooms.flux_prompt.
+# ---------------------------------------------------------------------------
+
+import re as _re
+
+_STYLE_NAME_REPLACEMENTS = [
+    # Compound/qualified anchor names first so they take priority over bare-word matches
+    (_re.compile(r"\bwarm japandi\b", _re.IGNORECASE), "calm warm naturalism with clean lines"),
+    (_re.compile(r"\bcoastal bright\b", _re.IGNORECASE), "relaxed sun-drenched natural lightness"),
+    (_re.compile(r"\bretro mid-century\b", _re.IGNORECASE), "warm retro modernism with sculptural furniture"),
+    (_re.compile(r"\bmid-century modern\b", _re.IGNORECASE), "warm retro modernism with teak and brass accents"),
+    (_re.compile(r"\bmid-century\b", _re.IGNORECASE), "retro modernism with sculptural furniture"),
+    # Bare forbidden style words
+    (_re.compile(r"\bminimalist\b", _re.IGNORECASE), "purposeful negative space with refined restraint"),
+    (_re.compile(r"\bjapandi\b", _re.IGNORECASE), "calm warm naturalism with clean lines"),
+    (_re.compile(r"\bbohemian\b", _re.IGNORECASE), "layered textural depth with collected character"),
+    (_re.compile(r"\bcoastal\b", _re.IGNORECASE), "relaxed weathered materials with natural lightness"),
+]
+
+
+def sanitize_forbidden_names(prompt: str) -> str:
+    """Replace bare forbidden style labels in outbound prompts.
+
+    Mirrors apps/web/lib/ai/flux.ts sanitizeForbiddenStyleNames. Called
+    before any outbound fal.ai or Supabase write containing a prompt.
+    """
+    if not prompt:
+        return prompt
+    sanitized = prompt
+    for pattern, replacement in _STYLE_NAME_REPLACEMENTS:
+        sanitized = pattern.sub(replacement, sanitized)
+    return sanitized
+
+
+# ---------------------------------------------------------------------------
 # Design Brief Generator — Claude Sonnet produces real interior design briefs
 # ---------------------------------------------------------------------------
 
@@ -747,11 +785,12 @@ def generate_design_brief(
         # Remove any quotes wrapping the output
         if brief.startswith('"') and brief.endswith('"'):
             brief = brief[1:-1]
+        brief = sanitize_forbidden_names(brief)
         print(f"[design_brief] Claude generated ({len(brief.split())} words): {brief[:120]}...")
         return brief
     except Exception as e:
         print(f"[design_brief] Claude call failed: {e} — using template fallback")
-        return _fallback_design_brief(style_name, rt, archetype)
+        return sanitize_forbidden_names(_fallback_design_brief(style_name, rt, archetype))
 
 
 def _fallback_design_brief(style_name: str, room_type: str, archetype: dict) -> str:
@@ -1473,6 +1512,7 @@ def generate_redesign_phase4b(
             design_brief = response.content[0].text.strip()
             if design_brief.startswith('"') and design_brief.endswith('"'):
                 design_brief = design_brief[1:-1]
+            design_brief = sanitize_forbidden_names(design_brief)
             print(f"[phase4b] Design Director (vision): {design_brief[:150]}...")
         except Exception as dd_err:
             print(f"[phase4b] Design Director failed: {dd_err}")
@@ -1513,6 +1553,9 @@ def generate_redesign_phase4b(
         print(f"[phase4b] LoRA triggers (3x): {triggers_3x}")
     else:
         styled_fill_prompt = full_brief
+
+    # Final defense: ensure no bare forbidden style name reaches fal.ai or DB.
+    styled_fill_prompt = sanitize_forbidden_names(styled_fill_prompt)
 
     print(f"[phase4b] Stage 2 prompt ({len(styled_fill_prompt.split())} words): {styled_fill_prompt[:200]}")
     print("[phase4b] Stage 2: Fill Pro styled inpainting x4 seeds")

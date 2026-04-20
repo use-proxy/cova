@@ -203,8 +203,14 @@ Phases run in parallel to M8 commerce work; their artifacts live in `docs/audit/
 
 Phase 0 deliverables landed: `docs/audit/loras.md`, `docs/audit/director.md`,
 `docs/audit/modal.md`, `docs/audit/supabase.md`, `docs/audit/tests.md`,
-`docs/audit/pgvector.md`. Director audit B-3 active-leak patch committed
-2026-04-20. Deferred follow-ups catalogued in `docs/phase-0/follow-ups-deferred.md`.
+`docs/audit/pgvector.md`, `docs/audit/prompt-surfaces.md`. Director audit B-3
+active-leak patch committed 2026-04-20. Phase 0 extension (full-codebase
+prompt-path audit) committed 2026-04-20 — patched `buildFluxPromptFromContext`,
+`quiz/style-preview`, Python `generation.py` sanitizer, director density-token
+rename. Deferred follow-ups catalogued in `docs/phase-0/follow-ups-deferred.md`.
+Two user-facing UI copy items (step-3b DISPLAY_NAMES, step-7d suggestion chip)
+surfaced as open BLOCKERs in `docs/audit/prompt-surfaces.md`; they are
+pre-existing and do not affect outbound-prompt leaks.
 | M9        | Chatbot + Analytics + UI Pass 3 — chatbot, PostHog, Sentry, remaining screens                 |                    |
 | M10       | Polish + User Testing — error states, 5 real user tests                                       |                    |
 | M11       | Deployment — Vercel production, covainterior.com                                              |                    |

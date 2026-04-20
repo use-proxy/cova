@@ -9,7 +9,7 @@
 
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { submitRender } from "@/lib/ai/flux";
+import { submitRender, sanitizeForbiddenStyleNames } from "@/lib/ai/flux";
 import { STYLE_DNA_BLOCKS } from "@/lib/ai/design-director";
 import { STYLE_ANCHOR_TO_TRIGGER } from "@/lib/ai/lora-registry";
 import type { StyleFingerprint } from "@/types/fingerprint";
@@ -119,6 +119,11 @@ Style: ${primaryDesc}
 Preserve the exact room architecture: same walls, windows, ceiling height, and floor plan.
 Result must look like a professional interior design magazine photograph.`;
   }
+
+  // Forbidden-name defense (CLAUDE.md Rule 8): scrub any bare forbidden
+  // tokens from KONTEXT_STYLE_DESCRIPTORS / STYLE_DNA_BLOCKS fallback before
+  // the prompt reaches fal.ai.
+  prompt = sanitizeForbiddenStyleNames(prompt);
 
   // Step 3: submit render — return prediction id immediately, do not await output
   try {

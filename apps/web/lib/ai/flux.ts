@@ -1573,7 +1573,7 @@ export function buildFluxPromptFromContext(context: RenderContext): string {
   // identity/sensory sections from being trimmed in normal cases.
   const CHAR_CAP = 3200;
 
-  if (fullPrompt.length <= CHAR_CAP) return fullPrompt;
+  if (fullPrompt.length <= CHAR_CAP) return sanitizeForbiddenStyleNames(fullPrompt);
 
   // Over budget — include as many trimmable sections as possible, in order
   const coreStr = core.filter(Boolean).join(" ");
@@ -1586,7 +1586,7 @@ export function buildFluxPromptFromContext(context: RenderContext): string {
   }
   assembled = assembled + " " + closer;
 
-  return assembled;
+  return sanitizeForbiddenStyleNames(assembled);
 }
 // ── Phase 4b: fal.ai direct endpoints ────────────────────────────────────────
 // These are used by Modal pipeline (generation.py) directly via fal-client.

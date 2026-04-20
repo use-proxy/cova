@@ -577,7 +577,7 @@ PERSONALIZATION CONSTRAINTS (hard — override style defaults when present):
       works_from_room=true -> add task lighting and desk area to the brief
       time_preference=morning -> maximize natural light, cool morning palette, color_temp_k >= 5000K
       time_preference=evening -> warm ambient lighting, color_temp_k <= 2700K
-      density=minimalist -> reduce max objects to 4 regardless of room_scale
+      density=restrained -> reduce max objects to 4 regardless of room_scale
       density=collector -> increase to upper bound of room_scale range
   - required_object is THE hero anchor — build the entire design around it
       It overrides the default room-type anchor if present
@@ -879,7 +879,11 @@ Floor change: no (preserve existing floor unless user explicitly asked)`);
         lifestyleLines.push("Warm ambient lighting, color_temp_k <= 2700K, layered light sources");
       }
       if (lifestyle.density === "minimalist") {
-        lifestyleLines.push("MINIMALIST: reduce max objects to 4 total regardless of room_scale");
+        // Internal DB/UI value is "minimalist" (kept for backward compat with
+        // existing rooms.personalization_context rows). The token sent to
+        // Sonnet is rewritten to "RESTRAINED" so it cannot echo a forbidden
+        // style name into design_rationale (CLAUDE.md Rule 8).
+        lifestyleLines.push("RESTRAINED: reduce max objects to 4 total regardless of room_scale");
       } else if (lifestyle.density === "collector") {
         lifestyleLines.push("COLLECTOR: maximize objects to upper bound of room_scale, layer accessories");
       }
