@@ -1,0 +1,188 @@
+{
+  "version": "0.5.0",
+  "created": "2026-04-20",
+  "spec_source": "docs/cova-v9-research.pdf §3.4 + §9.5",
+  "stratification_dimensions": ["clutter", "geometry", "texture", "lighting"],
+  "rooms": [
+    {
+      "id": "room-01",
+      "filename": "room-01_bedroom-cat-popcorn.webp",
+      "source": "reddit r/DesignMyRoom",
+      "stratification": {
+        "clutter": "light",
+        "geometry": "corner",
+        "texture": "popcorn-ceiling",
+        "lighting": "harsh-directional"
+      },
+      "notes": "Bedroom with cat, crucifix, ceiling fan, blue bedding, patterned rug. Popcorn ceiling + stripe light shadows."
+    },
+    {
+      "id": "room-02",
+      "filename": "room-02_livingroom-piano-joydivision.webp",
+      "source": "reddit r/DesignMyRoom",
+      "stratification": {
+        "clutter": "medium",
+        "geometry": "long-perspective",
+        "texture": "plank-floor",
+        "lighting": "soft-overcast"
+      },
+      "notes": "Living room with piano, Joy Division poster, gray sectional, laminate plank floor."
+    },
+    {
+      "id": "room-03",
+      "filename": "room-03_livingroom-leather-herringbone.webp",
+      "source": "reddit r/DesignMyRoom",
+      "stratification": {
+        "clutter": "light",
+        "geometry": "corner",
+        "texture": "herringbone-parquet",
+        "lighting": "harsh-directional"
+      },
+      "notes": "Leather sofa, monstera, jute rug, herringbone parquet floor, harsh blinds light."
+    },
+    {
+      "id": "room-04",
+      "filename": "room-04_attic-music-sloped.webp",
+      "source": "reddit r/DesignMyRoom",
+      "stratification": {
+        "clutter": "heavy",
+        "geometry": "sloped-ceiling",
+        "texture": "wall-molding-break",
+        "lighting": "mixed-backlit"
+      },
+      "notes": "Attic room, sloped ceilings, music gear everywhere, unmade bed, staircase. Hardest architectural-preservation case."
+    },
+    {
+      "id": "room-05",
+      "filename": "room-05_office-gallery-rug.webp",
+      "source": "reddit r/DesignMyRoom",
+      "stratification": {
+        "clutter": "medium",
+        "geometry": "long-perspective",
+        "texture": "shag-rug-pattern",
+        "lighting": "harsh-backlit"
+      },
+      "notes": "Small office/guest room, shelves, gallery wall, patterned shag rug, two monitors."
+    },
+    {
+      "id": "room-06",
+      "filename": "room-06_empty-bay-window.webp",
+      "source": "reddit r/DesignMyRoom",
+      "stratification": {
+        "clutter": "none",
+        "geometry": "bay-window-niche",
+        "texture": "hardwood-grain",
+        "lighting": "bright-natural"
+      },
+      "notes": "Empty room, bay window, hardwood floor. Control case — already-empty input."
+    },
+    {
+      "id": "room-07",
+      "filename": "room-07_bedroom-desk-carpet.webp",
+      "source": "reddit r/DesignMyRoom",
+      "stratification": {
+        "clutter": "medium",
+        "geometry": "long-perspective",
+        "texture": "carpet",
+        "lighting": "harsh-directional"
+      },
+      "notes": "Bedroom with desk setup, carpet, ceiling fan, standard real-user phone upload."
+    },
+    {
+      "id": "room-08",
+      "filename": "room-08_livingroom-papasan-floral.webp",
+      "source": "reddit r/DesignMyRoom",
+      "stratification": {
+        "clutter": "medium",
+        "geometry": "long-perspective",
+        "texture": "floral-rug",
+        "lighting": "soft-overcast"
+      },
+      "notes": "Papasan chair, dark sofa, pink floral rug, art above sofa."
+    },
+    {
+      "id": "room-09",
+      "filename": "room-09_gaming-led-popcorn.webp",
+      "source": "reddit r/malelivingspace",
+      "stratification": {
+        "clutter": "heavy",
+        "geometry": "corner",
+        "texture": "popcorn-ceiling",
+        "lighting": "lamp-lit-mixed"
+      },
+      "notes": "Gaming setup, guitars, messy bed, LED strips, warm ceiling fixture. Night/lamp-lit case."
+    },
+    {
+      "id": "room-10",
+      "filename": "room-10_tv-fireplace-dark.webp",
+      "source": "reddit r/malelivingspace",
+      "stratification": {
+        "clutter": "medium",
+        "geometry": "long-perspective",
+        "texture": "plush-carpet",
+        "lighting": "tv-glow-only"
+      },
+      "notes": "Dark room, TV glow, electric fireplace, recliner. Extreme no-natural-light case."
+    },
+    {
+      "id": "room-11",
+      "filename": "room-11_green-velvet-gallery.webp",
+      "source": "reddit r/femalelivingspace",
+      "stratification": {
+        "clutter": "heavy",
+        "geometry": "long-perspective",
+        "texture": "moroccan-rug",
+        "lighting": "warm-evening-lamp"
+      },
+      "notes": "Green velvet sofa, gallery wall, plants, patterned rug, cat, night through sliding door."
+    },
+    {
+      "id": "room-12",
+      "filename": "room-12_bedroom-piano-led.webp",
+      "source": "reddit r/DesignMyRoom",
+      "stratification": {
+        "clutter": "medium",
+        "geometry": "corner",
+        "texture": "hardwood-plank",
+        "lighting": "daylight-plus-led"
+      },
+      "notes": "Bedroom, piano, gaming chair, blue LEDs, plantation shutters. Mixed daylight + LED case."
+    },
+    {
+      "id": "room-13",
+      "filename": "room-13_exposed-brick-arched.webp",
+      "source": "reddit r/HomeDecorating",
+      "stratification": {
+        "clutter": "light",
+        "geometry": "corner",
+        "texture": "exposed-brick",
+        "lighting": "soft-daylight"
+      },
+      "notes": "Exposed red brick wall with arched window headers, dark hardwood, bike, moving boxes, painter's tape on floor."
+    },
+    {
+      "id": "room-14",
+      "filename": "room-14_stacked-stone-empty.webp",
+      "source": "reddit r/HomeDecorating",
+      "stratification": {
+        "clutter": "none",
+        "geometry": "long-perspective",
+        "texture": "stacked-stone",
+        "lighting": "mixed-window-fixture"
+      },
+      "notes": "Dark grey stacked-stone accent wall, fireplace, plush carpet, nearly empty. Hardest textured-wall case."
+    },
+    {
+      "id": "room-15",
+      "filename": "room-15_wood-paneling-twin-beds.webp",
+      "source": "reddit r/DesignMyRoom",
+      "stratification": {
+        "clutter": "heavy",
+        "geometry": "corner",
+        "texture": "wood-paneling",
+        "lighting": "soft-daylight"
+      },
+      "notes": "Wood-paneled bedroom with two beds, French doors, messy bedding, ceiling fan."
+    }
+  ]
+}
