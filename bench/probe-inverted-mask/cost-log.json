@@ -1,0 +1,33 @@
+{
+  "total_cost_usd": 0.33,
+  "hard_cap_usd": 1.0,
+  "soft_cap_usd": 0.5,
+  "projected_cost_usd": 0.33,
+  "rooms_processed": 3,
+  "per_room": [
+    {
+      "room_id": "room-02",
+      "cost_usd": 0.11,
+      "erased_area_pct": 37.83,
+      "kept_patch_ssim": 0.932711,
+      "verdict": "broken (kept-patch SSIM 0.9327<0.95)",
+      "error": null
+    },
+    {
+      "room_id": "room-11",
+      "cost_usd": 0.11,
+      "erased_area_pct": 69.22,
+      "kept_patch_ssim": null,
+      "verdict": "broken (no kept patch found)",
+      "error": null
+    },
+    {
+      "room_id": "room-14",
+      "cost_usd": 0.11,
+      "erased_area_pct": 4.55,
+      "kept_patch_ssim": 0.997007,
+      "verdict": "coherent",
+      "error": null
+    }
+  ]
+}
