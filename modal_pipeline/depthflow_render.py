@@ -1,3 +1,6 @@
+# DORMANT
+# Not actively used in v9 pipeline. Preserved for possible v1.x feature resurrection.
+# Last reviewed: 2026-04-19
 """
 DepthFlow parallax video renderer on Modal.
 
