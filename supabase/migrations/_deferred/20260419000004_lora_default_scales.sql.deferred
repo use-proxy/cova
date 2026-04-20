@@ -1,3 +1,25 @@
+-- ============================================================================
+-- DEFERRED 2026-04-19 — DO NOT APPLY AS-IS
+-- ============================================================================
+-- This migration targets `style_loras.style_name = 'COVA<X>'`, but production
+-- keys LoRAs by `trigger_word` (cvwmn, cvscn, ...) and stores display names
+-- like "Warm & Grounded" in `style_name`. The COVA* values referenced here
+-- never existed in production and never will — apps/web/lib/ai/lora-registry.ts
+-- queries by trigger_word, and training scripts insert rows with display names.
+--
+-- Additionally, only 1 of 10 referenced LoRAs currently exists in prod DB
+-- (cvwmn / "Warm & Grounded" / 0.75). Applying this as-is would update 0 rows.
+--
+-- Deferred by agreement 2026-04-19 during Phase 0 migration deploy.
+-- Tracking: docs/phase-0/follow-ups-deferred.md
+--
+-- Resolution paths (pick one before re-enabling):
+--   (a) Rewrite to key on `trigger_word`: WHERE trigger_word = 'cvwmn', etc.
+--       Needs mapping decision (COVAMINIMAL + COVASCANDINAV both map to cvscn).
+--   (b) Move scale management entirely to lora-registry.ts (remove DB column
+--       dependency), making this migration unnecessary.
+-- ============================================================================
+
 -- Phase 0: update LoRA default scales per quality eval + spot test findings
 --
 -- Source: docs/audit/lora-quality-eval.md, docs/audit/lora-spot-test.md
