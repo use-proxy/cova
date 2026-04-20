@@ -91,6 +91,9 @@ def harmonize_lighting(
     """
     if not enabled:
         return composite
+    if furniture_mask is None:
+        print("[postprocess] Step 2 SKIP — no furniture_mask (v7 no-composite mode)")
+        return composite
     try:
         import fal_client
         from PIL import Image
