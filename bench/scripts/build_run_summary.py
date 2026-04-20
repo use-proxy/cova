@@ -1,21 +1,17 @@
-"""Aggregate per-room metrics into run-summary.md for Run 2.
+"""Aggregate per-room metrics into run-summary.md for Run 3.
 
 Includes:
-  1. Standard per-room table with 6 metric columns evaluated against
-     calibrated thresholds (SSIM ≥0.97, ghost <1%, VP <3%, edge 0.7-1.3,
-     lat ≤60s, cost ≤$0.50).
+  1. Standard per-room table with Inpainter column and dual ghost reporting.
+     LaMa rows evaluated on ghost_inside_mask_pct; Bria rows on ghost_furniture_area_pct.
   2. Per-metric pass rate (X/15 per metric).
   3. Overall pass rate.
-  4. Rescan stats: how many rooms triggered rescan, avg coverage before vs
-     after, did rescan rooms outperform non-rescan rooms?
-  5. H2 hard-exit table for room-01, room-09, room-11 vs Run 1.5 SSIM:
-     improvement ≥0.02 → H2 may be partially mask-driven;
-     none improve ≥0.02 → H2 confirmed Bria-architectural-drift.
-  6. room-10 over-masking check: Run 1.5 vs Run 2 dilated coverage %.
+  4. Per-inpainter pass-rate table (LaMa vs Bria) with per-metric breakdown.
+  5. Router policy assessment (LaMa-only / Bria-only / hybrid / broken).
+  6. H2 hard-exit retest: room-01, room-09, room-11 vs Run 1.5 SSIM.
   7. Gate decision:
-     ≥13/15 → PROCEED TO RUN 3
-     10–12/15 → MIXED
-     <10/15 → FAIL
+     ≥13/15 → EMPTY-ROOM STAGE LOCKED — proceed to Phase 5 (redesign bench)
+     10–12/15 → inspect failures, PROCEED WITH DOCUMENTED CAVEAT or INVESTIGATE
+     <10/15 → HALT
 """
 from __future__ import annotations
 
@@ -26,18 +22,18 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent.parent
 BENCH = ROOT / "bench"
 
-# Run 2 directories (write target)
-OUT = BENCH / "run-2-empty-room"
+# Run 3 directories (write target)
+OUT = BENCH / "run-3-empty-room"
 METRICS_DIR = OUT / "metrics"
 SUMMARY_PATH = OUT / "run-summary.md"
 
-# Run 1.5 directories (read-only — do not modify)
+# Run 1.5 directories (read-only — H2 retest baseline)
 RUN15_METRICS_DIR = BENCH / "run-1-5-empty-room" / "metrics"
 
 manifest = json.loads((BENCH / "manifest.json").read_text())
 rooms = manifest["rooms"]
 
-# Run 2 calibrated thresholds (same as bench script)
+# Run 3 thresholds (same as Run 2 calibrated)
 THRESHOLDS = {
     "ssim_unmasked_min": 0.97,
     "ghost_area_max_pct": 1.0,
@@ -48,10 +44,10 @@ THRESHOLDS = {
     "cost_max_usd_per_room": 0.50,
 }
 
-# H2 hard-exit rooms confirmed in mask-audit.md
+# H2 hard-exit rooms (Run 1.5 → Run 3 retest)
 H2_ROOMS = ["room-01", "room-09", "room-11"]
 
-# ── Load Run 2 results ────────────────────────────────────────────────────────
+# ── Load Run 3 results ────────────────────────────────────────────────────────
 results: list[dict] = []
 for r in rooms:
     p = METRICS_DIR / f"{r['id']}.json"
@@ -60,7 +56,7 @@ for r in rooms:
     else:
         results.append({"room_id": r["id"], "error": "missing metrics file"})
 
-# ── Load Run 1.5 results (for H2 delta + room-10 check) ─────────────────────
+# ── Load Run 1.5 results (for H2 retest) ─────────────────────────────────────
 run15_results: dict[str, dict] = {}
 for r in rooms:
     p = RUN15_METRICS_DIR / f"{r['id']}.json"
@@ -75,14 +71,27 @@ strat_by_id = {r["id"]: r["stratification"] for r in rooms}
 
 
 # ── Pass/fail helpers ─────────────────────────────────────────────────────────
+def ghost_value_for_room(r: dict) -> float | None:
+    """Return the ghost value that should be used for pass/fail for this room.
+
+    LaMa rows: ghost_inside_mask_pct (avoids false positives from preserved unmasked furniture)
+    Bria rows: ghost_furniture_area_pct (unchanged from Run 2)
+    """
+    m = r.get("metrics", {})
+    inpainter = r.get("inpainter", "bria")
+    if inpainter == "lama":
+        return m.get("ghost_inside_mask_pct")
+    return m.get("ghost_furniture_area_pct")
+
+
 def metric_passes(r: dict, metric_key: str) -> bool:
-    """Evaluate a single metric against Run 2 calibrated thresholds."""
+    """Evaluate a single metric against Run 3 calibrated thresholds."""
     m = r.get("metrics", {})
     if metric_key == "ssim_unmasked":
         v = m.get("ssim_unmasked")
         return v is not None and v >= THRESHOLDS["ssim_unmasked_min"]
     if metric_key == "ghost_furniture":
-        v = m.get("ghost_furniture_area_pct")
+        v = ghost_value_for_room(r)
         return v is not None and v < THRESHOLDS["ghost_area_max_pct"]
     if metric_key == "vp_shift":
         v = m.get("vp_shift_pct")
@@ -91,7 +100,7 @@ def metric_passes(r: dict, metric_key: str) -> bool:
         v = m.get("edge_density_ratio")
         return v is not None and THRESHOLDS["edge_density_min"] <= v <= THRESHOLDS["edge_density_max"]
     if metric_key == "latency":
-        v = m.get("bria_latency_s")
+        v = m.get("inpainter_latency_s")
         return v is not None and v <= THRESHOLDS["latency_p95_max_s"]
     if metric_key == "cost":
         v = m.get("cost_usd")
@@ -99,8 +108,8 @@ def metric_passes(r: dict, metric_key: str) -> bool:
     return False
 
 
-def passes_run2(r: dict) -> bool:
-    """Overall pass under Run 2 calibrated thresholds."""
+def passes_run3(r: dict) -> bool:
+    """Overall pass under Run 3 calibrated thresholds."""
     if r.get("error"):
         return False
     keys = ["ssim_unmasked", "ghost_furniture", "vp_shift", "edge_density", "latency", "cost"]
@@ -110,7 +119,7 @@ def passes_run2(r: dict) -> bool:
 METRIC_KEYS = ["ssim_unmasked", "ghost_furniture", "vp_shift", "edge_density", "latency", "cost"]
 METRIC_LABELS = {
     "ssim_unmasked": f"SSIM ≥{THRESHOLDS['ssim_unmasked_min']}",
-    "ghost_furniture": f"Ghost <{THRESHOLDS['ghost_area_max_pct']}%",
+    "ghost_furniture": f"Ghost <{THRESHOLDS['ghost_area_max_pct']}% (LaMa=inside-mask, Bria=global)",
     "vp_shift": f"VP <{THRESHOLDS['vp_shift_max_pct']}%",
     "edge_density": f"EDR {THRESHOLDS['edge_density_min']}–{THRESHOLDS['edge_density_max']}",
     "latency": f"Lat ≤{THRESHOLDS['latency_p95_max_s']}s",
@@ -128,7 +137,7 @@ for r in results:
 
 n_rooms = len(results)
 n_with_data = sum(1 for r in results if not r.get("error"))
-passed_overall = sum(1 for r in results if passes_run2(r))
+passed_overall = sum(1 for r in results if passes_run3(r))
 
 # ── Per-room table ────────────────────────────────────────────────────────────
 def mark(v: bool) -> str:
@@ -144,25 +153,33 @@ def fmt_row(r: dict, strat: dict) -> str:
         f"{strat.get('lighting','?')[:5]}"
     )
     if r.get("error"):
-        return f"| {r['room_id']} | {stag} | ERROR: {r['error'][:40]} |"
+        return f"| {r['room_id']} | — | {stag} | ERROR: {r['error'][:40]} |"
 
+    inpainter = r.get("inpainter", "?")
     ssim = m.get("ssim_unmasked")
-    ghost = m.get("ghost_furniture_area_pct")
+    ghost_global = m.get("ghost_furniture_area_pct")
+    ghost_in_mask = m.get("ghost_inside_mask_pct")
+    ghost_eval = ghost_value_for_room(r)
     vp = m.get("vp_shift_pct")
     edr = m.get("edge_density_ratio")
-    lat = m.get("bria_latency_s")
+    lat = m.get("inpainter_latency_s")
     cost = m.get("cost_usd", 0.0)
-    rescan = "R" if r.get("rescan_triggered") else ""
 
     ssim_str = f"{ssim:.3f}" if ssim is not None else "—"
-    ghost_str = f"{ghost:.1f}%" if ghost is not None else "—"
+    # Ghost column: show global/inside-mask pair so reader can see both
+    # Mark pass/fail based on the per-inpainter metric
+    ghost_str = (
+        f"g:{ghost_global:.1f}%/m:{ghost_in_mask:.1f}%"
+        if ghost_global is not None and ghost_in_mask is not None
+        else "—"
+    )
     vp_str = f"{vp:.1f}%" if vp is not None else "—"
     edr_str = f"{edr:.2f}" if edr is not None else "—"
     lat_str = f"{lat:.1f}s" if lat is not None else "—"
 
-    overall = passes_run2(r)
+    overall = passes_run3(r)
     return (
-        f"| {r['room_id']}{rescan} | {stag} | "
+        f"| {r['room_id']} | {inpainter} | {stag} | "
         f"{ssim_str}{mark(metric_passes(r,'ssim_unmasked'))} | "
         f"{ghost_str}{mark(metric_passes(r,'ghost_furniture'))} | "
         f"{vp_str}{mark(metric_passes(r,'vp_shift'))} | "
@@ -175,145 +192,127 @@ def fmt_row(r: dict, strat: dict) -> str:
 
 rows = [fmt_row(r, strat_by_id.get(r["room_id"], {})) for r in results]
 
-# ── Rescan stats ──────────────────────────────────────────────────────────────
-rescan_rooms_data = [r for r in results if r.get("rescan_triggered")]
-non_rescan_rooms_data = [r for r in results if not r.get("rescan_triggered") and not r.get("error")]
+# ── Per-inpainter pass-rate table ─────────────────────────────────────────────
+lama_results = [r for r in results if r.get("inpainter") == "lama" and not r.get("error")]
+bria_results = [r for r in results if r.get("inpainter") == "bria" and not r.get("error")]
 
-n_rescan = len(rescan_rooms_data)
-rescan_pass = sum(1 for r in rescan_rooms_data if passes_run2(r))
-non_rescan_pass = sum(1 for r in non_rescan_rooms_data if passes_run2(r))
+lama_pass = sum(1 for r in lama_results if passes_run3(r))
+bria_pass = sum(1 for r in bria_results if passes_run3(r))
 
-avg_cov_before = (
-    sum(r.get("coverage_before_rescan") or 0 for r in rescan_rooms_data) / n_rescan
-    if n_rescan else 0.0
-)
-avg_cov_after = (
-    sum(r.get("coverage_after_rescan") or 0 for r in rescan_rooms_data) / n_rescan
-    if n_rescan else 0.0
-)
+lama_metric_pass: dict[str, int] = {k: sum(1 for r in lama_results if metric_passes(r, k)) for k in METRIC_KEYS}
+bria_metric_pass: dict[str, int] = {k: sum(1 for r in bria_results if metric_passes(r, k)) for k in METRIC_KEYS}
 
-rescan_ssim_vals = [
-    r.get("metrics", {}).get("ssim_unmasked") or 0
-    for r in rescan_rooms_data
-    if not r.get("error")
-]
-non_rescan_ssim_vals = [
-    r.get("metrics", {}).get("ssim_unmasked") or 0
-    for r in non_rescan_rooms_data
-    if not r.get("error")
-]
+# ── Router policy assessment ─────────────────────────────────────────────────
+n_lama = len(lama_results)
+n_bria = len(bria_results)
 
-avg_rescan_ssim = sum(rescan_ssim_vals) / len(rescan_ssim_vals) if rescan_ssim_vals else 0.0
-avg_non_rescan_ssim = sum(non_rescan_ssim_vals) / len(non_rescan_ssim_vals) if non_rescan_ssim_vals else 0.0
+lama_rate = lama_pass / n_lama if n_lama > 0 else 0.0
+bria_rate = bria_pass / n_bria if n_bria > 0 else 0.0
 
-# Did rescan rooms outperform non-rescan?
-if n_rescan > 0 and non_rescan_rooms_data:
-    rescan_outperforms = avg_rescan_ssim > avg_non_rescan_ssim
-    rescan_comparison = (
-        f"Rescan avg SSIM {avg_rescan_ssim:.4f} vs non-rescan avg SSIM {avg_non_rescan_ssim:.4f} — "
-        + ("rescan rooms outperformed" if rescan_outperforms else "rescan rooms did NOT outperform non-rescan")
-    )
+ROUTER_HIGH_PASS = 0.80  # ≥80% = "high rate"
+ROUTER_LOW_PASS = 0.50   # <50% = "failing"
+
+if n_lama > 0 and n_bria > 0:
+    if lama_rate >= ROUTER_HIGH_PASS and bria_rate < ROUTER_LOW_PASS:
+        router_assessment = (
+            "Hybrid router is doing useful work; 35% threshold is sensible starting point. "
+            "LaMa handles low-coverage rooms well; Bria is failing high-coverage rooms (expected — "
+            "H2 VAE drift confirmed). Consider LaMa-only if most rooms are low-coverage, "
+            "or investigate higher-coverage fallback."
+        )
+    elif lama_rate >= ROUTER_HIGH_PASS and bria_rate >= ROUTER_HIGH_PASS:
+        router_assessment = (
+            "Both inpainters passing at high rate — router may not be necessary. "
+            "LaMa-only or Bria-only might suffice. If LaMa passes on all rooms it handles, "
+            "consider using LaMa with a coverage cap."
+        )
+    elif lama_rate < ROUTER_LOW_PASS and bria_rate < ROUTER_LOW_PASS:
+        router_assessment = (
+            "Both inpainters failing — router doesn't address the underlying problem. "
+            "Failures are not coverage-related. Investigate whether failures cluster on "
+            "specific geometry types, lighting conditions, or prompt-list gaps."
+        )
+    else:
+        router_assessment = (
+            f"Mixed results: LaMa {lama_pass}/{n_lama} ({lama_rate:.0%}), "
+            f"Bria {bria_pass}/{n_bria} ({bria_rate:.0%}). "
+            "Partial benefit from routing. Review per-room failure modes."
+        )
+elif n_lama > 0:
+    router_assessment = f"No Bria rooms were routed — all {n_lama} rooms had coverage ≤35%. LaMa pass rate: {lama_pass}/{n_lama}."
+elif n_bria > 0:
+    router_assessment = f"No LaMa rooms were routed — all {n_bria} rooms had coverage >35%. Bria pass rate: {bria_pass}/{n_bria}."
 else:
-    rescan_comparison = "Insufficient data for comparison"
+    router_assessment = "No rooms completed successfully — cannot assess router policy."
 
-rescan_table_rows = []
-for r in rescan_rooms_data:
-    rid = r["room_id"]
-    strat = strat_by_id.get(rid, {})
-    before = r.get("coverage_before_rescan")
-    after = r.get("coverage_after_rescan")
-    ssim_v = r.get("metrics", {}).get("ssim_unmasked")
-    rescan_table_rows.append(
-        f"| {rid} | {strat.get('clutter','?')} | "
-        f"{before:.1f}% | {after:.1f}% | "
-        f"{(after - before):.1f}pp | "
-        f"{f'{ssim_v:.4f}' if ssim_v is not None else '—'} | "
-        f"{'PASS' if passes_run2(r) else 'FAIL'} |"
-    )
-
-# ── H2 hard-exit table ────────────────────────────────────────────────────────
+# ── H2 hard-exit retest ───────────────────────────────────────────────────────
+# room-01: expect LaMa-routed (24.7% coverage) → SSIM improvement vs Run 1.5
+# room-09: expect LaMa-routed (24.9% coverage) → SSIM improvement vs Run 1.5
+# room-11: expect Bria-routed (50.7% coverage) → similar to Run 1.5 (no improvement expected)
 h2_rows: list[str] = []
-h2_all_improved_02 = True
-h2_any_improved_02 = False
+h2_deltas: dict[str, float | None] = {}
 
 for rid in H2_ROOMS:
-    r2 = next((r for r in results if r.get("room_id") == rid), None)
+    r3 = next((r for r in results if r.get("room_id") == rid), None)
     r15 = run15_results.get(rid)
     ssim_15 = r15.get("metrics", {}).get("ssim_unmasked") if r15 else None
-    ssim_2 = r2.get("metrics", {}).get("ssim_unmasked") if r2 and not r2.get("error") else None
-    if ssim_15 is not None and ssim_2 is not None:
-        delta = ssim_2 - ssim_15
-        improved = delta >= 0.02
-        if improved:
-            h2_any_improved_02 = True
-        else:
-            h2_all_improved_02 = False
+    ssim_3 = r3.get("metrics", {}).get("ssim_unmasked") if r3 and not r3.get("error") else None
+    inp = r3.get("inpainter", "?") if r3 and not r3.get("error") else "—"
+    if ssim_15 is not None and ssim_3 is not None:
+        delta = ssim_3 - ssim_15
+        h2_deltas[rid] = delta
         h2_rows.append(
-            f"| {rid} | {ssim_15:.4f} | {ssim_2:.4f} | {delta:+.4f} | {'YES' if improved else 'no'} |"
+            f"| {rid} | {inp} | {ssim_15:.4f} | {ssim_3:.4f} | {delta:+.4f} |"
         )
     else:
-        h2_all_improved_02 = False
-        h2_rows.append(f"| {rid} | {'—' if ssim_15 is None else f'{ssim_15:.4f}'} | {'—' if ssim_2 is None else f'{ssim_2:.4f}'} | — | no |")
-
-if h2_all_improved_02:
-    h2_verdict = (
-        "H2 may be partially mask-driven, re-evaluate. ALL three H2 rooms improved by ≥0.02 SSIM. "
-        "Bria-architectural-drift hypothesis weakened — improved masking contributed meaningfully."
-    )
-elif h2_any_improved_02:
-    h2_verdict = (
-        "MIXED H2 signal. Some H2 rooms improved ≥0.02, others did not. "
-        "Both mask quality and Bria drift likely contributing. Further investigation needed."
-    )
-else:
-    h2_verdict = (
-        "H2 confirmed as Bria-architectural-drift; mask iteration does not address it. "
-        "NONE of room-01/09/11 improved by ≥0.02 SSIM with 24px dilation + rescan. "
-        "Root cause is Bria VAE latent-space drift on complex room content, not mask coverage."
-    )
-
-# ── room-10 over-masking check ────────────────────────────────────────────────
-r10_r2 = next((r for r in results if r.get("room_id") == "room-10"), None)
-r10_r15 = run15_results.get("room-10")
-
-r10_cov_r15 = r10_r15.get("mask_coverage_dilated_pct") if r10_r15 else None
-r10_cov_r2 = r10_r2.get("mask_coverage_dilated_pct") if r10_r2 and not r10_r2.get("error") else None
-
-if r10_cov_r15 is not None and r10_cov_r2 is not None:
-    if r10_cov_r2 >= r10_cov_r15:
-        r10_verdict = (
-            f"Over-masking persists (Run 1.5: {r10_cov_r15:.1f}% → Run 2: {r10_cov_r2:.1f}%). "
-            "24px dilation increased coverage further. H1 (mask coverage) flag on room-10 is a real concern."
+        h2_deltas[rid] = None
+        h2_rows.append(
+            f"| {rid} | {inp} | "
+            f"{'—' if ssim_15 is None else f'{ssim_15:.4f}'} | "
+            f"{'—' if ssim_3 is None else f'{ssim_3:.4f}'} | — |"
         )
-    elif 15.0 <= r10_cov_r2 <= 30.0:
-        r10_verdict = (
-            f"Over-masking transient — H1 false alarm in audit "
-            f"(Run 1.5: {r10_cov_r15:.1f}% → Run 2: {r10_cov_r2:.1f}%). "
-            "Coverage in 15–30% range is reasonable for this room."
-        )
-    else:
-        r10_verdict = (
-            f"Run 1.5: {r10_cov_r15:.1f}% → Run 2: {r10_cov_r2:.1f}%. "
-            "Coverage outside expected range; inspect mask visually."
-        )
-else:
-    r10_verdict = "Insufficient data to compare room-10 coverage across runs."
 
 # ── Gate decision ─────────────────────────────────────────────────────────────
+bria_fail_rooms = [r for r in bria_results if not passes_run3(r)]
+lama_fail_rooms = [r for r in lama_results if not passes_run3(r)]
+
 if passed_overall >= 13:
-    gate = "PROCEED TO RUN 3 — full-pipeline test"
-    gate_detail = f"≥13/15 pass rate achieved ({passed_overall}/15). Mask iteration sufficient for full-pipeline integration test."
-elif passed_overall >= 10:
-    gate = "MIXED — combine with Track 2 prompt-free probe results before proceeding"
+    gate = "EMPTY-ROOM STAGE LOCKED — proceed to Phase 5 (redesign bench)"
     gate_detail = (
-        f"10–12/15 pass rate ({passed_overall}/15). Neither clear success nor failure. "
-        "Track 2 (prompt-free probe) results needed to determine if mask iteration is additive."
+        f"≥13/15 pass rate achieved ({passed_overall}/15). "
+        "Hybrid router is production-ready for empty-room stage."
     )
+elif passed_overall >= 10:
+    # Distinguish between high-coverage Bria failures vs LaMa failures
+    if len(bria_fail_rooms) > 0 and len(lama_fail_rooms) == 0:
+        gate = "PROCEED WITH DOCUMENTED CAVEAT — high-coverage rooms have known H2 limitation"
+        gate_detail = (
+            f"10–12/15 pass rate ({passed_overall}/15). "
+            f"Failures are all Bria-routed (high-coverage) rooms with known H2 drift. "
+            f"LaMa-routed rooms pass cleanly. "
+            f"Caveat: rooms with >35% dilated coverage will exhibit Bria VAE drift in empty-room stage."
+        )
+    elif len(lama_fail_rooms) > 0:
+        gate = "INVESTIGATE — LaMa is misbehaving on rooms it should handle"
+        gate_detail = (
+            f"10–12/15 pass rate ({passed_overall}/15). "
+            f"LaMa-routed rooms failing: {[r['room_id'] for r in lama_fail_rooms]}. "
+            "These should be low-coverage rooms where LaMa excels. Inspect outputs for "
+            "masking errors or unusual room content."
+        )
+    else:
+        gate = "MIXED — inspect failures before proceeding"
+        gate_detail = (
+            f"10–12/15 pass rate ({passed_overall}/15). "
+            "Mixed failure pattern. Review per-room failure modes."
+        )
 else:
-    gate = "FAIL — Bria mask-mode not viable primary; escalate to Canny+FLUX secondary"
+    gate = "HALT — hybrid routing isn't solving the problem; surface for review before further spend"
     gate_detail = (
-        f"<10/15 pass rate ({passed_overall}/15). Mask iteration alone insufficient. "
-        "Recommend escalating to Canny+FLUX secondary path as described in §3.5."
+        f"<10/15 pass rate ({passed_overall}/15). "
+        "Hybrid routing is not achieving acceptable quality. "
+        "Options: expand prompt list, investigate non-coverage failure modes, "
+        "or escalate to Canny+FLUX secondary path from §3.5."
     )
 
 # ── Stratification breakdown ──────────────────────────────────────────────────
@@ -323,7 +322,7 @@ def group_pass(dim: str) -> dict[str, tuple[int, int]]:
         if "metrics" not in r:
             continue
         val = strat_by_id.get(r["room_id"], {}).get(dim, "unknown")
-        out[val].append(1 if passes_run2(r) else 0)
+        out[val].append(1 if passes_run3(r) else 0)
     return {k: (sum(v), len(v)) for k, v in out.items()}
 
 
@@ -331,45 +330,49 @@ def strat_md(dim: str) -> str:
     g = group_pass(dim)
     return " · ".join(f"{k}: {p}/{t}" for k, (p, t) in sorted(g.items()))
 
+
 # ── Failure mode summary ──────────────────────────────────────────────────────
 failure_lines = []
 for r in results:
-    if passes_run2(r) or r.get("error"):
+    if passes_run3(r) or r.get("error"):
         if r.get("error"):
             failure_lines.append(f"- **{r['room_id']}** — ERROR: {r['error']}")
         continue
     m = r.get("metrics", {})
     strat = strat_by_id.get(r["room_id"], {})
+    inpainter = r.get("inpainter", "?")
     detail = []
     ssim_val = m.get("ssim_unmasked", 0.0)
     if ssim_val < THRESHOLDS["ssim_unmasked_min"]:
         detail.append(f"SSIM {ssim_val:.3f} < {THRESHOLDS['ssim_unmasked_min']}")
-    ghost_val = m.get("ghost_furniture_area_pct", 0.0)
-    if ghost_val >= THRESHOLDS["ghost_area_max_pct"]:
-        detail.append(f"ghost {ghost_val:.1f}% ≥ {THRESHOLDS['ghost_area_max_pct']}%")
+    ghost_eval = ghost_value_for_room(r)
+    ghost_metric = r.get("ghost_metric_used", "ghost_furniture_area_pct")
+    if ghost_eval is not None and ghost_eval >= THRESHOLDS["ghost_area_max_pct"]:
+        detail.append(f"ghost ({ghost_metric}) {ghost_eval:.1f}% ≥ {THRESHOLDS['ghost_area_max_pct']}%")
     vp_val = m.get("vp_shift_pct", 0.0)
     if vp_val >= THRESHOLDS["vp_shift_max_pct"]:
         detail.append(f"VP {vp_val:.1f}% ≥ {THRESHOLDS['vp_shift_max_pct']}%")
     edr_val = m.get("edge_density_ratio", 1.0)
     if not (THRESHOLDS["edge_density_min"] <= edr_val <= THRESHOLDS["edge_density_max"]):
         detail.append(f"EDR {edr_val:.2f} outside [{THRESHOLDS['edge_density_min']},{THRESHOLDS['edge_density_max']}]")
-    lat_val = m.get("bria_latency_s", 0.0)
+    lat_val = m.get("inpainter_latency_s", 0.0)
     if lat_val > THRESHOLDS["latency_p95_max_s"]:
         detail.append(f"lat {lat_val:.1f}s > {THRESHOLDS['latency_p95_max_s']}s")
     strat_str = "/".join(str(v) for v in strat.values())
-    rescan_tag = " [RESCAN]" if r.get("rescan_triggered") else ""
     failure_lines.append(
-        f"- **{r['room_id']}**{rescan_tag} ({strat_str}): {'; '.join(detail)}"
+        f"- **{r['room_id']}** [{inpainter}] ({strat_str}): {'; '.join(detail)}"
     )
 
 # ── Write summary ─────────────────────────────────────────────────────────────
 lines = [
-    "# Phase 0.5 Run 2 — Empty-Room Bench Summary",
+    "# Phase 0.5 Run 3 — Empty-Room Bench Summary (Hybrid LaMa/Bria Router)",
     "",
     "**Date:** 2026-04-20  ",
     "**Input:** 15 rooms from `bench/manifest.json`  ",
-    "**Path tested:** Bria Eraser (`fal-ai/bria/eraser`) primary, SAM-3 furniture union (20 widened prompts) + **24px dilation** (was 16px)  ",
-    "**New in Run 2:** Low-coverage rescan gate — medium/heavy clutter rooms with <20% primary coverage trigger second SAM-3 pass at score_threshold=0.20  ",
+    "**Path tested:** Hybrid router — dilated coverage ≤35% → LaMa (`fal-ai/lama`), >35% → Bria (`fal-ai/bria/eraser`)  ",
+    "**SAM-3:** 20-prompt furniture union + 24px dilation (unchanged from Run 2)  ",
+    "**Ghost metric:** LaMa rows use `ghost_inside_mask_pct`; Bria rows use `ghost_furniture_area_pct` (unchanged)  ",
+    "**Rescan gate:** REMOVED — Run 2 showed 0pp coverage gain across all triggered rooms  ",
     f"**Total cost (15 rooms):** ${total_cost:.2f}  ",
     f"**Total wall-clock (sum of per-room):** {total_latency:.0f}s (run concurrent ×3)  ",
     f"**Overall pass rate:** {passed_overall}/{n_rooms}  ",
@@ -386,13 +389,53 @@ lines = [
     "",
     "## Per-room results",
     "",
-    "R = rescan triggered (second SAM-3 pass at score_threshold=0.20)",
+    (
+        "Ghost column shows `g:<global>%/m:<inside-mask>%`. "
+        "Pass/fail mark uses `ghost_inside_mask_pct` for LaMa rows and `ghost_furniture_area_pct` for Bria rows. "
+        "See context: LaMa preserves unmasked pixels exactly — global ghost detects real unmasked furniture "
+        "(false positive). Inside-mask ghost isolates true inpainting artifacts."
+    ),
     "",
-    "| Room | Strat (C/G/T/L) | SSIM | Ghost | VP | EDR | Lat | Cost | **Pass** |",
-    "|---|---|---|---|---|---|---|---|---|",
+    "| Room | Inpainter | Strat (C/G/T/L) | SSIM | Ghost (g/m) | VP | EDR | Lat | Cost | **Pass** |",
+    "|---|---|---|---|---|---|---|---|---|---|---|",
     *rows,
     "",
     f"**Overall pass rate:** {passed_overall}/{n_rooms}  ",
+    "",
+    "## Per-inpainter pass-rate table",
+    "",
+    "| Inpainter | Rooms routed | Passed | Pass rate |",
+    "|---|---|---|---|",
+    f"| LaMa | {n_lama} | {lama_pass} | {lama_rate:.0%} |",
+    f"| Bria | {n_bria} | {bria_pass} | {bria_rate:.0%} |",
+    f"| **Total** | **{n_lama + n_bria}** | **{lama_pass + bria_pass}** | **{(lama_pass + bria_pass) / max(1, n_lama + n_bria):.0%}** |",
+    "",
+    "### Per-metric breakdown within each inpainter group",
+    "",
+    "| Metric | LaMa pass | Bria pass |",
+    "|---|---|---|",
+    *[
+        f"| {METRIC_LABELS[k]} | {lama_metric_pass[k]}/{n_lama} | {bria_metric_pass[k]}/{n_bria} |"
+        for k in METRIC_KEYS
+    ],
+    "",
+    "## Router policy assessment",
+    "",
+    f"**Router threshold:** {35.0}% dilated coverage (provisional — Phase 1 hardening will calibrate)  ",
+    f"**LaMa rooms:** {n_lama} | **Bria rooms:** {n_bria}  ",
+    "",
+    router_assessment,
+    "",
+    "## H2 hard-exit retest (Run 1.5 → Run 3 delta)",
+    "",
+    "Expected behavior:",
+    "- room-01 (24.7% coverage): LaMa-routed → substantial SSIM improvement over Bria Run 1.5",
+    "- room-09 (24.9% coverage): LaMa-routed → substantial SSIM improvement over Bria Run 1.5",
+    "- room-11 (50.7% coverage): Bria-routed → similar to Run 1.5 (Bria handles high-coverage; no improvement expected from routing)",
+    "",
+    "| Room | Inpainter | Run 1.5 SSIM | Run 3 SSIM | Δ |",
+    "|---|---|---|---|---|",
+    *h2_rows,
     "",
     "## Stratification analysis",
     "",
@@ -400,48 +443,6 @@ lines = [
     f"- **Geometry:** {strat_md('geometry')}",
     f"- **Texture:** {strat_md('texture')}",
     f"- **Lighting:** {strat_md('lighting')}",
-    "",
-    "## Rescan stats (low-coverage gate)",
-    "",
-    f"- **Rooms that triggered rescan:** {n_rescan}/{n_rooms}",
-    f"- **Avg coverage before rescan:** {avg_cov_before:.1f}%",
-    f"- **Avg coverage after rescan:** {avg_cov_after:.1f}%",
-    f"- **Rescan rooms pass rate:** {rescan_pass}/{n_rescan}" if n_rescan else "- No rooms triggered rescan",
-    f"- **Non-rescan rooms pass rate:** {non_rescan_pass}/{len(non_rescan_rooms_data)}",
-    f"- **Performance comparison:** {rescan_comparison}",
-    "",
-]
-
-if rescan_table_rows:
-    lines += [
-        "### Per-room rescan detail",
-        "",
-        "| Room | Clutter | Cov Before | Cov After | Δ | SSIM | Pass |",
-        "|---|---|---|---|---|---|---|",
-        *rescan_table_rows,
-        "",
-    ]
-else:
-    lines += ["_(No rooms triggered the low-coverage rescan gate.)_", ""]
-
-lines += [
-    "## H2 hard-exit table — room-01, room-09, room-11",
-    "",
-    "These rooms were flagged as Bria-VAE-drift (H2) candidates in the mask audit.",
-    "An improvement of ≥0.02 SSIM vs Run 1.5 would indicate mask quality was a",
-    "contributing factor; no improvement confirms Bria architectural drift as root cause.",
-    "",
-    "| Room | Run 1.5 SSIM | Run 2 SSIM | Δ | ≥0.02 improvement? |",
-    "|---|---|---|---|---|",
-    *h2_rows,
-    "",
-    f"**H2 verdict:** {h2_verdict}",
-    "",
-    "## room-10 over-masking check",
-    "",
-    f"**Run 1.5 dilated coverage:** {f'{r10_cov_r15:.1f}%' if r10_cov_r15 is not None else '—'}  ",
-    f"**Run 2 dilated coverage:** {f'{r10_cov_r2:.1f}%' if r10_cov_r2 is not None else '—'}  ",
-    f"**Verdict:** {r10_verdict}",
     "",
     "## Failure mode summary",
     "",
@@ -454,19 +455,20 @@ lines += [
     gate_detail,
     "",
     "### Gate decision tree applied",
-    f"- ≥13/15 pass → PROCEED TO RUN 3",
-    f"- 10–12/15 pass → MIXED",
-    f"- <10/15 pass → FAIL",
+    f"- ≥13/15 → EMPTY-ROOM STAGE LOCKED — proceed to Phase 5",
+    f"- 10–12/15 → inspect failures → PROCEED WITH DOCUMENTED CAVEAT or INVESTIGATE",
+    f"- <10/15 → HALT",
     f"- Result: {passed_overall}/15 → **{gate.split(' — ')[0]}**",
     "",
     "## Cost reconciliation",
     "",
-    f"- Per-room baseline: $0.180 (20 SAM-3 primary + 8 SAM-3 ghost + 1 Bria)  ",
-    f"- Per-room rescan overhead: $0.100 (20 additional SAM-3 calls at $0.005 each)  ",
-    f"- Rooms rescanned: {n_rescan} → rescan overhead: ${n_rescan * 0.10:.2f}  ",
+    f"- Per-room cost: $0.180 (20 SAM-3 primary + 8 SAM-3 ghost + 1 inpainter @ $0.04)  ",
+    f"- Rescan gate: REMOVED (was $0.10/room overhead, 0pp benefit)  ",
+    f"- LaMa rooms: {n_lama} × $0.180 = ${n_lama * 0.180:.2f}  ",
+    f"- Bria rooms: {n_bria} × $0.180 = ${n_bria * 0.180:.2f}  ",
     f"- 15-room total: ${total_cost:.2f}  ",
-    f"- Hard cap: ${4.00:.2f}  ",
-    f"- Status: {'WITHIN CAP' if total_cost <= 4.0 else 'EXCEEDED CAP'}",
+    f"- Hard cap: ${6.00:.2f}  ",
+    f"- Status: {'WITHIN CAP' if total_cost <= 6.0 else 'EXCEEDED CAP'}",
     "",
 ]
 
@@ -474,8 +476,8 @@ SUMMARY_PATH.write_text("\n".join(lines))
 print(f"Wrote {SUMMARY_PATH}")
 print(
     f"Overall pass: {passed_overall}/{n_rooms} | "
-    f"Per-metric: " + " | ".join(f"{METRIC_LABELS[k]}={metric_pass_counts[k]}/{n_rooms}" for k in METRIC_KEYS) + " | "
-    f"Rescan rooms: {n_rescan} | "
-    f"H2 verdict: {h2_verdict[:80]}… | "
-    f"Total cost: ${total_cost:.2f}"
+    f"LaMa: {lama_pass}/{n_lama} ({lama_rate:.0%}) | "
+    f"Bria: {bria_pass}/{n_bria} ({bria_rate:.0%}) | "
+    f"Total cost: ${total_cost:.2f} | "
+    f"Gate: {gate.split(' — ')[0]}"
 )

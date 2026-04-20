@@ -1,0 +1,129 @@
+{
+  "total_cost_usd": 2.7,
+  "hard_cap_usd": 6.0,
+  "router_threshold_pct": 35.0,
+  "lama_room_count": 10,
+  "bria_room_count": 5,
+  "per_room": [
+    {
+      "room_id": "room-01",
+      "cost_usd": 0.18000000000000002,
+      "inpainter": "lama",
+      "mask_coverage_dilated_pct": 24.666923868312757,
+      "error": null,
+      "overall_pass": false
+    },
+    {
+      "room_id": "room-02",
+      "cost_usd": 0.18000000000000002,
+      "inpainter": "lama",
+      "mask_coverage_dilated_pct": 26.887332326145675,
+      "error": null,
+      "overall_pass": false
+    },
+    {
+      "room_id": "room-03",
+      "cost_usd": 0.18000000000000002,
+      "inpainter": "bria",
+      "mask_coverage_dilated_pct": 38.315136316872426,
+      "error": null,
+      "overall_pass": false
+    },
+    {
+      "room_id": "room-04",
+      "cost_usd": 0.18000000000000002,
+      "inpainter": "lama",
+      "mask_coverage_dilated_pct": 21.802583447645176,
+      "error": null,
+      "overall_pass": false
+    },
+    {
+      "room_id": "room-05",
+      "cost_usd": 0.18000000000000002,
+      "inpainter": "bria",
+      "mask_coverage_dilated_pct": 36.91718106995885,
+      "error": null,
+      "overall_pass": false
+    },
+    {
+      "room_id": "room-06",
+      "cost_usd": 0.18000000000000002,
+      "inpainter": "lama",
+      "mask_coverage_dilated_pct": 5.530915436921297,
+      "error": null,
+      "overall_pass": true
+    },
+    {
+      "room_id": "room-07",
+      "cost_usd": 0.18000000000000002,
+      "inpainter": "lama",
+      "mask_coverage_dilated_pct": 13.574531321444901,
+      "error": null,
+      "overall_pass": false
+    },
+    {
+      "room_id": "room-08",
+      "cost_usd": 0.18000000000000002,
+      "inpainter": "bria",
+      "mask_coverage_dilated_pct": 64.83721993598537,
+      "error": null,
+      "overall_pass": false
+    },
+    {
+      "room_id": "room-09",
+      "cost_usd": 0.18000000000000002,
+      "inpainter": "lama",
+      "mask_coverage_dilated_pct": 24.850244341563783,
+      "error": null,
+      "overall_pass": false
+    },
+    {
+      "room_id": "room-10",
+      "cost_usd": 0.18000000000000002,
+      "inpainter": "lama",
+      "mask_coverage_dilated_pct": 33.49888997184319,
+      "error": null,
+      "overall_pass": false
+    },
+    {
+      "room_id": "room-11",
+      "cost_usd": 0.18000000000000002,
+      "inpainter": "bria",
+      "mask_coverage_dilated_pct": 50.714220393232736,
+      "error": null,
+      "overall_pass": false
+    },
+    {
+      "room_id": "room-12",
+      "cost_usd": 0.18000000000000002,
+      "inpainter": "lama",
+      "mask_coverage_dilated_pct": 24.813400205761315,
+      "error": null,
+      "overall_pass": false
+    },
+    {
+      "room_id": "room-13",
+      "cost_usd": 0.18000000000000002,
+      "inpainter": "lama",
+      "mask_coverage_dilated_pct": 6.1897505144032925,
+      "error": null,
+      "overall_pass": false
+    },
+    {
+      "room_id": "room-14",
+      "cost_usd": 0.18000000000000002,
+      "inpainter": "lama",
+      "mask_coverage_dilated_pct": 4.2954961133973475,
+      "error": null,
+      "overall_pass": false
+    },
+    {
+      "room_id": "room-15",
+      "cost_usd": 0.18000000000000002,
+      "inpainter": "bria",
+      "mask_coverage_dilated_pct": 41.577389117512574,
+      "error": null,
+      "overall_pass": false
+    }
+  ]
+}
