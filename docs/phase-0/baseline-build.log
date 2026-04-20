@@ -1,0 +1,220 @@
+
+> web@0.1.0 build /Users/daksh/Desktop/cova/apps/web
+> next build
+
+  ▲ Next.js 14.2.35
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+
+./app/api/pipeline/redesign/route.ts
+361:13  Warning: Unexpected console statement.  no-console
+370:7  Warning: Unexpected console statement.  no-console
+396:9  Warning: Unexpected console statement.  no-console
+408:16  Warning: Unexpected console statement.  no-console
+444:16  Warning: Unexpected console statement.  no-console
+447:7  Warning: Unexpected console statement.  no-console
+507:5  Warning: Unexpected console statement.  no-console
+515:7  Warning: Unexpected console statement.  no-console
+540:5  Warning: Unexpected console statement.  no-console
+543:5  Warning: Unexpected console statement.  no-console
+546:5  Warning: Unexpected console statement.  no-console
+579:7  Warning: Unexpected console statement.  no-console
+589:7  Warning: Unexpected console statement.  no-console
+630:9  Warning: Unexpected console statement.  no-console
+646:13  Warning: Unexpected console statement.  no-console
+663:5  Warning: Unexpected console statement.  no-console
+676:9  Warning: Unexpected console statement.  no-console
+
+./app/api/pipeline/segment-masks/route.ts
+91:5  Warning: Unexpected console statement.  no-console
+96:5  Warning: Unexpected console statement.  no-console
+123:5  Warning: Unexpected console statement.  no-console
+149:5  Warning: Unexpected console statement.  no-console
+175:5  Warning: Unexpected console statement.  no-console
+407:3  Warning: Unexpected console statement.  no-console
+426:5  Warning: Unexpected console statement.  no-console
+436:7  Warning: Unexpected console statement.  no-console
+445:9  Warning: Unexpected console statement.  no-console
+477:5  Warning: Unexpected console statement.  no-console
+498:3  Warning: Unexpected console statement.  no-console
+541:5  Warning: Unexpected console statement.  no-console
+
+./app/api/quiz/fingerprint/route.ts
+430:3  Warning: Unexpected console statement.  no-console
+435:5  Warning: Unexpected console statement.  no-console
+739:3  Warning: Unexpected console statement.  no-console
+
+./app/api/quiz/next-pair/route.ts
+113:5  Warning: Unexpected console statement.  no-console
+114:5  Warning: Unexpected console statement.  no-console
+141:7  Warning: Unexpected console statement.  no-console
+147:9  Warning: Unexpected console statement.  no-console
+
+./app/design/step-7c/page.tsx
+155:76  Warning: React Hook useEffect has a missing dependency: 'isMounted'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./lib/ai/design-director.ts
+1020:3  Warning: Unexpected console statement.  no-console
+1083:3  Warning: Unexpected console statement.  no-console
+1103:3  Warning: Unexpected console statement.  no-console
+1116:5  Warning: Unexpected console statement.  no-console
+1124:3  Warning: Unexpected console statement.  no-console
+
+./lib/ai/lora-registry.ts
+119:7  Warning: Unexpected console statement.  no-console
+141:3  Warning: Unexpected console statement.  no-console
+167:5  Warning: Unexpected console statement.  no-console
+176:5  Warning: Unexpected console statement.  no-console
+181:3  Warning: Unexpected console statement.  no-console
+197:5  Warning: Unexpected console statement.  no-console
+214:3  Warning: Unexpected console statement.  no-console
+
+./lib/ai/mask-assembly.ts
+44:3  Warning: Unexpected console statement.  no-console
+81:7  Warning: Unexpected console statement.  no-console
+153:3  Warning: Unexpected console statement.  no-console
+
+./lib/ai/prompt-compiler.ts
+272:3  Warning: Unexpected console statement.  no-console
+
+./lib/ai/segmentation.ts
+130:7  Warning: Unexpected console statement.  no-console
+
+./lib/unsplash.ts
+135:3  Warning: Unexpected console statement.  no-console
+140:5  Warning: Unexpected console statement.  no-console
+293:7  Warning: Unexpected console statement.  no-console
+306:5  Warning: Unexpected console statement.  no-console
+331:5  Warning: Unexpected console statement.  no-console
+379:5  Warning: Unexpected console statement.  no-console
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/basic-features/eslint#disabling-rules
+   Collecting page data ...
+No allowed endpoints specified, all endpoints will be allowed. This is not recommended for production use cases.
+Allowing unauthenticated requests. Make sure you protect your proxy endpoint or handle unauthenticated users appropriately.
+   Generating static pages (0/86) ...
+Chat history error: B [Error]: Dynamic server usage: Route /api/chat/history couldn't be rendered statically because it used `request.url`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at V (/Users/daksh/Desktop/cova/apps/web/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:21778)
+    at Object.get (/Users/daksh/Desktop/cova/apps/web/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:29465)
+    at d (/Users/daksh/Desktop/cova/apps/web/.next/server/app/api/chat/history/route.js:1:863)
+    at /Users/daksh/Desktop/cova/apps/web/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:38417
+    at /Users/daksh/Desktop/cova/apps/web/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+    at NoopContextManager.with (/Users/daksh/Desktop/cova/apps/web/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:14:19)
+    at ContextAPI.with (/Users/daksh/Desktop/cova/apps/web/node_modules/@opentelemetry/api/build/src/api/context.js:51:46)
+    at NoopTracer.startActiveSpan (/Users/daksh/Desktop/cova/apps/web/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:54:31)
+    at ProxyTracer.startActiveSpan (/Users/daksh/Desktop/cova/apps/web/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:27:24)
+    at /Users/daksh/Desktop/cova/apps/web/node_modules/next/dist/server/lib/trace/tracer.js:122:103 {
+  description: "Route /api/chat/history couldn't be rendered statically because it used `request.url`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+No allowed endpoints specified, all endpoints will be allowed. This is not recommended for production use cases.
+Allowing unauthenticated requests. Make sure you protect your proxy endpoint or handle unauthenticated users appropriately.
+   Generating static pages (21/86) 
+   Generating static pages (42/86) 
+   Generating static pages (64/86) 
+ ✓ Generating static pages (86/86)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    20 kB           164 kB
+├ ○ /_not-found                          882 B          88.7 kB
+├ ƒ /api/capture/generate-token          0 B                0 B
+├ ƒ /api/capture/validate-token          0 B                0 B
+├ ƒ /api/chat                            0 B                0 B
+├ ƒ /api/chat/history                    0 B                0 B
+├ ƒ /api/design-chat                     0 B                0 B
+├ ƒ /api/design-dna/card                 0 B                0 B
+├ ƒ /api/detect                          0 B                0 B
+├ ƒ /api/detect/material                 0 B                0 B
+├ ƒ /api/detect/render                   0 B                0 B
+├ ƒ /api/detect/status                   0 B                0 B
+├ ƒ /api/dev-log                         0 B                0 B
+├ ƒ /api/dev/rerun                       0 B                0 B
+├ ƒ /api/fal/proxy                       0 B                0 B
+├ ƒ /api/fingerprint/explain             0 B                0 B
+├ ƒ /api/generate-art                    0 B                0 B
+├ ƒ /api/interactions                    0 B                0 B
+├ ○ /api/local-ip                        0 B                0 B
+├ ƒ /api/match                           0 B                0 B
+├ ƒ /api/match/accessories               0 B                0 B
+├ ƒ /api/match/coherence                 0 B                0 B
+├ ƒ /api/match/complete-room             0 B                0 B
+├ ƒ /api/match/room-budget               0 B                0 B
+├ ƒ /api/parallax                        0 B                0 B
+├ ƒ /api/parse-constraints               0 B                0 B
+├ ƒ /api/pipeline/furniture-match        0 B                0 B
+├ ƒ /api/pipeline/pre-detect             0 B                0 B
+├ ƒ /api/pipeline/redesign               0 B                0 B
+├ ƒ /api/pipeline/segment-masks          0 B                0 B
+├ ƒ /api/quiz/fingerprint                0 B                0 B
+├ ƒ /api/quiz/mood-board                 0 B                0 B
+├ ƒ /api/quiz/mood-strip                 0 B                0 B
+├ ƒ /api/quiz/next-card                  0 B                0 B
+├ ƒ /api/quiz/next-pair                  0 B                0 B
+├ ƒ /api/quiz/style-preview              0 B                0 B
+├ ƒ /api/quiz/tweak                      0 B                0 B
+├ ƒ /api/quiz/update-fingerprint         0 B                0 B
+├ ƒ /api/quiz/validation-renders         0 B                0 B
+├ ƒ /api/render                          0 B                0 B
+├ ƒ /api/render/from-context             0 B                0 B
+├ ƒ /api/render/previews                 0 B                0 B
+├ ƒ /api/render/previews/status          0 B                0 B
+├ ƒ /api/render/refine                   0 B                0 B
+├ ƒ /api/render/status                   0 B                0 B
+├ ƒ /api/render/tweak                    0 B                0 B
+├ ƒ /api/render/tweak/status             0 B                0 B
+├ ƒ /api/rooms/[roomId]                  0 B                0 B
+├ ƒ /api/rooms/capture                   0 B                0 B
+├ ƒ /api/rooms/create                    0 B                0 B
+├ ○ /api/rooms/public-count              0 B                0 B
+├ ƒ /api/rooms/status                    0 B                0 B
+├ ƒ /api/style-references/match          0 B                0 B
+├ ƒ /api/swap                            0 B                0 B
+├ ƒ /api/swap/status                     0 B                0 B
+├ ƒ /api/test-pipeline                   0 B                0 B
+├ ○ /auth                                8.38 kB         159 kB
+├ ƒ /auth/callback                       0 B                0 B
+├ ○ /budget                              5.22 kB         135 kB
+├ ƒ /capture/[roomId]                    6.21 kB         162 kB
+├ ƒ /capture/mobile/[token]              3.99 kB         160 kB
+├ ○ /capture/new                         839 B          88.7 kB
+├ ○ /chatbot                             2.02 kB        93.8 kB
+├ ƒ /dashboard                           4.9 kB         92.7 kB
+├ ƒ /dashboard/profile                   1.09 kB        97.6 kB
+├ ƒ /dashboard/saved                     6.19 kB          94 kB
+├ ƒ /dashboard/settings                  7.81 kB        95.7 kB
+├ ○ /design/step-1                       2.54 kB        90.4 kB
+├ ○ /design/step-2                       3.49 kB        93.4 kB
+├ ○ /design/step-3                       8.86 kB        98.8 kB
+├ ○ /design/step-3b                      3.9 kB         93.8 kB
+├ ○ /design/step-4                       7.79 kB        97.7 kB
+├ ○ /design/step-5                       6.04 kB         126 kB
+├ ○ /design/step-6                       7.48 kB         133 kB
+├ ○ /design/step-7                       3.67 kB         124 kB
+├ ○ /design/step-7b                      4.82 kB         189 kB
+├ ○ /design/step-7c                      5.24 kB         125 kB
+├ ○ /design/step-7d                      8.65 kB         225 kB
+├ ○ /design/step-7e                      8.92 kB         225 kB
+├ ○ /design/step-7f                      7.13 kB         223 kB
+├ ○ /design/step-7g                      4.96 kB         221 kB
+├ ○ /design/step-7h                      3.09 kB         219 kB
+├ ○ /design/step-8a                      5.87 kB        95.8 kB
+├ ○ /design/step-8b                      8.64 kB        96.5 kB
+├ ○ /design/step-9                       10.3 kB         107 kB
+├ ○ /product-panel                       1.82 kB        94.7 kB
+└ ƒ /room/[roomId]/3d                    2.68 kB        99.6 kB
++ First Load JS shared by all            87.8 kB
+  ├ chunks/7115-b9f55b290c844ecb.js      31.9 kB
+  ├ chunks/fd9d1056-f2dfa7ae3a1aca01.js  53.7 kB
+  └ other shared chunks (total)          2.31 kB
+
+
+ƒ Middleware                             77.7 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

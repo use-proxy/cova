@@ -1,0 +1,353 @@
+
+> web@0.1.0 test /Users/daksh/Desktop/cova/apps/web
+> vitest run
+
+
+ RUN  v4.1.2 /Users/daksh/Desktop/cova/apps/web
+
+stdout | __tests__/area1/quiz-flow.test.ts > /api/quiz/fingerprint POST > returns 401 when user is not authenticated (legacy format)
+[fingerprint] tiebreaker_deltas received: undefined
+
+stdout | __tests__/area1/quiz-flow.test.ts > /api/quiz/fingerprint POST > returns 400 when responses array is empty (legacy format)
+[fingerprint] tiebreaker_deltas received: undefined
+
+stdout | __tests__/area1/quiz-flow.test.ts > /api/quiz/fingerprint POST > returns 200 with fingerprint, style_name, style_tags on valid authenticated new-format request
+[fingerprint] tiebreaker_deltas received: undefined
+[fingerprint] v2Dims final (before style match): [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ]
+
+stderr | __tests__/area1/quiz-flow.test.ts > /api/quiz/fingerprint POST > returns 200 with fingerprint, style_name, style_tags on valid authenticated new-format request
+[fingerprint-save] ERROR: {"message":"admin.from(...).select(...).eq is not a function"}
+
+stdout | __tests__/area1/quiz-flow.test.ts > /api/quiz/next-pair POST > returns quizComplete: true when responseCount >= 12
+[next-pair] competing_styles received: []
+[next-pair] all STYLES names: [
+  'Warm Japandi',
+  'Dark Moody Glam',
+  'Coastal Bright',
+  'Industrial Loft',
+  'Maximalist Eclectic',
+  'Heritage Traditional',
+  'Pure Minimal White',
+  'Biophilic Jungle',
+  'Retro Mid-Century',
+  'Nordic Scandi'
+]
+
+stdout | __tests__/area1/quiz-flow.test.ts > /api/quiz/next-pair POST > returns a pair object on valid request (mocked DB with candidates)
+[next-pair] competing_styles received: []
+[next-pair] all STYLES names: [
+  'Warm Japandi',
+  'Dark Moody Glam',
+  'Coastal Bright',
+  'Industrial Loft',
+  'Maximalist Eclectic',
+  'Heritage Traditional',
+  'Pure Minimal White',
+  'Biophilic Jungle',
+  'Retro Mid-Century',
+  'Nordic Scandi'
+]
+
+stdout | __tests__/area1/quiz-flow.test.ts > /api/quiz/next-pair POST > returns quizComplete: true when DB returns no candidates
+[next-pair] competing_styles received: []
+[next-pair] all STYLES names: [
+  'Warm Japandi',
+  'Dark Moody Glam',
+  'Coastal Bright',
+  'Industrial Loft',
+  'Maximalist Eclectic',
+  'Heritage Traditional',
+  'Pure Minimal White',
+  'Biophilic Jungle',
+  'Retro Mid-Century',
+  'Nordic Scandi'
+]
+
+ ❯ __tests__/area1/quiz-flow.test.ts (19 tests | 10 failed) 242ms
+     × returns 401 when user is not authenticated (legacy format) 9ms
+     × returns 400 when responses array is empty (legacy format) 8ms
+     × returns 200 with fingerprint, style_name, style_tags on valid authenticated new-format request 6ms
+     × returns quizComplete: true when responseCount >= 12 37ms
+     × returns a pair object on valid request (mocked DB with candidates) 4ms
+     × returns quizComplete: true when DB returns no candidates 4ms
+     × GET returns cards array 12ms
+     × POST returns cards array 3ms
+     × returns empty cards array when DB has no rows 5ms
+     × card shape includes id, style_name, style_index, image_url, style_vector 2ms
+ ❯ tests/lib/env.test.ts (4 tests | 1 failed) 23ms
+     × returns valid=true when all required vars are set 20ms
+ ❯ __tests__/shared/navigation-flow.test.ts (21 tests | 3 failed) 11ms
+     × pushes /design/step-4 5ms
+     × pushes /design/step-7d 1ms
+     × step-7e is removed 0ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 14 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  __tests__/area1/quiz-flow.test.ts > /api/quiz/fingerprint POST > returns 401 when user is not authenticated (legacy format)
+AssertionError: expected 500 to be 401 // Object.is equality
+
+- Expected
++ Received
+
+- 401
++ 500
+
+ ❯ __tests__/area1/quiz-flow.test.ts:103:24
+    101|     });
+    102|     const res = await POST(req);
+    103|     expect(res.status).toBe(401);
+       |                        ^
+    104|     const json = await res.json();
+    105|     expect(json).toHaveProperty("error");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/14]⎯
+
+ FAIL  __tests__/area1/quiz-flow.test.ts > /api/quiz/fingerprint POST > returns 400 when responses array is empty (legacy format)
+AssertionError: expected 500 to be 400 // Object.is equality
+
+- Expected
++ Received
+
+- 400
++ 500
+
+ ❯ __tests__/area1/quiz-flow.test.ts:165:24
+    163|     });
+    164|     const res = await POST(req);
+    165|     expect(res.status).toBe(400);
+       |                        ^
+    166|     const json = await res.json();
+    167|     expect(json).toHaveProperty("error");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/14]⎯
+
+ FAIL  __tests__/area1/quiz-flow.test.ts > /api/quiz/fingerprint POST > returns 200 with fingerprint, style_name, style_tags on valid authenticated new-format request
+AssertionError: expected 500 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 500
+
+ ❯ __tests__/area1/quiz-flow.test.ts:214:24
+    212|     });
+    213|     const res = await POST(req);
+    214|     expect(res.status).toBe(200);
+       |                        ^
+    215|     const json = await res.json();
+    216|     expect(json).toHaveProperty("fingerprint");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/14]⎯
+
+ FAIL  __tests__/area1/quiz-flow.test.ts > /api/quiz/next-pair POST > returns quizComplete: true when responseCount >= 12
+AssertionError: expected 500 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 500
+
+ ❯ __tests__/area1/quiz-flow.test.ts:265:24
+    263|     });
+    264|     const res = await POST(req);
+    265|     expect(res.status).toBe(200);
+       |                        ^
+    266|     const json = await res.json();
+    267|     expect(json.quizComplete).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/14]⎯
+
+ FAIL  __tests__/area1/quiz-flow.test.ts > /api/quiz/next-pair POST > returns a pair object on valid request (mocked DB with candidates)
+AssertionError: expected 500 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 500
+
+ ❯ __tests__/area1/quiz-flow.test.ts:311:24
+    309|     });
+    310|     const res = await POST(req);
+    311|     expect(res.status).toBe(200);
+       |                        ^
+    312|     const json = await res.json();
+    313|     expect(json).toHaveProperty("pair");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/14]⎯
+
+ FAIL  __tests__/area1/quiz-flow.test.ts > /api/quiz/next-pair POST > returns quizComplete: true when DB returns no candidates
+AssertionError: expected 500 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 500
+
+ ❯ __tests__/area1/quiz-flow.test.ts:348:24
+    346|     });
+    347|     const res = await POST(req);
+    348|     expect(res.status).toBe(200);
+       |                        ^
+    349|     const json = await res.json();
+    350|     expect(json.quizComplete).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/14]⎯
+
+ FAIL  __tests__/area1/quiz-flow.test.ts > /api/quiz/next-card GET + POST > GET returns cards array
+AssertionError: expected 500 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 500
+
+ ❯ __tests__/area1/quiz-flow.test.ts:532:24
+    530|     const { GET } = await import("@/app/api/quiz/next-card/route");
+    531|     const res = await GET();
+    532|     expect(res.status).toBe(200);
+       |                        ^
+    533|     const json = await res.json();
+    534|     expect(json).toHaveProperty("cards");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/14]⎯
+
+ FAIL  __tests__/area1/quiz-flow.test.ts > /api/quiz/next-card GET + POST > POST returns cards array
+AssertionError: expected 500 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 500
+
+ ❯ __tests__/area1/quiz-flow.test.ts:552:24
+    550|     const { POST } = await import("@/app/api/quiz/next-card/route");
+    551|     const res = await POST();
+    552|     expect(res.status).toBe(200);
+       |                        ^
+    553|     const json = await res.json();
+    554|     expect(json).toHaveProperty("cards");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/14]⎯
+
+ FAIL  __tests__/area1/quiz-flow.test.ts > /api/quiz/next-card GET + POST > returns empty cards array when DB has no rows
+AssertionError: expected 500 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 500
+
+ ❯ __tests__/area1/quiz-flow.test.ts:572:24
+    570|     const { GET } = await import("@/app/api/quiz/next-card/route");
+    571|     const res = await GET();
+    572|     expect(res.status).toBe(200);
+       |                        ^
+    573|     const json = await res.json();
+    574|     expect(json.cards).toEqual([]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/14]⎯
+
+ FAIL  __tests__/area1/quiz-flow.test.ts > /api/quiz/next-card GET + POST > card shape includes id, style_name, style_index, image_url, style_vector
+TypeError: Cannot read properties of undefined (reading '0')
+ ❯ __tests__/area1/quiz-flow.test.ts:612:23
+    610|     const res = await GET();
+    611|     const json = await res.json();
+    612|     const card = json.cards[0];
+       |                       ^
+    613|     expect(card).toHaveProperty("id");
+    614|     expect(card).toHaveProperty("style_name");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/14]⎯
+
+ FAIL  __tests__/shared/navigation-flow.test.ts > step-3 → step-4 > pushes /design/step-4
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ __tests__/shared/navigation-flow.test.ts:62:59
+     60| describe("step-3 → step-4", () => {
+     61|   it("pushes /design/step-4", () => {
+     62|     expect(hasPush(readStep("step-3"), "/design/step-4")).toBe(true);
+       |                                                           ^
+     63|   });
+     64| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/14]⎯
+
+ FAIL  __tests__/shared/navigation-flow.test.ts > step-7c → step-7d > pushes /design/step-7d
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ __tests__/shared/navigation-flow.test.ts:98:61
+     96| describe("step-7c → step-7d", () => {
+     97|   it("pushes /design/step-7d", () => {
+     98|     expect(hasPush(readStep("step-7c"), "/design/step-7d")).toBe(true);
+       |                                                             ^
+     99|   });
+    100| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/14]⎯
+
+ FAIL  __tests__/shared/navigation-flow.test.ts > deleted pages > step-7e is removed
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ __tests__/shared/navigation-flow.test.ts:169:35
+    167|   });
+    168|   it("step-7e is removed", () => {
+    169|     expect(stepExists("step-7e")).toBe(false);
+       |                                   ^
+    170|   });
+    171|   it("step-8 is removed (replaced by step-8a)", () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/14]⎯
+
+ FAIL  tests/lib/env.test.ts > validateEnvironment > returns valid=true when all required vars are set
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/lib/env.test.ts:31:26
+     29|     const { validateEnvironment } = await import("@/lib/env");
+     30|     const result = validateEnvironment();
+     31|     expect(result.valid).toBe(true);
+       |                          ^
+     32|     expect(result.missing).toHaveLength(0);
+     33|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/14]⎯
+
+
+ Test Files  3 failed | 40 passed | 1 skipped (44)
+      Tests  14 failed | 710 passed | 28 skipped (752)
+   Start at  20:32:15
+   Duration  1.56s (transform 2.09s, setup 2.58s, import 2.35s, tests 2.90s, environment 3ms)
+
+/Users/daksh/Desktop/cova/apps/web:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  web@0.1.0 test: `vitest run`
+Exit status 1
