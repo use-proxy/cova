@@ -1,0 +1,28 @@
+[project]
+name = "cova-pipeline-tests"
+version = "0.1.0"
+description = "Phase 0 pytest scaffolding for Cova Modal pipeline"
+requires-python = ">=3.10"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-xdist>=3.5",
+    "pytest-asyncio>=0.23",
+    "pillow>=10.0",
+    "numpy>=1.26",
+    "opencv-python-headless>=4.9",
+    "scikit-image>=0.22",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/python"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --tb=short"
+markers = [
+    "modal: marks tests requiring live Modal calls (deselect with '-m \"not modal\"')",
+    "slow: marks tests that take >5s",
+    "smoke: minimal stage smoke tests, run on every CI",
+]
