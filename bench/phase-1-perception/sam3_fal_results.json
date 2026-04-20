@@ -1,0 +1,248 @@
+{
+  "generated_at": "2026-04-20T21:00:40Z",
+  "endpoint": "fal-ai/sam-3/image",
+  "rooms": {
+    "room-01": {
+      "image_url": "https://v3b.fal.media/files/b/0a970ecc/kab7JCBWP8j28L8jaK5NZ_room-01_bedroom-cat-popcorn.webp",
+      "prompts_run": 15,
+      "serial_total_s": 16.43121187388897,
+      "p50_per_prompt_s": 0.8356308327056468,
+      "max_per_prompt_s": 2.1178812496364117,
+      "per_prompt": [
+        {
+          "prompt": "ceiling fan",
+          "latency_s": 1.7741515412926674,
+          "num_masks": 1,
+          "scores": [
+            0.8947641253471375
+          ],
+          "error": null
+        },
+        {
+          "prompt": "framed photograph",
+          "latency_s": 1.936553374864161,
+          "num_masks": 0,
+          "scores": [],
+          "error": null
+        },
+        {
+          "prompt": "picture frame",
+          "latency_s": 0.6576932910829782,
+          "num_masks": 0,
+          "scores": [],
+          "error": null
+        },
+        {
+          "prompt": "mirror",
+          "latency_s": 0.6653709588572383,
+          "num_masks": 0,
+          "scores": [],
+          "error": null
+        },
+        {
+          "prompt": "fireplace",
+          "latency_s": 0.8191116251982749,
+          "num_masks": 0,
+          "scores": [],
+          "error": null
+        },
+        {
+          "prompt": "crown molding",
+          "latency_s": 0.824926083907485,
+          "num_masks": 0,
+          "scores": [],
+          "error": null
+        },
+        {
+          "prompt": "exposed brick",
+          "latency_s": 0.6850962089374661,
+          "num_masks": 0,
+          "scores": [],
+          "error": null
+        },
+        {
+          "prompt": "exposed beam",
+          "latency_s": 1.3213097918778658,
+          "num_masks": 0,
+          "scores": [],
+          "error": null
+        },
+        {
+          "prompt": "wainscoting",
+          "latency_s": 1.1797030833549798,
+          "num_masks": 0,
+          "scores": [],
+          "error": null
+        },
+        {
+          "prompt": "arched doorway",
+          "latency_s": 1.149859583005309,
+          "num_masks": 0,
+          "scores": [],
+          "error": null
+        },
+        {
+          "prompt": "bay window",
+          "latency_s": 0.6598625830374658,
+          "num_masks": 0,
+          "scores": [],
+          "error": null
+        },
+        {
+          "prompt": "built-in bookshelf",
+          "latency_s": 0.8137545832432806,
+          "num_masks": 0,
+          "scores": [],
+          "error": null
+        },
+        {
+          "prompt": "wall letters",
+          "latency_s": 2.1178812496364117,
+          "num_masks": 0,
+          "scores": [],
+          "error": null
+        },
+        {
+          "prompt": "wall text",
+          "latency_s": 0.8356308327056468,
+          "num_masks": 0,
+          "scores": [],
+          "error": null
+        },
+        {
+          "prompt": "radiator",
+          "latency_s": 0.9903070828877389,
+          "num_masks": 0,
+          "scores": [],
+          "error": null
+        }
+      ]
+    },
+    "room-09": {
+      "image_url": "https://v3b.fal.media/files/b/0a970ecd/9Cz8wQoxH0v87y0VTxPHP_room-09_gaming-led-popcorn.webp",
+      "prompts_run": 15,
+      "serial_total_s": 12.34102012310177,
+      "p50_per_prompt_s": 0.7598011246882379,
+      "max_per_prompt_s": 1.2598075829446316,
+      "per_prompt": [
+        {
+          "prompt": "ceiling fan",
+          "latency_s": 0.7189953750930727,
+          "num_masks": 0,
+          "scores": [],
+          "error": null
+        },
+        {
+          "prompt": "framed photograph",
+          "latency_s": 0.8407243331894279,
+          "num_masks": 2,
+          "scores": [
+            0.6206182837486267,
+            0.5016025900840759
+          ],
+          "error": null
+        },
+        {
+          "prompt": "picture frame",
+          "latency_s": 0.9550151657313108,
+          "num_masks": 0,
+          "scores": [],
+          "error": null
+        },
+        {
+          "prompt": "mirror",
+          "latency_s": 0.7419465421698987,
+          "num_masks": 0,
+          "scores": [],
+          "error": null
+        },
+        {
+          "prompt": "fireplace",
+          "latency_s": 0.7297997502610087,
+          "num_masks": 0,
+          "scores": [],
+          "error": null
+        },
+        {
+          "prompt": "crown molding",
+          "latency_s": 0.711535207927227,
+          "num_masks": 0,
+          "scores": [],
+          "error": null
+        },
+        {
+          "prompt": "exposed brick",
+          "latency_s": 1.2598075829446316,
+          "num_masks": 0,
+          "scores": [],
+          "error": null
+        },
+        {
+          "prompt": "exposed beam",
+          "latency_s": 0.7341275410726666,
+          "num_masks": 0,
+          "scores": [],
+          "error": null
+        },
+        {
+          "prompt": "wainscoting",
+          "latency_s": 0.5485497079789639,
+          "num_masks": 0,
+          "scores": [],
+          "error": null
+        },
+        {
+          "prompt": "arched doorway",
+          "latency_s": 0.8920716252177954,
+          "num_masks": 0,
+          "scores": [],
+          "error": null
+        },
+        {
+          "prompt": "bay window",
+          "latency_s": 0.8388621658086777,
+          "num_masks": 0,
+          "scores": [],
+          "error": null
+        },
+        {
+          "prompt": "built-in bookshelf",
+          "latency_s": 0.7598011246882379,
+          "num_masks": 0,
+          "scores": [],
+          "error": null
+        },
+        {
+          "prompt": "wall letters",
+          "latency_s": 1.1304024592973292,
+          "num_masks": 0,
+          "scores": [],
+          "error": null
+        },
+        {
+          "prompt": "wall text",
+          "latency_s": 0.7711601248010993,
+          "num_masks": 0,
+          "scores": [],
+          "error": null
+        },
+        {
+          "prompt": "radiator",
+          "latency_s": 0.7082214169204235,
+          "num_masks": 0,
+          "scores": [],
+          "error": null
+        }
+      ]
+    }
+  },
+  "global": {
+    "total_calls": 30,
+    "p50_per_call_s": 0.8220188545528799,
+    "p95_per_call_s": 1.7741515412926674,
+    "mean_per_call_s": 0.9590743998996913,
+    "estimated_usd": 0.09,
+    "parallel_p95_projection_s": 1.7741515412926674,
+    "serial_all_prompts_p95_projection_s": 26.61227311939001
+  }
+}
