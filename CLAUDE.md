@@ -196,6 +196,7 @@ Phases run in parallel to M8 commerce work; their artifacts live in `docs/audit/
 | -------- | ------------------------------------------------------------------ | ------------------ |
 | 0        | Audit — LoRAs, Director, Modal, Supabase RLS, tests, pgvector      | ✅ **COMPLETE** (2026-04-20) |
 | 0.5      | 20-room bench build + smoke-test harness                           | Ready to start     |
+| 1        | Perception service (cova-perception Modal app, 3 endpoints)        | ✅ **COMPLETE** (2026-04-20) |
 | 3        | Director rewrite (6D blending, F1.1 parity, F3.1 RBF, F4.1 schema, F6.1–F6.5 hygiene) | Blocked on 0.5    |
 | 4        | Custom LoRA training (9 remaining archetypes)                      | Blocked on 0       |
 | 5        | Redesign service (NB-Pro primary, FLUX.2 Pro Edit fallback)        | Blocked on 3, 4    |
@@ -210,6 +211,21 @@ prompt-path audit) committed 2026-04-20 — patched `buildFluxPromptFromContext`
 rename, step-3b user-visible display labels (via
 `toCovaKeyDisplayName`), step-7d SUGGESTION_CHIPS copy. Phase 0 CLOSED.
 Deferred follow-ups catalogued in `docs/phase-0/follow-ups-deferred.md`.
+
+Phase 1 complete (2026-04-20). `cova-perception` deployed to Modal A10G with
+three v1 endpoints: `/v1/detect_preservation_spec`, `/v1/encode_sam2_for_cache`,
+`/v1/depth_anything_v2`. TS client at `apps/web/lib/ai/perception-client.ts`.
+Deferred follow-ups in `docs/phase-1/follow-ups-deferred.md`. Closeout report
+in `docs/phase-1/CLOSEOUT.md`.
+
+### Production Modal apps
+- **cova-perception** — `https://cova-interior--cova-perception-perception-api.modal.run`
+  Endpoints: `/v1/detect_preservation_spec`, `/v1/encode_sam2_for_cache`,
+  `/v1/depth_anything_v2`. See `modal_pipeline/perception.py`.
+
+### Environment variables (Phase 1 additions)
+- `COVA_PERCEPTION_URL` — base URL of the `cova-perception` Modal app.
+  Default in client falls back to the production URL above.
 | M9        | Chatbot + Analytics + UI Pass 3 — chatbot, PostHog, Sentry, remaining screens                 |                    |
 | M10       | Polish + User Testing — error states, 5 real user tests                                       |                    |
 | M11       | Deployment — Vercel production, covainterior.com                                              |                    |
