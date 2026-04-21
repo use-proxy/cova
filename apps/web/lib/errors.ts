@@ -60,16 +60,30 @@ export async function captureError(
 ): Promise<void> {
   const err = error instanceof Error ? error : new Error(String(error));
 
+  // Phase 3 F6.5: redact bare forbidden style names from the error message
+  // and extra context before emitting to any log sink. Prevents Sonnet raw
+  // output / prompt strings captured in error payloads from leaking
+  // CLAUDE.md Rule 8 tokens to Sentry or console.
+  const { redactLogString, redactLogPayload } = await import(
+    "@/lib/logging/redactor"
+  );
+  const safeMessage = redactLogString(err.message);
+  const safeContext = context ? redactLogPayload(context) : undefined;
+  // Reconstruct a new Error so Sentry sees the redacted message. Preserve
+  // original stack.
+  const safeErr = new Error(safeMessage);
+  safeErr.stack = err.stack;
+
   if (process.env.NODE_ENV !== "production") {
-    console.error("[CovaError]", err.message, context ?? "");
+    console.error("[CovaError]", safeMessage, safeContext ?? "");
     return;
   }
 
   try {
     const Sentry = await import("@sentry/nextjs");
-    Sentry.captureException(err, { extra: context });
+    Sentry.captureException(safeErr, { extra: safeContext });
   } catch {
     // Sentry not configured — fail silently
-    console.error("[CovaError]", err.message);
+    console.error("[CovaError]", safeMessage);
   }
 }
