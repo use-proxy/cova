@@ -1,0 +1,33 @@
+{
+  "room_id": "room-13",
+  "run_label": "base",
+  "archetype": "COVAINDUSTRIAL",
+  "archetype_label": "Industrial Loft",
+  "model": "claude-sonnet-4-5",
+  "input_render_sha_prefix": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBD",
+  "input_render_path": "bench/phase-5-redesign/outputs/room-13_redesign.webp",
+  "wall_s": 48.47,
+  "stop_reason": "end_turn",
+  "usage": {
+    "input_tokens": 8752,
+    "output_tokens": 227
+  },
+  "raw_text": "```json\n{\n  \"architectural_integrity\": 9,\n  \"photorealism\": 9,\n  \"style_fidelity\": 9,\n  \"editorial_quality\": 9,\n  \"spatial_composition\": 9,\n  \"object_coherence\": 10,\n  \"composite\": 9.0,\n  \"beats_collov\": true,\n  \"failure_modes\": [],\n  \"improvement_suggestions\": [\n    \"Consider adding more industrial artifacts or vintage elements (old factory signage, metal shelving) to push the style even further\",\n    \"The concrete beam could show more weathering or texture variation for added authenticity\",\n    \"A slightly grittier floor texture with more wear patterns would enhance the industrial authenticity\"\n  ],\n  \"collov_comparison\": \"This render significantly surpasses the Collov references with strong industrial style commitment, superior material authenticity, and genuine editorial-quality composition versus Collov's generic neutral aesthetic.\"\n}\n```",
+  "parsed": {
+    "architectural_integrity": 9,
+    "photorealism": 9,
+    "style_fidelity": 9,
+    "editorial_quality": 9,
+    "spatial_composition": 9,
+    "object_coherence": 10,
+    "composite": 9.0,
+    "beats_collov": true,
+    "failure_modes": [],
+    "improvement_suggestions": [
+      "Consider adding more industrial artifacts or vintage elements (old factory signage, metal shelving) to push the style even further",
+      "The concrete beam could show more weathering or texture variation for added authenticity",
+      "A slightly grittier floor texture with more wear patterns would enhance the industrial authenticity"
+    ],
+    "collov_comparison": "This render significantly surpasses the Collov references with strong industrial style commitment, superior material authenticity, and genuine editorial-quality composition versus Collov's generic neutral aesthetic."
+  }
+}

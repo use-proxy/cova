@@ -1,0 +1,66 @@
+{
+  "room_id": "room-03",
+  "archetype": "COVACOASTAL",
+  "room_type": "living_room",
+  "status": "ok",
+  "empty_room_url": "https://v3b.fal.media/files/b/0a9714d8/9jrdNQjLI1hrnVW8KYWXm_af65e97529e84538aee669d1542d9756.png",
+  "render_url": "https://v3b.fal.media/files/b/0a97168f/Zv0fn_jcwycllrNRURsAc.jpg",
+  "render_local_path": "bench/phase-5-redesign/outputs/room-03_redesign.webp",
+  "triptych_local_path": "bench/phase-5-redesign/triptychs/room-03.png",
+  "provider": "flux-general",
+  "provider_fallback_reason": null,
+  "primary_trigger": "cvcst",
+  "loras_used": [
+    {
+      "path": "https://v3b.fal.media/files/b/0a968e5b/NCxDRtxWaYmUxizoVuTlW_pytorch_lora_weights.safetensors",
+      "scale": 0.85,
+      "trigger": "cvcst",
+      "name": "COVACOASTAL"
+    },
+    {
+      "path": "https://huggingface.co/Shakker-Labs/FLUX.1-dev-LoRA-add-details/resolve/main/FLUX-dev-lora-add_details.safetensors",
+      "scale": 0.55,
+      "trigger": null,
+      "name": "add-details"
+    },
+    {
+      "path": "https://huggingface.co/XLabs-AI/flux-RealismLora/resolve/main/lora.safetensors",
+      "scale": 0.25,
+      "trigger": null,
+      "name": "realism"
+    }
+  ],
+  "prompt_used": "cvcst interior cvcst interior cvcst interior a well-designed living room with sofa and seating as focal point, photorealistic interior photography, Architectural Digest editorial quality, 35mm lens, natural daylight, sharp focus, high resolution, whitewashed oak, bleached linen, sea glass tones, rope details, soft diffused natural light, driftwood, airy sheers, woven jute, preserve original room architecture, a living room with sofa and seating as focal point cvcst interior cvcst interior",
+  "seed": 45,
+  "strength": 0.82,
+  "guidance_scale": 3.5,
+  "num_inference_steps": 28,
+  "image_width": 768,
+  "image_height": 1024,
+  "service_latency_ms": 17391,
+  "wall_latency_ms": 17933,
+  "wall_latency_s": 18.75,
+  "cost_usd": 0.045,
+  "judge_score": 8.4,
+  "generated_at_iso": "2026-04-21T02:32:13Z",
+  "judge_details": {
+    "architectural_integrity": 9,
+    "photorealism": 8,
+    "style_fidelity": 8,
+    "editorial_quality": 8,
+    "spatial_composition": 9,
+    "object_coherence": 9,
+    "composite": 8.4,
+    "beats_collov": true,
+    "failure_modes": [],
+    "improvement_suggestions": [
+      "Introduce more coastal-specific elements like driftwood, rope details, or nautical accents to strengthen style commitment beyond just color palette",
+      "Add subtle imperfections to surfaces (slight texture variation in fabrics, minor wear on wood) to push photorealism from 8 to 9+",
+      "Consider warmer wood tones or weathered finishes on furniture legs to enhance coastal authenticity",
+      "Include a coastal-specific art piece or decorative object (shells, coral, maritime photography) to make style unmistakable"
+    ],
+    "collov_comparison": "This render significantly exceeds Collov references with stronger style commitment through deliberate coastal color palette (sage/seafoam pillows, natural textures), superior spatial composition with the sectional arrangement, and more editorial-quality curation of objects and materials."
+  },
+  "judge_model": "claude-sonnet-4-5",
+  "judge_run_label": "base-with-room-type"
+}

@@ -1,0 +1,34 @@
+{
+  "room_id": "room-01",
+  "run_label": "base",
+  "archetype": "COVAJAPANDI",
+  "archetype_label": "Warm Japandi",
+  "model": "claude-sonnet-4-5",
+  "input_render_sha_prefix": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBD",
+  "input_render_path": "bench/phase-5-redesign/outputs/room-01_redesign.webp",
+  "wall_s": 10.09,
+  "stop_reason": "end_turn",
+  "usage": {
+    "input_tokens": 8754,
+    "output_tokens": 278
+  },
+  "raw_text": "```json\n{\n  \"architectural_integrity\": 9,\n  \"photorealism\": 8,\n  \"style_fidelity\": 8,\n  \"editorial_quality\": 8,\n  \"spatial_composition\": 9,\n  \"object_coherence\": 9,\n  \"composite\": 8.4,\n  \"beats_collov\": true,\n  \"failure_modes\": [],\n  \"improvement_suggestions\": [\n    \"Add more textural variation to surfaces - the walls and ceiling could show subtle imperfections for enhanced photorealism\",\n    \"Introduce a second light source or more complex shadow play to elevate from 'very good' to 'exceptional' photorealism\",\n    \"Consider adding one small organic element (ceramic bowl, stone object) on the low table to strengthen the Japandi natural material emphasis\",\n    \"The branch could cast slightly more defined shadows on the wall to enhance depth perception\"\n  ],\n  \"collov_comparison\": \"This render significantly exceeds Collov's style commitment with a clear, recognizable Warm Japandi aesthetic (natural wood, organic forms, neutral palette, minimalist composition) while maintaining comparable architectural integrity and superior object curation.\"\n}\n```",
+  "parsed": {
+    "architectural_integrity": 9,
+    "photorealism": 8,
+    "style_fidelity": 8,
+    "editorial_quality": 8,
+    "spatial_composition": 9,
+    "object_coherence": 9,
+    "composite": 8.4,
+    "beats_collov": true,
+    "failure_modes": [],
+    "improvement_suggestions": [
+      "Add more textural variation to surfaces - the walls and ceiling could show subtle imperfections for enhanced photorealism",
+      "Introduce a second light source or more complex shadow play to elevate from 'very good' to 'exceptional' photorealism",
+      "Consider adding one small organic element (ceramic bowl, stone object) on the low table to strengthen the Japandi natural material emphasis",
+      "The branch could cast slightly more defined shadows on the wall to enhance depth perception"
+    ],
+    "collov_comparison": "This render significantly exceeds Collov's style commitment with a clear, recognizable Warm Japandi aesthetic (natural wood, organic forms, neutral palette, minimalist composition) while maintaining comparable architectural integrity and superior object curation."
+  }
+}

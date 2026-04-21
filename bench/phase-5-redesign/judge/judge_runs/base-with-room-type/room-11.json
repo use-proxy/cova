@@ -1,0 +1,33 @@
+{
+  "room_id": "room-11",
+  "run_label": "base-with-room-type",
+  "archetype": "COVASCANDINAV",
+  "archetype_label": "Nordic Calm / Scandinavian Minimal",
+  "model": "claude-sonnet-4-5",
+  "input_render_sha_prefix": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBD",
+  "input_render_path": "bench/phase-5-redesign/outputs/room-11_redesign.webp",
+  "wall_s": 7.38,
+  "stop_reason": "end_turn",
+  "usage": {
+    "input_tokens": 8758,
+    "output_tokens": 221
+  },
+  "raw_text": "```json\n{\n  \"architectural_integrity\": 9,\n  \"photorealism\": 8,\n  \"style_fidelity\": 9,\n  \"editorial_quality\": 9,\n  \"spatial_composition\": 9,\n  \"object_coherence\": 10,\n  \"composite\": 8.85,\n  \"beats_collov\": true,\n  \"failure_modes\": [],\n  \"improvement_suggestions\": [\n    \"Consider adding subtle imperfections to achieve absolute photorealism (slight fabric wrinkles, minor shadow variations)\",\n    \"The floor could show more natural wood grain variation to push photorealism to 9+\",\n    \"Window light could have slightly more dynamic range in highlights\"\n  ],\n  \"collov_comparison\": \"This render significantly surpasses Collov references with committed Scandinavian style, superior object curation, and genuine editorial sensibility versus Collov's generic neutrality.\"\n}\n```",
+  "parsed": {
+    "architectural_integrity": 9,
+    "photorealism": 8,
+    "style_fidelity": 9,
+    "editorial_quality": 9,
+    "spatial_composition": 9,
+    "object_coherence": 10,
+    "composite": 8.85,
+    "beats_collov": true,
+    "failure_modes": [],
+    "improvement_suggestions": [
+      "Consider adding subtle imperfections to achieve absolute photorealism (slight fabric wrinkles, minor shadow variations)",
+      "The floor could show more natural wood grain variation to push photorealism to 9+",
+      "Window light could have slightly more dynamic range in highlights"
+    ],
+    "collov_comparison": "This render significantly surpasses Collov references with committed Scandinavian style, superior object curation, and genuine editorial sensibility versus Collov's generic neutrality."
+  }
+}

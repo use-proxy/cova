@@ -1,0 +1,168 @@
+{
+  "room_id": "room-12",
+  "archetype": "COVAMIDCENTURY",
+  "iterations": [
+    {
+      "iteration": 0,
+      "provider": "flux-general",
+      "render_local_path": "bench/phase-5-redesign/outputs/room-12_redesign.webp",
+      "scores": {
+        "architectural_integrity": 4,
+        "photorealism": 5,
+        "style_fidelity": 3,
+        "editorial_quality": 4,
+        "spatial_composition": 5,
+        "object_coherence": 4,
+        "composite": 4.3
+      },
+      "beats_collov": false,
+      "changes_applied": []
+    },
+    {
+      "iteration": 1,
+      "render_url": "https://v3b.fal.media/files/b/0a9716a8/BeZGPI0ax2ovbyqLg-Ix4.jpg",
+      "render_local_path": "bench/phase-5-redesign/reflection/outputs/room-12_iter1.jpg",
+      "params": {
+        "strength": 0.7,
+        "guidance_scale": 4.2,
+        "lora_scale_multiplier": 1.12,
+        "seed": 54,
+        "prompt_override": true
+      },
+      "scores": {
+        "architectural_integrity": 9,
+        "photorealism": 8,
+        "style_fidelity": 9,
+        "editorial_quality": 8,
+        "spatial_composition": 9,
+        "object_coherence": 9,
+        "composite": 8.65
+      },
+      "beats_collov": true,
+      "failure_modes": [],
+      "provider": "flux-general",
+      "cost_usd": 0.045,
+      "latency_ms": 13520,
+      "changes_applied": [
+        "strength 0.82\u21920.70 (architectural preservation)",
+        "guidance 3.5\u21924.2",
+        "lora_scale_multiplier=1.12",
+        "prompt vocabulary strengthened"
+      ]
+    }
+  ],
+  "best_iteration": 1,
+  "best_composite": 8.65,
+  "best_beats_collov": true,
+  "final_status": "pass",
+  "generated_at_iso": "2026-04-21T02:36:25Z",
+  "history": [
+    {
+      "room_id": "room-12",
+      "archetype": "COVAMIDCENTURY",
+      "iterations": [
+        {
+          "iteration": 0,
+          "provider": "flux-general",
+          "render_local_path": "bench/phase-5-redesign/outputs/room-12_redesign.webp",
+          "scores": {
+            "architectural_integrity": 4,
+            "photorealism": 5,
+            "style_fidelity": 3,
+            "editorial_quality": 4,
+            "spatial_composition": 5,
+            "object_coherence": 4,
+            "composite": 4.3
+          },
+          "beats_collov": false,
+          "changes_applied": []
+        },
+        {
+          "iteration": 1,
+          "render_url": "https://v3b.fal.media/files/b/0a97167d/Oj2WSvt9H29z4Uu36ZMf3.jpg",
+          "render_local_path": "bench/phase-5-redesign/reflection/outputs/room-12_iter1.jpg",
+          "params": {
+            "strength": 0.7,
+            "guidance_scale": 4.2,
+            "lora_scale_multiplier": 1.12,
+            "seed": 54,
+            "prompt_override": true
+          },
+          "scores": {
+            "architectural_integrity": 9,
+            "photorealism": 8,
+            "style_fidelity": 4,
+            "editorial_quality": 5,
+            "spatial_composition": 7,
+            "object_coherence": 4,
+            "composite": 6.45
+          },
+          "beats_collov": false,
+          "failure_modes": [
+            "Style archetype failure: specified 'Retro Mid-Century' but render shows contemporary minimalist/Scandinavian design with no mid-century characteristics",
+            "Missing iconic mid-century elements: no tapered legs, no organic curves, no warm wood tones, no period-appropriate lighting fixtures",
+            "Color palette wrong for mid-century: cool grays and whites instead of warm woods, mustard, teal, or burnt orange",
+            "Furniture is modern/contemporary, not retro: gray upholstered bed, white nightstand, modern ceiling fan are all wrong era",
+            "Wall art is abstract contemporary, not mid-century graphic or atomic-age inspired",
+            "No mid-century decorative objects: missing starburst clocks, ceramic pieces, or period accessories"
+          ],
+          "provider": "flux-general",
+          "cost_usd": 0.045,
+          "latency_ms": 15089,
+          "changes_applied": [
+            "strength 0.82\u21920.70 (architectural preservation)",
+            "guidance 3.5\u21924.2",
+            "lora_scale_multiplier=1.12",
+            "prompt vocabulary strengthened"
+          ]
+        },
+        {
+          "iteration": 2,
+          "render_url": "https://v3b.fal.media/files/b/0a971680/tklbYja-5yjJVoW-SBhF4.jpg",
+          "render_local_path": "bench/phase-5-redesign/reflection/outputs/room-12_iter2.jpg",
+          "params": {
+            "strength": 0.62,
+            "guidance_scale": 5.0,
+            "lora_scale_multiplier": 1.2,
+            "seed": 1054,
+            "prompt_override": true
+          },
+          "scores": {
+            "architectural_integrity": 9,
+            "photorealism": 7,
+            "style_fidelity": 4,
+            "editorial_quality": 5,
+            "spatial_composition": 6,
+            "object_coherence": 4,
+            "composite": 6.15
+          },
+          "beats_collov": false,
+          "failure_modes": [
+            "Style fidelity failure: specified 'Retro Mid-Century' but render shows contemporary minimalist/Scandinavian design with gray upholstered bed, modern white nightstands, and contemporary abstract art",
+            "Missing iconic mid-century elements: no wood credenzas, no tapered legs, no period-appropriate lighting, no warm wood tones, no vintage textiles",
+            "Color palette wrong for mid-century: cool grays and blues instead of warm woods, mustard, teal, or burnt orange",
+            "Furniture is entirely contemporary: gray upholstered platform bed and modern minimalist nightstands are not mid-century pieces",
+            "Art is generic contemporary abstract, not mid-century modern graphic prints or atomic-era artwork",
+            "Rug pattern is contemporary geometric, not mid-century shag or period-appropriate pattern",
+            "Overall aesthetic reads as 2020s minimalist, not 1950s-60s retro"
+          ],
+          "provider": "flux-general",
+          "cost_usd": 0.045,
+          "latency_ms": 13306,
+          "changes_applied": [
+            "strength 0.82\u21920.62",
+            "guidance 3.5\u21925.0",
+            "lora_scale_multiplier=1.20",
+            "seed rotated (+1000)",
+            "prompt vocabulary strengthened"
+          ]
+        }
+      ],
+      "best_iteration": 1,
+      "best_composite": 6.45,
+      "best_beats_collov": false,
+      "final_status": "fail_after_iterations",
+      "generated_at_iso": "2026-04-21T02:29:49Z"
+    }
+  ]
+}

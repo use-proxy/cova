@@ -1,0 +1,41 @@
+{
+  "room_id": "room-02",
+  "run_label": "base",
+  "archetype": "COVAMIDCENTURY",
+  "archetype_label": "Retro Mid-Century",
+  "model": "claude-sonnet-4-5",
+  "input_render_sha_prefix": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBD",
+  "input_render_path": "bench/phase-5-redesign/outputs/room-02_redesign.webp",
+  "wall_s": 11.94,
+  "stop_reason": "end_turn",
+  "usage": {
+    "input_tokens": 8757,
+    "output_tokens": 318
+  },
+  "raw_text": "```json\n{\n  \"architectural_integrity\": 4,\n  \"photorealism\": 6,\n  \"style_fidelity\": 7,\n  \"editorial_quality\": 7,\n  \"spatial_composition\": 6,\n  \"object_coherence\": 8,\n  \"composite\": 5.75,\n  \"beats_collov\": false,\n  \"failure_modes\": [\n    \"Critical architectural failure: original living room with piano completely replaced with bedroom architecture\",\n    \"Room type transformation (living room to bedroom) violates architectural preservation requirement\",\n    \"Window placement and proportions do not match original living room\",\n    \"Floor material changed from original\",\n    \"Ceiling fan added where none existed in original\"\n  ],\n  \"improvement_suggestions\": [\n    \"Preserve original room type - do not transform living rooms into bedrooms\",\n    \"Maintain original architectural features including window size, placement, and proportions\",\n    \"Keep original floor material or specify compatible replacement within same room type\",\n    \"Respect original ceiling features - do not add fixtures that change architectural character\",\n    \"Apply style transformation to furnishings and decor while maintaining room function and architecture\"\n  ],\n  \"collov_comparison\": \"This render fails catastrophically compared to Collov references which consistently preserve room architecture and type, whereas this transforms a living room into a bedroom entirely.\"\n}\n```",
+  "parsed": {
+    "architectural_integrity": 4,
+    "photorealism": 6,
+    "style_fidelity": 7,
+    "editorial_quality": 7,
+    "spatial_composition": 6,
+    "object_coherence": 8,
+    "composite": 5.75,
+    "beats_collov": false,
+    "failure_modes": [
+      "Critical architectural failure: original living room with piano completely replaced with bedroom architecture",
+      "Room type transformation (living room to bedroom) violates architectural preservation requirement",
+      "Window placement and proportions do not match original living room",
+      "Floor material changed from original",
+      "Ceiling fan added where none existed in original"
+    ],
+    "improvement_suggestions": [
+      "Preserve original room type - do not transform living rooms into bedrooms",
+      "Maintain original architectural features including window size, placement, and proportions",
+      "Keep original floor material or specify compatible replacement within same room type",
+      "Respect original ceiling features - do not add fixtures that change architectural character",
+      "Apply style transformation to furnishings and decor while maintaining room function and architecture"
+    ],
+    "collov_comparison": "This render fails catastrophically compared to Collov references which consistently preserve room architecture and type, whereas this transforms a living room into a bedroom entirely."
+  }
+}

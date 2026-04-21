@@ -1,0 +1,90 @@
+{
+  "room_id": "room-04",
+  "archetype": "COVABOHEMIAN",
+  "room_type": "bedroom",
+  "status": "ok",
+  "empty_room_url": "https://v3b.fal.media/files/b/0a9714db/IuaIzITkrRJZz4Uib45-C_2718af6f0fb14c3d949f591fa2946baa.png",
+  "render_url": "https://v3b.fal.media/files/b/0a97161d/Ra4kpFMwvGD-018rBBpm9.jpg",
+  "render_local_path": "bench/phase-5-redesign/outputs/room-04_redesign.webp",
+  "triptych_local_path": "bench/phase-5-redesign/triptychs/room-04.png",
+  "provider": "flux-general",
+  "provider_fallback_reason": null,
+  "primary_trigger": "cvboh",
+  "loras_used": [
+    {
+      "path": "https://v3b.fal.media/files/b/0a968e7a/ywFfjfD3D9dDexPtA3ki8_pytorch_lora_weights.safetensors",
+      "scale": 0.78,
+      "trigger": "cvboh",
+      "name": "COVABOHEMIAN"
+    },
+    {
+      "path": "https://huggingface.co/Shakker-Labs/FLUX.1-dev-LoRA-add-details/resolve/main/FLUX-dev-lora-add_details.safetensors",
+      "scale": 0.55,
+      "trigger": null,
+      "name": "add-details"
+    },
+    {
+      "path": "https://huggingface.co/XLabs-AI/flux-RealismLora/resolve/main/lora.safetensors",
+      "scale": 0.25,
+      "trigger": null,
+      "name": "realism"
+    }
+  ],
+  "prompt_used": "cvboh interior cvboh interior cvboh interior a well-designed interior room, photorealistic interior photography, Architectural Digest editorial quality, 35mm lens, natural daylight, sharp focus, high resolution, layered rugs, macrame, brass details, rattan, velvet cushions, embroidered textiles, terracotta, low-light lantern warmth, gallery wall cvboh interior cvboh interior",
+  "seed": 46,
+  "strength": 0.82,
+  "guidance_scale": 3.5,
+  "num_inference_steps": 28,
+  "image_width": 1024,
+  "image_height": 768,
+  "service_latency_ms": 24108,
+  "wall_latency_ms": 24688,
+  "wall_latency_s": 26.75,
+  "cost_usd": 0.045,
+  "judge_score": 3.65,
+  "generated_at_iso": "2026-04-21T02:13:18Z",
+  "judge_details": {
+    "architectural_integrity": 3,
+    "photorealism": 6,
+    "style_fidelity": 2,
+    "editorial_quality": 4,
+    "spatial_composition": 4,
+    "object_coherence": 3,
+    "composite": 3.65,
+    "beats_collov": false,
+    "failure_modes": [
+      "Critical architectural failure: attic with sloped ceiling completely removed and replaced with flat ceiling and arched doorway",
+      "Original room specification (attic with music and sloped) completely ignored",
+      "Style failure: specified Maximalist Eclectic/Bohemian but delivered minimal neutral modern",
+      "Wrong room architecture: appears to be ground floor bedroom with fireplace, not an attic space",
+      "No bohemian or maximalist elements present - opposite of specified style",
+      "Generic hotel-like aesthetic with no personality or eclecticism",
+      "Arched architectural element appears fabricated, not from original room"
+    ],
+    "improvement_suggestions": [
+      "CRITICAL: Preserve the original attic architecture with sloped ceilings - this is the defining feature of the space",
+      "Add maximalist layering: multiple rugs, textiles, wall hangings, plants, books, collections",
+      "Introduce bohemian elements: macram\u00e9, rattan, global textiles, vintage finds, mixed patterns",
+      "Increase color saturation and variety - maximalist spaces are NOT neutral",
+      "Add visual density: gallery walls, shelving with objects, layered bedding, floor cushions",
+      "Include music-related elements as specified in original room description",
+      "Create eclectic mix: combine different eras, styles, and cultural influences",
+      "Add personality through collected objects, art, and meaningful items rather than generic decor"
+    ],
+    "collov_comparison": "Significantly worse than Collov references: while Collov maintains architectural integrity and delivers recognizable styles, this render completely destroys the original attic architecture and delivers the opposite of the specified maximalist/bohemian style."
+  },
+  "judge_model": "claude-sonnet-4-5",
+  "best_of_iteration": 1,
+  "best_render_local_path": "bench/phase-5-redesign/reflection/outputs/room-04_iter1.jpg",
+  "best_beats_collov": true,
+  "best_scores": {
+    "architectural_integrity": 9,
+    "photorealism": 8,
+    "style_fidelity": 9,
+    "editorial_quality": 8,
+    "spatial_composition": 9,
+    "object_coherence": 9,
+    "composite": 8.65
+  },
+  "reflection_final_status": "pass"
+}

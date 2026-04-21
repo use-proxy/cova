@@ -366,6 +366,69 @@ describe("assembleRenderContext", () => {
     const result = assembleRenderContext(input);
     expect(result.fingerprint).toBeUndefined();
   });
+
+  // F3-BLEND-CTX.1 — Phase 5 prerequisite
+  it("populates style_blend from a v3 fingerprint so the Director blends LoRAs", () => {
+    // v3 fingerprint shape: 12 dims per DIMENSION_ORDER, fingerprint_version="v3"
+    const v3Dims = {
+      warmth: 0.6,
+      complexity: 0.25,
+      formality: 0.5,
+      natureMateriality: 0.8,
+      colorSaturation: 0.3,
+      textureRichness: 0.65,
+      lightingDrama: 0.35,
+      pattern: 0.1,
+      lightPreference: 0.6,
+      lineQuality: 0.3,
+      symmetryPreference: 0.25,
+      plantPresence: 0.55,
+    };
+    const v3Fingerprint = {
+      // dimensions is typed as v1/v2 shape in AssembleInput; v3 extends at runtime
+      dimensions: v3Dims as unknown as StyleFingerprint["dimensions"],
+      covariance: Array.from({ length: 12 }, () =>
+        Array.from({ length: 12 }, () => 0),
+      ),
+      confidence: 0.8,
+      fingerprint_version: "v3",
+    } as unknown as StyleFingerprint;
+    const result = assembleRenderContext(
+      makeFullInput({ fingerprint: v3Fingerprint }),
+    );
+    expect(result.style_blend).toBeDefined();
+    const blend = result.style_blend as Record<string, number>;
+    // Weights sum to 1.0 (post-filter renormalization)
+    const sum = Object.values(blend).reduce((s, w) => s + w, 0);
+    expect(sum).toBeGreaterThan(0.99);
+    expect(sum).toBeLessThan(1.01);
+    // COVA* archetype keys, not display names, not cv* triggers
+    for (const key of Object.keys(blend)) {
+      expect(key.startsWith("COVA")).toBe(true);
+    }
+    // Input fingerprint aligns with Japandi → expect COVAJAPANDI to dominate
+    const top = Object.entries(blend).sort(
+      ([, a], [, b]) => (b as number) - (a as number),
+    )[0];
+    expect(top).toBeDefined();
+    expect(top![0]).toBe("COVAJAPANDI");
+    // styleBlend camelCase alias is mirrored for legacy consumers
+    expect(result.styleBlend).toEqual(result.style_blend);
+  });
+
+  it("leaves style_blend undefined for v1/v2 fingerprints (Director falls back to single primary)", () => {
+    const v2Fp = makeFP(0.7); // no fingerprint_version → legacy v1/v2
+    const result = assembleRenderContext(makeFullInput({ fingerprint: v2Fp }));
+    expect(result.style_blend).toBeUndefined();
+    expect(result.styleBlend).toBeUndefined();
+  });
+
+  it("leaves style_blend undefined when no fingerprint provided", () => {
+    const input = makeFullInput();
+    delete input.fingerprint;
+    const result = assembleRenderContext(input);
+    expect(result.style_blend).toBeUndefined();
+  });
 });
 
 // ── buildFluxPromptFromContext ────────────────────────────────────────────────

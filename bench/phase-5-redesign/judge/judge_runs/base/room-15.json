@@ -1,0 +1,33 @@
+{
+  "room_id": "room-15",
+  "run_label": "base",
+  "archetype": "COVAFARMHOUSE",
+  "archetype_label": "Heritage / Farmhouse",
+  "model": "claude-sonnet-4-5",
+  "input_render_sha_prefix": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBD",
+  "input_render_path": "bench/phase-5-redesign/outputs/room-15_redesign.webp",
+  "wall_s": 44.02,
+  "stop_reason": "end_turn",
+  "usage": {
+    "input_tokens": 8754,
+    "output_tokens": 269
+  },
+  "raw_text": "```json\n{\n  \"architectural_integrity\": 9,\n  \"photorealism\": 9,\n  \"style_fidelity\": 9,\n  \"editorial_quality\": 8,\n  \"spatial_composition\": 9,\n  \"object_coherence\": 9,\n  \"composite\": 8.85,\n  \"beats_collov\": true,\n  \"failure_modes\": [],\n  \"improvement_suggestions\": [\n    \"Consider adding more farmhouse-specific accessories (vintage signs, mason jars, or rustic textiles) to push the style even further\",\n    \"The pendant light could be more distinctly farmhouse (e.g., wire cage or barn-style fixture) rather than the current industrial globe\",\n    \"Add subtle imperfections to the shiplap wall (slight color variation, visible wood grain texture) to enhance authenticity\"\n  ],\n  \"collov_comparison\": \"This render significantly surpasses Collov references with committed farmhouse styling (shiplap wall, rustic dresser, farmhouse door), superior photorealism in lighting and textures, and genuine editorial composition versus Collov's generic neutral aesthetic.\"\n}\n```",
+  "parsed": {
+    "architectural_integrity": 9,
+    "photorealism": 9,
+    "style_fidelity": 9,
+    "editorial_quality": 8,
+    "spatial_composition": 9,
+    "object_coherence": 9,
+    "composite": 8.85,
+    "beats_collov": true,
+    "failure_modes": [],
+    "improvement_suggestions": [
+      "Consider adding more farmhouse-specific accessories (vintage signs, mason jars, or rustic textiles) to push the style even further",
+      "The pendant light could be more distinctly farmhouse (e.g., wire cage or barn-style fixture) rather than the current industrial globe",
+      "Add subtle imperfections to the shiplap wall (slight color variation, visible wood grain texture) to enhance authenticity"
+    ],
+    "collov_comparison": "This render significantly surpasses Collov references with committed farmhouse styling (shiplap wall, rustic dresser, farmhouse door), superior photorealism in lighting and textures, and genuine editorial composition versus Collov's generic neutral aesthetic."
+  }
+}

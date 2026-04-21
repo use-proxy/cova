@@ -1,0 +1,43 @@
+{
+  "room_id": "room-05",
+  "run_label": "base",
+  "archetype": "COVAFARMHOUSE",
+  "archetype_label": "Heritage / Farmhouse",
+  "model": "claude-sonnet-4-5",
+  "input_render_sha_prefix": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBD",
+  "input_render_path": "bench/phase-5-redesign/outputs/room-05_redesign.webp",
+  "wall_s": 12.17,
+  "stop_reason": "end_turn",
+  "usage": {
+    "input_tokens": 8753,
+    "output_tokens": 427
+  },
+  "raw_text": "```json\n{\n  \"architectural_integrity\": 4,\n  \"photorealism\": 7,\n  \"style_fidelity\": 8,\n  \"editorial_quality\": 7,\n  \"spatial_composition\": 3,\n  \"object_coherence\": 8,\n  \"composite\": 5.65,\n  \"beats_collov\": false,\n  \"failure_modes\": [\n    \"Complete room transformation - office with gallery wall and rug converted to living room with shiplap walls\",\n    \"Architecture not preserved - walls replaced with white shiplap paneling, ceiling changed to vaulted with exposed beams\",\n    \"Wrong room type - generated a living/sitting room instead of home office\",\n    \"Missing original features - no desk, no office furniture, no gallery wall as specified\",\n    \"Spatial logic broken - extremely narrow room proportions suggest architectural distortion\",\n    \"Furniture scale issues - sofa and chairs appear oversized for the tight space\"\n  ],\n  \"improvement_suggestions\": [\n    \"Implement strict room type preservation - office must remain office with desk and work surfaces\",\n    \"Preserve original architectural elements - do not replace smooth walls with shiplap or add structural beams\",\n    \"Maintain original room geometry and proportions - this appears stretched or warped into an unnaturally narrow space\",\n    \"Apply farmhouse style through furniture, textiles, and decor rather than architectural renovation\",\n    \"Add farmhouse office elements: reclaimed wood desk, vintage task lighting, woven baskets, linen curtains\",\n    \"Keep the gallery wall concept but execute with farmhouse-appropriate artwork and frames\"\n  ],\n  \"collov_comparison\": \"Unlike Collov references which preserve room architecture while updating furnishings, this render completely transforms the room type and structure, resulting in a lower composite score despite strong style commitment.\"\n}\n```",
+  "parsed": {
+    "architectural_integrity": 4,
+    "photorealism": 7,
+    "style_fidelity": 8,
+    "editorial_quality": 7,
+    "spatial_composition": 3,
+    "object_coherence": 8,
+    "composite": 5.65,
+    "beats_collov": false,
+    "failure_modes": [
+      "Complete room transformation - office with gallery wall and rug converted to living room with shiplap walls",
+      "Architecture not preserved - walls replaced with white shiplap paneling, ceiling changed to vaulted with exposed beams",
+      "Wrong room type - generated a living/sitting room instead of home office",
+      "Missing original features - no desk, no office furniture, no gallery wall as specified",
+      "Spatial logic broken - extremely narrow room proportions suggest architectural distortion",
+      "Furniture scale issues - sofa and chairs appear oversized for the tight space"
+    ],
+    "improvement_suggestions": [
+      "Implement strict room type preservation - office must remain office with desk and work surfaces",
+      "Preserve original architectural elements - do not replace smooth walls with shiplap or add structural beams",
+      "Maintain original room geometry and proportions - this appears stretched or warped into an unnaturally narrow space",
+      "Apply farmhouse style through furniture, textiles, and decor rather than architectural renovation",
+      "Add farmhouse office elements: reclaimed wood desk, vintage task lighting, woven baskets, linen curtains",
+      "Keep the gallery wall concept but execute with farmhouse-appropriate artwork and frames"
+    ],
+    "collov_comparison": "Unlike Collov references which preserve room architecture while updating furnishings, this render completely transforms the room type and structure, resulting in a lower composite score despite strong style commitment."
+  }
+}

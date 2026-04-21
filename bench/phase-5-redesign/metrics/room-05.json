@@ -1,0 +1,87 @@
+{
+  "room_id": "room-05",
+  "archetype": "COVAFARMHOUSE",
+  "room_type": "home_office",
+  "status": "ok",
+  "empty_room_url": "https://v3b.fal.media/files/b/0a9714e0/kuWKdF9Xn7eZcPddJFBSE_1bca1e94d5fb4c2f903313fa07a03bab.png",
+  "render_url": "https://v3b.fal.media/files/b/0a97161e/Grv25qh45hU2NbmAW3qZQ.jpg",
+  "render_local_path": "bench/phase-5-redesign/outputs/room-05_redesign.webp",
+  "triptych_local_path": "bench/phase-5-redesign/triptychs/room-05.png",
+  "provider": "flux-general",
+  "provider_fallback_reason": null,
+  "primary_trigger": "cvfrm",
+  "loras_used": [
+    {
+      "path": "https://v3b.fal.media/files/b/0a968eb2/gQJwXgd_ZtJGuUx9EES_P_pytorch_lora_weights.safetensors",
+      "scale": 0.85,
+      "trigger": "cvfrm",
+      "name": "COVAFARMHOUSE"
+    },
+    {
+      "path": "https://huggingface.co/Shakker-Labs/FLUX.1-dev-LoRA-add-details/resolve/main/FLUX-dev-lora-add_details.safetensors",
+      "scale": 0.55,
+      "trigger": null,
+      "name": "add-details"
+    },
+    {
+      "path": "https://huggingface.co/XLabs-AI/flux-RealismLora/resolve/main/lora.safetensors",
+      "scale": 0.25,
+      "trigger": null,
+      "name": "realism"
+    }
+  ],
+  "prompt_used": "cvfrm interior cvfrm interior cvfrm interior a well-designed interior room, photorealistic interior photography, Architectural Digest editorial quality, 35mm lens, natural daylight, sharp focus, high resolution, reclaimed barn wood, shiplap walls, linen slipcovers, wrought iron hardware, warm Edison pendant light, stoneware, vintage rug, distressed finishes cvfrm interior cvfrm interior",
+  "seed": 47,
+  "strength": 0.82,
+  "guidance_scale": 3.5,
+  "num_inference_steps": 28,
+  "image_width": 768,
+  "image_height": 1024,
+  "service_latency_ms": 24687,
+  "wall_latency_ms": 25214,
+  "wall_latency_s": 26.21,
+  "cost_usd": 0.045,
+  "judge_score": 5.65,
+  "generated_at_iso": "2026-04-21T02:13:22Z",
+  "judge_details": {
+    "architectural_integrity": 4,
+    "photorealism": 7,
+    "style_fidelity": 8,
+    "editorial_quality": 7,
+    "spatial_composition": 3,
+    "object_coherence": 8,
+    "composite": 5.65,
+    "beats_collov": false,
+    "failure_modes": [
+      "Complete room transformation - office with gallery wall and rug converted to living room with shiplap walls",
+      "Architecture not preserved - walls replaced with white shiplap paneling, ceiling changed to vaulted with exposed beams",
+      "Wrong room type - generated a living/sitting room instead of home office",
+      "Missing original features - no desk, no office furniture, no gallery wall as specified",
+      "Spatial logic broken - extremely narrow room proportions suggest architectural distortion",
+      "Furniture scale issues - sofa and chairs appear oversized for the tight space"
+    ],
+    "improvement_suggestions": [
+      "Implement strict room type preservation - office must remain office with desk and work surfaces",
+      "Preserve original architectural elements - do not replace smooth walls with shiplap or add structural beams",
+      "Maintain original room geometry and proportions - this appears stretched or warped into an unnaturally narrow space",
+      "Apply farmhouse style through furniture, textiles, and decor rather than architectural renovation",
+      "Add farmhouse office elements: reclaimed wood desk, vintage task lighting, woven baskets, linen curtains",
+      "Keep the gallery wall concept but execute with farmhouse-appropriate artwork and frames"
+    ],
+    "collov_comparison": "Unlike Collov references which preserve room architecture while updating furnishings, this render completely transforms the room type and structure, resulting in a lower composite score despite strong style commitment."
+  },
+  "judge_model": "claude-sonnet-4-5",
+  "best_of_iteration": 1,
+  "best_render_local_path": "bench/phase-5-redesign/reflection/outputs/room-05_iter1.jpg",
+  "best_beats_collov": true,
+  "best_scores": {
+    "architectural_integrity": 9,
+    "photorealism": 9,
+    "style_fidelity": 9,
+    "editorial_quality": 9,
+    "spatial_composition": 9,
+    "object_coherence": 10,
+    "composite": 9.0
+  },
+  "reflection_final_status": "pass"
+}

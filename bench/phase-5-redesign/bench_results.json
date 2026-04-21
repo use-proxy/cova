@@ -1,0 +1,244 @@
+{
+  "generated_at_iso": "2026-04-21T02:33:36Z",
+  "n_rooms_attempted": 5,
+  "n_rooms_ok": 5,
+  "n_rooms_error": 0,
+  "providers": {
+    "flux-general": 5,
+    "nano-banana-pro": 0
+  },
+  "total_render_cost_usd": 0.225,
+  "seed": 42,
+  "results": [
+    {
+      "room_id": "room-02",
+      "archetype": "COVAMIDCENTURY",
+      "room_type": "living_room",
+      "status": "ok",
+      "empty_room_url": "https://v3b.fal.media/files/b/0a9714d5/CtZpZm-2L6io-wZc4CMyA_cfc06935d29d4429b28dce65329c0fd3.png",
+      "render_url": "https://v3b.fal.media/files/b/0a97168e/WjDHCtrV596iJzGm_M45N.jpg",
+      "render_local_path": "bench/phase-5-redesign/outputs/room-02_redesign.webp",
+      "triptych_local_path": "bench/phase-5-redesign/triptychs/room-02.png",
+      "provider": "flux-general",
+      "provider_fallback_reason": null,
+      "primary_trigger": "cvmcm",
+      "loras_used": [
+        {
+          "path": "https://v3b.fal.media/files/b/0a968e41/UEseNdIMoIb99kgJdii7k_pytorch_lora_weights.safetensors",
+          "scale": 0.85,
+          "trigger": "cvmcm",
+          "name": "COVAMIDCENTURY"
+        },
+        {
+          "path": "https://huggingface.co/Shakker-Labs/FLUX.1-dev-LoRA-add-details/resolve/main/FLUX-dev-lora-add_details.safetensors",
+          "scale": 0.55,
+          "trigger": null,
+          "name": "add-details"
+        },
+        {
+          "path": "https://huggingface.co/XLabs-AI/flux-RealismLora/resolve/main/lora.safetensors",
+          "scale": 0.25,
+          "trigger": null,
+          "name": "realism"
+        }
+      ],
+      "prompt_used": "cvmcm interior cvmcm interior cvmcm interior a well-designed living room with sofa and seating as focal point, photorealistic interior photography, Architectural Digest editorial quality, 35mm lens, natural daylight, sharp focus, high resolution, walnut veneer, teak, hairpin legs, mustard tweed, warm amber light, tapered silhouettes, geometric rug, atomic accents, preserve original room architecture, a living room with sofa and seating as focal point cvmcm interior cvmcm interior",
+      "seed": 44,
+      "strength": 0.82,
+      "guidance_scale": 3.5,
+      "num_inference_steps": 28,
+      "image_width": 1024,
+      "image_height": 768,
+      "service_latency_ms": 40688,
+      "wall_latency_ms": 45244,
+      "wall_latency_s": 46.44,
+      "cost_usd": 0.045,
+      "judge_score": null,
+      "generated_at_iso": "2026-04-21T02:31:54Z"
+    },
+    {
+      "room_id": "room-03",
+      "archetype": "COVACOASTAL",
+      "room_type": "living_room",
+      "status": "ok",
+      "empty_room_url": "https://v3b.fal.media/files/b/0a9714d8/9jrdNQjLI1hrnVW8KYWXm_af65e97529e84538aee669d1542d9756.png",
+      "render_url": "https://v3b.fal.media/files/b/0a97168f/Zv0fn_jcwycllrNRURsAc.jpg",
+      "render_local_path": "bench/phase-5-redesign/outputs/room-03_redesign.webp",
+      "triptych_local_path": "bench/phase-5-redesign/triptychs/room-03.png",
+      "provider": "flux-general",
+      "provider_fallback_reason": null,
+      "primary_trigger": "cvcst",
+      "loras_used": [
+        {
+          "path": "https://v3b.fal.media/files/b/0a968e5b/NCxDRtxWaYmUxizoVuTlW_pytorch_lora_weights.safetensors",
+          "scale": 0.85,
+          "trigger": "cvcst",
+          "name": "COVACOASTAL"
+        },
+        {
+          "path": "https://huggingface.co/Shakker-Labs/FLUX.1-dev-LoRA-add-details/resolve/main/FLUX-dev-lora-add_details.safetensors",
+          "scale": 0.55,
+          "trigger": null,
+          "name": "add-details"
+        },
+        {
+          "path": "https://huggingface.co/XLabs-AI/flux-RealismLora/resolve/main/lora.safetensors",
+          "scale": 0.25,
+          "trigger": null,
+          "name": "realism"
+        }
+      ],
+      "prompt_used": "cvcst interior cvcst interior cvcst interior a well-designed living room with sofa and seating as focal point, photorealistic interior photography, Architectural Digest editorial quality, 35mm lens, natural daylight, sharp focus, high resolution, whitewashed oak, bleached linen, sea glass tones, rope details, soft diffused natural light, driftwood, airy sheers, woven jute, preserve original room architecture, a living room with sofa and seating as focal point cvcst interior cvcst interior",
+      "seed": 45,
+      "strength": 0.82,
+      "guidance_scale": 3.5,
+      "num_inference_steps": 28,
+      "image_width": 768,
+      "image_height": 1024,
+      "service_latency_ms": 17391,
+      "wall_latency_ms": 17933,
+      "wall_latency_s": 18.75,
+      "cost_usd": 0.045,
+      "judge_score": null,
+      "generated_at_iso": "2026-04-21T02:32:13Z"
+    },
+    {
+      "room_id": "room-09",
+      "archetype": "COVAINDUSTRIAL",
+      "room_type": "bedroom",
+      "status": "ok",
+      "empty_room_url": "https://v3b.fal.media/files/b/0a9714e6/kS9S3r1bGJi4-QUzK4Oq7_b352936e020b4d308a1fd419bee1e99d.png",
+      "render_url": "https://v3b.fal.media/files/b/0a971694/yf9wgH3MLX6-_a4TY_YrX.jpg",
+      "render_local_path": "bench/phase-5-redesign/outputs/room-09_redesign.webp",
+      "triptych_local_path": "bench/phase-5-redesign/triptychs/room-09.png",
+      "provider": "flux-general",
+      "provider_fallback_reason": null,
+      "primary_trigger": "cvind",
+      "loras_used": [
+        {
+          "path": "https://v3b.fal.media/files/b/0a968e98/_szQS8b6-cYx9_76iNDrx_pytorch_lora_weights.safetensors",
+          "scale": 0.8,
+          "trigger": "cvind",
+          "name": "COVAINDUSTRIAL"
+        },
+        {
+          "path": "https://huggingface.co/Shakker-Labs/FLUX.1-dev-LoRA-add-details/resolve/main/FLUX-dev-lora-add_details.safetensors",
+          "scale": 0.55,
+          "trigger": null,
+          "name": "add-details"
+        },
+        {
+          "path": "https://huggingface.co/XLabs-AI/flux-RealismLora/resolve/main/lora.safetensors",
+          "scale": 0.25,
+          "trigger": null,
+          "name": "realism"
+        }
+      ],
+      "prompt_used": "cvind interior cvind interior cvind interior a well-designed bedroom with bed as focal point, photorealistic interior photography, Architectural Digest editorial quality, 35mm lens, natural daylight, sharp focus, high resolution, raw concrete, steel I-beams, exposed brick, weathered leather, Edison filament bulbs, reclaimed factory windows, blackened metal, distressed wood, preserve original room architecture, a bedroom with bed as focal point cvind interior cvind interior",
+      "seed": 51,
+      "strength": 0.82,
+      "guidance_scale": 3.5,
+      "num_inference_steps": 28,
+      "image_width": 768,
+      "image_height": 1024,
+      "service_latency_ms": 47467,
+      "wall_latency_ms": 48021,
+      "wall_latency_s": 49.13,
+      "cost_usd": 0.045,
+      "judge_score": null,
+      "generated_at_iso": "2026-04-21T02:33:02Z"
+    },
+    {
+      "room_id": "room-11",
+      "archetype": "COVASCANDINAV",
+      "room_type": "living_room",
+      "status": "ok",
+      "empty_room_url": "https://v3b.fal.media/files/b/0a9714e9/2Q6jLDCCjdv-KyIxKpqju_0f1ad262b7924a9095fddefd74d5e233.png",
+      "render_url": "https://v3b.fal.media/files/b/0a971696/2Vd9ZEnfMfPztQ3P6vWQ8.jpg",
+      "render_local_path": "bench/phase-5-redesign/outputs/room-11_redesign.webp",
+      "triptych_local_path": "bench/phase-5-redesign/triptychs/room-11.png",
+      "provider": "flux-general",
+      "provider_fallback_reason": null,
+      "primary_trigger": "cvscn",
+      "loras_used": [
+        {
+          "path": "https://v3b.fal.media/files/b/0a968d79/AB1tJAhP5ERC-mvpcMOMM_pytorch_lora_weights.safetensors",
+          "scale": 0.88,
+          "trigger": "cvscn",
+          "name": "COVASCANDINAV"
+        },
+        {
+          "path": "https://huggingface.co/Shakker-Labs/FLUX.1-dev-LoRA-add-details/resolve/main/FLUX-dev-lora-add_details.safetensors",
+          "scale": 0.55,
+          "trigger": null,
+          "name": "add-details"
+        },
+        {
+          "path": "https://huggingface.co/XLabs-AI/flux-RealismLora/resolve/main/lora.safetensors",
+          "scale": 0.25,
+          "trigger": null,
+          "name": "realism"
+        }
+      ],
+      "prompt_used": "cvscn interior cvscn interior cvscn interior a well-designed living room with sofa and seating as focal point, photorealistic interior photography, Architectural Digest editorial quality, 35mm lens, natural daylight, sharp focus, high resolution, pale ash, natural wool, muted stone, white walls, cool daylight, clean lines, matte finishes, minimal accessorizing, preserve original room architecture, a living room with sofa and seating as focal point cvscn interior cvscn interior",
+      "seed": 53,
+      "strength": 0.82,
+      "guidance_scale": 3.5,
+      "num_inference_steps": 28,
+      "image_width": 1024,
+      "image_height": 768,
+      "service_latency_ms": 14752,
+      "wall_latency_ms": 15275,
+      "wall_latency_s": 16.45,
+      "cost_usd": 0.045,
+      "judge_score": null,
+      "generated_at_iso": "2026-04-21T02:33:18Z"
+    },
+    {
+      "room_id": "room-12",
+      "archetype": "COVAMIDCENTURY",
+      "room_type": "bedroom",
+      "status": "ok",
+      "empty_room_url": "https://v3b.fal.media/files/b/0a9714e9/ponvBKoE9T6G1NhheHD0h_253ac7042d854b579487721c368c6510.png",
+      "render_url": "https://v3b.fal.media/files/b/0a971698/IRn6W75RYw95twltwJ2zy.jpg",
+      "render_local_path": "bench/phase-5-redesign/outputs/room-12_redesign.webp",
+      "triptych_local_path": "bench/phase-5-redesign/triptychs/room-12.png",
+      "provider": "flux-general",
+      "provider_fallback_reason": null,
+      "primary_trigger": "cvmcm",
+      "loras_used": [
+        {
+          "path": "https://v3b.fal.media/files/b/0a968e41/UEseNdIMoIb99kgJdii7k_pytorch_lora_weights.safetensors",
+          "scale": 0.85,
+          "trigger": "cvmcm",
+          "name": "COVAMIDCENTURY"
+        },
+        {
+          "path": "https://huggingface.co/Shakker-Labs/FLUX.1-dev-LoRA-add-details/resolve/main/FLUX-dev-lora-add_details.safetensors",
+          "scale": 0.55,
+          "trigger": null,
+          "name": "add-details"
+        },
+        {
+          "path": "https://huggingface.co/XLabs-AI/flux-RealismLora/resolve/main/lora.safetensors",
+          "scale": 0.25,
+          "trigger": null,
+          "name": "realism"
+        }
+      ],
+      "prompt_used": "cvmcm interior cvmcm interior cvmcm interior a well-designed bedroom with bed as focal point, photorealistic interior photography, Architectural Digest editorial quality, 35mm lens, natural daylight, sharp focus, high resolution, walnut veneer, teak, hairpin legs, mustard tweed, warm amber light, tapered silhouettes, geometric rug, atomic accents, preserve original room architecture, a bedroom with bed as focal point cvmcm interior cvmcm interior",
+      "seed": 54,
+      "strength": 0.82,
+      "guidance_scale": 3.5,
+      "num_inference_steps": 28,
+      "image_width": 768,
+      "image_height": 1024,
+      "service_latency_ms": 14586,
+      "wall_latency_ms": 15070,
+      "wall_latency_s": 16.25,
+      "cost_usd": 0.045,
+      "judge_score": null,
+      "generated_at_iso": "2026-04-21T02:33:35Z"
+    }
+  ]
+}

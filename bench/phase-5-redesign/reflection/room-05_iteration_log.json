@@ -1,0 +1,59 @@
+{
+  "room_id": "room-05",
+  "archetype": "COVAFARMHOUSE",
+  "iterations": [
+    {
+      "iteration": 0,
+      "provider": "flux-general",
+      "render_local_path": "bench/phase-5-redesign/outputs/room-05_redesign.webp",
+      "scores": {
+        "architectural_integrity": 4,
+        "photorealism": 7,
+        "style_fidelity": 8,
+        "editorial_quality": 7,
+        "spatial_composition": 3,
+        "object_coherence": 8,
+        "composite": 5.65
+      },
+      "beats_collov": false,
+      "changes_applied": []
+    },
+    {
+      "iteration": 1,
+      "render_url": "https://v3b.fal.media/files/b/0a97166e/AU67-qpCvPnOwbh37c7OA.jpg",
+      "render_local_path": "bench/phase-5-redesign/reflection/outputs/room-05_iter1.jpg",
+      "params": {
+        "strength": 0.7,
+        "guidance_scale": 4.2,
+        "lora_scale_multiplier": 1.12,
+        "seed": 47,
+        "prompt_override": true
+      },
+      "scores": {
+        "architectural_integrity": 9,
+        "photorealism": 9,
+        "style_fidelity": 9,
+        "editorial_quality": 9,
+        "spatial_composition": 9,
+        "object_coherence": 10,
+        "composite": 9.0
+      },
+      "beats_collov": true,
+      "failure_modes": [],
+      "provider": "flux-general",
+      "cost_usd": 0.045,
+      "latency_ms": 15710,
+      "changes_applied": [
+        "strength 0.82\u21920.70 (architectural preservation)",
+        "guidance 3.5\u21924.2",
+        "lora_scale_multiplier=1.12",
+        "prompt vocabulary strengthened"
+      ]
+    }
+  ],
+  "best_iteration": 1,
+  "best_composite": 9.0,
+  "best_beats_collov": true,
+  "final_status": "pass",
+  "generated_at_iso": "2026-04-21T02:26:46Z"
+}

@@ -1,0 +1,112 @@
+{
+  "room_id": "room-11",
+  "archetype": "COVASCANDINAV",
+  "iterations": [
+    {
+      "iteration": 0,
+      "provider": "flux-general",
+      "render_local_path": "bench/phase-5-redesign/outputs/room-11_redesign.webp",
+      "scores": {
+        "architectural_integrity": 4,
+        "photorealism": 5,
+        "style_fidelity": 3,
+        "editorial_quality": 3,
+        "spatial_composition": 4,
+        "object_coherence": 4,
+        "composite": 4.0
+      },
+      "beats_collov": false,
+      "changes_applied": []
+    },
+    {
+      "iteration": 1,
+      "render_url": "https://v3b.fal.media/files/b/0a971677/s3kmfHQ1S8lonHiybpJMN.jpg",
+      "render_local_path": "bench/phase-5-redesign/reflection/outputs/room-11_iter1.jpg",
+      "params": {
+        "strength": 0.7,
+        "guidance_scale": 4.2,
+        "lora_scale_multiplier": 1.12,
+        "seed": 53,
+        "prompt_override": true
+      },
+      "scores": {
+        "architectural_integrity": 4,
+        "photorealism": 6,
+        "style_fidelity": 3,
+        "editorial_quality": 4,
+        "spatial_composition": 3,
+        "object_coherence": 4,
+        "composite": 4.15
+      },
+      "beats_collov": false,
+      "failure_modes": [
+        "Complete room type transformation: living room converted to bedroom, violating architectural integrity",
+        "Original green walls and gallery wall completely removed instead of preserved",
+        "Window architecture appears altered or replaced",
+        "Ceiling fan added where none existed in original",
+        "Floor material completely changed",
+        "Style is generic neutral bedroom, not recognizable Scandinavian/Nordic design",
+        "No distinctive Nordic elements (no natural wood tones, no hygge lighting, no characteristic textiles)",
+        "Composition is basic centered bed layout with no editorial interest",
+        "Name letters 'DAKSH' on wall are incongruous and non-Scandinavian"
+      ],
+      "provider": "flux-general",
+      "cost_usd": 0.045,
+      "latency_ms": 14486,
+      "changes_applied": [
+        "strength 0.82\u21920.70 (architectural preservation)",
+        "guidance 3.5\u21924.2",
+        "lora_scale_multiplier=1.12",
+        "prompt vocabulary strengthened"
+      ]
+    },
+    {
+      "iteration": 2,
+      "render_url": "https://v3b.fal.media/files/b/0a97167a/-54OIkOgQrUKoCTpbaeEC.jpg",
+      "render_local_path": "bench/phase-5-redesign/reflection/outputs/room-11_iter2.jpg",
+      "params": {
+        "strength": 0.62,
+        "guidance_scale": 5.0,
+        "lora_scale_multiplier": 1.2,
+        "seed": 1053,
+        "prompt_override": true
+      },
+      "scores": {
+        "architectural_integrity": 4,
+        "photorealism": 3,
+        "style_fidelity": 2,
+        "editorial_quality": 2,
+        "spatial_composition": 3,
+        "object_coherence": 3,
+        "composite": 3.2
+      },
+      "beats_collov": false,
+      "failure_modes": [
+        "Complete room transformation - this is not the original living room architecture at all",
+        "Original green walls with velvet and gallery completely replaced with a bedroom",
+        "Severe architectural failure - walls, windows, floor plan entirely different",
+        "Wrong room type generated - bedroom instead of living room",
+        "Plastic, oversaturated rendering quality with obvious AI artifacts",
+        "Generic hotel-room aesthetic with no committed Scandinavian design language",
+        "Floating ceiling fan with impossible lighting physics",
+        "Name text 'DAKSH' on wall is unprofessional and breaks immersion",
+        "Watermark overlay degrades presentation quality"
+      ],
+      "provider": "flux-general",
+      "cost_usd": 0.045,
+      "latency_ms": 14767,
+      "changes_applied": [
+        "strength 0.82\u21920.62",
+        "guidance 3.5\u21925.0",
+        "lora_scale_multiplier=1.20",
+        "seed rotated (+1000)",
+        "prompt vocabulary strengthened"
+      ]
+    }
+  ],
+  "best_iteration": 1,
+  "best_composite": 4.15,
+  "best_beats_collov": false,
+  "final_status": "fail_after_iterations",
+  "generated_at_iso": "2026-04-21T02:28:49Z"
+}

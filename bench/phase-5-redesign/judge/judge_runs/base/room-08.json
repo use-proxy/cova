@@ -1,0 +1,34 @@
+{
+  "room_id": "room-08",
+  "run_label": "base",
+  "archetype": "COVABOHEMIAN",
+  "archetype_label": "Maximalist Eclectic / Bohemian",
+  "model": "claude-sonnet-4-5",
+  "input_render_sha_prefix": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBD",
+  "input_render_path": "bench/phase-5-redesign/outputs/room-08_redesign.webp",
+  "wall_s": 30.14,
+  "stop_reason": "end_turn",
+  "usage": {
+    "input_tokens": 8764,
+    "output_tokens": 277
+  },
+  "raw_text": "```json\n{\n  \"architectural_integrity\": 9,\n  \"photorealism\": 9,\n  \"style_fidelity\": 8,\n  \"editorial_quality\": 8,\n  \"spatial_composition\": 9,\n  \"object_coherence\": 9,\n  \"composite\": 8.65,\n  \"beats_collov\": true,\n  \"failure_modes\": [],\n  \"improvement_suggestions\": [\n    \"Increase visual density with more layered textiles (throws, additional pillows, wall hangings) to push deeper into maximalist territory\",\n    \"Add more color saturation and pattern mixing - current palette is too neutral/beige for true maximalist eclectic\",\n    \"Include more collected objects and personal artifacts on surfaces to enhance bohemian authenticity\",\n    \"Layer additional rugs or introduce bolder pattern contrasts to move beyond 'boho-lite' aesthetic\"\n  ],\n  \"collov_comparison\": \"This render significantly exceeds Collov's style commitment and editorial curation while maintaining comparable architectural integrity and photorealism - it has a clear bohemian point of view where Collov's bedrooms feel generic and interchangeable.\"\n}\n```",
+  "parsed": {
+    "architectural_integrity": 9,
+    "photorealism": 9,
+    "style_fidelity": 8,
+    "editorial_quality": 8,
+    "spatial_composition": 9,
+    "object_coherence": 9,
+    "composite": 8.65,
+    "beats_collov": true,
+    "failure_modes": [],
+    "improvement_suggestions": [
+      "Increase visual density with more layered textiles (throws, additional pillows, wall hangings) to push deeper into maximalist territory",
+      "Add more color saturation and pattern mixing - current palette is too neutral/beige for true maximalist eclectic",
+      "Include more collected objects and personal artifacts on surfaces to enhance bohemian authenticity",
+      "Layer additional rugs or introduce bolder pattern contrasts to move beyond 'boho-lite' aesthetic"
+    ],
+    "collov_comparison": "This render significantly exceeds Collov's style commitment and editorial curation while maintaining comparable architectural integrity and photorealism - it has a clear bohemian point of view where Collov's bedrooms feel generic and interchangeable."
+  }
+}

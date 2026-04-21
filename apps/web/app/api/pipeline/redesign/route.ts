@@ -310,6 +310,21 @@ export async function POST(request: Request) {
       // Resolve LoRA trigger from style blend using COVA* registry
       const loraTrigger = getDnaTriggerFromBlend(styleBlendForAnchor);
 
+      // F3-BLEND-CTX.1 — inject style_blend into the RenderContext so the
+      // Director's `buildLorasFromBlend` path activates. Precedence:
+      //   1. renderContext.style_blend (populated by assembler for v3 fps)
+      //   2. rooms.style_blend DB column (legacy, quiz-written)
+      // Without this, every Director call falls back to single-primary LoRA.
+      const directorContext: RenderContext | null = renderContext
+        ? ({
+            ...renderContext,
+            style_blend:
+              renderContext.style_blend ??
+              renderContext.styleBlend ??
+              (room?.style_blend ?? undefined),
+          } as RenderContext)
+        : null;
+
       const ddResult = await runDesignDirector({
         imageUrl: photoUrlForPipeline,
         fingerprint,
@@ -318,7 +333,7 @@ export async function POST(request: Request) {
         loraTrigger,
         budgetMin,
         budgetMax,
-        context: renderContext,
+        context: directorContext,
         removeItems,
         keepItems,
         chatHistory,

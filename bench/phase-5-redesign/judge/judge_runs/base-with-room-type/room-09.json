@@ -1,0 +1,43 @@
+{
+  "room_id": "room-09",
+  "run_label": "base-with-room-type",
+  "archetype": "COVAINDUSTRIAL",
+  "archetype_label": "Industrial Loft",
+  "model": "claude-sonnet-4-5",
+  "input_render_sha_prefix": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBD",
+  "input_render_path": "bench/phase-5-redesign/outputs/room-09_redesign.webp",
+  "wall_s": 16.03,
+  "stop_reason": "end_turn",
+  "usage": {
+    "input_tokens": 8755,
+    "output_tokens": 481
+  },
+  "raw_text": "```json\n{\n  \"architectural_integrity\": 4,\n  \"photorealism\": 5,\n  \"style_fidelity\": 2,\n  \"editorial_quality\": 3,\n  \"spatial_composition\": 4,\n  \"object_coherence\": 3,\n  \"composite\": 3.65,\n  \"beats_collov\": false,\n  \"failure_modes\": [\n    \"Complete architectural failure: ceiling transformed from popcorn texture to exposed brick with industrial beams - this is not preservation, this is a full structural rebuild\",\n    \"Windows changed from standard residential to industrial steel-frame windows - architectural element completely replaced\",\n    \"Floor changed from carpet to hardwood with concrete platform - major structural alteration\",\n    \"Style is industrial loft but applied to wrong room type - this looks like a converted warehouse space, not a bedroom transformation\",\n    \"Lighting changed from recessed to exposed pendant bulbs and track lighting - ceiling architecture completely different\",\n    \"The render appears to have generated an entirely new room rather than redesigning the existing space\"\n  ],\n  \"improvement_suggestions\": [\n    \"Preserve the actual ceiling structure - if original has popcorn ceiling, maintain ceiling height and texture substrate, only change paint color or add surface treatments\",\n    \"Keep existing window frames and only modify treatments (blinds, curtains) not the window architecture itself\",\n    \"Maintain floor substrate - if carpeted, keep carpet or use area rugs, do not replace with hardwood\",\n    \"For industrial loft style in a standard bedroom: use industrial furniture (metal bed frame, exposed bulb lamps), concrete-look accessories, metal and wood materials, NOT rebuild the architecture\",\n    \"Understand that style transformation means furniture and decor changes, not architectural reconstruction\",\n    \"Add industrial elements through: metal nightstands, Edison bulb lamps, reclaimed wood accents, exposed metal shelving - all within existing room structure\"\n  ],\n  \"collov_comparison\": \"This render fails catastrophically compared to Collov references, which consistently preserve architectural integrity while Cova has generated an entirely different room structure.\"\n}\n```",
+  "parsed": {
+    "architectural_integrity": 4,
+    "photorealism": 5,
+    "style_fidelity": 2,
+    "editorial_quality": 3,
+    "spatial_composition": 4,
+    "object_coherence": 3,
+    "composite": 3.65,
+    "beats_collov": false,
+    "failure_modes": [
+      "Complete architectural failure: ceiling transformed from popcorn texture to exposed brick with industrial beams - this is not preservation, this is a full structural rebuild",
+      "Windows changed from standard residential to industrial steel-frame windows - architectural element completely replaced",
+      "Floor changed from carpet to hardwood with concrete platform - major structural alteration",
+      "Style is industrial loft but applied to wrong room type - this looks like a converted warehouse space, not a bedroom transformation",
+      "Lighting changed from recessed to exposed pendant bulbs and track lighting - ceiling architecture completely different",
+      "The render appears to have generated an entirely new room rather than redesigning the existing space"
+    ],
+    "improvement_suggestions": [
+      "Preserve the actual ceiling structure - if original has popcorn ceiling, maintain ceiling height and texture substrate, only change paint color or add surface treatments",
+      "Keep existing window frames and only modify treatments (blinds, curtains) not the window architecture itself",
+      "Maintain floor substrate - if carpeted, keep carpet or use area rugs, do not replace with hardwood",
+      "For industrial loft style in a standard bedroom: use industrial furniture (metal bed frame, exposed bulb lamps), concrete-look accessories, metal and wood materials, NOT rebuild the architecture",
+      "Understand that style transformation means furniture and decor changes, not architectural reconstruction",
+      "Add industrial elements through: metal nightstands, Edison bulb lamps, reclaimed wood accents, exposed metal shelving - all within existing room structure"
+    ],
+    "collov_comparison": "This render fails catastrophically compared to Collov references, which consistently preserve architectural integrity while Cova has generated an entirely different room structure."
+  }
+}

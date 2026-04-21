@@ -1,0 +1,223 @@
+{
+  "room_id": "room-02",
+  "archetype": "COVAMIDCENTURY",
+  "iterations": [
+    {
+      "iteration": 0,
+      "provider": "flux-general",
+      "render_local_path": "bench/phase-5-redesign/outputs/room-02_redesign.webp",
+      "scores": {
+        "architectural_integrity": 3,
+        "photorealism": 6,
+        "style_fidelity": 2,
+        "editorial_quality": 4,
+        "spatial_composition": 2,
+        "object_coherence": 3,
+        "composite": 3.5
+      },
+      "beats_collov": false,
+      "changes_applied": []
+    },
+    {
+      "iteration": 1,
+      "render_url": "https://v3b.fal.media/files/b/0a9716a0/gg7eGZ-VHa2REU3R-bHa2.jpg",
+      "render_local_path": "bench/phase-5-redesign/reflection/outputs/room-02_iter1.jpg",
+      "params": {
+        "strength": 0.7,
+        "guidance_scale": 4.2,
+        "lora_scale_multiplier": 1.12,
+        "seed": 44,
+        "prompt_override": true
+      },
+      "scores": {
+        "architectural_integrity": 4,
+        "photorealism": 5,
+        "style_fidelity": 3,
+        "editorial_quality": 4,
+        "spatial_composition": 3,
+        "object_coherence": 4,
+        "composite": 4.0
+      },
+      "beats_collov": false,
+      "failure_modes": [
+        "Complete architectural transformation - living room with piano converted to bedroom, violating fundamental room type preservation",
+        "Window architecture altered - original window configuration not preserved",
+        "Floor material completely changed from hardwood to carpet",
+        "Wall geometry appears modified with different proportions",
+        "Ceiling fan added where none existed in original architecture",
+        "Style is contemporary neutral/minimalist, not Retro Mid-Century - no period-specific furniture, no tapered legs, no warm wood tones, no vintage lighting",
+        "Generic hotel/staging aesthetic with no mid-century character",
+        "Spatial composition fails - bedroom furniture in what should be a living room space",
+        "No recognizable mid-century design elements present"
+      ],
+      "provider": "flux-general",
+      "cost_usd": 0.045,
+      "latency_ms": 13859,
+      "changes_applied": [
+        "strength 0.82\u21920.70 (architectural preservation)",
+        "guidance 3.5\u21924.2",
+        "lora_scale_multiplier=1.12",
+        "prompt vocabulary strengthened"
+      ]
+    },
+    {
+      "iteration": 2,
+      "render_url": "https://v3b.fal.media/files/b/0a9716a3/7dLfe5HgYbK0EEYTO276a.jpg",
+      "render_local_path": "bench/phase-5-redesign/reflection/outputs/room-02_iter2.jpg",
+      "params": {
+        "strength": 0.62,
+        "guidance_scale": 5.0,
+        "lora_scale_multiplier": 1.2,
+        "seed": 1044,
+        "prompt_override": true
+      },
+      "scores": {
+        "architectural_integrity": 4,
+        "photorealism": 5,
+        "style_fidelity": 3,
+        "editorial_quality": 4,
+        "spatial_composition": 3,
+        "object_coherence": 4,
+        "composite": 4.0
+      },
+      "beats_collov": false,
+      "failure_modes": [
+        "Complete architectural failure: living room with piano transformed into bedroom",
+        "Original room type not preserved - fundamental violation of architectural integrity",
+        "Style is generic contemporary/neutral, not Retro Mid-Century",
+        "No mid-century modern furniture vocabulary present (no tapered legs, no period-appropriate forms)",
+        "Missing retro color palette entirely - should have mustard, teal, orange, or avocado tones",
+        "Ceiling fan is contemporary, not mid-century appropriate",
+        "Gray upholstered bed is contemporary style, not retro",
+        "Wall art lacks mid-century graphic sensibility",
+        "No iconic mid-century pieces (Eames, Nelson, Saarinen references)",
+        "Spatial composition fails - piano room became bedroom with completely different layout"
+      ],
+      "provider": "flux-general",
+      "cost_usd": 0.045,
+      "latency_ms": 12537,
+      "changes_applied": [
+        "strength 0.82\u21920.62",
+        "guidance 3.5\u21925.0",
+        "lora_scale_multiplier=1.20",
+        "seed rotated (+1000)",
+        "prompt vocabulary strengthened"
+      ]
+    }
+  ],
+  "best_iteration": 1,
+  "best_composite": 4.0,
+  "best_beats_collov": false,
+  "final_status": "fail_after_iterations",
+  "generated_at_iso": "2026-04-21T02:35:39Z",
+  "history": [
+    {
+      "room_id": "room-02",
+      "archetype": "COVAMIDCENTURY",
+      "iterations": [
+        {
+          "iteration": 0,
+          "provider": "flux-general",
+          "render_local_path": "bench/phase-5-redesign/outputs/room-02_redesign.webp",
+          "scores": {
+            "architectural_integrity": 4,
+            "photorealism": 6,
+            "style_fidelity": 7,
+            "editorial_quality": 7,
+            "spatial_composition": 6,
+            "object_coherence": 8,
+            "composite": 5.75
+          },
+          "beats_collov": false,
+          "changes_applied": []
+        },
+        {
+          "iteration": 1,
+          "render_url": "https://v3b.fal.media/files/b/0a971660/kbRmLLG1450saQ8gTUSYt.jpg",
+          "render_local_path": "bench/phase-5-redesign/reflection/outputs/room-02_iter1.jpg",
+          "params": {
+            "strength": 0.7,
+            "guidance_scale": 4.2,
+            "lora_scale_multiplier": 1.12,
+            "seed": 44,
+            "prompt_override": true
+          },
+          "scores": {
+            "architectural_integrity": 4,
+            "photorealism": 6,
+            "style_fidelity": 3,
+            "editorial_quality": 4,
+            "spatial_composition": 3,
+            "object_coherence": 4,
+            "composite": 4.15
+          },
+          "beats_collov": false,
+          "failure_modes": [
+            "Complete room transformation - this is a bedroom, not a living room with piano",
+            "Total loss of original architecture and room identity",
+            "No mid-century retro style present - this is contemporary neutral/Scandinavian",
+            "Generic hotel-style bedroom bears no relation to specified living room source",
+            "Spatial composition fails - furniture arrangement is basic and uninspired",
+            "No retro elements whatsoever - missing iconic mid-century furniture, colors, patterns",
+            "Ceiling fan is contemporary, not mid-century appropriate"
+          ],
+          "provider": "flux-general",
+          "cost_usd": 0.045,
+          "latency_ms": 17452,
+          "changes_applied": [
+            "strength 0.82\u21920.70 (architectural preservation)",
+            "guidance 3.5\u21924.2",
+            "lora_scale_multiplier=1.12",
+            "prompt vocabulary strengthened"
+          ]
+        },
+        {
+          "iteration": 2,
+          "render_url": "https://v3b.fal.media/files/b/0a971663/4mgm-_sJvLKvPKZL9rpsm.jpg",
+          "render_local_path": "bench/phase-5-redesign/reflection/outputs/room-02_iter2.jpg",
+          "params": {
+            "strength": 0.62,
+            "guidance_scale": 5.0,
+            "lora_scale_multiplier": 1.2,
+            "seed": 1044,
+            "prompt_override": true
+          },
+          "scores": {
+            "architectural_integrity": 4,
+            "photorealism": 5,
+            "style_fidelity": 3,
+            "editorial_quality": 4,
+            "spatial_composition": 5,
+            "object_coherence": 4,
+            "composite": 4.3
+          },
+          "beats_collov": false,
+          "failure_modes": [
+            "Critical architectural failure: original living room with piano completely replaced with bedroom architecture",
+            "Room type transformation: living room converted to bedroom violates architectural preservation requirement",
+            "Wrong room generated: no piano, no Joy Division elements, no living room features present",
+            "Style failure: renders show generic contemporary/modern bedroom not Retro Mid-Century living room",
+            "Weak Mid-Century expression: only image 4 shows any Mid-Century elements (sunburst pendant, wood shelving) but wrong room type",
+            "Photorealism issues: overly smooth surfaces, artificial lighting, staged quality lacks authentic photography feel",
+            "Generic aesthetic: first three renders indistinguishable from any neutral modern bedroom design"
+          ],
+          "provider": "flux-general",
+          "cost_usd": 0.045,
+          "latency_ms": 13142,
+          "changes_applied": [
+            "strength 0.82\u21920.62",
+            "guidance 3.5\u21925.0",
+            "lora_scale_multiplier=1.20",
+            "seed rotated (+1000)",
+            "prompt vocabulary strengthened"
+          ]
+        }
+      ],
+      "best_iteration": 0,
+      "best_composite": 5.75,
+      "best_beats_collov": false,
+      "final_status": "fail_after_iterations",
+      "generated_at_iso": "2026-04-21T02:25:01Z"
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "room_id": "room-01",
+  "archetype": "COVAJAPANDI",
+  "room_type": "bedroom",
+  "status": "ok",
+  "empty_room_url": "https://v3b.fal.media/files/b/0a9714d3/ThMYvvNkrh7h7C5kh0iL9_f23d791f5f15480d8c7822ddf10dc99e.png",
+  "render_url": "https://v3b.fal.media/files/b/0a97162b/gP8chyRhukXDlQj8BmjyN.jpg",
+  "render_local_path": "bench/phase-5-redesign/outputs/room-01_redesign.webp",
+  "triptych_local_path": "bench/phase-5-redesign/triptychs/room-01.png",
+  "provider": "flux-general",
+  "provider_fallback_reason": null,
+  "primary_trigger": "cvwmn",
+  "loras_used": [
+    {
+      "path": "https://v3b.fal.media/files/b/0a968d9b/TbARCu6Zf_643uHs51Pkv_pytorch_lora_weights.safetensors",
+      "scale": 0.88,
+      "trigger": "cvwmn",
+      "name": "COVAJAPANDI"
+    },
+    {
+      "path": "https://huggingface.co/Shakker-Labs/FLUX.1-dev-LoRA-add-details/resolve/main/FLUX-dev-lora-add_details.safetensors",
+      "scale": 0.55,
+      "trigger": null,
+      "name": "add-details"
+    },
+    {
+      "path": "https://huggingface.co/XLabs-AI/flux-RealismLora/resolve/main/lora.safetensors",
+      "scale": 0.25,
+      "trigger": null,
+      "name": "realism"
+    }
+  ],
+  "prompt_used": "cvwmn interior cvwmn interior cvwmn interior a well-designed interior room, photorealistic interior photography, Architectural Digest editorial quality, 35mm lens, natural daylight, sharp focus, high resolution, warm oak, natural linen, paper lanterns, handcrafted ceramics, wabi-sabi restraint, low-profile furniture, warm neutrals, negative space cvwmn interior cvwmn interior",
+  "seed": 43,
+  "strength": 0.82,
+  "guidance_scale": 3.5,
+  "num_inference_steps": 28,
+  "image_width": 768,
+  "image_height": 1024,
+  "service_latency_ms": 16839,
+  "wall_latency_ms": 17337,
+  "wall_latency_s": 18.56,
+  "cost_usd": 0.045,
+  "judge_score": 8.4,
+  "generated_at_iso": "2026-04-21T02:15:26Z",
+  "judge_details": {
+    "architectural_integrity": 9,
+    "photorealism": 8,
+    "style_fidelity": 8,
+    "editorial_quality": 8,
+    "spatial_composition": 9,
+    "object_coherence": 9,
+    "composite": 8.4,
+    "beats_collov": true,
+    "failure_modes": [],
+    "improvement_suggestions": [
+      "Add more textural variation to surfaces - the walls and ceiling could show subtle imperfections for enhanced photorealism",
+      "Introduce a second light source or more complex shadow play to elevate from 'very good' to 'exceptional' photorealism",
+      "Consider adding one small organic element (ceramic bowl, stone object) on the low table to strengthen the Japandi natural material emphasis",
+      "The branch could cast slightly more defined shadows on the wall to enhance depth perception"
+    ],
+    "collov_comparison": "This render significantly exceeds Collov's style commitment with a clear, recognizable Warm Japandi aesthetic (natural wood, organic forms, neutral palette, minimalist composition) while maintaining comparable architectural integrity and superior object curation."
+  },
+  "judge_model": "claude-sonnet-4-5"
+}

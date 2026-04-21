@@ -1,0 +1,50 @@
+{
+  "room_id": "room-03",
+  "run_label": "base",
+  "archetype": "COVACOASTAL",
+  "archetype_label": "Coastal Bright",
+  "model": "claude-sonnet-4-5",
+  "input_render_sha_prefix": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBD",
+  "input_render_path": "bench/phase-5-redesign/outputs/room-03_redesign.webp",
+  "wall_s": 14.33,
+  "stop_reason": "end_turn",
+  "usage": {
+    "input_tokens": 8754,
+    "output_tokens": 483
+  },
+  "raw_text": "```json\n{\n  \"architectural_integrity\": 3,\n  \"photorealism\": 4,\n  \"style_fidelity\": 2,\n  \"editorial_quality\": 3,\n  \"spatial_composition\": 2,\n  \"object_coherence\": 3,\n  \"composite\": 3.0,\n  \"beats_collov\": false,\n  \"failure_modes\": [\n    \"Complete room transformation - this is a bedroom, not a living room as specified\",\n    \"Total architectural failure - walls, windows, floor plan completely changed from original\",\n    \"Wrong room type generated\",\n    \"Ceiling fan added where none existed\",\n    \"Window placement and size completely altered\",\n    \"Floor material changed from herringbone to carpet/wood\",\n    \"Room dimensions and proportions do not match original\",\n    \"Style is generic modern bedroom, not Coastal Bright\",\n    \"No coastal elements present (no blues, whites, natural textures, beach-inspired decor)\",\n    \"Bright requirement not met - room appears dim with heavy window coverings\"\n  ],\n  \"improvement_suggestions\": [\n    \"Implement strict room type preservation - living room must remain living room\",\n    \"Add validation layer to ensure architectural elements (walls, windows, doors) match original layout\",\n    \"For Coastal Bright: require white/cream walls, light blue accents, natural fiber textures, bright natural light\",\n    \"Preserve original flooring patterns (herringbone must stay herringbone)\",\n    \"Do not add ceiling fixtures that weren't in original\",\n    \"Implement room geometry constraints to prevent complete spatial transformation\",\n    \"Add coastal-specific objects: rope details, driftwood, nautical elements, linen textures\",\n    \"Ensure window treatments allow maximum light for 'Bright' requirement\",\n    \"Validate furniture type matches room function before rendering\"\n  ],\n  \"collov_comparison\": \"This render catastrophically fails where Collov succeeds - Collov preserves room architecture and type, while this completely transforms a living room into a bedroom with entirely different spatial layout.\"\n}\n```",
+  "parsed": {
+    "architectural_integrity": 3,
+    "photorealism": 4,
+    "style_fidelity": 2,
+    "editorial_quality": 3,
+    "spatial_composition": 2,
+    "object_coherence": 3,
+    "composite": 3.0,
+    "beats_collov": false,
+    "failure_modes": [
+      "Complete room transformation - this is a bedroom, not a living room as specified",
+      "Total architectural failure - walls, windows, floor plan completely changed from original",
+      "Wrong room type generated",
+      "Ceiling fan added where none existed",
+      "Window placement and size completely altered",
+      "Floor material changed from herringbone to carpet/wood",
+      "Room dimensions and proportions do not match original",
+      "Style is generic modern bedroom, not Coastal Bright",
+      "No coastal elements present (no blues, whites, natural textures, beach-inspired decor)",
+      "Bright requirement not met - room appears dim with heavy window coverings"
+    ],
+    "improvement_suggestions": [
+      "Implement strict room type preservation - living room must remain living room",
+      "Add validation layer to ensure architectural elements (walls, windows, doors) match original layout",
+      "For Coastal Bright: require white/cream walls, light blue accents, natural fiber textures, bright natural light",
+      "Preserve original flooring patterns (herringbone must stay herringbone)",
+      "Do not add ceiling fixtures that weren't in original",
+      "Implement room geometry constraints to prevent complete spatial transformation",
+      "Add coastal-specific objects: rope details, driftwood, nautical elements, linen textures",
+      "Ensure window treatments allow maximum light for 'Bright' requirement",
+      "Validate furniture type matches room function before rendering"
+    ],
+    "collov_comparison": "This render catastrophically fails where Collov succeeds - Collov preserves room architecture and type, while this completely transforms a living room into a bedroom with entirely different spatial layout."
+  }
+}

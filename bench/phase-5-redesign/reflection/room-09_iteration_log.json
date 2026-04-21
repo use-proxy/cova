@@ -1,0 +1,172 @@
+{
+  "room_id": "room-09",
+  "archetype": "COVAINDUSTRIAL",
+  "iterations": [
+    {
+      "iteration": 0,
+      "provider": "flux-general",
+      "render_local_path": "bench/phase-5-redesign/outputs/room-09_redesign.webp",
+      "scores": {
+        "architectural_integrity": 4,
+        "photorealism": 5,
+        "style_fidelity": 2,
+        "editorial_quality": 3,
+        "spatial_composition": 4,
+        "object_coherence": 3,
+        "composite": 3.65
+      },
+      "beats_collov": false,
+      "changes_applied": []
+    },
+    {
+      "iteration": 1,
+      "render_url": "https://v3b.fal.media/files/b/0a9716a6/n3Sl1tW1N6wWuZCrnK_ny.jpg",
+      "render_local_path": "bench/phase-5-redesign/reflection/outputs/room-09_iter1.jpg",
+      "params": {
+        "strength": 0.7,
+        "guidance_scale": 4.2,
+        "lora_scale_multiplier": 1.12,
+        "seed": 51,
+        "prompt_override": true
+      },
+      "scores": {
+        "architectural_integrity": 9,
+        "photorealism": 8,
+        "style_fidelity": 9,
+        "editorial_quality": 9,
+        "spatial_composition": 9,
+        "object_coherence": 9,
+        "composite": 8.8
+      },
+      "beats_collov": true,
+      "failure_modes": [],
+      "provider": "flux-general",
+      "cost_usd": 0.045,
+      "latency_ms": 14021,
+      "changes_applied": [
+        "strength 0.82\u21920.70 (architectural preservation)",
+        "guidance 3.5\u21924.2",
+        "lora_scale_multiplier=1.12",
+        "prompt vocabulary strengthened"
+      ]
+    }
+  ],
+  "best_iteration": 1,
+  "best_composite": 8.8,
+  "best_beats_collov": true,
+  "final_status": "pass",
+  "generated_at_iso": "2026-04-21T02:36:03Z",
+  "history": [
+    {
+      "room_id": "room-09",
+      "archetype": "COVAINDUSTRIAL",
+      "iterations": [
+        {
+          "iteration": 0,
+          "provider": "flux-general",
+          "render_local_path": "bench/phase-5-redesign/outputs/room-09_redesign.webp",
+          "scores": {
+            "architectural_integrity": 3,
+            "photorealism": 4,
+            "style_fidelity": 1,
+            "editorial_quality": 2,
+            "spatial_composition": 3,
+            "object_coherence": 2,
+            "composite": 2.8
+          },
+          "beats_collov": false,
+          "changes_applied": []
+        },
+        {
+          "iteration": 1,
+          "render_url": "https://v3b.fal.media/files/b/0a971670/1AVfFBxve_tNWBD1zzl3t.jpg",
+          "render_local_path": "bench/phase-5-redesign/reflection/outputs/room-09_iter1.jpg",
+          "params": {
+            "strength": 0.7,
+            "guidance_scale": 4.2,
+            "lora_scale_multiplier": 1.12,
+            "seed": 51,
+            "prompt_override": true
+          },
+          "scores": {
+            "architectural_integrity": 3,
+            "photorealism": 4,
+            "style_fidelity": 2,
+            "editorial_quality": 3,
+            "spatial_composition": 4,
+            "object_coherence": 3,
+            "composite": 3.2
+          },
+          "beats_collov": false,
+          "failure_modes": [
+            "Complete architectural failure: original gaming bedroom with popcorn ceiling transformed into industrial loft kitchen/bar space",
+            "Room type changed entirely from bedroom to kitchen/entertainment area",
+            "Ceiling structure completely replaced with exposed concrete and track lighting instead of preserving popcorn ceiling",
+            "Windows and wall configuration do not match original bedroom architecture",
+            "Not an Industrial Loft bedroom - this is a kitchen/bar area",
+            "Severe style misinterpretation: Industrial Loft applied to wrong room type",
+            "Plastic, oversaturated textures on concrete walls lack photorealistic depth",
+            "Pendant light arrangement appears floating and lacks proper mounting detail",
+            "Bar stools appear slightly warped and lack realistic material definition"
+          ],
+          "provider": "flux-general",
+          "cost_usd": 0.045,
+          "latency_ms": 17454,
+          "changes_applied": [
+            "strength 0.82\u21920.70 (architectural preservation)",
+            "guidance 3.5\u21924.2",
+            "lora_scale_multiplier=1.12",
+            "prompt vocabulary strengthened"
+          ]
+        },
+        {
+          "iteration": 2,
+          "render_url": "https://v3b.fal.media/files/b/0a971674/bbA96KzEOB4hXcn9R2lvE.jpg",
+          "render_local_path": "bench/phase-5-redesign/reflection/outputs/room-09_iter2.jpg",
+          "params": {
+            "strength": 0.62,
+            "guidance_scale": 5.0,
+            "lora_scale_multiplier": 1.2,
+            "seed": 1051,
+            "prompt_override": true
+          },
+          "scores": {
+            "architectural_integrity": 3,
+            "photorealism": 4,
+            "style_fidelity": 2,
+            "editorial_quality": 3,
+            "spatial_composition": 4,
+            "object_coherence": 3,
+            "composite": 3.2
+          },
+          "beats_collov": false,
+          "failure_modes": [
+            "Complete architectural failure: original gaming bedroom with popcorn ceiling has been replaced with an entirely different industrial loft space with exposed concrete ceiling",
+            "Room geometry completely changed - this is not a transformation but a replacement",
+            "No preservation of original windows, walls, or ceiling structure",
+            "Style is industrial loft but applied to wrong room type - should be bedroom transformation not new construction",
+            "Exposed concrete ceiling with visible wear patterns does not match original popcorn ceiling architecture",
+            "Floor material completely changed from carpet to concrete/brick",
+            "Window placement and size altered",
+            "This appears to be a stock industrial loft photo rather than a render of the specified bedroom"
+          ],
+          "provider": "flux-general",
+          "cost_usd": 0.045,
+          "latency_ms": 13185,
+          "changes_applied": [
+            "strength 0.82\u21920.62",
+            "guidance 3.5\u21925.0",
+            "lora_scale_multiplier=1.20",
+            "seed rotated (+1000)",
+            "prompt vocabulary strengthened"
+          ]
+        }
+      ],
+      "best_iteration": 1,
+      "best_composite": 3.2,
+      "best_beats_collov": false,
+      "final_status": "fail_after_iterations",
+      "generated_at_iso": "2026-04-21T02:27:49Z"
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "room_id": "room-04",
+  "archetype": "COVABOHEMIAN",
+  "iterations": [
+    {
+      "iteration": 0,
+      "provider": "flux-general",
+      "render_local_path": "bench/phase-5-redesign/outputs/room-04_redesign.webp",
+      "scores": {
+        "architectural_integrity": 3,
+        "photorealism": 6,
+        "style_fidelity": 2,
+        "editorial_quality": 4,
+        "spatial_composition": 4,
+        "object_coherence": 3,
+        "composite": 3.65
+      },
+      "beats_collov": false,
+      "changes_applied": []
+    },
+    {
+      "iteration": 1,
+      "render_url": "https://v3b.fal.media/files/b/0a97166b/QbA2m0kEOcMGJJemA2zHR.jpg",
+      "render_local_path": "bench/phase-5-redesign/reflection/outputs/room-04_iter1.jpg",
+      "params": {
+        "strength": 0.7,
+        "guidance_scale": 4.2,
+        "lora_scale_multiplier": 1.12,
+        "seed": 46,
+        "prompt_override": true
+      },
+      "scores": {
+        "architectural_integrity": 9,
+        "photorealism": 8,
+        "style_fidelity": 9,
+        "editorial_quality": 8,
+        "spatial_composition": 9,
+        "object_coherence": 9,
+        "composite": 8.65
+      },
+      "beats_collov": true,
+      "failure_modes": [],
+      "provider": "flux-general",
+      "cost_usd": 0.045,
+      "latency_ms": 15703,
+      "changes_applied": [
+        "strength 0.82\u21920.70 (architectural preservation)",
+        "guidance 3.5\u21924.2",
+        "lora_scale_multiplier=1.12",
+        "prompt vocabulary strengthened"
+      ]
+    }
+  ],
+  "best_iteration": 1,
+  "best_composite": 8.65,
+  "best_beats_collov": true,
+  "final_status": "pass",
+  "generated_at_iso": "2026-04-21T02:26:22Z"
+}

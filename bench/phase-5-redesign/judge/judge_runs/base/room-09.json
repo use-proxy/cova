@@ -1,0 +1,44 @@
+{
+  "room_id": "room-09",
+  "run_label": "base",
+  "archetype": "COVAINDUSTRIAL",
+  "archetype_label": "Industrial Loft",
+  "model": "claude-sonnet-4-5",
+  "input_render_sha_prefix": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBD",
+  "input_render_path": "bench/phase-5-redesign/outputs/room-09_redesign.webp",
+  "wall_s": 58.36,
+  "stop_reason": "end_turn",
+  "usage": {
+    "input_tokens": 8755,
+    "output_tokens": 463
+  },
+  "raw_text": "```json\n{\n  \"architectural_integrity\": 3,\n  \"photorealism\": 4,\n  \"style_fidelity\": 1,\n  \"editorial_quality\": 2,\n  \"spatial_composition\": 3,\n  \"object_coherence\": 2,\n  \"composite\": 2.8,\n  \"beats_collov\": false,\n  \"failure_modes\": [\n    \"Complete architectural failure: original gaming bedroom with popcorn ceiling transformed into completely different room with exposed ductwork and high ceilings\",\n    \"Wrong room type: generated an open-plan living/kitchen space instead of a bedroom\",\n    \"Industrial Loft style completely absent: no exposed brick, no metal elements, no raw materials, no warehouse aesthetic\",\n    \"Generated generic modern apartment interior with pendant lights and gray furniture\",\n    \"Ceiling height and structure completely changed from original\",\n    \"Window configuration appears altered\",\n    \"No gaming elements or LED accents preserved or reinterpreted\"\n  ],\n  \"improvement_suggestions\": [\n    \"Implement strict architectural preservation: ceiling type (popcorn), height, and room boundaries must be maintained\",\n    \"Add room type validation: if input is bedroom, output must be bedroom with bed as focal point\",\n    \"For Industrial Loft style, enforce presence of: exposed brick or concrete, visible ductwork/pipes, metal fixtures, Edison bulbs, raw wood, warehouse windows\",\n    \"Preserve original room function: gaming bedroom should remain bedroom, potentially with industrial-style gaming setup\",\n    \"Add style verification layer: check that generated style matches archetype before rendering\",\n    \"Implement ceiling structure preservation: popcorn ceiling should remain or be replaced with industrial equivalent (exposed beams/ductwork) without changing room volume\"\n  ],\n  \"collov_comparison\": \"This render fails catastrophically compared to Collov references, which consistently preserve room architecture and type, whereas this completely transforms a bedroom into a living/kitchen space and ignores the Industrial Loft style entirely.\"\n}\n```",
+  "parsed": {
+    "architectural_integrity": 3,
+    "photorealism": 4,
+    "style_fidelity": 1,
+    "editorial_quality": 2,
+    "spatial_composition": 3,
+    "object_coherence": 2,
+    "composite": 2.8,
+    "beats_collov": false,
+    "failure_modes": [
+      "Complete architectural failure: original gaming bedroom with popcorn ceiling transformed into completely different room with exposed ductwork and high ceilings",
+      "Wrong room type: generated an open-plan living/kitchen space instead of a bedroom",
+      "Industrial Loft style completely absent: no exposed brick, no metal elements, no raw materials, no warehouse aesthetic",
+      "Generated generic modern apartment interior with pendant lights and gray furniture",
+      "Ceiling height and structure completely changed from original",
+      "Window configuration appears altered",
+      "No gaming elements or LED accents preserved or reinterpreted"
+    ],
+    "improvement_suggestions": [
+      "Implement strict architectural preservation: ceiling type (popcorn), height, and room boundaries must be maintained",
+      "Add room type validation: if input is bedroom, output must be bedroom with bed as focal point",
+      "For Industrial Loft style, enforce presence of: exposed brick or concrete, visible ductwork/pipes, metal fixtures, Edison bulbs, raw wood, warehouse windows",
+      "Preserve original room function: gaming bedroom should remain bedroom, potentially with industrial-style gaming setup",
+      "Add style verification layer: check that generated style matches archetype before rendering",
+      "Implement ceiling structure preservation: popcorn ceiling should remain or be replaced with industrial equivalent (exposed beams/ductwork) without changing room volume"
+    ],
+    "collov_comparison": "This render fails catastrophically compared to Collov references, which consistently preserve room architecture and type, whereas this completely transforms a bedroom into a living/kitchen space and ignores the Industrial Loft style entirely."
+  }
+}

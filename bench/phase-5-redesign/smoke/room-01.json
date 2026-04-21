@@ -1,0 +1,68 @@
+{
+  "room": "room-01",
+  "archetype": "COVAJAPANDI",
+  "empty_room": {
+    "schema_version": "1.0",
+    "empty_room_url": "https://v3b.fal.media/files/b/0a9715f9/qcaP2rKBwjtduPTwhGaj4_9e42cb4b644e41d9b103946a72cebaf2.png",
+    "image_hash": "4ed37f5b72bea47a950ce4b678c0ca30e80e545f52a721134b1485892b048131",
+    "image_width": 1080,
+    "image_height": 1440,
+    "mask_coverage_raw_pct": 19.487975823045268,
+    "mask_coverage_dilated_pct": 24.666923868312757,
+    "inpainter_used": "lama",
+    "router_threshold_pct": 35.0,
+    "architectural_patch_ssim": 1.0,
+    "patch_coordinates": {
+      "x": 0,
+      "y": 0,
+      "size": 200
+    },
+    "patch_clean": true,
+    "partial_failures": [],
+    "latency_ms": 18299,
+    "cost_usd": 0.14,
+    "generated_at_iso": "2026-04-21T02:06:56Z"
+  },
+  "redesign": {
+    "schema_version": "1.0",
+    "redesign_url": "https://v3b.fal.media/files/b/0a9715fb/4jSEqBFFuzlyA1v7ckt_Y.jpg",
+    "archetype_resolved": "COVAJAPANDI",
+    "primary_trigger": "cvwmn",
+    "loras_used": [
+      {
+        "path": "https://v3b.fal.media/files/b/0a968d9b/TbARCu6Zf_643uHs51Pkv_pytorch_lora_weights.safetensors",
+        "scale": 0.88,
+        "trigger": "cvwmn",
+        "name": "COVAJAPANDI"
+      },
+      {
+        "path": "https://huggingface.co/Shakker-Labs/FLUX.1-dev-LoRA-add-details/resolve/main/FLUX-dev-lora-add_details.safetensors",
+        "scale": 0.55,
+        "trigger": null,
+        "name": "add-details"
+      },
+      {
+        "path": "https://huggingface.co/XLabs-AI/flux-RealismLora/resolve/main/lora.safetensors",
+        "scale": 0.25,
+        "trigger": null,
+        "name": "realism"
+      }
+    ],
+    "prompt_used": "cvwmn interior cvwmn interior cvwmn interior a well-designed interior room, photorealistic interior photography, Architectural Digest editorial quality, 35mm lens, natural daylight, sharp focus, high resolution, warm oak, natural linen, paper lanterns, handcrafted ceramics, wabi-sabi restraint, low-profile furniture, warm neutrals, negative space cvwmn interior cvwmn interior",
+    "negative_prompt_used": "blurry, low quality, distorted, unrealistic proportions, floating objects, bad lighting, overexposed, flat, cartoon, illustration, 3d render, CGI, watermark, text, signature, ugly, poor composition, duplicate furniture",
+    "provider": "flux-general",
+    "provider_fallback_reason": null,
+    "strength": 0.82,
+    "guidance_scale": 3.5,
+    "num_inference_steps": 28,
+    "seed": 42,
+    "image_width": 768,
+    "image_height": 1024,
+    "latency_ms": 40264,
+    "cost_usd": 0.045,
+    "judge_score": null,
+    "generated_at_iso": "2026-04-21T02:07:48Z"
+  },
+  "wall_latency_empty_room_s": 23.2,
+  "wall_latency_redesign_s": 51.48
+}

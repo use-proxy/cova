@@ -1,0 +1,9 @@
+{
+  "run_label": "base",
+  "model": "claude-sonnet-4-5",
+  "n_rooms": 15,
+  "n_beats_collov": 8,
+  "mean_composite": 6.63,
+  "mean_style_fidelity": 6.333,
+  "generated_at_iso": "2026-04-21T02:22:05Z"
+}

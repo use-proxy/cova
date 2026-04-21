@@ -1,0 +1,51 @@
+{
+  "room_id": "room-12",
+  "run_label": "base-with-room-type",
+  "archetype": "COVAMIDCENTURY",
+  "archetype_label": "Retro Mid-Century",
+  "model": "claude-sonnet-4-5",
+  "input_render_sha_prefix": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBD",
+  "input_render_path": "bench/phase-5-redesign/outputs/room-12_redesign.webp",
+  "wall_s": 18.02,
+  "stop_reason": "end_turn",
+  "usage": {
+    "input_tokens": 8754,
+    "output_tokens": 634
+  },
+  "raw_text": "```json\n{\n  \"architectural_integrity\": 4,\n  \"photorealism\": 5,\n  \"style_fidelity\": 3,\n  \"editorial_quality\": 4,\n  \"spatial_composition\": 5,\n  \"object_coherence\": 4,\n  \"composite\": 4.3,\n  \"beats_collov\": false,\n  \"failure_modes\": [\n    \"Critical architectural failure: original room had a piano and LED accents - completely removed/ignored\",\n    \"Window morphing: original horizontal window with LED lighting replaced with generic vertical window\",\n    \"Floor material completely changed from original hardwood to carpet\",\n    \"Ceiling architecture altered: original recessed LED ceiling replaced with generic flat ceiling\",\n    \"Style failure: this is generic contemporary neutral, NOT Retro Mid-Century\",\n    \"No mid-century modern furniture present - bed and nightstands are contemporary minimalist\",\n    \"Missing iconic mid-century elements: no tapered legs, no organic curves, no period-appropriate materials\",\n    \"Color palette wrong: mid-century uses warm woods, oranges, teals, mustards - this is gray/beige contemporary\",\n    \"Lighting fixture is contemporary ceiling fan, not mid-century Sputnik or pendant\",\n    \"Rug pattern is contemporary geometric, not mid-century organic or atomic-age patterns\"\n  ],\n  \"improvement_suggestions\": [\n    \"CRITICAL: Preserve original room features - the piano and LED accents were defining characteristics that must remain\",\n    \"Maintain original window configuration and LED ceiling architecture\",\n    \"For Retro Mid-Century: use platform bed with tapered wooden legs, not upholstered contemporary frame\",\n    \"Add iconic mid-century furniture: Eames lounge chair, Nelson bench, or Noguchi table\",\n    \"Use warm walnut or teak wood tones throughout - nightstands, dresser, bed frame\",\n    \"Replace ceiling fan with period-appropriate Sputnik chandelier or George Nelson bubble lamp\",\n    \"Introduce mid-century color palette: mustard yellow, burnt orange, avocado green, or teal accents\",\n    \"Use organic, atomic-age patterns in textiles and rugs, not contemporary geometric\",\n    \"Add mid-century wall art: abstract expressionism, sunburst mirrors, or teak wall sculptures\",\n    \"Include period details: starburst clock, ceramic table lamps with tripod bases, low-profile furniture\"\n  ],\n  \"collov_comparison\": \"Significantly worse than Collov references: Collov preserves architectural features and achieves recognizable styles, while this render destroys the original room's defining features (piano, LED accents) and delivers generic contemporary instead of the specified mid-century aesthetic.\"\n}\n```",
+  "parsed": {
+    "architectural_integrity": 4,
+    "photorealism": 5,
+    "style_fidelity": 3,
+    "editorial_quality": 4,
+    "spatial_composition": 5,
+    "object_coherence": 4,
+    "composite": 4.3,
+    "beats_collov": false,
+    "failure_modes": [
+      "Critical architectural failure: original room had a piano and LED accents - completely removed/ignored",
+      "Window morphing: original horizontal window with LED lighting replaced with generic vertical window",
+      "Floor material completely changed from original hardwood to carpet",
+      "Ceiling architecture altered: original recessed LED ceiling replaced with generic flat ceiling",
+      "Style failure: this is generic contemporary neutral, NOT Retro Mid-Century",
+      "No mid-century modern furniture present - bed and nightstands are contemporary minimalist",
+      "Missing iconic mid-century elements: no tapered legs, no organic curves, no period-appropriate materials",
+      "Color palette wrong: mid-century uses warm woods, oranges, teals, mustards - this is gray/beige contemporary",
+      "Lighting fixture is contemporary ceiling fan, not mid-century Sputnik or pendant",
+      "Rug pattern is contemporary geometric, not mid-century organic or atomic-age patterns"
+    ],
+    "improvement_suggestions": [
+      "CRITICAL: Preserve original room features - the piano and LED accents were defining characteristics that must remain",
+      "Maintain original window configuration and LED ceiling architecture",
+      "For Retro Mid-Century: use platform bed with tapered wooden legs, not upholstered contemporary frame",
+      "Add iconic mid-century furniture: Eames lounge chair, Nelson bench, or Noguchi table",
+      "Use warm walnut or teak wood tones throughout - nightstands, dresser, bed frame",
+      "Replace ceiling fan with period-appropriate Sputnik chandelier or George Nelson bubble lamp",
+      "Introduce mid-century color palette: mustard yellow, burnt orange, avocado green, or teal accents",
+      "Use organic, atomic-age patterns in textiles and rugs, not contemporary geometric",
+      "Add mid-century wall art: abstract expressionism, sunburst mirrors, or teak wall sculptures",
+      "Include period details: starburst clock, ceramic table lamps with tripod bases, low-profile furniture"
+    ],
+    "collov_comparison": "Significantly worse than Collov references: Collov preserves architectural features and achieves recognizable styles, while this render destroys the original room's defining features (piano, LED accents) and delivers generic contemporary instead of the specified mid-century aesthetic."
+  }
+}

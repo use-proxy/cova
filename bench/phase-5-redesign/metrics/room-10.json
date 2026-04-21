@@ -1,0 +1,64 @@
+{
+  "room_id": "room-10",
+  "archetype": "COVAARTDECO",
+  "room_type": "living_room",
+  "status": "ok",
+  "empty_room_url": "https://v3b.fal.media/files/b/0a9714e7/rcSVLI9O13or75sLTeno4_003201de9a104496b05b4676013ff0e9.png",
+  "render_url": "https://v3b.fal.media/files/b/0a971624/CdlrnLSJKHGn2JTrqBQX5.jpg",
+  "render_local_path": "bench/phase-5-redesign/outputs/room-10_redesign.webp",
+  "triptych_local_path": "bench/phase-5-redesign/triptychs/room-10.png",
+  "provider": "flux-general",
+  "provider_fallback_reason": null,
+  "primary_trigger": "cvdco",
+  "loras_used": [
+    {
+      "path": "https://v3b.fal.media/files/b/0a968ecb/hzAWxKHrdtRCfrQhLMkrV_pytorch_lora_weights.safetensors",
+      "scale": 0.82,
+      "trigger": "cvdco",
+      "name": "COVAARTDECO"
+    },
+    {
+      "path": "https://huggingface.co/Shakker-Labs/FLUX.1-dev-LoRA-add-details/resolve/main/FLUX-dev-lora-add_details.safetensors",
+      "scale": 0.55,
+      "trigger": null,
+      "name": "add-details"
+    },
+    {
+      "path": "https://huggingface.co/XLabs-AI/flux-RealismLora/resolve/main/lora.safetensors",
+      "scale": 0.25,
+      "trigger": null,
+      "name": "realism"
+    }
+  ],
+  "prompt_used": "cvdco interior cvdco interior cvdco interior a well-designed interior room, photorealistic interior photography, Architectural Digest editorial quality, 35mm lens, natural daylight, sharp focus, high resolution, lacquered black surfaces, geometric brass inlay, emerald velvet, fluted glass, dramatic directional light, polished marble, gold accents, fan motifs cvdco interior cvdco interior",
+  "seed": 52,
+  "strength": 0.82,
+  "guidance_scale": 3.5,
+  "num_inference_steps": 28,
+  "image_width": 1024,
+  "image_height": 1024,
+  "service_latency_ms": 19202,
+  "wall_latency_ms": 19696,
+  "wall_latency_s": 20.7,
+  "cost_usd": 0.045,
+  "judge_score": 9.0,
+  "generated_at_iso": "2026-04-21T02:14:25Z",
+  "judge_details": {
+    "architectural_integrity": 9,
+    "photorealism": 9,
+    "style_fidelity": 9,
+    "editorial_quality": 9,
+    "spatial_composition": 9,
+    "object_coherence": 10,
+    "composite": 9.0,
+    "beats_collov": true,
+    "failure_modes": [],
+    "improvement_suggestions": [
+      "Consider adding one more Art Deco lighting element (wall sconce or table lamp) to further reinforce the period style",
+      "The floor marble pattern could extend slightly more visibly to enhance the luxurious material palette",
+      "A small decorative object on the black marble counter would add one more layer of styling detail"
+    ],
+    "collov_comparison": "This render significantly surpasses Collov references with bold, committed Art Deco styling, superior material definition, and genuine editorial-quality composition versus Collov's safe, generic neutrality."
+  },
+  "judge_model": "claude-sonnet-4-5"
+}

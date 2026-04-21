@@ -1,0 +1,34 @@
+{
+  "room_id": "room-03",
+  "run_label": "base-with-room-type",
+  "archetype": "COVACOASTAL",
+  "archetype_label": "Coastal Bright",
+  "model": "claude-sonnet-4-5",
+  "input_render_sha_prefix": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBD",
+  "input_render_path": "bench/phase-5-redesign/outputs/room-03_redesign.webp",
+  "wall_s": 9.42,
+  "stop_reason": "end_turn",
+  "usage": {
+    "input_tokens": 8754,
+    "output_tokens": 297
+  },
+  "raw_text": "```json\n{\n  \"architectural_integrity\": 9,\n  \"photorealism\": 8,\n  \"style_fidelity\": 8,\n  \"editorial_quality\": 8,\n  \"spatial_composition\": 9,\n  \"object_coherence\": 9,\n  \"composite\": 8.4,\n  \"beats_collov\": true,\n  \"failure_modes\": [],\n  \"improvement_suggestions\": [\n    \"Introduce more coastal-specific elements like driftwood, rope details, or nautical accents to strengthen style commitment beyond just color palette\",\n    \"Add subtle imperfections to surfaces (slight texture variation in fabrics, minor wear on wood) to push photorealism from 8 to 9+\",\n    \"Consider warmer wood tones or weathered finishes on furniture legs to enhance coastal authenticity\",\n    \"Include a coastal-specific art piece or decorative object (shells, coral, maritime photography) to make style unmistakable\"\n  ],\n  \"collov_comparison\": \"This render significantly exceeds Collov references with stronger style commitment through deliberate coastal color palette (sage/seafoam pillows, natural textures), superior spatial composition with the sectional arrangement, and more editorial-quality curation of objects and materials.\"\n}\n```",
+  "parsed": {
+    "architectural_integrity": 9,
+    "photorealism": 8,
+    "style_fidelity": 8,
+    "editorial_quality": 8,
+    "spatial_composition": 9,
+    "object_coherence": 9,
+    "composite": 8.4,
+    "beats_collov": true,
+    "failure_modes": [],
+    "improvement_suggestions": [
+      "Introduce more coastal-specific elements like driftwood, rope details, or nautical accents to strengthen style commitment beyond just color palette",
+      "Add subtle imperfections to surfaces (slight texture variation in fabrics, minor wear on wood) to push photorealism from 8 to 9+",
+      "Consider warmer wood tones or weathered finishes on furniture legs to enhance coastal authenticity",
+      "Include a coastal-specific art piece or decorative object (shells, coral, maritime photography) to make style unmistakable"
+    ],
+    "collov_comparison": "This render significantly exceeds Collov references with stronger style commitment through deliberate coastal color palette (sage/seafoam pillows, natural textures), superior spatial composition with the sectional arrangement, and more editorial-quality curation of objects and materials."
+  }
+}

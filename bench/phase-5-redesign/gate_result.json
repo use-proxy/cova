@@ -1,0 +1,174 @@
+{
+  "generated_at_iso": "2026-04-21T02:36:48Z",
+  "n_rooms": 15,
+  "n_beats_collov_best_of": 14,
+  "gate_met_11_of_15": true,
+  "mean_best_composite": 8.443,
+  "per_room": [
+    {
+      "room_id": "room-01",
+      "archetype": "COVAJAPANDI",
+      "room_type": "bedroom",
+      "base_composite": 8.4,
+      "base_beats_collov": true,
+      "best_iteration": 0,
+      "best_composite": 8.4,
+      "best_style_fidelity": 8,
+      "best_beats_collov": true
+    },
+    {
+      "room_id": "room-02",
+      "archetype": "COVAMIDCENTURY",
+      "room_type": "living_room",
+      "base_composite": 3.5,
+      "base_beats_collov": false,
+      "best_iteration": 1,
+      "best_composite": 4.0,
+      "best_style_fidelity": 3,
+      "best_beats_collov": false
+    },
+    {
+      "room_id": "room-03",
+      "archetype": "COVACOASTAL",
+      "room_type": "living_room",
+      "base_composite": 8.4,
+      "base_beats_collov": true,
+      "best_iteration": 0,
+      "best_composite": 8.4,
+      "best_style_fidelity": 8,
+      "best_beats_collov": true
+    },
+    {
+      "room_id": "room-04",
+      "archetype": "COVABOHEMIAN",
+      "room_type": "bedroom",
+      "base_composite": 3.65,
+      "base_beats_collov": false,
+      "best_iteration": 1,
+      "best_composite": 8.65,
+      "best_style_fidelity": 9,
+      "best_beats_collov": true
+    },
+    {
+      "room_id": "room-05",
+      "archetype": "COVAFARMHOUSE",
+      "room_type": "home_office",
+      "base_composite": 5.65,
+      "base_beats_collov": false,
+      "best_iteration": 1,
+      "best_composite": 9.0,
+      "best_style_fidelity": 9,
+      "best_beats_collov": true
+    },
+    {
+      "room_id": "room-06",
+      "archetype": "COVAMINIMAL",
+      "room_type": "living_room",
+      "base_composite": 9.0,
+      "base_beats_collov": true,
+      "best_iteration": 0,
+      "best_composite": 9.0,
+      "best_style_fidelity": 9,
+      "best_beats_collov": true
+    },
+    {
+      "room_id": "room-07",
+      "archetype": "COVAJAPANDI",
+      "room_type": "bedroom",
+      "base_composite": 8.4,
+      "base_beats_collov": true,
+      "best_iteration": 0,
+      "best_composite": 8.4,
+      "best_style_fidelity": 8,
+      "best_beats_collov": true
+    },
+    {
+      "room_id": "room-08",
+      "archetype": "COVABOHEMIAN",
+      "room_type": "living_room",
+      "base_composite": 8.65,
+      "base_beats_collov": true,
+      "best_iteration": 0,
+      "best_composite": 8.65,
+      "best_style_fidelity": 8,
+      "best_beats_collov": true
+    },
+    {
+      "room_id": "room-09",
+      "archetype": "COVAINDUSTRIAL",
+      "room_type": "bedroom",
+      "base_composite": 3.65,
+      "base_beats_collov": false,
+      "best_iteration": 1,
+      "best_composite": 8.8,
+      "best_style_fidelity": 9,
+      "best_beats_collov": true
+    },
+    {
+      "room_id": "room-10",
+      "archetype": "COVAARTDECO",
+      "room_type": "living_room",
+      "base_composite": 9.0,
+      "base_beats_collov": true,
+      "best_iteration": 0,
+      "best_composite": 9.0,
+      "best_style_fidelity": 9,
+      "best_beats_collov": true
+    },
+    {
+      "room_id": "room-11",
+      "archetype": "COVASCANDINAV",
+      "room_type": "living_room",
+      "base_composite": 8.85,
+      "base_beats_collov": true,
+      "best_iteration": 0,
+      "best_composite": 8.85,
+      "best_style_fidelity": 9,
+      "best_beats_collov": true
+    },
+    {
+      "room_id": "room-12",
+      "archetype": "COVAMIDCENTURY",
+      "room_type": "bedroom",
+      "base_composite": 4.3,
+      "base_beats_collov": false,
+      "best_iteration": 1,
+      "best_composite": 8.65,
+      "best_style_fidelity": 9,
+      "best_beats_collov": true
+    },
+    {
+      "room_id": "room-13",
+      "archetype": "COVAINDUSTRIAL",
+      "room_type": "living_room",
+      "base_composite": 9.0,
+      "base_beats_collov": true,
+      "best_iteration": 0,
+      "best_composite": 9.0,
+      "best_style_fidelity": 9,
+      "best_beats_collov": true
+    },
+    {
+      "room_id": "room-14",
+      "archetype": "COVAARTDECO",
+      "room_type": "living_room",
+      "base_composite": 9.0,
+      "base_beats_collov": true,
+      "best_iteration": 0,
+      "best_composite": 9.0,
+      "best_style_fidelity": 9,
+      "best_beats_collov": true
+    },
+    {
+      "room_id": "room-15",
+      "archetype": "COVAFARMHOUSE",
+      "room_type": "bedroom",
+      "base_composite": 8.85,
+      "base_beats_collov": true,
+      "best_iteration": 0,
+      "best_composite": 8.85,
+      "best_style_fidelity": 9,
+      "best_beats_collov": true
+    }
+  ]
+}

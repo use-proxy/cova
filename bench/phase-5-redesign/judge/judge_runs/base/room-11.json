@@ -1,0 +1,47 @@
+{
+  "room_id": "room-11",
+  "run_label": "base",
+  "archetype": "COVASCANDINAV",
+  "archetype_label": "Nordic Calm / Scandinavian Minimal",
+  "model": "claude-sonnet-4-5",
+  "input_render_sha_prefix": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBD",
+  "input_render_path": "bench/phase-5-redesign/outputs/room-11_redesign.webp",
+  "wall_s": 36.17,
+  "stop_reason": "end_turn",
+  "usage": {
+    "input_tokens": 8758,
+    "output_tokens": 523
+  },
+  "raw_text": "```json\n{\n  \"architectural_integrity\": 4,\n  \"photorealism\": 5,\n  \"style_fidelity\": 3,\n  \"editorial_quality\": 3,\n  \"spatial_composition\": 4,\n  \"object_coherence\": 4,\n  \"composite\": 4.0,\n  \"beats_collov\": false,\n  \"failure_modes\": [\n    \"Critical architecture failure: original room was a living room with green walls and gallery, render shows a bedroom - complete room type transformation\",\n    \"Wall color completely changed from green to blue-gray, violating architectural preservation\",\n    \"Window treatment changed from original (cellular shades remain but context entirely different)\",\n    \"Floor material appears changed from original living room flooring\",\n    \"Ceiling fan added where likely none existed in living room\",\n    \"Style is generic neutral bedroom, not recognizably Scandinavian - could be any modern minimal style\",\n    \"No distinctive Nordic/Scandinavian markers (no natural wood tones, no hygge elements, no characteristic lighting)\",\n    \"Photorealism undermined by overly smooth textures and generic staging\",\n    \"Composition is standard bedroom staging with no editorial point of view\"\n  ],\n  \"improvement_suggestions\": [\n    \"CRITICAL: Preserve original room type - if input is living room, output must be living room, not bedroom\",\n    \"Maintain original wall colors or make only subtle shifts within the same color family\",\n    \"For Scandinavian style, include distinctive markers: light wood furniture, white/cream/gray palette, natural textures, plants, minimal but warm lighting\",\n    \"Add recognizable Nordic elements: sheepskin throws, simple geometric textiles, candles, natural materials\",\n    \"Improve photorealism with more texture variation and less AI smoothing\",\n    \"Create stronger editorial composition - Scandinavian style should feel curated and intentional, not generic\",\n    \"Study reference Scandinavian interiors to understand the specific material palette and spatial qualities\"\n  ],\n  \"collov_comparison\": \"Significantly worse than Collov references - Collov preserves room architecture and type while this render completely transforms a living room into a bedroom, and shows weaker style commitment than even Collov's generic aesthetic.\"\n}\n```",
+  "parsed": {
+    "architectural_integrity": 4,
+    "photorealism": 5,
+    "style_fidelity": 3,
+    "editorial_quality": 3,
+    "spatial_composition": 4,
+    "object_coherence": 4,
+    "composite": 4.0,
+    "beats_collov": false,
+    "failure_modes": [
+      "Critical architecture failure: original room was a living room with green walls and gallery, render shows a bedroom - complete room type transformation",
+      "Wall color completely changed from green to blue-gray, violating architectural preservation",
+      "Window treatment changed from original (cellular shades remain but context entirely different)",
+      "Floor material appears changed from original living room flooring",
+      "Ceiling fan added where likely none existed in living room",
+      "Style is generic neutral bedroom, not recognizably Scandinavian - could be any modern minimal style",
+      "No distinctive Nordic/Scandinavian markers (no natural wood tones, no hygge elements, no characteristic lighting)",
+      "Photorealism undermined by overly smooth textures and generic staging",
+      "Composition is standard bedroom staging with no editorial point of view"
+    ],
+    "improvement_suggestions": [
+      "CRITICAL: Preserve original room type - if input is living room, output must be living room, not bedroom",
+      "Maintain original wall colors or make only subtle shifts within the same color family",
+      "For Scandinavian style, include distinctive markers: light wood furniture, white/cream/gray palette, natural textures, plants, minimal but warm lighting",
+      "Add recognizable Nordic elements: sheepskin throws, simple geometric textiles, candles, natural materials",
+      "Improve photorealism with more texture variation and less AI smoothing",
+      "Create stronger editorial composition - Scandinavian style should feel curated and intentional, not generic",
+      "Study reference Scandinavian interiors to understand the specific material palette and spatial qualities"
+    ],
+    "collov_comparison": "Significantly worse than Collov references - Collov preserves room architecture and type while this render completely transforms a living room into a bedroom, and shows weaker style commitment than even Collov's generic aesthetic."
+  }
+}

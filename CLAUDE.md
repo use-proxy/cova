@@ -197,10 +197,11 @@ Phases run in parallel to M8 commerce work; their artifacts live in `docs/audit/
 | 0        | Audit — LoRAs, Director, Modal, Supabase RLS, tests, pgvector      | ✅ **COMPLETE** (2026-04-20) |
 | 0.5      | 20-room bench build + smoke-test harness                           | Ready to start     |
 | 1        | Perception service (cova-perception Modal app, 3 endpoints)        | ✅ **COMPLETE** (2026-04-20) |
-| 3        | Director rewrite (6D blending, F1.1 parity, F3.1 RBF, F4.1 schema, F6.1–F6.5 hygiene) | Blocked on 0.5    |
-| 4        | Custom LoRA training (9 remaining archetypes)                      | Blocked on 0       |
-| 5        | Redesign service (NB-Pro primary, FLUX.2 Pro Edit fallback)        | Blocked on 3, 4    |
-| 7+       | Later phases per research doc                                      | —                  |
+| 2        | Empty-room service (cova-empty-room Modal app)                     | ✅ **COMPLETE** (2026-04-20), latency fix 2026-04-21 |
+| 3        | Director rewrite (LoRA weighted blending, F6.1–F6.5 hygiene)       | ✅ **COMPLETE** (2026-04-20) |
+| 4        | Custom LoRA training (10 archetypes trained, all in style_loras DB) | ✅ **COMPLETE** (2026-04-17) |
+| 5        | Redesign service (flux-general primary, NB-Pro fallback)           | ✅ **COMPLETE** (2026-04-21) |
+| 7+       | Chain-of-Hotspot quality boost + later phases                       | Blocked on 5       |
 
 Phase 0 deliverables landed: `docs/audit/loras.md`, `docs/audit/director.md`,
 `docs/audit/modal.md`, `docs/audit/supabase.md`, `docs/audit/tests.md`,
@@ -222,10 +223,16 @@ in `docs/phase-1/CLOSEOUT.md`.
 - **cova-perception** — `https://cova-interior--cova-perception-perception-api.modal.run`
   Endpoints: `/v1/detect_preservation_spec`, `/v1/encode_sam2_for_cache`,
   `/v1/depth_anything_v2`. See `modal_pipeline/perception.py`.
+- **cova-empty-room** — `https://cova-interior--cova-empty-room-emptyroom-api.modal.run`
+  Endpoint: `/v1/generate_empty_room`. See `modal_pipeline/empty_room.py`.
+- **cova-redesign** — `https://cova-interior--cova-redesign-redesign-api.modal.run`
+  Endpoint: `/v1/generate_redesign`. See `modal_pipeline/redesign.py`.
 
-### Environment variables (Phase 1 additions)
+### Environment variables (Phase 1-5 additions)
 - `COVA_PERCEPTION_URL` — base URL of the `cova-perception` Modal app.
-  Default in client falls back to the production URL above.
+- `COVA_EMPTY_ROOM_URL` — base URL of the `cova-empty-room` Modal app.
+- `COVA_REDESIGN_URL` — base URL of the `cova-redesign` Modal app.
+  All three default in-client to the production URLs above.
 | M9        | Chatbot + Analytics + UI Pass 3 — chatbot, PostHog, Sentry, remaining screens                 |                    |
 | M10       | Polish + User Testing — error states, 5 real user tests                                       |                    |
 | M11       | Deployment — Vercel production, covainterior.com                                              |                    |
@@ -503,3 +510,91 @@ RESOLVED.
 adoption), F2-PERCEPTION.1 (add furniture-spec endpoint to perception),
 F2-CACHE.1, F2-TEXTURE.1, F2-COVERAGE.1, F2-HEALTHZ.1. See
 [`docs/phase-2/follow-ups-deferred.md`](docs/phase-2/follow-ups-deferred.md).
+
+---
+
+## Phase 5 — Redesign service + Collov-calibrated gate (completed 2026-04-21)
+
+**Scope:** new `modal_pipeline/redesign.py` (cova-redesign on A10G),
+new `apps/web/lib/ai/redesign-client.ts` + 17 tests, F3-BLEND-CTX.1
+resolved in `apps/web/lib/ai/renderContext/assembler.ts` +
+`apps/web/app/api/pipeline/redesign/route.ts`,
+`bench/phase-5-redesign/` artifacts, `bench/scripts/smoke_phase_5_redesign.py`,
+`bench/scripts/run_phase_5_redesign_bench.py`, `bench/scripts/run_phase_5_judge.py`,
+`bench/scripts/run_phase_5_reflection.py`, `docs/phase-5/CLOSEOUT.md`.
+
+**Deployed Modal app:** `cova-redesign` at
+`https://cova-interior--cova-redesign-redesign-api.modal.run`.
+A10G, Python 3.10, 1 endpoint: `POST /v1/generate_redesign`.
+
+**Pipeline:** resolve weighted LoRA stack from `(archetype_key, style_blend)`
+using `LORA_REGISTRY` (10 trained archetypes mirrored from
+`apps/web/lib/styles/lora-registry.ts`) → build D_full_activation prompt
+(3× trigger prefix + typed prose + archetype vocab + 2× trigger suffix)
+→ `fal-ai/flux-general/image-to-image` with strength=0.82,
+guidance=3.5, steps=28, LoRA stack of 3 (1 style + add-details + realism)
+→ `nano-banana-pro/edit` fallback on any flux-general failure.
+Reflection hooks: `strength_override`, `guidance_override`,
+`lora_scale_multiplier`, `prompt_override`, `seed`.
+
+**Acceptance (15-room bench, [`bench/phase-5-redesign/PHASE_5_RESULTS.md`](bench/phase-5-redesign/PHASE_5_RESULTS.md)):**
+- Gate: composite ≥ 7.5 AND style_fidelity ≥ 7.0 (beats Collov bar).
+- **14/15 rooms beat Collov** (gate threshold: 11/15) — PASS.
+- Mean composite: **8.44** vs Collov baseline **7.10** (+1.34).
+- Mean style_fidelity: **8.27** vs Collov **5.50** (+2.77 — key axis).
+- 10 rooms pass at base, 4 recovered at reflection iter 1, 1 stuck
+  (room-02 piano+MCM living-room — tracked as **F5-ROOM-02-HARD.1**).
+- Total Phase 5 spend: **$2.19** (93% under $30 cap).
+- Judge: `claude-sonnet-4-5` vision, 4 Collov reference PNGs per call,
+  6-axis rubric, temperature 0, 35 judge calls total.
+
+**F3-BLEND-CTX.1 (Phase 3 deferred) resolved:**
+`assembler.ts` now derives `style_blend` from v3 fingerprints via
+`fingerprintToStyleBlend(dims)` and writes both `style_blend` (snake)
+and `styleBlend` (camel) to the `RenderContext`. The redesign route
+adds a fallback path from `rooms.style_blend` when the assembled
+context is missing it. Director now activates the weighted-blend path
+(not the single-primary fallback) on v3-fingerprint users. 35 assembler
+tests pass (32 existing + 3 new).
+
+**Service fix caught in-bench:** `_build_prompt` accepted `room_type`
+but never emitted it, causing 7/15 rooms to transform room type. Patch
+adds `_ROOM_TYPE_PHRASE` + `preserve original room architecture`
+clause; rooms 03 + 11 then passed at base, 09 + 12 unlocked under
+reflection.
+
+**Environment variables:**
+- `COVA_REDESIGN_URL` — optional override; TS client falls back to
+  the production URL above.
+
+**Modal workspace note:** Deploying `cova-redesign` hit the 8-web-endpoint
+workspace limit. Stopped `cova-restoration-pipeline` (Phase 0 audit:
+dormant, no web callers) and `cova-clip-text-embed` (only web caller
+`apps/web/lib/clipSearch.ts` is DORMANT per its header; v9 uses Serper
++ Google Lens for product matching). Both trivially restorable via
+`modal deploy modal_pipeline/<name>.py` if needed.
+
+**Client usage:**
+```ts
+import { generateRedesign } from "@/lib/ai/redesign-client";
+const res = await generateRedesign({
+  emptyRoomUrl: "https://…empty.png",
+  archetypeKey: "COVAJAPANDI",
+  styleBlend: { COVAJAPANDI: 0.7, COVASCANDINAV: 0.3 },
+  roomType: "bedroom",
+  budgetMax: 5000,
+});
+// res.provider === "flux-general"  (or "nano-banana-pro" on fallback)
+// res.loras_used === [{ trigger: "cvwmn", … }, add-details, realism]
+```
+
+**Deferred:** F5-ROOM-02-HARD.1 (piano+MCM+living-room edge case —
+Phase 7 CoHP candidate), F5-COLDSTART.1 (flux-general 3-parallel cold
+start → NB-Pro fallback; add warmup), F5-BIOPHILIC-BENCH.1 (cvbio
+absent from Phase 5 bench), F5-ROOMTYPE-DEFAULT.1 (strength 0.82 vs
+0.70 per-room), F5-JUDGE-DETERMINISM.1 (minor Sonnet run-to-run noise
+at temperature 0), F5-ROOM02-CALIBRATE.1. See `docs/phase-5/CLOSEOUT.md`.
+
+**Handoff to Phase 7:** room-02 is the sole gate failure and the
+primary CoHP test case. Rooms that scored 8.4-8.85 at base (01, 03,
+07, 08, 11, 15) are secondary CoHP polish candidates.

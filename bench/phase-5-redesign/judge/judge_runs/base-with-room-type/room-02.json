@@ -1,0 +1,48 @@
+{
+  "room_id": "room-02",
+  "run_label": "base-with-room-type",
+  "archetype": "COVAMIDCENTURY",
+  "archetype_label": "Retro Mid-Century",
+  "model": "claude-sonnet-4-5",
+  "input_render_sha_prefix": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBD",
+  "input_render_path": "bench/phase-5-redesign/outputs/room-02_redesign.webp",
+  "wall_s": 18.52,
+  "stop_reason": "end_turn",
+  "usage": {
+    "input_tokens": 8757,
+    "output_tokens": 507
+  },
+  "raw_text": "```json\n{\n  \"architectural_integrity\": 3,\n  \"photorealism\": 6,\n  \"style_fidelity\": 2,\n  \"editorial_quality\": 4,\n  \"spatial_composition\": 2,\n  \"object_coherence\": 3,\n  \"composite\": 3.5,\n  \"beats_collov\": false,\n  \"failure_modes\": [\n    \"Complete architectural failure: living room transformed into bedroom, original room structure not preserved\",\n    \"Wrong room type generated: piano and living room replaced with bed and bedroom furniture\",\n    \"Spatial composition broken: furniture arrangement is for a bedroom not a living room\",\n    \"Style fidelity failure: generic contemporary bedroom, not Retro Mid-Century at all\",\n    \"No mid-century modern elements visible: missing iconic furniture, wood tones, period-appropriate fixtures\",\n    \"Ceiling fan is contemporary not mid-century\",\n    \"Wall text 'DAKSH' is unexplained and non-contextual\",\n    \"Generic neutral palette with no retro color story\",\n    \"Artwork is contemporary abstract, not mid-century appropriate\"\n  ],\n  \"improvement_suggestions\": [\n    \"CRITICAL: Preserve original room type - if input is living room, output must be living room\",\n    \"Implement room type detection and validation before generation\",\n    \"For Retro Mid-Century: include iconic Eames-era furniture, teak wood, tapered legs, period lighting\",\n    \"Add mid-century color palette: mustard yellow, burnt orange, avocado green, teak brown\",\n    \"Include period-appropriate elements: sunburst clocks, geometric patterns, low-profile furniture\",\n    \"Remove contemporary elements like modern ceiling fans and generic abstract art\",\n    \"Study actual 1950s-1960s interiors for authentic style markers\",\n    \"Implement style validation: check if generated objects match specified archetype before finalizing\"\n  ],\n  \"collov_comparison\": \"This render catastrophically fails where Collov succeeds: Collov preserves room architecture and type, while this completely transforms a living room into a bedroom, making it fundamentally unusable regardless of aesthetic quality.\"\n}\n```",
+  "parsed": {
+    "architectural_integrity": 3,
+    "photorealism": 6,
+    "style_fidelity": 2,
+    "editorial_quality": 4,
+    "spatial_composition": 2,
+    "object_coherence": 3,
+    "composite": 3.5,
+    "beats_collov": false,
+    "failure_modes": [
+      "Complete architectural failure: living room transformed into bedroom, original room structure not preserved",
+      "Wrong room type generated: piano and living room replaced with bed and bedroom furniture",
+      "Spatial composition broken: furniture arrangement is for a bedroom not a living room",
+      "Style fidelity failure: generic contemporary bedroom, not Retro Mid-Century at all",
+      "No mid-century modern elements visible: missing iconic furniture, wood tones, period-appropriate fixtures",
+      "Ceiling fan is contemporary not mid-century",
+      "Wall text 'DAKSH' is unexplained and non-contextual",
+      "Generic neutral palette with no retro color story",
+      "Artwork is contemporary abstract, not mid-century appropriate"
+    ],
+    "improvement_suggestions": [
+      "CRITICAL: Preserve original room type - if input is living room, output must be living room",
+      "Implement room type detection and validation before generation",
+      "For Retro Mid-Century: include iconic Eames-era furniture, teak wood, tapered legs, period lighting",
+      "Add mid-century color palette: mustard yellow, burnt orange, avocado green, teak brown",
+      "Include period-appropriate elements: sunburst clocks, geometric patterns, low-profile furniture",
+      "Remove contemporary elements like modern ceiling fans and generic abstract art",
+      "Study actual 1950s-1960s interiors for authentic style markers",
+      "Implement style validation: check if generated objects match specified archetype before finalizing"
+    ],
+    "collov_comparison": "This render catastrophically fails where Collov succeeds: Collov preserves room architecture and type, while this completely transforms a living room into a bedroom, making it fundamentally unusable regardless of aesthetic quality."
+  }
+}

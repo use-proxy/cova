@@ -1,0 +1,33 @@
+{
+  "room_id": "room-06",
+  "run_label": "base",
+  "archetype": "COVAMINIMAL",
+  "archetype_label": "Pure Minimal",
+  "model": "claude-sonnet-4-5",
+  "input_render_sha_prefix": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBD",
+  "input_render_path": "bench/phase-5-redesign/outputs/room-06_redesign.webp",
+  "wall_s": 64.29,
+  "stop_reason": "end_turn",
+  "usage": {
+    "input_tokens": 8752,
+    "output_tokens": 237
+  },
+  "raw_text": "```json\n{\n  \"architectural_integrity\": 9,\n  \"photorealism\": 9,\n  \"style_fidelity\": 9,\n  \"editorial_quality\": 9,\n  \"spatial_composition\": 9,\n  \"object_coherence\": 10,\n  \"composite\": 9.0,\n  \"beats_collov\": true,\n  \"failure_modes\": [],\n  \"improvement_suggestions\": [\n    \"Consider adding one subtle organic element (single stem in minimal vase) to soften the pure geometry without compromising minimalism\",\n    \"The window seat could benefit from a single linen cushion in natural tone to suggest human use while maintaining restraint\",\n    \"Experiment with slightly warmer natural light temperature to add subtle warmth to the neutral palette\"\n  ],\n  \"collov_comparison\": \"This render significantly surpasses Collov references with committed Pure Minimal aesthetic, superior material authenticity, and genuine editorial-quality composition versus Collov's generic neutral styling.\"\n}\n```",
+  "parsed": {
+    "architectural_integrity": 9,
+    "photorealism": 9,
+    "style_fidelity": 9,
+    "editorial_quality": 9,
+    "spatial_composition": 9,
+    "object_coherence": 10,
+    "composite": 9.0,
+    "beats_collov": true,
+    "failure_modes": [],
+    "improvement_suggestions": [
+      "Consider adding one subtle organic element (single stem in minimal vase) to soften the pure geometry without compromising minimalism",
+      "The window seat could benefit from a single linen cushion in natural tone to suggest human use while maintaining restraint",
+      "Experiment with slightly warmer natural light temperature to add subtle warmth to the neutral palette"
+    ],
+    "collov_comparison": "This render significantly surpasses Collov references with committed Pure Minimal aesthetic, superior material authenticity, and genuine editorial-quality composition versus Collov's generic neutral styling."
+  }
+}

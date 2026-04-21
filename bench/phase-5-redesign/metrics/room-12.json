@@ -1,0 +1,96 @@
+{
+  "room_id": "room-12",
+  "archetype": "COVAMIDCENTURY",
+  "room_type": "bedroom",
+  "status": "ok",
+  "empty_room_url": "https://v3b.fal.media/files/b/0a9714e9/ponvBKoE9T6G1NhheHD0h_253ac7042d854b579487721c368c6510.png",
+  "render_url": "https://v3b.fal.media/files/b/0a971698/IRn6W75RYw95twltwJ2zy.jpg",
+  "render_local_path": "bench/phase-5-redesign/outputs/room-12_redesign.webp",
+  "triptych_local_path": "bench/phase-5-redesign/triptychs/room-12.png",
+  "provider": "flux-general",
+  "provider_fallback_reason": null,
+  "primary_trigger": "cvmcm",
+  "loras_used": [
+    {
+      "path": "https://v3b.fal.media/files/b/0a968e41/UEseNdIMoIb99kgJdii7k_pytorch_lora_weights.safetensors",
+      "scale": 0.85,
+      "trigger": "cvmcm",
+      "name": "COVAMIDCENTURY"
+    },
+    {
+      "path": "https://huggingface.co/Shakker-Labs/FLUX.1-dev-LoRA-add-details/resolve/main/FLUX-dev-lora-add_details.safetensors",
+      "scale": 0.55,
+      "trigger": null,
+      "name": "add-details"
+    },
+    {
+      "path": "https://huggingface.co/XLabs-AI/flux-RealismLora/resolve/main/lora.safetensors",
+      "scale": 0.25,
+      "trigger": null,
+      "name": "realism"
+    }
+  ],
+  "prompt_used": "cvmcm interior cvmcm interior cvmcm interior a well-designed bedroom with bed as focal point, photorealistic interior photography, Architectural Digest editorial quality, 35mm lens, natural daylight, sharp focus, high resolution, walnut veneer, teak, hairpin legs, mustard tweed, warm amber light, tapered silhouettes, geometric rug, atomic accents, preserve original room architecture, a bedroom with bed as focal point cvmcm interior cvmcm interior",
+  "seed": 54,
+  "strength": 0.82,
+  "guidance_scale": 3.5,
+  "num_inference_steps": 28,
+  "image_width": 768,
+  "image_height": 1024,
+  "service_latency_ms": 14586,
+  "wall_latency_ms": 15070,
+  "wall_latency_s": 16.25,
+  "cost_usd": 0.045,
+  "judge_score": 4.3,
+  "generated_at_iso": "2026-04-21T02:33:35Z",
+  "judge_details": {
+    "architectural_integrity": 4,
+    "photorealism": 5,
+    "style_fidelity": 3,
+    "editorial_quality": 4,
+    "spatial_composition": 5,
+    "object_coherence": 4,
+    "composite": 4.3,
+    "beats_collov": false,
+    "failure_modes": [
+      "Critical architectural failure: original room had a piano and LED accents - completely removed/ignored",
+      "Window morphing: original horizontal window with LED lighting replaced with generic vertical window",
+      "Floor material completely changed from original hardwood to carpet",
+      "Ceiling architecture altered: original recessed LED ceiling replaced with generic flat ceiling",
+      "Style failure: this is generic contemporary neutral, NOT Retro Mid-Century",
+      "No mid-century modern furniture present - bed and nightstands are contemporary minimalist",
+      "Missing iconic mid-century elements: no tapered legs, no organic curves, no period-appropriate materials",
+      "Color palette wrong: mid-century uses warm woods, oranges, teals, mustards - this is gray/beige contemporary",
+      "Lighting fixture is contemporary ceiling fan, not mid-century Sputnik or pendant",
+      "Rug pattern is contemporary geometric, not mid-century organic or atomic-age patterns"
+    ],
+    "improvement_suggestions": [
+      "CRITICAL: Preserve original room features - the piano and LED accents were defining characteristics that must remain",
+      "Maintain original window configuration and LED ceiling architecture",
+      "For Retro Mid-Century: use platform bed with tapered wooden legs, not upholstered contemporary frame",
+      "Add iconic mid-century furniture: Eames lounge chair, Nelson bench, or Noguchi table",
+      "Use warm walnut or teak wood tones throughout - nightstands, dresser, bed frame",
+      "Replace ceiling fan with period-appropriate Sputnik chandelier or George Nelson bubble lamp",
+      "Introduce mid-century color palette: mustard yellow, burnt orange, avocado green, or teal accents",
+      "Use organic, atomic-age patterns in textiles and rugs, not contemporary geometric",
+      "Add mid-century wall art: abstract expressionism, sunburst mirrors, or teak wall sculptures",
+      "Include period details: starburst clock, ceramic table lamps with tripod bases, low-profile furniture"
+    ],
+    "collov_comparison": "Significantly worse than Collov references: Collov preserves architectural features and achieves recognizable styles, while this render destroys the original room's defining features (piano, LED accents) and delivers generic contemporary instead of the specified mid-century aesthetic."
+  },
+  "judge_model": "claude-sonnet-4-5",
+  "judge_run_label": "base-with-room-type",
+  "best_of_iteration": 1,
+  "best_render_local_path": "bench/phase-5-redesign/reflection/outputs/room-12_iter1.jpg",
+  "best_beats_collov": true,
+  "best_scores": {
+    "architectural_integrity": 9,
+    "photorealism": 8,
+    "style_fidelity": 9,
+    "editorial_quality": 8,
+    "spatial_composition": 9,
+    "object_coherence": 9,
+    "composite": 8.65
+  },
+  "reflection_final_status": "pass"
+}

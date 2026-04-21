@@ -23,7 +23,11 @@ import type {
   IdentityBrief,
   TabConversationState,
 } from "@/lib/types/area2";
-import type { StyleFingerprint } from "@/types/fingerprint";
+import type { StyleFingerprint, AnyFingerprint } from "@/types/fingerprint";
+import {
+  fingerprintToStyleBlend,
+  type DimensionName,
+} from "@/lib/quiz/style-archetypes";
 
 export interface AssembleInput {
   roomId: string;
@@ -85,6 +89,23 @@ function defaultIdentityBrief(): IdentityBrief {
   return { moodTarget: "", moodKeywords: [], personalityTags: [] };
 }
 
+/**
+ * F3-BLEND-CTX.1 — compute the archetype distribution (`style_blend`) from a
+ * V3 fingerprint. Returns `undefined` for v1/v2 fingerprints (their dims don't
+ * align with the 12-dim archetype space) so the Director falls back to single-
+ * primary LoRA selection. The Director then consumes this via
+ * `buildLorasFromBlend` in `design-director.ts`.
+ */
+function deriveStyleBlend(
+  fingerprint: StyleFingerprint | undefined,
+): Record<string, number> | undefined {
+  if (!fingerprint) return undefined;
+  const version = (fingerprint as AnyFingerprint).fingerprint_version;
+  if (version !== "v3") return undefined;
+  const dims = fingerprint.dimensions as unknown as Record<DimensionName, number>;
+  return fingerprintToStyleBlend(dims);
+}
+
 export function assembleRenderContext(input: AssembleInput): RenderContext {
   const tabsComplete = input.tabStates
     .filter((t) => t.isComplete)
@@ -92,6 +113,8 @@ export function assembleRenderContext(input: AssembleInput): RenderContext {
 
   const budgetDone = tabsComplete.includes("budget");
   const otherDone = tabsComplete.some((id) => id !== "budget");
+
+  const styleBlend = deriveStyleBlend(input.fingerprint);
 
   const context: RenderContext = {
     schemaVersion: "2.0",
@@ -111,6 +134,8 @@ export function assembleRenderContext(input: AssembleInput): RenderContext {
     minimumThresholdMet: budgetDone && otherDone,
     tabsComplete,
     fingerprint: input.fingerprint,
+    style_blend: styleBlend,
+    styleBlend: styleBlend,
   };
 
   context.fluxPrompt = buildFluxPromptFromContext(context);

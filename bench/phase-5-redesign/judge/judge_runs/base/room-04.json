@@ -1,0 +1,46 @@
+{
+  "room_id": "room-04",
+  "run_label": "base",
+  "archetype": "COVABOHEMIAN",
+  "archetype_label": "Maximalist Eclectic / Bohemian",
+  "model": "claude-sonnet-4-5",
+  "input_render_sha_prefix": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBD",
+  "input_render_path": "bench/phase-5-redesign/outputs/room-04_redesign.webp",
+  "wall_s": 13.67,
+  "stop_reason": "end_turn",
+  "usage": {
+    "input_tokens": 8760,
+    "output_tokens": 494
+  },
+  "raw_text": "```json\n{\n  \"architectural_integrity\": 3,\n  \"photorealism\": 6,\n  \"style_fidelity\": 2,\n  \"editorial_quality\": 4,\n  \"spatial_composition\": 4,\n  \"object_coherence\": 3,\n  \"composite\": 3.65,\n  \"beats_collov\": false,\n  \"failure_modes\": [\n    \"Critical architectural failure: attic with sloped ceiling completely removed and replaced with flat ceiling and arched doorway\",\n    \"Original room specification (attic with music and sloped) completely ignored\",\n    \"Style failure: specified Maximalist Eclectic/Bohemian but delivered minimal neutral modern\",\n    \"Wrong room architecture: appears to be ground floor bedroom with fireplace, not an attic space\",\n    \"No bohemian or maximalist elements present - opposite of specified style\",\n    \"Generic hotel-like aesthetic with no personality or eclecticism\",\n    \"Arched architectural element appears fabricated, not from original room\"\n  ],\n  \"improvement_suggestions\": [\n    \"CRITICAL: Preserve the original attic architecture with sloped ceilings - this is the defining feature of the space\",\n    \"Add maximalist layering: multiple rugs, textiles, wall hangings, plants, books, collections\",\n    \"Introduce bohemian elements: macram\u00e9, rattan, global textiles, vintage finds, mixed patterns\",\n    \"Increase color saturation and variety - maximalist spaces are NOT neutral\",\n    \"Add visual density: gallery walls, shelving with objects, layered bedding, floor cushions\",\n    \"Include music-related elements as specified in original room description\",\n    \"Create eclectic mix: combine different eras, styles, and cultural influences\",\n    \"Add personality through collected objects, art, and meaningful items rather than generic decor\"\n  ],\n  \"collov_comparison\": \"Significantly worse than Collov references: while Collov maintains architectural integrity and delivers recognizable styles, this render completely destroys the original attic architecture and delivers the opposite of the specified maximalist/bohemian style.\"\n}\n```",
+  "parsed": {
+    "architectural_integrity": 3,
+    "photorealism": 6,
+    "style_fidelity": 2,
+    "editorial_quality": 4,
+    "spatial_composition": 4,
+    "object_coherence": 3,
+    "composite": 3.65,
+    "beats_collov": false,
+    "failure_modes": [
+      "Critical architectural failure: attic with sloped ceiling completely removed and replaced with flat ceiling and arched doorway",
+      "Original room specification (attic with music and sloped) completely ignored",
+      "Style failure: specified Maximalist Eclectic/Bohemian but delivered minimal neutral modern",
+      "Wrong room architecture: appears to be ground floor bedroom with fireplace, not an attic space",
+      "No bohemian or maximalist elements present - opposite of specified style",
+      "Generic hotel-like aesthetic with no personality or eclecticism",
+      "Arched architectural element appears fabricated, not from original room"
+    ],
+    "improvement_suggestions": [
+      "CRITICAL: Preserve the original attic architecture with sloped ceilings - this is the defining feature of the space",
+      "Add maximalist layering: multiple rugs, textiles, wall hangings, plants, books, collections",
+      "Introduce bohemian elements: macram\u00e9, rattan, global textiles, vintage finds, mixed patterns",
+      "Increase color saturation and variety - maximalist spaces are NOT neutral",
+      "Add visual density: gallery walls, shelving with objects, layered bedding, floor cushions",
+      "Include music-related elements as specified in original room description",
+      "Create eclectic mix: combine different eras, styles, and cultural influences",
+      "Add personality through collected objects, art, and meaningful items rather than generic decor"
+    ],
+    "collov_comparison": "Significantly worse than Collov references: while Collov maintains architectural integrity and delivers recognizable styles, this render completely destroys the original attic architecture and delivers the opposite of the specified maximalist/bohemian style."
+  }
+}

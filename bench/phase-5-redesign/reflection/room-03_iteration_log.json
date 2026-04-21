@@ -1,0 +1,111 @@
+{
+  "room_id": "room-03",
+  "archetype": "COVACOASTAL",
+  "iterations": [
+    {
+      "iteration": 0,
+      "provider": "flux-general",
+      "render_local_path": "bench/phase-5-redesign/outputs/room-03_redesign.webp",
+      "scores": {
+        "architectural_integrity": 3,
+        "photorealism": 4,
+        "style_fidelity": 2,
+        "editorial_quality": 3,
+        "spatial_composition": 2,
+        "object_coherence": 3,
+        "composite": 3.0
+      },
+      "beats_collov": false,
+      "changes_applied": []
+    },
+    {
+      "iteration": 1,
+      "render_url": "https://v3b.fal.media/files/b/0a971666/DbjoU4P620Hh3eO3oFOqB.jpg",
+      "render_local_path": "bench/phase-5-redesign/reflection/outputs/room-03_iter1.jpg",
+      "params": {
+        "strength": 0.7,
+        "guidance_scale": 4.2,
+        "lora_scale_multiplier": 1.12,
+        "seed": 45,
+        "prompt_override": true
+      },
+      "scores": {
+        "architectural_integrity": 3,
+        "photorealism": 4,
+        "style_fidelity": 2,
+        "editorial_quality": 2,
+        "spatial_composition": 2,
+        "object_coherence": 3,
+        "composite": 2.9
+      },
+      "beats_collov": false,
+      "failure_modes": [
+        "Complete room transformation - this is a bedroom, not a living room as specified",
+        "Total architectural failure - walls, windows, floor plan completely changed from original",
+        "Wrong room type generated - bedroom furniture instead of living room",
+        "No herringbone flooring preserved from original",
+        "No leather elements preserved from original",
+        "Coastal Bright style not recognizable - appears to be generic modern bedroom",
+        "Ceiling fan inappropriate for living room context",
+        "Name 'DAKSH' on wall is unprofessional and non-editorial",
+        "Plastic/oversaturated AI textures throughout",
+        "Window treatment completely altered"
+      ],
+      "provider": "flux-general",
+      "cost_usd": 0.045,
+      "latency_ms": 16387,
+      "changes_applied": [
+        "strength 0.82\u21920.70 (architectural preservation)",
+        "guidance 3.5\u21924.2",
+        "lora_scale_multiplier=1.12",
+        "prompt vocabulary strengthened"
+      ]
+    },
+    {
+      "iteration": 2,
+      "render_url": "https://v3b.fal.media/files/b/0a971669/DdIfWrfGbldfnuvZwaQKp.jpg",
+      "render_local_path": "bench/phase-5-redesign/reflection/outputs/room-03_iter2.jpg",
+      "params": {
+        "strength": 0.62,
+        "guidance_scale": 5.0,
+        "lora_scale_multiplier": 1.2,
+        "seed": 1045,
+        "prompt_override": true
+      },
+      "scores": {
+        "architectural_integrity": 4,
+        "photorealism": 3,
+        "style_fidelity": 2,
+        "editorial_quality": 2,
+        "spatial_composition": 3,
+        "object_coherence": 3,
+        "composite": 3.2
+      },
+      "beats_collov": false,
+      "failure_modes": [
+        "Complete room transformation - this is a bedroom, not a living room as specified",
+        "Total architecture replacement - original herringbone flooring completely removed",
+        "Wrong room type generated - bedroom furniture instead of living room",
+        "Severe style deviation - appears to be modern minimalist/Scandinavian, not Coastal Bright",
+        "No coastal elements present - missing whites, blues, natural textures, beach-inspired decor",
+        "Artificial AI aesthetic - overly smooth surfaces, generic hotel room feel",
+        "Poor photorealism - lighting appears flat and artificial, materials lack texture depth"
+      ],
+      "provider": "flux-general",
+      "cost_usd": 0.045,
+      "latency_ms": 13019,
+      "changes_applied": [
+        "strength 0.82\u21920.62",
+        "guidance 3.5\u21925.0",
+        "lora_scale_multiplier=1.20",
+        "seed rotated (+1000)",
+        "prompt vocabulary strengthened"
+      ]
+    }
+  ],
+  "best_iteration": 2,
+  "best_composite": 3.2,
+  "best_beats_collov": false,
+  "final_status": "fail_after_iterations",
+  "generated_at_iso": "2026-04-21T02:25:58Z"
+}

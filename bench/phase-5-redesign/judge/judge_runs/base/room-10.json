@@ -1,0 +1,33 @@
+{
+  "room_id": "room-10",
+  "run_label": "base",
+  "archetype": "COVAARTDECO",
+  "archetype_label": "Dark Moody Glam / Art Deco",
+  "model": "claude-sonnet-4-5",
+  "input_render_sha_prefix": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBD",
+  "input_render_path": "bench/phase-5-redesign/outputs/room-10_redesign.webp",
+  "wall_s": 86.78,
+  "stop_reason": "end_turn",
+  "usage": {
+    "input_tokens": 9093,
+    "output_tokens": 236
+  },
+  "raw_text": "```json\n{\n  \"architectural_integrity\": 9,\n  \"photorealism\": 9,\n  \"style_fidelity\": 9,\n  \"editorial_quality\": 9,\n  \"spatial_composition\": 9,\n  \"object_coherence\": 10,\n  \"composite\": 9.0,\n  \"beats_collov\": true,\n  \"failure_modes\": [],\n  \"improvement_suggestions\": [\n    \"Consider adding one more Art Deco lighting element (wall sconce or table lamp) to further reinforce the period style\",\n    \"The floor marble pattern could extend slightly more visibly to enhance the luxurious material palette\",\n    \"A small decorative object on the black marble counter would add one more layer of styling detail\"\n  ],\n  \"collov_comparison\": \"This render significantly surpasses Collov references with bold, committed Art Deco styling, superior material definition, and genuine editorial-quality composition versus Collov's safe, generic neutrality.\"\n}\n```",
+  "parsed": {
+    "architectural_integrity": 9,
+    "photorealism": 9,
+    "style_fidelity": 9,
+    "editorial_quality": 9,
+    "spatial_composition": 9,
+    "object_coherence": 10,
+    "composite": 9.0,
+    "beats_collov": true,
+    "failure_modes": [],
+    "improvement_suggestions": [
+      "Consider adding one more Art Deco lighting element (wall sconce or table lamp) to further reinforce the period style",
+      "The floor marble pattern could extend slightly more visibly to enhance the luxurious material palette",
+      "A small decorative object on the black marble counter would add one more layer of styling detail"
+    ],
+    "collov_comparison": "This render significantly surpasses Collov references with bold, committed Art Deco styling, superior material definition, and genuine editorial-quality composition versus Collov's safe, generic neutrality."
+  }
+}
