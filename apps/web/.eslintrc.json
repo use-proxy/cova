@@ -8,7 +8,58 @@
     ],
     "no-console": ["warn", { "allow": ["warn", "error"] }],
     "@next/next/no-img-element": "off",
-    "react-hooks/exhaustive-deps": "warn"
+    "react-hooks/exhaustive-deps": "warn",
+    "no-restricted-syntax": [
+      "error",
+      {
+        "selector": "Literal[value=/(?<!warm\\s)\\bjapandi\\b/i]",
+        "message": "CLAUDE.md Rule 8 / Phase 3 F6.1: bare 'Japandi' is forbidden in source strings. Use qualified form 'Warm Japandi' or route through anchor-display.ts / forbidden-names.ts."
+      },
+      {
+        "selector": "Literal[value=/\\bbohemian\\b/i]",
+        "message": "CLAUDE.md Rule 8 / Phase 3 F6.1: bare 'Bohemian' is forbidden in source strings. Use 'Layered & Collected' or route through anchor-display.ts."
+      },
+      {
+        "selector": "Literal[value=/(?<!bright)\\bcoastal(?!\\s+bright)\\b/i]",
+        "message": "CLAUDE.md Rule 8 / Phase 3 F6.1: bare 'Coastal' is forbidden in source strings. Use qualified form 'Coastal Bright' or route through anchor-display.ts."
+      },
+      {
+        "selector": "Literal[value=/(?<!retro\\s)\\bmid[-\\s]century\\s+modern\\b/i]",
+        "message": "CLAUDE.md Rule 8 / Phase 3 F6.1: bare 'Mid-Century Modern' is forbidden in source strings. Use qualified form 'Retro Mid-Century' or route through anchor-display.ts."
+      },
+      {
+        "selector": "Literal[value=/\\bminimalist\\b/i]",
+        "message": "CLAUDE.md Rule 8 / Phase 3 F6.1: bare 'Minimalist' is forbidden in source strings. Use 'Pure & Calm' or route through anchor-display.ts."
+      },
+      {
+        "selector": "Literal[value=/\\bscandinavian\\b/i]",
+        "message": "CLAUDE.md Rule 8 / Phase 3 F6.1: bare 'Scandinavian' is forbidden in source strings. Use 'Bright & Nordic' or route through anchor-display.ts."
+      },
+      {
+        "selector": "TemplateElement[value.raw=/(?<!warm\\s)\\bjapandi\\b/i]",
+        "message": "CLAUDE.md Rule 8 / Phase 3 F6.1: bare 'Japandi' is forbidden in template literals."
+      },
+      {
+        "selector": "TemplateElement[value.raw=/\\bbohemian\\b/i]",
+        "message": "CLAUDE.md Rule 8 / Phase 3 F6.1: bare 'Bohemian' is forbidden in template literals."
+      },
+      {
+        "selector": "TemplateElement[value.raw=/(?<!bright)\\bcoastal(?!\\s+bright)\\b/i]",
+        "message": "CLAUDE.md Rule 8 / Phase 3 F6.1: bare 'Coastal' is forbidden in template literals."
+      },
+      {
+        "selector": "TemplateElement[value.raw=/(?<!retro\\s)\\bmid[-\\s]century\\s+modern\\b/i]",
+        "message": "CLAUDE.md Rule 8 / Phase 3 F6.1: bare 'Mid-Century Modern' is forbidden in template literals."
+      },
+      {
+        "selector": "TemplateElement[value.raw=/\\bminimalist\\b/i]",
+        "message": "CLAUDE.md Rule 8 / Phase 3 F6.1: bare 'Minimalist' is forbidden in template literals."
+      },
+      {
+        "selector": "TemplateElement[value.raw=/\\bscandinavian\\b/i]",
+        "message": "CLAUDE.md Rule 8 / Phase 3 F6.1: bare 'Scandinavian' is forbidden in template literals."
+      }
+    ]
   },
   "ignorePatterns": [
     "scripts/",
@@ -16,5 +67,36 @@
     "tests/",
     "coverage/",
     "node_modules/"
+  ],
+  "overrides": [
+    {
+      "files": [
+        "lib/ai/forbidden-names.ts",
+        "lib/ai/canonical-archetypes.ts",
+        "lib/ai/anchor-display.ts",
+        "lib/ai/chat/systemPrompts.ts",
+        "lib/ai/prompt-compiler.ts",
+        "lib/ai/design-director.ts",
+        "lib/quiz/style-archetypes.ts",
+        "lib/styles/lora-registry.ts",
+        "lib/ai/lora-registry.ts",
+        "lib/logging/redactor.ts",
+        "app/api/quiz/tweak/route.ts",
+        "app/api/match/route.ts",
+        "app/api/pipeline/furniture-match/route.ts",
+        "app/api/quiz/style-preview/route.ts",
+        "app/design/step-3b/page.tsx",
+        "app/design/step-7g/page.tsx",
+        "app/api/quiz/next-card/route.ts",
+        "app/api/quiz/next-pair/route.ts",
+        "components/quiz/CardStack.tsx",
+        "lib/unsplash.ts",
+        "lib/ai/flux.ts",
+        "lib/ai/style-match.ts"
+      ],
+      "rules": {
+        "no-restricted-syntax": "off"
+      }
+    }
   ]
 }

@@ -2,7 +2,7 @@
 
 const SUGGESTIONS = [
   "What's my total room cost?",
-  "Make it more minimalist",
+  "Make it more pared back",
   "Find sofas under $1,000",
   "Change the color palette to warm tones",
   "What style is this room?",
