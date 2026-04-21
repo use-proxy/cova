@@ -1,16 +1,16 @@
 {
   "room_id": "room-15",
-  "input_fal_url": "https://v3b.fal.media/files/b/0a9713fb/AWS4BGfTc6rv_EEceW-Fl_room-15_wood-paneling-twin-beds.webp",
+  "input_fal_url": "https://v3b.fal.media/files/b/0a9714ec/tvwcRvCUZlShfVBaHZZSL_room-15_wood-paneling-twin-beds.webp",
   "http_status": 200,
-  "wall_latency_ms": 65154,
-  "wall_latency_s": 65.154,
+  "wall_latency_ms": 13370,
+  "wall_latency_s": 13.37,
   "stratification": {
     "clutter": "heavy",
     "geometry": "corner",
     "texture": "wood-paneling",
     "lighting": "soft-daylight"
   },
-  "empty_room_url": "https://v3b.fal.media/files/b/0a971401/qN-PVtOYA77oIaHl2B77L_e80ecc9e484c4dfe80d17bdb3cf81b4d.png",
+  "empty_room_url": "https://v3b.fal.media/files/b/0a9714ed/k4PCmxT6_vnhePXN5RLlK_dc09886d61694fc9a1f04846fff09440.png",
   "mask_coverage_raw_pct": 24.330932784636488,
   "mask_coverage_dilated_pct": 41.577389117512574,
   "inpainter_used": "bria",
@@ -23,14 +23,14 @@
   },
   "patch_clean": true,
   "partial_failures": [],
-  "latency_ms": 64459,
+  "latency_ms": 12949,
   "cost_usd": 0.14,
   "output_local_path": "bench/phase-2-empty-room/outputs/room-15.webp",
   "pass_per_metric": {
     "architectural_patch_ssim": true,
     "cost": true,
-    "latency_p95": false
+    "latency_p95": true
   },
-  "overall_pass": false,
-  "bench_wall_s": 66.77240800019354
+  "overall_pass": true,
+  "bench_wall_s": 15.042528292164207
 }

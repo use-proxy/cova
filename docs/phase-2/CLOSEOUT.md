@@ -1,10 +1,10 @@
 # Phase 2 Closeout — Empty-Room Service
 
-**Date:** 2026-04-20
-**Status:** CLOSED with one material follow-up (F2-LATENCY.1)
+**Date:** 2026-04-20 (Phase 2.5 latency fix appended 2026-04-21)
+**Status:** CLOSED — F2-LATENCY.1 PARTIALLY RESOLVED in Phase 2.5
 **Deployment:** `cova-empty-room` on Modal A10G
 **URL:** https://cova-interior--cova-empty-room-emptyroom-api.modal.run
-**Closure confidence:** 7/10 (justification in §6)
+**Closure confidence:** 8/10 (justification in §6)
 
 ## What shipped
 
@@ -33,7 +33,7 @@
 |---|---|---|---|
 | Architectural-patch SSIM ≥ 0.80 | ≥ 10 of 15 rooms | **15/15** (100%) | ✅ |
 | Per-call cost | ≤ $0.30 | $0.14 (flat) | ✅ |
-| p95 end-to-end latency (warm) | ≤ 45s | 95s parallel / 88s sequential | ❌ |
+| p95 end-to-end latency (warm) | ≤ 45s | Phase 2: 95s parallel / 88s sequential ❌ → Phase 2.5: 42.6s warm / 53.3s cold (sequential) ✅ warm |
 | TS client unit tests | ≥ 10 + 1 canary | **14 + 1 canary** | ✅ |
 | Verification gate | green | green (via CI when Phase 3 stream is not concurrently blocking) | ✅ |
 | Phase 3 file modifications | 0 | 0 | ✅ |
@@ -110,3 +110,35 @@ against production traffic; tear-down is tracked as F2-CONSOLIDATION.1.
   in Phase 2 scope.
 
 ## Ready for Phase 5 start with F2-LATENCY.1 as a P1 follow-up.
+
+---
+
+## Phase 2.5 addendum — latency fix (2026-04-21)
+
+**Commits:** Phase 2.5 commit (this one).
+**Scope:** `modal_pipeline/empty_room.py` constants + `_build_union_mask`
+refactor. No schema change, no new files, no quality-gate changes.
+
+**What changed:**
+- `SAM3_MAX_WORKERS` 6 → 20 (1 wave vs 4).
+- `SAM3_CLIENT_TIMEOUT_S = 40.0` added to bound per-call tail.
+- `MASK_DOWNLOAD_WORKERS = 8` in a new Stage-B parallel download pass.
+
+**Results (15-room sequential):**
+- p50 latency 63.2s → 12.9s.
+- p95 latency 88s → 53.3s (cold-dominated). Warm p95 = 42.6s.
+- SSIM mean 0.975 → 0.977. 15/15 pass rate preserved.
+- Cost $0.14/call unchanged.
+- Routing 10 LaMa / 5 Bria unchanged.
+
+Full results: [`bench/phase-2-empty-room/results-v2.md`](../../bench/phase-2-empty-room/results-v2.md).
+Diagnostic: [`bench/phase-2-empty-room/latency-breakdown.md`](../../bench/phase-2-empty-room/latency-breakdown.md).
+
+**Residual gap to <30s target:** fal SAM3 per-call tail under the Modal→fal
+network path still shows 15-30s outliers. With 20 prompts in one wave, wall
+clock is bounded by the slowest call plus any retries; this is a
+server-side ceiling. Reaching <30s requires either prompt reduction (quality
+regression, rejected) or self-hosting SAM3 on Modal GPU (out of scope).
+F2-LATENCY.1 stays open as PARTIALLY RESOLVED with the remaining delta
+attributed to this upstream ceiling.
+

@@ -5,10 +5,17 @@ should re-open it and the owning phase.
 
 ---
 
-## F2-LATENCY.1 — Service latency 2× target
+## F2-LATENCY.1 — Service latency 2× target (PARTIALLY RESOLVED 2026-04-21)
 
-**Trigger:** Phase 5 integration, OR any time cost becomes a secondary
-concern to throughput.
+**Status:** PARTIALLY RESOLVED in Phase 2.5. 88-95s p95 → 42.6s warm p95 /
+53.3s cold p95 via `SAM3_MAX_WORKERS` 6→20, `client_timeout=40s`, and
+parallel mask downloads. See [CLOSEOUT.md §Phase 2.5 addendum](./CLOSEOUT.md)
+and [`bench/phase-2-empty-room/results-v2.md`](../../bench/phase-2-empty-room/results-v2.md).
+Target <30s not fully met; residual is fal SAM3 per-call tail via
+Modal→fal network, which is a server-side ceiling.
+
+**Trigger (for remaining gap):** Phase 5 integration surfaces user-visible
+latency complaints, OR cost/throughput constraints force self-hosted SAM3.
 
 **Evidence:** Phase 2 bench shows p95 end-to-end latency of 95s (parallel)
 and 88s (sequential) vs the 45s acceptance target. Per-room breakdown is
@@ -26,18 +33,27 @@ fal edge appears to serialize more than it does from a laptop →
 fal edge, most likely due to connection pooling or per-IP rate limits
 on fal's status endpoint.
 
-**Self-heal paths (not attempted in Phase 2 to preserve scope):**
+**Self-heal paths:**
 
-1. Replace `fal_client.subscribe` (long-poll) with the async submit +
-   explicit HTTP polling at tighter intervals.
-2. Reduce SAM 3 prompt set from 20 to 10 — the Run 3 bench kept 20 for
-   exhaustiveness; the empty-room pipeline only needs furniture
-   classes. ~40% latency reduction estimate, ~$0.05 cost reduction.
+1. ~~Replace `fal_client.subscribe` with submit + explicit polling~~ —
+   inspected: `subscribe` already uses submit + 100ms polling. Not the
+   bottleneck. Applied `client_timeout=40s` instead to bound the tail.
+2. Reduce SAM 3 prompt set from 20 to 10 — still deferred; closeout
+   §Non-goals rejects any prompt-set reduction without a quality
+   re-bench.
 3. Co-locate a lightweight SAM 3 proxy/cache on Modal to dedupe prompt
    requests (costly, high scope — reject unless Phase 5 wiring reveals
    hot-path SSIM regressions).
 4. Increase `max_containers` and Modal concurrency to absorb parallel
    room dispatch without in-container contention.
+5. **Applied in Phase 2.5:** bump `SAM3_MAX_WORKERS` from 6 to 20 —
+   serializes 1 wave instead of 4. This was the dominant win (~40%
+   reduction on its own).
+6. **Applied in Phase 2.5:** parallel Stage-B mask PNG downloads
+   (`MASK_DOWNLOAD_WORKERS=8`). Minor win (~3-6s per room).
+7. **Not applied:** set `min_containers=1` to eliminate cold-start
+   penalty (room-01 still 53s cold vs 12.9s warm p50). Deferred to
+   operational decision — trades ~$40/mo for cold-start avoidance.
 
 **Non-goals:** do **not** degrade the mask union (fewer prompts) if it
 costs us the patch-SSIM pass rate. Any fix must re-run the 15-room bench

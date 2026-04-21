@@ -1,16 +1,16 @@
 {
   "room_id": "room-06",
-  "input_fal_url": "https://v3b.fal.media/files/b/0a9713e5/7z2Ln-We4dHQNM9m_8tGk_room-06_empty-bay-window.webp",
+  "input_fal_url": "https://v3b.fal.media/files/b/0a9714e0/Gr2PoprYLlEj2BcRuf-En_room-06_empty-bay-window.webp",
   "http_status": 200,
-  "wall_latency_ms": 95540,
-  "wall_latency_s": 95.54,
+  "wall_latency_ms": 23360,
+  "wall_latency_s": 23.36,
   "stratification": {
     "clutter": "none",
     "geometry": "bay-window-niche",
     "texture": "hardwood-grain",
     "lighting": "bright-natural"
   },
-  "empty_room_url": "https://v3b.fal.media/files/b/0a9713ee/6oJD2bec1SoxiDcMoFSoH_bb344bc5eee84e78bd95fc453ff1a06e.png",
+  "empty_room_url": "https://v3b.fal.media/files/b/0a9714e2/8DuvXgVrsdtsooYPckFrl_b0a9d902fe3745e189d865da405185a0.png",
   "mask_coverage_raw_pct": 2.716064453125,
   "mask_coverage_dilated_pct": 5.530915436921297,
   "inpainter_used": "lama",
@@ -23,14 +23,14 @@
   },
   "patch_clean": true,
   "partial_failures": [],
-  "latency_ms": 95049,
+  "latency_ms": 22892,
   "cost_usd": 0.14,
   "output_local_path": "bench/phase-2-empty-room/outputs/room-06.webp",
   "pass_per_metric": {
     "architectural_patch_ssim": true,
     "cost": true,
-    "latency_p95": false
+    "latency_p95": true
   },
-  "overall_pass": false,
-  "bench_wall_s": 97.33736687526107
+  "overall_pass": true,
+  "bench_wall_s": 24.547051833942533
 }

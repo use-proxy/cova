@@ -80,9 +80,23 @@ COST_SAM3_PER_CALL: float = 0.005
 COST_LAMA: float = 0.04
 COST_BRIA: float = 0.04
 
-# SAM 3 concurrency (mirrors Run 3 bench)
-SAM3_MAX_WORKERS: int = 6
+# SAM 3 concurrency.
+# Phase 2.5 (2026-04-21): bumped from 6 to 20 — see bench/phase-2-empty-room/
+# latency-breakdown.md. With 6 workers, 20 prompts dispatched in 4 serialized
+# waves, each gated by the wave's tail; p95 build_union_mask = 57-69s. One
+# wave of 20 bounds wall-clock to the tail of a single SAM 3 call.
+SAM3_MAX_WORKERS: int = 20
 SAM3_MAX_RETRIES: int = 2
+# Client-side timeout on a single SAM 3 subscribe call. Calls that exceed
+# this are cancelled and retried. Tuned for production scenario (1 user →
+# 1 container → 20 concurrent SAM3 calls). Under concurrent-user load fal's
+# queue can take 30-40s per call; 40s timeout tolerates that without
+# triggering spurious retries. 40s × 3 attempts bounds the tail at ~120s
+# but the partial-failure threshold (> 4) lets us succeed on >= 16/20.
+SAM3_CLIENT_TIMEOUT_S: float = 40.0
+# Mask-download parallelism (post-SAM3). Independent of SAM3 workers so both
+# stages overlap cleanly.
+MASK_DOWNLOAD_WORKERS: int = 8
 
 # Inpainter retry
 INPAINTER_MAX_RETRIES: int = 3
@@ -124,6 +138,7 @@ empty_room_image = (
 app = modal.App(APP_NAME)
 
 logger = logging.getLogger("cova-empty-room")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 
 # ---------------------------------------------------------------------------
@@ -202,8 +217,10 @@ def _sam3_detect(
     import fal_client  # type: ignore
 
     last_err: Exception | None = None
+    t_sam0 = time.perf_counter()
     for attempt in range(retries + 1):
         try:
+            t_call0 = time.perf_counter()
             r = fal_client.subscribe(
                 "fal-ai/sam-3/image",
                 arguments={
@@ -216,6 +233,11 @@ def _sam3_detect(
                     "output_format": "png",
                 },
                 with_logs=False,
+                client_timeout=SAM3_CLIENT_TIMEOUT_S,
+            )
+            logger.debug(
+                "TIMING sam3_call prompt=%s attempt=%d dt_s=%.3f",
+                prompt, attempt, time.perf_counter() - t_call0,
             )
             masks = r.get("masks") or []
             scores = r.get("scores") or []
@@ -273,6 +295,11 @@ def _build_union_mask(
     failures: list[str] = []
     calls_made = 0
 
+    t_union0 = time.perf_counter()
+    total_download_s = 0.0
+    # Stage A — all SAM3 prompts in parallel (workers = prompt count).
+    best_urls: list[tuple[str, str]] = []  # (prompt, mask_url)
+    t_sam0 = time.perf_counter()
     with ThreadPoolExecutor(max_workers=SAM3_MAX_WORKERS) as ex:
         futs = {
             ex.submit(_sam3_detect, image_url, p, score_threshold): p
@@ -290,13 +317,33 @@ def _build_union_mask(
             if not kept:
                 continue
             best_url, _ = max(kept, key=lambda t: t[1])
-            try:
-                m = _download_mask_png(best_url, (h, w))
-                union = np.maximum(union, m)
-            except Exception as exc:  # noqa: BLE001
-                failures.append(
-                    f"sam3-download:{prompt}:{type(exc).__name__}:{exc}"
-                )
+            best_urls.append((prompt, best_url))
+    sam_dt = time.perf_counter() - t_sam0
+
+    # Stage B — download all masks in parallel, then union serially (numpy).
+    t_dl_all0 = time.perf_counter()
+    if best_urls:
+        with ThreadPoolExecutor(max_workers=MASK_DOWNLOAD_WORKERS) as ex:
+            dl_futs = {
+                ex.submit(_download_mask_png, url, (h, w)): prompt
+                for (prompt, url) in best_urls
+            }
+            for fut in as_completed(dl_futs):
+                prompt = dl_futs[fut]
+                try:
+                    m = fut.result()
+                    union = np.maximum(union, m)
+                except Exception as exc:  # noqa: BLE001
+                    failures.append(
+                        f"sam3-download:{prompt}:{type(exc).__name__}:{exc}"
+                    )
+    total_download_s = time.perf_counter() - t_dl_all0
+
+    logger.info(
+        "TIMING build_union_mask total_dt_s=%.3f sam3_stage_s=%.3f mask_download_s=%.3f n_workers=%d n_prompts=%d masks_dl=%d",
+        time.perf_counter() - t_union0, sam_dt, total_download_s,
+        SAM3_MAX_WORKERS, len(prompts), len(best_urls),
+    )
 
     return union, failures, calls_made
 
@@ -492,7 +539,9 @@ class EmptyRoom:
         # ------------------------------------------------------------------
         # 1. Fetch + hash
         # ------------------------------------------------------------------
+        t_fetch0 = time.perf_counter()
         raw = _fetch_image_bytes(str(req.image_url))
+        logger.info("TIMING fetch_image dt_s=%.3f bytes=%d", time.perf_counter() - t_fetch0, len(raw))
         image_hash = req.image_hash or _sha256_hex(raw)
         pil = Image.open(io.BytesIO(raw)).convert("RGB")
         in_arr = np.array(pil)
@@ -568,7 +617,9 @@ class EmptyRoom:
         ok, mask_buf = cv2.imencode(".png", dilated)
         if not ok:
             raise RuntimeError("mask PNG encoding failed")
+        t_up0 = time.perf_counter()
         mask_url = _upload_bytes_to_fal(mask_buf.tobytes(), suffix=".png")
+        logger.info("TIMING mask_upload dt_s=%.3f", time.perf_counter() - t_up0)
 
         # ------------------------------------------------------------------
         # 6. Route + call inpainter
@@ -587,17 +638,22 @@ class EmptyRoom:
             cov_dilated_pct,
         )
 
+        t_inp0 = time.perf_counter()
         if inpainter == "lama":
             out_url = _call_lama(str(req.image_url), mask_url)
             cost += COST_LAMA
         else:
             out_url = _call_bria(str(req.image_url), mask_url)
             cost += COST_BRIA
+        logger.info("TIMING inpainter=%s dt_s=%.3f", inpainter, time.perf_counter() - t_inp0)
 
         # ------------------------------------------------------------------
         # 7. Download output + compute patch SSIM
         # ------------------------------------------------------------------
+        t_out0 = time.perf_counter()
         out_raw = _fetch_image_bytes(out_url)
+        logger.info("TIMING output_download dt_s=%.3f", time.perf_counter() - t_out0)
+        t_ssim0 = time.perf_counter()
         out_pil = Image.open(io.BytesIO(out_raw)).convert("RGB")
         if out_pil.size != (w, h):
             out_pil = out_pil.resize((w, h), Image.LANCZOS)
@@ -610,8 +666,10 @@ class EmptyRoom:
         patch_ssim_val = _compute_patch_ssim(
             in_gray, out_gray, px, py, PATCH_SIZE
         )
+        logger.info("TIMING ssim_block dt_s=%.3f", time.perf_counter() - t_ssim0)
 
         latency_ms = int((time.perf_counter() - t0) * 1000)
+        logger.info("TIMING total dt_s=%.3f inpainter=%s", latency_ms/1000.0, inpainter)
         return EmptyRoomResponse(
             empty_room_url=out_url,
             image_hash=image_hash,

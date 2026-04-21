@@ -1,21 +1,21 @@
 {
   "room_id": "room-08",
-  "input_fal_url": "https://v3b.fal.media/files/b/0a9713eb/jGAfvmsR_-wvHtAMFe_K5_room-08_livingroom-papasan-floral.webp",
+  "input_fal_url": "https://v3b.fal.media/files/b/0a9714e4/diuSzYtUl0o9SaOHjrDYg_room-08_livingroom-papasan-floral.webp",
   "http_status": 200,
-  "wall_latency_ms": 89617,
-  "wall_latency_s": 89.617,
+  "wall_latency_ms": 21850,
+  "wall_latency_s": 21.85,
   "stratification": {
     "clutter": "medium",
     "geometry": "long-perspective",
     "texture": "floral-rug",
     "lighting": "soft-overcast"
   },
-  "empty_room_url": "https://v3b.fal.media/files/b/0a9713f3/6F2zBDWFSOxON-fkrU-v1_36eeef733d3a4187b4131fd6870a595c.png",
+  "empty_room_url": "https://v3b.fal.media/files/b/0a9714e6/dBzPLHBCkdm0glDrspLE8_7b5f08af301a42d78c3322f485f32fdf.png",
   "mask_coverage_raw_pct": 48.08710562414266,
   "mask_coverage_dilated_pct": 64.83721993598537,
   "inpainter_used": "bria",
   "router_threshold_pct": 35.0,
-  "architectural_patch_ssim": 0.9751380890957186,
+  "architectural_patch_ssim": 0.9751420433343545,
   "patch_coordinates": {
     "x": 305,
     "y": 67,
@@ -23,14 +23,14 @@
   },
   "patch_clean": true,
   "partial_failures": [],
-  "latency_ms": 89009,
+  "latency_ms": 21560,
   "cost_usd": 0.14,
   "output_local_path": "bench/phase-2-empty-room/outputs/room-08.webp",
   "pass_per_metric": {
     "architectural_patch_ssim": true,
     "cost": true,
-    "latency_p95": false
+    "latency_p95": true
   },
-  "overall_pass": false,
-  "bench_wall_s": 91.34603966679424
+  "overall_pass": true,
+  "bench_wall_s": 23.23596491664648
 }

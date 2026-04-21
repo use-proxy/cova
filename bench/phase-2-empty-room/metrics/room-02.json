@@ -1,16 +1,16 @@
 {
   "room_id": "room-02",
-  "input_fal_url": "https://v3b.fal.media/files/b/0a9713e1/3680eKCKk6YAlb_yU7DVb_room-02_livingroom-piano-joydivision.webp",
+  "input_fal_url": "https://v3b.fal.media/files/b/0a9714d3/OB4whnQdKga-7XZI1Wy8n_room-02_livingroom-piano-joydivision.webp",
   "http_status": 200,
-  "wall_latency_ms": 38194,
-  "wall_latency_s": 38.194,
+  "wall_latency_ms": 21784,
+  "wall_latency_s": 21.784,
   "stratification": {
     "clutter": "medium",
     "geometry": "long-perspective",
     "texture": "plank-floor",
     "lighting": "soft-overcast"
   },
-  "empty_room_url": "https://v3b.fal.media/files/b/0a9713e4/WNPT3pHTf8DGtzESIMPHd_e1c6a37b64194bf1a8c030cfd8d431c7.png",
+  "empty_room_url": "https://v3b.fal.media/files/b/0a9714d5/CtZpZm-2L6io-wZc4CMyA_cfc06935d29d4429b28dce65329c0fd3.png",
   "mask_coverage_raw_pct": 15.021975003433594,
   "mask_coverage_dilated_pct": 26.887332326145675,
   "inpainter_used": "lama",
@@ -23,7 +23,7 @@
   },
   "patch_clean": true,
   "partial_failures": [],
-  "latency_ms": 33543,
+  "latency_ms": 21006,
   "cost_usd": 0.14,
   "output_local_path": "bench/phase-2-empty-room/outputs/room-02.webp",
   "pass_per_metric": {
@@ -32,5 +32,5 @@
     "latency_p95": true
   },
   "overall_pass": true,
-  "bench_wall_s": 40.476918041240424
+  "bench_wall_s": 23.488099416252226
 }

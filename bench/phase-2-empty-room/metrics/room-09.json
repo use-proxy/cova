@@ -1,16 +1,16 @@
 {
   "room_id": "room-09",
-  "input_fal_url": "https://v3b.fal.media/files/b/0a9713ed/NbB_3aXR7Dmq8WnOKSpg9_room-09_gaming-led-popcorn.webp",
+  "input_fal_url": "https://v3b.fal.media/files/b/0a9714e6/uqV2nPhSZJz1ut4hbyKvq_room-09_gaming-led-popcorn.webp",
   "http_status": 200,
-  "wall_latency_ms": 68062,
-  "wall_latency_s": 68.062,
+  "wall_latency_ms": 5273,
+  "wall_latency_s": 5.273,
   "stratification": {
     "clutter": "heavy",
     "geometry": "corner",
     "texture": "popcorn-ceiling",
     "lighting": "lamp-lit-mixed"
   },
-  "empty_room_url": "https://v3b.fal.media/files/b/0a9713f3/bjz9lVhmGldavGncHmbxU_7af5dd08106b481382704794ebd1ec87.png",
+  "empty_room_url": "https://v3b.fal.media/files/b/0a9714e6/kS9S3r1bGJi4-QUzK4Oq7_b352936e020b4d308a1fd419bee1e99d.png",
   "mask_coverage_raw_pct": 13.16017232510288,
   "mask_coverage_dilated_pct": 24.850244341563783,
   "inpainter_used": "lama",
@@ -23,14 +23,14 @@
   },
   "patch_clean": true,
   "partial_failures": [],
-  "latency_ms": 67512,
+  "latency_ms": 4972,
   "cost_usd": 0.14,
   "output_local_path": "bench/phase-2-empty-room/outputs/room-09.webp",
   "pass_per_metric": {
     "architectural_patch_ssim": true,
     "cost": true,
-    "latency_p95": false
+    "latency_p95": true
   },
-  "overall_pass": false,
-  "bench_wall_s": 70.10172495804727
+  "overall_pass": true,
+  "bench_wall_s": 6.778007791377604
 }

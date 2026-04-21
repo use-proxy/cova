@@ -1,16 +1,16 @@
 {
   "room_id": "room-12",
-  "input_fal_url": "https://v3b.fal.media/files/b/0a9713f4/W9rfG9yMItZk8Yak1DsVG_room-12_bedroom-piano-led.webp",
+  "input_fal_url": "https://v3b.fal.media/files/b/0a9714e9/t0GCoIeQou-AzN_iRVkaP_room-12_bedroom-piano-led.webp",
   "http_status": 200,
-  "wall_latency_ms": 52233,
-  "wall_latency_s": 52.233,
+  "wall_latency_ms": 6537,
+  "wall_latency_s": 6.537,
   "stratification": {
     "clutter": "medium",
     "geometry": "corner",
     "texture": "hardwood-plank",
     "lighting": "daylight-plus-led"
   },
-  "empty_room_url": "https://v3b.fal.media/files/b/0a9713f9/h0N6wU5tQGiUkBrU6mOsf_326175dcfe1f45c5b19d256d63d00ee0.png",
+  "empty_room_url": "https://v3b.fal.media/files/b/0a9714e9/ponvBKoE9T6G1NhheHD0h_253ac7042d854b579487721c368c6510.png",
   "mask_coverage_raw_pct": 15.86863425925926,
   "mask_coverage_dilated_pct": 24.813400205761315,
   "inpainter_used": "lama",
@@ -23,14 +23,14 @@
   },
   "patch_clean": true,
   "partial_failures": [],
-  "latency_ms": 51674,
+  "latency_ms": 6122,
   "cost_usd": 0.14,
   "output_local_path": "bench/phase-2-empty-room/outputs/room-12.webp",
   "pass_per_metric": {
     "architectural_patch_ssim": true,
     "cost": true,
-    "latency_p95": false
+    "latency_p95": true
   },
-  "overall_pass": false,
-  "bench_wall_s": 54.031736000441015
+  "overall_pass": true,
+  "bench_wall_s": 7.852604624815285
 }

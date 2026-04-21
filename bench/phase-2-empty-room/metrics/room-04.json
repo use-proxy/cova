@@ -1,16 +1,16 @@
 {
   "room_id": "room-04",
-  "input_fal_url": "https://v3b.fal.media/files/b/0a9713e1/Yc0ZXrLgbdnN_KlC3ceDf_room-04_attic-music-sloped.webp",
+  "input_fal_url": "https://v3b.fal.media/files/b/0a9714d9/jK9aCQvQEwF3A0dTp7bJ6_room-04_attic-music-sloped.webp",
   "http_status": 200,
-  "wall_latency_ms": 25170,
-  "wall_latency_s": 25.17,
+  "wall_latency_ms": 27906,
+  "wall_latency_s": 27.906,
   "stratification": {
     "clutter": "heavy",
     "geometry": "sloped-ceiling",
     "texture": "wall-molding-break",
     "lighting": "mixed-backlit"
   },
-  "empty_room_url": "https://v3b.fal.media/files/b/0a9713e3/VX-Kc2HliwlVCAidz0CWa_3b60011953fc4173947e8b1e13e20527.png",
+  "empty_room_url": "https://v3b.fal.media/files/b/0a9714db/IuaIzITkrRJZz4Uib45-C_2718af6f0fb14c3d949f591fa2946baa.png",
   "mask_coverage_raw_pct": 12.281207133058986,
   "mask_coverage_dilated_pct": 21.802583447645176,
   "inpainter_used": "lama",
@@ -23,7 +23,7 @@
   },
   "patch_clean": true,
   "partial_failures": [],
-  "latency_ms": 24560,
+  "latency_ms": 27487,
   "cost_usd": 0.14,
   "output_local_path": "bench/phase-2-empty-room/outputs/room-04.webp",
   "pass_per_metric": {
@@ -32,5 +32,5 @@
     "latency_p95": true
   },
   "overall_pass": true,
-  "bench_wall_s": 26.996713874861598
+  "bench_wall_s": 29.230197332799435
 }

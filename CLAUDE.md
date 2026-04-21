@@ -490,7 +490,15 @@ request-time (phase-2 calls SAM 3 directly, see
 Use `mask_coverage_dilated_pct` to key decide extra prompt scaffolding
 on high-coverage rooms.
 
-**Deferred:** F2-LATENCY.1 (service 2× latency target), F2-CONSOLIDATION.1
+**Phase 2.5 latency fix (2026-04-21):** `SAM3_MAX_WORKERS` 6→20 +
+`client_timeout=40s` + parallel mask downloads took 88s p95 → 42.6s
+warm p95 / 53.3s cold p95 with 15/15 SSIM preserved and $0.14/call flat.
+Target <30s not fully met; residual is fal SAM3 server-side tail. See
+`docs/phase-2/CLOSEOUT.md` §Phase 2.5 addendum and
+`bench/phase-2-empty-room/results-v2.md`. F2-LATENCY.1 is PARTIALLY
+RESOLVED.
+
+**Deferred:** F2-LATENCY.1 (remaining gap to <30s — upstream ceiling), F2-CONSOLIDATION.1
 (deprecate `cova-restoration-pipeline` + `cova-grounded-sam2` after Phase 5
 adoption), F2-PERCEPTION.1 (add furniture-spec endpoint to perception),
 F2-CACHE.1, F2-TEXTURE.1, F2-COVERAGE.1, F2-HEALTHZ.1. See
