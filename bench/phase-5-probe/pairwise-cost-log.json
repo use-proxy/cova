@@ -1,0 +1,133 @@
+{
+  "entries": [
+    {
+      "pair_id": "A1",
+      "order": "order1",
+      "cost_usd": 0.025,
+      "cumulative_usd": 0.025,
+      "note": "retry=False",
+      "timestamp": "2026-04-20T20:40:19Z"
+    },
+    {
+      "pair_id": "A1",
+      "order": "order2",
+      "cost_usd": 0.025,
+      "cumulative_usd": 0.05,
+      "note": "retry=False",
+      "timestamp": "2026-04-20T20:40:22Z"
+    },
+    {
+      "pair_id": "A2",
+      "order": "order1",
+      "cost_usd": 0.025,
+      "cumulative_usd": 0.07500000000000001,
+      "note": "retry=False",
+      "timestamp": "2026-04-20T20:40:24Z"
+    },
+    {
+      "pair_id": "A2",
+      "order": "order2",
+      "cost_usd": 0.025,
+      "cumulative_usd": 0.1,
+      "note": "retry=False",
+      "timestamp": "2026-04-20T20:40:28Z"
+    },
+    {
+      "pair_id": "A3",
+      "order": "order1",
+      "cost_usd": 0.025,
+      "cumulative_usd": 0.125,
+      "note": "retry=False",
+      "timestamp": "2026-04-20T20:40:30Z"
+    },
+    {
+      "pair_id": "A3",
+      "order": "order2",
+      "cost_usd": 0.025,
+      "cumulative_usd": 0.15,
+      "note": "retry=False",
+      "timestamp": "2026-04-20T20:40:36Z"
+    },
+    {
+      "pair_id": "B1",
+      "order": "order1",
+      "cost_usd": 0.025,
+      "cumulative_usd": 0.175,
+      "note": "retry=False",
+      "timestamp": "2026-04-20T20:40:39Z"
+    },
+    {
+      "pair_id": "B1",
+      "order": "order2",
+      "cost_usd": 0.025,
+      "cumulative_usd": 0.19999999999999998,
+      "note": "retry=False",
+      "timestamp": "2026-04-20T20:40:41Z"
+    },
+    {
+      "pair_id": "B2",
+      "order": "order1",
+      "cost_usd": 0.025,
+      "cumulative_usd": 0.22499999999999998,
+      "note": "retry=False",
+      "timestamp": "2026-04-20T20:40:43Z"
+    },
+    {
+      "pair_id": "B2",
+      "order": "order2",
+      "cost_usd": 0.025,
+      "cumulative_usd": 0.24999999999999997,
+      "note": "retry=False",
+      "timestamp": "2026-04-20T20:40:48Z"
+    },
+    {
+      "pair_id": "C1",
+      "order": "order1",
+      "cost_usd": 0.025,
+      "cumulative_usd": 0.27499999999999997,
+      "note": "retry=False",
+      "timestamp": "2026-04-20T20:40:50Z"
+    },
+    {
+      "pair_id": "C1",
+      "order": "order2",
+      "cost_usd": 0.025,
+      "cumulative_usd": 0.3,
+      "note": "retry=False",
+      "timestamp": "2026-04-20T20:40:53Z"
+    },
+    {
+      "pair_id": "C2",
+      "order": "order1",
+      "cost_usd": 0.025,
+      "cumulative_usd": 0.325,
+      "note": "retry=False",
+      "timestamp": "2026-04-20T20:40:58Z"
+    },
+    {
+      "pair_id": "C2",
+      "order": "order2",
+      "cost_usd": 0.025,
+      "cumulative_usd": 0.35000000000000003,
+      "note": "retry=False",
+      "timestamp": "2026-04-20T20:41:03Z"
+    },
+    {
+      "pair_id": "C3",
+      "order": "order1",
+      "cost_usd": 0.025,
+      "cumulative_usd": 0.37500000000000006,
+      "note": "retry=False",
+      "timestamp": "2026-04-20T20:41:06Z"
+    },
+    {
+      "pair_id": "C3",
+      "order": "order2",
+      "cost_usd": 0.025,
+      "cumulative_usd": 0.4000000000000001,
+      "note": "retry=False",
+      "timestamp": "2026-04-20T20:41:09Z"
+    }
+  ],
+  "total_usd": 0.4000000000000001
+}
