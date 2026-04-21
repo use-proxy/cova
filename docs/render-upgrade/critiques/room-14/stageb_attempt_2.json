@@ -1,0 +1,45 @@
+{
+  "architectural_fidelity": {
+    "score": "PASS",
+    "reason": "Room geometry preserved: same ceiling height with crown molding, window position and size correct, gray walls maintained, camera angle identical, fireplace and radiator covers in correct positions."
+  },
+  "furniture_removal": {
+    "score": "FAIL",
+    "reason": "Critical failure: original carpet pattern and stains clearly visible throughout the floor, creating ghost impressions that make the space look unfinished and unprofessional."
+  },
+  "style_commitment": {
+    "score": "PASS",
+    "reason": "Unmistakable Art Deco commitment: dramatic dark marble feature wall with gold geometric inlay and ginkgo leaf motifs, period-appropriate recessed lighting, classic Art Deco color palette of black, gold, and jewel tones."
+  },
+  "editorial_density": {
+    "score": "FAIL",
+    "reason": "Severely under-styled: vast empty floor space, single visible furniture piece (partial sofa), minimal accessories, no rugs, no layered textiles, no styled vignettes\u2014reads as abandoned renovation rather than luxury staging."
+  },
+  "photorealism": {
+    "score": "WARN",
+    "reason": "Feature wall rendering is strong with realistic marble veining and metallic inlay, but floor treatment looks unfinished with visible original carpet remnants; lighting and shadows are competent but space feels incomplete."
+  },
+  "designer_preference": "COLLOV_WINS",
+  "designer_preference_reason": "Collov delivers complete, client-ready staging with proper furniture removal and editorial density, while Cova's visible carpet remnants and empty space make it unpresentable despite superior style execution.",
+  "overall_pass": false,
+  "what_cova_does_better": [
+    "Dramatically superior style commitment with authentic Art Deco feature wall",
+    "Architectural preservation is excellent with accurate room geometry",
+    "Bold design vision that shows clear creative direction"
+  ],
+  "what_collov_does_better": [
+    "Complete furniture removal with clean floor finish",
+    "Fully furnished and styled space ready for client presentation",
+    "Proper editorial density with layered textiles, art, plants, and accessories",
+    "Professional staging completeness from floor to ceiling"
+  ],
+  "specific_fixes_if_failing": [
+    "Complete floor replacement: remove all visible original carpet patterns and stains with clean marble, hardwood, or luxury carpet appropriate to Art Deco style",
+    "Add full furniture layout: velvet sofa, accent chairs, coffee table, console table with Art Deco lines",
+    "Layer in editorial density: geometric area rug, sculptural floor lamp, styled coffee table vignette, decorative objects on mantel",
+    "Add 3+ textile layers: throw pillows, area rug, window treatments",
+    "Include greenery and multiple light sources for lived-in luxury feel"
+  ],
+  "iteration": 2,
+  "cova_render_url": "https://v3b.fal.media/files/b/0a9722ff/n_2QxmiZ7nk3pekqRRM1l_e605dd13e18344ecb84610e9b5d3c9d4.jpg"
+}

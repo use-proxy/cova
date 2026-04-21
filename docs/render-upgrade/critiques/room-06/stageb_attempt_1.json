@@ -1,0 +1,45 @@
+{
+  "architectural_fidelity": {
+    "score": "PASS",
+    "reason": "Same bay window configuration with three panels, matching wall color (gray), white baseboards and crown molding preserved, same ceiling height, identical camera angle and viewpoint, same wood flooring pattern."
+  },
+  "furniture_removal": {
+    "score": "PASS",
+    "reason": "Room is completely empty of original furniture with clean floor surface, no ghost outlines or remnants visible."
+  },
+  "style_commitment": {
+    "score": "FAIL",
+    "reason": "COVAMINIMAL style is not executed with conviction; the room has scattered framed art and potted plants but lacks the cohesive minimalist aesthetic with intentional furniture placement, clean lines, and curated accessories that would define a committed minimal style - it reads as 'empty room with some wall art' rather than designed minimalism."
+  },
+  "editorial_density": {
+    "score": "FAIL",
+    "reason": "Critically under-furnished for editorial staging: no furniture whatsoever, only wall art (6 frames) and plants on windowsill - missing seating, textiles, rugs, multiple light sources, styling vignettes, and the layered lived-in details expected at Architectural Digest level."
+  },
+  "photorealism": {
+    "score": "PASS",
+    "reason": "Lighting is natural and coherent with window source, materials appear realistic (wood floors, painted walls), shadows are appropriate, no plastic or CGI artifacts detected."
+  },
+  "designer_preference": "COLLOV_WINS",
+  "designer_preference_reason": "Collov delivers a fully furnished, publication-ready room with complete styling despite being a bedroom rather than living room, while Cova's output is essentially an empty space that wouldn't be client-presentable.",
+  "overall_pass": false,
+  "what_cova_does_better": [
+    "Maintains perfect architectural preservation of the original room geometry",
+    "Natural photorealistic lighting quality"
+  ],
+  "what_collov_does_better": [
+    "Complete furniture layout appropriate for the space",
+    "Editorial-level decor density with layered textiles and accessories",
+    "Strong style commitment regardless of target aesthetic",
+    "Multiple light sources and professional styling vignettes",
+    "Client-ready presentation quality"
+  ],
+  "specific_fixes_if_failing": [
+    "Add complete furniture layout: sofa, coffee table, side chairs, console appropriate for living room",
+    "Include minimum 3 layered textiles (throw pillows, area rug, window treatment beyond basic shade)",
+    "Add multiple light sources (floor lamp, table lamps, not just existing ceiling fixture)",
+    "Create styled vignettes on surfaces with books, objects, decorative accessories",
+    "Execute COVAMINIMAL with clear design intent: clean-lined furniture, monochromatic palette, quality materials, curated not empty"
+  ],
+  "iteration": 1,
+  "cova_render_url": "https://v3b.fal.media/files/b/0a972220/VCLdkw0PUUuiq6-DGLowl_107cb9a2aa304e4fa037ccc273a2be6f.jpg"
+}

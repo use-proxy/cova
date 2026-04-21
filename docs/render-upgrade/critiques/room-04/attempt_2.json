@@ -1,0 +1,43 @@
+{
+  "architectural_fidelity": {
+    "score": "PASS",
+    "reason": "Same loft room with sloped ceiling, white walls with gray accent, dormer window in correct position, white door on right, same viewpoint from staircase landing, stair railing visible in foreground"
+  },
+  "furniture_removal": {
+    "score": "FAIL",
+    "reason": "Original sofa, TV stand, music stand, and cluttered items have been removed, but the original carpet flooring is partially retained rather than fully replaced\u2014shows inconsistent flooring treatment between carpet remnants and new wood floor"
+  },
+  "style_commitment": {
+    "score": "PASS",
+    "reason": "Clear bohemian execution with hanging rattan chair, mixed natural textiles in gray/cream/blue tones, wood flooring, plants, vintage-style pendant light, layered rugs, and eclectic seating\u2014unmistakably bohemian"
+  },
+  "editorial_density": {
+    "score": "PASS",
+    "reason": "Multiple layered textiles (bed linens, throw blanket, rugs, stair railing textile), hanging rattan chair, upholstered armchair, plants, wall clock, window styling, woven baskets, pendant lighting\u2014achieves editorial 'lived-in' detail"
+  },
+  "photorealism": {
+    "score": "WARN",
+    "reason": "Natural lighting and shadows are coherent, materials mostly realistic, but bed linens have slight CGI softness and the flooring transition between carpet and wood appears digitally uncertain\u2014not fully convincing but acceptable"
+  },
+  "designer_preference": "COVA_WINS",
+  "designer_preference_reason": "Cova delivers the requested bohemian style with personality and editorial layering while Collov offers only generic contemporary staging with no style specificity.",
+  "overall_pass": false,
+  "what_cova_does_better": [
+    "Commits fully to the requested bohemian style with distinctive elements like hanging rattan chair and layered textiles",
+    "Maintains the authentic loft architecture including sloped ceilings and dormer character",
+    "Achieves editorial density with multiple styled vignettes and 'lived-in' details",
+    "Preserves original viewpoint and spatial relationships"
+  ],
+  "what_collov_does_better": [
+    "Complete and consistent flooring replacement with no remnants of original materials",
+    "Slightly more polished photorealism in textile rendering",
+    "Cleaner furniture removal with no transitional artifacts"
+  ],
+  "specific_fixes_if_failing": [
+    "Completely remove or consistently replace all original carpet flooring\u2014the partial retention creates visual confusion",
+    "Improve flooring material consistency where wood meets remaining carpet areas",
+    "Refine bed linen texture rendering to reduce slight CGI softness"
+  ],
+  "iteration": 2,
+  "cova_render_url": "https://v3b.fal.media/files/b/0a972074/YopDmr6DwMk_IiTLgB01s.jpg"
+}

@@ -1,0 +1,38 @@
+{
+  "architectural_fidelity": {
+    "score": "PASS",
+    "reason": "Same room structure maintained: white walls, correct ceiling height with recessed lighting, identical window positions with blinds, matching herringbone flooring pattern, same camera angle and viewpoint"
+  },
+  "furniture_removal": {
+    "score": "PASS",
+    "reason": "All original furniture completely removed with no ghost outlines, remnants, or phantom shadows; clean base achieved throughout"
+  },
+  "style_commitment": {
+    "score": "PASS",
+    "reason": "Strong coastal execution with sage/duck egg blue sofa, natural wood coffee table, woven textures, ocean-inspired blue accent pillows, driftwood-tone branches, coastal palette of whites/blues/naturals clearly committed to style"
+  },
+  "editorial_density": {
+    "score": "PASS",
+    "reason": "Architectural Digest level styling: layered textiles (throw blanket, multiple pillows, area rug), multiple plants, coffee table styling with flowers and books, decorative baskets, side table with accessories, chest of drawers with vignette, proper lived-in layering"
+  },
+  "photorealism": {
+    "score": "PASS",
+    "reason": "Excellent natural lighting with realistic window shadows, proper material textures on fabric/wood/wicker, coherent shadow mapping, no CGI feel, soft natural light quality matches original conditions"
+  },
+  "designer_preference": "COVA_WINS",
+  "designer_preference_reason": "Cova delivers a fully realized coastal living room with strong style commitment and editorial-level detail that directly addresses the client's actual space and requested aesthetic.",
+  "overall_pass": true,
+  "what_cova_does_better": [
+    "Delivers the requested COVACOASTAL style with authentic coastal palette and materials",
+    "Maintains perfect architectural fidelity to the actual client room",
+    "Provides appropriate living room furniture for the space type",
+    "Natural, soft lighting feels authentic to the original room conditions"
+  ],
+  "what_collov_does_better": [
+    "Higher contrast dramatic lighting in some renders",
+    "Slightly crisper edge definition on certain furniture pieces"
+  ],
+  "specific_fixes_if_failing": [],
+  "iteration": 1,
+  "cova_render_url": "https://v3b.fal.media/files/b/0a972053/CL33coQof3EZeF4MJ-pa1.jpg"
+}

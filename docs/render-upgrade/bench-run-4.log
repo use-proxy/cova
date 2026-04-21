@@ -1,0 +1,108 @@
+
+=== target  archetype=COVAJAPANDI  room=bedroom ===
+  uploaded input: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/inputs/19ed43b99bd2.jpg
+  empty_room: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/9cd90854f018.jpg  inpainter=lama  cov_raw=14.5%  ssim=1.000  latency_ms=57466
+  [attempt 1] redesign: provider=flux-general stage_b=False inf_time=16.28000476300076s url=https://v3b.fal.media/files/b/0a972039/SIk1dPbitcuy7-9kkbr6b.jpg
+  ❌ attempt 1 FAIL  hard_fails=['architectural_fidelity']  pref=COLLOV_WINS
+  [attempt 2] redesign: provider=flux-general stage_b=False inf_time=10.615765451999323s url=https://v3b.fal.media/files/b/0a972045/qinbZsDKD6P59xtOr7axq.jpg
+  ✅ PASSED on attempt 2
+
+=== room-03  archetype=COVACOASTAL  room=living room ===
+  uploaded input: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/inputs/035ea75b9b9c.webp
+  empty_room: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/3bd148cf66c0.jpg  inpainter=lama  cov_raw=33.4%  ssim=1.000  latency_ms=20361
+  [attempt 1] redesign: provider=flux-general stage_b=False inf_time=10.659910399001092s url=https://v3b.fal.media/files/b/0a972053/CL33coQof3EZeF4MJ-pa1.jpg
+  ✅ PASSED on attempt 1
+
+=== room-04  archetype=COVABOHEMIAN  room=loft bedroom ===
+  uploaded input: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/inputs/aea85c6bbba5.webp
+  empty_room: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/356ad43730f0.jpg  inpainter=lama  cov_raw=15.5%  ssim=0.999  latency_ms=93462
+  [attempt 1] redesign: provider=flux-general stage_b=False inf_time=10.376812459900975s url=https://v3b.fal.media/files/b/0a972069/yjZO491QBuHboDXTCoFdU.jpg
+  ❌ attempt 1 FAIL  hard_fails=['furniture_removal']  pref=COLLOV_WINS
+  [attempt 2] redesign: provider=flux-general stage_b=False inf_time=10.605482337996364s url=https://v3b.fal.media/files/b/0a972074/YopDmr6DwMk_IiTLgB01s.jpg
+  ❌ attempt 2 FAIL  hard_fails=['furniture_removal']  pref=COVA_WINS
+
+=== room-05  archetype=COVAFARMHOUSE  room=home office ===
+  uploaded input: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/inputs/77d532ac1ea6.webp
+  empty_room: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/42b4bab07a17.jpg  inpainter=lama  cov_raw=34.9%  ssim=1.000  latency_ms=77156
+  [attempt 1] redesign: provider=flux-general stage_b=False inf_time=10.416450587974396s url=https://v3b.fal.media/files/b/0a972089/ldhmvtTad6wsD-wuNurZ5.jpg
+  ✅ PASSED on attempt 1
+
+=== room-06  archetype=COVAMINIMAL  room=living room ===
+  uploaded input: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/inputs/e2f8aaa01b0d.webp
+  empty_room: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/51517e6b22bf.jpg  inpainter=lama  cov_raw=13.5%  ssim=0.999  latency_ms=90438
+  [attempt 1] redesign: provider=flux-general stage_b=False inf_time=10.053981151024345s url=https://v3b.fal.media/files/b/0a97209f/6uY5Smw-Tzg1Cb7xMv7By.jpg
+  ❌ attempt 1 FAIL  hard_fails=['architectural_fidelity', 'style_commitment', 'editorial_density']  pref=COLLOV_WINS
+  [attempt 2] redesign: provider=flux-general stage_b=False inf_time=10.197183254989795s url=https://v3b.fal.media/files/b/0a9720ab/5pThBMijycEm7m8ueCpea.jpg
+  ❌ attempt 2 FAIL  hard_fails=['architectural_fidelity', 'style_commitment', 'editorial_density']  pref=COLLOV_WINS
+
+=== room-07  archetype=COVAJAPANDI  room=bedroom ===
+  uploaded input: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/inputs/7ca211fa6dcd.webp
+  empty_room: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/d930a55a307f.jpg  inpainter=lama  cov_raw=12.2%  ssim=1.000  latency_ms=43218
+  [attempt 1] redesign: provider=flux-general stage_b=False inf_time=12.905145541008096s url=https://v3b.fal.media/files/b/0a9720be/Ne63MIy476uFQGuVZ2Wer.jpg
+  ❌ attempt 1 FAIL  hard_fails=['style_commitment', 'editorial_density']  pref=COLLOV_WINS
+  [attempt 2] redesign: provider=flux-general stage_b=False inf_time=9.912068992998684s url=https://v3b.fal.media/files/b/0a9720c9/EQs4FgmJVjPfnZZvkownp.jpg
+  ❌ attempt 2 FAIL  hard_fails=['style_commitment', 'editorial_density']  pref=COLLOV_WINS
+
+=== room-08  archetype=COVABOHEMIAN  room=living room ===
+  uploaded input: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/inputs/aba9b0991d74.webp
+  empty_room: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/db83177483a5.jpg  inpainter=lama  cov_raw=50.4%  ssim=0.992  latency_ms=72934
+  [attempt 1] redesign: provider=flux-general stage_b=False inf_time=9.573020367010031s url=https://v3b.fal.media/files/b/0a9720dd/WrVnNeQj0uWmDpG3ojM3l.jpg
+  ❌ attempt 1 FAIL  hard_fails=['furniture_removal']  pref=COLLOV_WINS
+  [attempt 2] redesign: provider=flux-general stage_b=False inf_time=10.286907278001308s url=https://v3b.fal.media/files/b/0a9720eb/Bu_DDuVOWyAn4_JYQnEID.jpg
+  ❌ attempt 2 FAIL  hard_fails=['style_commitment']  pref=COLLOV_WINS
+
+=== room-09  archetype=COVAINDUSTRIAL  room=bedroom ===
+  uploaded input: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/inputs/a08d3c26e771.webp
+  empty_room: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/aad4cd9d903b.jpg  inpainter=lama  cov_raw=28.5%  ssim=0.998  latency_ms=82492
+  warn: could not save empty-room copy (The read operation timed out)
+  [attempt 1] redesign: provider=flux-general stage_b=False inf_time=13.328921903000037s url=https://v3b.fal.media/files/b/0a972107/VIt8seeKvTnNAo-IfOF95.jpg
+  ✅ PASSED on attempt 1
+
+=== room-10  archetype=COVAARTDECO  room=living room ===
+  uploaded input: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/inputs/ea44ad499487.webp
+  empty_room: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/aa089fc7ff85.jpg  inpainter=lama  cov_raw=19.2%  ssim=0.900  latency_ms=82686
+  [attempt 1] redesign: provider=flux-general stage_b=False inf_time=14.600819706000038s url=https://v3b.fal.media/files/b/0a972125/PvSYufU-tSV8acpxbFgx6.jpg
+  ✅ PASSED on attempt 1
+
+=== room-11  archetype=COVASCANDINAV  room=living room ===
+  uploaded input: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/inputs/ed98e95eb563.webp
+  empty_room: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/649343670827.jpg  inpainter=lama  cov_raw=50.3%  ssim=0.993  latency_ms=56759
+  [attempt 1] redesign: provider=flux-general stage_b=False inf_time=10.315919087999646s url=https://v3b.fal.media/files/b/0a972139/ItHuI8W_IwO6BpwwkbaLB.jpg
+  ❌ attempt 1 FAIL  hard_fails=['architectural_fidelity', 'editorial_density']  pref=COLLOV_WINS
+  [attempt 2] redesign: provider=flux-general stage_b=False inf_time=18.63068808600019s url=https://v3b.fal.media/files/b/0a972144/CJbIMoLmMvpLlmBSk20ig.jpg
+  ❌ attempt 2 FAIL  hard_fails=['architectural_fidelity']  pref=COLLOV_WINS
+
+=== room-12  archetype=COVAMIDCENTURY  room=bedroom ===
+  uploaded input: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/inputs/58d851ce7893.webp
+  empty_room: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/e1cd12209b8f.jpg  inpainter=lama  cov_raw=16.8%  ssim=1.000  latency_ms=64317
+  [attempt 1] redesign: provider=flux-general stage_b=False inf_time=10.209824253000079s url=https://v3b.fal.media/files/b/0a97215a/7QauTTAtwg288nZDU_yAD.jpg
+  ❌ attempt 1 FAIL  hard_fails=['furniture_removal', 'style_commitment', 'editorial_density']  pref=COLLOV_WINS
+  [attempt 2] redesign: provider=flux-general stage_b=False inf_time=10.190531107000425s url=https://v3b.fal.media/files/b/0a97216e/ivpL7zEOiyk7Y3yVac-sM.jpg
+  ❌ attempt 2 FAIL  hard_fails=['furniture_removal', 'style_commitment', 'editorial_density']  pref=COLLOV_WINS
+
+=== room-13  archetype=COVAINDUSTRIAL  room=living room ===
+  uploaded input: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/inputs/21a94fd64e51.webp
+  empty_room: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/38d45efa1643.jpg  inpainter=lama  cov_raw=6.3%  ssim=1.000  latency_ms=65525
+  [attempt 1] redesign: provider=flux-general stage_b=False inf_time=10.491935560000456s url=https://v3b.fal.media/files/b/0a972182/jSXcM6-HTBWQt5_rRY2c5.jpg
+  ❌ attempt 1 FAIL  hard_fails=['editorial_density']  pref=COLLOV_WINS
+  [attempt 2] redesign: provider=flux-general stage_b=False inf_time=10.298294122000698s url=https://v3b.fal.media/files/b/0a97218e/RXGzCYMPIlY4zDdnQPd14.jpg
+  ❌ attempt 2 FAIL  hard_fails=['style_commitment', 'editorial_density']  pref=COLLOV_WINS
+
+=== room-14  archetype=COVAARTDECO  room=living room ===
+  uploaded input: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/inputs/0836676dffd5.webp
+  empty_room: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/4300f1284df4.jpg  inpainter=lama  cov_raw=3.6%  ssim=1.000  latency_ms=46260
+  [attempt 1] redesign: provider=flux-general stage_b=False inf_time=10.30217568599619s url=https://v3b.fal.media/files/b/0a9721a0/1xYA8bdXYzrnw_labnVnD.jpg
+  ❌ attempt 1 FAIL  hard_fails=['editorial_density']  pref=COLLOV_WINS
+  [attempt 2] redesign: provider=flux-general stage_b=False inf_time=16.71023395602242s url=https://v3b.fal.media/files/b/0a9721ab/bWNdljWhXz4WYKbPV0LO6.jpg
+  ❌ attempt 2 FAIL  hard_fails=['editorial_density']  pref=COLLOV_WINS
+
+=== room-15  archetype=COVAFARMHOUSE  room=bedroom ===
+  uploaded input: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/inputs/a2a4c924fa9e.webp
+  empty_room: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/d34c3924cf52.jpg  inpainter=lama  cov_raw=36.3%  ssim=1.000  latency_ms=71488
+  [attempt 1] redesign: provider=flux-general stage_b=False inf_time=10.362285851995694s url=https://v3b.fal.media/files/b/0a9721c0/a_npT5UloyG4nl0wUN2hV.jpg
+  ❌ attempt 1 FAIL  hard_fails=['furniture_removal', 'editorial_density']  pref=COLLOV_WINS
+  [attempt 2] redesign: provider=flux-general stage_b=False inf_time=10.559134751994861s url=https://v3b.fal.media/files/b/0a9721cc/1EALtwZ0bRwugUstllhjN.jpg
+  ❌ attempt 2 FAIL  hard_fails=['furniture_removal', 'photorealism']  pref=COLLOV_WINS
+
+=== SUMMARY (14 rooms) ===
+  pass=5 fail=9 error=0 no_judge=0

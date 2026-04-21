@@ -1,0 +1,45 @@
+{
+  "architectural_fidelity": {
+    "score": "PASS",
+    "reason": "Same wood paneling throughout, same ceiling height, same window positions (french door left, two windows right), same viewpoint and camera angle, all architectural elements preserved accurately."
+  },
+  "furniture_removal": {
+    "score": "FAIL",
+    "reason": "Original metal bed frame with ornate headboard remains visible on the right side of the render; trundle bed area still shows ghost outlines on the floor; furniture removal is incomplete."
+  },
+  "style_commitment": {
+    "score": "WARN",
+    "reason": "Shows some farmhouse elements (wood paneling retained, Edison bulb ceiling fan, simple wood nightstand, white curtain rod with sheer fabric) but execution is minimal and lacks the layered, curated farmhouse aesthetic with signature pieces like shiplap accents, vintage finds, or rustic textiles."
+  },
+  "editorial_density": {
+    "score": "FAIL",
+    "reason": "Severely under-styled: single bed with plain duvet, one small nightstand, minimal wall decor (small gallery arrangement), no layered textiles, no plants, no floor lamp or secondary lighting, no rug, no seating, no surface styling\u2014falls far short of Architectural Digest editorial standards."
+  },
+  "photorealism": {
+    "score": "PASS",
+    "reason": "Natural lighting coherent with window positions, materials read realistically (wood grain, fabric textures, metal ceiling fan), shadows appropriate, no CGI artifacts or plastic feel."
+  },
+  "designer_preference": "COLLOV_WINS",
+  "designer_preference_reason": "Collov delivers complete furniture removal, professional editorial styling density, and polished presentation that clients expect, despite not matching the farmhouse style brief.",
+  "overall_pass": false,
+  "what_cova_does_better": [
+    "Preserves original architectural character with wood paneling intact",
+    "Maintains authentic room proportions and natural warmth",
+    "Shows farmhouse direction with Edison bulb fixture and natural materials"
+  ],
+  "what_collov_does_better": [
+    "Complete furniture removal with no remnants or ghost outlines",
+    "Editorial-level styling with layered textiles, multiple art pieces, plants, and accessories",
+    "Professional staging density appropriate for marketing materials",
+    "Polished photorealistic execution throughout"
+  ],
+  "specific_fixes_if_failing": [
+    "Complete furniture removal: eliminate all traces of metal bed frame visible on right side and floor ghost marks",
+    "Add editorial density: layered bed textiles (minimum 3 layers), substantial area rug, upholstered reading chair, floor lamp, substantial nightstands both sides",
+    "Enhance farmhouse commitment: add reclaimed wood headboard, vintage ladder blanket display, galvanized metal accents, botanical prints, chunky knit throw, farmhouse bench at foot of bed",
+    "Wall styling: create substantial gallery wall or statement piece above bed, floating shelves with styled vignettes",
+    "Add greenery: substantial potted plants (2-3), fresh florals on nightstand"
+  ],
+  "iteration": 1,
+  "cova_render_url": "https://v3b.fal.media/files/b/0a9721c0/a_npT5UloyG4nl0wUN2hV.jpg"
+}

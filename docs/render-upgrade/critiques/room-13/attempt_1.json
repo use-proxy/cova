@@ -1,0 +1,49 @@
+{
+  "architectural_fidelity": {
+    "score": "PASS",
+    "reason": "Room is clearly recognizable with preserved brick wall, two windows in correct positions, white walls on right, dark hardwood floors, ceiling height maintained, and same camera viewpoint retained."
+  },
+  "furniture_removal": {
+    "score": "PASS",
+    "reason": "All original furniture completely removed with no ghost traces, remnants, or phantom shadows visible on the clean floor."
+  },
+  "style_commitment": {
+    "score": "PASS",
+    "reason": "Strong industrial style execution with exposed brick wall preserved, industrial track lighting with Edison bulbs, exposed beam detail on ceiling, leather mid-century chairs, metal and wood furniture pieces, and minimal raw aesthetic\u2014unmistakably committed to industrial design vocabulary."
+  },
+  "editorial_density": {
+    "score": "FAIL",
+    "reason": "Room lacks Architectural Digest-level styling: no wall art, only 2 plants visible, minimal layered textiles (no throws, pillows, rugs), no styled surface vignettes, no books or decorative objects, and feels more like empty staging than a lived-in editorial spread."
+  },
+  "photorealism": {
+    "score": "PASS",
+    "reason": "Lighting is coherent with realistic shadows, materials have proper texture (brick, leather, wood grain visible), no plastic CGI feel, and overall photographic quality is convincing."
+  },
+  "designer_preference": "COLLOV_WINS",
+  "designer_preference_reason": "While Cova preserves architecture beautifully and commits to industrial style, the sparse editorial density makes it feel incomplete compared to Collov's fully realized, layered staging approach.",
+  "overall_pass": false,
+  "what_cova_does_better": [
+    "Preserves original architectural character including exposed brick wall",
+    "Maintains authentic room proportions and viewpoint",
+    "Commits to a specific industrial aesthetic rather than generic neutral style",
+    "Shows strong understanding of industrial design vocabulary with appropriate material choices"
+  ],
+  "what_collov_does_better": [
+    "Achieves full Architectural Digest-level editorial styling with layered textiles and accessories",
+    "Creates lived-in feel with abundant decorative details and surface vignettes",
+    "Includes comprehensive wall art installations",
+    "Demonstrates higher density of plants and decorative objects throughout"
+  ],
+  "specific_fixes_if_failing": [
+    "Add large-scale wall art\u2014industrial photography, abstract metal art, or vintage signage",
+    "Layer in area rugs to define seating zone and add warmth",
+    "Add minimum 3-4 throw pillows in mixed textures (leather, linen, wool)",
+    "Style coffee table with books, sculptural objects, and greenery",
+    "Add 2-3 more substantial plants in industrial planters",
+    "Include table lamp or floor lamp for additional light source",
+    "Add wall shelving with curated objects and books",
+    "Include throw blanket draped on seating"
+  ],
+  "iteration": 1,
+  "cova_render_url": "https://v3b.fal.media/files/b/0a972182/jSXcM6-HTBWQt5_rRY2c5.jpg"
+}

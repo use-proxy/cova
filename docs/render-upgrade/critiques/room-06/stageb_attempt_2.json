@@ -1,0 +1,46 @@
+{
+  "architectural_fidelity": {
+    "score": "PASS",
+    "reason": "Bay window configuration, ceiling height, wall color/finish, baseboards, and camera angle all preserved accurately; room is immediately recognizable as the same space"
+  },
+  "furniture_removal": {
+    "score": "PASS",
+    "reason": "Room is completely empty with no furniture remnants, ghost outlines, or phantom shadows; clean base achieved"
+  },
+  "style_commitment": {
+    "score": "FAIL",
+    "reason": "COVAMINIMAL style not executed\u2014room shows a few small plants and basic framed photos but lacks any distinct minimal design conviction; reads as generic empty room, not a styled minimal aesthetic"
+  },
+  "editorial_density": {
+    "score": "FAIL",
+    "reason": "Severely under-styled: only window sill plants and 3 small wall photos visible; no furniture, no textiles, no layered vignettes, no multiple light sources, no lived-in details\u2014this is empty staging, not editorial"
+  },
+  "photorealism": {
+    "score": "PASS",
+    "reason": "Natural lighting through windows is coherent, wood floor texture realistic, wall finishes proper, shadows accurate; no CGI or plastic appearance"
+  },
+  "designer_preference": "COLLOV_WINS",
+  "designer_preference_reason": "Collov delivers a fully realized, styled space with furniture and editorial density that I could present to clients, while Cova's output is an empty room unsuitable for staging purposes",
+  "overall_pass": false,
+  "what_cova_does_better": [
+    "Architectural preservation is flawless",
+    "Natural photographic quality without artificial enhancement"
+  ],
+  "what_collov_does_better": [
+    "Complete room furnishing and staging",
+    "Editorial-level styling with layered textiles and accessories",
+    "Multiple coordinated decor elements creating cohesive design narrative",
+    "Professional staging density appropriate for client presentation"
+  ],
+  "specific_fixes_if_failing": [
+    "Add complete furniture suite appropriate for living room (sofa, chairs, coffee table, side tables)",
+    "Include minimum 3-4 layered textiles (throw pillows, blankets, area rug)",
+    "Add editorial styling vignettes on surfaces with books, objects, decorative items",
+    "Install statement lighting fixture and table/floor lamps",
+    "Incorporate larger-scale plants beyond window sill",
+    "Add substantial wall art program with properly scaled pieces",
+    "Execute clear minimal design language with intentional material palette and forms"
+  ],
+  "iteration": 2,
+  "cova_render_url": "https://v3b.fal.media/files/b/0a972231/dP07M33BpI5yqN58csSSb_b25fba25e4a44f138fd5d7f2d19d1d8c.jpg"
+}

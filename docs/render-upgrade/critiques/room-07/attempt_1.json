@@ -1,0 +1,46 @@
+{
+  "architectural_fidelity": {
+    "score": "PASS",
+    "reason": "Same room architecture preserved: white/neutral walls, ceiling height maintained, window position and size accurate, camera viewpoint and wide-angle perspective identical, beige carpet retained, door placement on left matches original."
+  },
+  "furniture_removal": {
+    "score": "PASS",
+    "reason": "All original furniture completely removed with no ghost outlines, remnants, or phantom shadows; clean base achieved throughout the space including where desk setup and bed were located."
+  },
+  "style_commitment": {
+    "score": "FAIL",
+    "reason": "COVAJAPANDI style not executed with conviction; result is generic minimalist staging with low platform bed and mid-century credenza but lacks distinctive Japanese-Scandinavian fusion elements like shoji screens, natural wood warmth, textile layering, or cultural markers that define the style."
+  },
+  "editorial_density": {
+    "score": "FAIL",
+    "reason": "Severely under-styled for editorial standards: only 2 small lamps, one credenza vignette with minimal styling, no wall art, single textile layer (duvet only), one small plant, no layered textiles, no rugs, no curated surface moments\u2014falls far below Architectural Digest density."
+  },
+  "photorealism": {
+    "score": "PASS",
+    "reason": "Lighting coherent with natural window shadows, materials read as realistic (wood, fabric, carpet texture), no plastic CGI feel, shadows cast appropriately from furniture and window light."
+  },
+  "designer_preference": "COLLOV_WINS",
+  "designer_preference_reason": "Collov delivers editorial-ready density with layered textiles, multiple art pieces, rich styling details, and complete room narratives that clients expect from professional staging, despite generic modern style.",
+  "overall_pass": false,
+  "what_cova_does_better": [
+    "Maintains original architectural integrity more faithfully including wall color",
+    "Cleaner furniture removal with no artifacts"
+  ],
+  "what_collov_does_better": [
+    "Editorial-level styling density with multiple textile layers, wall art, plants, and accessories",
+    "Cohesive design story with curated vignettes throughout",
+    "Multiple light sources creating depth and interest",
+    "Lived-in luxury feel appropriate for high-end staging"
+  ],
+  "specific_fixes_if_failing": [
+    "Add wall art above bed\u2014minimum large-scale piece or diptych/triptych arrangement",
+    "Layer textiles: add throw blanket, decorative pillows (minimum 3-4), area rug under or beside bed",
+    "Style credenza surface with books, decorative objects, and secondary plant",
+    "Add floor lamp or additional task lighting for layered illumination",
+    "Introduce COVAJAPANDI-specific elements: natural wood tones, wabi-sabi ceramics, minimal Japanese-inspired art, hygge textiles",
+    "Include reading chair or floor cushion to create secondary living zone",
+    "Add window treatment or shoji-inspired screen to reinforce style commitment"
+  ],
+  "iteration": 1,
+  "cova_render_url": "https://v3b.fal.media/files/b/0a9720be/Ne63MIy476uFQGuVZ2Wer.jpg"
+}

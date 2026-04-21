@@ -1,0 +1,44 @@
+{
+  "architectural_fidelity": {
+    "score": "FAIL",
+    "reason": "The bay window configuration is completely wrong - Cova shows a single centered window where the original has a three-panel bay window with angled side windows; the window has been transformed into an impossible peaked/gabled shape that doesn't exist in the original architecture."
+  },
+  "furniture_removal": {
+    "score": "PASS",
+    "reason": "Room is completely empty with no furniture remnants, ghost outlines, or phantom shadows - clean base achieved."
+  },
+  "style_commitment": {
+    "score": "FAIL",
+    "reason": "This is an essentially empty room with a single plant arrangement at the window - there is zero COVAMINIMAL style execution, no furniture, no styling, no design intent whatsoever; this is not 'minimal style' but rather 'absence of design'."
+  },
+  "editorial_density": {
+    "score": "FAIL",
+    "reason": "The room contains only one decorative element (plant at window) - no furniture, no art, no textiles, no light fixtures, no surface vignettes; this falls catastrophically short of Architectural Digest editorial standards and resembles an abandoned space rather than a styled room."
+  },
+  "photorealism": {
+    "score": "WARN",
+    "reason": "The architectural elements (walls, floor, baseboards) render reasonably well, but the window treatment is architecturally impossible and the plant appears somewhat pasted-in; lighting is natural and shadows are coherent on existing surfaces."
+  },
+  "designer_preference": "COLLOV_WINS",
+  "designer_preference_reason": "Collov delivers a complete, professionally styled room with cohesive design while Cova provides an empty shell with fundamental architectural errors.",
+  "overall_pass": false,
+  "what_cova_does_better": [
+    "Maintains the original wood flooring tone accurately"
+  ],
+  "what_collov_does_better": [
+    "Preserves accurate window architecture and configuration",
+    "Delivers complete furniture layouts appropriate for the space",
+    "Achieves professional editorial styling with layered textiles and accessories",
+    "Demonstrates clear style commitment with cohesive design elements",
+    "Provides market-ready visualization clients can actually use"
+  ],
+  "specific_fixes_if_failing": [
+    "CRITICAL: Preserve the three-panel bay window configuration - do not transform into single peaked window",
+    "Add complete minimal living room furniture: sofa, coffee table, seating, storage",
+    "Layer in COVAMINIMAL styling: neutral textiles, organic materials, sculptural objects, plants",
+    "Include editorial density: wall art, area rug, throw pillows, lighting fixtures, styled surfaces",
+    "Maintain architectural accuracy as non-negotiable foundation before adding design"
+  ],
+  "iteration": 2,
+  "cova_render_url": "https://v3b.fal.media/files/b/0a9720ab/5pThBMijycEm7m8ueCpea.jpg"
+}

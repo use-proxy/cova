@@ -1,0 +1,46 @@
+{
+  "architectural_fidelity": {
+    "score": "PASS",
+    "reason": "Room architecture is preserved: same door position and white finish, same window location with blinds on right wall, same ceiling height, same camera angle and viewpoint, wall colors transformed but room structure intact"
+  },
+  "furniture_removal": {
+    "score": "PASS",
+    "reason": "All original furniture completely removed with no ghost outlines, TV mount gone, gaming chair eliminated, media console cleared, carpet area clean with no remnants"
+  },
+  "style_commitment": {
+    "score": "PASS",
+    "reason": "Unmistakable Art Deco commitment: large-scale white marble feature walls with gray veining, geometric brass/gold accents on fireplace base, curved teal velvet seating, metallic gold table lamp, luxe materials throughout\u2014this is emphatically NOT generic neutral staging"
+  },
+  "editorial_density": {
+    "score": "WARN",
+    "reason": "Present but minimal: fireplace as focal point, one sculptural lamp, curved sofa, side tables visible in foreground, carpet texture\u2014lacks the layered textiles (throws, multiple pillows), wall art, plants, and styling vignettes expected at Architectural Digest level"
+  },
+  "photorealism": {
+    "score": "PASS",
+    "reason": "Strong photorealism: coherent ambient and fireplace lighting with realistic glow, proper marble material rendering with convincing veining and reflection, accurate shadows, brass/gold finishes look authentic, no CGI plasticity"
+  },
+  "designer_preference": "COVA_WINS",
+  "designer_preference_reason": "Cova delivers a distinctive, luxury Art Deco vision with high-impact materials that would excite clients, whereas Collov's generic modern staging lacks personality despite technical competence",
+  "overall_pass": true,
+  "what_cova_does_better": [
+    "Bold, unmistakable style commitment with Art Deco language",
+    "Luxurious material palette: marble walls, brass accents, velvet upholstery",
+    "Dramatic focal point with custom fireplace surround",
+    "Distinctive design personality that would differentiate a listing"
+  ],
+  "what_collov_does_better": [
+    "More complete editorial styling with layered textiles and accessories",
+    "Greater density of decorative elements (wall art, plants, throw pillows)",
+    "More lived-in warmth through styling details",
+    "Multiple light sources and vignettes throughout"
+  ],
+  "specific_fixes_if_failing": [
+    "Add large-scale Art Deco wall art or geometric mirror above fireplace",
+    "Layer in 3-4 throw pillows with geometric Art Deco patterns on sofa",
+    "Include tall sculptural plant or palm in corner",
+    "Add decorative objects on side table surfaces",
+    "Consider additional table lamp or floor lamp for lighting variety"
+  ],
+  "iteration": 1,
+  "cova_render_url": "https://v3b.fal.media/files/b/0a972125/PvSYufU-tSV8acpxbFgx6.jpg"
+}

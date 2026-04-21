@@ -1,0 +1,792 @@
+{
+  "target": {
+    "status": "pass",
+    "attempts": 2,
+    "critique": {
+      "architectural_fidelity": {
+        "score": "WARN",
+        "reason": "Room is recognizable with same window position and blue walls, but ceiling fan is replaced with pendant light, ceiling height appears slightly altered, and the 'DAKSH' lettering is completely removed which changes the wall architecture significantly."
+      },
+      "furniture_removal": {
+        "score": "PASS",
+        "reason": "All original furniture completely removed with no ghost outlines, remnants, or phantom shadows visible."
+      },
+      "style_commitment": {
+        "score": "PASS",
+        "reason": "Strong Japandi commitment evident through paper lantern pendant light, minimalist brass rail headboard, muted earth tones (mustard/taupe bedding with grey), small bonsai-style tree, natural wood accents, and wabi-sabi aesthetic with textural layering."
+      },
+      "editorial_density": {
+        "score": "WARN",
+        "reason": "Has layered textiles (duvet, throw, pillows), brass floor lamp, pendant light, small tree, decorative lanterns on bed, and books, but lacks wall art entirely and could use more styling vignettes on surfaces for true Architectural Digest level density."
+      },
+      "photorealism": {
+        "score": "PASS",
+        "reason": "Lighting is coherent with natural window light and warm lamp glow, textiles have realistic draping and texture, materials read authentically (wood, brass, linen), shadows are natural, no plastic CGI feel."
+      },
+      "designer_preference": "COVA_WINS",
+      "designer_preference_reason": "Cova delivers authentic Japandi style with design conviction and editorial sophistication, while Collov produces safe but generic neutral staging that lacks personality.",
+      "overall_pass": true,
+      "what_cova_does_better": [
+        "Distinctive style execution with unmistakable Japandi aesthetic versus generic modern neutral",
+        "Superior lighting design with sculptural paper pendant that creates atmospheric mood",
+        "Authentic material palette with brass, natural wood, and layered earth-tone textiles",
+        "Design risk-taking that results in memorable, editorial-worthy space"
+      ],
+      "what_collov_does_better": [
+        "Preserves original ceiling fan which maintains architectural accuracy",
+        "Retains 'DAKSH' wall lettering for better spatial recognition",
+        "More wall art coverage with framed pieces",
+        "Safer, broader market appeal for conventional staging"
+      ],
+      "specific_fixes_if_failing": [
+        "Add wall art above headboard rail to increase editorial density",
+        "Consider maintaining original ceiling fan for architectural fidelity",
+        "Add one more styled vignette on nightstand or floor plant area"
+      ],
+      "iteration": 2,
+      "cova_render_url": "https://v3b.fal.media/files/b/0a972045/qinbZsDKD6P59xtOr7axq.jpg"
+    },
+    "render_url": "https://v3b.fal.media/files/b/0a972045/qinbZsDKD6P59xtOr7axq.jpg",
+    "provider": "flux-general",
+    "inference_time_s": 10.615765451999323,
+    "empty_room_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/9cd90854f018.jpg",
+    "elapsed_s": 294.2
+  },
+  "room-01": {
+    "status": "pass",
+    "attempts": 2,
+    "critique": {
+      "architectural_fidelity": {
+        "score": "PASS",
+        "reason": "Recognizably the same room with preserved white walls, textured ceiling, ceiling fan location, two windows in correct positions, and same camera angle and viewpoint."
+      },
+      "furniture_removal": {
+        "score": "PASS",
+        "reason": "All original furniture completely removed with no ghost outlines, remnants of the blue bedding, nightstand, or Persian rug visible."
+      },
+      "style_commitment": {
+        "score": "PASS",
+        "reason": "Strong Japandi execution with natural wood flooring, neutral tonal palette, minimalist aesthetic, organic ceramic vessels, natural branch in vase, and clean-lined furniture demonstrating clear style conviction."
+      },
+      "editorial_density": {
+        "score": "WARN",
+        "reason": "Has layered textiles on bed (3+ pillows, throw), decorative floor vases, small side table, and foreground coffee table with vase, but lacks wall art, reading lamp, and additional styling details that would achieve full Architectural Digest density."
+      },
+      "photorealism": {
+        "score": "PASS",
+        "reason": "Excellent natural lighting with realistic blind shadows, coherent material textures on wood floor and linens, proper depth of field, and authentic soft shadows without CGI feel."
+      },
+      "designer_preference": "COVA_WINS",
+      "designer_preference_reason": "Cova delivers authentic Japandi style with superior photorealism and natural material palette versus Collov's generic contemporary staging that lacks stylistic conviction.",
+      "overall_pass": true,
+      "what_cova_does_better": [
+        "Authentic Japandi style commitment with natural materials and minimalist restraint",
+        "Superior photorealism with natural lighting and realistic material rendering",
+        "Preserved original architectural character including tile-to-wood floor transition",
+        "Organic, curated feel versus formulaic staging"
+      ],
+      "what_collov_does_better": [
+        "Higher editorial density with wall art, dimensional lettering, and multiple lighting sources",
+        "More layered styling with area rugs, reading chair, floor lamp, and nightstand accessories",
+        "Fuller surface vignettes on all horizontal planes"
+      ],
+      "specific_fixes_if_failing": [],
+      "iteration": 2,
+      "cova_render_url": "https://v3b.fal.media/files/b/0a971fe3/HMKI4ElWcSJtO91hPkHK4.jpg"
+    },
+    "render_url": "https://v3b.fal.media/files/b/0a971fe3/HMKI4ElWcSJtO91hPkHK4.jpg",
+    "provider": "flux-general",
+    "inference_time_s": 10.415132508998795,
+    "empty_room_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/4fd54a51baf9.jpg",
+    "elapsed_s": 314.1
+  },
+  "room-02": {
+    "status": "pass",
+    "attempts": 1,
+    "critique": {
+      "architectural_fidelity": {
+        "score": "PASS",
+        "reason": "Same room geometry preserved: white walls maintained, ceiling height consistent, window positions and sizes accurate, radiators under windows intact, wooden flooring preserved, camera angle and viewpoint identical to original"
+      },
+      "furniture_removal": {
+        "score": "PASS",
+        "reason": "All original furniture completely removed with no ghost outlines, remnants, or phantom shadows - clean slate achieved throughout the space"
+      },
+      "style_commitment": {
+        "score": "PASS",
+        "reason": "Strong mid-century modern execution: tapered leg furniture, period-appropriate credenza, iconic lounge chairs, brass floor lamp, geometric rug pattern, walnut wood tones, and curated artwork all demonstrate unmistakable MCM vocabulary"
+      },
+      "editorial_density": {
+        "score": "PASS",
+        "reason": "Architectural Digest level styling with multiple vignettes: 5+ plants throughout, layered textiles (rug, throw pillows, upholstery), wall art grouping, brass task lamp, credenza styling with books and objects, side tables with decorative items, multiple light sources creating lived-in sophistication"
+      },
+      "photorealism": {
+        "score": "PASS",
+        "reason": "Excellent lighting coherence with natural window light casting realistic shadows across floor, proper material textures on wood furniture and textiles, no CGI plasticity, shadows and highlights behave naturally"
+      },
+      "designer_preference": "COVA_WINS",
+      "designer_preference_reason": "Cova delivers the requested mid-century style with editorial polish while Collov's bedroom renders, though technically proficient, show a completely different room type and generic contemporary aesthetic.",
+      "overall_pass": true,
+      "what_cova_does_better": [
+        "Executes the specific COVAMIDCENTURY style with authentic period details and design vocabulary",
+        "Maintains perfect architectural fidelity to the original living room space",
+        "Achieves editorial-level accessorizing with curated vignettes throughout",
+        "Natural photorealistic lighting that enhances rather than overwrites the space"
+      ],
+      "what_collov_does_better": [
+        "N/A - Collov renders show a different room type (bedroom vs living room) serving only as quality benchmarks"
+      ],
+      "specific_fixes_if_failing": [],
+      "iteration": 1,
+      "cova_render_url": "https://v3b.fal.media/files/b/0a972014/IpCE9kzLKf_uZ6wizytj7.jpg"
+    },
+    "render_url": "https://v3b.fal.media/files/b/0a972014/IpCE9kzLKf_uZ6wizytj7.jpg",
+    "provider": "flux-general",
+    "inference_time_s": 10.229402654993464,
+    "empty_room_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/4d7ec326679d.jpg",
+    "elapsed_s": 487.0
+  },
+  "room-03": {
+    "status": "pass",
+    "attempts": 1,
+    "critique": {
+      "architectural_fidelity": {
+        "score": "PASS",
+        "reason": "Same room structure maintained: white walls, correct ceiling height with recessed lighting, identical window positions with blinds, matching herringbone flooring pattern, same camera angle and viewpoint"
+      },
+      "furniture_removal": {
+        "score": "PASS",
+        "reason": "All original furniture completely removed with no ghost outlines, remnants, or phantom shadows; clean base achieved throughout"
+      },
+      "style_commitment": {
+        "score": "PASS",
+        "reason": "Strong coastal execution with sage/duck egg blue sofa, natural wood coffee table, woven textures, ocean-inspired blue accent pillows, driftwood-tone branches, coastal palette of whites/blues/naturals clearly committed to style"
+      },
+      "editorial_density": {
+        "score": "PASS",
+        "reason": "Architectural Digest level styling: layered textiles (throw blanket, multiple pillows, area rug), multiple plants, coffee table styling with flowers and books, decorative baskets, side table with accessories, chest of drawers with vignette, proper lived-in layering"
+      },
+      "photorealism": {
+        "score": "PASS",
+        "reason": "Excellent natural lighting with realistic window shadows, proper material textures on fabric/wood/wicker, coherent shadow mapping, no CGI feel, soft natural light quality matches original conditions"
+      },
+      "designer_preference": "COVA_WINS",
+      "designer_preference_reason": "Cova delivers a fully realized coastal living room with strong style commitment and editorial-level detail that directly addresses the client's actual space and requested aesthetic.",
+      "overall_pass": true,
+      "what_cova_does_better": [
+        "Delivers the requested COVACOASTAL style with authentic coastal palette and materials",
+        "Maintains perfect architectural fidelity to the actual client room",
+        "Provides appropriate living room furniture for the space type",
+        "Natural, soft lighting feels authentic to the original room conditions"
+      ],
+      "what_collov_does_better": [
+        "Higher contrast dramatic lighting in some renders",
+        "Slightly crisper edge definition on certain furniture pieces"
+      ],
+      "specific_fixes_if_failing": [],
+      "iteration": 1,
+      "cova_render_url": "https://v3b.fal.media/files/b/0a972053/CL33coQof3EZeF4MJ-pa1.jpg"
+    },
+    "render_url": "https://v3b.fal.media/files/b/0a972053/CL33coQof3EZeF4MJ-pa1.jpg",
+    "provider": "flux-general",
+    "inference_time_s": 10.659910399001092,
+    "empty_room_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/3bd148cf66c0.jpg",
+    "elapsed_s": 139.8
+  },
+  "room-04": {
+    "status": "pass",
+    "attempts": 2,
+    "critique": {
+      "architectural_fidelity": {
+        "score": "PASS",
+        "reason": "Cova preserves the distinctive loft architecture: same sloped ceiling geometry, same dormer window position and size, same white door on right wall, same stair railing visible in foreground, same camera angle and viewpoint. Wall color remains light/neutral and recognizable."
+      },
+      "furniture_removal": {
+        "score": "PASS",
+        "reason": "All original furniture (sofa, tables, TV stand, music stand, clutter) completely removed with no ghost outlines or remnants visible. Clean slate achieved."
+      },
+      "style_commitment": {
+        "score": "PASS",
+        "reason": "Unmistakably bohemian: rattan/wicker chairs, macram\u00e9 wall hanging above window, layered textiles including patterned runner and throw pillows, multiple plants (snake plant, potted greenery), eclectic art grouping by door, warm natural materials. This is not generic staging\u2014it's committed boho."
+      },
+      "editorial_density": {
+        "score": "PASS",
+        "reason": "Achieves Architectural Digest density: layered bedding (duvet, throws, multiple pillows), window seat vignette with plants and cushions, wall art grouping (minimum 3 pieces near door), rattan chairs, floor plants, task lamp, macram\u00e9 piece, patterned rug, bedside styling. Lived-in and curated."
+      },
+      "photorealism": {
+        "score": "PASS",
+        "reason": "Natural lighting coherent with window source, realistic textile draping and wrinkles, proper material textures on rattan/wood/fabric, believable shadows, no plastic CGI feel. Photographic quality maintained."
+      },
+      "designer_preference": "COVA_WINS",
+      "designer_preference_reason": "Cova delivers the requested bohemian style with personality and warmth while Collov's generic contemporary staging lacks any stylistic commitment or character.",
+      "overall_pass": true,
+      "what_cova_does_better": [
+        "Delivers actual requested style (bohemian) versus generic contemporary",
+        "Preserves challenging loft architecture perfectly including sloped ceilings",
+        "Creates warm, lived-in atmosphere with personality",
+        "Layered styling with natural materials and eclectic elements",
+        "Maintains photorealism while adding creative bohemian details"
+      ],
+      "what_collov_does_better": [
+        "Slightly crisper render quality in terms of sharpness",
+        "More uniform lighting (though less atmospheric)",
+        "Cleaner minimalist aesthetic for clients wanting safe staging"
+      ],
+      "specific_fixes_if_failing": [],
+      "iteration": 2,
+      "cova_render_url": "https://v3b.fal.media/files/b/0a97220b/zKZ_ZYnyuB7GtxSieHVoW_1a96cbe9bc994bcaa5c67334a90c7923.jpg"
+    },
+    "render_url": "https://v3b.fal.media/files/b/0a97220b/zKZ_ZYnyuB7GtxSieHVoW_1a96cbe9bc994bcaa5c67334a90c7923.jpg",
+    "provider": "flux-general",
+    "inference_time_s": 10.935204202000023,
+    "empty_room_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/356ad43730f0.jpg",
+    "rerun_tier": "stage_b"
+  },
+  "room-05": {
+    "status": "pass",
+    "attempts": 1,
+    "critique": {
+      "architectural_fidelity": {
+        "score": "PASS",
+        "reason": "Same beige/cream wall color maintained, window position and size preserved, ceiling height consistent, camera angle and viewpoint accurately replicated, door frame on right preserved exactly as original."
+      },
+      "furniture_removal": {
+        "score": "PASS",
+        "reason": "All original furniture completely removed\u2014no trace of the white sofa, desk setup, monitors, or shelving units; clean slate achieved with no ghosting or remnants visible."
+      },
+      "style_commitment": {
+        "score": "PASS",
+        "reason": "Unmistakably farmhouse: shiplap accent wall, distressed sage dresser with vintage pulls, Edison bulb pendant and wall sconce, reclaimed wood side table, gallery wall with botanical prints\u2014this is committed farmhouse styling, not generic neutrals."
+      },
+      "editorial_density": {
+        "score": "PASS",
+        "reason": "Gallery wall with 5 framed botanicals, open shelving styled with books and vessels, pendant lighting plus wall sconce plus recessed lighting, multiple plants, layered textiles on chair, vintage rug, accessorized surfaces\u2014achieves AD-level lived-in detail."
+      },
+      "photorealism": {
+        "score": "PASS",
+        "reason": "Natural light casting realistic shadows, proper material textures on wood grain and fabric, Edison bulbs rendering correctly, no plastic CGI feel, cohesive lighting across all sources."
+      },
+      "designer_preference": "COVA_WINS",
+      "designer_preference_reason": "Cova delivers the requested farmhouse style with authentic material choices and layered styling while Collov's bedroom conversions (though well-executed) don't answer the home office brief.",
+      "overall_pass": true,
+      "what_cova_does_better": [
+        "Executes the actual target style (farmhouse) with identifiable signature elements like shiplap and distressed furniture",
+        "Maintains room function as home office while transforming aesthetic",
+        "Authentic farmhouse material palette with sage, reclaimed wood, and Edison lighting",
+        "Preserves architectural integrity perfectly while achieving complete style transformation"
+      ],
+      "what_collov_does_better": [
+        "Slightly higher photorealism in fabric rendering and bedding textures",
+        "More dramatic spatial transformation showing versatility",
+        "Ceiling fan integration demonstrates architectural additions"
+      ],
+      "specific_fixes_if_failing": [],
+      "iteration": 1,
+      "cova_render_url": "https://v3b.fal.media/files/b/0a972089/ldhmvtTad6wsD-wuNurZ5.jpg"
+    },
+    "render_url": "https://v3b.fal.media/files/b/0a972089/ldhmvtTad6wsD-wuNurZ5.jpg",
+    "provider": "flux-general",
+    "inference_time_s": 10.416450587974396,
+    "empty_room_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/42b4bab07a17.jpg",
+    "elapsed_s": 208.4
+  },
+  "room-06": {
+    "status": "fail",
+    "attempts": 2,
+    "critique": {
+      "architectural_fidelity": {
+        "score": "PASS",
+        "reason": "Bay window configuration, ceiling height, wall color/finish, baseboards, and camera angle all preserved accurately; room is immediately recognizable as the same space"
+      },
+      "furniture_removal": {
+        "score": "PASS",
+        "reason": "Room is completely empty with no furniture remnants, ghost outlines, or phantom shadows; clean base achieved"
+      },
+      "style_commitment": {
+        "score": "FAIL",
+        "reason": "COVAMINIMAL style not executed\u2014room shows a few small plants and basic framed photos but lacks any distinct minimal design conviction; reads as generic empty room, not a styled minimal aesthetic"
+      },
+      "editorial_density": {
+        "score": "FAIL",
+        "reason": "Severely under-styled: only window sill plants and 3 small wall photos visible; no furniture, no textiles, no layered vignettes, no multiple light sources, no lived-in details\u2014this is empty staging, not editorial"
+      },
+      "photorealism": {
+        "score": "PASS",
+        "reason": "Natural lighting through windows is coherent, wood floor texture realistic, wall finishes proper, shadows accurate; no CGI or plastic appearance"
+      },
+      "designer_preference": "COLLOV_WINS",
+      "designer_preference_reason": "Collov delivers a fully realized, styled space with furniture and editorial density that I could present to clients, while Cova's output is an empty room unsuitable for staging purposes",
+      "overall_pass": false,
+      "what_cova_does_better": [
+        "Architectural preservation is flawless",
+        "Natural photographic quality without artificial enhancement"
+      ],
+      "what_collov_does_better": [
+        "Complete room furnishing and staging",
+        "Editorial-level styling with layered textiles and accessories",
+        "Multiple coordinated decor elements creating cohesive design narrative",
+        "Professional staging density appropriate for client presentation"
+      ],
+      "specific_fixes_if_failing": [
+        "Add complete furniture suite appropriate for living room (sofa, chairs, coffee table, side tables)",
+        "Include minimum 3-4 layered textiles (throw pillows, blankets, area rug)",
+        "Add editorial styling vignettes on surfaces with books, objects, decorative items",
+        "Install statement lighting fixture and table/floor lamps",
+        "Incorporate larger-scale plants beyond window sill",
+        "Add substantial wall art program with properly scaled pieces",
+        "Execute clear minimal design language with intentional material palette and forms"
+      ],
+      "iteration": 2,
+      "cova_render_url": "https://v3b.fal.media/files/b/0a972231/dP07M33BpI5yqN58csSSb_b25fba25e4a44f138fd5d7f2d19d1d8c.jpg"
+    },
+    "render_url": "https://v3b.fal.media/files/b/0a972231/dP07M33BpI5yqN58csSSb_b25fba25e4a44f138fd5d7f2d19d1d8c.jpg",
+    "empty_room_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/51517e6b22bf.jpg",
+    "rerun_tier": "stage_b"
+  },
+  "room-07": {
+    "status": "pass",
+    "attempts": 1,
+    "critique": {
+      "architectural_fidelity": {
+        "score": "PASS",
+        "reason": "Same room recognizable: white/off-white walls preserved, ceiling height and feel maintained, window position and size accurate, camera viewpoint and wide-angle perspective match original, no phantom walls added."
+      },
+      "furniture_removal": {
+        "score": "PASS",
+        "reason": "All original furniture completely removed with no ghost outlines, bedding remnants, or desk/computer equipment traces; clean base achieved throughout."
+      },
+      "style_commitment": {
+        "score": "PASS",
+        "reason": "Unmistakable Japandi execution: low platform bed with natural wood, minimal clean lines, neutral earth tones, deliberate negative space, woven circular rug, sculptural black accent chair, gallery wall with organic frames\u2014this is not generic staging."
+      },
+      "editorial_density": {
+        "score": "PASS",
+        "reason": "Architectural Digest level achieved: curated gallery wall (9+ frames), layered textiles (throw blanket, pillows, woven rug), three plant specimens in varied vessels, recessed alcove styling, multiple light sources (ceiling, recessed spots), lived-in editorial vignettes throughout."
+      },
+      "photorealism": {
+        "score": "PASS",
+        "reason": "Convincing natural lighting with accurate window shadow casting, realistic material rendering (carpet texture, wood grain, woven fibers), proper depth and spatial coherence, no plastic/CGI artifacts\u2014presentation-ready quality."
+      },
+      "designer_preference": "COVA_WINS",
+      "designer_preference_reason": "Cova delivers distinctive Japandi style with editorial sophistication that tells a design story, versus Collov's competent but generic modern staging.",
+      "overall_pass": true,
+      "what_cova_does_better": [
+        "Authentic style commitment to Japandi aesthetic with low platform bed and natural materials",
+        "More sophisticated editorial styling with curated gallery wall and sculptural accent pieces",
+        "Better spatial storytelling through intentional negative space and asymmetrical balance",
+        "Stronger design point-of-view that would differentiate a listing"
+      ],
+      "what_collov_does_better": [
+        "More conventional market appeal with centered symmetrical layouts",
+        "Slightly crisper edge definition on some furniture pieces",
+        "More traditional staging approach that some conservative clients might prefer"
+      ],
+      "specific_fixes_if_failing": [],
+      "iteration": 1,
+      "cova_render_url": "https://v3b.fal.media/files/b/0a972242/FIZV_kKG22KMSfiHeEmpp_3cfea6c6817643f5848eceebfee2d112.jpg"
+    },
+    "render_url": "https://v3b.fal.media/files/b/0a972242/FIZV_kKG22KMSfiHeEmpp_3cfea6c6817643f5848eceebfee2d112.jpg",
+    "provider": "flux-general",
+    "inference_time_s": 10.301067980999505,
+    "empty_room_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/d930a55a307f.jpg",
+    "rerun_tier": "stage_b"
+  },
+  "room-08": {
+    "status": "pass",
+    "attempts": 1,
+    "critique": {
+      "architectural_fidelity": {
+        "score": "PASS",
+        "reason": "Same room recognizable: walls, ceiling height, window position/size preserved, camera viewpoint maintained, no added walls"
+      },
+      "furniture_removal": {
+        "score": "PASS",
+        "reason": "All original furniture completely removed with no ghost outlines, remnants, or phantom shadows visible"
+      },
+      "style_commitment": {
+        "score": "PASS",
+        "reason": "Strong bohemian commitment evident through macram\u00e9 wall hanging, patterned curtains, layered textiles, brass fixtures, natural materials, and curated gallery wall\u2014not generic neutral"
+      },
+      "editorial_density": {
+        "score": "PASS",
+        "reason": "Multiple styled vignettes: gallery wall with 4+ frames, macram\u00e9 textile art, console table styling, throw blanket, decorative pouf, plants, dual-head brass lamp, tasseled runner rug\u2014matches AD-level richness"
+      },
+      "photorealism": {
+        "score": "PASS",
+        "reason": "Coherent natural lighting from windows, realistic material textures on fabrics/wood/metal, proper shadows, no CGI plasticity\u2014highly believable render"
+      },
+      "designer_preference": "COVA_WINS",
+      "designer_preference_reason": "Cova delivers strong stylistic identity with bohemian authenticity while Collov's bedroom examples (though high quality) show generic contemporary staging unsuitable for this living room context.",
+      "overall_pass": true,
+      "what_cova_does_better": [
+        "Authentic bohemian style execution with signature elements like macram\u00e9 and textured textiles",
+        "Appropriate living room furniture layout versus bedroom comparison",
+        "Warm, lived-in aesthetic with layered accessories and personal touches",
+        "Natural material palette with brass, wood, and woven textures"
+      ],
+      "what_collov_does_better": [
+        "Examples shown are different room type (bedroom vs living room) making direct comparison unfair",
+        "Ceiling fan addition in Collov examples shows willingness to add architectural elements"
+      ],
+      "specific_fixes_if_failing": [],
+      "iteration": 1,
+      "cova_render_url": "https://v3b.fal.media/files/b/0a972252/_AmZQqgxg6XWdxAE7BeJV_79a1af5666ce460387b557f90b392a21.jpg"
+    },
+    "render_url": "https://v3b.fal.media/files/b/0a972252/_AmZQqgxg6XWdxAE7BeJV_79a1af5666ce460387b557f90b392a21.jpg",
+    "provider": "flux-general",
+    "inference_time_s": 10.31061299599969,
+    "empty_room_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/db83177483a5.jpg",
+    "rerun_tier": "stage_b"
+  },
+  "room-09": {
+    "status": "pass",
+    "attempts": 1,
+    "critique": {
+      "architectural_fidelity": {
+        "score": "WARN",
+        "reason": "Room is recognizable but significant alterations: original textured ceiling preserved with LED strips maintained (excellent), but walls appear darker/grayer than original white/light gray, ceiling height feels compressed, and window position/blackout curtain entirely removed - viewpoint maintained but architectural liberties taken"
+      },
+      "furniture_removal": {
+        "score": "PASS",
+        "reason": "All original furniture completely removed - no ghost outlines of bed, desk, gaming chair, guitars, or computer equipment; floor clear of remnants with only intentional new staging present"
+      },
+      "style_commitment": {
+        "score": "PASS",
+        "reason": "Unmistakably industrial: exposed metal bed frame with weathered/rusted finish, Edison bulb pendants, concrete-look flooring, metal shelving, raw materials throughout - this is definitively industrial aesthetic, not generic neutral staging"
+      },
+      "editorial_density": {
+        "score": "WARN",
+        "reason": "Moderate styling present: wall art (framed piece right wall), plants (3+ locations including shelf and floor), industrial task lamp, shelf vignette with books/plants, multiple light sources (LED strips, pendants, task lamp), layered bedding - approaches editorial level but lighter than Collov's richly layered textiles and fuller accessorizing"
+      },
+      "photorealism": {
+        "score": "WARN",
+        "reason": "Lighting coherent with preserved LED strips and warm Edison bulbs creating atmospheric glow, industrial materials reasonably rendered, but bed frame perspective slightly awkward (metal drawer/box construction unclear), some shadow softness, and overall moody darkness masks potential texture issues - competent but not quite Collov's crisp realism"
+      },
+      "designer_preference": "COVA_WINS",
+      "designer_preference_reason": "Cova delivers a distinctive, client-ready industrial design with authentic style commitment that would resonate with target buyers, whereas Collov's generic contemporary staging lacks memorable character despite technical polish.",
+      "overall_pass": true,
+      "what_cova_does_better": [
+        "Bold stylistic differentiation - unmistakably industrial vs generic contemporary",
+        "Preserved original architectural character (textured ceiling, LED strips)",
+        "Authentic material palette (weathered metal, concrete, raw wood) with design conviction",
+        "Atmospheric lighting design that enhances industrial mood"
+      ],
+      "what_collov_does_better": [
+        "Sharper photorealistic rendering with crisper material definition",
+        "Fuller editorial density with more layered textiles and accessory richness",
+        "Cleaner architectural presentation with refined proportions",
+        "Brighter, market-ready staging that photographs well for listings"
+      ],
+      "specific_fixes_if_failing": [],
+      "iteration": 1,
+      "cova_render_url": "https://v3b.fal.media/files/b/0a972107/VIt8seeKvTnNAo-IfOF95.jpg"
+    },
+    "render_url": "https://v3b.fal.media/files/b/0a972107/VIt8seeKvTnNAo-IfOF95.jpg",
+    "provider": "flux-general",
+    "inference_time_s": 13.328921903000037,
+    "empty_room_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/aad4cd9d903b.jpg",
+    "elapsed_s": 279.0
+  },
+  "room-10": {
+    "status": "pass",
+    "attempts": 1,
+    "critique": {
+      "architectural_fidelity": {
+        "score": "PASS",
+        "reason": "Room architecture is preserved: same door position and white finish, same window location with blinds on right wall, same ceiling height, same camera angle and viewpoint, wall colors transformed but room structure intact"
+      },
+      "furniture_removal": {
+        "score": "PASS",
+        "reason": "All original furniture completely removed with no ghost outlines, TV mount gone, gaming chair eliminated, media console cleared, carpet area clean with no remnants"
+      },
+      "style_commitment": {
+        "score": "PASS",
+        "reason": "Unmistakable Art Deco commitment: large-scale white marble feature walls with gray veining, geometric brass/gold accents on fireplace base, curved teal velvet seating, metallic gold table lamp, luxe materials throughout\u2014this is emphatically NOT generic neutral staging"
+      },
+      "editorial_density": {
+        "score": "WARN",
+        "reason": "Present but minimal: fireplace as focal point, one sculptural lamp, curved sofa, side tables visible in foreground, carpet texture\u2014lacks the layered textiles (throws, multiple pillows), wall art, plants, and styling vignettes expected at Architectural Digest level"
+      },
+      "photorealism": {
+        "score": "PASS",
+        "reason": "Strong photorealism: coherent ambient and fireplace lighting with realistic glow, proper marble material rendering with convincing veining and reflection, accurate shadows, brass/gold finishes look authentic, no CGI plasticity"
+      },
+      "designer_preference": "COVA_WINS",
+      "designer_preference_reason": "Cova delivers a distinctive, luxury Art Deco vision with high-impact materials that would excite clients, whereas Collov's generic modern staging lacks personality despite technical competence",
+      "overall_pass": true,
+      "what_cova_does_better": [
+        "Bold, unmistakable style commitment with Art Deco language",
+        "Luxurious material palette: marble walls, brass accents, velvet upholstery",
+        "Dramatic focal point with custom fireplace surround",
+        "Distinctive design personality that would differentiate a listing"
+      ],
+      "what_collov_does_better": [
+        "More complete editorial styling with layered textiles and accessories",
+        "Greater density of decorative elements (wall art, plants, throw pillows)",
+        "More lived-in warmth through styling details",
+        "Multiple light sources and vignettes throughout"
+      ],
+      "specific_fixes_if_failing": [
+        "Add large-scale Art Deco wall art or geometric mirror above fireplace",
+        "Layer in 3-4 throw pillows with geometric Art Deco patterns on sofa",
+        "Include tall sculptural plant or palm in corner",
+        "Add decorative objects on side table surfaces",
+        "Consider additional table lamp or floor lamp for lighting variety"
+      ],
+      "iteration": 1,
+      "cova_render_url": "https://v3b.fal.media/files/b/0a972125/PvSYufU-tSV8acpxbFgx6.jpg"
+    },
+    "render_url": "https://v3b.fal.media/files/b/0a972125/PvSYufU-tSV8acpxbFgx6.jpg",
+    "provider": "flux-general",
+    "inference_time_s": 14.600819706000038,
+    "empty_room_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/aa089fc7ff85.jpg",
+    "elapsed_s": 301.4
+  },
+  "room-11": {
+    "status": "fail",
+    "attempts": 2,
+    "critique": {
+      "architectural_fidelity": {
+        "score": "FAIL",
+        "reason": "The room architecture is not preserved. Original has white walls with gallery wall on left, large sliding glass doors on right, and wood flooring. Cova has changed wall color to beige/tan, completely removed the sliding doors replacing them with solid wall, altered the window opening placement, and changed flooring to large format tile. The room is unrecognizable as the same space."
+      },
+      "furniture_removal": {
+        "score": "PASS",
+        "reason": "All original furniture including green sofa, wooden coffee table, chairs, cat, and low credenza have been completely removed with no ghost traces or remnants visible."
+      },
+      "style_commitment": {
+        "score": "PASS",
+        "reason": "Strong Scandinavian commitment evident through oak/light wood furniture with organic curves, neutral linen/beige palette, gallery wall styling, minimalist sideboard with tapered legs, and natural texture layering. This is not generic staging."
+      },
+      "editorial_density": {
+        "score": "PASS",
+        "reason": "Gallery wall with 12+ varied frames, styled credenza with plants and ceramics, multiple plants including large floor palm, layered throw pillows (3+), round coffee table with styling vignette, visible shadows suggesting multiple light sources. Meets editorial standard."
+      },
+      "photorealism": {
+        "score": "PASS",
+        "reason": "Natural daylight with accurate shadow casting from window, realistic material rendering on wood grain and linen upholstery, proper depth of field, and convincing floor reflections. No CGI artifacts."
+      },
+      "designer_preference": "COLLOV_WINS",
+      "designer_preference_reason": "Despite Cova's excellent styling, it fundamentally fails to preserve the client's actual room architecture, which is non-negotiable for staging work.",
+      "overall_pass": false,
+      "what_cova_does_better": [
+        "More sophisticated Scandinavian styling with authentic mid-century organic forms",
+        "Superior gallery wall curation with varied frame sizes and art selection",
+        "Better textile and material layering showing design depth",
+        "More editorial-level accessory styling on surfaces"
+      ],
+      "what_collov_does_better": [
+        "Preserves actual room architecture that client is selling or furnishing",
+        "Maintains window and door locations accurately",
+        "Respects original wall colors and finishes",
+        "Shows the client's actual space rather than a different room"
+      ],
+      "specific_fixes_if_failing": [
+        "Critical: Preserve sliding glass door location and configuration on right wall",
+        "Critical: Maintain white/off-white wall color from original",
+        "Critical: Keep original wood flooring instead of introducing tile",
+        "Ensure window placement matches original left-side gallery wall location",
+        "Retain room proportions and ceiling height as photographed"
+      ],
+      "iteration": 2,
+      "cova_render_url": "https://v3b.fal.media/files/b/0a972279/8TKX2yD1YILUxO_eChwQq_7997da0d5ad045998b398b5bca4aa0b9.jpg"
+    },
+    "render_url": "https://v3b.fal.media/files/b/0a972279/8TKX2yD1YILUxO_eChwQq_7997da0d5ad045998b398b5bca4aa0b9.jpg",
+    "empty_room_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/649343670827.jpg",
+    "rerun_tier": "stage_b"
+  },
+  "room-12": {
+    "status": "pass",
+    "attempts": 2,
+    "critique": {
+      "architectural_fidelity": {
+        "score": "PASS",
+        "reason": "Same room geometry preserved: identical window position and shutters, matching ceiling height, same camera angle and viewpoint, white walls maintained, wood flooring consistent with original."
+      },
+      "furniture_removal": {
+        "score": "PASS",
+        "reason": "All original furniture completely removed: gaming chair, bed, keyboard, and desk are gone with no ghosting, remnants, or phantom shadows visible in the render."
+      },
+      "style_commitment": {
+        "score": "PASS",
+        "reason": "Strong mid-century modern execution: iconic MCM daybed/sofa with tapered legs, period-appropriate lounge chair, geometric patterns, walnut tones, and clean-lined furniture clearly establish the aesthetic beyond generic staging."
+      },
+      "editorial_density": {
+        "score": "PASS",
+        "reason": "Architectural Digest-level styling with multiple layered textiles (throw pillows including mustard accent, patterned cushions), wall art gallery (3 framed prints above window plus side wall art), plants, task lighting, side table vignette, and retained original tapestry as statement piece."
+      },
+      "photorealism": {
+        "score": "WARN",
+        "reason": "Blue LED lighting creates unusual color cast that affects realism; while materials and shadows are coherent, the theatrical lighting diminishes natural photorealism compared to Collov's daylight rendering standard."
+      },
+      "designer_preference": "COVA_WINS",
+      "designer_preference_reason": "Cova delivers authentic mid-century modern style with personality and editorial polish, whereas Collov shows generic contemporary staging without distinct design vision.",
+      "overall_pass": true,
+      "what_cova_does_better": [
+        "Authentic style commitment to mid-century modern with period-correct furniture pieces",
+        "Editorial layering and accessorizing that creates livable, magazine-worthy space",
+        "Retained and incorporated existing statement tapestry as design feature",
+        "Multiple textural elements and thoughtful color palette including signature mustard accent"
+      ],
+      "what_collov_does_better": [
+        "Natural daylight rendering creates more photorealistic and marketable presentation",
+        "Cleaner, neutral aesthetic appeals to broader buyer demographic",
+        "More conventional staging approach for listing photography"
+      ],
+      "specific_fixes_if_failing": [],
+      "iteration": 2,
+      "cova_render_url": "https://v3b.fal.media/files/b/0a9722b3/s7O1BoAKppY-aiFML5pSo_adc3e8c28e95422089e371f67629d581.jpg"
+    },
+    "render_url": "https://v3b.fal.media/files/b/0a9722b3/s7O1BoAKppY-aiFML5pSo_adc3e8c28e95422089e371f67629d581.jpg",
+    "provider": "flux-general",
+    "inference_time_s": 11.812564404001023,
+    "empty_room_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/e1cd12209b8f.jpg",
+    "rerun_tier": "stage_b"
+  },
+  "room-13": {
+    "status": "pass",
+    "attempts": 1,
+    "critique": {
+      "architectural_fidelity": {
+        "score": "PASS",
+        "reason": "Room is clearly recognizable: exposed brick wall maintained, white walls preserved, two windows in correct positions with white trim, dark wood flooring intact, ceiling height consistent, same camera angle and viewpoint."
+      },
+      "furniture_removal": {
+        "score": "PASS",
+        "reason": "All original furniture completely removed\u2014no bicycle, desk, boxes, chairs, or AC unit visible; floor is clean with no ghost outlines or remnants."
+      },
+      "style_commitment": {
+        "score": "PASS",
+        "reason": "Strong industrial conviction: exposed brick retained as focal feature, metal ductwork added along ceiling perimeter, leather furniture with industrial lines, metal-framed coffee table, gallery wall with black frames\u2014unmistakably industrial, not generic neutral."
+      },
+      "editorial_density": {
+        "score": "PASS",
+        "reason": "Editorial-level staging achieved: gallery wall with 5+ framed prints, exposed industrial ductwork, layered textiles (throw on sofa, area rug visible), multiple furniture pieces (leather chair, sofa, coffee table, console), plant in corner, window vignette with decor\u2014meets Architectural Digest density standard."
+      },
+      "photorealism": {
+        "score": "PASS",
+        "reason": "Realistic lighting with natural window light casting appropriate shadows, brick texture authentic, wood floor grain and reflections accurate, furniture materials (leather, metal, wicker) rendered convincingly with proper weight and scale\u2014no CGI plasticity."
+      },
+      "designer_preference": "COVA_WINS",
+      "designer_preference_reason": "Cova delivers a cohesive industrial living room that honors the original architecture while Collov's bedroom conversions ignore the brief entirely.",
+      "overall_pass": true,
+      "what_cova_does_better": [
+        "Preserves and celebrates the existing exposed brick as an industrial asset rather than painting over architectural character",
+        "Adds contextually appropriate industrial elements (exposed ductwork) that enhance authenticity",
+        "Delivers the actual requested room type (living room) with appropriate furniture layout",
+        "Maintains the raw, authentic character of the space while making it market-ready"
+      ],
+      "what_collov_does_better": [
+        "Slightly higher resolution and sharpness in rendering quality",
+        "More sophisticated layering of textiles and bedding details",
+        "Cleaner, more polished commercial photography aesthetic"
+      ],
+      "specific_fixes_if_failing": [],
+      "iteration": 1,
+      "cova_render_url": "https://v3b.fal.media/files/b/0a9722d9/r518zDmtHdemsfx5B25pl_71d2b72377374d73b4b0e4e20721fcc7.jpg"
+    },
+    "render_url": "https://v3b.fal.media/files/b/0a9722d9/r518zDmtHdemsfx5B25pl_71d2b72377374d73b4b0e4e20721fcc7.jpg",
+    "provider": "flux-general",
+    "inference_time_s": 11.051671540000825,
+    "empty_room_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/38d45efa1643.jpg",
+    "rerun_tier": "stage_b"
+  },
+  "room-14": {
+    "status": "fail",
+    "attempts": 2,
+    "critique": {
+      "architectural_fidelity": {
+        "score": "PASS",
+        "reason": "Room geometry preserved: same ceiling height with crown molding, window position and size correct, gray walls maintained, camera angle identical, fireplace and radiator covers in correct positions."
+      },
+      "furniture_removal": {
+        "score": "FAIL",
+        "reason": "Critical failure: original carpet pattern and stains clearly visible throughout the floor, creating ghost impressions that make the space look unfinished and unprofessional."
+      },
+      "style_commitment": {
+        "score": "PASS",
+        "reason": "Unmistakable Art Deco commitment: dramatic dark marble feature wall with gold geometric inlay and ginkgo leaf motifs, period-appropriate recessed lighting, classic Art Deco color palette of black, gold, and jewel tones."
+      },
+      "editorial_density": {
+        "score": "FAIL",
+        "reason": "Severely under-styled: vast empty floor space, single visible furniture piece (partial sofa), minimal accessories, no rugs, no layered textiles, no styled vignettes\u2014reads as abandoned renovation rather than luxury staging."
+      },
+      "photorealism": {
+        "score": "WARN",
+        "reason": "Feature wall rendering is strong with realistic marble veining and metallic inlay, but floor treatment looks unfinished with visible original carpet remnants; lighting and shadows are competent but space feels incomplete."
+      },
+      "designer_preference": "COLLOV_WINS",
+      "designer_preference_reason": "Collov delivers complete, client-ready staging with proper furniture removal and editorial density, while Cova's visible carpet remnants and empty space make it unpresentable despite superior style execution.",
+      "overall_pass": false,
+      "what_cova_does_better": [
+        "Dramatically superior style commitment with authentic Art Deco feature wall",
+        "Architectural preservation is excellent with accurate room geometry",
+        "Bold design vision that shows clear creative direction"
+      ],
+      "what_collov_does_better": [
+        "Complete furniture removal with clean floor finish",
+        "Fully furnished and styled space ready for client presentation",
+        "Proper editorial density with layered textiles, art, plants, and accessories",
+        "Professional staging completeness from floor to ceiling"
+      ],
+      "specific_fixes_if_failing": [
+        "Complete floor replacement: remove all visible original carpet patterns and stains with clean marble, hardwood, or luxury carpet appropriate to Art Deco style",
+        "Add full furniture layout: velvet sofa, accent chairs, coffee table, console table with Art Deco lines",
+        "Layer in editorial density: geometric area rug, sculptural floor lamp, styled coffee table vignette, decorative objects on mantel",
+        "Add 3+ textile layers: throw pillows, area rug, window treatments",
+        "Include greenery and multiple light sources for lived-in luxury feel"
+      ],
+      "iteration": 2,
+      "cova_render_url": "https://v3b.fal.media/files/b/0a9722ff/n_2QxmiZ7nk3pekqRRM1l_e605dd13e18344ecb84610e9b5d3c9d4.jpg"
+    },
+    "render_url": "https://v3b.fal.media/files/b/0a9722ff/n_2QxmiZ7nk3pekqRRM1l_e605dd13e18344ecb84610e9b5d3c9d4.jpg",
+    "empty_room_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/4300f1284df4.jpg",
+    "rerun_tier": "stage_b"
+  },
+  "room-15": {
+    "status": "pass",
+    "attempts": 1,
+    "critique": {
+      "architectural_fidelity": {
+        "score": "PASS",
+        "reason": "Cova preserves the natural wood paneling walls, white ceiling, double French doors on left, two windows with white blinds, and wood flooring. Camera angle and ceiling height are maintained. The room is recognizably the same space."
+      },
+      "furniture_removal": {
+        "score": "PASS",
+        "reason": "All original furniture (both beds, nightstand, decorative items) completely removed with no ghost outlines or remnants visible. Clean base achieved."
+      },
+      "style_commitment": {
+        "score": "PASS",
+        "reason": "Strong farmhouse commitment: preserved natural wood paneling, rustic floating shelf with black frames and plants, Edison bulb pendant light, linen bedding in earthy tones, woven textiles, and organic materials. This is unmistakably farmhouse, not generic staging."
+      },
+      "editorial_density": {
+        "score": "PASS",
+        "reason": "Editorial-level styling: floating shelf with curated vignette (frames, plants), Edison pendant lighting, layered bed textiles (duvet, throw, multiple pillows), floor plant in ceramic pot, area rug, reading chair with throw blanket. Lived-in and magazine-ready."
+      },
+      "photorealism": {
+        "score": "PASS",
+        "reason": "Natural lighting through windows is coherent, wood textures are realistic with visible grain and knots, Edison bulb has proper glow, shadows are appropriate, materials (linen, wood, ceramic) have authentic texture without CGI appearance."
+      },
+      "designer_preference": "COVA_WINS",
+      "designer_preference_reason": "Cova delivers authentic farmhouse style that respects the existing architecture while Collov's modern blue walls would require expensive wall removal/repainting, making Cova more practical and stylistically committed.",
+      "overall_pass": true,
+      "what_cova_does_better": [
+        "Preserves existing wood paneling architecture which honors the space and reduces renovation costs",
+        "Delivers authentic farmhouse style with rustic materials and warm palette as requested",
+        "Creates cohesive design that works with rather than against the original room character"
+      ],
+      "what_collov_does_better": [
+        "Slightly more polished photorealistic rendering quality in material finishes",
+        "More extensive layered textile presentation on bed"
+      ],
+      "specific_fixes_if_failing": [],
+      "iteration": 1,
+      "cova_render_url": "https://v3b.fal.media/files/b/0a972313/7Q9UXmBKOLancnpZoPIAE_c058c9f0faae4816aee38fd491ca31ed.jpg"
+    },
+    "render_url": "https://v3b.fal.media/files/b/0a972313/7Q9UXmBKOLancnpZoPIAE_c058c9f0faae4816aee38fd491ca31ed.jpg",
+    "provider": "flux-general",
+    "inference_time_s": 10.736292049999975,
+    "empty_room_url": "https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/d34c3924cf52.jpg",
+    "rerun_tier": "stage_b"
+  }
+}

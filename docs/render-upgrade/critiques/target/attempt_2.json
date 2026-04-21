@@ -1,0 +1,44 @@
+{
+  "architectural_fidelity": {
+    "score": "WARN",
+    "reason": "Room is recognizable with same window position and blue walls, but ceiling fan is replaced with pendant light, ceiling height appears slightly altered, and the 'DAKSH' lettering is completely removed which changes the wall architecture significantly."
+  },
+  "furniture_removal": {
+    "score": "PASS",
+    "reason": "All original furniture completely removed with no ghost outlines, remnants, or phantom shadows visible."
+  },
+  "style_commitment": {
+    "score": "PASS",
+    "reason": "Strong Japandi commitment evident through paper lantern pendant light, minimalist brass rail headboard, muted earth tones (mustard/taupe bedding with grey), small bonsai-style tree, natural wood accents, and wabi-sabi aesthetic with textural layering."
+  },
+  "editorial_density": {
+    "score": "WARN",
+    "reason": "Has layered textiles (duvet, throw, pillows), brass floor lamp, pendant light, small tree, decorative lanterns on bed, and books, but lacks wall art entirely and could use more styling vignettes on surfaces for true Architectural Digest level density."
+  },
+  "photorealism": {
+    "score": "PASS",
+    "reason": "Lighting is coherent with natural window light and warm lamp glow, textiles have realistic draping and texture, materials read authentically (wood, brass, linen), shadows are natural, no plastic CGI feel."
+  },
+  "designer_preference": "COVA_WINS",
+  "designer_preference_reason": "Cova delivers authentic Japandi style with design conviction and editorial sophistication, while Collov produces safe but generic neutral staging that lacks personality.",
+  "overall_pass": true,
+  "what_cova_does_better": [
+    "Distinctive style execution with unmistakable Japandi aesthetic versus generic modern neutral",
+    "Superior lighting design with sculptural paper pendant that creates atmospheric mood",
+    "Authentic material palette with brass, natural wood, and layered earth-tone textiles",
+    "Design risk-taking that results in memorable, editorial-worthy space"
+  ],
+  "what_collov_does_better": [
+    "Preserves original ceiling fan which maintains architectural accuracy",
+    "Retains 'DAKSH' wall lettering for better spatial recognition",
+    "More wall art coverage with framed pieces",
+    "Safer, broader market appeal for conventional staging"
+  ],
+  "specific_fixes_if_failing": [
+    "Add wall art above headboard rail to increase editorial density",
+    "Consider maintaining original ceiling fan for architectural fidelity",
+    "Add one more styled vignette on nightstand or floor plant area"
+  ],
+  "iteration": 2,
+  "cova_render_url": "https://v3b.fal.media/files/b/0a972045/qinbZsDKD6P59xtOr7axq.jpg"
+}

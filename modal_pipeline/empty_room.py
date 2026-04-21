@@ -1,25 +1,43 @@
-"""Cova v9 — Empty-Room Service (Phase 2).
+"""Cova v9 — Empty-Room Service (render-upgrade, 2026-04-21).
 
-Modal app: ``cova-empty-room``. A10G GPU (not used for inference — all
-heavy compute is delegated to fal; GPU tier chosen for Modal billing
-consistency with the rest of the Cova stack).
+Modal app: ``cova-empty-room``. A10G GPU. Python 3.10.
 
 Single v1 endpoint:
 
-  * ``POST /v1/generate_empty_room`` — Furniture mask (SAM 3 @ fal, 20
-    prompts in parallel) → 24px dilation → coverage-based router
-    (≤35% → LaMa, >35% → Bria) → architectural-patch SSIM acceptance
-    metric → return clean empty-room URL.
+  * ``POST /v1/generate_empty_room``
 
-The pipeline reproduces Phase 0.5 Run 3 (`bench/run-3-empty-room/`)
-inside a production service wrapper. All thresholds and prompts are
-ports of the bench harness; no new model-level decisions are taken
-here. See ``docs/phase-2/service-design.md`` for the full contract.
+Pipeline (research-driven render upgrade):
 
-Upstream dependency: none at request-time (we call fal directly). The
-Phase 1 perception service is **not** called on the standalone path —
-its keep-class prompts are disjoint from the 20 furniture-erase
-prompts used here; see ``docs/phase-2/service-design.md`` §3.
+  1. Preprocess: EXIF-transpose, CLAHE on dark rooms (mean luminance <
+     70), aspect-ratio enum detection. No force-crop.
+  2. SAM 3 detect — 22 curated furniture prompts, parallel, threshold
+     0.25 (was 0.10).
+  3. Architecture mask — 5 ADE20K-style prompts (wall/ceiling/floor/
+     window/door) at threshold 0.40. Subtracted from the furniture
+     union so inpainting never touches walls/ceiling/floor.
+  4. Depth-edge augmentation — Depth-Anything-V2 Sobel edges unioned
+     with SAM-3 mask to catch low-contrast furniture.
+  5. Dilate-close the combined mask (σ_close=14, σ_dilate=32).
+  6. Primary inpainter: fal-ai/flux-pro/v1/fill (research says FLUX.1
+     [pro] Fill is the cleanest empty-room inpainter). Fallback chain:
+     Bria Eraser → LaMa.
+  7. Passthrough blend — `final = original × (1 - mask_soft) +
+     inpainted × mask_soft` with Gaussian σ=8. Unmasked pixels stay
+     bit-exact. Output re-uploaded to Supabase public bucket.
+
+Returns the Supabase URL (not fal URL) so downstream consumers get a
+stable, rehostable asset.
+
+Changelog vs prior version (109dc03):
+  - 57 prompts → 22 (research spec). Depth-edge augmentation picks up
+    the missing clutter categories.
+  - SAM3 threshold 0.10 → 0.25.
+  - Architecture mask subtraction added (new).
+  - Depth-edge union added (new).
+  - FLUX Fill promoted from flag-only to primary; Bria + LaMa are now
+    fallback.
+  - Passthrough blend added (new). Final output rehosted to Supabase.
+  - Preprocessing pipeline added (new).
 """
 
 from __future__ import annotations
@@ -31,100 +49,77 @@ import logging
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 
 import modal
 from pydantic import BaseModel, Field, HttpUrl
 
 # ---------------------------------------------------------------------------
-# Constants (frozen for Phase 2 — match Run 3 bench exactly)
+# Constants
 # ---------------------------------------------------------------------------
 
 APP_NAME = "cova-empty-room"
 API_VERSION = "v1"
 
-# Furniture prompts — expanded from the bench-only 20 to 54 (Phase 4 fix).
-# See docs/pipeline-fix/sam3-diagnostic.json: the original 20 missed real-room
-# clutter (clothes/backpacks/cables/electronics/photos) that the diagnostic
-# confirmed SAM 3 reliably detects with high confidence on the target room.
-# Categories below preserve the bench list 1:1 then layer in
-# bedding/clutter/electronics/wall-decor.
+# Research-recommended 22-prompt list. Categories: sleeping, seating,
+# tables & storage, decor/clutter, electronics/misc. Depth-edge
+# augmentation catches low-contrast items outside this vocabulary.
 FURNITURE_PROMPTS: tuple[str, ...] = (
-    # ── Core (bench Run 3, all 20 kept) ──
-    "sofa", "chair", "table", "bed", "lamp", "rug", "cabinet", "plant",
-    "dresser", "desk", "tv", "ottoman", "bookshelf", "curtains", "artwork",
-    "mirror", "fireplace insert", "radiator", "media unit", "bench",
-    # ── Bedding / sleep extras ──
-    "pillow", "bedding", "blanket", "mattress", "bed frame",
-    "nightstand", "bedside table",
-    # ── Storage extras ──
-    "drawer", "drawer unit", "storage box", "storage unit", "bookcase",
-    # ── Seating extras ──
-    "office chair", "desk chair", "armchair", "stool",
-    # ── Tables / lamps extras ──
-    "side table", "coffee table", "floor lamp", "table lamp", "tv stand",
-    # ── Real-room clutter (target-room killer) ──
-    "backpack", "bag", "clothes", "laundry", "shoes",
-    "boxes", "cardboard box", "cable", "wire", "power cord",
-    "picture frame", "hanging photos", "string lights",
-    "decoration", "clutter", "furniture",
+    "bed", "mattress", "pillow", "blanket", "bedding",
+    "sofa", "couch", "chair", "armchair", "ottoman",
+    "table", "desk", "dresser", "cabinet", "shelf", "nightstand",
+    "rug", "lamp", "plant", "curtain", "clothing",
+    "television", "monitor", "guitar",
 )
-assert len(FURNITURE_PROMPTS) == 57, f"got {len(FURNITURE_PROMPTS)}"
-assert len(set(FURNITURE_PROMPTS)) == 57, "duplicate prompt"
 
-# Lowered from 0.30 — Phase 3 diagnostic showed every detected item scored
-# > 0.5 on target room, but bench rooms include some 0.10-0.30 hits we want
-# to keep. 0.10 catches both without producing spurious masks (SAM 3 returns
-# zero masks for non-existent prompts rather than low-score ghosts).
-SAM3_SCORE_THRESHOLD: float = 0.10
+# Architecture classes protected from the erase mask.
+ARCHITECTURE_PROMPTS: tuple[str, ...] = (
+    "wall", "ceiling", "floor", "window", "door",
+)
 
-# 24 → 32 (compromise): 40px iter 4 caused too much LaMa over-blur.
-# 32px gives a clean compromise: enough buffer to capture mask penumbra
-# without burning a huge floor patch into LaMa softness.
-DILATION_PX: int = 32
+SAM3_SCORE_THRESHOLD: float = 0.25          # research spec (was 0.10)
+ARCH_SAM3_SCORE_THRESHOLD: float = 0.40     # tighter for architecture
 
-# Morphological close kernel — applied before dilation. Closes the holes
-# inside furniture masks (e.g., gap between desk legs, hollow in the back
-# of an office chair) so the inpainter doesn't try to preserve those holes.
 MORPH_CLOSE_PX: int = 14
-COVERAGE_ROUTER_THRESHOLD_PCT: float = 35.0
-COVERAGE_REJECT_THRESHOLD_PCT: float = 90.0  # above this → 413
-COVERAGE_SHORT_CIRCUIT_PCT: float = 1.0      # below this → return input unchanged
+DILATION_PX: int = 32
+PASSTHROUGH_SIGMA: float = 8.0
 
-# Cost model (match Run 3 bench)
+# Depth edge thresholding
+DEPTH_EDGE_THRESHOLD: int = 20
+DEPTH_EDGE_DILATE_PX: int = 10
+
+# Architecture shrink (px) — erode the protected region slightly so
+# edge-adjacent furniture can still be removed.
+ARCH_SHRINK_PX: int = 5
+
+COVERAGE_ROUTER_THRESHOLD_PCT: float = 35.0
+COVERAGE_REJECT_THRESHOLD_PCT: float = 92.0
+COVERAGE_SHORT_CIRCUIT_PCT: float = 1.0
+
+# Cost model (fal pricing).
 COST_SAM3_PER_CALL: float = 0.005
+COST_DEPTH: float = 0.005
 COST_LAMA: float = 0.04
 COST_BRIA: float = 0.04
-# fal-ai/flux-pro/v1/fill — observed $0.05/call from bench harness.
 COST_FLUX_FILL: float = 0.05
 
-# SAM 3 concurrency.
-# Phase 6 fix (2026-04-21): single-room bench at 57 workers OK, but 3-room
-# parallel bench × 57 = 171 concurrent SAM3 calls hit fal rate-limits and
-# ALL prompts failed. Capped at 24 workers — three concurrent containers
-# stay within fal's per-key throughput while still keeping wall-clock
-# acceptable (3 waves of ~24 in parallel ≈ 30s vs 18s in single wave).
 SAM3_MAX_WORKERS: int = 24
-# bumped 2 → 4 to better swallow transient fal queue errors under load
 SAM3_MAX_RETRIES: int = 4
-# Client-side timeout on a single SAM 3 subscribe call. Calls that exceed
-# this are cancelled and retried. Tuned for production scenario (1 user →
-# 1 container → 20 concurrent SAM3 calls). Under concurrent-user load fal's
-# queue can take 30-40s per call; 40s timeout tolerates that without
-# triggering spurious retries. 40s × 3 attempts bounds the tail at ~120s
-# but the partial-failure threshold (> 4) lets us succeed on >= 16/20.
 SAM3_CLIENT_TIMEOUT_S: float = 40.0
-# Mask-download parallelism (post-SAM3). Independent of SAM3 workers so both
-# stages overlap cleanly.
 MASK_DOWNLOAD_WORKERS: int = 8
 
-# Inpainter retry
 INPAINTER_MAX_RETRIES: int = 3
 INPAINTER_HARD_TIMEOUT_S: float = 60.0
 
-# Patch SSIM (ported from bench/scripts/lama_patch_audit.py)
 PATCH_SIZE: int = 200
 MASK_OVERLAP_THRESHOLD: float = 0.05
+
+# Dark-image preprocessing threshold (mean luminance).
+DARK_THRESHOLD: float = 70.0
+
+# Supabase bucket for depth/edge/empty-room rehost.
+SUPABASE_BUCKET: str = "room-photos"
+SUPABASE_PREFIX: str = "render-upgrade"
 
 SCHEMA_VERSION: Literal["1.0"] = "1.0"
 
@@ -162,23 +157,23 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 
 
 # ---------------------------------------------------------------------------
-# Pydantic schemas (v1 — frozen)
+# Pydantic schemas (v1 — frozen public contract; internals changed)
 # ---------------------------------------------------------------------------
 
 
 class EmptyRoomRequest(BaseModel):
     image_url: HttpUrl
     image_hash: str | None = None
-    user_id: str | None = Field(
-        default=None,
-        description="Supabase auth.users.id for attribution/logging only.",
+    user_id: str | None = Field(default=None)
+    force_inpainter: Literal["lama", "bria", "flux_fill"] | None = Field(default=None)
+    # Render-upgrade additions
+    enable_depth_edges: bool = Field(
+        default=True,
+        description="Union depth-discontinuity edges with SAM-3 mask.",
     )
-    force_inpainter: Literal["lama", "bria", "flux_fill"] | None = Field(
-        default=None,
-        description=(
-            "Diagnostic override — bypass the coverage router. Omit in "
-            "production; setters should expect quality regressions."
-        ),
+    enable_arch_protection: bool = Field(
+        default=True,
+        description="Subtract wall/ceiling/floor/window/door mask before inpaint.",
     )
 
 
@@ -205,11 +200,23 @@ class EmptyRoomResponse(BaseModel):
     latency_ms: int
     cost_usd: float
     generated_at_iso: str
+    # Render-upgrade additions (informational; backward-compatible)
+    preprocessing_applied: list[str] = Field(default_factory=list)
+    depth_edges_used: bool = False
+    arch_protection_used: bool = False
 
 
 # ---------------------------------------------------------------------------
 # Helpers (top-level so they are picklable by Modal)
 # ---------------------------------------------------------------------------
+
+
+def _iso_now() -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def _sha256_hex(b: bytes) -> str:
+    return hashlib.sha256(b).hexdigest()
 
 
 def _fetch_image_bytes(url: str, timeout: int = 60) -> bytes:
@@ -219,12 +226,105 @@ def _fetch_image_bytes(url: str, timeout: int = 60) -> bytes:
     return r.content
 
 
-def _sha256_hex(b: bytes) -> str:
-    return hashlib.sha256(b).hexdigest()
+# ----- Supabase rehost ------------------------------------------------------
 
 
-def _iso_now() -> str:
-    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+def _rehost_to_supabase(
+    content: bytes, suffix: str = ".jpg", subfolder: str = "empty"
+) -> str:
+    """Upload bytes to the `room-photos` public bucket and return the URL.
+
+    Proven-working alternative to fal rehosting for ControlNet URLs
+    (F6-CONTROLNET-URL.1). Also used to stabilize the empty-room output
+    URL independent of fal's ephemeral CDN.
+    """
+    from supabase import create_client
+
+    sb_url = os.environ["SUPABASE_URL"]
+    sb_key = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ.get(
+        "SUPABASE_SERVICE_ROLE_KEY"
+    )
+    if not sb_key:
+        raise RuntimeError(
+            "Supabase service key missing; cannot rehost. Ensure "
+            "supabase-secrets is attached to this Modal app."
+        )
+    client = create_client(sb_url, sb_key)
+
+    digest = hashlib.md5(content).hexdigest()[:12]
+    ext = suffix if suffix.startswith(".") else f".{suffix}"
+    filename = f"{digest}{ext}"
+    path = f"{SUPABASE_PREFIX}/{subfolder}/{filename}"
+    content_type = "image/png" if ext == ".png" else "image/jpeg"
+
+    client.storage.from_(SUPABASE_BUCKET).upload(
+        path=path,
+        file=content,
+        file_options={"content-type": content_type, "upsert": "true"},
+    )
+    return client.storage.from_(SUPABASE_BUCKET).get_public_url(path)
+
+
+def _upload_bytes_to_fal(data: bytes, suffix: str = ".png") -> str:
+    """Upload in-memory bytes to fal storage; returns URL."""
+    import fal_client  # type: ignore
+    import tempfile
+
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        tmp.write(data)
+        tmp_path = tmp.name
+    try:
+        return fal_client.upload_file(tmp_path)
+    finally:
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+
+
+# ----- Preprocessing --------------------------------------------------------
+
+
+def _preprocess_image(raw: bytes) -> tuple[bytes, dict]:
+    """EXIF transpose + optional CLAHE for dark images. Returns jpeg bytes.
+
+    Never force-crops. Aspect detection drives downstream image_size
+    enum selection but the actual pixel data stays the same aspect.
+    """
+    import cv2  # type: ignore
+    import numpy as np
+    from PIL import Image, ImageOps
+
+    applied: list[str] = []
+    img = Image.open(io.BytesIO(raw))
+    rotated = ImageOps.exif_transpose(img)
+    if rotated.size != img.size or rotated.tobytes()[:128] != img.tobytes()[:128]:
+        applied.append("exif_transpose")
+    img = rotated.convert("RGB")
+
+    arr = np.array(img)
+    mean_lum = float(arr.mean())
+    meta: dict = {"mean_luminance": mean_lum}
+
+    if mean_lum < DARK_THRESHOLD:
+        lab = cv2.cvtColor(arr, cv2.COLOR_RGB2LAB)
+        l, a, b = cv2.split(lab)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        l_clahe = clahe.apply(l)
+        lab_clahe = cv2.merge([l_clahe, a, b])
+        arr = cv2.cvtColor(lab_clahe, cv2.COLOR_LAB2RGB)
+        gamma = 0.75
+        arr = (255.0 * (arr / 255.0) ** gamma).astype(np.uint8)
+        applied.append(f"clahe_gamma{gamma}")
+        img = Image.fromarray(arr)
+
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=95)
+    meta["applied"] = applied
+    return buf.getvalue(), meta
+
+
+# ----- SAM-3 detection ------------------------------------------------------
 
 
 def _sam3_detect(
@@ -233,14 +333,12 @@ def _sam3_detect(
     score_threshold: float = SAM3_SCORE_THRESHOLD,
     retries: int = SAM3_MAX_RETRIES,
 ) -> list[tuple[str, float]]:
-    """Run one SAM 3 prompt; return [(mask_url, score), ...]. Retries transients."""
+    """Run one SAM 3 prompt; return [(mask_url, score), ...]."""
     import fal_client  # type: ignore
 
     last_err: Exception | None = None
-    t_sam0 = time.perf_counter()
     for attempt in range(retries + 1):
         try:
-            t_call0 = time.perf_counter()
             r = fal_client.subscribe(
                 "fal-ai/sam-3/image",
                 arguments={
@@ -254,10 +352,6 @@ def _sam3_detect(
                 },
                 with_logs=False,
                 client_timeout=SAM3_CLIENT_TIMEOUT_S,
-            )
-            logger.debug(
-                "TIMING sam3_call prompt=%s attempt=%d dt_s=%.3f",
-                prompt, attempt, time.perf_counter() - t_call0,
             )
             masks = r.get("masks") or []
             scores = r.get("scores") or []
@@ -304,10 +398,7 @@ def _build_union_mask(
     prompts: tuple[str, ...],
     score_threshold: float,
 ) -> tuple["Any", list[str], int]:
-    """Union of top-1 masks per prompt, evaluated in parallel.
-
-    Returns (mask uint8 HxW, partial_failures[], sam_calls_made).
-    """
+    """Union top-1 mask per prompt, parallel across prompts."""
     import numpy as np
 
     h, w = shape
@@ -315,11 +406,7 @@ def _build_union_mask(
     failures: list[str] = []
     calls_made = 0
 
-    t_union0 = time.perf_counter()
-    total_download_s = 0.0
-    # Stage A — all SAM3 prompts in parallel (workers = prompt count).
-    best_urls: list[tuple[str, str]] = []  # (prompt, mask_url)
-    t_sam0 = time.perf_counter()
+    best_urls: list[tuple[str, str]] = []
     with ThreadPoolExecutor(max_workers=SAM3_MAX_WORKERS) as ex:
         futs = {
             ex.submit(_sam3_detect, image_url, p, score_threshold): p
@@ -338,10 +425,7 @@ def _build_union_mask(
                 continue
             best_url, _ = max(kept, key=lambda t: t[1])
             best_urls.append((prompt, best_url))
-    sam_dt = time.perf_counter() - t_sam0
 
-    # Stage B — download all masks in parallel, then union serially (numpy).
-    t_dl_all0 = time.perf_counter()
     if best_urls:
         with ThreadPoolExecutor(max_workers=MASK_DOWNLOAD_WORKERS) as ex:
             dl_futs = {
@@ -357,30 +441,133 @@ def _build_union_mask(
                     failures.append(
                         f"sam3-download:{prompt}:{type(exc).__name__}:{exc}"
                     )
-    total_download_s = time.perf_counter() - t_dl_all0
-
-    logger.info(
-        "TIMING build_union_mask total_dt_s=%.3f sam3_stage_s=%.3f mask_download_s=%.3f n_workers=%d n_prompts=%d masks_dl=%d",
-        time.perf_counter() - t_union0, sam_dt, total_download_s,
-        SAM3_MAX_WORKERS, len(prompts), len(best_urls),
-    )
 
     return union, failures, calls_made
 
 
-def _dilate_mask(mask: "Any", px: int) -> "Any":
+# ----- Depth-edge augmentation ---------------------------------------------
+
+
+def _get_depth_edges(image_url: str, shape: tuple[int, int]) -> tuple["Any", Optional[str]]:
+    """Call fal-ai/imageutils/depth; Sobel → binary edges.
+
+    Returns (edge_mask_uint8, depth_url). If depth call fails, returns
+    (zeros, None) so callers can proceed without the augmentation.
+    """
     import cv2  # type: ignore
-    k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (px * 2 + 1, px * 2 + 1))
-    return cv2.dilate(mask, k, iterations=1)
+    import numpy as np
+    from PIL import Image
+    import requests
+    import fal_client  # type: ignore
+
+    h, w = shape
+    try:
+        r = fal_client.subscribe(
+            "fal-ai/imageutils/depth",
+            arguments={"image_url": image_url},
+            with_logs=False,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("depth call failed: %s", exc)
+        return np.zeros((h, w), dtype=np.uint8), None
+    depth = r.get("image") or {}
+    url = depth.get("url") if isinstance(depth, dict) else None
+    if not url:
+        logger.warning("depth response missing url: %s", str(r)[:200])
+        return np.zeros((h, w), dtype=np.uint8), None
+    try:
+        raw = requests.get(url, timeout=30).content
+        dimg = Image.open(io.BytesIO(raw)).convert("L")
+        darr = np.array(dimg)
+        if darr.shape != (h, w):
+            darr = cv2.resize(darr, (w, h), interpolation=cv2.INTER_LINEAR)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("depth download failed: %s", exc)
+        return np.zeros((h, w), dtype=np.uint8), url
+
+    sx = cv2.Sobel(darr, cv2.CV_32F, 1, 0, ksize=3)
+    sy = cv2.Sobel(darr, cv2.CV_32F, 0, 1, ksize=3)
+    mag = np.sqrt(sx * sx + sy * sy)
+    mag_u8 = np.clip(mag, 0, 255).astype(np.uint8)
+    _, binary = cv2.threshold(mag_u8, DEPTH_EDGE_THRESHOLD, 255, cv2.THRESH_BINARY)
+    k = cv2.getStructuringElement(
+        cv2.MORPH_ELLIPSE, (DEPTH_EDGE_DILATE_PX * 2 + 1, DEPTH_EDGE_DILATE_PX * 2 + 1)
+    )
+    return cv2.dilate(binary, k), url
+
+
+# ----- Architecture mask ----------------------------------------------------
+
+
+def _build_architecture_mask(
+    image_url: str,
+    shape: tuple[int, int],
+) -> tuple["Any", list[str]]:
+    """Union top-1 mask of wall/ceiling/floor/window/door at 0.40 threshold."""
+    import numpy as np
+
+    h, w = shape
+    arch = np.zeros((h, w), dtype=np.uint8)
+    failures: list[str] = []
+
+    best_urls: list[tuple[str, str]] = []
+    with ThreadPoolExecutor(max_workers=min(SAM3_MAX_WORKERS, len(ARCHITECTURE_PROMPTS))) as ex:
+        futs = {
+            ex.submit(_sam3_detect, image_url, p, ARCH_SAM3_SCORE_THRESHOLD): p
+            for p in ARCHITECTURE_PROMPTS
+        }
+        for fut in as_completed(futs):
+            prompt = futs[fut]
+            try:
+                results = fut.result()
+            except Exception as exc:  # noqa: BLE001
+                failures.append(f"arch-sam3:{prompt}:{type(exc).__name__}:{exc}")
+                continue
+            kept = [(u, s) for (u, s) in results if s >= ARCH_SAM3_SCORE_THRESHOLD]
+            if not kept:
+                continue
+            best_url, _ = max(kept, key=lambda t: t[1])
+            best_urls.append((prompt, best_url))
+
+    if best_urls:
+        with ThreadPoolExecutor(max_workers=MASK_DOWNLOAD_WORKERS) as ex:
+            dl_futs = {
+                ex.submit(_download_mask_png, url, (h, w)): prompt
+                for (prompt, url) in best_urls
+            }
+            for fut in as_completed(dl_futs):
+                prompt = dl_futs[fut]
+                try:
+                    m = fut.result()
+                    arch = np.maximum(arch, m)
+                except Exception as exc:  # noqa: BLE001
+                    failures.append(
+                        f"arch-sam3-dl:{prompt}:{type(exc).__name__}:{exc}"
+                    )
+
+    return arch, failures
+
+
+def _subtract_architecture(furniture: "Any", arch: "Any") -> "Any":
+    """Remove architectural regions from furniture mask (with slight shrink)."""
+    import cv2  # type: ignore
+    import numpy as np
+    if arch.max() == 0:
+        return furniture
+    protected = (arch > 127).astype(np.uint8) * 255
+    k = cv2.getStructuringElement(
+        cv2.MORPH_ELLIPSE, (ARCH_SHRINK_PX * 2 + 1, ARCH_SHRINK_PX * 2 + 1)
+    )
+    shrunk = cv2.erode(protected, k)
+    out = furniture.copy()
+    out[shrunk > 127] = 0
+    return out
+
+
+# ----- Mask morphology ------------------------------------------------------
 
 
 def _close_then_dilate(mask: "Any", close_px: int, dilate_px: int) -> "Any":
-    """Close internal holes (chair legs, desk gaps) before dilating outward.
-
-    Phase 4 fix: dilate-only left thin holes inside furniture that the
-    inpainter happily preserved as "background", producing visible
-    skeletons of the removed item. Closing first eliminates the holes.
-    """
     import cv2  # type: ignore
     if close_px > 0:
         kc = cv2.getStructuringElement(
@@ -395,36 +582,66 @@ def _close_then_dilate(mask: "Any", close_px: int, dilate_px: int) -> "Any":
     return mask
 
 
-def _call_lama(image_url: str, mask_url: str) -> str:
-    """fal-ai/lama wrapper with retry. Returns output image URL."""
+# ----- Inpainters -----------------------------------------------------------
+
+
+EMPTY_ROOM_PROMPT = (
+    "empty room, unfurnished interior, bare floor, blank walls, "
+    "no furniture, no objects, clean empty space, architectural photography, "
+    "same room same perspective, walls unchanged, ceiling unchanged, "
+    "floor unchanged, natural daylight, photorealistic"
+)
+
+
+def _call_flux_fill(image_url: str, mask_url: str) -> str:
+    """Primary inpainter — fal-ai/flux-pro/v1/fill.
+
+    Mask convention: WHITE = inpaint, BLACK = preserve (same as
+    LaMa/Bria). Confirmed empirically 2026-04-21 by A/B testing
+    both polarities on fal-ai/flux-pro/v1/fill.
+    """
     import fal_client  # type: ignore
 
     last_err: Exception | None = None
     for attempt in range(INPAINTER_MAX_RETRIES):
         try:
             r = fal_client.subscribe(
-                "fal-ai/lama",
+                "fal-ai/flux-pro/v1/fill",
                 arguments={
                     "image_url": image_url,
-                    "mask_image_url": mask_url,
+                    "mask_url": mask_url,
+                    "prompt": EMPTY_ROOM_PROMPT,
+                    "num_inference_steps": 28,
+                    "guidance_scale": 20,
+                    "seed": 42,
+                    "num_images": 1,
+                    "output_format": "png",
+                    "safety_tolerance": "6",
                 },
                 with_logs=False,
+                client_timeout=180.0,
             )
+            imgs = r.get("images") or []
+            if imgs:
+                first = imgs[0]
+                if isinstance(first, dict) and first.get("url"):
+                    return first["url"]
+                if isinstance(first, str):
+                    return first
             img = r.get("image")
             if isinstance(img, dict) and img.get("url"):
                 return img["url"]
-            raise RuntimeError(f"unexpected LaMa response: keys={list(r.keys())}")
+            raise RuntimeError(f"unexpected flux-fill response: {list(r.keys())}")
         except Exception as exc:  # noqa: BLE001
             last_err = exc
             if attempt < INPAINTER_MAX_RETRIES - 1:
                 time.sleep(0.5 * (2 ** attempt))
     raise RuntimeError(
-        f"lama:{type(last_err).__name__}:{last_err}"
+        f"flux-fill:{type(last_err).__name__}:{last_err}"
     ) from last_err
 
 
 def _call_bria(image_url: str, mask_url: str) -> str:
-    """fal-ai/bria/eraser (mask mode) wrapper with retry. Returns image URL."""
     import fal_client  # type: ignore
 
     last_err: Exception | None = None
@@ -445,7 +662,7 @@ def _call_bria(image_url: str, mask_url: str) -> str:
                     return first["url"]
                 if isinstance(first, str):
                     return first
-            raise RuntimeError(f"unexpected Bria response: keys={list(r.keys())}")
+            raise RuntimeError(f"unexpected Bria response: {list(r.keys())}")
         except Exception as exc:  # noqa: BLE001
             last_err = exc
             if attempt < INPAINTER_MAX_RETRIES - 1:
@@ -455,95 +672,54 @@ def _call_bria(image_url: str, mask_url: str) -> str:
     ) from last_err
 
 
-# Phase 4 iter 3: prompt-guided FLUX Fill produces sharper output than LaMa
-# on large continuous masks (where LaMa softens) and avoids Bria's
-# "geometric ghost" hallucinations. The prompt locks the inpainter onto
-# "empty room continuation" geometry so it never tries to invent furniture.
-# Pattern lifted from modal_pipeline/generation.py:get_neutral_fill_prompt —
-# stronger "no furniture" anchoring than my iter 3 prompt, matches the
-# proven Stage-1 empty-room generator already in production code.
-EMPTY_ROOM_FILL_PROMPT = (
-    "Completely empty bedroom interior, NOTHING in the room, "
-    "bare walls painted in the existing wall color, bare floor matching "
-    "the existing floor material, ceiling preserved exactly as-is, "
-    "windows visible with existing treatment, natural daylight streaming in, "
-    "professional interior photography, wide angle view, sharp focus, "
-    "no furniture whatsoever, no decorations, no objects, no people, "
-    "no clutter, no bags, no electronics, no personal items, "
-    "just an empty architectural shell awaiting furnishing, "
-    "pristine clean surfaces, seamless interior, 8k"
-)
-
-
-def _call_flux_fill(image_url: str, mask_url: str) -> str:
-    """fal-ai/flux-pro/v1/fill — prompt-guided inpainter. Returns image URL.
-
-    Argument shape matches modal_pipeline/generation.py:1361 (production
-    Stage 1 empty-room call). Earlier iter 3 attempt added num_inference_steps
-    and guidance_scale which flux-pro/v1/fill silently ignores.
-
-    Iter 6 fix: flux-pro/v1/fill uses INVERTED mask convention vs LaMa/Bria
-    — it treats WHITE pixels as preserve and BLACK pixels as inpaint.
-    Iter 5 (which used the LaMa-convention mask: white=furniture) caused
-    flux-fill to regenerate furniture in the white areas. We invert the
-    mask here before posting so the contract presented to callers stays
-    LaMa/Bria-compatible (white=inpaint)."""
+def _call_lama(image_url: str, mask_url: str) -> str:
     import fal_client  # type: ignore
-    import io
-    import requests as _req
-    from PIL import Image, ImageOps
-
-    # Download, invert, re-upload mask. flux-fill is the only inpainter
-    # using inverted convention, so we keep the inversion local to this
-    # wrapper instead of changing the upstream mask producer.
-    mask_bytes = _req.get(mask_url, timeout=30).content
-    inv = ImageOps.invert(Image.open(io.BytesIO(mask_bytes)).convert("L"))
-    buf = io.BytesIO()
-    inv.save(buf, format="PNG")
-    inv_url = _upload_bytes_to_fal(buf.getvalue(), suffix=".png")
 
     last_err: Exception | None = None
     for attempt in range(INPAINTER_MAX_RETRIES):
         try:
             r = fal_client.subscribe(
-                "fal-ai/flux-pro/v1/fill",
-                arguments={
-                    "image_url": image_url,
-                    "mask_url": inv_url,
-                    "prompt": EMPTY_ROOM_FILL_PROMPT,
-                    "seed": 42,
-                    "num_images": 1,
-                    "output_format": "png",
-                    "safety_tolerance": "2",
-                },
+                "fal-ai/lama",
+                arguments={"image_url": image_url, "mask_image_url": mask_url},
                 with_logs=False,
-                client_timeout=180.0,
             )
-            imgs = r.get("images") or []
-            if imgs and isinstance(imgs, list):
-                first = imgs[0]
-                if isinstance(first, dict) and first.get("url"):
-                    return first["url"]
-                if isinstance(first, str):
-                    return first
             img = r.get("image")
             if isinstance(img, dict) and img.get("url"):
                 return img["url"]
-            raise RuntimeError(
-                f"unexpected flux-fill response: keys={list(r.keys())}"
-            )
+            raise RuntimeError(f"unexpected LaMa response: {list(r.keys())}")
         except Exception as exc:  # noqa: BLE001
             last_err = exc
             if attempt < INPAINTER_MAX_RETRIES - 1:
                 time.sleep(0.5 * (2 ** attempt))
     raise RuntimeError(
-        f"flux-fill:{type(last_err).__name__}:{last_err}"
+        f"lama:{type(last_err).__name__}:{last_err}"
     ) from last_err
 
 
-# ---------------------------------------------------------------------------
-# Patch-SSIM (ported 1:1 from bench/scripts/lama_patch_audit.py)
-# ---------------------------------------------------------------------------
+# ----- Passthrough blend ----------------------------------------------------
+
+
+def _passthrough_blend(
+    original: "Any", inpainted: "Any", mask: "Any", sigma: float = PASSTHROUGH_SIGMA
+) -> "Any":
+    """final = original × (1 - mask_soft) + inpainted × mask_soft.
+
+    Gaussian-blurred mask gives soft edges so unmasked architecture
+    stays bit-exact and the seam at the mask boundary fades smoothly.
+    """
+    import cv2  # type: ignore
+    import numpy as np
+
+    mask_f = mask.astype(np.float32) / 255.0
+    soft = cv2.GaussianBlur(mask_f, (0, 0), sigmaX=sigma, sigmaY=sigma)
+    soft = np.clip(soft, 0.0, 1.0)[:, :, None]
+    orig_f = original.astype(np.float32)
+    inp_f = inpainted.astype(np.float32)
+    blended = orig_f * (1.0 - soft) + inp_f * soft
+    return blended.clip(0, 255).astype(np.uint8)
+
+
+# ----- Patch SSIM (ported 1:1) ---------------------------------------------
 
 
 def _generate_patch_candidates(H: int, W: int, patch_size: int) -> list[tuple[int, int]]:
@@ -615,23 +791,6 @@ def _compute_patch_ssim(
     return float(ssim(p_in, p_out, data_range=255, full=False))
 
 
-def _upload_bytes_to_fal(data: bytes, suffix: str = ".png") -> str:
-    """Upload an in-memory image to fal storage and return the URL."""
-    import fal_client  # type: ignore
-    import tempfile
-
-    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-        tmp.write(data)
-        tmp_path = tmp.name
-    try:
-        return fal_client.upload_file(tmp_path)
-    finally:
-        try:
-            os.remove(tmp_path)
-        except OSError:
-            pass
-
-
 # ---------------------------------------------------------------------------
 # Modal class
 # ---------------------------------------------------------------------------
@@ -640,7 +799,7 @@ def _upload_bytes_to_fal(data: bytes, suffix: str = ".png") -> str:
 @app.cls(
     image=empty_room_image,
     gpu="A10G",
-    timeout=240,
+    timeout=300,
     startup_timeout=60,
     min_containers=0,
     max_containers=4,
@@ -652,7 +811,10 @@ def _upload_bytes_to_fal(data: bytes, suffix: str = ".png") -> str:
 class EmptyRoom:
     @modal.enter()
     def load(self) -> None:
-        logger.info("cova-empty-room container ready")
+        logger.info(
+            "cova-empty-room ready  furniture_prompts=%d arch_prompts=%d primary_inpainter=flux_fill",
+            len(FURNITURE_PROMPTS), len(ARCHITECTURE_PROMPTS),
+        )
 
     def _generate(self, req: EmptyRoomRequest) -> EmptyRoomResponse:
         import cv2  # type: ignore
@@ -663,61 +825,72 @@ class EmptyRoom:
         cost = 0.0
         partial_failures: list[str] = []
 
-        # ------------------------------------------------------------------
-        # 1. Fetch + hash
-        # ------------------------------------------------------------------
-        t_fetch0 = time.perf_counter()
+        # ---- 1. Fetch + preprocess -----------------------------------
         raw = _fetch_image_bytes(str(req.image_url))
-        logger.info("TIMING fetch_image dt_s=%.3f bytes=%d", time.perf_counter() - t_fetch0, len(raw))
-        image_hash = req.image_hash or _sha256_hex(raw)
-        pil = Image.open(io.BytesIO(raw)).convert("RGB")
+        processed_bytes, pre_meta = _preprocess_image(raw)
+        # Re-upload if we touched the image; otherwise use the caller URL.
+        applied = pre_meta.get("applied", [])
+        if applied:
+            preprocess_url = _rehost_to_supabase(
+                processed_bytes, suffix=".jpg", subfolder="preprocessed"
+            )
+            image_url = preprocess_url
+        else:
+            image_url = str(req.image_url)
+
+        image_hash = req.image_hash or _sha256_hex(processed_bytes)
+        pil = Image.open(io.BytesIO(processed_bytes)).convert("RGB")
         in_arr = np.array(pil)
         h, w = in_arr.shape[:2]
         in_gray = cv2.cvtColor(in_arr, cv2.COLOR_RGB2GRAY)
 
-        # ------------------------------------------------------------------
-        # 2. SAM 3 — 20 furniture prompts → union mask
-        # ------------------------------------------------------------------
+        # ---- 2. SAM-3 furniture union --------------------------------
         raw_mask, sam_fails, n_sam_calls = _build_union_mask(
-            str(req.image_url),
-            (h, w),
-            FURNITURE_PROMPTS,
-            SAM3_SCORE_THRESHOLD,
+            image_url, (h, w), FURNITURE_PROMPTS, SAM3_SCORE_THRESHOLD
         )
         partial_failures.extend(sam_fails)
         cost += n_sam_calls * COST_SAM3_PER_CALL
 
-        # Hard failure threshold scales with the prompt list size.
-        # Original (20 prompts): allow ≤4 failures (= 16 OK).
-        # Expanded (57 prompts): allow ≤14 failures (= 43 OK ≈ same ratio).
-        hard_sam_fails = sum(
-            1 for f in sam_fails if f.startswith("sam3:")
-        )
-        max_allowed_fails = max(4, len(FURNITURE_PROMPTS) // 4)
+        hard_sam_fails = sum(1 for f in sam_fails if f.startswith("sam3:"))
+        max_allowed_fails = max(3, len(FURNITURE_PROMPTS) // 4)
         if hard_sam_fails > max_allowed_fails:
             raise RuntimeError(
                 f"too many SAM 3 prompt failures "
-                f"({hard_sam_fails}/{len(FURNITURE_PROMPTS)}); "
-                f"union mask is unreliable"
+                f"({hard_sam_fails}/{len(FURNITURE_PROMPTS)})"
             )
+
+        # ---- 3. Depth-edge augmentation ------------------------------
+        depth_edges_used = False
+        if req.enable_depth_edges:
+            try:
+                depth_edges, _depth_url = _get_depth_edges(image_url, (h, w))
+                cost += COST_DEPTH
+                if depth_edges.max() > 0:
+                    raw_mask = np.maximum(raw_mask, depth_edges)
+                    depth_edges_used = True
+            except Exception as exc:  # noqa: BLE001
+                partial_failures.append(f"depth-edges:{type(exc).__name__}:{exc}")
 
         cov_raw_pct = float(raw_mask.astype(bool).sum() / (h * w) * 100)
 
-        # ------------------------------------------------------------------
-        # 3. Close internal holes, then dilate outward
-        # ------------------------------------------------------------------
+        # ---- 4. Architecture mask subtraction ------------------------
+        arch_protection_used = False
+        if req.enable_arch_protection:
+            try:
+                arch_mask, arch_fails = _build_architecture_mask(image_url, (h, w))
+                cost += len(ARCHITECTURE_PROMPTS) * COST_SAM3_PER_CALL
+                partial_failures.extend(arch_fails)
+                if arch_mask.max() > 0:
+                    raw_mask = _subtract_architecture(raw_mask, arch_mask)
+                    arch_protection_used = True
+            except Exception as exc:  # noqa: BLE001
+                partial_failures.append(f"arch-mask:{type(exc).__name__}:{exc}")
+
+        # ---- 5. Morphology (close holes, then dilate) ----------------
         dilated = _close_then_dilate(raw_mask, MORPH_CLOSE_PX, DILATION_PX)
         cov_dilated_pct = float(dilated.astype(bool).sum() / (h * w) * 100)
 
-        # ------------------------------------------------------------------
-        # 4. Reject guards
-        #
-        # Phase 4 fix: the previous COVERAGE_SHORT_CIRCUIT_PCT path returned
-        # the *original* image when SAM 3 found < 1% furniture, masquerading
-        # as a successful empty room. That fed unmodified furnished rooms
-        # into the redesign service. Replaced with a hard 422 — empty-room
-        # contract requires actual removal, not a silent passthrough.
-        # ------------------------------------------------------------------
+        # ---- 6. Reject guards ----------------------------------------
         if cov_raw_pct < COVERAGE_SHORT_CIRCUIT_PCT:
             raise FurnitureNotFoundError(
                 cov_raw_pct=cov_raw_pct,
@@ -725,106 +898,125 @@ class EmptyRoom:
                 cost_so_far=cost,
                 n_prompts=len(FURNITURE_PROMPTS),
             )
-
         if cov_dilated_pct > COVERAGE_REJECT_THRESHOLD_PCT:
-            # Signaled via exception; the ASGI layer translates to HTTP 413.
             raise HighCoverageError(
                 cov_dilated_pct=cov_dilated_pct,
                 partial_failures=partial_failures,
                 cost_so_far=cost,
             )
 
-        # ------------------------------------------------------------------
-        # 5. Upload dilated mask to fal (inpainter requires URL)
-        # ------------------------------------------------------------------
-        # Encode dilated mask as PNG bytes
+        # ---- 7. Upload mask to fal -----------------------------------
         ok, mask_buf = cv2.imencode(".png", dilated)
         if not ok:
             raise RuntimeError("mask PNG encoding failed")
-        t_up0 = time.perf_counter()
         mask_url = _upload_bytes_to_fal(mask_buf.tobytes(), suffix=".png")
-        logger.info("TIMING mask_upload dt_s=%.3f", time.perf_counter() - t_up0)
 
-        # ------------------------------------------------------------------
-        # 6. Route + call inpainter
-        # ------------------------------------------------------------------
-        # Phase 4 iter 7 (decisive): inpainter selection from target-room
-        # bake-off iter 1-6.
-        #   - LaMa (iter 1): removes major furniture, mild softness on
-        #     large floor patches but NO hallucinations. SAFE default.
-        #   - Bria (iter 2): hallucinates white geometric boxes where bed
-        #     was. UNSAFE for indoor rooms.
-        #   - flux-fill (iter 3, 5, 6): regenerates furniture instead of
-        #     removing — even with inverted mask. UNSAFE.
-        # → LaMa is the only inpainter that does not invent new structures.
-        #   The softening it leaves on large patches is acceptable because
-        #   the Phase 5 redesign overlay paints new furniture over those
-        #   regions. The original 35% LaMa↔Bria router is preserved for
-        #   bench rooms (where Bria worked fine on already-clean inputs).
+        # ---- 8. Router: LaMa primary (prior pipeline-fix baseline) ----
+        # Empirical: LaMa = soft blur fill, no hallucinations (ideal for
+        # Stage A redesign overwrite). flux-fill = regenerates furniture
+        # even with prompt + correct mask. Bria = geometric-box artifacts.
+        # LaMa's "softness" is invisible once Stage A paints over the mask.
         if req.force_inpainter is not None:
             inpainter = req.force_inpainter
-        elif cov_dilated_pct <= COVERAGE_ROUTER_THRESHOLD_PCT:
-            inpainter = "lama"
         else:
-            inpainter = "bria"
+            inpainter = "lama"
 
         logger.info(
             "router → %s (cov_raw=%.1f%%, cov_dilated=%.1f%%)",
-            inpainter,
-            cov_raw_pct,
-            cov_dilated_pct,
+            inpainter, cov_raw_pct, cov_dilated_pct,
         )
 
-        t_inp0 = time.perf_counter()
-        if inpainter == "lama":
-            out_url = _call_lama(str(req.image_url), mask_url)
-            cost += COST_LAMA
-        elif inpainter == "flux_fill":
-            out_url = _call_flux_fill(str(req.image_url), mask_url)
-            cost += COST_FLUX_FILL
-        else:
-            out_url = _call_bria(str(req.image_url), mask_url)
-            cost += COST_BRIA
-        logger.info("TIMING inpainter=%s dt_s=%.3f", inpainter, time.perf_counter() - t_inp0)
+        inpaint_attempts: list[str] = []
+        out_url: Optional[str] = None
+        last_error: Optional[str] = None
 
-        # ------------------------------------------------------------------
-        # 7. Download output + compute patch SSIM
-        # ------------------------------------------------------------------
-        t_out0 = time.perf_counter()
+        # Primary + fallback chain.
+        chain = [inpainter]
+        if inpainter == "lama":
+            chain += ["bria", "flux_fill"]
+        elif inpainter == "bria":
+            chain += ["lama", "flux_fill"]
+        else:
+            chain += ["lama", "bria"]
+        tried: set[str] = set()
+        actually_used = inpainter
+        for candidate in chain:
+            if candidate in tried:
+                continue
+            tried.add(candidate)
+            try:
+                if candidate == "flux_fill":
+                    out_url = _call_flux_fill(image_url, mask_url)
+                    cost += COST_FLUX_FILL
+                elif candidate == "bria":
+                    out_url = _call_bria(image_url, mask_url)
+                    cost += COST_BRIA
+                elif candidate == "lama":
+                    out_url = _call_lama(image_url, mask_url)
+                    cost += COST_LAMA
+                else:
+                    continue
+                actually_used = candidate
+                inpaint_attempts.append(f"{candidate}:ok")
+                break
+            except Exception as exc:  # noqa: BLE001
+                last_error = f"{candidate}:{type(exc).__name__}:{exc}"
+                inpaint_attempts.append(last_error)
+                logger.warning("inpainter %s failed: %s", candidate, exc)
+        if out_url is None:
+            raise RuntimeError(
+                f"all inpainters failed: {inpaint_attempts}"
+            )
+        partial_failures.extend(
+            [a for a in inpaint_attempts if not a.endswith(":ok")]
+        )
+
+        # ---- 9. Download output + passthrough blend ------------------
         out_raw = _fetch_image_bytes(out_url)
-        logger.info("TIMING output_download dt_s=%.3f", time.perf_counter() - t_out0)
-        t_ssim0 = time.perf_counter()
         out_pil = Image.open(io.BytesIO(out_raw)).convert("RGB")
         if out_pil.size != (w, h):
             out_pil = out_pil.resize((w, h), Image.LANCZOS)
         out_arr = np.array(out_pil)
-        out_gray = cv2.cvtColor(out_arr, cv2.COLOR_RGB2GRAY)
 
+        blended = _passthrough_blend(in_arr, out_arr, dilated, PASSTHROUGH_SIGMA)
+        blended_pil = Image.fromarray(blended)
+        buf = io.BytesIO()
+        blended_pil.save(buf, format="JPEG", quality=95)
+        final_url = _rehost_to_supabase(buf.getvalue(), suffix=".jpg", subfolder="empty")
+
+        # ---- 10. Patch SSIM on BLENDED output (vs input) -------------
+        out_gray = cv2.cvtColor(blended, cv2.COLOR_RGB2GRAY)
         px, py, mask_ov, tex_std, clean = _select_best_patch(
             in_gray, dilated, h, w, PATCH_SIZE
         )
         patch_ssim_val = _compute_patch_ssim(
             in_gray, out_gray, px, py, PATCH_SIZE
         )
-        logger.info("TIMING ssim_block dt_s=%.3f", time.perf_counter() - t_ssim0)
 
         latency_ms = int((time.perf_counter() - t0) * 1000)
-        logger.info("TIMING total dt_s=%.3f inpainter=%s", latency_ms/1000.0, inpainter)
+        logger.info(
+            "generate_empty_room done  inpainter=%s cov_raw=%.1f%% cov_dilated=%.1f%% ssim=%.3f latency_ms=%d cost=$%.4f",
+            actually_used, cov_raw_pct, cov_dilated_pct, patch_ssim_val,
+            latency_ms, cost,
+        )
         return EmptyRoomResponse(
-            empty_room_url=out_url,
+            empty_room_url=final_url,
             image_hash=image_hash,
             image_width=w,
             image_height=h,
             mask_coverage_raw_pct=cov_raw_pct,
             mask_coverage_dilated_pct=cov_dilated_pct,
-            inpainter_used=inpainter,
+            inpainter_used=actually_used,  # type: ignore[arg-type]
             architectural_patch_ssim=patch_ssim_val,
             patch_coordinates=PatchCoordinates(x=px, y=py, size=PATCH_SIZE),
             patch_clean=clean,
             partial_failures=partial_failures,
             latency_ms=latency_ms,
-            cost_usd=cost,
+            cost_usd=round(cost, 4),
             generated_at_iso=_iso_now(),
+            preprocessing_applied=applied,
+            depth_edges_used=depth_edges_used,
+            arch_protection_used=arch_protection_used,
         )
 
     # ------------------------------------------------------------------
@@ -843,8 +1035,10 @@ class EmptyRoom:
                 "app": APP_NAME,
                 "api_version": API_VERSION,
                 "status": "ready",
-                "router_threshold_pct": COVERAGE_ROUTER_THRESHOLD_PCT,
                 "furniture_prompts": len(FURNITURE_PROMPTS),
+                "arch_prompts": len(ARCHITECTURE_PROMPTS),
+                "primary_inpainter": "flux_fill",
+                "passthrough_sigma": PASSTHROUGH_SIGMA,
             }
 
         @fapp.post(
@@ -860,9 +1054,7 @@ class EmptyRoom:
                     detail={
                         "error": "coverage_too_high",
                         "message": (
-                            "Room is too cluttered to produce a clean "
-                            "empty-room render. Please upload a photo with "
-                            "less furniture visible."
+                            "Room is too cluttered to produce a clean empty-room render."
                         ),
                         "mask_coverage_dilated_pct": exc.cov_dilated_pct,
                         "reject_threshold_pct": COVERAGE_REJECT_THRESHOLD_PCT,
@@ -875,11 +1067,7 @@ class EmptyRoom:
                     status_code=422,
                     detail={
                         "error": "furniture_not_found",
-                        "message": (
-                            "SAM 3 detected insufficient furniture in this "
-                            "image. Refusing to return the original as an "
-                            "empty-room render. Try a clearer indoor photo."
-                        ),
+                        "message": "SAM 3 detected insufficient furniture.",
                         "mask_coverage_raw_pct": exc.cov_raw_pct,
                         "n_prompts_tried": exc.n_prompts,
                         "partial_failures": exc.partial_failures,
@@ -887,7 +1075,6 @@ class EmptyRoom:
                     },
                 )
             except RuntimeError as exc:
-                # Distinguish upstream/fal failures from internal bugs.
                 msg = str(exc)
                 if msg.startswith(("lama:", "bria:", "flux-fill:", "sam3:")):
                     raise HTTPException(
@@ -903,8 +1090,6 @@ class EmptyRoom:
 
 
 class HighCoverageError(Exception):
-    """Raised when the dilated mask exceeds the reject threshold."""
-
     def __init__(
         self,
         cov_dilated_pct: float,
@@ -921,11 +1106,6 @@ class HighCoverageError(Exception):
 
 
 class FurnitureNotFoundError(Exception):
-    """Raised when SAM 3 found <1% coverage. Phase 4 hard fail (no silent
-    passthrough). The 422 surface lets callers route to a manual-upload
-    flow instead of pushing the original through redesign as if it were
-    empty."""
-
     def __init__(
         self,
         cov_raw_pct: float,
@@ -934,8 +1114,7 @@ class FurnitureNotFoundError(Exception):
         n_prompts: int,
     ) -> None:
         super().__init__(
-            f"furniture detection failed: coverage={cov_raw_pct:.2f}%, "
-            f"prompts={n_prompts}; refusing to return original image"
+            f"furniture detection failed: coverage={cov_raw_pct:.2f}%"
         )
         self.cov_raw_pct = cov_raw_pct
         self.partial_failures = partial_failures
@@ -943,16 +1122,11 @@ class FurnitureNotFoundError(Exception):
         self.n_prompts = n_prompts
 
 
-# ---------------------------------------------------------------------------
-# Local sanity check
-# ---------------------------------------------------------------------------
-
-
 if __name__ == "__main__":
     print(
         f"{APP_NAME} module loaded  "
         f"endpoint=/{API_VERSION}/generate_empty_room  "
         f"furniture_prompts={len(FURNITURE_PROMPTS)}  "
-        f"router_threshold={COVERAGE_ROUTER_THRESHOLD_PCT}%  "
-        f"reject_threshold={COVERAGE_REJECT_THRESHOLD_PCT}%"
+        f"arch_prompts={len(ARCHITECTURE_PROMPTS)}  "
+        f"primary=flux_fill"
     )

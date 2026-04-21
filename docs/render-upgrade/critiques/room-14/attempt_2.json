@@ -1,0 +1,46 @@
+{
+  "architectural_fidelity": {
+    "score": "PASS",
+    "reason": "Same room architecture preserved: matching dark gray side walls, white ceiling with crown molding, window position on right, same ceiling height and viewing angle, recognizable stone feature wall replaced with Art Deco wallpaper treatment"
+  },
+  "furniture_removal": {
+    "score": "PASS",
+    "reason": "All original furniture completely removed with clean floor base, no ghost outlines or remnants visible, only two accent chairs added as new staging"
+  },
+  "style_commitment": {
+    "score": "PASS",
+    "reason": "Unmistakable Art Deco commitment: dramatic celestial/geometric gold-on-charcoal wallpaper with sunburst motifs, jewel-tone teal velvet chairs with Art Deco silhouettes, period-appropriate glamour and opulence clearly executed"
+  },
+  "editorial_density": {
+    "score": "FAIL",
+    "reason": "Severely understaged: only two chairs present, no coffee table, no layered textiles, no plants, no art, no surface styling, no rugs, no additional light sources beyond recessed\u2014vastly below Architectural Digest editorial density standard shown in Collov examples"
+  },
+  "photorealism": {
+    "score": "PASS",
+    "reason": "Coherent natural lighting from window, realistic wood flooring texture, proper chair material rendering, accurate shadow casting, wallpaper pattern has appropriate depth and metallic sheen without CGI feel"
+  },
+  "designer_preference": "COLLOV_WINS",
+  "designer_preference_reason": "While Cova demonstrates superior style conviction with authentic Art Deco drama, the room is woefully incomplete and unstylable for client presentation compared to Collov's fully-realized, market-ready staging.",
+  "overall_pass": false,
+  "what_cova_does_better": [
+    "Dramatically superior style commitment with authentic Art Deco wallpaper and bold design choices",
+    "More distinctive and memorable aesthetic that showcases true period design vocabulary",
+    "Better preservation of original architectural character while transforming the space"
+  ],
+  "what_collov_does_better": [
+    "Complete room staging with full furniture layout, area rugs, and functional space planning",
+    "Editorial-level accessorizing with multiple textiles, art, plants, and styled surfaces",
+    "Market-ready presentation with appropriate density of decor elements",
+    "Multiple coordinated light sources and complete lighting scheme"
+  ],
+  "specific_fixes_if_failing": [
+    "Add substantial furniture: sofa or sectional, coffee table, side tables to create functional layout",
+    "Layer minimum 3-4 textiles: area rug, throw pillows, window treatments, decorative throws",
+    "Add wall art appropriate to Art Deco style: geometric mirrors, framed prints, or sculptural elements",
+    "Include plants/greenery and styled surface vignettes on tables",
+    "Add floor lamp, table lamps, or Art Deco chandelier to supplement recessed lighting",
+    "Style with Art Deco accessories: metallic objects, geometric sculptures, vintage barware"
+  ],
+  "iteration": 2,
+  "cova_render_url": "https://v3b.fal.media/files/b/0a9721ab/bWNdljWhXz4WYKbPV0LO6.jpg"
+}

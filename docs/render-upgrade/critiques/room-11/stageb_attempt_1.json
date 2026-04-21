@@ -1,0 +1,42 @@
+{
+  "architectural_fidelity": {
+    "score": "PASS",
+    "reason": "Same room recognized: white walls maintained, sliding door position and size preserved, camera angle consistent, ceiling height intact, no phantom walls added"
+  },
+  "furniture_removal": {
+    "score": "FAIL",
+    "reason": "Original green sofa completely replaced but floor appears to have changed from wood to white tile/concrete - significant architectural alteration beyond furniture removal"
+  },
+  "style_commitment": {
+    "score": "PASS",
+    "reason": "Unmistakable Scandinavian execution: neutral linen palette, warm wood credenza, botanical line art gallery wall, organic branches, sheepskin throws, japandi chairs - not generic neutrals"
+  },
+  "editorial_density": {
+    "score": "PASS",
+    "reason": "Architectural Digest level staging: curated gallery wall (7+ frames), multiple textiles (sheepskin throws, linen slipcovers, pillows), 3+ plants, branch sculpture, side table vignette with ceramics, floor lamp, layered lighting"
+  },
+  "photorealism": {
+    "score": "WARN",
+    "reason": "Generally photorealistic lighting and shadows, but floor texture transition and some furniture edges show slight AI artifacts; materials mostly convincing though sheepskin has minor CGI quality"
+  },
+  "designer_preference": "COLLOV_WINS",
+  "designer_preference_reason": "Cova changed the flooring material from hardwood to white tile/concrete which violates architectural preservation standards critical for client trust in virtual staging.",
+  "overall_pass": false,
+  "what_cova_does_better": [
+    "Superior style commitment to authentic Scandinavian aesthetic vs Collov's generic bedroom staging",
+    "Editorial-level accessory curation with gallery wall and organic styling elements",
+    "Maintained original room type (living room) rather than converting to bedroom"
+  ],
+  "what_collov_does_better": [
+    "Perfect architectural preservation - no alterations to structural elements or finishes",
+    "Cleaner furniture removal with no material substitutions",
+    "More consistent photorealism across all surfaces without artifacts"
+  ],
+  "specific_fixes_if_failing": [
+    "Preserve original hardwood flooring - do not replace with tile/concrete finish",
+    "Ensure furniture removal does not trigger base layer material changes",
+    "Maintain floor-to-wall transitions exactly as they appear in original"
+  ],
+  "iteration": 1,
+  "cova_render_url": "https://v3b.fal.media/files/b/0a97226e/xBga-d1AFLCZoZq5eYGdg_5b20040d0caf443e8d7d531efcf6cb78.jpg"
+}

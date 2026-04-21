@@ -1,0 +1,43 @@
+{
+  "architectural_fidelity": {
+    "score": "PASS",
+    "reason": "Room architecture is faithfully preserved: identical knotty pine paneling on walls, same ceiling height and white ceiling, matching French door position and window placements (center and right), same camera angle and viewpoint, hardwood flooring retained."
+  },
+  "furniture_removal": {
+    "score": "FAIL",
+    "reason": "Critical failure: the original metal bed frames are completely gone, but a massive LOW PLATFORM BED has been placed exactly where the trundle bed was, with the duvet appearing to rest directly on the floor or an invisible base\u2014this is incomplete furniture removal leaving phantom geometry."
+  },
+  "style_commitment": {
+    "score": "PASS",
+    "reason": "Strong farmhouse commitment: preserved original knotty pine walls (authentic material choice), rustic wood dresser, vintage-style wall sconces, farmhouse ladder leaning against wall, distressed white door treatment, woven rug, ceramic crocks\u2014clear cohesive style, not generic."
+  },
+  "editorial_density": {
+    "score": "WARN",
+    "reason": "Moderate density: dresser styled with pottery/books, wall-mounted hooks with items, leaning ladder, small rug, wall sconces (2 light sources visible), but lacks layered textiles on bed (single duvet only), missing throw blankets, minimal pillows, no substantial wall art\u2014falls short of AD editorial richness."
+  },
+  "photorealism": {
+    "score": "FAIL",
+    "reason": "Multiple photorealism failures: bed appears to float or sink with no visible frame/legs, duvet has unnatural puffy texture like oversized cushions rather than realistic bedding, lighting lacks coherent shadows, overall soft-focus quality reduces material definition."
+  },
+  "designer_preference": "COLLOV_WINS",
+  "designer_preference_reason": "Despite Cova's authentic farmhouse styling, the bed geometry failure and lack of photorealism make it unpresentable to clients compared to Collov's clean, believable execution.",
+  "overall_pass": false,
+  "what_cova_does_better": [
+    "Preserves and celebrates original architectural character (knotty pine walls) rather than painting over",
+    "Delivers authentic farmhouse style with conviction versus generic contemporary staging",
+    "Incorporates room-specific rustic details (ladder, vintage sconces, natural materials)"
+  ],
+  "what_collov_does_better": [
+    "Complete furniture removal with clean base geometry",
+    "Photorealistic bed construction with visible frame, proper mattress proportions, and realistic textile draping",
+    "Coherent lighting with proper shadows and material reflections",
+    "Editorial-level styling density with multiple textile layers, substantial wall art, complete vignettes"
+  ],
+  "specific_fixes_if_failing": [
+    "Fix bed geometry: render complete visible bed frame with legs, proper mattress height, and realistic duvet that drapes naturally rather than appears inflated",
+    "Improve photorealism: add proper shadows under furniture, refine material textures (wood grain, fabric weave), increase overall sharpness and definition",
+    "Increase editorial density: add 2-3 decorative pillows, layered throw blanket at foot of bed, substantial framed artwork above dresser, bedside table with lamp and styling"
+  ],
+  "iteration": 2,
+  "cova_render_url": "https://v3b.fal.media/files/b/0a9721cc/1EALtwZ0bRwugUstllhjN.jpg"
+}

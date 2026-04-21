@@ -1,0 +1,37 @@
+{
+  "architectural_fidelity": {
+    "score": "PASS",
+    "reason": "Cova preserves the natural wood paneling walls, white ceiling, double French doors on left, two windows with white blinds, and wood flooring. Camera angle and ceiling height are maintained. The room is recognizably the same space."
+  },
+  "furniture_removal": {
+    "score": "PASS",
+    "reason": "All original furniture (both beds, nightstand, decorative items) completely removed with no ghost outlines or remnants visible. Clean base achieved."
+  },
+  "style_commitment": {
+    "score": "PASS",
+    "reason": "Strong farmhouse commitment: preserved natural wood paneling, rustic floating shelf with black frames and plants, Edison bulb pendant light, linen bedding in earthy tones, woven textiles, and organic materials. This is unmistakably farmhouse, not generic staging."
+  },
+  "editorial_density": {
+    "score": "PASS",
+    "reason": "Editorial-level styling: floating shelf with curated vignette (frames, plants), Edison pendant lighting, layered bed textiles (duvet, throw, multiple pillows), floor plant in ceramic pot, area rug, reading chair with throw blanket. Lived-in and magazine-ready."
+  },
+  "photorealism": {
+    "score": "PASS",
+    "reason": "Natural lighting through windows is coherent, wood textures are realistic with visible grain and knots, Edison bulb has proper glow, shadows are appropriate, materials (linen, wood, ceramic) have authentic texture without CGI appearance."
+  },
+  "designer_preference": "COVA_WINS",
+  "designer_preference_reason": "Cova delivers authentic farmhouse style that respects the existing architecture while Collov's modern blue walls would require expensive wall removal/repainting, making Cova more practical and stylistically committed.",
+  "overall_pass": true,
+  "what_cova_does_better": [
+    "Preserves existing wood paneling architecture which honors the space and reduces renovation costs",
+    "Delivers authentic farmhouse style with rustic materials and warm palette as requested",
+    "Creates cohesive design that works with rather than against the original room character"
+  ],
+  "what_collov_does_better": [
+    "Slightly more polished photorealistic rendering quality in material finishes",
+    "More extensive layered textile presentation on bed"
+  ],
+  "specific_fixes_if_failing": [],
+  "iteration": 1,
+  "cova_render_url": "https://v3b.fal.media/files/b/0a972313/7Q9UXmBKOLancnpZoPIAE_c058c9f0faae4816aee38fd491ca31ed.jpg"
+}

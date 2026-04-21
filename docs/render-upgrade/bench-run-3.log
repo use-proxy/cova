@@ -1,0 +1,29 @@
+
+=== target  archetype=COVAJAPANDI  room=bedroom ===
+  uploaded input: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/inputs/19ed43b99bd2.jpg
+  empty_room: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/9cd90854f018.jpg  inpainter=lama  cov_raw=14.5%  ssim=1.000  latency_ms=84029
+  [attempt 1] redesign: provider=flux-general stage_b=False inf_time=10.7224148410005s url=https://v3b.fal.media/files/b/0a971fbc/_ImtHKUjF-YnqwrBZB3u6.jpg
+  judge failed: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.2.image.source.base64: image exceeds 5 MB maximum: 6885352 bytes > 5242880 bytes'}, 'request_id': 'req_011CaGeV7rAkTFStrEGGLnEN'}
+  ❌ attempt 1 FAIL  hard_fails=[]  pref=None
+  [attempt 2] redesign: provider=flux-general stage_b=False inf_time=10.928804987997864s url=https://v3b.fal.media/files/b/0a971fc5/H6L4LPnxJlDDqxdDWu08j.jpg
+  judge failed: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.2.image.source.base64: image exceeds 5 MB maximum: 6885352 bytes > 5242880 bytes'}, 'request_id': 'req_011CaGec5gtiJnG8WyKy9rtd'}
+  ❌ attempt 2 FAIL  hard_fails=[]  pref=None
+
+=== room-01  archetype=COVAJAPANDI  room=bedroom ===
+  uploaded input: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/inputs/adc41c851029.webp
+  empty_room: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/4fd54a51baf9.jpg  inpainter=lama  cov_raw=21.7%  ssim=1.000  latency_ms=63791
+  [attempt 1] redesign: provider=flux-general stage_b=False inf_time=10.420147287999498s url=https://v3b.fal.media/files/b/0a971fd8/86PVFL3xbYxLFG595YNOu.jpg
+  ❌ attempt 1 FAIL  hard_fails=['architectural_fidelity', 'editorial_density']  pref=COLLOV_WINS
+  [attempt 2] redesign: provider=flux-general stage_b=False inf_time=10.415132508998795s url=https://v3b.fal.media/files/b/0a971fe3/HMKI4ElWcSJtO91hPkHK4.jpg
+  ✅ PASSED on attempt 2
+
+=== room-02  archetype=COVAMIDCENTURY  room=living room ===
+  uploaded input: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/inputs/e9b3bb909be1.webp
+  empty_room: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/4d7ec326679d.jpg  inpainter=lama  cov_raw=22.4%  ssim=0.995  latency_ms=63965
+  [attempt 1] redesign: provider=flux-general stage_b=False inf_time=10.229402654993464s url=https://v3b.fal.media/files/b/0a972014/IpCE9kzLKf_uZ6wizytj7.jpg
+  ✅ PASSED on attempt 1
+
+=== room-03  archetype=COVACOASTAL  room=living room ===
+  uploaded input: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/inputs/035ea75b9b9c.webp
+  empty_room: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/3bd148cf66c0.jpg  inpainter=lama  cov_raw=33.4%  ssim=1.000  latency_ms=61969
+  [attempt 1] redesign: provider=flux-general stage_b=False inf_time=10.248449887999413s url=https://v3b.fal.media/files/b/0a972027/ljd-1a6z96zob5aXxWJoP.jpg

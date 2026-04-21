@@ -1,0 +1,39 @@
+{
+  "architectural_fidelity": {
+    "score": "PASS",
+    "reason": "Same room geometry preserved: identical window position and shutters, matching ceiling height, same camera angle and viewpoint, white walls maintained, wood flooring consistent with original."
+  },
+  "furniture_removal": {
+    "score": "PASS",
+    "reason": "All original furniture completely removed: gaming chair, bed, keyboard, and desk are gone with no ghosting, remnants, or phantom shadows visible in the render."
+  },
+  "style_commitment": {
+    "score": "PASS",
+    "reason": "Strong mid-century modern execution: iconic MCM daybed/sofa with tapered legs, period-appropriate lounge chair, geometric patterns, walnut tones, and clean-lined furniture clearly establish the aesthetic beyond generic staging."
+  },
+  "editorial_density": {
+    "score": "PASS",
+    "reason": "Architectural Digest-level styling with multiple layered textiles (throw pillows including mustard accent, patterned cushions), wall art gallery (3 framed prints above window plus side wall art), plants, task lighting, side table vignette, and retained original tapestry as statement piece."
+  },
+  "photorealism": {
+    "score": "WARN",
+    "reason": "Blue LED lighting creates unusual color cast that affects realism; while materials and shadows are coherent, the theatrical lighting diminishes natural photorealism compared to Collov's daylight rendering standard."
+  },
+  "designer_preference": "COVA_WINS",
+  "designer_preference_reason": "Cova delivers authentic mid-century modern style with personality and editorial polish, whereas Collov shows generic contemporary staging without distinct design vision.",
+  "overall_pass": true,
+  "what_cova_does_better": [
+    "Authentic style commitment to mid-century modern with period-correct furniture pieces",
+    "Editorial layering and accessorizing that creates livable, magazine-worthy space",
+    "Retained and incorporated existing statement tapestry as design feature",
+    "Multiple textural elements and thoughtful color palette including signature mustard accent"
+  ],
+  "what_collov_does_better": [
+    "Natural daylight rendering creates more photorealistic and marketable presentation",
+    "Cleaner, neutral aesthetic appeals to broader buyer demographic",
+    "More conventional staging approach for listing photography"
+  ],
+  "specific_fixes_if_failing": [],
+  "iteration": 2,
+  "cova_render_url": "https://v3b.fal.media/files/b/0a9722b3/s7O1BoAKppY-aiFML5pSo_adc3e8c28e95422089e371f67629d581.jpg"
+}

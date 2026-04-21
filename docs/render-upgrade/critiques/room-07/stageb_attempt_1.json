@@ -1,0 +1,39 @@
+{
+  "architectural_fidelity": {
+    "score": "PASS",
+    "reason": "Same room recognizable: white/off-white walls preserved, ceiling height and feel maintained, window position and size accurate, camera viewpoint and wide-angle perspective match original, no phantom walls added."
+  },
+  "furniture_removal": {
+    "score": "PASS",
+    "reason": "All original furniture completely removed with no ghost outlines, bedding remnants, or desk/computer equipment traces; clean base achieved throughout."
+  },
+  "style_commitment": {
+    "score": "PASS",
+    "reason": "Unmistakable Japandi execution: low platform bed with natural wood, minimal clean lines, neutral earth tones, deliberate negative space, woven circular rug, sculptural black accent chair, gallery wall with organic frames\u2014this is not generic staging."
+  },
+  "editorial_density": {
+    "score": "PASS",
+    "reason": "Architectural Digest level achieved: curated gallery wall (9+ frames), layered textiles (throw blanket, pillows, woven rug), three plant specimens in varied vessels, recessed alcove styling, multiple light sources (ceiling, recessed spots), lived-in editorial vignettes throughout."
+  },
+  "photorealism": {
+    "score": "PASS",
+    "reason": "Convincing natural lighting with accurate window shadow casting, realistic material rendering (carpet texture, wood grain, woven fibers), proper depth and spatial coherence, no plastic/CGI artifacts\u2014presentation-ready quality."
+  },
+  "designer_preference": "COVA_WINS",
+  "designer_preference_reason": "Cova delivers distinctive Japandi style with editorial sophistication that tells a design story, versus Collov's competent but generic modern staging.",
+  "overall_pass": true,
+  "what_cova_does_better": [
+    "Authentic style commitment to Japandi aesthetic with low platform bed and natural materials",
+    "More sophisticated editorial styling with curated gallery wall and sculptural accent pieces",
+    "Better spatial storytelling through intentional negative space and asymmetrical balance",
+    "Stronger design point-of-view that would differentiate a listing"
+  ],
+  "what_collov_does_better": [
+    "More conventional market appeal with centered symmetrical layouts",
+    "Slightly crisper edge definition on some furniture pieces",
+    "More traditional staging approach that some conservative clients might prefer"
+  ],
+  "specific_fixes_if_failing": [],
+  "iteration": 1,
+  "cova_render_url": "https://v3b.fal.media/files/b/0a972242/FIZV_kKG22KMSfiHeEmpp_3cfea6c6817643f5848eceebfee2d112.jpg"
+}

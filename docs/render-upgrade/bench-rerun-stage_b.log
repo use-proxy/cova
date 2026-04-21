@@ -1,0 +1,66 @@
+
+=== room-04 [rerun+stage_b]  COVABOHEMIAN / loft bedroom ===
+  uploaded: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/inputs/aea85c6bbba5.webp
+  empty: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/356ad43730f0.jpg  inpainter=lama  cov=15.5%
+  [attempt 1] redesign: provider=flux-general stage_b=True inf_time=10.185040020998713s url=https://v3b.fal.media/files/b/0a9721ff/A4Kj2_qIuJx6CUK6fMIE4_47115b39466849bc8e4a1c2fdcdd2f1a.jpg
+  ❌ attempt 1 FAIL  hard_fails=['furniture_removal']  pref=COLLOV_WINS
+  [attempt 2] redesign: provider=flux-general stage_b=True inf_time=10.935204202000023s url=https://v3b.fal.media/files/b/0a97220b/zKZ_ZYnyuB7GtxSieHVoW_1a96cbe9bc994bcaa5c67334a90c7923.jpg
+  ✅ room-04 PASSED attempt 2
+
+=== room-06 [rerun+stage_b]  COVAMINIMAL / living room ===
+  uploaded: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/inputs/e2f8aaa01b0d.webp
+  empty: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/51517e6b22bf.jpg  inpainter=lama  cov=13.5%
+  [attempt 1] redesign: provider=flux-general stage_b=True inf_time=10.069676540999353s url=https://v3b.fal.media/files/b/0a972220/VCLdkw0PUUuiq6-DGLowl_107cb9a2aa304e4fa037ccc273a2be6f.jpg
+  ❌ attempt 1 FAIL  hard_fails=['style_commitment', 'editorial_density']  pref=COLLOV_WINS
+  [attempt 2] redesign: provider=flux-general stage_b=True inf_time=10.267921408001712s url=https://v3b.fal.media/files/b/0a972231/dP07M33BpI5yqN58csSSb_b25fba25e4a44f138fd5d7f2d19d1d8c.jpg
+  ❌ attempt 2 FAIL  hard_fails=['style_commitment', 'editorial_density']  pref=COLLOV_WINS
+
+=== room-07 [rerun+stage_b]  COVAJAPANDI / bedroom ===
+  uploaded: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/inputs/7ca211fa6dcd.webp
+  empty: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/d930a55a307f.jpg  inpainter=lama  cov=12.2%
+  [attempt 1] redesign: provider=flux-general stage_b=True inf_time=10.301067980999505s url=https://v3b.fal.media/files/b/0a972242/FIZV_kKG22KMSfiHeEmpp_3cfea6c6817643f5848eceebfee2d112.jpg
+  ✅ room-07 PASSED attempt 1
+
+=== room-08 [rerun+stage_b]  COVABOHEMIAN / living room ===
+  uploaded: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/inputs/aba9b0991d74.webp
+  empty: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/db83177483a5.jpg  inpainter=lama  cov=50.4%
+  [attempt 1] redesign: provider=flux-general stage_b=True inf_time=10.31061299599969s url=https://v3b.fal.media/files/b/0a972252/_AmZQqgxg6XWdxAE7BeJV_79a1af5666ce460387b557f90b392a21.jpg
+  ✅ room-08 PASSED attempt 1
+
+=== room-11 [rerun+stage_b]  COVASCANDINAV / living room ===
+  uploaded: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/inputs/ed98e95eb563.webp
+  empty: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/649343670827.jpg  inpainter=lama  cov=50.3%
+  [attempt 1] redesign: provider=flux-general stage_b=True inf_time=10.269969782999397s url=https://v3b.fal.media/files/b/0a97226e/xBga-d1AFLCZoZq5eYGdg_5b20040d0caf443e8d7d531efcf6cb78.jpg
+  ❌ attempt 1 FAIL  hard_fails=['furniture_removal']  pref=COLLOV_WINS
+  [attempt 2] redesign: provider=flux-general stage_b=True inf_time=10.496965835000083s url=https://v3b.fal.media/files/b/0a972279/8TKX2yD1YILUxO_eChwQq_7997da0d5ad045998b398b5bca4aa0b9.jpg
+  ❌ attempt 2 FAIL  hard_fails=['architectural_fidelity']  pref=COLLOV_WINS
+
+=== room-12 [rerun+stage_b]  COVAMIDCENTURY / bedroom ===
+  uploaded: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/inputs/58d851ce7893.webp
+  empty: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/e1cd12209b8f.jpg  inpainter=lama  cov=16.8%
+  [attempt 1] redesign: provider=flux-general stage_b=True inf_time=10.320160044997465s url=https://v3b.fal.media/files/b/0a972294/GeelfNMUTMpIJz4o6iUZx_4c40c5b74a80475db443b0fc0f083b09.jpg
+  ❌ attempt 1 FAIL  hard_fails=['furniture_removal']  pref=COLLOV_WINS
+  [attempt 2] redesign: provider=flux-general stage_b=True inf_time=11.812564404001023s url=https://v3b.fal.media/files/b/0a9722b3/s7O1BoAKppY-aiFML5pSo_adc3e8c28e95422089e371f67629d581.jpg
+  ✅ room-12 PASSED attempt 2
+
+=== room-13 [rerun+stage_b]  COVAINDUSTRIAL / living room ===
+  uploaded: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/inputs/21a94fd64e51.webp
+  empty: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/38d45efa1643.jpg  inpainter=lama  cov=6.3%
+  [attempt 1] redesign: provider=flux-general stage_b=True inf_time=11.051671540000825s url=https://v3b.fal.media/files/b/0a9722d9/r518zDmtHdemsfx5B25pl_71d2b72377374d73b4b0e4e20721fcc7.jpg
+  ✅ room-13 PASSED attempt 1
+
+=== room-14 [rerun+stage_b]  COVAARTDECO / living room ===
+  uploaded: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/inputs/0836676dffd5.webp
+  empty: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/4300f1284df4.jpg  inpainter=lama  cov=3.6%
+  [attempt 1] redesign: provider=flux-general stage_b=True inf_time=12.089936454999588s url=https://v3b.fal.media/files/b/0a9722f1/zOfOAzi-2pUP0geEab_uk_2eb141d91b98444cbd8bb25fe85bed23.jpg
+  ❌ attempt 1 FAIL  hard_fails=['editorial_density']  pref=COLLOV_WINS
+  [attempt 2] redesign: provider=flux-general stage_b=True inf_time=10.423668638999516s url=https://v3b.fal.media/files/b/0a9722ff/n_2QxmiZ7nk3pekqRRM1l_e605dd13e18344ecb84610e9b5d3c9d4.jpg
+  ❌ attempt 2 FAIL  hard_fails=['furniture_removal', 'editorial_density']  pref=COLLOV_WINS
+
+=== room-15 [rerun+stage_b]  COVAFARMHOUSE / bedroom ===
+  uploaded: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/inputs/a2a4c924fa9e.webp
+  empty: https://xdeacbmkdwqrwxonqaqh.supabase.co/storage/v1/object/public/room-photos/render-upgrade/empty/d34c3924cf52.jpg  inpainter=lama  cov=36.3%
+  [attempt 1] redesign: provider=flux-general stage_b=True inf_time=10.736292049999975s url=https://v3b.fal.media/files/b/0a972313/7Q9UXmBKOLancnpZoPIAE_c058c9f0faae4816aee38fd491ca31ed.jpg
+  ✅ room-15 PASSED attempt 1
+
+=== FINAL after stage_b rerun: pass=13  fail=3 ===

@@ -1,0 +1,39 @@
+{
+  "architectural_fidelity": {
+    "score": "PASS",
+    "reason": "Room is clearly recognizable: exposed brick wall maintained, white walls preserved, two windows in correct positions with white trim, dark wood flooring intact, ceiling height consistent, same camera angle and viewpoint."
+  },
+  "furniture_removal": {
+    "score": "PASS",
+    "reason": "All original furniture completely removed\u2014no bicycle, desk, boxes, chairs, or AC unit visible; floor is clean with no ghost outlines or remnants."
+  },
+  "style_commitment": {
+    "score": "PASS",
+    "reason": "Strong industrial conviction: exposed brick retained as focal feature, metal ductwork added along ceiling perimeter, leather furniture with industrial lines, metal-framed coffee table, gallery wall with black frames\u2014unmistakably industrial, not generic neutral."
+  },
+  "editorial_density": {
+    "score": "PASS",
+    "reason": "Editorial-level staging achieved: gallery wall with 5+ framed prints, exposed industrial ductwork, layered textiles (throw on sofa, area rug visible), multiple furniture pieces (leather chair, sofa, coffee table, console), plant in corner, window vignette with decor\u2014meets Architectural Digest density standard."
+  },
+  "photorealism": {
+    "score": "PASS",
+    "reason": "Realistic lighting with natural window light casting appropriate shadows, brick texture authentic, wood floor grain and reflections accurate, furniture materials (leather, metal, wicker) rendered convincingly with proper weight and scale\u2014no CGI plasticity."
+  },
+  "designer_preference": "COVA_WINS",
+  "designer_preference_reason": "Cova delivers a cohesive industrial living room that honors the original architecture while Collov's bedroom conversions ignore the brief entirely.",
+  "overall_pass": true,
+  "what_cova_does_better": [
+    "Preserves and celebrates the existing exposed brick as an industrial asset rather than painting over architectural character",
+    "Adds contextually appropriate industrial elements (exposed ductwork) that enhance authenticity",
+    "Delivers the actual requested room type (living room) with appropriate furniture layout",
+    "Maintains the raw, authentic character of the space while making it market-ready"
+  ],
+  "what_collov_does_better": [
+    "Slightly higher resolution and sharpness in rendering quality",
+    "More sophisticated layering of textiles and bedding details",
+    "Cleaner, more polished commercial photography aesthetic"
+  ],
+  "specific_fixes_if_failing": [],
+  "iteration": 1,
+  "cova_render_url": "https://v3b.fal.media/files/b/0a9722d9/r518zDmtHdemsfx5B25pl_71d2b72377374d73b4b0e4e20721fcc7.jpg"
+}

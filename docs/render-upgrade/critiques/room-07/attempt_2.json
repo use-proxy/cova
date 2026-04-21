@@ -1,0 +1,50 @@
+{
+  "architectural_fidelity": {
+    "score": "PASS",
+    "reason": "Room is clearly recognizable: same beige/neutral walls, same ceiling height, same window position and size with blinds, same camera angle and viewpoint, same beige carpet, no invented walls."
+  },
+  "furniture_removal": {
+    "score": "PASS",
+    "reason": "All original furniture completely removed\u2014bed, desk setup, nightstands, office chair, speakers, and all accessories are gone with no ghost outlines or remnants visible."
+  },
+  "style_commitment": {
+    "score": "FAIL",
+    "reason": "COVAJAPANDI should be a distinctive coastal-Japandi fusion style; this render shows generic minimalist staging with a basic platform bed, dark credenza, and minimal accessories\u2014lacks the committed aesthetic identity expected from a named style designation."
+  },
+  "editorial_density": {
+    "score": "FAIL",
+    "reason": "Severely under-styled: only 5 items total (bed, credenza, small plant, wicker pouf, one pillow)\u2014no wall art, no layered textiles beyond one throw, single light source, no surface vignettes, no lived-in editorial details that Collov demonstrates."
+  },
+  "photorealism": {
+    "score": "WARN",
+    "reason": "Lighting is soft and somewhat flat with reduced shadow definition; credenza appears slightly CGI-rendered with simplified textures; overall acceptable but noticeably less photographic than Collov's crisp material definition and dynamic lighting."
+  },
+  "designer_preference": "COLLOV_WINS",
+  "designer_preference_reason": "Collov delivers publication-ready editorial staging with complete style commitment and layered details, while Cova presents an under-furnished, generic minimalist space that clients would find incomplete.",
+  "overall_pass": false,
+  "what_cova_does_better": [
+    "Perfect furniture removal with no artifacts",
+    "Maintains exact architectural integrity of the original space"
+  ],
+  "what_collov_does_better": [
+    "Editorial-level decor density with multiple textile layers, art, plants, and accessories",
+    "Committed, identifiable style execution with cohesive design language",
+    "Superior photorealism with dynamic lighting and crisp material textures",
+    "Multiple light sources creating dimensional depth",
+    "Styled surface vignettes and lived-in details"
+  ],
+  "specific_fixes_if_failing": [
+    "Add wall art above bed (minimum 2-piece gallery or statement piece)",
+    "Layer textiles: add decorative pillows (4-5), throw blanket, textured bedding set",
+    "Include nightstands with table lamps for layered lighting",
+    "Add area rug to define sleeping zone and add warmth",
+    "Style surfaces with books, decorative objects, and organic elements",
+    "Introduce more plants (2-3 additional) for organic warmth",
+    "Define COVAJAPANDI aesthetic clearly: combine coastal textures (jute, linen, light wood) with Japandi principles (low furniture, natural materials, negative space with intention)",
+    "Add reading chair or floor cushion seating element",
+    "Include window treatments beyond basic blinds",
+    "Improve lighting rendering for more dimensional shadows and material depth"
+  ],
+  "iteration": 2,
+  "cova_render_url": "https://v3b.fal.media/files/b/0a9720c9/EQs4FgmJVjPfnZZvkownp.jpg"
+}

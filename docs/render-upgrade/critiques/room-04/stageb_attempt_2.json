@@ -1,0 +1,40 @@
+{
+  "architectural_fidelity": {
+    "score": "PASS",
+    "reason": "Cova preserves the distinctive loft architecture: same sloped ceiling geometry, same dormer window position and size, same white door on right wall, same stair railing visible in foreground, same camera angle and viewpoint. Wall color remains light/neutral and recognizable."
+  },
+  "furniture_removal": {
+    "score": "PASS",
+    "reason": "All original furniture (sofa, tables, TV stand, music stand, clutter) completely removed with no ghost outlines or remnants visible. Clean slate achieved."
+  },
+  "style_commitment": {
+    "score": "PASS",
+    "reason": "Unmistakably bohemian: rattan/wicker chairs, macram\u00e9 wall hanging above window, layered textiles including patterned runner and throw pillows, multiple plants (snake plant, potted greenery), eclectic art grouping by door, warm natural materials. This is not generic staging\u2014it's committed boho."
+  },
+  "editorial_density": {
+    "score": "PASS",
+    "reason": "Achieves Architectural Digest density: layered bedding (duvet, throws, multiple pillows), window seat vignette with plants and cushions, wall art grouping (minimum 3 pieces near door), rattan chairs, floor plants, task lamp, macram\u00e9 piece, patterned rug, bedside styling. Lived-in and curated."
+  },
+  "photorealism": {
+    "score": "PASS",
+    "reason": "Natural lighting coherent with window source, realistic textile draping and wrinkles, proper material textures on rattan/wood/fabric, believable shadows, no plastic CGI feel. Photographic quality maintained."
+  },
+  "designer_preference": "COVA_WINS",
+  "designer_preference_reason": "Cova delivers the requested bohemian style with personality and warmth while Collov's generic contemporary staging lacks any stylistic commitment or character.",
+  "overall_pass": true,
+  "what_cova_does_better": [
+    "Delivers actual requested style (bohemian) versus generic contemporary",
+    "Preserves challenging loft architecture perfectly including sloped ceilings",
+    "Creates warm, lived-in atmosphere with personality",
+    "Layered styling with natural materials and eclectic elements",
+    "Maintains photorealism while adding creative bohemian details"
+  ],
+  "what_collov_does_better": [
+    "Slightly crisper render quality in terms of sharpness",
+    "More uniform lighting (though less atmospheric)",
+    "Cleaner minimalist aesthetic for clients wanting safe staging"
+  ],
+  "specific_fixes_if_failing": [],
+  "iteration": 2,
+  "cova_render_url": "https://v3b.fal.media/files/b/0a97220b/zKZ_ZYnyuB7GtxSieHVoW_1a96cbe9bc994bcaa5c67334a90c7923.jpg"
+}

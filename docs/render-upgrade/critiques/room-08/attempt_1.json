@@ -1,0 +1,44 @@
+{
+  "architectural_fidelity": {
+    "score": "PASS",
+    "reason": "Same room recognizable: matching wall color/finish, ceiling height with crown molding, window position and size on left wall, same camera viewpoint and angle, floor transitions preserved."
+  },
+  "furniture_removal": {
+    "score": "FAIL",
+    "reason": "Critical failure: the original sofa, papasan chair, and coffee table are clearly visible underneath translucent fabric/netting draped over them rather than being removed\u2014this is furniture covering, not furniture removal."
+  },
+  "style_commitment": {
+    "score": "WARN",
+    "reason": "Bohemian elements present (woven pendant, macrame wall hanging, natural textures, layered textiles) but execution undermined by the draped-furniture aesthetic which reads as unfinished/in-storage rather than curated boho design."
+  },
+  "editorial_density": {
+    "score": "WARN",
+    "reason": "Has bohemian markers (pendant light, macrame textile art, woven basket planter, natural materials) and multiple layers, but the draped-furniture centerpiece dominates and prevents the room from reading as properly staged\u2014more art installation than livable space."
+  },
+  "photorealism": {
+    "score": "PASS",
+    "reason": "Lighting is natural and coherent, materials (wood, fabric, plants) have realistic textures, shadows are appropriate, no CGI/plastic appearance\u2014the issue is concept execution, not rendering quality."
+  },
+  "designer_preference": "COLLOV_WINS",
+  "designer_preference_reason": "Collov delivers fully furnished, client-ready rooms while Cova's render shows furniture draped in fabric rather than removed and replaced, making it unpresentable to clients despite decent bohemian styling attempts.",
+  "overall_pass": false,
+  "what_cova_does_better": [
+    "Preserves original architectural elements with high fidelity",
+    "Commits to bohemian aesthetic with authentic natural materials and textures",
+    "Achieves photorealistic rendering quality with proper lighting and material representation"
+  ],
+  "what_collov_does_better": [
+    "Complete furniture removal and replacement with new pieces",
+    "Delivers fully staged, client-presentable rooms",
+    "Clean execution suitable for real estate marketing",
+    "Professional editorial density throughout"
+  ],
+  "specific_fixes_if_failing": [
+    "CRITICAL: Actually remove original furniture completely rather than covering it with translucent fabric",
+    "Replace the draped furniture zone with properly staged bohemian seating (low-profile sofa, floor cushions, or sectional)",
+    "Add a proper coffee table with boho styling (rattan, carved wood, or brass tray table)",
+    "Increase textile layering with visible rugs, not furniture underneath fabric"
+  ],
+  "iteration": 1,
+  "cova_render_url": "https://v3b.fal.media/files/b/0a9720dd/WrVnNeQj0uWmDpG3ojM3l.jpg"
+}

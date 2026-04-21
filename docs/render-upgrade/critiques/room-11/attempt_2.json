@@ -1,0 +1,45 @@
+{
+  "architectural_fidelity": {
+    "score": "FAIL",
+    "reason": "The Cova render has completely changed the room architecture: original has warm beige walls and wood flooring, Cova shows cool-toned concrete/plaster walls and polished concrete floors. The large sliding glass door on the right has been replaced with a massive textured concrete wall feature. Window appears present but viewpoint and room proportions feel altered. This is not recognizably the same room."
+  },
+  "furniture_removal": {
+    "score": "PASS",
+    "reason": "All original furniture (green sofa, wooden coffee table, chairs, cat) has been completely removed with no ghost outlines or remnants visible in the new staging."
+  },
+  "style_commitment": {
+    "score": "PASS",
+    "reason": "Strong Scandinavian commitment evident: natural wood mid-century credenza, curved-arm sofa with wood frame, muted sage and neutral palette, gallery wall with mixed frames, organic basket accessory, and minimalist aesthetic. This is not generic\u2014it's distinctly Scandi."
+  },
+  "editorial_density": {
+    "score": "WARN",
+    "reason": "Present but minimal: gallery wall art (good), credenza styling with vase and branches, two plants, basket, side table. Missing layered textiles (no throw blankets, only one pillow visible), no visible area rug texture detail, single light source (arc lamp). Approaches editorial but lacks the richness of Collov's layered bedding and multiple textile layers."
+  },
+  "photorealism": {
+    "score": "WARN",
+    "reason": "Lighting and shadows are coherent, but the concrete floor has an overly uniform, slightly CGI quality. The massive textured wall on right feels render-like rather than photographed. Materials are acceptable but lack the tactile realism of Collov's fabric textures and natural light integration."
+  },
+  "designer_preference": "COLLOV_WINS",
+  "designer_preference_reason": "Cova fundamentally altered the room's architecture (walls, flooring, structural elements), making it unrecognizable as the client's actual space\u2014an unusable presentation for real estate staging.",
+  "overall_pass": false,
+  "what_cova_does_better": [
+    "Maintained and enhanced the original gallery wall concept with appropriate styling",
+    "Strong stylistic commitment to Scandinavian aesthetic with authentic furniture choices"
+  ],
+  "what_collov_does_better": [
+    "Preserves actual architectural elements (wall color, flooring material, window configuration)",
+    "Higher photorealism in material textures, especially textiles and natural lighting",
+    "Editorial-level decor density with multiple layered textiles and complete styling vignettes",
+    "Maintains structural fidelity while still achieving dramatic transformation"
+  ],
+  "specific_fixes_if_failing": [
+    "CRITICAL: Preserve original wall color and texture\u2014maintain warm beige painted walls, not concrete/plaster",
+    "CRITICAL: Preserve original wood flooring\u2014do not replace with polished concrete",
+    "CRITICAL: Keep the sliding glass door architecture on right wall\u2014do not replace with solid textured wall",
+    "Add layered textiles: throw blankets on sofa, additional pillows, textured area rug with visible detail",
+    "Improve material realism: add natural grain variation to flooring, soften wall textures to feel photographed not rendered",
+    "Add secondary/tertiary light sources: table lamp, floor lamp variety for editorial completeness"
+  ],
+  "iteration": 2,
+  "cova_render_url": "https://v3b.fal.media/files/b/0a972144/CJbIMoLmMvpLlmBSk20ig.jpg"
+}

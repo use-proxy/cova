@@ -1,0 +1,43 @@
+{
+  "architectural_fidelity": {
+    "score": "PASS",
+    "reason": "Same window position and size, same camera angle and viewpoint, same ceiling height, same wall color (light neutral), and same flooring visible on right side"
+  },
+  "furniture_removal": {
+    "score": "PASS",
+    "reason": "All original furniture completely removed\u2014no ghost outlines of the black sofa, papasan chair, glass coffee table, or side table visible"
+  },
+  "style_commitment": {
+    "score": "FAIL",
+    "reason": "This is a generic neutral coastal/minimalist room, not COVABOHEMIAN\u2014lacks bohemian essential markers like rich textiles, eclectic patterns, layered rugs, macrame beyond single wall piece, vibrant colors, global accessories, or maximalist layering"
+  },
+  "editorial_density": {
+    "score": "WARN",
+    "reason": "Has wall art (macrame frame), plants (2 visible), textiles (pillows, throw), wicker poufs, but lacks the layered, curated abundance expected at Architectural Digest level\u2014feels understaged and sparse"
+  },
+  "photorealism": {
+    "score": "WARN",
+    "reason": "Overall lighting is soft and realistic, but furniture has a slightly washed-out, low-contrast appearance that borders on CGI flatness\u2014material textures lack depth compared to Collov's tactile rendering"
+  },
+  "designer_preference": "COLLOV_WINS",
+  "designer_preference_reason": "Cova failed to deliver the requested bohemian style, producing instead a safe neutral room that lacks the personality and conviction a client paying for 'bohemian' would expect.",
+  "overall_pass": false,
+  "what_cova_does_better": [
+    "Maintains exact architectural fidelity to original room",
+    "Clean furniture removal with no artifacts"
+  ],
+  "what_collov_does_better": [
+    "Superior photorealism with tactile material rendering and dimensional depth",
+    "Confident style commitment with clear editorial vision",
+    "Richer layering and editorial density appropriate to luxury staging"
+  ],
+  "specific_fixes_if_failing": [
+    "Add authentic bohemian elements: layered patterned rugs (Persian, Turkish, Moroccan), rich jewel tones (terracotta, mustard, deep teal), textured throws",
+    "Include eclectic mix of global accessories, multiple plants in varied vessels, floor cushions, poufs with pattern",
+    "Layer wall art with macrame, woven baskets, and framed ethnic prints",
+    "Increase contrast and texture definition in rendering\u2014materials should read as fabric, wood, and wicker, not monotone neutrals",
+    "Add visual weight and warmth through layered textiles on furniture (multiple throw pillows with varying patterns, draped blankets)"
+  ],
+  "iteration": 2,
+  "cova_render_url": "https://v3b.fal.media/files/b/0a9720eb/Bu_DDuVOWyAn4_JYQnEID.jpg"
+}

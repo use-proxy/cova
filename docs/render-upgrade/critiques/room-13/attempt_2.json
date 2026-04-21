@@ -1,0 +1,47 @@
+{
+  "architectural_fidelity": {
+    "score": "PASS",
+    "reason": "Same room clearly preserved: exposed brick wall on left, white walls on right, two windows in correct positions, dark hardwood flooring, white ceiling with same texture, ceiling fan location maintained, camera angle and viewpoint identical."
+  },
+  "furniture_removal": {
+    "score": "PASS",
+    "reason": "All original furniture completely removed - bicycle, desk, laptop, boxes, chair, and floor items are gone with no ghost traces or remnants visible."
+  },
+  "style_commitment": {
+    "score": "FAIL",
+    "reason": "This is generic minimalist staging with mid-century modern chairs and light wood accents - not COVAINDUSTRIAL; missing industrial hallmarks like metal fixtures, Edison bulbs, leather, raw materials, distressed finishes, or urban loft character."
+  },
+  "editorial_density": {
+    "score": "FAIL",
+    "reason": "Severely underdressed: only 3 furniture pieces, one small plant, minimal styling; no wall art, no layered textiles, no vignettes, no multiple light sources beyond ceiling fixture, no books/accessories - this is empty staging, not editorial."
+  },
+  "photorealism": {
+    "score": "WARN",
+    "reason": "Mostly realistic but pendant light appears oddly placed/floating without visible cord structure, some shadow inconsistencies on floor, and furniture placement feels slightly disconnected from space despite decent material rendering."
+  },
+  "designer_preference": "COLLOV_WINS",
+  "designer_preference_reason": "Collov delivers complete, magazine-ready rooms with rich layering and clear commitment to style, while Cova's output is bare-bones staging that lacks both editorial polish and the requested industrial aesthetic.",
+  "overall_pass": false,
+  "what_cova_does_better": [
+    "Perfect architectural preservation of the original brick wall character",
+    "Maintains authentic dark hardwood flooring",
+    "Clean furniture removal execution"
+  ],
+  "what_collov_does_better": [
+    "Editorial-level decor density with layered textiles, art, plants, and accessories",
+    "Complete styling with multiple light sources and surface vignettes",
+    "Fully realized design vision that feels move-in ready",
+    "Cohesive material palette and styling commitment"
+  ],
+  "specific_fixes_if_failing": [
+    "Add industrial-specific elements: metal shelving units, exposed pipe fixtures, Edison bulb pendants, distressed leather seating",
+    "Increase decor density to editorial standard: large-scale industrial art on brick wall, area rug, floor lamp, side tables with styled vignettes",
+    "Layer textiles: throw blankets, cushions with raw linen or leather textures",
+    "Add industrial accessories: metal storage pieces, vintage factory cart as coffee table, steel-framed mirrors",
+    "Install proper industrial lighting: track lighting or multiple pendants with visible cords/chains",
+    "Include plants in industrial containers (metal buckets, concrete planters)",
+    "Style surfaces with books, ceramics, and lived-in details"
+  ],
+  "iteration": 2,
+  "cova_render_url": "https://v3b.fal.media/files/b/0a97218e/RXGzCYMPIlY4zDdnQPd14.jpg"
+}

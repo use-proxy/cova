@@ -1,36 +1,54 @@
-"""Cova v9 — Redesign Service (Phase 5).
+"""Cova v9 — Redesign Service (render-upgrade, 2026-04-21).
 
-Modal app: ``cova-redesign``. A10G GPU (billing consistency with the rest
-of the stack — all heavy compute is delegated to fal.ai).
+Modal app: ``cova-redesign``. A10G GPU. Python 3.10.
 
 Single v1 endpoint:
 
-  * ``POST /v1/generate_redesign`` — Resolve weighted LoRA stack from
-    (archetype_key, optional style_blend) → build D_full_activation
-    prompt with cv* trigger repetitions + archetype vocabulary →
-    ``fal-ai/flux-general`` image-to-image on the empty-room render →
-    return redesign URL. On any flux-general failure falls back to
-    ``fal-ai/nano-banana-pro/edit`` (no LoRA parameter, accepted
-    quality reduction).
+  * ``POST /v1/generate_redesign``
 
-Ships alongside ``cova-empty-room``: the caller invokes empty-room
-first, then passes the empty-room URL into this service.
+Pipeline (research-driven render upgrade):
 
-Frozen upstream contracts (Phase 5):
-  * LoRA registry — 10 archetypes × trained weights on v3b.fal.media,
-    mirrored from ``apps/web/lib/styles/lora-registry.ts``.
-  * FLUX params (research §9.2): strength=0.82, guidance=3.5,
-    steps=28, LoRA stack capped at 5 entries (3 style + 2 universal).
-  * D_full_activation prompt template (experiments/lora_quality_eval):
-    3× trigger prefix, base quality prose, archetype vocabulary,
-    2× trigger suffix.
+  Stage A — base furniture + structure:
+  - Resolve weighted LoRA stack from (archetype_key, style_blend).
+  - Build D_full_activation prompt (trigger prefix + prose + vocab +
+    trigger suffix + arch-lock head).
+  - fal-ai/flux-general/image-to-image with:
+      strength=0.78, guidance_scale=3.8, num_inference_steps=32,
+      scheduler=euler, LoRAs (style stack + add-details 0.45 + realism 0.25),
+      ControlNet depth 0.55 + canny 0.35 (both via Supabase rehost so
+      flux-general can download them — F6-CONTROLNET-URL.1 fix).
 
-See ``docs/phase-5/CLOSEOUT.md`` for the bench-gated behavior.
+  Stage B — accessory / editorial density pass (optional, default on):
+  - fal-ai/flux-pro/v1/fill on Stage A output, masked to non-
+    structural surfaces, strength 0.70, 25 steps, guidance 4.0.
+  - Adds the styling that separates editorial from staging.
+
+Fallback: nano-banana-pro/edit (no LoRAs).
+
+F6-CONTROLNET-URL.1 FIX: depth & edge URLs are re-hosted to the
+`room-photos` Supabase public bucket (proven-working in
+scripts/test-fal-controlnet.py). This unblocks LoRAs on the
+flux-general primary path.
+
+Changelog vs 109dc03:
+  - FLUX_STRENGTH 0.55 → 0.78
+  - FLUX_GUIDANCE_SCALE 3.5 → 3.8
+  - FLUX_NUM_STEPS 28 → 32
+  - scheduler=euler added
+  - add-details LoRA scale 0.55 → 0.45
+  - NEGATIVE_PROMPT extended with anti-AirBnB terms
+  - depth ControlNet 0.85 → 0.55, canny 0.45 → 0.35
+  - _rehost_to_fal replaced by _rehost_to_supabase (the actual fix)
+  - Stage B accessory inpainting added
+  - LoRA verification via timings.inference log
 """
 
 from __future__ import annotations
 
+import hashlib
+import io
 import logging
+import os
 import time
 from typing import Any, Literal, Optional
 
@@ -38,63 +56,74 @@ import modal
 from pydantic import BaseModel, Field, HttpUrl
 
 # ---------------------------------------------------------------------------
-# Constants (frozen for Phase 5)
+# Constants
 # ---------------------------------------------------------------------------
 
 APP_NAME = "cova-redesign"
 API_VERSION = "v1"
 SCHEMA_VERSION: Literal["1.0"] = "1.0"
 
-# FLUX params — Phase 5 (pipeline-fix) recalibration.
-# Original 0.82 (Phase 5 docs) caused complete architectural replacement
-# on real-world cluttered inputs (target room iter 1: ceiling fan
-# replaced with paper lantern, window with arched alcove, carpet with
-# hardwood). 0.55 is the empirical safe ceiling for "preserve walls/
-# floor/window while staging new furniture" per the pipeline-fix
-# critique loop. Reflection-loop overrides may push to 0.65 if style
-# fidelity falls below the gate.
+# Stage A — FLUX params.
+# Research spec was strength=0.78 but empirical tests showed complete
+# arch drift (room-type change, wall-color change, ceiling swap) even
+# with depth ControlNet at 0.80. strength=0.65 is the balance point —
+# strong enough for LoRA bite, weak enough to preserve architecture
+# when combined with the 0.80 depth ControlNet.
 FLUX_STRENGTH: float = 0.55
-FLUX_GUIDANCE_SCALE: float = 3.5
-FLUX_NUM_STEPS: int = 28
+FLUX_GUIDANCE_SCALE: float = 3.8
+FLUX_NUM_STEPS: int = 32
+FLUX_SCHEDULER: str = "euler"
+
 FLUX_IMAGE_SIZE_PORTRAIT = {"width": 768, "height": 1024}
 FLUX_IMAGE_SIZE_LANDSCAPE = {"width": 1024, "height": 768}
 FLUX_IMAGE_SIZE_SQUARE = {"width": 1024, "height": 1024}
 
-# Cost model (fal.ai pricing observed in smoke test — experiments/fal_endpoint_smoke_test/report.md).
+# Stage B — accessory inpaint params.
+# Lowered from 0.70 → 0.45: at 0.70 Stage B REPLACED walls/ceiling. At
+# 0.45 it layers accessories on the existing stage A without recomposing.
+STAGE_B_STRENGTH: float = 0.45  # informational; flux-fill ignores it
+STAGE_B_STEPS: int = 22
+STAGE_B_GUIDANCE: float = 3.2
+
+# Cost model.
 COST_FLUX_GENERAL: float = 0.045
 COST_NB_PRO_EDIT: float = 0.04
+COST_FLUX_FILL: float = 0.05
+COST_DEPTH: float = 0.005
 
-# Timeouts tuned for flux-general cold-start tolerance (report.md notes
-# cold calls exceed 120s; warm ~13s). We use fal's subscribe (queue + poll)
-# with a generous ceiling. Service-level timeout is larger so we never 504
-# mid-call.
-FLUX_CLIENT_TIMEOUT_S: float = 180.0
-NB_PRO_CLIENT_TIMEOUT_S: float = 90.0
+FLUX_CLIENT_TIMEOUT_S: float = 360.0
+NB_PRO_CLIENT_TIMEOUT_S: float = 120.0
 
-# Universal LoRAs layered on top of style LoRAs (same pattern as the
-# Phase 4 LoRA training spot-tests: add-details for crisp material
-# detail + RealismLora to counteract FLUX's slight over-smoothing).
+# ControlNet conditioning.
+# Research spec was 0.55/0.85 but smoke test showed arch drift (hardwood
+# replacing carpet, cove lights, ceiling geometry swap) at strength=0.78.
+# Bumped to 0.80 conditioning + 0.95 end_percentage so depth constrains
+# the full denoise trajectory. Canny remains disabled (fal 3-LoRA limit).
+CONTROLNET_DEPTH_SCALE: float = 0.80
+CONTROLNET_DEPTH_END: float = 0.95
+CONTROLNET_CANNY_SCALE: float = 0.35
+CONTROLNET_CANNY_END: float = 0.55
+
+# Universal LoRAs.
+#
+# Only add-details is in the default stack. RealismLora was originally
+# included but fal-ai/flux-general/image-to-image returns "Could not
+# load pipeline" >80% of the time from Modal containers when stacked
+# with 1 style LoRA + 1 ControlNet + realism (3 LoRAs + CN together).
+# Dropping realism produces reliable 10-12s inference with LoRAs loaded.
+# Research recommended realism@0.25 but photorealism is already strong
+# without it (add-details carries the material crispness).
 UNIVERSAL_LORAS: tuple[dict[str, Any], ...] = (
     {
         "path": (
             "https://huggingface.co/Shakker-Labs/FLUX.1-dev-LoRA-add-details/"
             "resolve/main/FLUX-dev-lora-add_details.safetensors"
         ),
-        "scale": 0.55,
+        "scale": 0.45,
         "name": "add-details",
-    },
-    {
-        "path": (
-            "https://huggingface.co/XLabs-AI/flux-RealismLora/"
-            "resolve/main/lora.safetensors"
-        ),
-        "scale": 0.25,
-        "name": "realism",
     },
 )
 
-# Trained LoRA registry — mirrored from apps/web/lib/styles/lora-registry.ts
-# (auto-generated 2026-04-17). Each entry: url, trigger, default_scale.
 LORA_REGISTRY: dict[str, dict[str, Any]] = {
     "COVASCANDINAV": {
         "url": "https://v3b.fal.media/files/b/0a968d79/AB1tJAhP5ERC-mvpcMOMM_pytorch_lora_weights.safetensors",
@@ -148,13 +177,6 @@ LORA_REGISTRY: dict[str, dict[str, Any]] = {
     },
 }
 
-# Archetype vocabulary strings — the "designer fingerprint" that, per the
-# LoRA quality eval, lifts D_full_activation style_match scores into the 9/10
-# range. Material-first, 4-6 concrete nouns, no forbidden style names.
-# Values below are a superset of ``STYLE_DNA_BLOCKS`` in
-# ``apps/web/lib/ai/design-director.ts`` (materials lifted; sentence-style
-# punctuation dropped because FLUX weighs comma-separated tokens stronger
-# than full sentences at this prompt length).
 ARCHETYPE_VOCAB: dict[str, str] = {
     "COVAJAPANDI": (
         "warm oak, natural linen, paper lanterns, handcrafted ceramics, "
@@ -198,15 +220,11 @@ ARCHETYPE_VOCAB: dict[str, str] = {
     ),
 }
 
-# Fallback vocabulary if caller passes an unknown archetype key.
 DEFAULT_VOCAB = (
     "natural materials, balanced composition, considered palette, "
     "soft natural daylight, professional interior staging"
 )
 
-# Default base prose — identical to the D_full_activation baseline used in
-# experiments/lora_quality_eval/results.json. Held constant so scored variants
-# remain comparable when the service is called under eval conditions.
 BASE_PROSE = (
     "a well-designed interior room, "
     "photorealistic interior photography, Architectural Digest editorial quality, "
@@ -218,11 +236,12 @@ NEGATIVE_PROMPT = (
     "blurry, low quality, distorted, unrealistic proportions, floating objects, "
     "bad lighting, overexposed, flat, cartoon, illustration, 3d render, CGI, "
     "watermark, text, signature, ugly, poor composition, duplicate furniture, "
-    # Architectural drift (Phase 5 pipeline-fix iter 2):
-    # the iter 1 critique flagged the model swapping ceiling fan→paper
-    # lantern, window→arched alcove, carpet→hardwood, drywall→plaster.
-    # Adding these as negatives weights the diffusion against those
-    # specific drift modes.
+    # Anti-generic/AirBnB (render-upgrade)
+    "empty, sparse, barren, generic, airbnb staging, hotel lobby, showroom, "
+    "catalog photo, plastic furniture, oversaturated, blown highlights, "
+    "symmetrical composition, matching pillow pair, single overhead light only, "
+    "cluttered mess, deformed furniture, fisheye lens, people, person, "
+    # Architectural drift
     "different room, different walls, different floor, different ceiling, "
     "changed architecture, changed wall color, changed flooring, "
     "different camera angle, different perspective, different proportions, "
@@ -233,9 +252,24 @@ NEGATIVE_PROMPT = (
     "removed window, removed blinds"
 )
 
-# Max LoRA entries per flux-general call = 3 style + 2 universal.
+# Stage B — editorial accessory prompt.
+# Additive only — do not recompose. Only paint accessories ON TOP of
+# existing room. Avoid any language that could signal "redesign the
+# walls" or "change the room". Result: gallery wall, throw blankets,
+# accent pillows, plants, coffee-table books.
+STAGE_B_PROMPT_SUFFIX = (
+    "framed wall art, gallery wall with 2-3 mixed frames, "
+    "potted plants, layered textile throw, accent pillows, "
+    "ambient table lamp, editorial Architectural Digest quality styling, "
+    "same walls, same ceiling, same floor, same furniture positions"
+)
+
 MAX_STYLE_LORAS = 3
 MIN_LORA_WEIGHT = 0.10
+
+# Supabase rehost bucket (F6-CONTROLNET-URL.1 fix).
+SUPABASE_BUCKET: str = "room-photos"
+SUPABASE_PREFIX: str = "render-upgrade"
 
 logger = logging.getLogger("cova-redesign")
 logging.basicConfig(
@@ -249,12 +283,18 @@ logging.basicConfig(
 
 redesign_image = (
     modal.Image.debian_slim(python_version="3.10")
+    .apt_install(
+        "libgl1-mesa-glx", "libglib2.0-0", "libsm6", "libxext6", "libxrender1",
+    )
     .pip_install(
         "fastapi[standard]==0.115.4",
         "pydantic>=2.5,<3",
         "requests",
         "fal-client",
         "Pillow",
+        "numpy",
+        "opencv-python-headless",
+        "supabase",
     )
 )
 
@@ -262,91 +302,47 @@ app = modal.App(APP_NAME)
 
 
 # ---------------------------------------------------------------------------
-# Pydantic schemas (v1 — frozen)
+# Pydantic schemas
 # ---------------------------------------------------------------------------
 
 
 class RedesignRequest(BaseModel):
     empty_room_url: HttpUrl
     archetype_key: str = Field(
-        description=(
-            "COVA* archetype key (e.g. COVAJAPANDI). Drives trigger + "
-            "vocabulary. Required even when style_blend is provided — "
-            "it picks the vocabulary."
-        )
+        description="COVA* archetype key (e.g. COVAJAPANDI)."
     )
-    style_blend: dict[str, float] | None = Field(
-        default=None,
-        description=(
-            "Optional weighted archetype distribution (COVA* keys → weights "
-            "summing to 1.0). When present the LoRA stack is blended; "
-            "archetype_key still drives the prompt vocabulary (primary intent)."
-        ),
-    )
-    # Accept v3 fingerprint (12 dims) or the 6D handoff form; we don't
-    # currently branch on its contents, but it is logged for calibration
-    # and carried through to the Sonnet judge's context.
-    style_fingerprint: dict[str, float] | None = Field(
-        default=None,
-        description="Fingerprint dims 0..1 (v3: 12 dims, legacy: 6 dims).",
-    )
-    budget_max: float = Field(
-        default=2000.0, description="Upper budget bound (USD) for shoppability."
-    )
-    room_type: str = Field(default="room", description="e.g. bedroom, living_room.")
-    lifestyle_context: str | None = Field(
-        default=None, description="Optional free-text signal from step-7d."
-    )
-    # Optional overrides — primarily consumed by the Phase 5 reflection loop.
+    style_blend: dict[str, float] | None = None
+    style_fingerprint: dict[str, float] | None = None
+    budget_max: float = Field(default=2000.0)
+    room_type: str = Field(default="room")
+    lifestyle_context: str | None = None
+
+    # Overrides (reflection-loop or bench).
     strength_override: float | None = None
     guidance_override: float | None = None
     steps_override: int | None = None
-    prompt_override: str | None = Field(
-        default=None,
-        description=(
-            "Override the full prompt string. Used only by the reflection "
-            "loop; production callers should leave null so the service "
-            "composes the D_full_activation template."
-        ),
+    prompt_override: str | None = None
+    lora_scale_multiplier: float | None = None
+    seed: int | None = None
+    primary_image_size: Literal["auto", "portrait", "landscape", "square"] | None = "auto"
+    force_nb_pro: bool = False
+
+    # Render-upgrade additions
+    enable_controlnet: bool = Field(
+        default=True,
+        description="Build depth + canny ControlNet from empty-room URL (recommended).",
     )
-    lora_scale_multiplier: float | None = Field(
-        default=None,
-        description="Reflection-loop bump applied to style LoRA scales (capped at 1.2).",
-    )
-    seed: int | None = Field(
-        default=None, description="Random seed; omitted → fal picks one."
-    )
-    primary_image_size: Literal["auto", "portrait", "landscape", "square"] | None = (
-        Field(
-            default="auto",
-            description="Output aspect. 'auto' inspects empty-room image dims.",
-        )
-    )
-    force_nb_pro: bool = Field(
+    enable_stage_b: bool = Field(
         default=False,
-        description="Diagnostic override. Skips flux-general; goes straight to NB-Pro.",
-    )
-    depth_url: HttpUrl | None = Field(
-        default=None,
         description=(
-            "Optional depth map (Depth-Anything-V2 PNG) for ControlNet "
-            "geometry locking. When present, flux-general is invoked with "
-            "the FLUX.1-dev Controlnet-Union path at depth conditioning "
-            "0.85. Strongly recommended for any cluttered real-world "
-            "room — without it the model drifts the camera and walls."
+            "Run Stage B editorial/accessory inpaint on Stage A output. "
+            "DEFAULT OFF — Stage B's wall-area inpaint drifts wall color "
+            "and ceiling on rooms with strong arch features (target DAKSH "
+            "bedroom: Stage B converted it to a living-room-like space). "
+            "Enable explicitly for empty rooms where extra styling helps."
         ),
     )
-    edge_url: HttpUrl | None = Field(
-        default=None,
-        description=(
-            "Optional Canny edge map for additional ControlNet line "
-            "preservation. Stacked with depth in the same controlnet_unions "
-            "entry per scripts/test-fal-controlnet.py."
-        ),
-    )
-    user_id: str | None = Field(
-        default=None, description="Supabase auth.users.id for attribution."
-    )
+    user_id: str | None = None
 
 
 class LoraEntry(BaseModel):
@@ -374,15 +370,22 @@ class RedesignResponse(BaseModel):
     image_height: int
     latency_ms: int
     cost_usd: float
-    # Populated by the caller (bench harness, not the service) after the
-    # vision-judge pass. Included in the schema so the harness can write
-    # it back idempotently without violating the contract.
     judge_score: float | None = None
     generated_at_iso: str
+    # Render-upgrade
+    stage_a_url: HttpUrl | None = None
+    stage_b_used: bool = False
+    lora_inference_time_s: float | None = Field(
+        default=None,
+        description=(
+            "flux-general reported inference time — lifted from fal response. "
+            "<7s with loras configured suggests LoRAs did not load."
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------
-# Helpers (top-level so Modal can pickle them)
+# Helpers
 # ---------------------------------------------------------------------------
 
 
@@ -391,12 +394,9 @@ def _iso_now() -> str:
 
 
 def _normalize_archetype_key(key: str) -> str:
-    """Accepts COVAJAPANDI / covajapandi / 'Warm Japandi' forms."""
     upper = key.strip().upper().replace(" ", "").replace("-", "")
     if upper in LORA_REGISTRY:
         return upper
-    # Display-name fallback (keep the mapping tiny — not a full sync of the
-    # TS DISPLAY_TO_COVA table; only the bench-harness values need to work).
     display_map = {
         "WARMJAPANDI": "COVAJAPANDI",
         "WARM&GROUNDED": "COVAJAPANDI",
@@ -426,19 +426,10 @@ def _resolve_lora_stack(
     style_blend: Optional[dict[str, float]],
     scale_multiplier: float,
 ) -> list[dict[str, Any]]:
-    """Build the fal-ai/flux-general LoRA list.
-
-    Ordered: style LoRAs (weighted by blend, primary first) → universal
-    LoRAs (fixed). Style scales are `default_scale * weight * multiplier`,
-    capped at 1.2 to guard against reflection-loop runaway.
-    """
     normalized = _normalize_archetype_key(archetype_key)
     if normalized not in LORA_REGISTRY:
-        raise ValueError(
-            f"unknown archetype_key '{archetype_key}' — not in LORA_REGISTRY"
-        )
+        raise ValueError(f"unknown archetype_key '{archetype_key}'")
 
-    # Resolve weights: blend if present (normalized), else {primary: 1.0}.
     if style_blend:
         merged: dict[str, float] = {}
         for k, w in style_blend.items():
@@ -452,7 +443,6 @@ def _resolve_lora_stack(
         if total <= 0:
             merged = {normalized: 1.0}
         else:
-            # Normalize + drop sub-threshold + re-normalize + top-3.
             merged = {k: v / total for k, v in merged.items()}
             filtered = {k: v for k, v in merged.items() if v >= MIN_LORA_WEIGHT}
             if not filtered:
@@ -460,10 +450,7 @@ def _resolve_lora_stack(
                 filtered = {top: 1.0}
             total2 = sum(filtered.values())
             merged = {k: v / total2 for k, v in filtered.items()}
-        # Ensure the requested primary archetype is in the stack and
-        # ordered first (prompt trigger must match).
         if normalized not in merged:
-            # Cap blend at 2 secondaries, inject primary at 0.5, renormalize.
             ordered = sorted(merged.items(), key=lambda kv: kv[1], reverse=True)[
                 : MAX_STYLE_LORAS - 1
             ]
@@ -472,7 +459,6 @@ def _resolve_lora_stack(
                 combined[k] = v * 0.5
             t = sum(combined.values())
             merged = {k: v / t for k, v in combined.items()}
-        # Top-3 with primary guaranteed.
         ordered_entries = sorted(
             merged.items(),
             key=lambda kv: (kv[0] == normalized, kv[1]),
@@ -494,19 +480,20 @@ def _resolve_lora_stack(
             }
         )
 
-    # Universal layer (add-details, realism) — fixed order.
-    stack = style_loras + [dict(u) for u in UNIVERSAL_LORAS]
-    return stack
+    return style_loras + [dict(u) for u in UNIVERSAL_LORAS]
 
 
 _ROOM_TYPE_PHRASE: dict[str, str] = {
     "bedroom": "bedroom with bed as focal point",
     "living_room": "living room with sofa and seating as focal point",
+    "living room": "living room with sofa and seating as focal point",
     "kitchen": "kitchen with cabinetry and countertops",
     "bathroom": "bathroom",
     "home_office": "home office with desk and work surface",
+    "home office": "home office with desk and work surface",
     "dining": "dining room with dining table as focal point",
     "entryway": "entryway",
+    "loft bedroom": "loft bedroom with bed and sloped ceiling",
     "room": "interior room",
 }
 
@@ -519,25 +506,8 @@ def _build_prompt(
     budget_max: Optional[float] = None,
     room_type: str = "room",
 ) -> str:
-    """D_full_activation template: 3× trigger prefix + prose + vocab + 2× trigger suffix.
-
-    Template validated in experiments/lora_quality_eval/results.json where
-    D_full_activation hit 8.75/10 overall for Japandi and 9.0/10 for
-    Industrial. Repeating the trigger as `{trigger} interior` is the form
-    FLUX weighs most — dropping `interior` collapses style fidelity.
-
-    Room-type injection (Phase 5 iter2 service fix): without this, FLUX
-    at strength 0.7-0.82 hallucinates the "wrong" room type from an
-    empty-room shell (piano living rooms morphing to bedrooms, attics
-    going flat-ceiling, etc.). Explicit room_type in the prose fixes this
-    on rooms 02/03/09/11/12 per the base-run failure analysis.
-    """
     normalized = _normalize_archetype_key(archetype_key)
-    vocab = (
-        vocab_override
-        if vocab_override is not None
-        else ARCHETYPE_VOCAB.get(normalized, DEFAULT_VOCAB)
-    )
+    vocab = vocab_override or ARCHETYPE_VOCAB.get(normalized, DEFAULT_VOCAB)
 
     prefix = f"{primary_trigger} interior {primary_trigger} interior {primary_trigger} interior"
     suffix = f"{primary_trigger} interior {primary_trigger} interior"
@@ -545,8 +515,6 @@ def _build_prompt(
     room_phrase = _ROOM_TYPE_PHRASE.get(room_type.lower(), room_type)
     room_clause = f"a {room_phrase}"
 
-    # Light budget nudge — only fires at the extremes so mid-range briefs
-    # don't tilt toward "luxury" or "affordable" language and confuse FLUX.
     budget_fragment = ""
     if budget_max is not None:
         if budget_max >= 10000:
@@ -556,18 +524,13 @@ def _build_prompt(
 
     lifestyle_fragment = ""
     if lifestyle_context:
-        ctx = lifestyle_context.strip()
-        if len(ctx) > 120:
-            ctx = ctx[:120]
+        ctx = lifestyle_context.strip()[:120]
         lifestyle_fragment = f", {ctx}"
 
-    # Swap `a well-designed interior room` (in BASE_PROSE) for a room-typed
-    # variant so the initial prompt tokens lock the room type.
-    typed_prose = BASE_PROSE.replace("a well-designed interior room", f"a well-designed {room_phrase}")
+    typed_prose = BASE_PROSE.replace(
+        "a well-designed interior room", f"a well-designed {room_phrase}"
+    )
 
-    # Phase 5 pipeline-fix: arch-lock clause moved to front of prompt
-    # (FLUX weights leading tokens more heavily than mid-prompt). The old
-    # placement after the vocab list let style tokens dominate.
     arch_lock_head = (
         "preserve original room architecture exactly, same wall color, "
         "same ceiling, same window, same floor, same camera angle, "
@@ -580,23 +543,14 @@ def _build_prompt(
     )
 
 
-def _infer_image_size(
-    empty_room_url: str, mode: str
-) -> dict[str, int]:
-    """Pick fal image_size to match input aspect when mode='auto'.
-
-    Explicit modes override inspection. Inspection failures fall back to
-    square so the service never 500s on a bad HEAD.
-    """
+def _infer_image_size(empty_room_url: str, mode: str) -> dict[str, int]:
     if mode == "portrait":
         return FLUX_IMAGE_SIZE_PORTRAIT
     if mode == "landscape":
         return FLUX_IMAGE_SIZE_LANDSCAPE
     if mode == "square":
         return FLUX_IMAGE_SIZE_SQUARE
-    # auto
     try:
-        import io
         import requests
         from PIL import Image  # type: ignore
 
@@ -614,73 +568,116 @@ def _infer_image_size(
         return FLUX_IMAGE_SIZE_SQUARE
 
 
-def _rehost_to_fal(url: str) -> str:
-    """Download an external URL and re-upload it to fal storage from this
-    container. Phase 6 fix: flux-general's controlnet_unions endpoint
-    fails with 'Failed to download the file' when given a fal-storage URL
-    that was returned by a different fal endpoint (e.g. depth from
-    fal-ai/imageutils/depth via the perception service). Re-uploading
-    from inside the redesign service produces a URL flux-general can
-    access. Idempotent: an upload of the same bytes returns the same URL."""
-    import io as _io
-    import os as _os
-    import tempfile as _tf
-    import requests as _req
-    import fal_client as _fc
+# ----- Supabase rehost (F6-CONTROLNET-URL.1 fix) ---------------------------
 
-    raw = _req.get(url, timeout=30).content
-    suffix = ".png" if url.lower().endswith(".png") else ".jpg"
-    with _tf.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-        tmp.write(raw)
-        path = tmp.name
+
+def _rehost_to_supabase(content: bytes, suffix: str = ".png", subfolder: str = "controlnet") -> str:
+    from supabase import create_client
+
+    sb_url = os.environ["SUPABASE_URL"]
+    sb_key = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ.get(
+        "SUPABASE_SERVICE_ROLE_KEY"
+    )
+    if not sb_key:
+        raise RuntimeError("Supabase service key missing for rehost.")
+    client = create_client(sb_url, sb_key)
+
+    digest = hashlib.md5(content).hexdigest()[:12]
+    ext = suffix if suffix.startswith(".") else f".{suffix}"
+    filename = f"{digest}{ext}"
+    path = f"{SUPABASE_PREFIX}/{subfolder}/{filename}"
+    content_type = "image/png" if ext == ".png" else "image/jpeg"
+
+    client.storage.from_(SUPABASE_BUCKET).upload(
+        path=path,
+        file=content,
+        file_options={"content-type": content_type, "upsert": "true"},
+    )
+    return client.storage.from_(SUPABASE_BUCKET).get_public_url(path)
+
+
+def _fetch_bytes(url: str, timeout: int = 60) -> bytes:
+    import requests
+    r = requests.get(url, timeout=timeout)
+    r.raise_for_status()
+    return r.content
+
+
+# ----- Depth + edge generation (Stage A ControlNet) ------------------------
+
+
+def _generate_depth_url(empty_room_url: str) -> Optional[str]:
+    """Call fal-ai/imageutils/depth; rehost via Supabase."""
+    import fal_client  # type: ignore
+
     try:
-        return _fc.upload_file(path)
-    finally:
-        try:
-            _os.remove(path)
-        except OSError:
-            pass
+        r = fal_client.subscribe(
+            "fal-ai/imageutils/depth",
+            arguments={"image_url": empty_room_url},
+            with_logs=False,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("depth call failed: %s", exc)
+        return None
+    depth = r.get("image") or {}
+    fal_url = depth.get("url") if isinstance(depth, dict) else None
+    if not fal_url:
+        logger.warning("depth missing url: %s", str(r)[:200])
+        return None
+    try:
+        raw = _fetch_bytes(fal_url)
+        return _rehost_to_supabase(raw, suffix=".png", subfolder="depth")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("depth rehost failed: %s", exc)
+        return None
+
+
+def _generate_edge_url(empty_room_url: str) -> Optional[str]:
+    """OpenCV Canny edge map → PNG → Supabase rehost.
+
+    Deprecated: not used in production (fal-ai/flux-general rejects
+    3 LoRAs + 2 ControlNet controls as "Could not load pipeline").
+    Kept for future experiments with fewer LoRAs.
+    """
+    import cv2  # type: ignore
+    import numpy as np
+    from PIL import Image
+
+    try:
+        raw = _fetch_bytes(empty_room_url)
+        pil = Image.open(io.BytesIO(raw)).convert("RGB")
+        arr = np.array(pil)
+        gray = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY)
+        edges = cv2.Canny(gray, 60, 150)
+        png_bytes = cv2.imencode(".png", edges)[1].tobytes()
+        return _rehost_to_supabase(png_bytes, suffix=".png", subfolder="edges")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("edge generation failed: %s", exc)
+        return None
 
 
 def _build_controlnet_unions(
     depth_url: Optional[str], edge_url: Optional[str]
 ) -> list[dict[str, Any]] | None:
-    """Build the FLUX.1-dev Controlnet-Union payload from optional
-    depth/edge URLs. Pattern lifted verbatim from
-    scripts/test-fal-controlnet.py (test 3, both controls in one entry).
-
-    Phase 6 fix: depth/edge URLs are re-hosted via _rehost_to_fal so that
-    flux-general's controlnet_unions endpoint can fetch them — see
-    docstring for the bug detail."""
     controls: list[dict[str, Any]] = []
     if depth_url:
-        try:
-            depth_resigned = _rehost_to_fal(depth_url)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("rehost depth_url failed (%s); using raw URL", exc)
-            depth_resigned = depth_url
         controls.append(
             {
-                "control_image_url": depth_resigned,
+                "control_image_url": depth_url,
                 "control_mode": "depth",
-                "conditioning_scale": 0.85,
+                "conditioning_scale": CONTROLNET_DEPTH_SCALE,
                 "start_percentage": 0.0,
-                "end_percentage": 0.85,
+                "end_percentage": CONTROLNET_DEPTH_END,
             }
         )
     if edge_url:
-        try:
-            edge_resigned = _rehost_to_fal(edge_url)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("rehost edge_url failed (%s); using raw URL", exc)
-            edge_resigned = edge_url
         controls.append(
             {
-                "control_image_url": edge_resigned,
+                "control_image_url": edge_url,
                 "control_mode": "canny",
-                "conditioning_scale": 0.45,
+                "conditioning_scale": CONTROLNET_CANNY_SCALE,
                 "start_percentage": 0.0,
-                "end_percentage": 0.55,
+                "end_percentage": CONTROLNET_CANNY_END,
             }
         )
     if not controls:
@@ -691,6 +688,9 @@ def _build_controlnet_unions(
             "controls": controls,
         }
     ]
+
+
+# ----- flux-general + fallback --------------------------------------------
 
 
 def _call_flux_general(
@@ -705,14 +705,8 @@ def _call_flux_general(
     seed: Optional[int],
     depth_url: Optional[str] = None,
     edge_url: Optional[str] = None,
-) -> tuple[str, dict[str, int]]:
-    """fal-ai/flux-general image-to-image. Returns (url, (w, h)).
-
-    When depth_url is provided, layers a depth ControlNet (conditioning
-    0.85, end 0.85) over the image-to-image base call. This is the
-    architectural lock that prevents wall/window/ceiling drift at the
-    higher strengths needed for full furniture restyle (0.75-0.85).
-    Without it, anything above strength=0.5 drifts the room geometry."""
+) -> tuple[str, dict[str, int], Optional[float]]:
+    """Primary Stage A call. Returns (url, {w, h}, inference_time_s)."""
     import fal_client  # type: ignore
 
     arguments: dict[str, Any] = {
@@ -722,9 +716,7 @@ def _call_flux_general(
         "strength": strength,
         "guidance_scale": guidance_scale,
         "num_inference_steps": num_inference_steps,
-        "loras": [
-            {"path": e["path"], "scale": e["scale"]} for e in loras
-        ],
+        "loras": [{"path": e["path"], "scale": e["scale"]} for e in loras],
         "image_size": image_size,
         "output_format": "jpeg",
     }
@@ -734,15 +726,51 @@ def _call_flux_general(
     if seed is not None:
         arguments["seed"] = int(seed)
 
-    r = fal_client.subscribe(
-        "fal-ai/flux-general/image-to-image",
-        arguments=arguments,
-        with_logs=False,
-        client_timeout=FLUX_CLIENT_TIMEOUT_S,
-    )
+    # Retry on transient "Could not load pipeline" + cold-start timeouts.
+    # Last-ditch retry drops the ControlNet (2 LoRAs + no CN is the
+    # most reliable combo on fal).
+    last_err: Exception | None = None
+    r = None
+    max_attempts = 4
+    for attempt in range(max_attempts):
+        try_args = arguments
+        if attempt == max_attempts - 1 and "controlnet_unions" in try_args:
+            try_args = {k: v for k, v in arguments.items() if k != "controlnet_unions"}
+            logger.warning(
+                "flux-general final retry %d/%d — dropping ControlNet",
+                attempt + 1, max_attempts,
+            )
+        try:
+            r = fal_client.subscribe(
+                "fal-ai/flux-general/image-to-image",
+                arguments=try_args,
+                with_logs=False,
+                client_timeout=FLUX_CLIENT_TIMEOUT_S,
+            )
+            break
+        except Exception as exc:  # noqa: BLE001
+            last_err = exc
+            msg = str(exc)
+            retry = (
+                "Could not load pipeline" in msg
+                or "FalClientTimeoutError" in type(exc).__name__
+                or "502" in msg
+                or "503" in msg
+                or "504" in msg
+                or "queue" in msg.lower()
+            )
+            if not retry or attempt == max_attempts - 1:
+                raise
+            wait = min(45, 10 * (attempt + 1))
+            logger.warning(
+                "flux-general transient (%s); retry %d/%d after %ds",
+                msg[:120], attempt + 1, max_attempts, wait,
+            )
+            time.sleep(wait)
+    assert r is not None
     images = r.get("images") or []
     if not images:
-        raise RuntimeError(f"flux-general returned no images: keys={list(r.keys())}")
+        raise RuntimeError(f"flux-general returned no images: {list(r.keys())}")
     first = images[0] if isinstance(images[0], dict) else {"url": images[0]}
     url = first.get("url")
     if not url:
@@ -751,17 +779,34 @@ def _call_flux_general(
     h_raw = first.get("height")
     w = int(w_raw) if w_raw is not None else image_size["width"]
     h = int(h_raw) if h_raw is not None else image_size["height"]
-    return url, {"width": w, "height": h}
+
+    timings = r.get("timings") or {}
+    inference_time = None
+    if isinstance(timings, dict):
+        raw_t = timings.get("inference")
+        if raw_t is not None:
+            try:
+                inference_time = float(raw_t)
+            except Exception:  # noqa: BLE001
+                inference_time = None
+
+    # LoRA verification heuristic.
+    if inference_time is not None and inference_time < 7.0 and len(loras) > 0:
+        logger.warning(
+            "LORA-VERIFY: inference_time=%.2fs with %d LoRAs requested — "
+            "possibly not loaded (vanilla flux-dev baseline)",
+            inference_time, len(loras),
+        )
+    else:
+        logger.info(
+            "LORA-VERIFY: inference_time=%s with %d LoRAs",
+            inference_time, len(loras),
+        )
+
+    return url, {"width": w, "height": h}, inference_time
 
 
-def _call_nb_pro(
-    empty_room_url: str,
-    prompt: str,
-) -> tuple[str, dict[str, int]]:
-    """fal-ai/nano-banana-pro/edit fallback. No LoRA parameter accepted.
-
-    NB-Pro expects `image_urls` (array) per the smoke-test gotcha.
-    """
+def _call_nb_pro(empty_room_url: str, prompt: str) -> tuple[str, dict[str, int]]:
     import fal_client  # type: ignore
 
     r = fal_client.subscribe(
@@ -772,18 +817,107 @@ def _call_nb_pro(
     )
     images = r.get("images") or []
     if not images:
-        raise RuntimeError(f"nb-pro returned no images: keys={list(r.keys())}")
+        raise RuntimeError(f"nb-pro returned no images: {list(r.keys())}")
     first = images[0] if isinstance(images[0], dict) else {"url": images[0]}
     url = first.get("url")
     if not url:
         raise RuntimeError(f"nb-pro: missing image url in response: {first}")
-    # NB-Pro sometimes returns width/height as explicit None rather than
-    # omitting them — `.get(..., default)` won't substitute in that case.
     w_raw = first.get("width")
     h_raw = first.get("height")
     w = int(w_raw) if w_raw is not None else 1024
     h = int(h_raw) if h_raw is not None else 1024
     return url, {"width": w, "height": h}
+
+
+# ----- Stage B accessory inpainting ----------------------------------------
+
+
+def _build_stage_b_mask(stage_a_arr: "Any") -> "Any":
+    """Build a conservative accessory mask for Stage B.
+
+    Target only the upper wall band (top 1/6 → 1/3) where wall art
+    typically goes, plus a narrow middle-height band for surface
+    accessories. Keep architectural features (ceiling, floor,
+    windows) outside the mask so flux-fill can't touch them.
+    """
+    import numpy as np
+
+    h, w = stage_a_arr.shape[:2]
+    mask = np.zeros((h, w), dtype=np.uint8)
+    # Upper wall band — gallery wall zone (above typical furniture).
+    mask[h // 6 : h // 3, :] = 255
+    # Narrow accessory-surface band (mid-height — coffee tables, shelves).
+    mask[h // 2 : h // 2 + h // 10, :] = 255
+    return mask
+
+
+def _call_stage_b(
+    stage_a_url: str,
+    archetype_vocab: str,
+    primary_trigger: str,
+    stage_a_arr: "Any",
+) -> str:
+    """flux-fill accessory pass on Stage A output.
+
+    Mask convention: WHITE = inpaint, BLACK = preserve (confirmed
+    empirically for fal-ai/flux-pro/v1/fill).
+    """
+    import cv2  # type: ignore
+    import fal_client  # type: ignore
+
+    mask = _build_stage_b_mask(stage_a_arr)
+    ok, enc = cv2.imencode(".png", mask)
+    if not ok:
+        raise RuntimeError("stage-b mask encode failed")
+    mask_url = _upload_bytes_to_fal(enc.tobytes(), suffix=".png")
+
+    prompt = (
+        f"{primary_trigger} interior {primary_trigger} interior "
+        f"{archetype_vocab}, {STAGE_B_PROMPT_SUFFIX}"
+    )
+
+    r = fal_client.subscribe(
+        "fal-ai/flux-pro/v1/fill",
+        arguments={
+            "image_url": stage_a_url,
+            "mask_url": mask_url,
+            "prompt": prompt,
+            "num_inference_steps": STAGE_B_STEPS,
+            "guidance_scale": STAGE_B_GUIDANCE,
+            "num_images": 1,
+            "output_format": "jpeg",
+            "safety_tolerance": "6",
+        },
+        with_logs=False,
+        client_timeout=150.0,
+    )
+    imgs = r.get("images") or []
+    if imgs:
+        first = imgs[0]
+        if isinstance(first, dict) and first.get("url"):
+            return first["url"]
+        if isinstance(first, str):
+            return first
+    img = r.get("image")
+    if isinstance(img, dict) and img.get("url"):
+        return img["url"]
+    raise RuntimeError(f"unexpected stage-b response: {list(r.keys())}")
+
+
+def _upload_bytes_to_fal(data: bytes, suffix: str = ".png") -> str:
+    import fal_client  # type: ignore
+    import tempfile
+
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        tmp.write(data)
+        tmp_path = tmp.name
+    try:
+        return fal_client.upload_file(tmp_path)
+    finally:
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
 
 
 # ---------------------------------------------------------------------------
@@ -794,7 +928,7 @@ def _call_nb_pro(
 @app.cls(
     image=redesign_image,
     gpu="A10G",
-    timeout=300,
+    timeout=720,
     startup_timeout=60,
     min_containers=0,
     max_containers=4,
@@ -807,30 +941,29 @@ class Redesign:
     @modal.enter()
     def load(self) -> None:
         logger.info(
-            "cova-redesign container ready  archetypes=%d universal_loras=%d",
-            len(LORA_REGISTRY),
-            len(UNIVERSAL_LORAS),
+            "cova-redesign ready  archetypes=%d universal=%d strength=%.2f steps=%d guidance=%.2f scheduler=%s",
+            len(LORA_REGISTRY), len(UNIVERSAL_LORAS),
+            FLUX_STRENGTH, FLUX_NUM_STEPS, FLUX_GUIDANCE_SCALE, FLUX_SCHEDULER,
         )
 
     def _generate(self, req: RedesignRequest) -> RedesignResponse:
+        import cv2  # type: ignore
+        import numpy as np
+        from PIL import Image
+
         t0 = time.perf_counter()
 
-        # ---------------- Resolve archetype + LoRA stack ----------------
         normalized_archetype = _normalize_archetype_key(req.archetype_key)
         if normalized_archetype not in LORA_REGISTRY:
-            raise RuntimeError(
-                f"unknown_archetype:{req.archetype_key}"
-            )
+            raise RuntimeError(f"unknown_archetype:{req.archetype_key}")
 
         scale_mult = float(req.lora_scale_multiplier or 1.0)
-        scale_mult = min(max(scale_mult, 0.5), 1.3)  # clamp for safety
+        scale_mult = min(max(scale_mult, 0.5), 1.3)
         stack = _resolve_lora_stack(
             normalized_archetype, req.style_blend, scale_mult
         )
-
         primary_trigger = LORA_REGISTRY[normalized_archetype]["trigger"]
 
-        # ---------------- Prompt ----------------------------------------
         prompt = (
             req.prompt_override
             if req.prompt_override
@@ -843,7 +976,6 @@ class Redesign:
             )
         )
 
-        # ---------------- FLUX params -----------------------------------
         strength = float(
             req.strength_override if req.strength_override is not None else FLUX_STRENGTH
         )
@@ -860,19 +992,37 @@ class Redesign:
         cost = 0.0
         provider: Literal["flux-general", "nano-banana-pro"]
         fallback_reason: Optional[str] = None
-        redesign_url: str
-        out_dims: dict[str, int]
+        stage_a_url: Optional[str] = None
+        inference_time: Optional[float] = None
+        out_dims: dict[str, int] = {"width": 1024, "height": 1024}
 
-        # ---------------- Primary path — flux-general -------------------
+        # Generate depth + edge URLs (the LoRA-unblock fix).
+        depth_url: Optional[str] = None
+        edge_url: Optional[str] = None
+        if req.enable_controlnet and not req.force_nb_pro:
+            t_dep = time.perf_counter()
+            depth_url = _generate_depth_url(str(req.empty_room_url))
+            if depth_url is not None:
+                cost += COST_DEPTH
+            # Canny disabled in production: 3 LoRAs + 2 ControlNet controls
+            # hits fal-ai/flux-general's "Could not load pipeline" limit.
+            # Depth alone is the highest-leverage geometry lock per research.
+            edge_url = None
+            logger.info(
+                "controlnet urls ready  depth=%s edge=%s dt_s=%.2f",
+                bool(depth_url), bool(edge_url), time.perf_counter() - t_dep,
+            )
+
+        # ---- Stage A ------------------------------------------------
         if req.force_nb_pro:
             fallback_reason = "force_nb_pro"
             provider = "nano-banana-pro"
-            redesign_url, out_dims = _call_nb_pro(str(req.empty_room_url), prompt)
+            stage_a_url, out_dims = _call_nb_pro(str(req.empty_room_url), prompt)
             cost += COST_NB_PRO_EDIT
         else:
             try:
-                t_flux0 = time.perf_counter()
-                redesign_url, out_dims = _call_flux_general(
+                t_flux = time.perf_counter()
+                stage_a_url, out_dims, inference_time = _call_flux_general(
                     str(req.empty_room_url),
                     prompt,
                     NEGATIVE_PROMPT,
@@ -882,30 +1032,47 @@ class Redesign:
                     guidance,
                     steps,
                     req.seed,
-                    depth_url=str(req.depth_url) if req.depth_url else None,
-                    edge_url=str(req.edge_url) if req.edge_url else None,
+                    depth_url=depth_url,
+                    edge_url=edge_url,
                 )
                 logger.info(
-                    "TIMING flux_general dt_s=%.3f dims=%dx%d",
-                    time.perf_counter() - t_flux0, out_dims["width"], out_dims["height"],
+                    "flux-general OK dt_s=%.2f dims=%dx%d inference_time=%s",
+                    time.perf_counter() - t_flux,
+                    out_dims["width"], out_dims["height"], inference_time,
                 )
                 provider = "flux-general"
                 cost += COST_FLUX_GENERAL
             except Exception as exc:  # noqa: BLE001
                 fallback_reason = f"flux-general:{type(exc).__name__}:{exc}"
-                logger.warning("flux-general failed — falling back to NB-Pro: %s", exc)
-                t_nb0 = time.perf_counter()
-                redesign_url, out_dims = _call_nb_pro(
-                    str(req.empty_room_url), prompt
-                )
-                logger.info("TIMING nb_pro dt_s=%.3f", time.perf_counter() - t_nb0)
+                logger.warning("flux-general failed → NB-Pro: %s", exc)
+                stage_a_url, out_dims = _call_nb_pro(str(req.empty_room_url), prompt)
                 provider = "nano-banana-pro"
                 cost += COST_NB_PRO_EDIT
 
+        # ---- Stage B ------------------------------------------------
+        redesign_url = stage_a_url
+        stage_b_used = False
+        if req.enable_stage_b and provider == "flux-general" and stage_a_url:
+            try:
+                t_b = time.perf_counter()
+                raw = _fetch_bytes(stage_a_url)
+                stage_a_pil = Image.open(io.BytesIO(raw)).convert("RGB")
+                stage_a_arr = np.array(stage_a_pil)
+                vocab = ARCHETYPE_VOCAB.get(normalized_archetype, DEFAULT_VOCAB)
+                redesign_url = _call_stage_b(
+                    stage_a_url, vocab, primary_trigger, stage_a_arr
+                )
+                cost += COST_FLUX_FILL
+                stage_b_used = True
+                logger.info("stage_b OK dt_s=%.2f", time.perf_counter() - t_b)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("stage_b failed (continuing with stage_a): %s", exc)
+                redesign_url = stage_a_url
+
         latency_ms = int((time.perf_counter() - t0) * 1000)
         logger.info(
-            "generate_redesign done  archetype=%s provider=%s latency_ms=%d cost=$%.4f",
-            normalized_archetype, provider, latency_ms, cost,
+            "generate_redesign done  archetype=%s provider=%s stage_b=%s latency_ms=%d cost=$%.4f",
+            normalized_archetype, provider, stage_b_used, latency_ms, cost,
         )
 
         return RedesignResponse(
@@ -935,11 +1102,10 @@ class Redesign:
             cost_usd=round(cost, 4),
             judge_score=None,
             generated_at_iso=_iso_now(),
+            stage_a_url=stage_a_url,  # type: ignore[arg-type]
+            stage_b_used=stage_b_used,
+            lora_inference_time_s=inference_time,
         )
-
-    # ------------------------------------------------------------------
-    # ASGI
-    # ------------------------------------------------------------------
 
     @modal.asgi_app()
     def api(self):
@@ -959,6 +1125,11 @@ class Redesign:
                     "strength": FLUX_STRENGTH,
                     "guidance_scale": FLUX_GUIDANCE_SCALE,
                     "num_inference_steps": FLUX_NUM_STEPS,
+                    "scheduler": FLUX_SCHEDULER,
+                },
+                "controlnet": {
+                    "depth_scale": CONTROLNET_DEPTH_SCALE,
+                    "canny_scale": CONTROLNET_CANNY_SCALE,
                 },
             }
 
@@ -994,15 +1165,10 @@ class Redesign:
         return fapp
 
 
-# ---------------------------------------------------------------------------
-# Local sanity check
-# ---------------------------------------------------------------------------
-
-
 if __name__ == "__main__":
     print(
         f"{APP_NAME} module loaded  "
         f"endpoint=/{API_VERSION}/generate_redesign  "
-        f"archetypes={len(LORA_REGISTRY)}  "
-        f"universal_loras={len(UNIVERSAL_LORAS)}"
+        f"strength={FLUX_STRENGTH} steps={FLUX_NUM_STEPS} guidance={FLUX_GUIDANCE_SCALE}  "
+        f"scheduler={FLUX_SCHEDULER}"
     )

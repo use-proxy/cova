@@ -1,0 +1,39 @@
+{
+  "architectural_fidelity": {
+    "score": "PASS",
+    "reason": "Recognizably the same room with preserved white walls, textured ceiling, ceiling fan location, two windows in correct positions, and same camera angle and viewpoint."
+  },
+  "furniture_removal": {
+    "score": "PASS",
+    "reason": "All original furniture completely removed with no ghost outlines, remnants of the blue bedding, nightstand, or Persian rug visible."
+  },
+  "style_commitment": {
+    "score": "PASS",
+    "reason": "Strong Japandi execution with natural wood flooring, neutral tonal palette, minimalist aesthetic, organic ceramic vessels, natural branch in vase, and clean-lined furniture demonstrating clear style conviction."
+  },
+  "editorial_density": {
+    "score": "WARN",
+    "reason": "Has layered textiles on bed (3+ pillows, throw), decorative floor vases, small side table, and foreground coffee table with vase, but lacks wall art, reading lamp, and additional styling details that would achieve full Architectural Digest density."
+  },
+  "photorealism": {
+    "score": "PASS",
+    "reason": "Excellent natural lighting with realistic blind shadows, coherent material textures on wood floor and linens, proper depth of field, and authentic soft shadows without CGI feel."
+  },
+  "designer_preference": "COVA_WINS",
+  "designer_preference_reason": "Cova delivers authentic Japandi style with superior photorealism and natural material palette versus Collov's generic contemporary staging that lacks stylistic conviction.",
+  "overall_pass": true,
+  "what_cova_does_better": [
+    "Authentic Japandi style commitment with natural materials and minimalist restraint",
+    "Superior photorealism with natural lighting and realistic material rendering",
+    "Preserved original architectural character including tile-to-wood floor transition",
+    "Organic, curated feel versus formulaic staging"
+  ],
+  "what_collov_does_better": [
+    "Higher editorial density with wall art, dimensional lettering, and multiple lighting sources",
+    "More layered styling with area rugs, reading chair, floor lamp, and nightstand accessories",
+    "Fuller surface vignettes on all horizontal planes"
+  ],
+  "specific_fixes_if_failing": [],
+  "iteration": 2,
+  "cova_render_url": "https://v3b.fal.media/files/b/0a971fe3/HMKI4ElWcSJtO91hPkHK4.jpg"
+}

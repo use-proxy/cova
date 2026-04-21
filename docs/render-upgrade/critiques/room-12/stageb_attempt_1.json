@@ -1,0 +1,44 @@
+{
+  "architectural_fidelity": {
+    "score": "PASS",
+    "reason": "Same room recognizable: white plantation shutters preserved, ceiling height maintained, wall color appears similar under blue lighting, camera angle consistent, window position and size accurate, no phantom walls added."
+  },
+  "furniture_removal": {
+    "score": "FAIL",
+    "reason": "Original gaming chair, keyboard/piano, and bed frame are completely gone BUT the original LED strip lights remain visible along the ceiling crown molding - these are environmental/architectural elements that should have been removed as part of furniture/personal effects clearance."
+  },
+  "style_commitment": {
+    "score": "WARN",
+    "reason": "Mid-century elements present (tapered leg furniture, gallery wall, patterned wallpaper accent) but execution lacks conviction - the daybed/sofa hybrid reads more eclectic-contemporary than committed mid-century modern; missing iconic MCM furniture silhouettes like low-profile platform bed or Eames-era pieces."
+  },
+  "editorial_density": {
+    "score": "PASS",
+    "reason": "Gallery wall with 6+ framed pieces, patterned accent wallpaper with decorative plate, layered textiles on bed (duvet, throw pillows, accent pillows), plants visible, area rug, side table with accessories, task chair - meets Architectural Digest staging density."
+  },
+  "photorealism": {
+    "score": "WARN",
+    "reason": "Lighting coherence compromised by retained blue LED strips creating unnatural color cast throughout; material textures read acceptably but wallpaper pattern has slight flatness; shadows are present but ambient blue glow undermines naturalistic rendering."
+  },
+  "designer_preference": "COLLOV_WINS",
+  "designer_preference_reason": "Collov's clean, photorealistic execution and complete environmental reset would be more professionally presentable to clients than Cova's stylistically interesting but technically flawed render with retained LED lighting.",
+  "overall_pass": false,
+  "what_cova_does_better": [
+    "More personality and design risk-taking with patterned wallpaper and eclectic styling",
+    "Preserved authentic architectural elements like plantation shutters with proper detail",
+    "Gallery wall execution with varied frame sizes shows curatorial sensibility"
+  ],
+  "what_collov_does_better": [
+    "Complete environmental reset removing all original lighting fixtures and personal elements",
+    "Consistent natural lighting without color contamination",
+    "Photorealistic material rendering without CGI artifacts",
+    "Professional staging-ready presentation quality"
+  ],
+  "specific_fixes_if_failing": [
+    "CRITICAL: Remove original blue LED strip lighting from ceiling crown - this reads as incomplete furniture removal and ruins lighting coherence",
+    "Strengthen mid-century commitment: replace daybed with iconic low-profile platform bed with tapered legs, add Noguchi-style lighting or Nelson bubble lamp",
+    "Correct color temperature - eliminate blue contamination and render under warm neutral daylight for professional presentation",
+    "Add authentic MCM details: starburst clock, geometric textiles in mustard/teal/orange, sculptural wood pieces"
+  ],
+  "iteration": 1,
+  "cova_render_url": "https://v3b.fal.media/files/b/0a972294/GeelfNMUTMpIJz4o6iUZx_4c40c5b74a80475db443b0fc0f083b09.jpg"
+}

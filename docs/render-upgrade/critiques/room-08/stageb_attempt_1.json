@@ -1,0 +1,38 @@
+{
+  "architectural_fidelity": {
+    "score": "PASS",
+    "reason": "Same room recognizable: walls, ceiling height, window position/size preserved, camera viewpoint maintained, no added walls"
+  },
+  "furniture_removal": {
+    "score": "PASS",
+    "reason": "All original furniture completely removed with no ghost outlines, remnants, or phantom shadows visible"
+  },
+  "style_commitment": {
+    "score": "PASS",
+    "reason": "Strong bohemian commitment evident through macram\u00e9 wall hanging, patterned curtains, layered textiles, brass fixtures, natural materials, and curated gallery wall\u2014not generic neutral"
+  },
+  "editorial_density": {
+    "score": "PASS",
+    "reason": "Multiple styled vignettes: gallery wall with 4+ frames, macram\u00e9 textile art, console table styling, throw blanket, decorative pouf, plants, dual-head brass lamp, tasseled runner rug\u2014matches AD-level richness"
+  },
+  "photorealism": {
+    "score": "PASS",
+    "reason": "Coherent natural lighting from windows, realistic material textures on fabrics/wood/metal, proper shadows, no CGI plasticity\u2014highly believable render"
+  },
+  "designer_preference": "COVA_WINS",
+  "designer_preference_reason": "Cova delivers strong stylistic identity with bohemian authenticity while Collov's bedroom examples (though high quality) show generic contemporary staging unsuitable for this living room context.",
+  "overall_pass": true,
+  "what_cova_does_better": [
+    "Authentic bohemian style execution with signature elements like macram\u00e9 and textured textiles",
+    "Appropriate living room furniture layout versus bedroom comparison",
+    "Warm, lived-in aesthetic with layered accessories and personal touches",
+    "Natural material palette with brass, wood, and woven textures"
+  ],
+  "what_collov_does_better": [
+    "Examples shown are different room type (bedroom vs living room) making direct comparison unfair",
+    "Ceiling fan addition in Collov examples shows willingness to add architectural elements"
+  ],
+  "specific_fixes_if_failing": [],
+  "iteration": 1,
+  "cova_render_url": "https://v3b.fal.media/files/b/0a972252/_AmZQqgxg6XWdxAE7BeJV_79a1af5666ce460387b557f90b392a21.jpg"
+}

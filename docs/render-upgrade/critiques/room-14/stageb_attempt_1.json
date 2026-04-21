@@ -1,0 +1,44 @@
+{
+  "architectural_fidelity": {
+    "score": "PASS",
+    "reason": "Same room structure preserved: window position on right wall maintained, ceiling height consistent, white crown molding intact, same camera viewpoint, side gray walls present, radiator cover location preserved under window"
+  },
+  "furniture_removal": {
+    "score": "PASS",
+    "reason": "All original furniture completely removed with no ghost outlines, remnants or phantom shadows; floor is clean slate ready for new staging"
+  },
+  "style_commitment": {
+    "score": "PASS",
+    "reason": "Strong Art Deco commitment: dramatic black and gold Chinoiserie wallpaper with branching metallic pattern, emerald green gallery rail with extensive framed art collection, dark sophisticated palette with metallic accents\u2014unmistakably period-specific styling, not generic neutral"
+  },
+  "editorial_density": {
+    "score": "FAIL",
+    "reason": "Room is essentially empty except for wall treatment; no furniture, no layered textiles, no rugs, no plants, no table lamps or floor lamps, no styling vignettes\u2014this is architectural finish work, not Architectural Digest-level editorial staging with lived-in details"
+  },
+  "photorealism": {
+    "score": "PASS",
+    "reason": "Realistic lighting with proper shadows, wallpaper texture appears dimensional and authentic, flooring material reads as genuine wood with natural variation, no CGI/plastic feel, coherent light sources from ceiling and window"
+  },
+  "designer_preference": "COLLOV_WINS",
+  "designer_preference_reason": "Collov delivers complete, client-ready rooms with furniture, textiles, and styling that clients can visualize living in, while Cova shows only empty architectural finishes requiring additional conceptualization",
+  "overall_pass": false,
+  "what_cova_does_better": [
+    "Dramatic, authentic Art Deco wallpaper treatment with museum-quality Chinoiserie pattern",
+    "Bold color commitment with emerald gallery rail and sophisticated dark palette",
+    "Cohesive architectural detailing with extensive framed art collection creating gallery wall effect"
+  ],
+  "what_collov_does_better": [
+    "Complete room furnishing with bed, nightstands, seating, and area rugs",
+    "Editorial-level layered textiles including bedding, throws, and pillows in multiple textures",
+    "Lived-in styling density with plants, table lamps, floor lamps, books, and decorative vignettes",
+    "Client-ready visualization showing actual functional room layout"
+  ],
+  "specific_fixes_if_failing": [
+    "Add luxury Art Deco furniture: velvet channel-tufted sofa in jewel tone, brass and marble coffee table, sculptural accent chairs",
+    "Layer minimum 3-4 textile elements: geometric Art Deco area rug, silk velvet pillows, metallic throw blankets",
+    "Add editorial styling details: geometric table lamps with brass finish, large sculptural plant (bird of paradise or fiddle leaf fig), decorative books, metallic accessories",
+    "Include multiple light sources: Art Deco floor lamp, picture lights on gallery wall, table lamps creating ambient layers"
+  ],
+  "iteration": 1,
+  "cova_render_url": "https://v3b.fal.media/files/b/0a9722f1/zOfOAzi-2pUP0geEab_uk_2eb141d91b98444cbd8bb25fe85bed23.jpg"
+}
