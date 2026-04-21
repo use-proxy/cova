@@ -410,3 +410,37 @@ ETSY_AFFILIATE_ID=
 ## Post-launch test debt
 
 - **quiz-flow.test.ts (7 tests)** — Supabase admin client mock chain is stale. Fix mock setup to chain `createAdminSupabaseClient()` correctly.
+
+---
+
+## Phase 3 — LoRA weighted blending + hygiene (completed 2026-04-20)
+
+**Commits:** 06b10f7, f8049dd, 25e34a8, fd6b956, b052a1a, and the Phase 3 closeout commit.
+**Scope:** `apps/web/lib/ai/design-director.ts`, new `apps/web/lib/ai/lora-blending.ts`, `apps/web/lib/logging/redactor.ts`, `apps/web/lib/errors.ts`, `apps/web/.eslintrc.json`, `.husky/pre-commit`, `apps/web/components/chat/SuggestionChips.tsx`, new tests under `apps/web/tests/ai/`, docs under `docs/phase-3/`.
+
+**Director schema (additive, non-breaking):**
+`DesignBrief.style_weights.loras?: Record<string, number>` — optional map of
+cv-triggers → blend weights summing to 1.0. `primary_lora`/`primary_scale`
+retained for back-compat with frozen Edge Functions (Rule 12) and legacy rows.
+Director populates `loras` from `context.style_blend` when present, else
+`{[loraTrigger]: 1.0}`.
+
+**Contract:** max 3 LoRAs, drop < 0.10 threshold (below user-perceptible
+aesthetic influence; avoids wasting inference cost), normalize to sum 1.0.
+
+**Reader helper:** `readLoras(styleWeights)` in `lora-blending.ts`
+synthesizes `{[primary_lora]: 1.0}` for legacy rows. Use this in Phase 5
+renderer, not raw `brief.style_weights.loras`.
+
+**Forbidden-name defense layers now complete (research §7.4 5-layer model):**
+- Layer 1 — ESLint `no-restricted-syntax` rule F6.1 (author-time).
+- Layer 2 — Husky `pre-commit` hook F6.2 (commit-time).
+- Layer 3 — runtime sanitizer `sanitizeForbiddenNames` (Phase 0 B-3).
+- Layer 4 — Zod `.refine` on Sonnet free-text fields (Phase 0 B-3).
+- Layer 5 — log redactor `apps/web/lib/logging/redactor.ts` F6.5 wired into `captureError()`.
+
+**Deferred to Phase 4/5:** F3-RBF.1 (RBF kernel), F3-NAMING.1 (research cvjpd/cvlux/cvmax vs impl cvwmn/etc.), F3-BLEND-CTX.1 (upstream style_blend wiring into RenderContext), F3-CVMIN-COLLISION.1 (COVAMINIMAL and COVASCANDINAV both resolve to cvscn), F3-PARITY.1 (Python Director parity). See `docs/phase-3/follow-ups-deferred.md`.
+
+**Handoff to Phase 4:** 9 canonical cv-triggers per `COVA_TO_DNA_TRIGGER` in `apps/web/lib/styles/lora-registry.ts` are `cvwmn, cvscn, cvbio, cvmcm, cvcst, cvboh, cvind, cvfrm, cvdco`. Research-doc naming (cvjpd, cvlux, cvmax) does NOT match the implementation registry — reconcile at Phase 4 kickoff.
+
+**Handoff to Phase 5:** render orchestrator must populate `RenderContext.style_blend` from `users.style_blend` before calling Director; otherwise all renders route through single-primary fallback.
