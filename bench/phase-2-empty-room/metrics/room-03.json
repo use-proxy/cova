@@ -1,0 +1,36 @@
+{
+  "room_id": "room-03",
+  "input_fal_url": "https://v3b.fal.media/files/b/0a9713e1/TyfShlaVO2-lmRanDs-77_room-03_livingroom-leather-herringbone.webp",
+  "http_status": 200,
+  "wall_latency_ms": 49862,
+  "wall_latency_s": 49.862,
+  "stratification": {
+    "clutter": "light",
+    "geometry": "corner",
+    "texture": "herringbone-parquet",
+    "lighting": "harsh-directional"
+  },
+  "empty_room_url": "https://v3b.fal.media/files/b/0a9713e6/VI_NBI4TQo-mhiG49K3fw_2ea0e1637fd74a98a3245806013ed3d9.png",
+  "mask_coverage_raw_pct": 30.580118312757204,
+  "mask_coverage_dilated_pct": 38.315136316872426,
+  "inpainter_used": "bria",
+  "router_threshold_pct": 35.0,
+  "architectural_patch_ssim": 0.992506562149829,
+  "patch_coordinates": {
+    "x": 0,
+    "y": 0,
+    "size": 200
+  },
+  "patch_clean": true,
+  "partial_failures": [],
+  "latency_ms": 44689,
+  "cost_usd": 0.14,
+  "output_local_path": "bench/phase-2-empty-room/outputs/room-03.webp",
+  "pass_per_metric": {
+    "architectural_patch_ssim": true,
+    "cost": true,
+    "latency_p95": true
+  },
+  "overall_pass": true,
+  "bench_wall_s": 52.17410745797679
+}

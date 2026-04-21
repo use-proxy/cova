@@ -1,0 +1,36 @@
+{
+  "room_id": "room-11",
+  "input_fal_url": "https://v3b.fal.media/files/b/0a9713f4/sShhrbAeqOXT-FPgePm0v_room-11_green-velvet-gallery.webp",
+  "http_status": 200,
+  "wall_latency_ms": 72009,
+  "wall_latency_s": 72.009,
+  "stratification": {
+    "clutter": "heavy",
+    "geometry": "long-perspective",
+    "texture": "moroccan-rug",
+    "lighting": "warm-evening-lamp"
+  },
+  "empty_room_url": "https://v3b.fal.media/files/b/0a9713fa/rmSJvSxvW1O62dH4Dz41R_2927773a7ea4409e846b89bea20663c8.png",
+  "mask_coverage_raw_pct": 36.77297668038409,
+  "mask_coverage_dilated_pct": 50.714220393232736,
+  "inpainter_used": "bria",
+  "router_threshold_pct": 35.0,
+  "architectural_patch_ssim": 0.9754541437071396,
+  "patch_coordinates": {
+    "x": 575,
+    "y": 67,
+    "size": 200
+  },
+  "patch_clean": true,
+  "partial_failures": [],
+  "latency_ms": 71459,
+  "cost_usd": 0.14,
+  "output_local_path": "bench/phase-2-empty-room/outputs/room-11.webp",
+  "pass_per_metric": {
+    "architectural_patch_ssim": true,
+    "cost": true,
+    "latency_p95": false
+  },
+  "overall_pass": false,
+  "bench_wall_s": 74.17968270927668
+}

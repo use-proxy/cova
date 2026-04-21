@@ -1,0 +1,36 @@
+{
+  "room_id": "room-04",
+  "input_fal_url": "https://v3b.fal.media/files/b/0a971405/g3NPqlgfr97DU7cjNL6FR_room-04_attic-music-sloped.webp",
+  "http_status": 200,
+  "wall_latency_ms": 50170,
+  "wall_latency_s": 50.17,
+  "stratification": {
+    "clutter": "heavy",
+    "geometry": "sloped-ceiling",
+    "texture": "wall-molding-break",
+    "lighting": "mixed-backlit"
+  },
+  "empty_room_url": "https://v3b.fal.media/files/b/0a97140a/tMsHVjLuqHGJKWGa0nOp__41855573dbed485c97813c107dd59e4f.png",
+  "mask_coverage_raw_pct": 12.281207133058986,
+  "mask_coverage_dilated_pct": 21.802583447645176,
+  "inpainter_used": "lama",
+  "router_threshold_pct": 35.0,
+  "architectural_patch_ssim": 0.9980761242152039,
+  "patch_coordinates": {
+    "x": 880,
+    "y": 0,
+    "size": 200
+  },
+  "patch_clean": true,
+  "partial_failures": [],
+  "latency_ms": 49673,
+  "cost_usd": 0.14,
+  "output_download_error": "'bench/phase-2-empty-room/sequential-metrics/outputs/room-04.webp' is not in the subpath of '/Users/daksh/Desktop/cova'",
+  "pass_per_metric": {
+    "architectural_patch_ssim": true,
+    "cost": true,
+    "latency_p95": false
+  },
+  "overall_pass": false,
+  "bench_wall_s": 51.702092041261494
+}

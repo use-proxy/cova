@@ -444,3 +444,54 @@ renderer, not raw `brief.style_weights.loras`.
 **Handoff to Phase 4:** 9 canonical cv-triggers per `COVA_TO_DNA_TRIGGER` in `apps/web/lib/styles/lora-registry.ts` are `cvwmn, cvscn, cvbio, cvmcm, cvcst, cvboh, cvind, cvfrm, cvdco`. Research-doc naming (cvjpd, cvlux, cvmax) does NOT match the implementation registry — reconcile at Phase 4 kickoff.
 
 **Handoff to Phase 5:** render orchestrator must populate `RenderContext.style_blend` from `users.style_blend` before calling Director; otherwise all renders route through single-primary fallback.
+
+---
+
+## Phase 2 — Empty-room service (completed 2026-04-20)
+
+**Commits:** 5036ec9, f71e1d8, 6298810, and the Phase 2 closeout commit.
+**Scope:** new `modal_pipeline/empty_room.py`, new `apps/web/lib/ai/empty-room-client.ts`, new `apps/web/tests/ai/empty-room-client.test.ts`, new `bench/scripts/run_phase_2_service_bench.py`, `bench/phase-2-empty-room/`, `docs/phase-2/*`.
+
+**Deployed Modal app:** `cova-empty-room` at
+`https://cova-interior--cova-empty-room-emptyroom-api.modal.run`.
+A10G, Python 3.10, 1 endpoint: `POST /v1/generate_empty_room`.
+
+**Pipeline (ported 1:1 from Phase 0.5 Run 3):**
+SAM 3 × 20 furniture prompts (parallel, `max_workers=6`) → union mask →
+24px morphological dilation → 35% coverage router (LaMa ≤35% via
+`fal-ai/lama`, Bria >35% via `fal-ai/bria/eraser`) → output download →
+architectural-patch SSIM on clean 200×200 upper-third patch → return
+`EmptyRoomResponse` schema_version "1.0".
+
+**Acceptance (15-room bench, [`bench/phase-2-empty-room/results.md`](bench/phase-2-empty-room/results.md)):**
+- Architectural-patch SSIM ≥ 0.80: **15/15 pass** (mean 0.975, min 0.902).
+- Per-call cost: $0.14 flat, ≤ $0.30 target.
+- Router distribution: 10 LaMa / 5 Bria — exact match to Run 3.
+- **Latency gate MISSED:** p95 95s parallel / 88s sequential vs 45s target.
+  Tracked as F2-LATENCY.1 with four named self-heal paths.
+
+**Environment variables:**
+- `COVA_EMPTY_ROOM_URL` — optional override; client falls back to production URL above.
+
+**Client usage:**
+```ts
+import { generateEmptyRoom, EmptyRoomCoverageTooHighError } from "@/lib/ai/empty-room-client";
+const res = await generateEmptyRoom(imageUrl);
+// 413 → EmptyRoomCoverageTooHighError with .coveragePct for UX gate (F2-COVERAGE.1).
+```
+
+**Non-goals kept out:** `empty_room_cache` Supabase table (zero projected
+hit rate, deferred F2-CACHE.1); perception integration at service
+request-time (phase-2 calls SAM 3 directly, see
+[`docs/phase-2/service-design.md`](docs/phase-2/service-design.md) §3).
+
+**Handoff to Phase 5:** call `/v1/generate_empty_room`, pass
+`empty_room_url` as the reference image for NB-Pro / FLUX.2 Pro Edit.
+Use `mask_coverage_dilated_pct` to key decide extra prompt scaffolding
+on high-coverage rooms.
+
+**Deferred:** F2-LATENCY.1 (service 2× latency target), F2-CONSOLIDATION.1
+(deprecate `cova-restoration-pipeline` + `cova-grounded-sam2` after Phase 5
+adoption), F2-PERCEPTION.1 (add furniture-spec endpoint to perception),
+F2-CACHE.1, F2-TEXTURE.1, F2-COVERAGE.1, F2-HEALTHZ.1. See
+[`docs/phase-2/follow-ups-deferred.md`](docs/phase-2/follow-ups-deferred.md).

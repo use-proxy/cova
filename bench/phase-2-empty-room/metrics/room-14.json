@@ -1,0 +1,36 @@
+{
+  "room_id": "room-14",
+  "input_fal_url": "https://v3b.fal.media/files/b/0a9713f9/oi6AxTYbju9vfaWdCle3G_room-14_stacked-stone-empty.webp",
+  "http_status": 200,
+  "wall_latency_ms": 51233,
+  "wall_latency_s": 51.233,
+  "stratification": {
+    "clutter": "none",
+    "geometry": "long-perspective",
+    "texture": "stacked-stone",
+    "lighting": "mixed-window-fixture"
+  },
+  "empty_room_url": "https://v3b.fal.media/files/b/0a9713fe/U-vFUJz_7602QHF9q31ti_1afe6f0afa6240658f5324c80e824a0b.png",
+  "mask_coverage_raw_pct": 1.621970736168267,
+  "mask_coverage_dilated_pct": 4.2954961133973475,
+  "inpainter_used": "lama",
+  "router_threshold_pct": 35.0,
+  "architectural_patch_ssim": 0.9347585871418985,
+  "patch_coordinates": {
+    "x": 880,
+    "y": 0,
+    "size": 200
+  },
+  "patch_clean": true,
+  "partial_failures": [],
+  "latency_ms": 50673,
+  "cost_usd": 0.14,
+  "output_local_path": "bench/phase-2-empty-room/outputs/room-14.webp",
+  "pass_per_metric": {
+    "architectural_patch_ssim": true,
+    "cost": true,
+    "latency_p95": false
+  },
+  "overall_pass": false,
+  "bench_wall_s": 52.628456875216216
+}

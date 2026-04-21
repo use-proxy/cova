@@ -1,0 +1,36 @@
+{
+  "room_id": "room-05",
+  "input_fal_url": "https://v3b.fal.media/files/b/0a9713e4/dN7UQcNTexM_63ob3vK1t_room-05_office-gallery-rug.webp",
+  "http_status": 200,
+  "wall_latency_ms": 69764,
+  "wall_latency_s": 69.764,
+  "stratification": {
+    "clutter": "medium",
+    "geometry": "long-perspective",
+    "texture": "shag-rug-pattern",
+    "lighting": "harsh-backlit"
+  },
+  "empty_room_url": "https://v3b.fal.media/files/b/0a9713ea/1Ghg-l3LrB_jhzwkIdd3l_9c0ce104875e486187ea9fa52244ee14.png",
+  "mask_coverage_raw_pct": 27.774755658436213,
+  "mask_coverage_dilated_pct": 36.91718106995885,
+  "inpainter_used": "bria",
+  "router_threshold_pct": 35.0,
+  "architectural_patch_ssim": 0.9828978532654827,
+  "patch_coordinates": {
+    "x": 0,
+    "y": 0,
+    "size": 200
+  },
+  "patch_clean": true,
+  "partial_failures": [],
+  "latency_ms": 69242,
+  "cost_usd": 0.14,
+  "output_local_path": "bench/phase-2-empty-room/outputs/room-05.webp",
+  "pass_per_metric": {
+    "architectural_patch_ssim": true,
+    "cost": true,
+    "latency_p95": false
+  },
+  "overall_pass": false,
+  "bench_wall_s": 71.41730724973604
+}

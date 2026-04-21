@@ -1,0 +1,36 @@
+{
+  "room_id": "room-10",
+  "input_fal_url": "https://v3b.fal.media/files/b/0a9713ef/12AiwQIc_sHvN5GaoSzet_room-10_tv-fireplace-dark.webp",
+  "http_status": 200,
+  "wall_latency_ms": 53130,
+  "wall_latency_s": 53.13,
+  "stratification": {
+    "clutter": "medium",
+    "geometry": "long-perspective",
+    "texture": "plush-carpet",
+    "lighting": "tv-glow-only"
+  },
+  "empty_room_url": "https://v3b.fal.media/files/b/0a9713f4/xqSZLWbB7-IYnizpgkxkO_b613d879ea7143e7853088fe6c88599f.png",
+  "mask_coverage_raw_pct": 19.9469352393329,
+  "mask_coverage_dilated_pct": 33.49888997184319,
+  "inpainter_used": "lama",
+  "router_threshold_pct": 35.0,
+  "architectural_patch_ssim": 0.9082136556722529,
+  "patch_coordinates": {
+    "x": 664,
+    "y": 0,
+    "size": 200
+  },
+  "patch_clean": false,
+  "partial_failures": [],
+  "latency_ms": 52550,
+  "cost_usd": 0.14,
+  "output_local_path": "bench/phase-2-empty-room/outputs/room-10.webp",
+  "pass_per_metric": {
+    "architectural_patch_ssim": true,
+    "cost": true,
+    "latency_p95": false
+  },
+  "overall_pass": false,
+  "bench_wall_s": 54.77685391716659
+}

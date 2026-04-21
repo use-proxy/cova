@@ -1,0 +1,36 @@
+{
+  "room_id": "room-01",
+  "input_fal_url": "https://v3b.fal.media/files/b/0a9713da/p7-dDfsn1qjdxAN6O6R-3_room-01_bedroom-cat-popcorn.webp",
+  "http_status": 200,
+  "wall_latency_ms": 61018,
+  "wall_latency_s": 61.018,
+  "stratification": {
+    "clutter": "light",
+    "geometry": "corner",
+    "texture": "popcorn-ceiling",
+    "lighting": "harsh-directional"
+  },
+  "empty_room_url": "https://v3b.fal.media/files/b/0a9713e0/H5aD4hz09gJ0-zOPdzkPl_42ae4e232f264895addc729e179f15ea.png",
+  "mask_coverage_raw_pct": 19.487975823045268,
+  "mask_coverage_dilated_pct": 24.666923868312757,
+  "inpainter_used": "lama",
+  "router_threshold_pct": 35.0,
+  "architectural_patch_ssim": 1.0,
+  "patch_coordinates": {
+    "x": 0,
+    "y": 0,
+    "size": 200
+  },
+  "patch_clean": true,
+  "partial_failures": [],
+  "latency_ms": 60167,
+  "cost_usd": 0.14,
+  "output_local_path": "bench/phase-2-empty-room/outputs/room-01.webp",
+  "pass_per_metric": {
+    "architectural_patch_ssim": true,
+    "cost": true,
+    "latency_p95": false
+  },
+  "overall_pass": false,
+  "bench_wall_s": 63.57421987503767
+}

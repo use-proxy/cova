@@ -1,0 +1,36 @@
+{
+  "room_id": "room-10",
+  "input_fal_url": "https://v3b.fal.media/files/b/0a971413/MgO8ZVibIOdZ_NkL4lsv4_room-10_tv-fireplace-dark.webp",
+  "http_status": 200,
+  "wall_latency_ms": 56678,
+  "wall_latency_s": 56.678,
+  "stratification": {
+    "clutter": "medium",
+    "geometry": "long-perspective",
+    "texture": "plush-carpet",
+    "lighting": "tv-glow-only"
+  },
+  "empty_room_url": "https://v3b.fal.media/files/b/0a971419/60nW3ILukvcx0sieQpgU2_576d496943d9460aa381e393725a89cf.png",
+  "mask_coverage_raw_pct": 19.9469352393329,
+  "mask_coverage_dilated_pct": 33.49888997184319,
+  "inpainter_used": "lama",
+  "router_threshold_pct": 35.0,
+  "architectural_patch_ssim": 0.9082136556722529,
+  "patch_coordinates": {
+    "x": 664,
+    "y": 0,
+    "size": 200
+  },
+  "patch_clean": false,
+  "partial_failures": [],
+  "latency_ms": 56154,
+  "cost_usd": 0.14,
+  "output_download_error": "'bench/phase-2-empty-room/sequential-metrics/outputs/room-10.webp' is not in the subpath of '/Users/daksh/Desktop/cova'",
+  "pass_per_metric": {
+    "architectural_patch_ssim": true,
+    "cost": true,
+    "latency_p95": false
+  },
+  "overall_pass": false,
+  "bench_wall_s": 58.36639454215765
+}

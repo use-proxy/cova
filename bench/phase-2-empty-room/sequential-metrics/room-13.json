@@ -1,0 +1,36 @@
+{
+  "room_id": "room-13",
+  "input_fal_url": "https://v3b.fal.media/files/b/0a971419/PJzWUQkoO-4eUV9tZSkF7_room-13_exposed-brick-arched.webp",
+  "http_status": 200,
+  "wall_latency_ms": 55767,
+  "wall_latency_s": 55.767,
+  "stratification": {
+    "clutter": "light",
+    "geometry": "corner",
+    "texture": "exposed-brick",
+    "lighting": "soft-daylight"
+  },
+  "empty_room_url": "https://v3b.fal.media/files/b/0a97141e/nUuj4RBj_rJaQII4mhAF5_f92630a62eb64e7b939c1ed9640f01b8.png",
+  "mask_coverage_raw_pct": 2.397505144032922,
+  "mask_coverage_dilated_pct": 6.1897505144032925,
+  "inpainter_used": "lama",
+  "router_threshold_pct": 35.0,
+  "architectural_patch_ssim": 1.0,
+  "patch_coordinates": {
+    "x": 0,
+    "y": 0,
+    "size": 200
+  },
+  "patch_clean": true,
+  "partial_failures": [],
+  "latency_ms": 55239,
+  "cost_usd": 0.14,
+  "output_download_error": "'bench/phase-2-empty-room/sequential-metrics/outputs/room-13.webp' is not in the subpath of '/Users/daksh/Desktop/cova'",
+  "pass_per_metric": {
+    "architectural_patch_ssim": true,
+    "cost": true,
+    "latency_p95": false
+  },
+  "overall_pass": false,
+  "bench_wall_s": 57.22055133385584
+}

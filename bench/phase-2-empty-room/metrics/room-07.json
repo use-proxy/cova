@@ -1,0 +1,36 @@
+{
+  "room_id": "room-07",
+  "input_fal_url": "https://v3b.fal.media/files/b/0a9713e6/JnuMDAOoKImurv9zy5Nnd_room-07_bedroom-desk-carpet.webp",
+  "http_status": 200,
+  "wall_latency_ms": 63692,
+  "wall_latency_s": 63.692,
+  "stratification": {
+    "clutter": "medium",
+    "geometry": "long-perspective",
+    "texture": "carpet",
+    "lighting": "harsh-directional"
+  },
+  "empty_room_url": "https://v3b.fal.media/files/b/0a9713ec/PBDlLt8WXju7AftcjVGpC_71f4692618b946cab7a58209e0cca57a.png",
+  "mask_coverage_raw_pct": 5.933927754915409,
+  "mask_coverage_dilated_pct": 13.574531321444901,
+  "inpainter_used": "lama",
+  "router_threshold_pct": 35.0,
+  "architectural_patch_ssim": 0.998213124261307,
+  "patch_coordinates": {
+    "x": 880,
+    "y": 0,
+    "size": 200
+  },
+  "patch_clean": true,
+  "partial_failures": [],
+  "latency_ms": 63178,
+  "cost_usd": 0.14,
+  "output_local_path": "bench/phase-2-empty-room/outputs/room-07.webp",
+  "pass_per_metric": {
+    "architectural_patch_ssim": true,
+    "cost": true,
+    "latency_p95": false
+  },
+  "overall_pass": false,
+  "bench_wall_s": 65.71470925025642
+}
