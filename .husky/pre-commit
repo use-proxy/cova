@@ -15,5 +15,61 @@ if [ -f "apps/mobile/app.json" ]; then
   fi
 fi
 
+# Check 3: Phase 3 F6.2 — bare forbidden style names in staged diffs.
+# Canonical list: Japandi, Bohemian, Coastal, Mid-Century Modern, Minimalist,
+# Scandinavian (CLAUDE.md Rule 8). Qualified forms (Warm Japandi,
+# Coastal Bright, Retro Mid-Century) are allowed. Scans only staged diffs
+# (ACM = added/copied/modified), excludes docs/tests/node_modules/hooks
+# themselves/CI/migrations/scraped product rows and this hook file.
+echo "Checking for bare forbidden style names..."
+FORBIDDEN_PATTERN='(^|[^-a-zA-Z])(([Jj]apandi)|([Bb]ohemian)|([Ss]candinavian)|([Mm]inimalist)|([Cc]oastal)|([Mm]id-[Cc]entury[[:space:]]+[Mm]odern))'
+STAGED=$(git diff --cached --diff-filter=ACM --name-only \
+  -- '*.ts' '*.tsx' '*.js' '*.jsx' \
+  ':!docs/' ':!.husky/' ':!.github/' ':!**/tests/**' ':!**/__tests__/**' \
+  ':!**/node_modules/**' ':!apps/mobile/' ':!**/supabase/migrations/**' \
+  ':!apps/web/lib/ai/forbidden-names.ts' \
+  ':!apps/web/lib/ai/anchor-display.ts' \
+  ':!apps/web/lib/ai/canonical-archetypes.ts' \
+  ':!apps/web/lib/ai/chat/systemPrompts.ts' \
+  ':!apps/web/lib/ai/prompt-compiler.ts' \
+  ':!apps/web/lib/ai/design-director.ts' \
+  ':!apps/web/lib/quiz/style-archetypes.ts' \
+  ':!apps/web/lib/styles/lora-registry.ts' \
+  ':!apps/web/lib/ai/lora-registry.ts' \
+  ':!apps/web/lib/logging/redactor.ts' \
+  ':!apps/web/lib/ai/flux.ts' \
+  ':!apps/web/lib/ai/style-match.ts' \
+  ':!apps/web/lib/unsplash.ts' \
+  ':!apps/web/app/api/quiz/' \
+  ':!apps/web/app/api/match/' \
+  ':!apps/web/app/api/pipeline/furniture-match/' \
+  ':!apps/web/app/design/step-3b/' \
+  ':!apps/web/app/design/step-7g/' \
+  ':!apps/web/components/quiz/CardStack.tsx')
+LEAK_FOUND=0
+for file in $STAGED; do
+  if [ -f "$file" ]; then
+    # Only examine added lines in the diff (lines beginning with +, not ++).
+    if git diff --cached -- "$file" | grep -E "^\+" | grep -vE "^\+\+\+" | \
+       grep -E "$FORBIDDEN_PATTERN" | \
+       grep -vE "[Ww]arm[[:space:]]+[Jj]apandi|[Cc]oastal[[:space:]]+[Bb]right|[Rr]etro[[:space:]]+[Mm]id-[Cc]entury" > /tmp/cova-forbidden-hits-$$.txt 2>&1; then
+      echo "❌ Bare forbidden style name in $file:"
+      cat /tmp/cova-forbidden-hits-$$.txt
+      LEAK_FOUND=1
+    fi
+    rm -f /tmp/cova-forbidden-hits-$$.txt
+  fi
+done
+if [ $LEAK_FOUND -eq 1 ]; then
+  echo ""
+  echo "Phase 3 F6.2 / CLAUDE.md Rule 8: remove the bare style name or use a"
+  echo "qualified form. To bypass with justification: git commit --no-verify"
+  exit 1
+fi
+
+# Note: the ESLint no-restricted-syntax forbidden-name rule (F6.1) is enforced
+# in CI via `next lint`. The grep above is the redundant fast-path that also
+# covers non-lint'd file types (MD, JSON, etc. staged into apps/web).
+
 echo "✅ Pre-commit checks passed"
 exit 0
