@@ -62,6 +62,10 @@ LABEL_TO_CATEGORY = {
     # Rugs
     "rug": "rug", "area rug": "rug", "carpet": "rug", "flatweave rug": "rug",
     "layered rug": "rug", "jute rug": "rug", "wool rug": "rug",
+    # Floor tiles (purchasable decor — NOT rug, NOT architectural)
+    "floor tile": "decor", "ceramic floor tile": "decor", "porcelain floor tile": "decor",
+    "terracotta floor tile": "decor", "stone floor tile": "decor",
+    "encaustic floor tile": "decor", "cement floor tile": "decor",
     # Soft furnishings
     "throw pillow": "soft_furnishing", "pillow": "soft_furnishing",
     "throw blanket": "soft_furnishing", "blanket": "soft_furnishing",
@@ -103,6 +107,14 @@ CATEGORY_GROUPS = {
     "storage_all": ["storage", "bookshelf", "wardrobe", "dresser", "media_unit"],
 }
 
+# Labels matching these substrings are architectural — skip entirely.
+ARCHITECTURAL_EXCLUSIONS = {
+    "hardwood flooring", "wood flooring", "laminate flooring", "vinyl plank flooring",
+    "hardwood floor", "wood floor", "laminate floor", "vinyl plank floor",
+    "flooring", "structural beam", "load-bearing beam",
+}
+
+
 def get_category_group(category: str) -> list:
     """Return related categories for broader matching fallback."""
     for group_cats in CATEGORY_GROUPS.values():
@@ -123,6 +135,15 @@ def detect_furniture_with_claude(pano_bytes, anthropic_key, style_blend):
 
     prompt = f"""You are a furniture detection AI for an interior design shopping app. Analyze this redesigned room image and identify ALL purchasable items visible.
 
+STEP 1 — IDENTIFY ROOM TYPE: Before listing items, identify the room type from visual cues (furniture arrangement, fixtures, appliances visible). Based on the room type, prioritize items in this order:
+- Bathroom: vanity cabinet, mirror, sink, toilet, shower enclosure, faucet, lighting, towels, bath mat, accessories, plants
+- Kitchen: island, bar stools, pendant lights, open shelving, sink, faucet, appliances, backsplash tiles, storage, small decor
+- Living room: sofa, coffee table, TV console, accent chairs, rug, pendant/chandelier, throw pillows, plants, art, side tables
+- Dining room: dining table, chairs, bench, pendant above table, sideboard/buffet, mirror, rug, curtains, centerpiece
+- Bedroom: bed frame+headboard, nightstands, dresser, lamps, rug, curtains, bench, plants, throw, decorative pillows
+- Home office: desk, chair, shelving, desk lamp, speakers, plants, storage, desk accessories
+PRIMARY FURNITURE FIRST: Always list the major furniture pieces (first 8 items) before decor and accessories. If a room has 14 items, the first 8 must be the primary purchasable pieces.
+
 TARGET: 10-14 distinct items. Be thorough — scan every surface, wall, floor, and ceiling.
 
 ITEM TYPES TO DETECT (look for ALL of these, not just large pieces):
@@ -137,6 +158,17 @@ ITEM TYPES TO DETECT (look for ALL of these, not just large pieces):
 - Decor: plant + pot together as ONE item (specify plant type if identifiable), vase, mirror, wall art/print, TV
 - Small surface decor: small potted plant, decorative tray, candle holder, ceramic vase on tables/shelves/nightstands — DETECT THESE even if small
 - Desk (if present)
+
+DO NOT DETECT — architectural elements (not purchasable standalone):
+- Wood flooring, hardwood flooring, laminate flooring, vinyl plank flooring — installed, not standalone products
+- Structural load-bearing beams (exposed rustic/industrial beams that are clearly part of the building structure)
+- Built-in walls, ceilings, doors, windows, fireplace surround structure
+
+DETECT THESE — purchasable floor/ceiling elements:
+- Porcelain, ceramic, terracotta, or stone floor tiles → label as "[color/material] floor tile" (e.g. "terracotta floor tile", "white ceramic floor tile"), category = "decor"
+- Faux/decorative ceiling beams (clearly ornamental, hollow, attached to a finished ceiling as a design accent that could be purchased) → label as "faux decorative ceiling beam", search_query MUST start with "faux"
+
+DO NOT DETECT — ultra-low-value items under ~$15 retail: individual small candles (not lanterns or pillar sets), single books (not decorative stacks), remote controls, charging cables, small figurines under 4 inches, toothbrush holders, toilet paper rolls. Focus on items that meaningfully contribute to a shopping cart.
 
 SEPARATION RULES:
 - Bed frame and headboard = ONE item (not two)
@@ -161,7 +193,7 @@ For each item return these fields:
 
 SEARCH QUERY STRICT RULES — violations will break product matching:
 - NEVER use style words: no "boho", "coastal", "japandi", "minimalist", "scandinavian", "mid-century" — Google Shopping ignores them
-- START with material + color as the first two words: "cream linen", "dark walnut", "brass gold", "natural jute", "white oak"
+- The FIRST word of search_query MUST be the primary material or color. If the item has a distinctive material (brass, walnut, rattan, marble, ceramic, velvet, linen, oak, wicker, jute, bamboo), that word comes first. NEVER start a query with a style word, room word, or adjective that isn't material or color (e.g. NEVER start with "traditional", "decorative", "modern", "accent", "living", "bedroom"). WRONG: "traditional turned leg spindle side table" / WRONG: "decorative orb sphere black table accent" — RIGHT: "brass metal pedestal plant stand ornate traditional" / RIGHT: "black ceramic decorative orb sphere sculptural tabletop"
 - ALWAYS name the specific furniture type: "wingback headboard", "swing arm sconce", "flatweave rug", "platform bed frame"
 - ALWAYS describe physical form: shape, construction method, leg style, frame type, silhouette
 - INCLUDE size_hint in the query when it is not empty
@@ -176,6 +208,8 @@ BAD examples (do NOT do this):
   "coastal blue throw pillow set"
   "wall-mounted tv living room"
   "television"
+  "traditional turned leg spindle side table natural finish"
+  "decorative orb sphere black table accent"
 
 GOOD examples (follow this format exactly):
   "queen platform bed cream linen tall wingback headboard panel no tufting upholstered"
@@ -223,6 +257,16 @@ Return ONLY a valid JSON array. No markdown, no explanation, no code fences."""
     for item in furniture_list:
         label = item.get("label", "").lower().strip()
         category = item.get("category", "").lower().strip()
+
+        # Skip architectural elements — not purchasable standalone products
+        if any(excl in label for excl in ARCHITECTURAL_EXCLUSIONS):
+            print(f"  [skip-arch] Excluded architectural element: {label}")
+            continue
+
+        # Fix: anything ending in "tile" should be "decor", never "rug"
+        if label.endswith("tile") or "floor tile" in label:
+            category = "decor"
+
         # Normalize category to match DB exactly
         if category not in VALID_CATEGORIES:
             # Try label-based lookup first
