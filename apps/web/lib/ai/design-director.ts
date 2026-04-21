@@ -17,6 +17,7 @@ import {
   containsForbiddenStyleName,
   findForbiddenStyleNames,
 } from "@/lib/ai/forbidden-names";
+import { buildLorasFromBlend, normalizeLoras } from "@/lib/ai/lora-blending";
 
 const anthropic = new Anthropic();
 
@@ -69,6 +70,11 @@ export interface DesignBrief {
     primary_scale: number;
     secondary_lora?: string;
     secondary_scale?: number;
+    // Phase 3: weighted LoRA blend. Keys are cv* triggers (what FLUX consumes),
+    // values are blend proportions summing to 1.0. Additive — primary_lora is
+    // still populated for back-compat with frozen Edge Functions (CLAUDE.md
+    // Rule 12) and legacy rows. Phase 5 renderer prefers `loras` when present.
+    loras?: Record<string, number>;
   };
   hard_constraints: string[];
 
@@ -315,6 +321,12 @@ const EMIT_DESIGN_BRIEF_TOOL: Anthropic.Messages.Tool = {
           },
           secondary_lora: { type: "string" },
           secondary_scale: { type: "number" },
+          loras: {
+            type: "object",
+            description:
+              "Optional weighted blend of cv* LoRA triggers. Keys are cv* codes (cvwmn, cvscn, etc.), values are proportions in [0,1] summing to 1.0. Overridden server-side post-call.",
+            additionalProperties: { type: "number" },
+          },
         },
         required: ["primary_lora", "primary_scale"],
       },
@@ -1114,6 +1126,31 @@ export async function generateDesignBrief(
   if (!brief.style_weights.primary_scale) {
     brief.style_weights.primary_scale = 0.8;
   }
+
+  // Phase 3: populate `loras` weighted blend.
+  //
+  // Source precedence:
+  //   1. RenderContext.style_blend (archetype distribution from step-3b)
+  //   2. loraTrigger fallback → { [primary_trigger]: 1.0 }
+  //
+  // primary_lora stays populated regardless (dual-field back-compat policy,
+  // Phase 0 D-3). loras keys are cv* triggers (what FLUX consumes); COVA*
+  // archetype keys from the quiz blend are mapped via COVA_TO_DNA_TRIGGER
+  // inside buildLorasFromBlend.
+  const ctxRaw = input.context as Record<string, unknown> | null;
+  const styleBlend = ctxRaw?.style_blend as Record<string, number> | null | undefined;
+  const primaryTriggerForFallback = input.loraTrigger.split(/\s+/)[0]!.toLowerCase();
+
+  let blendResult;
+  if (styleBlend && Object.keys(styleBlend).length > 0) {
+    blendResult = buildLorasFromBlend(styleBlend, primaryTriggerForFallback);
+  } else if (brief.style_weights.loras && Object.keys(brief.style_weights.loras).length > 0) {
+    // Sonnet echoed a loras map — normalize defensively.
+    blendResult = normalizeLoras(brief.style_weights.loras, primaryTriggerForFallback);
+  } else {
+    blendResult = normalizeLoras(null, primaryTriggerForFallback);
+  }
+  brief.style_weights.loras = blendResult.loras;
 
   // Enforce hard constraints programmatically
   enforceHardConstraints(brief, input);
