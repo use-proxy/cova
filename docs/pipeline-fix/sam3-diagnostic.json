@@ -1,0 +1,989 @@
+{
+  "img_url": "https://v3b.fal.media/files/b/0a9718df/fFXHz6W47yMQLWqDFVmbG.jpg",
+  "results": {
+    "gaming chair": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "bed": {
+      "detected": true,
+      "num_masks": 1,
+      "top_score": 0.741450309753418,
+      "all_scores": [
+        0.741450309753418
+      ],
+      "num_boxes": 0
+    },
+    "chair": {
+      "detected": true,
+      "num_masks": 1,
+      "top_score": 0.9642947316169739,
+      "all_scores": [
+        0.9642947316169739
+      ],
+      "num_boxes": 0
+    },
+    "platform bed": {
+      "detected": true,
+      "num_masks": 1,
+      "top_score": 0.8985915780067444,
+      "all_scores": [
+        0.8985915780067444
+      ],
+      "num_boxes": 0
+    },
+    "desk chair": {
+      "detected": true,
+      "num_masks": 1,
+      "top_score": 0.8859637975692749,
+      "all_scores": [
+        0.8859637975692749
+      ],
+      "num_boxes": 0
+    },
+    "bedding": {
+      "detected": true,
+      "num_masks": 3,
+      "top_score": 0.8074359893798828,
+      "all_scores": [
+        0.8074359893798828,
+        0.6455429792404175,
+        0.5608993768692017
+      ],
+      "num_boxes": 0
+    },
+    "pillow": {
+      "detected": true,
+      "num_masks": 3,
+      "top_score": 0.8597790598869324,
+      "all_scores": [
+        0.8597790598869324,
+        0.8575415015220642,
+        0.5497166514396667
+      ],
+      "num_boxes": 0
+    },
+    "bed frame": {
+      "detected": true,
+      "num_masks": 1,
+      "top_score": 0.9032151699066162,
+      "all_scores": [
+        0.9032151699066162
+      ],
+      "num_boxes": 0
+    },
+    "daybed": {
+      "detected": true,
+      "num_masks": 1,
+      "top_score": 0.6886990666389465,
+      "all_scores": [
+        0.6886990666389465
+      ],
+      "num_boxes": 0
+    },
+    "trundle bed": {
+      "detected": true,
+      "num_masks": 1,
+      "top_score": 0.706471860408783,
+      "all_scores": [
+        0.706471860408783
+      ],
+      "num_boxes": 0
+    },
+    "office chair": {
+      "detected": true,
+      "num_masks": 1,
+      "top_score": 0.9448330402374268,
+      "all_scores": [
+        0.9448330402374268
+      ],
+      "num_boxes": 0
+    },
+    "storage bed": {
+      "detected": true,
+      "num_masks": 1,
+      "top_score": 0.6439176797866821,
+      "all_scores": [
+        0.6439176797866821
+      ],
+      "num_boxes": 0
+    },
+    "quilt": {
+      "detected": true,
+      "num_masks": 1,
+      "top_score": 0.6473788619041443,
+      "all_scores": [
+        0.6473788619041443
+      ],
+      "num_boxes": 0
+    },
+    "comforter": {
+      "detected": true,
+      "num_masks": 2,
+      "top_score": 0.5517809391021729,
+      "all_scores": [
+        0.5517809391021729,
+        0.5061019062995911
+      ],
+      "num_boxes": 0
+    },
+    "stool": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "mattress": {
+      "detected": true,
+      "num_masks": 1,
+      "top_score": 0.7608367204666138,
+      "all_scores": [
+        0.7608367204666138
+      ],
+      "num_boxes": 0
+    },
+    "rocking chair": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "dresser": {
+      "detected": true,
+      "num_masks": 1,
+      "top_score": 0.621627151966095,
+      "all_scores": [
+        0.621627151966095
+      ],
+      "num_boxes": 0
+    },
+    "blanket": {
+      "detected": true,
+      "num_masks": 1,
+      "top_score": 0.8742305040359497,
+      "all_scores": [
+        0.8742305040359497
+      ],
+      "num_boxes": 0
+    },
+    "drawer": {
+      "detected": true,
+      "num_masks": 3,
+      "top_score": 0.9373508095741272,
+      "all_scores": [
+        0.9373508095741272,
+        0.8577824831008911,
+        0.8561993837356567
+      ],
+      "num_boxes": 0
+    },
+    "chest of drawers": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "nightstand": {
+      "detected": true,
+      "num_masks": 1,
+      "top_score": 0.5476449728012085,
+      "all_scores": [
+        0.5476449728012085
+      ],
+      "num_boxes": 0
+    },
+    "bedside table": {
+      "detected": true,
+      "num_masks": 1,
+      "top_score": 0.714113712310791,
+      "all_scores": [
+        0.714113712310791
+      ],
+      "num_boxes": 0
+    },
+    "wardrobe": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "cabinet": {
+      "detected": true,
+      "num_masks": 1,
+      "top_score": 0.8404466509819031,
+      "all_scores": [
+        0.8404466509819031
+      ],
+      "num_boxes": 0
+    },
+    "closet organizer": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "armchair": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "bookshelf": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "shelf": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "shelving unit": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "drawer unit": {
+      "detected": true,
+      "num_masks": 3,
+      "top_score": 0.8128393292427063,
+      "all_scores": [
+        0.8128393292427063,
+        0.7795220017433167,
+        0.6928860545158386
+      ],
+      "num_boxes": 0
+    },
+    "storage unit": {
+      "detected": true,
+      "num_masks": 2,
+      "top_score": 0.8488225340843201,
+      "all_scores": [
+        0.8488225340843201,
+        0.5487680435180664
+      ],
+      "num_boxes": 0
+    },
+    "writing table": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "computer desk": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "table": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "sofa": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "folding chair": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "couch": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "coffee table": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "side table": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "rolling cart": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "ottoman": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "media console": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "entertainment center": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "loveseat": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "desk": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "carpet mat": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "lamp": {
+      "detected": true,
+      "num_masks": 2,
+      "top_score": 0.67461097240448,
+      "all_scores": [
+        0.67461097240448,
+        0.6070461273193359
+      ],
+      "num_boxes": 0
+    },
+    "desk lamp": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "table lamp": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "rug": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "bookcase": {
+      "detected": true,
+      "num_masks": 1,
+      "top_score": 0.5518566370010376,
+      "all_scores": [
+        0.5518566370010376
+      ],
+      "num_boxes": 0
+    },
+    "floor lamp": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "potted plant": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "tv stand": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "flower pot": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "backpack": {
+      "detected": true,
+      "num_masks": 1,
+      "top_score": 0.9094124436378479,
+      "all_scores": [
+        0.9094124436378479
+      ],
+      "num_boxes": 0
+    },
+    "bag": {
+      "detected": true,
+      "num_masks": 1,
+      "top_score": 0.9383774995803833,
+      "all_scores": [
+        0.9383774995803833
+      ],
+      "num_boxes": 0
+    },
+    "tote bag": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "area rug": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "luggage": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "clothes": {
+      "detected": true,
+      "num_masks": 2,
+      "top_score": 0.8476608395576477,
+      "all_scores": [
+        0.8476608395576477,
+        0.6977359652519226
+      ],
+      "num_boxes": 0
+    },
+    "jacket": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "laptop": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "clothing": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "laundry": {
+      "detected": true,
+      "num_masks": 1,
+      "top_score": 0.8565706610679626,
+      "all_scores": [
+        0.8565706610679626
+      ],
+      "num_boxes": 0
+    },
+    "shirt": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "shoes": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "electronics": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "storage box": {
+      "detected": true,
+      "num_masks": 2,
+      "top_score": 0.8043984174728394,
+      "all_scores": [
+        0.8043984174728394,
+        0.6277596950531006
+      ],
+      "num_boxes": 0
+    },
+    "plant": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "light": {
+      "detected": true,
+      "num_masks": 1,
+      "top_score": 0.8749771118164062,
+      "all_scores": [
+        0.8749771118164062
+      ],
+      "num_boxes": 0
+    },
+    "speaker": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "cable": {
+      "detected": true,
+      "num_masks": 3,
+      "top_score": 0.7429783344268799,
+      "all_scores": [
+        0.7429783344268799,
+        0.6069388389587402,
+        0.5581946969032288
+      ],
+      "num_boxes": 0
+    },
+    "keyboard": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "computer": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "footwear": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "wire": {
+      "detected": true,
+      "num_masks": 3,
+      "top_score": 0.7424713969230652,
+      "all_scores": [
+        0.7424713969230652,
+        0.6089317202568054,
+        0.5433445572853088
+      ],
+      "num_boxes": 0
+    },
+    "sneakers": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "monitor": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "boxes": {
+      "detected": true,
+      "num_masks": 2,
+      "top_score": 0.8464712500572205,
+      "all_scores": [
+        0.8464712500572205,
+        0.636220395565033
+      ],
+      "num_boxes": 0
+    },
+    "charger": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "picture frame": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "cardboard box": {
+      "detected": true,
+      "num_masks": 2,
+      "top_score": 0.7431558966636658,
+      "all_scores": [
+        0.7431558966636658,
+        0.500076413154602
+      ],
+      "num_boxes": 0
+    },
+    "headphones": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "poster": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "string lights": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "mirror": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "hanging photos": {
+      "detected": true,
+      "num_masks": 3,
+      "top_score": 0.7933382987976074,
+      "all_scores": [
+        0.7933382987976074,
+        0.793030858039856,
+        0.7912073135375977
+      ],
+      "num_boxes": 0
+    },
+    "wall mirror": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "curtain": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "drape": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "fairy lights": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "power cord": {
+      "detected": true,
+      "num_masks": 2,
+      "top_score": 0.7172864675521851,
+      "all_scores": [
+        0.7172864675521851,
+        0.5862311720848083
+      ],
+      "num_boxes": 0
+    },
+    "photo frame": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "furniture": {
+      "detected": true,
+      "num_masks": 3,
+      "top_score": 0.9412572979927063,
+      "all_scores": [
+        0.9412572979927063,
+        0.9288914203643799,
+        0.7931846976280212
+      ],
+      "num_boxes": 0
+    },
+    "artwork": {
+      "detected": true,
+      "num_masks": 3,
+      "top_score": 0.8500705361366272,
+      "all_scores": [
+        0.8500705361366272,
+        0.8426953554153442,
+        0.8250226974487305
+      ],
+      "num_boxes": 0
+    },
+    "clutter": {
+      "detected": true,
+      "num_masks": 1,
+      "top_score": 0.5145250558853149,
+      "all_scores": [
+        0.5145250558853149
+      ],
+      "num_boxes": 0
+    },
+    "toy": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "item": {
+      "detected": true,
+      "num_masks": 3,
+      "top_score": 0.528571367263794,
+      "all_scores": [
+        0.528571367263794,
+        0.5228557586669922,
+        0.5134128332138062
+      ],
+      "num_boxes": 0
+    },
+    "decoration": {
+      "detected": true,
+      "num_masks": 3,
+      "top_score": 0.6969138979911804,
+      "all_scores": [
+        0.6969138979911804,
+        0.6918989419937134,
+        0.6801711916923523
+      ],
+      "num_boxes": 0
+    },
+    "object": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    },
+    "knick knack": {
+      "detected": false,
+      "num_masks": 0,
+      "top_score": 0.0,
+      "all_scores": [],
+      "num_boxes": 0
+    }
+  },
+  "hits": [
+    "bed",
+    "chair",
+    "platform bed",
+    "desk chair",
+    "bedding",
+    "pillow",
+    "bed frame",
+    "daybed",
+    "trundle bed",
+    "office chair",
+    "storage bed",
+    "quilt",
+    "comforter",
+    "mattress",
+    "dresser",
+    "blanket",
+    "drawer",
+    "nightstand",
+    "bedside table",
+    "cabinet",
+    "drawer unit",
+    "storage unit",
+    "lamp",
+    "bookcase",
+    "backpack",
+    "bag",
+    "clothes",
+    "laundry",
+    "storage box",
+    "light",
+    "cable",
+    "wire",
+    "boxes",
+    "cardboard box",
+    "hanging photos",
+    "power cord",
+    "furniture",
+    "artwork",
+    "clutter",
+    "item",
+    "decoration"
+  ],
+  "misses": [
+    "gaming chair",
+    "stool",
+    "rocking chair",
+    "chest of drawers",
+    "wardrobe",
+    "closet organizer",
+    "armchair",
+    "bookshelf",
+    "shelf",
+    "shelving unit",
+    "writing table",
+    "computer desk",
+    "table",
+    "sofa",
+    "folding chair",
+    "couch",
+    "coffee table",
+    "side table",
+    "rolling cart",
+    "ottoman",
+    "media console",
+    "entertainment center",
+    "loveseat",
+    "desk",
+    "carpet mat",
+    "desk lamp",
+    "table lamp",
+    "rug",
+    "floor lamp",
+    "potted plant",
+    "tv stand",
+    "flower pot",
+    "tote bag",
+    "area rug",
+    "luggage",
+    "jacket",
+    "laptop",
+    "clothing",
+    "shirt",
+    "shoes",
+    "electronics",
+    "plant",
+    "speaker",
+    "keyboard",
+    "computer",
+    "footwear",
+    "sneakers",
+    "monitor",
+    "charger",
+    "picture frame",
+    "headphones",
+    "poster",
+    "string lights",
+    "mirror",
+    "wall mirror",
+    "curtain",
+    "drape",
+    "fairy lights",
+    "photo frame",
+    "toy",
+    "object",
+    "knick knack"
+  ],
+  "strong_hits": [
+    "bed",
+    "chair",
+    "platform bed",
+    "desk chair",
+    "bedding",
+    "pillow",
+    "bed frame",
+    "daybed",
+    "trundle bed",
+    "office chair",
+    "storage bed",
+    "quilt",
+    "comforter",
+    "mattress",
+    "dresser",
+    "blanket",
+    "drawer",
+    "nightstand",
+    "bedside table",
+    "cabinet",
+    "drawer unit",
+    "storage unit",
+    "lamp",
+    "bookcase",
+    "backpack",
+    "bag",
+    "clothes",
+    "laundry",
+    "storage box",
+    "light",
+    "cable",
+    "wire",
+    "boxes",
+    "cardboard box",
+    "hanging photos",
+    "power cord",
+    "furniture",
+    "artwork",
+    "clutter",
+    "item",
+    "decoration"
+  ],
+  "weak_hits": []
+}

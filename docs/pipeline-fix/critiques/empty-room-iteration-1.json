@@ -1,0 +1,75 @@
+{
+  "iteration": 1,
+  "empty_url": "https://v3b.fal.media/files/b/0a971905/hjiK51aADjFHPA9W_hmTp_a037345e107e4d43aed203d29f0c2da3.png",
+  "service_response": {
+    "schema_version": "1.0",
+    "empty_room_url": "https://v3b.fal.media/files/b/0a971905/hjiK51aADjFHPA9W_hmTp_a037345e107e4d43aed203d29f0c2da3.png",
+    "image_hash": "7ac7bece55967f10c9d1b4f562aa373712995ed1028db3dad27531bae0e09db4",
+    "image_width": 1200,
+    "image_height": 1600,
+    "mask_coverage_raw_pct": 16.141041666666666,
+    "mask_coverage_dilated_pct": 26.25015625,
+    "inpainter_used": "lama",
+    "router_threshold_pct": 35.0,
+    "architectural_patch_ssim": 1.0,
+    "patch_coordinates": {
+      "x": 950,
+      "y": 133,
+      "size": 200
+    },
+    "patch_clean": true,
+    "partial_failures": [],
+    "latency_ms": 102221,
+    "cost_usd": 0.325,
+    "generated_at_iso": "2026-04-21T04:16:59Z"
+  },
+  "critique": {
+    "furniture_removal": 3,
+    "architectural_preservation": 6,
+    "image_quality": 5,
+    "overall_pass": false,
+    "remaining_furniture": [
+      "Brown pillow or cushion visible on windowsill near left side",
+      "Partial remnant of bedding/fabric visible on windowsill",
+      "Lamp or light fixture still present on windowsill (white/cream colored object)",
+      "Electrical outlet/plug visible on wall near window (this should remain but object plugged in should be gone)"
+    ],
+    "quality_issues": [
+      "Significant blurriness in the lower right portion of the floor",
+      "Floor texture degradation - carpet pattern becomes indistinct and muddy in right foreground",
+      "Unnatural gradient/fog effect spreading across right side of floor",
+      "Loss of carpet detail and texture sharpness compared to original",
+      "Soft focus/blur extending from floor up the right wall",
+      "Inconsistent lighting on floor - appears lighter/whiter in center than original",
+      "Possible color temperature shift making floor appear less golden/tan",
+      "Shadow inconsistency where bed used to be - floor lighting doesn't match expected natural light pattern",
+      "General softness throughout image compared to crisp original"
+    ],
+    "architectural_damage": [
+      "Ceiling fan light appears dimmer/less defined than original",
+      "String of hanging photos reduced from approximately 8-9 photos to only 5-6 visible photos",
+      "Some hanging photos appear distorted or merged together",
+      "Wall corner where bed met wall shows unnatural smoothness/blending",
+      "Baseboard definition lost in multiple areas, especially right side",
+      "Window blinds texture slightly degraded",
+      "Wall texture appears smoother/less textured than original in areas where furniture was removed"
+    ],
+    "diagnosis": "The pipeline has successfully removed major furniture pieces (bed, nightstand, office chair, clothes, backpack) but failed critically in three areas: (1) incomplete removal of small items on the windowsill, (2) severe quality degradation with aggressive blurring applied to inpainted regions especially on the floor, and (3) collateral damage to architectural elements like the photo string. The blurring suggests the inpainting model is either set with too much smoothing/denoising or the generated floor texture isn't matching the original resolution. The windowsill items indicate the masking wasn't comprehensive enough for small objects.",
+    "specific_fixes_needed": [
+      "Remove brown pillow/cushion from windowsill completely",
+      "Remove white/cream lamp or light object from windowsill",
+      "Remove any bedding fabric remnants visible on windowsill",
+      "Restore full string of hanging photos to match original count and clarity (8-9 photos)",
+      "Fix severe floor blurriness in right foreground - regenerate with sharper carpet texture",
+      "Eliminate fog/gradient effect spreading across right side of floor",
+      "Restore carpet texture detail and pattern sharpness throughout entire floor",
+      "Correct floor color temperature to match original golden/tan tone",
+      "Improve shadow casting on floor to look natural without furniture",
+      "Restore ceiling fan light brightness and definition to match original",
+      "Sharpen baseboard definition throughout room, especially right wall",
+      "Restore wall texture detail in inpainted areas to match original stucco/texture",
+      "Increase overall image sharpness to match original photograph quality",
+      "Fix individual hanging photo clarity and prevent merging artifacts"
+    ]
+  }
+}

@@ -1,0 +1,296 @@
+{
+  "room-02": {
+    "room_id": "room-02",
+    "empty_url": "https://v3b.fal.media/files/b/0a971a64/Cr8RW1UP6kNaZeRq_CPLo_c3c035e4055641e78525a094a5cd42d6.png",
+    "render_url": "https://v3b.fal.media/files/b/0a971a69/WCc2AH2glWnAvus4Jk_TM_5gwmhvhc.png",
+    "coverage_pct": 44.07785102778922,
+    "inpainter": "bria",
+    "critique": {
+      "empty_room_quality": 3,
+      "structural_fidelity": 8,
+      "style_quality": 8,
+      "overall_pass": false,
+      "failures": [
+        "Empty room not properly cleared - furniture remnants visible including chairs, table, plants, and decor items",
+        "Left shelving unit visible on left side",
+        "Piano/keyboard and shelving still present on right side",
+        "Overall pass fails due to empty_room_quality below threshold of 7"
+      ]
+    }
+  },
+  "room-01": {
+    "room_id": "room-01",
+    "empty_url": "https://v3b.fal.media/files/b/0a971a63/NeBF5J5kVM3UPhdzvf_Tp_d274b01388134aaca0962e2063ce5baf.png",
+    "render_url": "https://v3b.fal.media/files/b/0a971a68/7IYz2uehJUwVjZto2WmtT_bqML8cNq.png",
+    "coverage_pct": 28.75025720164609,
+    "inpainter": "lama",
+    "critique": {
+      "empty_room_quality": 4,
+      "structural_fidelity": 9,
+      "style_quality": 2,
+      "overall_pass": false,
+      "failures": [
+        "Empty room still contains significant furniture remnants in left corner",
+        "Cat present in empty room (should be fully bare)",
+        "COVAJAPANDI style not identifiable - appears generic neutral/minimal",
+        "No distinctive COVAJAPANDI elements visible in redesign",
+        "Style execution lacks any recognizable design language"
+      ]
+    }
+  },
+  "room-03": {
+    "room_id": "room-03",
+    "empty_url": "https://v3b.fal.media/files/b/0a971a74/mcHFX_kmEPEesdxobGypw_361832884d36407583eee8064d39ad04.png",
+    "render_url": "https://v3b.fal.media/files/b/0a971a78/KVgEbVe8YTRouAFoJboXT_jiKcgvtd.png",
+    "coverage_pct": 40.51401748971193,
+    "inpainter": "bria",
+    "critique": {
+      "empty_room_quality": 4,
+      "structural_fidelity": 3,
+      "style_quality": 7,
+      "overall_pass": false,
+      "failures": [
+        "Empty room retains plants and shelf unit - not sufficiently bare",
+        "Window treatment changed from blinds to sheer curtains - architectural modification",
+        "Camera angle shifted - different perspective and composition",
+        "Wall configuration appears altered - left wall relationship changed",
+        "Ceiling light fixtures repositioned and increased in number",
+        "Floor pattern and tone significantly lightened"
+      ]
+    }
+  },
+  "room-04": {
+    "room_id": "room-04",
+    "empty_url": "https://v3b.fal.media/files/b/0a971a75/AWRbotcis8LTI7QhX_agC_c3f752328744480cb790fb1e41497a11.png",
+    "render_url": "https://v3b.fal.media/files/b/0a971a79/Gww6zA9ZiHm3qQEYQ2-qv_JpyhUwKw.png",
+    "coverage_pct": 27.492455418381347,
+    "inpainter": "lama",
+    "critique": {
+      "empty_room_quality": 3,
+      "structural_fidelity": 7,
+      "style_quality": 7,
+      "overall_pass": false,
+      "failures": [
+        "Empty room still contains significant debris, TV mount, music stand, and scattered items",
+        "Floor not properly cleared - clutter and objects remain visible",
+        "Empty room quality falls well below required threshold of 7"
+      ]
+    }
+  },
+  "room-06": {
+    "room_id": "room-06",
+    "empty_url": "https://v3b.fal.media/files/b/0a971a88/EvaydBCqJeTG3kysLonkx_9d3241a15f114d18ae4d6ba1bf2310d0.png",
+    "render_url": "https://v3b.fal.media/files/b/0a971a8c/SGx4TVug1zGTUH-eJGTuH_XzeEOjGH.png",
+    "coverage_pct": 6.609655309606481,
+    "inpainter": "lama",
+    "critique": {
+      "empty_room_quality": 10,
+      "structural_fidelity": 8,
+      "style_quality": 7,
+      "overall_pass": true,
+      "failures": [
+        "Bay window geometry slightly simplified/softened",
+        "Outdoor view changed (less greenery, different building details)",
+        "Floor tone slightly warmer/lighter than original"
+      ]
+    }
+  },
+  "room-05": {
+    "room_id": "room-05",
+    "empty_url": "https://v3b.fal.media/files/b/0a971a89/-SOdOpu_GTbWUPmruo57G_8140c57676614bc49711376a73f9ee5f.png",
+    "render_url": "https://v3b.fal.media/files/b/0a971a8d/jAA_V2go87el2wJUNuitT_324Shjxv.png",
+    "coverage_pct": 42.52527006172839,
+    "inpainter": "bria",
+    "critique": {
+      "empty_room_quality": 4,
+      "structural_fidelity": 8,
+      "style_quality": 7,
+      "overall_pass": false,
+      "failures": [
+        "Empty room still contains significant items: shelving with books/decor, framed art, plants, storage baskets visible",
+        "Shelving unit was not removed - major furniture piece remains",
+        "Wall decor and accessories still present in empty room",
+        "Room not sufficiently bare for proper redesign baseline"
+      ]
+    }
+  },
+  "room-07": {
+    "room_id": "room-07",
+    "empty_url": "https://v3b.fal.media/files/b/0a971a99/qFA52R2fhzUpmKoISmJDy_daef7a77983840ba84307af92b752cab.png",
+    "render_url": "https://v3b.fal.media/files/b/0a971aae/xe-nVWrQ_upbVT9xfBT_M_7NsSdzms.png",
+    "coverage_pct": 20.41026520347508,
+    "inpainter": "lama",
+    "critique": {
+      "empty_room_quality": 4,
+      "structural_fidelity": 9,
+      "style_quality": 2,
+      "overall_pass": false,
+      "failures": [
+        "Empty room still contains desk/furniture remnants with poor masking",
+        "COVAJAPANDI style not executed - appears as generic Japandi/minimalist",
+        "Missing coastal elements critical to COVAJAPANDI definition",
+        "No distinctive coastal+Japandi fusion visible",
+        "Style could be any basic neutral bedroom design"
+      ]
+    }
+  },
+  "room-08": {
+    "room_id": "room-08",
+    "empty_url": "https://v3b.fal.media/files/b/0a971a9c/oo6p_sIyVu_iJbRJQolxO_13cf7cff43634c78aab34ccad706a373.png",
+    "render_url": "https://v3b.fal.media/files/b/0a971aaf/H7t2qRbqIXzo2d4nomBQr_4UojSTva.png",
+    "coverage_pct": 72.1324874256973,
+    "inpainter": "bria",
+    "critique": {
+      "empty_room_quality": 6,
+      "structural_fidelity": 8,
+      "style_quality": 7,
+      "overall_pass": false,
+      "failures": [
+        "Empty room retains small artwork on back wall and items in right corner",
+        "Floor appears lighter/whiter in empty room than original",
+        "Empty room quality below threshold of 7"
+      ]
+    }
+  },
+  "room-09": {
+    "room_id": "room-09",
+    "empty_url": "https://v3b.fal.media/files/b/0a971ab9/si0PpldybvbepuvQnda55_8b5e556faa64491dba902b95ed1357bd.png",
+    "render_url": "https://v3b.fal.media/files/b/0a971abd/QWclijqBs0GXMYmiZB9ph_widoGpkk.png",
+    "coverage_pct": 39.943737139917694,
+    "inpainter": "bria",
+    "critique": {
+      "empty_room_quality": 3,
+      "structural_fidelity": 6,
+      "style_quality": 5,
+      "overall_pass": false,
+      "failures": [
+        "Empty room retains too much furniture: desk, gaming chair, shelves, guitars, amps, clothes pile all remain",
+        "LED strip lighting removed from ceiling architecture",
+        "Window/curtain completely removed - major architectural change",
+        "Camera angle shifted noticeably to the right",
+        "COVAINDUSTRIAL style lacks distinctiveness - reads as generic rustic/industrial blend",
+        "Missing key industrial elements like exposed brick, metal fixtures, or concrete textures",
+        "Leather headboard and knit throw are more rustic farmhouse than industrial"
+      ]
+    }
+  },
+  "room-10": {
+    "room_id": "room-10",
+    "empty_url": "https://v3b.fal.media/files/b/0a971abc/uA_xCL8LlM5ChqzbKq_GM_c5e9a8a1a59348b5a9026cfe7a338404.png",
+    "render_url": "https://v3b.fal.media/files/b/0a971abe/S9mKDAi9adDKrk7VWXVKi_qyO8cYEm.png",
+    "coverage_pct": 38.42227095516569,
+    "inpainter": "bria",
+    "critique": {
+      "empty_room_quality": 4,
+      "structural_fidelity": 8,
+      "style_quality": 8,
+      "overall_pass": false,
+      "failures": [
+        "Empty room still contains furniture remnants in corners (chairs/sofas visible)",
+        "Colored lighting artifacts remain in empty room (blue and orange glows)",
+        "Carpet not fully cleared in empty room state"
+      ]
+    }
+  },
+  "room-11": {
+    "room_id": "room-11",
+    "empty_url": "https://v3b.fal.media/files/b/0a971ac9/nHxlURiKTBxM3emifwqwn_56e25fd8939c478b87636f2104070739.png",
+    "render_url": "https://v3b.fal.media/files/b/0a971acc/jXf5uXAH9jbAy9Z5blxxa_kCELTGOG.png",
+    "coverage_pct": 57.77754915409237,
+    "inpainter": "bria",
+    "critique": {
+      "empty_room_quality": 3,
+      "structural_fidelity": 4,
+      "style_quality": 7,
+      "overall_pass": false,
+      "failures": [
+        "Empty room retains chair, ottoman, wall art, plants, and cat - not adequately cleared",
+        "Floor completely changed from wood to light carpet/concrete",
+        "Window area heavily modified - added raised platform/step that didn't exist",
+        "Wall architecture altered - added wainscoting/panel detail on left wall",
+        "New clerestory window added above main window that wasn't in original",
+        "Camera angle appears slightly shifted upward"
+      ]
+    }
+  },
+  "room-12": {
+    "room_id": "room-12",
+    "empty_url": "https://v3b.fal.media/files/b/0a971acc/h_fSJ_YLt4ROumx0VV5Nz_0d4e52aa02574d8d93eca6fcd2ba8183.png",
+    "render_url": "https://v3b.fal.media/files/b/0a971ace/N7ZZ4y8-BCuI71b2Rvs5U_1hykSjJr.png",
+    "coverage_pct": 29.86181841563786,
+    "inpainter": "lama",
+    "critique": {
+      "empty_room_quality": 3,
+      "structural_fidelity": 5,
+      "style_quality": 7,
+      "overall_pass": false,
+      "failures": [
+        "Empty room retains piano and other items in left corner",
+        "Blue LED lighting still visible throughout empty room",
+        "Wall decor and water bottle remain in empty room",
+        "Floor color changed from light honey wood to warmer orange-toned wood",
+        "Ceiling texture appears smoother/different in redesign",
+        "Window shutters configuration altered - original has clear horizontal divisions",
+        "Camera angle shifted slightly lower/different perspective"
+      ]
+    }
+  },
+  "room-13": {
+    "room_id": "room-13",
+    "empty_url": "https://v3b.fal.media/files/b/0a971ad9/Iv3AtOLe6JD5VaTFny771_19cf432a4fb14e5cadfdcc96ffa57355.png",
+    "render_url": "https://v3b.fal.media/files/b/0a971ae2/7AHQitPd5Q_Tzqh6q_KM7_h5z7bwpI.png",
+    "coverage_pct": 13.71289866255144,
+    "inpainter": "lama",
+    "critique": {
+      "empty_room_quality": 3,
+      "structural_fidelity": 6,
+      "style_quality": 7,
+      "overall_pass": false,
+      "failures": [
+        "Empty room retains bike, chair, AC unit, blue tape, and floating objects",
+        "Floor color changed from dark brown to nearly black",
+        "Camera angle slightly shifted lower/closer",
+        "Window views altered (left window shows different building)",
+        "Ceiling fan repositioned and style changed"
+      ]
+    }
+  },
+  "room-14": {
+    "room_id": "room-14",
+    "empty_url": "https://v3b.fal.media/files/b/0a971adc/-fBsYG7BjYeYfXkbswhpF_0998c832d51e4a708941e06d6b6c61c1.png",
+    "render_url": "https://v3b.fal.media/files/b/0a971ae2/k5dSukobXsWg8sLdLm2pC_Co0bD2XB.png",
+    "coverage_pct": 7.854709647919525,
+    "inpainter": "lama",
+    "critique": {
+      "empty_room_quality": 4,
+      "structural_fidelity": 6,
+      "style_quality": 8,
+      "overall_pass": false,
+      "failures": [
+        "Empty room still contains fireplace insert, wooden shelf, radiator cover, and electrical outlets - not properly bare",
+        "Floor color changed from beige carpet to gray carpet/concrete appearance",
+        "Wooden mantle shelf removed in redesign - architectural feature lost",
+        "Window treatment added where none existed originally",
+        "Slight perspective/camera angle shift visible"
+      ]
+    }
+  },
+  "room-15": {
+    "room_id": "room-15",
+    "empty_url": "https://v3b.fal.media/files/b/0a971aec/1cQmuzovTj5YX0pnvHbi6_38875bf59b814368bc1fab10f5786721.png",
+    "render_url": "https://v3b.fal.media/files/b/0a971aef/6lGHiWBzPkVsB8gihy0Uw_4xBIOVOK.png",
+    "coverage_pct": 47.59785093735711,
+    "inpainter": "bria",
+    "critique": {
+      "empty_room_quality": 4,
+      "structural_fidelity": 9,
+      "style_quality": 7,
+      "overall_pass": false,
+      "failures": [
+        "Empty room has significant dark shadow/artifact on right wall and floor",
+        "Shadow appears to be furniture removal artifact, not clean bare room",
+        "Empty room quality below threshold of 7"
+      ]
+    }
+  }
+}

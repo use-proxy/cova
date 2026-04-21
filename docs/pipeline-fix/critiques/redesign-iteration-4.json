@@ -1,0 +1,119 @@
+{
+  "iteration": 4,
+  "render_url": "https://v3b.fal.media/files/b/0a9719ac/XuS349s3_qd2wmzf26OQC.jpg",
+  "loras_used": [
+    {
+      "path": "https://v3b.fal.media/files/b/0a968d9b/TbARCu6Zf_643uHs51Pkv_pytorch_lora_weights.safetensors",
+      "scale": 0.88,
+      "trigger": "cvwmn",
+      "name": "COVAJAPANDI"
+    },
+    {
+      "path": "https://huggingface.co/Shakker-Labs/FLUX.1-dev-LoRA-add-details/resolve/main/FLUX-dev-lora-add_details.safetensors",
+      "scale": 0.55,
+      "trigger": null,
+      "name": "add-details"
+    },
+    {
+      "path": "https://huggingface.co/XLabs-AI/flux-RealismLora/resolve/main/lora.safetensors",
+      "scale": 0.25,
+      "trigger": null,
+      "name": "realism"
+    }
+  ],
+  "service_response": {
+    "schema_version": "1.0",
+    "redesign_url": "https://v3b.fal.media/files/b/0a9719ac/XuS349s3_qd2wmzf26OQC.jpg",
+    "archetype_resolved": "COVAJAPANDI",
+    "primary_trigger": "cvwmn",
+    "loras_used": [
+      {
+        "path": "https://v3b.fal.media/files/b/0a968d9b/TbARCu6Zf_643uHs51Pkv_pytorch_lora_weights.safetensors",
+        "scale": 0.88,
+        "trigger": "cvwmn",
+        "name": "COVAJAPANDI"
+      },
+      {
+        "path": "https://huggingface.co/Shakker-Labs/FLUX.1-dev-LoRA-add-details/resolve/main/FLUX-dev-lora-add_details.safetensors",
+        "scale": 0.55,
+        "trigger": null,
+        "name": "add-details"
+      },
+      {
+        "path": "https://huggingface.co/XLabs-AI/flux-RealismLora/resolve/main/lora.safetensors",
+        "scale": 0.25,
+        "trigger": null,
+        "name": "realism"
+      }
+    ],
+    "prompt_used": "cvwmn interior cvwmn interior cvwmn interior preserve original room architecture exactly, same wall color, same ceiling, same window, same floor, same camera angle, only stage new furniture, do not change any architectural element, a well-designed bedroom with bed as focal point, photorealistic interior photography, Architectural Digest editorial quality, 35mm lens, natural daylight, sharp focus, high resolution, warm oak, natural linen, paper lanterns, handcrafted ceramics, wabi-sabi restraint, low-profile furniture, warm neutrals, negative space, a bedroom with bed as focal point cvwmn interior cvwmn interior",
+    "negative_prompt_used": "blurry, low quality, distorted, unrealistic proportions, floating objects, bad lighting, overexposed, flat, cartoon, illustration, 3d render, CGI, watermark, text, signature, ugly, poor composition, duplicate furniture, different room, different walls, different floor, different ceiling, changed architecture, changed wall color, changed flooring, different camera angle, different perspective, different proportions, renovated, remodeled, structural changes, arched doorway, archway, alcove, plaster walls, hardwood floor, wood plank floor, tile floor, pendant lantern instead of ceiling fan, removed ceiling fan, removed window, removed blinds",
+    "provider": "flux-general",
+    "provider_fallback_reason": null,
+    "strength": 0.4,
+    "guidance_scale": 3.5,
+    "num_inference_steps": 28,
+    "seed": 42,
+    "image_width": 768,
+    "image_height": 1024,
+    "latency_ms": 8939,
+    "cost_usd": 0.045,
+    "judge_score": null,
+    "generated_at_iso": "2026-04-21T04:44:48Z"
+  },
+  "critique": {
+    "structural_fidelity": 3,
+    "furniture_quality": 2,
+    "style_fidelity": 1,
+    "photorealism": 6,
+    "overall_beats_collov": false,
+    "structural_failures": [
+      "CRITICAL: 'DAKSH' letters completely removed from wall - this is a personalized element that should be preserved like Collov does",
+      "Photo string decorations removed - original had photo garland below DAKSH letters, now gone",
+      "Furniture barely changed - original bed, nightstand, and chair are still present with minimal modification",
+      "Carpet texture identical to original - no layered rug like Collov adds for visual interest",
+      "Office chair still visible in right corner - Collov removes this completely for cleaner aesthetic",
+      "Backpack/items on floor in lower right still present - poor inpainting/removal",
+      "Wall shelf added above bed that wasn't in original - inconsistent preservation logic"
+    ],
+    "style_failures": [
+      "CATASTROPHIC FAILURE: This is NOT a redesign - it's barely modified from the original",
+      "The bedding changed slightly but same bed frame, same position, same proportions",
+      "Same IKEA-style nightstand with blue drawers remains",
+      "No identifiable 'Japandi' or any coherent style - just a marginally tidied version of original",
+      "Zero new furniture introduced - Collov adds entirely new bed, nightstands, chairs, plants, artwork",
+      "No style-specific material choices - no natural wood, no minimalism, no Japanese aesthetics",
+      "Basket objects added to shelf but this is cosmetic clutter, not intentional design",
+      "Photo garland replaced with different garland - lateral move, not upgrade"
+    ],
+    "what_cova_does_better_than_collov": [
+      "Preserves some original personal items (though this is actually a failure for a redesign tool)",
+      "Maintains exact original furniture positions (again, this defeats the purpose of redesign)"
+    ],
+    "what_collov_does_better_than_cova": [
+      "Complete furniture replacement - introduces entirely new bed frames, headboards, nightstands",
+      "Preserves critical personal elements (DAKSH letters) while redesigning everything else",
+      "Adds layered rugs for depth and style definition",
+      "Introduces artwork, plants, reading chairs, lamps - complete room composition",
+      "Achieves actual style differentiation across 4 renders with consistent photorealism",
+      "Clean inpainting - completely removes unwanted items (office chair, floor clutter)",
+      "Proper scale and proportion - adult-sized beds replace child's platform bed",
+      "Professional staging quality - each render could be a real estate listing photo",
+      "Lighting consistency while dramatically changing furnishings",
+      "Textile detail and fabric draping looks realistic"
+    ],
+    "root_cause": "Cova has fundamentally misunderstood the task. This is not a redesign - it's a light cleanup filter. The core issue is the model appears to be doing style transfer or light inpainting rather than full furniture removal + replacement. The preservation of the original bed frame, nightstand, and chair indicates the model is either: (1) not detecting furniture boundaries for removal, (2) not generating new furniture to replace detected items, or (3) using an img2img approach with insufficient denoising strength. The result is the original room with minor cosmetic changes - completely missing the 'AI redesign' category. Collov performs full object detection, mask-based removal, and conditional generation of style-appropriate furniture. Cova appears to be running something closer to a 'clean up this photo' model rather than 'redesign this room'.",
+    "specific_fixes": [
+      "1. CRITICAL - Implement furniture detection + removal pipeline: Use segmentation model (Mask R-CNN or SAM) to detect and mask ALL furniture objects (bed, nightstand, chair, storage). Generate clean background inpainting for these masked regions before adding new furniture",
+      "2. CRITICAL - Add furniture generation module: Use ControlNet with depth/pose guidance to generate entirely NEW furniture pieces appropriate to requested style. The current output suggests this step is completely missing",
+      "3. CRITICAL - Implement element preservation whitelist: Create explicit masks for elements that MUST be preserved (DAKSH letters, photo garland, window, ceiling fan, wall color) and protect these regions during generation",
+      "4. Increase denoising strength: If using img2img, current strength appears ~0.3-0.4. Increase to 0.7-0.85 for furniture regions to ensure complete replacement",
+      "5. Add style-specific LoRA/embeddings: 'COVAJAPANDI' should trigger natural wood tones, low-profile furniture, neutral textiles, minimalist compositions. Current output has zero style markers",
+      "6. Implement multi-stage pipeline: (a) Preserve architectural elements, (b) Remove ALL furniture, (c) Generate new furniture with style conditioning, (d) Add accessories/decor, (e) Relighting pass",
+      "7. Add quality control check: Render should be rejected if >40% of pixels match original image. Current output appears >85% identical to input",
+      "8. Train on furniture replacement datasets: Current model behavior suggests training on cleanup/enhancement rather than furniture swapping. Need datasets with before/after room pairs showing complete redesigns",
+      "9. Fix inpainting mask precision: Items like office chair and floor clutter should be completely removed. Current masks are either too conservative or inpainting quality is poor",
+      "10. Add composition rules:\u5e8a should be centered or deliberately asymmetric, not in exact same position as original child's bed. Add placement variation logic"
+    ]
+  }
+}

@@ -1,0 +1,126 @@
+{
+  "iteration": 2,
+  "render_url": "https://v3b.fal.media/files/b/0a97198f/pjlTAR9wXii5027e5FuYh.jpg",
+  "loras_used": [
+    {
+      "path": "https://v3b.fal.media/files/b/0a968d9b/TbARCu6Zf_643uHs51Pkv_pytorch_lora_weights.safetensors",
+      "scale": 0.88,
+      "trigger": "cvwmn",
+      "name": "COVAJAPANDI"
+    },
+    {
+      "path": "https://huggingface.co/Shakker-Labs/FLUX.1-dev-LoRA-add-details/resolve/main/FLUX-dev-lora-add_details.safetensors",
+      "scale": 0.55,
+      "trigger": null,
+      "name": "add-details"
+    },
+    {
+      "path": "https://huggingface.co/XLabs-AI/flux-RealismLora/resolve/main/lora.safetensors",
+      "scale": 0.25,
+      "trigger": null,
+      "name": "realism"
+    }
+  ],
+  "service_response": {
+    "schema_version": "1.0",
+    "redesign_url": "https://v3b.fal.media/files/b/0a97198f/pjlTAR9wXii5027e5FuYh.jpg",
+    "archetype_resolved": "COVAJAPANDI",
+    "primary_trigger": "cvwmn",
+    "loras_used": [
+      {
+        "path": "https://v3b.fal.media/files/b/0a968d9b/TbARCu6Zf_643uHs51Pkv_pytorch_lora_weights.safetensors",
+        "scale": 0.88,
+        "trigger": "cvwmn",
+        "name": "COVAJAPANDI"
+      },
+      {
+        "path": "https://huggingface.co/Shakker-Labs/FLUX.1-dev-LoRA-add-details/resolve/main/FLUX-dev-lora-add_details.safetensors",
+        "scale": 0.55,
+        "trigger": null,
+        "name": "add-details"
+      },
+      {
+        "path": "https://huggingface.co/XLabs-AI/flux-RealismLora/resolve/main/lora.safetensors",
+        "scale": 0.25,
+        "trigger": null,
+        "name": "realism"
+      }
+    ],
+    "prompt_used": "cvwmn interior cvwmn interior cvwmn interior preserve original room architecture exactly, same wall color, same ceiling, same window, same floor, same camera angle, only stage new furniture, do not change any architectural element, a well-designed bedroom with bed as focal point, photorealistic interior photography, Architectural Digest editorial quality, 35mm lens, natural daylight, sharp focus, high resolution, warm oak, natural linen, paper lanterns, handcrafted ceramics, wabi-sabi restraint, low-profile furniture, warm neutrals, negative space, a bedroom with bed as focal point cvwmn interior cvwmn interior",
+    "negative_prompt_used": "blurry, low quality, distorted, unrealistic proportions, floating objects, bad lighting, overexposed, flat, cartoon, illustration, 3d render, CGI, watermark, text, signature, ugly, poor composition, duplicate furniture, different room, different walls, different floor, different ceiling, changed architecture, changed wall color, changed flooring, different camera angle, different perspective, different proportions, renovated, remodeled, structural changes, arched doorway, archway, alcove, plaster walls, hardwood floor, wood plank floor, tile floor, pendant lantern instead of ceiling fan, removed ceiling fan, removed window, removed blinds",
+    "provider": "flux-general",
+    "provider_fallback_reason": null,
+    "strength": 0.55,
+    "guidance_scale": 3.5,
+    "num_inference_steps": 28,
+    "seed": 42,
+    "image_width": 768,
+    "image_height": 1024,
+    "latency_ms": 65913,
+    "cost_usd": 0.045,
+    "judge_score": null,
+    "generated_at_iso": "2026-04-21T04:40:57Z"
+  },
+  "critique": {
+    "structural_fidelity": 2,
+    "furniture_quality": 3,
+    "style_fidelity": 4,
+    "photorealism": 5,
+    "overall_beats_collov": false,
+    "structural_failures": [
+      "CRITICAL: Ceiling fan completely removed - this is a fundamental architectural element that must be preserved",
+      "CRITICAL: 'DAKSH' lettering completely removed from wall - personal elements must be preserved",
+      "CRITICAL: Camera perspective has drifted significantly - viewpoint is lower and closer to bed than original",
+      "Wall color appears whiter/lighter than original blue-gray",
+      "Room proportions distorted - ceiling appears lower and room feels compressed",
+      "Window position shifted - appears more centered than in original left-positioned window",
+      "Ceiling texture/detail completely changed - original has flat ceiling with fan mount, Cova shows curved/sculptural ceiling element",
+      "Photo string with pictures completely removed",
+      "Baseboard/corner detail on right wall not preserved accurately"
+    ],
+    "style_failures": [
+      "COVAJAPANDI style completely undefined - no recognizable Japanese minimalist, Scandinavian (Japandi), or any coherent design language evident",
+      "Generic white-on-white-on-beige aesthetic with zero cultural specificity",
+      "No distinctive material choices - just bland white bedding and beige carpet (same as original)",
+      "Missing Japanese design elements: no low platform bed, no shoji-inspired elements, no natural wood tones, no wabi-sabi aesthetic",
+      "Missing Scandinavian elements: no functional minimalism, no hygge warmth, no natural textiles",
+      "Sparse to the point of being empty rather than intentionally minimal - one branch decoration is not a design style",
+      "No attention to negative space principles central to Japanese design",
+      "Zero boldness - this is timid, not tasteful restraint"
+    ],
+    "what_cova_does_better_than_collov": [
+      "More dramatic lighting mood (softer, evening ambiance vs Collov's bright consistent lighting)",
+      "Arguably more minimalist aesthetic (though this fails the brief)",
+      "Bedding draping appears natural and realistic"
+    ],
+    "what_collov_does_better_than_cova": [
+      "Perfect preservation of ceiling fan in exact position across all 4 renders",
+      "Perfect preservation of 'DAKSH' wall lettering across all 4 renders",
+      "Locked camera perspective with zero drift",
+      "Maintains wall color accurately",
+      "Shows actual furnished rooms with complete design schemes",
+      "Demonstrates style variation across 4 renders (even if all skew contemporary neutral)",
+      "Proper spatial scaling - furniture fits room proportions logically",
+      "Complete rooms with nightstands, lighting, art, plants, rugs, seating",
+      "Professional inpainting with zero artifacts",
+      "Maintains room proportions and ceiling height accurately",
+      "Preserves window position and blinds perfectly",
+      "Better photorealism in furniture textures and materials"
+    ],
+    "root_cause": "Cova's pipeline has catastrophic structural preservation failures that violate the fundamental requirements of room redesign. The model appears to be running with insufficient masking/preservation controls, allowing it to hallucinate new architectural elements (curved ceiling) while deleting critical existing ones (ceiling fan, wall text). The structural anchor points are not being enforced - camera pose is drifting, perspective is changing, and the room geometry is being reinterpreted rather than preserved. Additionally, the style prompt 'COVAJAPANDI' is either undefined in the model's training data or being ignored entirely, resulting in a generic minimalist output with no cultural design specificity. The sparseness suggests the model may be over-applying furniture removal without proper replacement, or the style guidance is so weak that it defaults to near-empty rooms. This is not a minor calibration issue - this is a fundamental architecture failure where the preservation mask, pose lock, and style conditioning are all non-functional.",
+    "specific_fixes": [
+      "1. IMMEDIATE: Implement hard structural preservation mask that locks ceiling fan position and geometry with 100% preservation weight - this element must be untouchable by the inpainting model",
+      "2. IMMEDIATE: Implement text/signage detection and preservation - use OCR or object detection to identify 'DAKSH' letters and apply preservation mask with maximum priority",
+      "3. IMMEDIATE: Fix camera pose drift - implement pose estimation from original image and enforce identical camera parameters (focal length, position, rotation) in generation with hard constraints, not soft guidance",
+      "4. HIGH PRIORITY: Define COVAJAPANDI style properly - create explicit style LoRA or conditioning that combines Japanese minimalism (low platforms, natural wood, shoji screens, wabi-sabi textures) + Scandinavian warmth (light woods, textiles, hygge lighting, functional furniture) with example reference images",
+      "5. HIGH PRIORITY: Increase furniture density requirements - current output is under-furnished; implement minimum object count constraints (bed + 2 nightstands + seating + lighting + art + plants minimum)",
+      "6. Fix wall color preservation - implement color matching loss between original and generated walls in non-furniture regions",
+      "7. Fix room proportion distortion - enforce geometric consistency checks between original and generated images (ceiling height ratios, wall angles)",
+      "8. Add architectural element detector to identify and preserve: ceiling fixtures, wall decorations, window frames, baseboards, corners",
+      "9. Implement style validation - reject outputs that don't contain minimum required style-specific elements (for Japandi: must include natural wood tones, must include minimalist furniture with visible legs, must include organic/natural decorative element)",
+      "10. Add photorealism discriminator specifically trained on real bedroom photos to reject overly soft/dreamy renders",
+      "11. Implement multi-stage generation: (1) preserve architecture, (2) remove furniture, (3) add new furniture with style conditioning, (4) refine lighting and textures",
+      "12. Create style reference dataset with labeled Japandi interiors and implement CLIP-based style matching loss during generation"
+    ]
+  }
+}

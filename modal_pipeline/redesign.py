@@ -45,8 +45,15 @@ APP_NAME = "cova-redesign"
 API_VERSION = "v1"
 SCHEMA_VERSION: Literal["1.0"] = "1.0"
 
-# FLUX params — research §9.2.
-FLUX_STRENGTH: float = 0.82
+# FLUX params — Phase 5 (pipeline-fix) recalibration.
+# Original 0.82 (Phase 5 docs) caused complete architectural replacement
+# on real-world cluttered inputs (target room iter 1: ceiling fan
+# replaced with paper lantern, window with arched alcove, carpet with
+# hardwood). 0.55 is the empirical safe ceiling for "preserve walls/
+# floor/window while staging new furniture" per the pipeline-fix
+# critique loop. Reflection-loop overrides may push to 0.65 if style
+# fidelity falls below the gate.
+FLUX_STRENGTH: float = 0.55
 FLUX_GUIDANCE_SCALE: float = 3.5
 FLUX_NUM_STEPS: int = 28
 FLUX_IMAGE_SIZE_PORTRAIT = {"width": 768, "height": 1024}
@@ -207,9 +214,23 @@ BASE_PROSE = (
 )
 
 NEGATIVE_PROMPT = (
+    # Quality
     "blurry, low quality, distorted, unrealistic proportions, floating objects, "
     "bad lighting, overexposed, flat, cartoon, illustration, 3d render, CGI, "
-    "watermark, text, signature, ugly, poor composition, duplicate furniture"
+    "watermark, text, signature, ugly, poor composition, duplicate furniture, "
+    # Architectural drift (Phase 5 pipeline-fix iter 2):
+    # the iter 1 critique flagged the model swapping ceiling fan→paper
+    # lantern, window→arched alcove, carpet→hardwood, drywall→plaster.
+    # Adding these as negatives weights the diffusion against those
+    # specific drift modes.
+    "different room, different walls, different floor, different ceiling, "
+    "changed architecture, changed wall color, changed flooring, "
+    "different camera angle, different perspective, different proportions, "
+    "renovated, remodeled, structural changes, "
+    "arched doorway, archway, alcove, plaster walls, "
+    "hardwood floor, wood plank floor, tile floor, "
+    "pendant lantern instead of ceiling fan, removed ceiling fan, "
+    "removed window, removed blinds"
 )
 
 # Max LoRA entries per flux-general call = 3 style + 2 universal.
@@ -304,6 +325,24 @@ class RedesignRequest(BaseModel):
     force_nb_pro: bool = Field(
         default=False,
         description="Diagnostic override. Skips flux-general; goes straight to NB-Pro.",
+    )
+    depth_url: HttpUrl | None = Field(
+        default=None,
+        description=(
+            "Optional depth map (Depth-Anything-V2 PNG) for ControlNet "
+            "geometry locking. When present, flux-general is invoked with "
+            "the FLUX.1-dev Controlnet-Union path at depth conditioning "
+            "0.85. Strongly recommended for any cluttered real-world "
+            "room — without it the model drifts the camera and walls."
+        ),
+    )
+    edge_url: HttpUrl | None = Field(
+        default=None,
+        description=(
+            "Optional Canny edge map for additional ControlNet line "
+            "preservation. Stacked with depth in the same controlnet_unions "
+            "entry per scripts/test-fal-controlnet.py."
+        ),
     )
     user_id: str | None = Field(
         default=None, description="Supabase auth.users.id for attribution."
@@ -526,8 +565,17 @@ def _build_prompt(
     # variant so the initial prompt tokens lock the room type.
     typed_prose = BASE_PROSE.replace("a well-designed interior room", f"a well-designed {room_phrase}")
 
+    # Phase 5 pipeline-fix: arch-lock clause moved to front of prompt
+    # (FLUX weights leading tokens more heavily than mid-prompt). The old
+    # placement after the vocab list let style tokens dominate.
+    arch_lock_head = (
+        "preserve original room architecture exactly, same wall color, "
+        "same ceiling, same window, same floor, same camera angle, "
+        "only stage new furniture, do not change any architectural element, "
+    )
+
     return (
-        f"{prefix} {typed_prose}, {vocab}, preserve original room architecture, "
+        f"{prefix} {arch_lock_head}{typed_prose}, {vocab}, "
         f"{room_clause}{budget_fragment}{lifestyle_fragment} {suffix}"
     )
 
@@ -566,6 +614,85 @@ def _infer_image_size(
         return FLUX_IMAGE_SIZE_SQUARE
 
 
+def _rehost_to_fal(url: str) -> str:
+    """Download an external URL and re-upload it to fal storage from this
+    container. Phase 6 fix: flux-general's controlnet_unions endpoint
+    fails with 'Failed to download the file' when given a fal-storage URL
+    that was returned by a different fal endpoint (e.g. depth from
+    fal-ai/imageutils/depth via the perception service). Re-uploading
+    from inside the redesign service produces a URL flux-general can
+    access. Idempotent: an upload of the same bytes returns the same URL."""
+    import io as _io
+    import os as _os
+    import tempfile as _tf
+    import requests as _req
+    import fal_client as _fc
+
+    raw = _req.get(url, timeout=30).content
+    suffix = ".png" if url.lower().endswith(".png") else ".jpg"
+    with _tf.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        tmp.write(raw)
+        path = tmp.name
+    try:
+        return _fc.upload_file(path)
+    finally:
+        try:
+            _os.remove(path)
+        except OSError:
+            pass
+
+
+def _build_controlnet_unions(
+    depth_url: Optional[str], edge_url: Optional[str]
+) -> list[dict[str, Any]] | None:
+    """Build the FLUX.1-dev Controlnet-Union payload from optional
+    depth/edge URLs. Pattern lifted verbatim from
+    scripts/test-fal-controlnet.py (test 3, both controls in one entry).
+
+    Phase 6 fix: depth/edge URLs are re-hosted via _rehost_to_fal so that
+    flux-general's controlnet_unions endpoint can fetch them — see
+    docstring for the bug detail."""
+    controls: list[dict[str, Any]] = []
+    if depth_url:
+        try:
+            depth_resigned = _rehost_to_fal(depth_url)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("rehost depth_url failed (%s); using raw URL", exc)
+            depth_resigned = depth_url
+        controls.append(
+            {
+                "control_image_url": depth_resigned,
+                "control_mode": "depth",
+                "conditioning_scale": 0.85,
+                "start_percentage": 0.0,
+                "end_percentage": 0.85,
+            }
+        )
+    if edge_url:
+        try:
+            edge_resigned = _rehost_to_fal(edge_url)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("rehost edge_url failed (%s); using raw URL", exc)
+            edge_resigned = edge_url
+        controls.append(
+            {
+                "control_image_url": edge_resigned,
+                "control_mode": "canny",
+                "conditioning_scale": 0.45,
+                "start_percentage": 0.0,
+                "end_percentage": 0.55,
+            }
+        )
+    if not controls:
+        return None
+    return [
+        {
+            "path": "InstantX/FLUX.1-dev-Controlnet-Union",
+            "controls": controls,
+        }
+    ]
+
+
 def _call_flux_general(
     empty_room_url: str,
     prompt: str,
@@ -576,14 +703,18 @@ def _call_flux_general(
     guidance_scale: float,
     num_inference_steps: int,
     seed: Optional[int],
+    depth_url: Optional[str] = None,
+    edge_url: Optional[str] = None,
 ) -> tuple[str, dict[str, int]]:
-    """fal-ai/flux-general image-to-image. Returns (url, (w, h))."""
+    """fal-ai/flux-general image-to-image. Returns (url, (w, h)).
+
+    When depth_url is provided, layers a depth ControlNet (conditioning
+    0.85, end 0.85) over the image-to-image base call. This is the
+    architectural lock that prevents wall/window/ceiling drift at the
+    higher strengths needed for full furniture restyle (0.75-0.85).
+    Without it, anything above strength=0.5 drifts the room geometry."""
     import fal_client  # type: ignore
 
-    # fal-ai/flux-general/image-to-image rejects output_format "webp"
-    # (enum is literal 'jpeg' | 'png') and has no output_quality field —
-    # keep to jpeg for smaller payloads. image_size must be a {width, height}
-    # dict OR a preset string; we use dict so aspect honors the empty-room.
     arguments: dict[str, Any] = {
         "prompt": prompt,
         "negative_prompt": negative_prompt,
@@ -597,6 +728,9 @@ def _call_flux_general(
         "image_size": image_size,
         "output_format": "jpeg",
     }
+    cn = _build_controlnet_unions(depth_url, edge_url)
+    if cn is not None:
+        arguments["controlnet_unions"] = cn
     if seed is not None:
         arguments["seed"] = int(seed)
 
@@ -748,6 +882,8 @@ class Redesign:
                     guidance,
                     steps,
                     req.seed,
+                    depth_url=str(req.depth_url) if req.depth_url else None,
+                    edge_url=str(req.edge_url) if req.edge_url else None,
                 )
                 logger.info(
                     "TIMING flux_general dt_s=%.3f dims=%dx%d",

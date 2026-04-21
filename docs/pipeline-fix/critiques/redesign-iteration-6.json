@@ -1,0 +1,123 @@
+{
+  "iteration": 6,
+  "render_url": "https://v3b.fal.media/files/b/0a9719cc/Rd6n4bLptHncSXOoxK6UY_mgwTsJ6j.png",
+  "loras_used": [
+    {
+      "path": "https://v3b.fal.media/files/b/0a968d9b/TbARCu6Zf_643uHs51Pkv_pytorch_lora_weights.safetensors",
+      "scale": 1.012,
+      "trigger": "cvwmn",
+      "name": "COVAJAPANDI"
+    },
+    {
+      "path": "https://huggingface.co/Shakker-Labs/FLUX.1-dev-LoRA-add-details/resolve/main/FLUX-dev-lora-add_details.safetensors",
+      "scale": 0.55,
+      "trigger": null,
+      "name": "add-details"
+    },
+    {
+      "path": "https://huggingface.co/XLabs-AI/flux-RealismLora/resolve/main/lora.safetensors",
+      "scale": 0.25,
+      "trigger": null,
+      "name": "realism"
+    }
+  ],
+  "service_response": {
+    "schema_version": "1.0",
+    "redesign_url": "https://v3b.fal.media/files/b/0a9719cc/Rd6n4bLptHncSXOoxK6UY_mgwTsJ6j.png",
+    "archetype_resolved": "COVAJAPANDI",
+    "primary_trigger": "cvwmn",
+    "loras_used": [
+      {
+        "path": "https://v3b.fal.media/files/b/0a968d9b/TbARCu6Zf_643uHs51Pkv_pytorch_lora_weights.safetensors",
+        "scale": 1.012,
+        "trigger": "cvwmn",
+        "name": "COVAJAPANDI"
+      },
+      {
+        "path": "https://huggingface.co/Shakker-Labs/FLUX.1-dev-LoRA-add-details/resolve/main/FLUX-dev-lora-add_details.safetensors",
+        "scale": 0.55,
+        "trigger": null,
+        "name": "add-details"
+      },
+      {
+        "path": "https://huggingface.co/XLabs-AI/flux-RealismLora/resolve/main/lora.safetensors",
+        "scale": 0.25,
+        "trigger": null,
+        "name": "realism"
+      }
+    ],
+    "prompt_used": "cvwmn interior cvwmn interior cvwmn interior preserve original room architecture exactly, same wall color, same ceiling, same window, same floor, same camera angle, only stage new furniture, do not change any architectural element, a well-designed bedroom with bed as focal point, photorealistic interior photography, Architectural Digest editorial quality, 35mm lens, natural daylight, sharp focus, high resolution, warm oak, natural linen, paper lanterns, handcrafted ceramics, wabi-sabi restraint, low-profile furniture, warm neutrals, negative space, a bedroom with bed as focal point cvwmn interior cvwmn interior",
+    "negative_prompt_used": "blurry, low quality, distorted, unrealistic proportions, floating objects, bad lighting, overexposed, flat, cartoon, illustration, 3d render, CGI, watermark, text, signature, ugly, poor composition, duplicate furniture, different room, different walls, different floor, different ceiling, changed architecture, changed wall color, changed flooring, different camera angle, different perspective, different proportions, renovated, remodeled, structural changes, arched doorway, archway, alcove, plaster walls, hardwood floor, wood plank floor, tile floor, pendant lantern instead of ceiling fan, removed ceiling fan, removed window, removed blinds",
+    "provider": "nano-banana-pro",
+    "provider_fallback_reason": "flux-general:FalClientHTTPError:Could not load pipeline due to error: ",
+    "strength": 0.82,
+    "guidance_scale": 3.5,
+    "num_inference_steps": 28,
+    "seed": 42,
+    "image_width": 1024,
+    "image_height": 1024,
+    "latency_ms": 47062,
+    "cost_usd": 0.04,
+    "judge_score": null,
+    "generated_at_iso": "2026-04-21T04:50:49Z"
+  },
+  "critique": {
+    "structural_fidelity": 3,
+    "furniture_quality": 6,
+    "style_fidelity": 7,
+    "photorealism": 6,
+    "overall_beats_collov": false,
+    "structural_failures": [
+      "CRITICAL: Window completely altered - original has horizontal blinds fully closed, Cova shows window with visible panes/grid pattern and appears partially open with different treatment",
+      "CRITICAL: Ceiling fan light is OFF in Cova (dark/inactive) but clearly ON and glowing warm yellow in original and all Collov renders",
+      "Wall color shifted warmer/more saturated blue compared to original's cooler gray-blue tone",
+      "DAKSH letters appear slightly different in positioning and dimensional depth",
+      "Camera perspective shifted - viewpoint appears slightly higher and more angled than original's eye-level perspective",
+      "Room proportions subtly altered - ceiling appears lower relative to wall height",
+      "Photo gallery/string of photos below DAKSH letters completely removed (present in original)",
+      "Carpet texture changed from tight commercial loop pile to looser woven texture"
+    ],
+    "style_failures": [
+      "JAPANDI style not distinctly expressed - looks like generic Scandinavian minimalism without Japanese wabi-sabi elements",
+      "Missing characteristic Japandi elements: no shoji screens, no tatami-inspired textures, no Japanese joinery details, no ceramic/pottery accents typical of the style",
+      "Paper lanterns are appropriate but execution is lazy (generic Ikea Regolit vibes rather than authentic noguchi-style)",
+      "Low platform bed is Japandi-appropriate but lacks the refined joinery and clean lines that distinguish the style from basic modern",
+      "Color palette too cool and neutral - Japandi typically incorporates warmer wood tones with more contrast",
+      "Lacks the intentional negative space and 'ma' (\u9593) concept central to Japandi - room feels filled rather than curated emptiness",
+      "No natural material variety - Japandi celebrates texture contrast (smooth ceramics, rough linen, polished wood, matte plaster)"
+    ],
+    "what_cova_does_better_than_collov": [
+      "SIGNIFICANTLY better style differentiation - actually attempts a specific design language (Japandi) versus Collov's four nearly identical contemporary neutral variations",
+      "More creative lighting choice with paper lantern pendants (though poorly executed) versus Collov's predictable table lamps",
+      "Platform bed selection shows understanding of style requirements vs Collov's generic upholstered beds",
+      "Asymmetric composition with dresser on right breaks Collov's repetitive centered-bed-flanking-nightstands formula",
+      "Warmer wood tones provide more visual interest than Collov's monotonous gray-on-gray-on-beige palette",
+      "Cleaner, less cluttered surfaces (nightstand, dresser) versus Collov's obligatory styling vignettes"
+    ],
+    "what_collov_does_better_than_cova": [
+      "PERFECT structural preservation - window blinds position exactly matched across all four renders",
+      "Ceiling fan light correctly shown as illuminated/active matching original lighting state",
+      "Sub-pixel accuracy on DAKSH letter placement and depth",
+      "Preserved photo gallery wall decoration below DAKSH text",
+      "Locked camera perspective with zero drift - exact viewpoint maintained",
+      "Wall color fidelity - maintains original's cool gray-blue tone precisely",
+      "Carpet base layer preservation before adding area rug",
+      "Better photorealistic shadow casting - bed shadows correctly respond to ceiling fan light position",
+      "More realistic fabric draping on bedding with proper weight and wrinkle distribution",
+      "Sharper detail rendering in textiles and wall textures"
+    ],
+    "root_cause": "Cova's pipeline prioritizes creative style generation over structural preservation, indicating a fundamental architecture flaw where the inpainting/furniture-removal stage and the style-application stage are insufficiently constrained by the original image's fixed elements. The model appears to be operating more like text-to-image generation with loose img2img guidance rather than strict mask-based inpainting. Specific failures suggest: (1) Window region is not properly masked as 'preserve' zone, allowing the model to reinterpret it, (2) Lighting state extraction is failing - the model doesn't detect the ceiling fan is actively lit and should cast warm ambient light, (3) Camera pose is not locked via depth map or ControlNet guidance, (4) Style prompting is overpowering structural constraints, likely due to high CFG scale or insufficient negative prompting for structural changes. The Japandi style attempt shows the team understands the 'beat Collov on diversity' mandate, but the technical execution reveals the base preservation technology is not production-ready.",
+    "specific_fixes": [
+      "PRIORITY 1: Implement strict window preservation - add ControlNet reference with window region masked at 100% preservation weight, include negative prompt 'open window, window panes, changed blinds' with weight 1.5",
+      "PRIORITY 2: Lighting state detection - add preprocessing step to detect active light sources via brightness analysis, then inject lighting metadata into prompt ('ceiling fan light ON, warm glow', 'ambient lighting from overhead fixture') with high weight, ensure new objects receive corresponding shadow directions",
+      "PRIORITY 3: Lock camera via depth ControlNet - extract depth map from original, apply at 0.8-1.0 conditioning strength to prevent perspective drift, validate output depth matches input within 5% variance",
+      "PRIORITY 4: Multi-stage inpainting - separate furniture removal pass (preserve everything except furniture footprints) from style application pass, use original image as ControlNet reference during style pass at 0.6+ weight",
+      "PRIORITY 5: Structural element masking - automatically detect and freeze: windows, ceiling fixtures, wall text/decorations, architectural features like vents/outlets. Create 'forbidden region' masks that block generation in these areas",
+      "PRIORITY 6: Wall color preservation - extract dominant wall color via K-means clustering, inject exact hex/RGB value into prompt ('wall color #B4C5D0' not just 'blue walls'), add ControlNet color guidance",
+      "PRIORITY 7: Carpet base layer separation - detect flooring in preprocessing, preserve base carpet in separate layer, allow area rug addition only as overlay with proper shadow/contact shadow rendering",
+      "PRIORITY 8: Japandi style refinement - create style-specific negative prompts ('generic Scandinavian, Ikea furniture, builder-grade'), enhance positive prompt with specific material callouts ('natural oak with visible grain, wabi-sabi ceramic vessels, rice paper, tatami texture, Japanese joinery'), add reference images of authentic Japandi interiors to guide generation",
+      "PRIORITY 9: Shadow consistency pass - post-process to ensure all furniture shadows align with detected light source positions, adjust shadow hardness/softness based on light type (soft for paper lanterns, harder for ceiling fixture)",
+      "PRIORITY 10: Validation gate - implement automated QA that fails renders if: window position/treatment differs >10% from original, ceiling fixture state changes, DAKSH letters missing/moved >20px, camera FOV differs >5 degrees, wall color delta >15 in LAB color space"
+    ]
+  }
+}

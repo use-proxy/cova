@@ -1,0 +1,121 @@
+{
+  "iteration": 3,
+  "render_url": "https://v3b.fal.media/files/b/0a9719a4/_8rHPHW1dRxnNZ_YOff5-.jpg",
+  "loras_used": [
+    {
+      "path": "https://v3b.fal.media/files/b/0a968d9b/TbARCu6Zf_643uHs51Pkv_pytorch_lora_weights.safetensors",
+      "scale": 0.88,
+      "trigger": "cvwmn",
+      "name": "COVAJAPANDI"
+    },
+    {
+      "path": "https://huggingface.co/Shakker-Labs/FLUX.1-dev-LoRA-add-details/resolve/main/FLUX-dev-lora-add_details.safetensors",
+      "scale": 0.55,
+      "trigger": null,
+      "name": "add-details"
+    },
+    {
+      "path": "https://huggingface.co/XLabs-AI/flux-RealismLora/resolve/main/lora.safetensors",
+      "scale": 0.25,
+      "trigger": null,
+      "name": "realism"
+    }
+  ],
+  "service_response": {
+    "schema_version": "1.0",
+    "redesign_url": "https://v3b.fal.media/files/b/0a9719a4/_8rHPHW1dRxnNZ_YOff5-.jpg",
+    "archetype_resolved": "COVAJAPANDI",
+    "primary_trigger": "cvwmn",
+    "loras_used": [
+      {
+        "path": "https://v3b.fal.media/files/b/0a968d9b/TbARCu6Zf_643uHs51Pkv_pytorch_lora_weights.safetensors",
+        "scale": 0.88,
+        "trigger": "cvwmn",
+        "name": "COVAJAPANDI"
+      },
+      {
+        "path": "https://huggingface.co/Shakker-Labs/FLUX.1-dev-LoRA-add-details/resolve/main/FLUX-dev-lora-add_details.safetensors",
+        "scale": 0.55,
+        "trigger": null,
+        "name": "add-details"
+      },
+      {
+        "path": "https://huggingface.co/XLabs-AI/flux-RealismLora/resolve/main/lora.safetensors",
+        "scale": 0.25,
+        "trigger": null,
+        "name": "realism"
+      }
+    ],
+    "prompt_used": "cvwmn interior cvwmn interior cvwmn interior preserve original room architecture exactly, same wall color, same ceiling, same window, same floor, same camera angle, only stage new furniture, do not change any architectural element, a well-designed bedroom with bed as focal point, photorealistic interior photography, Architectural Digest editorial quality, 35mm lens, natural daylight, sharp focus, high resolution, warm oak, natural linen, paper lanterns, handcrafted ceramics, wabi-sabi restraint, low-profile furniture, warm neutrals, negative space, a bedroom with bed as focal point cvwmn interior cvwmn interior",
+    "negative_prompt_used": "blurry, low quality, distorted, unrealistic proportions, floating objects, bad lighting, overexposed, flat, cartoon, illustration, 3d render, CGI, watermark, text, signature, ugly, poor composition, duplicate furniture, different room, different walls, different floor, different ceiling, changed architecture, changed wall color, changed flooring, different camera angle, different perspective, different proportions, renovated, remodeled, structural changes, arched doorway, archway, alcove, plaster walls, hardwood floor, wood plank floor, tile floor, pendant lantern instead of ceiling fan, removed ceiling fan, removed window, removed blinds",
+    "provider": "flux-general",
+    "provider_fallback_reason": null,
+    "strength": 0.78,
+    "guidance_scale": 3.5,
+    "num_inference_steps": 28,
+    "seed": 42,
+    "image_width": 768,
+    "image_height": 1024,
+    "latency_ms": 101084,
+    "cost_usd": 0.045,
+    "judge_score": null,
+    "generated_at_iso": "2026-04-21T04:43:44Z"
+  },
+  "critique": {
+    "structural_fidelity": 0,
+    "furniture_quality": 7,
+    "style_fidelity": 8,
+    "photorealism": 9,
+    "overall_beats_collov": false,
+    "structural_failures": [
+      "CATASTROPHIC: This is literally a different room - completely fails the fundamental test",
+      "Wall color changed from blue-gray to white/cream - violates structural preservation requirement",
+      "Ceiling fan completely removed and replaced with recessed tray ceiling with cove lighting - major structural modification",
+      "Window blinds replaced with floor-to-ceiling curtains - different window treatment entirely",
+      "DAKSH letters on wall completely removed - critical identifying feature deleted",
+      "Photo string decoration on wall removed",
+      "Carpet changed from beige to hardwood flooring - fundamental material change",
+      "Camera angle shifted - appears to be from different position, room feels wider",
+      "Corner vent/AC unit location not preserved",
+      "Room proportions altered - ceiling appears higher, room appears larger and more luxurious than original modest bedroom"
+    ],
+    "style_failures": [
+      "Cannot evaluate style adherence when the fundamental constraint (same room) is violated",
+      "COVAJAPANDI style appears to be Japanese-Scandinavian fusion (Japandi), which IS distinctive",
+      "Style execution is actually quite good - warm minimalism, natural materials, paper lanterns, clean lines",
+      "But style fidelity is irrelevant when you've generated a completely different space"
+    ],
+    "what_cova_does_better_than_collov": [
+      "Superior photorealism - lighting is exceptionally sophisticated with layered ambient glow",
+      "More distinctive style identity - Japandi aesthetic is recognizable vs Collov's generic contemporary neutral",
+      "Better material rendering - hardwood grain, fabric textures, paper lantern translucency all excellent",
+      "More sophisticated lighting design - cove lighting, accent lighting, layered illumination",
+      "Higher-end aesthetic - feels like luxury hotel vs Collov's mid-market apartment",
+      "Better composition - asymmetrical, more dynamic than Collov's centered formulas"
+    ],
+    "what_collov_does_better_than_cova": [
+      "PRESERVES THE ACTUAL ROOM - this is the entire point of the tool",
+      "Maintains blue-gray wall color exactly",
+      "Keeps ceiling fan in exact position",
+      "Preserves DAKSH letters - respects personal elements",
+      "Maintains window blinds",
+      "Keeps beige carpet (adds rug on top, which is acceptable)",
+      "Locked camera perspective",
+      "Sub-pixel accuracy on architectural elements",
+      "Actually solves the user's problem (redesign THIS room, not generate a fantasy room)"
+    ],
+    "root_cause": "This is a fundamental pipeline failure, not a tuning issue. Cova has either (1) completely ignored the structural preservation mask/inpainting strategy, (2) not implemented depth-aware generation that locks architectural elements, (3) over-weighted the style prompt so heavily that it overrode structural conditioning, or (4) is using a pure text-to-image generation rather than image-to-image with proper structural guidance. The result is a beautiful render of a DIFFERENT room. This would be like asking for a kitchen remodel and getting a bathroom - technically well-executed but completely wrong. The system appears to be treating this as 'generate a Japandi bedroom' rather than 'redesign THIS SPECIFIC bedroom in Japandi style.' This is a showstopper failure that makes the tool unusable for its intended purpose, regardless of how good the photorealism is.",
+    "specific_fixes": [
+      "PRIORITY 1: Implement structural preservation pipeline - use ControlNet depth map + edge detection to lock room geometry before any style application",
+      "PRIORITY 2: Create non-negotiable preservation masks for: walls (color must match original), ceiling fixtures (position + type locked), windows (preserve blinds/curtains from original), floor material (carpet vs hardwood must match)",
+      "PRIORITY 3: Add LoRA or embedding for personal elements - 'DAKSH' letters should be detected via OCR and re-injected at exact coordinates post-generation",
+      "PRIORITY 4: Implement camera pose locking - extract camera parameters from original and enforce identical viewpoint in generation",
+      "PRIORITY 5: Use two-stage generation: Stage 1 = remove existing furniture only (inpaint with structural context), Stage 2 = add new furniture with style conditioning but preserve Stage 1 structure",
+      "PRIORITY 6: Reduce style prompt weight/CFG scale - currently style is dominating over structural conditioning",
+      "PRIORITY 7: Add validation layer - detect if major structural elements (wall color, ceiling type, floor material) changed >threshold, auto-reject generation",
+      "PRIORITY 8: Implement regional prompting - separate prompts for 'preserve wall as blue-gray' vs 'add Japandi furniture'",
+      "PRIORITY 9: Use original image at higher strength in img2img (currently appears to be <0.3 denoise, needs to be ~0.6-0.7 to maintain structure)",
+      "PRIORITY 10: Add explicit negative prompts: 'white walls, hardwood floor, cove ceiling, curtains, different room'"
+    ]
+  }
+}

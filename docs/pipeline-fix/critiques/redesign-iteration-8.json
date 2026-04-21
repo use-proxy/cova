@@ -1,0 +1,124 @@
+{
+  "iteration": 8,
+  "render_url": "https://v3b.fal.media/files/b/0a9719f0/c2_k_I941FOaBmKBEuGk4_wwe7VuFD.png",
+  "loras_used": [
+    {
+      "path": "https://v3b.fal.media/files/b/0a968d9b/TbARCu6Zf_643uHs51Pkv_pytorch_lora_weights.safetensors",
+      "scale": 0.968,
+      "trigger": "cvwmn",
+      "name": "COVAJAPANDI"
+    },
+    {
+      "path": "https://huggingface.co/Shakker-Labs/FLUX.1-dev-LoRA-add-details/resolve/main/FLUX-dev-lora-add_details.safetensors",
+      "scale": 0.55,
+      "trigger": null,
+      "name": "add-details"
+    },
+    {
+      "path": "https://huggingface.co/XLabs-AI/flux-RealismLora/resolve/main/lora.safetensors",
+      "scale": 0.25,
+      "trigger": null,
+      "name": "realism"
+    }
+  ],
+  "service_response": {
+    "schema_version": "1.0",
+    "redesign_url": "https://v3b.fal.media/files/b/0a9719f0/c2_k_I941FOaBmKBEuGk4_wwe7VuFD.png",
+    "archetype_resolved": "COVAJAPANDI",
+    "primary_trigger": "cvwmn",
+    "loras_used": [
+      {
+        "path": "https://v3b.fal.media/files/b/0a968d9b/TbARCu6Zf_643uHs51Pkv_pytorch_lora_weights.safetensors",
+        "scale": 0.968,
+        "trigger": "cvwmn",
+        "name": "COVAJAPANDI"
+      },
+      {
+        "path": "https://huggingface.co/Shakker-Labs/FLUX.1-dev-LoRA-add-details/resolve/main/FLUX-dev-lora-add_details.safetensors",
+        "scale": 0.55,
+        "trigger": null,
+        "name": "add-details"
+      },
+      {
+        "path": "https://huggingface.co/XLabs-AI/flux-RealismLora/resolve/main/lora.safetensors",
+        "scale": 0.25,
+        "trigger": null,
+        "name": "realism"
+      }
+    ],
+    "prompt_used": "cvwmn interior cvwmn interior cvwmn interior preserve original room architecture exactly, same wall color, same ceiling, same window, same floor, same camera angle, only stage new furniture, do not change any architectural element, a well-designed bedroom with bed as focal point, photorealistic interior photography, Architectural Digest editorial quality, 35mm lens, natural daylight, sharp focus, high resolution, warm oak, natural linen, paper lanterns, handcrafted ceramics, wabi-sabi restraint, low-profile furniture, warm neutrals, negative space, a bedroom with bed as focal point cvwmn interior cvwmn interior",
+    "negative_prompt_used": "blurry, low quality, distorted, unrealistic proportions, floating objects, bad lighting, overexposed, flat, cartoon, illustration, 3d render, CGI, watermark, text, signature, ugly, poor composition, duplicate furniture, different room, different walls, different floor, different ceiling, changed architecture, changed wall color, changed flooring, different camera angle, different perspective, different proportions, renovated, remodeled, structural changes, arched doorway, archway, alcove, plaster walls, hardwood floor, wood plank floor, tile floor, pendant lantern instead of ceiling fan, removed ceiling fan, removed window, removed blinds",
+    "provider": "nano-banana-pro",
+    "provider_fallback_reason": "flux-general:FalClientHTTPError:Could not load pipeline due to error: ",
+    "strength": 0.85,
+    "guidance_scale": 3.5,
+    "num_inference_steps": 28,
+    "seed": 42,
+    "image_width": 1024,
+    "image_height": 1024,
+    "latency_ms": 33831,
+    "cost_usd": 0.04,
+    "judge_score": null,
+    "generated_at_iso": "2026-04-21T04:56:35Z"
+  },
+  "critique": {
+    "structural_fidelity": 3,
+    "furniture_quality": 5,
+    "style_fidelity": 6,
+    "photorealism": 7,
+    "overall_beats_collov": false,
+    "structural_failures": [
+      "CRITICAL: 'DAKSH' wall letters completely removed - this is a named personalization element that must be preserved",
+      "CRITICAL: Window completely changed from horizontal blinds to grid-pane window with completely different style, proportions, and view outside",
+      "Wall color changed from light gray-blue to saturated medium blue - not preserved",
+      "Photo string/clips on wall removed entirely",
+      "Carpet texture appears similar but room corner perspective may have shifted slightly",
+      "Ceiling fan position and model acceptable but lighting appears different (no warm glow)",
+      "Camera angle appears slightly lower/different perspective than original and Collov renders"
+    ],
+    "style_failures": [
+      "Style is generic minimalist/Japandi but lacks distinctive elements - could be any 'calm neutral' style",
+      "No bold choices whatsoever - beige linens, wood furniture, paper lantern are safe catalog picks",
+      "Fails to differentiate from Collov's neutral contemporary aesthetic in any meaningful way",
+      "Missing Japanese design markers: no shoji screens, no tatami references, no ikebana, no specific wood joinery details, no low-profile furniture characteristic of Japanese design",
+      "Missing Scandinavian design markers beyond 'wood + neutral' - no specific Nordic textile patterns, no iconic mid-century pieces, no hygge layering",
+      "Pendant light is generic paper lantern (Noguchi knockoff) without context or complementary elements",
+      "Pottery/ceramics on bench feel like an afterthought rather than curated display",
+      "Platform bed is only distinctive element but execution is basic"
+    ],
+    "what_cova_does_better_than_collov": [
+      "Platform bed with visible wood frame shows more design intentionality than Collov's upholstered beds",
+      "Pendant lighting adds vertical interest (though Collov also attempts this with floor lamps)",
+      "Natural wood tones provide warmth that some Collov renders lack",
+      "Bench with ceramics shows attempt at styling beyond bed-nightstand formula"
+    ],
+    "what_collov_does_better_than_cova": [
+      "CRITICAL: Preserves 'DAKSH' personalization in all 4 renders - non-negotiable requirement",
+      "CRITICAL: Preserves exact window type, blinds, and position with sub-pixel accuracy",
+      "Maintains precise wall color from original photo",
+      "Preserves ceiling fan with warm lighting glow matching original ambiance",
+      "Locked camera perspective identical across all renders",
+      "Better spatial scaling - furniture proportions feel more accurate to room size",
+      "Higher photorealism in textile rendering (bedding draping, throw blanket texture)",
+      "More sophisticated layering with area rugs over carpet",
+      "Wall art placement and scale more professional",
+      "Shadows are more consistent with window light direction",
+      "Better composition variety across 4 renders while maintaining structural fidelity"
+    ],
+    "root_cause": "Cova's pipeline is treating this as a full creative redesign rather than a constrained furniture-replacement task. The system is failing at the fundamental requirement: preserve ALL structural elements while only replacing furniture. The 'DAKSH' removal is disqualifying - this is a child's personalized room and removing their name is unacceptable. The window replacement suggests the inpainting mask is too aggressive or the structural preservation logic is broken. The model appears to be generating a 'new room inspired by the original' rather than 'the exact same room with different furniture.' This indicates either: (1) insufficient structural conditioning/ControlNet weighting, (2) inpainting mask including structural elements it shouldn't, (3) lack of explicit preservation prompting for named elements, or (4) base model overpowering structural guidance. The style execution is also generic because the prompt likely lacks specific object/material references - 'Japandi' alone produces Pinterest-generic results without constrained vocabulary.",
+    "specific_fixes": [
+      "IMMEDIATE: Implement named-element detection and hard masking - OCR detect 'DAKSH' letters, create exclusion mask with 50px buffer, set mask weight to 1.0 (absolute preservation)",
+      "IMMEDIATE: Fix window preservation - exclude ALL window area from inpainting mask, use edge detection to identify window frame boundaries, apply structural ControlNet at 1.2+ weight for window region specifically",
+      "IMMEDIATE: Wall color preservation - sample dominant wall color from original (HSV: 200\u00b0, 15%, 75%), inject into negative prompt 'saturated blue walls, bright blue paint' and positive prompt 'maintain light gray-blue walls exact color #B8C5D0'",
+      "Enhance inpainting mask precision - use instance segmentation to identify ONLY furniture objects (bed, nightstand, chair, desk), exclude walls/ceiling/floor/windows with binary mask",
+      "Add structural preservation loss - implement perceptual loss comparing non-furniture regions between original and output, penalize deviation >5% in SSIM",
+      "Strengthen ControlNet conditioning - use depth map + canny edges + pose estimation with weights [1.0, 0.8, 0.6], apply specifically to architectural elements",
+      "Upgrade style prompting - replace 'COVAJAPANDI' with explicit object list: 'low platform bed walnut wood, Noguchi akari paper pendant light, ceramic handmade vases, linen bedding natural beige, tatami-inspired area rug, minimalist wood nightstand open shelf, Japanese joinery details'",
+      "Add negative prompting for structural changes - 'different window, removed letters, changed wall color, white walls, bright walls, upholstered bed, modern bed frame, metal furniture'",
+      "Implement multi-stage pipeline: (1) structural preservation pass with high ControlNet weight, (2) furniture generation pass with masked region only, (3) blending pass to match lighting",
+      "Fix camera perspective lock - extract camera intrinsics from original, apply same focal length/distortion to output generation, use pose conditioning",
+      "Add lighting matching - analyze original image for light temperature (warm ~3200K from ceiling fan), direction (overhead + window left), inject as lighting prompt 'warm overhead ceiling light, soft natural window light from left'",
+      "Implement style diversity system - create 4 distinct prompt templates with mandatory object variety: (1) minimalist Japandi (current), (2) maximalist Japandi with bold textiles, (3) Scandinavian light wood with hygge layering, (4) Japanese aesthetic with tatami + shoji elements"
+    ]
+  }
+}
