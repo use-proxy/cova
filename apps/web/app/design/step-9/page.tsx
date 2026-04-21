@@ -282,8 +282,30 @@ export default function Step9Experience() {
       }
       setAuthReady(true);
 
-      // Use render URL from store if available
-      if (renderUrl) {
+      // Hero image: DB is source of truth; store is in-session optimization.
+      // Reads perspective_render_url first (flat display crop), falls back to
+      // redesign_pano_url (full pano), then store hint, then DEFAULT_HERO_IMAGE.
+      if (roomId) {
+        try {
+          const { data: heroRow } = await supabase
+            .from("rooms")
+            .select("perspective_render_url, redesign_pano_url")
+            .eq("id", roomId)
+            .eq("user_id", user.id)
+            .single();
+          const dbHero =
+            heroRow?.perspective_render_url ?? heroRow?.redesign_pano_url ?? null;
+          if (!cancelled) {
+            if (dbHero) {
+              setHeroImage(dbHero);
+            } else if (renderUrl) {
+              setHeroImage(renderUrl);
+            }
+          }
+        } catch {
+          if (!cancelled && renderUrl) setHeroImage(renderUrl);
+        }
+      } else if (renderUrl) {
         setHeroImage(renderUrl);
       }
 
