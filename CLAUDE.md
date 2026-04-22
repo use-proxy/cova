@@ -420,6 +420,12 @@ ETSY_AFFILIATE_ID=
 
 ---
 
+## Known issues
+
+- **P0 before V3 goes live: input image size guard missing.** Phone camera photos are typically 8-15MB. Anthropic Claude Vision rejects >5MB base64 images. Fix: add Sharp resize/compress at the API route level before Modal call. Target ≤1536px longest edge, ≤4MB, JPEG 85%. Surfaced during Phase B Step 2 health check (2026-04-21); `modal_pipeline/empty_room_gemini.py` pipeline currently fails with `anthropic.BadRequestError: image exceeds 5 MB maximum` on any unresized input.
+
+---
+
 ## Phase 3 — LoRA weighted blending + hygiene (completed 2026-04-20)
 
 **Commits:** 06b10f7, f8049dd, 25e34a8, fd6b956, b052a1a, and the Phase 3 closeout commit.
