@@ -1,52 +1,42 @@
-"""Cova v9 — Redesign Service (render-upgrade, 2026-04-21).
+"""Cova V3 — 3-Pass Redesign Service (2026-04-23 rewrite).
 
-Modal app: ``cova-redesign``. A10G GPU. Python 3.10.
+Modal app: ``cova-redesign``. CPU (uses fal.ai for inference). Python 3.10.
 
 Single v1 endpoint:
-
   * ``POST /v1/generate_redesign``
 
-Pipeline (research-driven render upgrade):
+3-pass architecture per V3 overnight spec:
 
-  Stage A — base furniture + structure:
-  - Resolve weighted LoRA stack from (archetype_key, style_blend).
-  - Build D_full_activation prompt (trigger prefix + prose + vocab +
-    trigger suffix + arch-lock head).
-  - fal-ai/flux-general/image-to-image with:
-      strength=0.78, guidance_scale=3.8, num_inference_steps=32,
-      scheduler=euler, LoRAs (style stack + add-details 0.45 + realism 0.25),
-      ControlNet depth 0.55 + canny 0.35 (both via Supabase rehost so
-      flux-general can download them — F6-CONTROLNET-URL.1 fix).
+  Pass 0 — Layout Planner (Claude Vision):
+    Produces a scene spec with hero placement, pass-2 surface targets,
+    personalization placements, life-objects, and lighting preset.
 
-  Stage B — accessory / editorial density pass (optional, default on):
-  - fal-ai/flux-pro/v1/fill on Stage A output, masked to non-
-    structural surfaces, strength 0.70, 25 steps, guidance 4.0.
-  - Adds the styling that separates editorial from staging.
+  Pass 1 — Hero furniture lock (FLUX Fill Pro):
+    Lays down primary hero furniture pieces with style LoRAs.
+    strength=0.92, 28 steps, guidance 3.5, LoRAs + add-details.
+    ControlNet depth if available.
 
-Fallback: nano-banana-pro/edit (no LoRAs).
+  Pass 2 — Per-surface decor density (loop):
+    Per surface in the plan, runs FLUX Fill Pro with strength=0.55
+    (preserve hero) to add editorial density (vignettes, groupings).
 
-F6-CONTROLNET-URL.1 FIX: depth & edge URLs are re-hosted to the
-`room-photos` Supabase public bucket (proven-working in
-scripts/test-fal-controlnet.py). This unblocks LoRAs on the
-flux-general primary path.
+  Pass 3 — IC-Light v2 relight:
+    Applies the lighting_preset from the layout plan. Critical params:
+    lowres_denoise=0.88, highres_denoise=0.45.
 
-Changelog vs 109dc03:
-  - FLUX_STRENGTH 0.55 → 0.78
-  - FLUX_GUIDANCE_SCALE 3.5 → 3.8
-  - FLUX_NUM_STEPS 28 → 32
-  - scheduler=euler added
-  - add-details LoRA scale 0.55 → 0.45
-  - NEGATIVE_PROMPT extended with anti-AirBnB terms
-  - depth ControlNet 0.85 → 0.55, canny 0.45 → 0.35
-  - _rehost_to_fal replaced by _rehost_to_supabase (the actual fix)
-  - Stage B accessory inpainting added
-  - LoRA verification via timings.inference log
+  Editorial post-process: warm WB + s-curve + desat + grain + vignette
+  applied in-process before final upload.
+
+  QA: Claude Vision scores 10 dimensions 1-5 and produces 3 suggested
+  chips for the refinement UI.
 """
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import io
+import json
 import logging
 import os
 import time
@@ -63,67 +53,36 @@ APP_NAME = "cova-redesign"
 API_VERSION = "v1"
 SCHEMA_VERSION: Literal["1.0"] = "1.0"
 
-# Stage A — FLUX params.
-# Research spec was strength=0.78 but empirical tests showed complete
-# arch drift (room-type change, wall-color change, ceiling swap) even
-# with depth ControlNet at 0.80. strength=0.65 is the balance point —
-# strong enough for LoRA bite, weak enough to preserve architecture
-# when combined with the 0.80 depth ControlNet.
-FLUX_STRENGTH: float = 0.55
-FLUX_GUIDANCE_SCALE: float = 3.8
-FLUX_NUM_STEPS: int = 32
-FLUX_SCHEDULER: str = "euler"
+# Pass 1 params
+PASS1_STRENGTH: float = 0.92
+PASS1_STEPS: int = 28
+PASS1_GUIDANCE: float = 3.5
 
-FLUX_IMAGE_SIZE_PORTRAIT = {"width": 768, "height": 1024}
-FLUX_IMAGE_SIZE_LANDSCAPE = {"width": 1024, "height": 768}
-FLUX_IMAGE_SIZE_SQUARE = {"width": 1024, "height": 1024}
+# Pass 2 params (preserve Pass 1 hero)
+PASS2_STRENGTH: float = 0.55
+PASS2_STEPS: int = 22
+PASS2_GUIDANCE: float = 3.5
 
-# Stage B — accessory inpaint params.
-# Lowered from 0.70 → 0.45: at 0.70 Stage B REPLACED walls/ceiling. At
-# 0.45 it layers accessories on the existing stage A without recomposing.
-STAGE_B_STRENGTH: float = 0.45  # informational; flux-fill ignores it
-STAGE_B_STEPS: int = 22
-STAGE_B_GUIDANCE: float = 3.2
+# Pass 3 — IC-Light v2 (CRITICAL: non-default denoise values)
+PASS3_LOWRES_DENOISE: float = 0.88
+PASS3_HIGHRES_DENOISE: float = 0.45
+PASS3_GUIDANCE: float = 5.0
+PASS3_STEPS: int = 28
+PASS3_BG_THRESHOLD: float = 0.75
 
-# Cost model.
-COST_FLUX_GENERAL: float = 0.045
-COST_NB_PRO_EDIT: float = 0.04
+# ControlNet scales — Pass 2 varies per-room-type (see ROOM_TYPE_SPECS).
+CONTROLNET_DEPTH_P1: float = 0.80
+CONTROLNET_DEPTH_P1_END: float = 0.85
+
+# Cost model (per call).
 COST_FLUX_FILL: float = 0.05
+COST_IC_LIGHT: float = 0.04
 COST_DEPTH: float = 0.005
+COST_CLAUDE_VISION: float = 0.02
 
-FLUX_CLIENT_TIMEOUT_S: float = 360.0
-NB_PRO_CLIENT_TIMEOUT_S: float = 120.0
+FAL_CLIENT_TIMEOUT_S: float = 360.0
 
-# ControlNet conditioning.
-# Research spec was 0.55/0.85 but smoke test showed arch drift (hardwood
-# replacing carpet, cove lights, ceiling geometry swap) at strength=0.78.
-# Bumped to 0.80 conditioning + 0.95 end_percentage so depth constrains
-# the full denoise trajectory. Canny remains disabled (fal 3-LoRA limit).
-CONTROLNET_DEPTH_SCALE: float = 0.80
-CONTROLNET_DEPTH_END: float = 0.95
-CONTROLNET_CANNY_SCALE: float = 0.35
-CONTROLNET_CANNY_END: float = 0.55
-
-# Universal LoRAs.
-#
-# Only add-details is in the default stack. RealismLora was originally
-# included but fal-ai/flux-general/image-to-image returns "Could not
-# load pipeline" >80% of the time from Modal containers when stacked
-# with 1 style LoRA + 1 ControlNet + realism (3 LoRAs + CN together).
-# Dropping realism produces reliable 10-12s inference with LoRAs loaded.
-# Research recommended realism@0.25 but photorealism is already strong
-# without it (add-details carries the material crispness).
-UNIVERSAL_LORAS: tuple[dict[str, Any], ...] = (
-    {
-        "path": (
-            "https://huggingface.co/Shakker-Labs/FLUX.1-dev-LoRA-add-details/"
-            "resolve/main/FLUX-dev-lora-add_details.safetensors"
-        ),
-        "scale": 0.45,
-        "name": "add-details",
-    },
-)
-
+# LoRA registry — mirrors apps/web/lib/styles/lora-registry.ts exactly.
 LORA_REGISTRY: dict[str, dict[str, Any]] = {
     "COVASCANDINAV": {
         "url": "https://v3b.fal.media/files/b/0a968d79/AB1tJAhP5ERC-mvpcMOMM_pytorch_lora_weights.safetensors",
@@ -177,99 +136,159 @@ LORA_REGISTRY: dict[str, dict[str, Any]] = {
     },
 }
 
-ARCHETYPE_VOCAB: dict[str, str] = {
-    "COVAJAPANDI": (
-        "warm oak, natural linen, paper lanterns, handcrafted ceramics, "
-        "wabi-sabi restraint, low-profile furniture, warm neutrals, negative space"
+ADD_DETAILS_LORA_URL = (
+    "https://huggingface.co/Shakker-Labs/FLUX.1-dev-LoRA-add-details/"
+    "resolve/main/FLUX-dev-lora-add_details.safetensors"
+)
+
+# Room-type specs (hardcoded per V3 spec).
+ROOM_TYPE_SPECS: dict[str, dict[str, Any]] = {
+    "bedroom": {
+        "hero_furniture": [
+            "bed with headboard",
+            "two nightstands",
+            "dresser",
+            "bench at foot of bed",
+        ],
+        "density_target": "15-22 objects",
+        "depth_controlnet_scale_p2": 0.60,
+        "focal_point": "bed wall",
+        "rug_rule": "extends 18-24 inches past each side of the bed",
+        "default_surfaces": [
+            "left nightstand",
+            "right nightstand",
+            "dresser top",
+        ],
+    },
+    "living_room": {
+        "hero_furniture": [
+            "sofa 72-96 inches",
+            "coffee table 2/3 sofa length",
+            "1-2 accent chairs",
+            "8x10 rug minimum",
+            "floor lamp",
+            "side tables",
+        ],
+        "density_target": "25-40 objects",
+        "depth_controlnet_scale_p2": 0.45,
+        "focal_point": "fireplace or feature wall or large art",
+        "rug_rule": "8x10 minimum, front legs of sofa on rug",
+        "default_surfaces": [
+            "coffee table",
+            "side table",
+            "console or shelf",
+        ],
+    },
+    "home_office": {
+        "hero_furniture": [
+            "desk 29-30 inches tall",
+            "ergonomic chair",
+            "task lamp",
+            "bookshelf",
+            "rug under desk",
+        ],
+        "density_target": "12-20 objects",
+        "depth_controlnet_scale_p2": 0.50,
+        "focal_point": "desk and what is behind the chair",
+        "rug_rule": "fits entirely under desk + chair roll zone",
+        "default_surfaces": [
+            "desk surface",
+            "bookshelf",
+        ],
+    },
+    "dining_room": {
+        "hero_furniture": [
+            "dining table",
+            "chairs",
+            "chandelier centered 30-36 inches above table",
+            "sideboard",
+        ],
+        "density_target": "18-28 objects",
+        "depth_controlnet_scale_p2": 0.50,
+        "focal_point": "table and chandelier vertical axis",
+        "rug_rule": "24 inches wider than table on each side",
+        "default_surfaces": [
+            "dining table center",
+            "sideboard top",
+        ],
+    },
+    "bathroom": {
+        "hero_furniture": [
+            "vanity with sink",
+            "mirror",
+            "sconces at 60-65 inches",
+            "shower or bath",
+        ],
+        "density_target": "8-14 objects",
+        "depth_controlnet_scale_p2": 0.62,
+        "focal_point": "vanity, mirror, sconce trio",
+        "rug_rule": "bath mat in front of vanity, towel storage reachable",
+        "default_surfaces": [
+            "vanity counter",
+        ],
+    },
+}
+
+# Lighting presets.
+LIGHTING_PROMPTS: dict[str, str] = {
+    "warm_cozy": (
+        "warm tungsten 2700K lamp pools, amber glow, chiaroscuro, soft shadows, "
+        "evening interior"
     ),
-    "COVASCANDINAV": (
-        "pale ash, natural wool, muted stone, white walls, cool daylight, "
-        "clean lines, matte finishes, minimal accessorizing"
+    "bright_natural": (
+        "bright 5500K daylight from windows, soft diffused morning light, "
+        "airy and crisp"
     ),
-    "COVABIOPHILIC": (
-        "living walls, natural stone, reclaimed wood beams, abundant plants, "
-        "filtered green light, organic curves, moss accents, raw texture"
-    ),
-    "COVAMINIMAL": (
-        "white matte walls, polished concrete floor, single statement piece, "
-        "hidden storage, muted palette, generous negative space, clean geometry"
-    ),
-    "COVAMIDCENTURY": (
-        "walnut veneer, teak, hairpin legs, mustard tweed, warm amber light, "
-        "tapered silhouettes, geometric rug, atomic accents"
-    ),
-    "COVACOASTAL": (
-        "whitewashed oak, bleached linen, sea glass tones, rope details, "
-        "soft diffused natural light, driftwood, airy sheers, woven jute"
-    ),
-    "COVABOHEMIAN": (
-        "layered rugs, macrame, brass details, rattan, velvet cushions, "
-        "embroidered textiles, terracotta, low-light lantern warmth, gallery wall"
-    ),
-    "COVAINDUSTRIAL": (
-        "raw concrete, steel I-beams, exposed brick, weathered leather, "
-        "Edison filament bulbs, reclaimed factory windows, blackened metal, distressed wood"
-    ),
-    "COVAFARMHOUSE": (
-        "reclaimed barn wood, shiplap walls, linen slipcovers, wrought iron hardware, "
-        "warm Edison pendant light, stoneware, vintage rug, distressed finishes"
-    ),
-    "COVAARTDECO": (
-        "lacquered black surfaces, geometric brass inlay, emerald velvet, "
-        "fluted glass, dramatic directional light, polished marble, gold accents, fan motifs"
+    "dramatic_moody": (
+        "Rembrandt single-source lighting, deep shadows, 2200K tungsten, "
+        "teal-amber contrast"
     ),
 }
 
-DEFAULT_VOCAB = (
-    "natural materials, balanced composition, considered palette, "
-    "soft natural daylight, professional interior staging"
-)
+IC_LIGHT_PROMPTS: dict[str, str] = {
+    "warm_cozy": (
+        "warm interior evening lighting, amber glow, lamp pools, cozy"
+    ),
+    "bright_natural": (
+        "bright natural daylight, soft diffused, airy and crisp"
+    ),
+    "dramatic_moody": (
+        "dramatic single-source lighting, strong chiaroscuro, moody"
+    ),
+}
 
-BASE_PROSE = (
-    "a well-designed interior room, "
-    "photorealistic interior photography, Architectural Digest editorial quality, "
-    "35mm lens, natural daylight, sharp focus, high resolution"
-)
+IC_LIGHT_LATENT: dict[str, str] = {
+    "warm_cozy": "Right",
+    "bright_natural": "Left",
+    "dramatic_moody": "Left",
+}
+
+# Display-only identity objects (Pass 2 targeted vignettes).
+DISPLAY_ONLY_IDENTITY = {
+    "sneakers",
+    "vinyl",
+    "candles",
+    "gaming",
+    "coffee",
+    "sports",
+    "art_supplies",
+    "camera",
+    "collectibles",
+}
+# Layout-defining identity objects (Pass 1 integrated).
+LAYOUT_DEFINING_IDENTITY = {"plants", "guitar", "books", "fitness"}
+
+STYLE_RULES_DIR = "/style_rules"
 
 NEGATIVE_PROMPT = (
-    # Quality
     "blurry, low quality, distorted, unrealistic proportions, floating objects, "
     "bad lighting, overexposed, flat, cartoon, illustration, 3d render, CGI, "
-    "watermark, text, signature, ugly, poor composition, duplicate furniture, "
-    # Anti-generic/AirBnB (render-upgrade)
-    "empty, sparse, barren, generic, airbnb staging, hotel lobby, showroom, "
-    "catalog photo, plastic furniture, oversaturated, blown highlights, "
-    "symmetrical composition, matching pillow pair, single overhead light only, "
-    "cluttered mess, deformed furniture, fisheye lens, people, person, "
-    # Architectural drift
-    "different room, different walls, different floor, different ceiling, "
-    "changed architecture, changed wall color, changed flooring, "
-    "different camera angle, different perspective, different proportions, "
-    "renovated, remodeled, structural changes, "
-    "arched doorway, archway, alcove, plaster walls, "
-    "hardwood floor, wood plank floor, tile floor, "
-    "pendant lantern instead of ceiling fan, removed ceiling fan, "
-    "removed window, removed blinds"
+    "watermark, text, signature, ugly, duplicate furniture, empty, sparse, "
+    "generic, airbnb staging, hotel lobby, showroom, catalog photo, "
+    "oversaturated, blown highlights, symmetrical composition, "
+    "single overhead light only, fisheye lens, people, person, "
+    "changed architecture, different walls, different floor, different ceiling"
 )
-
-# Stage B — editorial accessory prompt.
-# Additive only — do not recompose. Only paint accessories ON TOP of
-# existing room. Avoid any language that could signal "redesign the
-# walls" or "change the room". Result: gallery wall, throw blankets,
-# accent pillows, plants, coffee-table books.
-STAGE_B_PROMPT_SUFFIX = (
-    "framed wall art, gallery wall with 2-3 mixed frames, "
-    "potted plants, layered textile throw, accent pillows, "
-    "ambient table lamp, editorial Architectural Digest quality styling, "
-    "same walls, same ceiling, same floor, same furniture positions"
-)
-
-MAX_STYLE_LORAS = 3
-MIN_LORA_WEIGHT = 0.10
-
-# Supabase rehost bucket (F6-CONTROLNET-URL.1 fix).
-SUPABASE_BUCKET: str = "room-photos"
-SUPABASE_PREFIX: str = "render-upgrade"
 
 logger = logging.getLogger("cova-redesign")
 logging.basicConfig(
@@ -284,17 +303,27 @@ logging.basicConfig(
 redesign_image = (
     modal.Image.debian_slim(python_version="3.10")
     .apt_install(
-        "libgl1-mesa-glx", "libglib2.0-0", "libsm6", "libxext6", "libxrender1",
+        "libgl1-mesa-glx",
+        "libglib2.0-0",
+        "libsm6",
+        "libxext6",
+        "libxrender1",
     )
     .pip_install(
         "fastapi[standard]==0.115.4",
         "pydantic>=2.5,<3",
         "requests",
         "fal-client",
+        "anthropic>=0.40,<1",
         "Pillow",
         "numpy",
         "opencv-python-headless",
-        "supabase",
+    )
+    .add_local_dir(
+        local_path=os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "style_rules"
+        ),
+        remote_path=STYLE_RULES_DIR,
     )
 )
 
@@ -308,80 +337,58 @@ app = modal.App(APP_NAME)
 
 class RedesignRequest(BaseModel):
     empty_room_url: HttpUrl
-    archetype_key: str = Field(
-        description="COVA* archetype key (e.g. COVAJAPANDI)."
-    )
+    room_type: str = Field(default="bedroom")
     style_blend: dict[str, float] | None = None
-    style_fingerprint: dict[str, float] | None = None
+    style_fingerprint: dict[str, Any] | None = None
+    personalization: dict[str, Any] | None = None
+    room_id: str | None = None
+    user_id: str | None = None
     budget_max: float = Field(default=2000.0)
-    room_type: str = Field(default="room")
-    lifestyle_context: str | None = None
-
-    # Overrides (reflection-loop or bench).
+    # Reflection-loop overrides
     strength_override: float | None = None
     guidance_override: float | None = None
-    steps_override: int | None = None
     prompt_override: str | None = None
     lora_scale_multiplier: float | None = None
     seed: int | None = None
-    primary_image_size: Literal["auto", "portrait", "landscape", "square"] | None = "auto"
-    force_nb_pro: bool = False
-
-    # Render-upgrade additions
-    enable_controlnet: bool = Field(
-        default=True,
-        description="Build depth + canny ControlNet from empty-room URL (recommended).",
-    )
-    enable_stage_b: bool = Field(
-        default=False,
-        description=(
-            "Run Stage B editorial/accessory inpaint on Stage A output. "
-            "DEFAULT OFF — Stage B's wall-area inpaint drifts wall color "
-            "and ceiling on rooms with strong arch features (target DAKSH "
-            "bedroom: Stage B converted it to a living-room-like space). "
-            "Enable explicitly for empty rooms where extra styling helps."
-        ),
-    )
-    user_id: str | None = None
+    skip_pass2: bool = False
+    skip_pass3: bool = False
+    lighting_preset_override: Literal[
+        "warm_cozy", "bright_natural", "dramatic_moody"
+    ] | None = None
 
 
-class LoraEntry(BaseModel):
-    path: str
-    scale: float
-    trigger: str | None = None
-    name: str | None = None
+class QAScores(BaseModel):
+    room_type_correct: float
+    hero_furniture_quality: float
+    style_accuracy: float
+    decor_density: float
+    lighting_quality: float
+    personalization_features_visible: float
+    lived_in_quality: float
+    editorial_photography_quality: float
+    perspective_and_scale: float
+    art_accuracy: float
+
+
+class QAResult(BaseModel):
+    scores: QAScores
+    composite: float
+    suggested_chips: list[str]
+    raw: dict[str, Any] | None = None
 
 
 class RedesignResponse(BaseModel):
     schema_version: Literal["1.0"] = "1.0"
-    redesign_url: HttpUrl
-    archetype_resolved: str
-    primary_trigger: str
-    loras_used: list[LoraEntry]
-    prompt_used: str
-    negative_prompt_used: str
-    provider: Literal["flux-general", "nano-banana-pro"]
-    provider_fallback_reason: str | None = None
-    strength: float
-    guidance_scale: float
-    num_inference_steps: int
-    seed: int | None = None
-    image_width: int
-    image_height: int
-    latency_ms: int
+    render_url: HttpUrl
+    pass1_url: HttpUrl | None = None
+    pass2_url: HttpUrl | None = None
+    pass3_url: HttpUrl | None = None
+    qa: QAResult | None = None
+    pipeline_version: Literal["v3"] = "v3"
+    latency_seconds: float
+    room_type: str
     cost_usd: float
-    judge_score: float | None = None
-    generated_at_iso: str
-    # Render-upgrade
-    stage_a_url: HttpUrl | None = None
-    stage_b_used: bool = False
-    lora_inference_time_s: float | None = Field(
-        default=None,
-        description=(
-            "flux-general reported inference time — lifted from fal response. "
-            "<7s with loras configured suggests LoRAs did not load."
-        ),
-    )
+    layout_plan: dict[str, Any] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -389,211 +396,91 @@ class RedesignResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-def _iso_now() -> str:
-    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-
-
 def _normalize_archetype_key(key: str) -> str:
     upper = key.strip().upper().replace(" ", "").replace("-", "")
     if upper in LORA_REGISTRY:
         return upper
-    display_map = {
+    aliases = {
         "WARMJAPANDI": "COVAJAPANDI",
+        "WARMGROUNDED": "COVAJAPANDI",
         "WARM&GROUNDED": "COVAJAPANDI",
         "NORDICCALM": "COVASCANDINAV",
         "BALANCEDCONTEMPORARY": "COVASCANDINAV",
         "PURECALM": "COVAMINIMAL",
-        "PUREMINIMALWHITE": "COVAMINIMAL",
         "BRIGHTAIRY": "COVACOASTAL",
-        "COASTALBRIGHT": "COVACOASTAL",
         "BIOPHILIC": "COVABIOPHILIC",
         "BOLDECLECTIC": "COVABOHEMIAN",
-        "MAXIMALISTECLECTIC": "COVABOHEMIAN",
         "URBANINDUSTRIAL": "COVAINDUSTRIAL",
-        "INDUSTRIALLOFT": "COVAINDUSTRIAL",
         "VINTAGEMODERN": "COVAMIDCENTURY",
-        "RETROMIDCENTURY": "COVAMIDCENTURY",
         "DARKMOODY": "COVAARTDECO",
-        "DARKMOODYGLAM": "COVAARTDECO",
         "CLASSICTRADITIONAL": "COVAFARMHOUSE",
-        "HERITAGETRADITIONAL": "COVAFARMHOUSE",
     }
-    return display_map.get(upper, upper)
+    return aliases.get(upper, "COVAJAPANDI")
 
 
-def _resolve_lora_stack(
-    archetype_key: str,
-    style_blend: Optional[dict[str, float]],
-    scale_multiplier: float,
-) -> list[dict[str, Any]]:
-    normalized = _normalize_archetype_key(archetype_key)
-    if normalized not in LORA_REGISTRY:
-        raise ValueError(f"unknown archetype_key '{archetype_key}'")
-
-    if style_blend:
-        merged: dict[str, float] = {}
-        for k, w in style_blend.items():
-            if not isinstance(w, (int, float)) or w <= 0:
-                continue
-            nk = _normalize_archetype_key(k)
-            if nk not in LORA_REGISTRY:
-                continue
-            merged[nk] = merged.get(nk, 0.0) + float(w)
-        total = sum(merged.values())
-        if total <= 0:
-            merged = {normalized: 1.0}
-        else:
-            merged = {k: v / total for k, v in merged.items()}
-            filtered = {k: v for k, v in merged.items() if v >= MIN_LORA_WEIGHT}
-            if not filtered:
-                top = max(merged.items(), key=lambda kv: kv[1])[0]
-                filtered = {top: 1.0}
-            total2 = sum(filtered.values())
-            merged = {k: v / total2 for k, v in filtered.items()}
-        if normalized not in merged:
-            ordered = sorted(merged.items(), key=lambda kv: kv[1], reverse=True)[
-                : MAX_STYLE_LORAS - 1
-            ]
-            combined = {normalized: 0.5}
-            for k, v in ordered:
-                combined[k] = v * 0.5
-            t = sum(combined.values())
-            merged = {k: v / t for k, v in combined.items()}
-        ordered_entries = sorted(
-            merged.items(),
-            key=lambda kv: (kv[0] == normalized, kv[1]),
-            reverse=True,
-        )[:MAX_STYLE_LORAS]
-    else:
-        ordered_entries = [(normalized, 1.0)]
-
-    style_loras: list[dict[str, Any]] = []
-    for key, weight in ordered_entries:
-        meta = LORA_REGISTRY[key]
-        scale = min(1.2, float(meta["default_scale"]) * weight * scale_multiplier)
-        style_loras.append(
-            {
-                "path": meta["url"],
-                "scale": round(scale, 4),
-                "trigger": meta["trigger"],
-                "name": key,
-            }
-        )
-
-    return style_loras + [dict(u) for u in UNIVERSAL_LORAS]
-
-
-_ROOM_TYPE_PHRASE: dict[str, str] = {
-    "bedroom": "bedroom with bed as focal point",
-    "living_room": "living room with sofa and seating as focal point",
-    "living room": "living room with sofa and seating as focal point",
-    "kitchen": "kitchen with cabinetry and countertops",
-    "bathroom": "bathroom",
-    "home_office": "home office with desk and work surface",
-    "home office": "home office with desk and work surface",
-    "dining": "dining room with dining table as focal point",
-    "entryway": "entryway",
-    "loft bedroom": "loft bedroom with bed and sloped ceiling",
-    "room": "interior room",
+# Primary style mapping for style_rules/ JSON file lookup.
+COVA_TO_STYLE_SLUG: dict[str, str] = {
+    "COVAJAPANDI": "warm-japandi",
+    "COVASCANDINAV": "pure-minimal-white",
+    "COVABIOPHILIC": "biophilic-jungle",
+    "COVAMINIMAL": "pure-minimal-white",
+    "COVAMIDCENTURY": "retro-mid-century",
+    "COVACOASTAL": "coastal-bright",
+    "COVABOHEMIAN": "maximalist-eclectic",
+    "COVAINDUSTRIAL": "industrial-loft",
+    "COVAFARMHOUSE": "heritage-traditional",
+    "COVAARTDECO": "dark-moody-glam",
 }
 
 
-def _build_prompt(
-    archetype_key: str,
-    primary_trigger: str,
-    vocab_override: Optional[str] = None,
-    lifestyle_context: Optional[str] = None,
-    budget_max: Optional[float] = None,
-    room_type: str = "room",
-) -> str:
-    normalized = _normalize_archetype_key(archetype_key)
-    vocab = vocab_override or ARCHETYPE_VOCAB.get(normalized, DEFAULT_VOCAB)
-
-    prefix = f"{primary_trigger} interior {primary_trigger} interior {primary_trigger} interior"
-    suffix = f"{primary_trigger} interior {primary_trigger} interior"
-
-    room_phrase = _ROOM_TYPE_PHRASE.get(room_type.lower(), room_type)
-    room_clause = f"a {room_phrase}"
-
-    budget_fragment = ""
-    if budget_max is not None:
-        if budget_max >= 10000:
-            budget_fragment = ", designer-tier finishes, bespoke furnishings"
-        elif budget_max < 1500:
-            budget_fragment = ", accessible finishes, practical materials"
-
-    lifestyle_fragment = ""
-    if lifestyle_context:
-        ctx = lifestyle_context.strip()[:120]
-        lifestyle_fragment = f", {ctx}"
-
-    typed_prose = BASE_PROSE.replace(
-        "a well-designed interior room", f"a well-designed {room_phrase}"
-    )
-
-    arch_lock_head = (
-        "preserve original room architecture exactly, same wall color, "
-        "same ceiling, same window, same floor, same camera angle, "
-        "only stage new furniture, do not change any architectural element, "
-    )
-
-    return (
-        f"{prefix} {arch_lock_head}{typed_prose}, {vocab}, "
-        f"{room_clause}{budget_fragment}{lifestyle_fragment} {suffix}"
-    )
-
-
-def _infer_image_size(empty_room_url: str, mode: str) -> dict[str, int]:
-    if mode == "portrait":
-        return FLUX_IMAGE_SIZE_PORTRAIT
-    if mode == "landscape":
-        return FLUX_IMAGE_SIZE_LANDSCAPE
-    if mode == "square":
-        return FLUX_IMAGE_SIZE_SQUARE
+def _load_style_rules(archetype_key: str) -> dict[str, Any]:
+    slug = COVA_TO_STYLE_SLUG.get(archetype_key, "warm-japandi")
+    path = os.path.join(STYLE_RULES_DIR, f"{slug}.json")
     try:
-        import requests
-        from PIL import Image  # type: ignore
-
-        r = requests.get(empty_room_url, timeout=30, stream=True)
-        r.raise_for_status()
-        img = Image.open(io.BytesIO(r.content))
-        w, h = img.size
-        if w > h * 1.15:
-            return FLUX_IMAGE_SIZE_LANDSCAPE
-        if h > w * 1.15:
-            return FLUX_IMAGE_SIZE_PORTRAIT
-        return FLUX_IMAGE_SIZE_SQUARE
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("auto-sizing failed (%s); defaulting to square", exc)
-        return FLUX_IMAGE_SIZE_SQUARE
+        with open(path, "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        logger.warning("style rules not found for %s at %s", archetype_key, path)
+        return {}
 
 
-# ----- Supabase rehost (F6-CONTROLNET-URL.1 fix) ---------------------------
+def _primary_archetype(
+    style_blend: Optional[dict[str, float]], fallback_key: str = "COVAJAPANDI"
+) -> str:
+    if not style_blend:
+        return fallback_key
+    items = [
+        (_normalize_archetype_key(k), v)
+        for k, v in style_blend.items()
+        if isinstance(v, (int, float)) and v > 0
+    ]
+    if not items:
+        return fallback_key
+    items.sort(key=lambda kv: kv[1], reverse=True)
+    return items[0][0]
 
 
-def _rehost_to_supabase(content: bytes, suffix: str = ".png", subfolder: str = "controlnet") -> str:
-    from supabase import create_client
-
-    sb_url = os.environ["SUPABASE_URL"]
-    sb_key = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ.get(
-        "SUPABASE_SERVICE_ROLE_KEY"
+def _build_lora_stack(
+    primary_archetype: str,
+    style_blend: Optional[dict[str, float]],
+    scale_multiplier: float,
+    pass_scale_modifier: float = 1.0,
+) -> list[dict[str, Any]]:
+    loras: list[dict[str, Any]] = []
+    primary_meta = LORA_REGISTRY[primary_archetype]
+    primary_scale = (
+        primary_meta["default_scale"] * scale_multiplier * pass_scale_modifier
     )
-    if not sb_key:
-        raise RuntimeError("Supabase service key missing for rehost.")
-    client = create_client(sb_url, sb_key)
-
-    digest = hashlib.md5(content).hexdigest()[:12]
-    ext = suffix if suffix.startswith(".") else f".{suffix}"
-    filename = f"{digest}{ext}"
-    path = f"{SUPABASE_PREFIX}/{subfolder}/{filename}"
-    content_type = "image/png" if ext == ".png" else "image/jpeg"
-
-    client.storage.from_(SUPABASE_BUCKET).upload(
-        path=path,
-        file=content,
-        file_options={"content-type": content_type, "upsert": "true"},
+    loras.append({"path": primary_meta["url"], "scale": round(primary_scale, 4)})
+    # Add-details universal.
+    loras.append(
+        {"path": ADD_DETAILS_LORA_URL, "scale": round(0.40 * pass_scale_modifier, 4)}
     )
-    return client.storage.from_(SUPABASE_BUCKET).get_public_url(path)
+    return loras
+
+
+def _iso_now() -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
 def _fetch_bytes(url: str, timeout: int = 60) -> bytes:
@@ -603,308 +490,7 @@ def _fetch_bytes(url: str, timeout: int = 60) -> bytes:
     return r.content
 
 
-# ----- Depth + edge generation (Stage A ControlNet) ------------------------
-
-
-def _generate_depth_url(empty_room_url: str) -> Optional[str]:
-    """Call fal-ai/imageutils/depth; rehost via Supabase."""
-    import fal_client  # type: ignore
-
-    try:
-        r = fal_client.subscribe(
-            "fal-ai/imageutils/depth",
-            arguments={"image_url": empty_room_url},
-            with_logs=False,
-        )
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("depth call failed: %s", exc)
-        return None
-    depth = r.get("image") or {}
-    fal_url = depth.get("url") if isinstance(depth, dict) else None
-    if not fal_url:
-        logger.warning("depth missing url: %s", str(r)[:200])
-        return None
-    try:
-        raw = _fetch_bytes(fal_url)
-        return _rehost_to_supabase(raw, suffix=".png", subfolder="depth")
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("depth rehost failed: %s", exc)
-        return None
-
-
-def _generate_edge_url(empty_room_url: str) -> Optional[str]:
-    """OpenCV Canny edge map → PNG → Supabase rehost.
-
-    Deprecated: not used in production (fal-ai/flux-general rejects
-    3 LoRAs + 2 ControlNet controls as "Could not load pipeline").
-    Kept for future experiments with fewer LoRAs.
-    """
-    import cv2  # type: ignore
-    import numpy as np
-    from PIL import Image
-
-    try:
-        raw = _fetch_bytes(empty_room_url)
-        pil = Image.open(io.BytesIO(raw)).convert("RGB")
-        arr = np.array(pil)
-        gray = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY)
-        edges = cv2.Canny(gray, 60, 150)
-        png_bytes = cv2.imencode(".png", edges)[1].tobytes()
-        return _rehost_to_supabase(png_bytes, suffix=".png", subfolder="edges")
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("edge generation failed: %s", exc)
-        return None
-
-
-def _build_controlnet_unions(
-    depth_url: Optional[str], edge_url: Optional[str]
-) -> list[dict[str, Any]] | None:
-    controls: list[dict[str, Any]] = []
-    if depth_url:
-        controls.append(
-            {
-                "control_image_url": depth_url,
-                "control_mode": "depth",
-                "conditioning_scale": CONTROLNET_DEPTH_SCALE,
-                "start_percentage": 0.0,
-                "end_percentage": CONTROLNET_DEPTH_END,
-            }
-        )
-    if edge_url:
-        controls.append(
-            {
-                "control_image_url": edge_url,
-                "control_mode": "canny",
-                "conditioning_scale": CONTROLNET_CANNY_SCALE,
-                "start_percentage": 0.0,
-                "end_percentage": CONTROLNET_CANNY_END,
-            }
-        )
-    if not controls:
-        return None
-    return [
-        {
-            "path": "InstantX/FLUX.1-dev-Controlnet-Union",
-            "controls": controls,
-        }
-    ]
-
-
-# ----- flux-general + fallback --------------------------------------------
-
-
-def _call_flux_general(
-    empty_room_url: str,
-    prompt: str,
-    negative_prompt: str,
-    loras: list[dict[str, Any]],
-    image_size: dict[str, int],
-    strength: float,
-    guidance_scale: float,
-    num_inference_steps: int,
-    seed: Optional[int],
-    depth_url: Optional[str] = None,
-    edge_url: Optional[str] = None,
-) -> tuple[str, dict[str, int], Optional[float]]:
-    """Primary Stage A call. Returns (url, {w, h}, inference_time_s)."""
-    import fal_client  # type: ignore
-
-    arguments: dict[str, Any] = {
-        "prompt": prompt,
-        "negative_prompt": negative_prompt,
-        "image_url": empty_room_url,
-        "strength": strength,
-        "guidance_scale": guidance_scale,
-        "num_inference_steps": num_inference_steps,
-        "loras": [{"path": e["path"], "scale": e["scale"]} for e in loras],
-        "image_size": image_size,
-        "output_format": "jpeg",
-    }
-    cn = _build_controlnet_unions(depth_url, edge_url)
-    if cn is not None:
-        arguments["controlnet_unions"] = cn
-    if seed is not None:
-        arguments["seed"] = int(seed)
-
-    # Retry on transient "Could not load pipeline" + cold-start timeouts.
-    # Last-ditch retry drops the ControlNet (2 LoRAs + no CN is the
-    # most reliable combo on fal).
-    last_err: Exception | None = None
-    r = None
-    max_attempts = 4
-    for attempt in range(max_attempts):
-        try_args = arguments
-        if attempt == max_attempts - 1 and "controlnet_unions" in try_args:
-            try_args = {k: v for k, v in arguments.items() if k != "controlnet_unions"}
-            logger.warning(
-                "flux-general final retry %d/%d — dropping ControlNet",
-                attempt + 1, max_attempts,
-            )
-        try:
-            r = fal_client.subscribe(
-                "fal-ai/flux-general/image-to-image",
-                arguments=try_args,
-                with_logs=False,
-                client_timeout=FLUX_CLIENT_TIMEOUT_S,
-            )
-            break
-        except Exception as exc:  # noqa: BLE001
-            last_err = exc
-            msg = str(exc)
-            retry = (
-                "Could not load pipeline" in msg
-                or "FalClientTimeoutError" in type(exc).__name__
-                or "502" in msg
-                or "503" in msg
-                or "504" in msg
-                or "queue" in msg.lower()
-            )
-            if not retry or attempt == max_attempts - 1:
-                raise
-            wait = min(45, 10 * (attempt + 1))
-            logger.warning(
-                "flux-general transient (%s); retry %d/%d after %ds",
-                msg[:120], attempt + 1, max_attempts, wait,
-            )
-            time.sleep(wait)
-    assert r is not None
-    images = r.get("images") or []
-    if not images:
-        raise RuntimeError(f"flux-general returned no images: {list(r.keys())}")
-    first = images[0] if isinstance(images[0], dict) else {"url": images[0]}
-    url = first.get("url")
-    if not url:
-        raise RuntimeError(f"flux-general: missing image url in response: {first}")
-    w_raw = first.get("width")
-    h_raw = first.get("height")
-    w = int(w_raw) if w_raw is not None else image_size["width"]
-    h = int(h_raw) if h_raw is not None else image_size["height"]
-
-    timings = r.get("timings") or {}
-    inference_time = None
-    if isinstance(timings, dict):
-        raw_t = timings.get("inference")
-        if raw_t is not None:
-            try:
-                inference_time = float(raw_t)
-            except Exception:  # noqa: BLE001
-                inference_time = None
-
-    # LoRA verification heuristic.
-    if inference_time is not None and inference_time < 7.0 and len(loras) > 0:
-        logger.warning(
-            "LORA-VERIFY: inference_time=%.2fs with %d LoRAs requested — "
-            "possibly not loaded (vanilla flux-dev baseline)",
-            inference_time, len(loras),
-        )
-    else:
-        logger.info(
-            "LORA-VERIFY: inference_time=%s with %d LoRAs",
-            inference_time, len(loras),
-        )
-
-    return url, {"width": w, "height": h}, inference_time
-
-
-def _call_nb_pro(empty_room_url: str, prompt: str) -> tuple[str, dict[str, int]]:
-    import fal_client  # type: ignore
-
-    r = fal_client.subscribe(
-        "fal-ai/nano-banana-pro/edit",
-        arguments={"prompt": prompt, "image_urls": [empty_room_url]},
-        with_logs=False,
-        client_timeout=NB_PRO_CLIENT_TIMEOUT_S,
-    )
-    images = r.get("images") or []
-    if not images:
-        raise RuntimeError(f"nb-pro returned no images: {list(r.keys())}")
-    first = images[0] if isinstance(images[0], dict) else {"url": images[0]}
-    url = first.get("url")
-    if not url:
-        raise RuntimeError(f"nb-pro: missing image url in response: {first}")
-    w_raw = first.get("width")
-    h_raw = first.get("height")
-    w = int(w_raw) if w_raw is not None else 1024
-    h = int(h_raw) if h_raw is not None else 1024
-    return url, {"width": w, "height": h}
-
-
-# ----- Stage B accessory inpainting ----------------------------------------
-
-
-def _build_stage_b_mask(stage_a_arr: "Any") -> "Any":
-    """Build a conservative accessory mask for Stage B.
-
-    Target only the upper wall band (top 1/6 → 1/3) where wall art
-    typically goes, plus a narrow middle-height band for surface
-    accessories. Keep architectural features (ceiling, floor,
-    windows) outside the mask so flux-fill can't touch them.
-    """
-    import numpy as np
-
-    h, w = stage_a_arr.shape[:2]
-    mask = np.zeros((h, w), dtype=np.uint8)
-    # Upper wall band — gallery wall zone (above typical furniture).
-    mask[h // 6 : h // 3, :] = 255
-    # Narrow accessory-surface band (mid-height — coffee tables, shelves).
-    mask[h // 2 : h // 2 + h // 10, :] = 255
-    return mask
-
-
-def _call_stage_b(
-    stage_a_url: str,
-    archetype_vocab: str,
-    primary_trigger: str,
-    stage_a_arr: "Any",
-) -> str:
-    """flux-fill accessory pass on Stage A output.
-
-    Mask convention: WHITE = inpaint, BLACK = preserve (confirmed
-    empirically for fal-ai/flux-pro/v1/fill).
-    """
-    import cv2  # type: ignore
-    import fal_client  # type: ignore
-
-    mask = _build_stage_b_mask(stage_a_arr)
-    ok, enc = cv2.imencode(".png", mask)
-    if not ok:
-        raise RuntimeError("stage-b mask encode failed")
-    mask_url = _upload_bytes_to_fal(enc.tobytes(), suffix=".png")
-
-    prompt = (
-        f"{primary_trigger} interior {primary_trigger} interior "
-        f"{archetype_vocab}, {STAGE_B_PROMPT_SUFFIX}"
-    )
-
-    r = fal_client.subscribe(
-        "fal-ai/flux-pro/v1/fill",
-        arguments={
-            "image_url": stage_a_url,
-            "mask_url": mask_url,
-            "prompt": prompt,
-            "num_inference_steps": STAGE_B_STEPS,
-            "guidance_scale": STAGE_B_GUIDANCE,
-            "num_images": 1,
-            "output_format": "jpeg",
-            "safety_tolerance": "6",
-        },
-        with_logs=False,
-        client_timeout=150.0,
-    )
-    imgs = r.get("images") or []
-    if imgs:
-        first = imgs[0]
-        if isinstance(first, dict) and first.get("url"):
-            return first["url"]
-        if isinstance(first, str):
-            return first
-    img = r.get("image")
-    if isinstance(img, dict) and img.get("url"):
-        return img["url"]
-    raise RuntimeError(f"unexpected stage-b response: {list(r.keys())}")
-
-
-def _upload_bytes_to_fal(data: bytes, suffix: str = ".png") -> str:
+def _upload_bytes_to_fal(data: bytes, suffix: str = ".jpg") -> str:
     import fal_client  # type: ignore
     import tempfile
 
@@ -921,190 +507,934 @@ def _upload_bytes_to_fal(data: bytes, suffix: str = ".png") -> str:
 
 
 # ---------------------------------------------------------------------------
+# Pass 0 — Layout Planner (Claude Vision)
+# ---------------------------------------------------------------------------
+
+
+def _layout_planner(
+    empty_room_url: str,
+    room_type: str,
+    primary_archetype: str,
+    personalization: dict[str, Any],
+    style_blend: Optional[dict[str, float]],
+) -> dict[str, Any]:
+    """Call Claude Vision to produce the layout JSON.
+
+    Returns a best-effort dict. On failure, returns a minimal fallback
+    plan using ROOM_TYPE_SPECS defaults.
+    """
+    import anthropic
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        logger.warning("ANTHROPIC_API_KEY missing; using fallback layout plan")
+        return _fallback_layout_plan(room_type, personalization)
+
+    client = anthropic.Anthropic(api_key=api_key)
+
+    try:
+        img_bytes = _fetch_bytes(str(empty_room_url), timeout=45)
+        # Resize + compress to <4 MB to satisfy Claude Vision limits (P0 fix).
+        img_b64 = _shrink_for_vision(img_bytes)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("layout_planner: image fetch failed (%s); fallback", exc)
+        return _fallback_layout_plan(room_type, personalization)
+
+    room_spec = ROOM_TYPE_SPECS.get(room_type.lower(), ROOM_TYPE_SPECS["bedroom"])
+    style_rules = _load_style_rules(primary_archetype)
+
+    system_prompt = (
+        "You are an expert interior designer producing a JSON scene spec. "
+        "Return ONLY valid JSON matching the requested schema. No prose."
+    )
+
+    user_prompt = f"""Analyze this empty room photo and produce a JSON staging plan.
+
+Room type: {room_type}
+Primary style: {primary_archetype}
+Style density tier: {style_rules.get('density_tier', 'medium')}
+Target hero furniture: {room_spec['hero_furniture']}
+Target density: {room_spec['density_target']}
+Focal point hint: {room_spec['focal_point']}
+Personalization requested: {json.dumps(personalization)[:800]}
+
+Return JSON with this exact schema:
+{{
+  "architecture_notes": "string describing wall positions, window locations, ceiling height",
+  "focal_wall": "string describing which wall is the focal point",
+  "pass1_hero_placement": {{
+    "primary_hero": "string",
+    "secondary_pieces": ["string", ...],
+    "rug_placement": "string"
+  }},
+  "pass2_surfaces": [
+    {{"surface_name": "string", "vignette": "string describing grouping"}}
+  ],
+  "personalization_placements": {{
+    "art": "string position or 'none'",
+    "smart_tech": "string position or 'none'",
+    "identity_objects": "string description or 'none'"
+  }},
+  "life_objects": ["3 lived-in objects per Gosling rule"],
+  "pass3_lighting_preset": "warm_cozy OR bright_natural OR dramatic_moody"
+}}
+"""
+
+    try:
+        msg = client.messages.create(
+            model="claude-sonnet-4-5",
+            max_tokens=1500,
+            system=system_prompt,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": "image/jpeg",
+                                "data": img_b64,
+                            },
+                        },
+                        {"type": "text", "text": user_prompt},
+                    ],
+                }
+            ],
+            timeout=60.0,
+        )
+        text = "".join(
+            [block.text for block in msg.content if getattr(block, "text", None)]
+        )
+        plan = _extract_json(text)
+        if not plan:
+            raise ValueError(f"no JSON in response: {text[:200]}")
+        return plan
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("layout_planner call failed (%s); fallback", exc)
+        return _fallback_layout_plan(room_type, personalization)
+
+
+def _shrink_for_vision(raw: bytes, max_edge: int = 1536) -> str:
+    from PIL import Image
+    img = Image.open(io.BytesIO(raw)).convert("RGB")
+    w, h = img.size
+    if max(w, h) > max_edge:
+        scale = max_edge / float(max(w, h))
+        img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
+    out = io.BytesIO()
+    img.save(out, "JPEG", quality=85)
+    data = out.getvalue()
+    return base64.b64encode(data).decode("ascii")
+
+
+def _extract_json(text: str) -> Optional[dict[str, Any]]:
+    # Look for the first { and matching }.
+    start = text.find("{")
+    if start < 0:
+        return None
+    depth = 0
+    for i in range(start, len(text)):
+        ch = text[i]
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                try:
+                    return json.loads(text[start : i + 1])
+                except json.JSONDecodeError:
+                    return None
+    return None
+
+
+def _fallback_layout_plan(
+    room_type: str, personalization: dict[str, Any]
+) -> dict[str, Any]:
+    room_spec = ROOM_TYPE_SPECS.get(room_type.lower(), ROOM_TYPE_SPECS["bedroom"])
+    lighting = "warm_cozy"
+    if isinstance(personalization, dict):
+        l = personalization.get("lighting")
+        if isinstance(l, dict) and l.get("mood") in LIGHTING_PROMPTS:
+            lighting = l["mood"]
+    return {
+        "architecture_notes": "room architecture preserved; walls, windows, ceiling intact",
+        "focal_wall": room_spec["focal_point"],
+        "pass1_hero_placement": {
+            "primary_hero": room_spec["hero_furniture"][0],
+            "secondary_pieces": room_spec["hero_furniture"][1:],
+            "rug_placement": room_spec["rug_rule"],
+        },
+        "pass2_surfaces": [
+            {"surface_name": s, "vignette": "editorial grouping of decor objects"}
+            for s in room_spec["default_surfaces"]
+        ],
+        "personalization_placements": {
+            "art": "on focal wall" if _has_art(personalization) else "none",
+            "smart_tech": "integrated naturally" if _has_smart(personalization) else "none",
+            "identity_objects": "displayed appropriately" if _has_identity(personalization) else "none",
+        },
+        "life_objects": ["open book on surface", "folded throw", "small plant"],
+        "pass3_lighting_preset": lighting,
+    }
+
+
+def _has_art(p: dict[str, Any]) -> bool:
+    if not isinstance(p, dict):
+        return False
+    art = p.get("art")
+    return isinstance(art, dict) and bool(art.get("images"))
+
+
+def _has_smart(p: dict[str, Any]) -> bool:
+    if not isinstance(p, dict):
+        return False
+    return bool(p.get("smart_products"))
+
+
+def _has_identity(p: dict[str, Any]) -> bool:
+    if not isinstance(p, dict):
+        return False
+    return bool(p.get("identity_objects"))
+
+
+# ---------------------------------------------------------------------------
+# Pass 1 — hero furniture lock
+# ---------------------------------------------------------------------------
+
+
+def _build_pass1_prompt(
+    primary_archetype: str,
+    room_type: str,
+    plan: dict[str, Any],
+    style_rules: dict[str, Any],
+    personalization: dict[str, Any],
+    budget_max: float,
+) -> str:
+    meta = LORA_REGISTRY[primary_archetype]
+    trigger = meta["trigger"]
+    room_spec = ROOM_TYPE_SPECS.get(room_type.lower(), ROOM_TYPE_SPECS["bedroom"])
+
+    hero = plan.get("pass1_hero_placement") or {}
+    primary = hero.get("primary_hero") or room_spec["hero_furniture"][0]
+    secondary = hero.get("secondary_pieces") or room_spec["hero_furniture"][1:]
+    rug = hero.get("rug_placement") or room_spec["rug_rule"]
+
+    lighting_preset = plan.get("pass3_lighting_preset", "warm_cozy")
+    lighting_frag = LIGHTING_PROMPTS.get(lighting_preset, LIGHTING_PROMPTS["warm_cozy"])
+
+    materials_list = style_rules.get("materials", {}).get("top_materials", [])
+    palette_list = style_rules.get("color_palette", {}).get("accent_colors", [])
+
+    materials = ", ".join(materials_list[:4]) if materials_list else "natural materials"
+    palette = ", ".join(palette_list[:4]) if palette_list else "balanced palette"
+
+    tech_items = ""
+    if _has_smart(personalization):
+        sp = personalization.get("smart_products") or []
+        if sp:
+            names = [
+                item.get("type", "").replace("_", " ")
+                for item in sp[:3]
+                if isinstance(item, dict)
+            ]
+            tech_items = ", " + ", ".join(f"integrated {n}" for n in names if n)
+
+    identity_frag = ""
+    if _has_identity(personalization):
+        ids = personalization.get("identity_objects") or []
+        layout_defining = [
+            i for i in ids
+            if isinstance(i, dict) and i.get("type") in LAYOUT_DEFINING_IDENTITY
+        ]
+        if layout_defining:
+            parts = []
+            for obj in layout_defining[:2]:
+                t = obj.get("type", "")
+                q = obj.get("quantity", "")
+                parts.append(f"{q} {t}".strip() if q else t)
+            if parts:
+                identity_frag = ", with " + " and ".join(parts)
+
+    budget_frag = ""
+    if budget_max >= 10000:
+        budget_frag = ", designer-tier finishes"
+    elif budget_max < 1500:
+        budget_frag = ", accessible finishes"
+
+    secondary_clause = ", ".join(secondary[:4]) if secondary else ""
+
+    return (
+        f"{trigger} {room_type} interior, {primary}, {secondary_clause}, {rug}, "
+        f"{lighting_frag}, materials: {materials}, palette: {palette}"
+        f"{tech_items}{identity_frag}{budget_frag}, "
+        f"styled with open book, folded throw, small plant, "
+        f"photographed by Francois Halard, 35mm lens eye-level 44 inches, "
+        f"Architectural Digest editorial quality, asymmetric composition, "
+        f"one clear directional light source"
+    )
+
+
+def _get_image_bytes_as_pil(url: str):
+    from PIL import Image
+    raw = _fetch_bytes(url)
+    return Image.open(io.BytesIO(raw)).convert("RGB")
+
+
+def _encode_png(img_bytes: bytes) -> str:
+    return base64.b64encode(img_bytes).decode("ascii")
+
+
+def _build_full_mask_url(width: int, height: int) -> str:
+    """White full-coverage mask for initial Fill Pro placement."""
+    import cv2  # type: ignore
+    import numpy as np
+
+    mask = np.full((height, width), 255, dtype=np.uint8)
+    ok, enc = cv2.imencode(".png", mask)
+    if not ok:
+        raise RuntimeError("mask encode failed")
+    return _upload_bytes_to_fal(enc.tobytes(), suffix=".png")
+
+
+def _call_flux_fill_pro(
+    image_url: str,
+    mask_url: str,
+    prompt: str,
+    strength: float,
+    guidance: float,
+    steps: int,
+    loras: list[dict[str, Any]],
+    seed: Optional[int] = None,
+    controlnet_depth_url: Optional[str] = None,
+    controlnet_scale: Optional[float] = None,
+) -> str:
+    import fal_client  # type: ignore
+
+    args: dict[str, Any] = {
+        "image_url": image_url,
+        "mask_url": mask_url,
+        "prompt": prompt,
+        "num_inference_steps": steps,
+        "guidance_scale": guidance,
+        "num_images": 1,
+        "output_format": "jpeg",
+        "safety_tolerance": "6",
+    }
+    # strength is an informational hint; flux-pro/v1/fill ignores it.
+    args["_strength_hint"] = strength  # kept for logging
+    args.pop("_strength_hint", None)
+
+    if seed is not None:
+        args["seed"] = int(seed)
+
+    # flux-pro/v1/fill does not accept loras or controlnet_unions natively;
+    # fall back to flux-general/image-to-image when LoRAs are present.
+    if loras:
+        return _call_flux_general_i2i(
+            image_url=image_url,
+            prompt=prompt,
+            strength=strength,
+            guidance=guidance,
+            steps=steps,
+            loras=loras,
+            seed=seed,
+            controlnet_depth_url=controlnet_depth_url,
+            controlnet_scale=controlnet_scale,
+        )
+
+    r = fal_client.subscribe(
+        "fal-ai/flux-pro/v1/fill",
+        arguments=args,
+        with_logs=False,
+        client_timeout=FAL_CLIENT_TIMEOUT_S,
+    )
+    return _extract_fal_image_url(r)
+
+
+def _call_flux_general_i2i(
+    image_url: str,
+    prompt: str,
+    strength: float,
+    guidance: float,
+    steps: int,
+    loras: list[dict[str, Any]],
+    seed: Optional[int] = None,
+    controlnet_depth_url: Optional[str] = None,
+    controlnet_scale: Optional[float] = None,
+) -> str:
+    import fal_client  # type: ignore
+
+    args: dict[str, Any] = {
+        "image_url": image_url,
+        "prompt": prompt,
+        "negative_prompt": NEGATIVE_PROMPT,
+        "strength": strength,
+        "guidance_scale": guidance,
+        "num_inference_steps": steps,
+        "loras": [{"path": e["path"], "scale": e["scale"]} for e in loras],
+        "output_format": "jpeg",
+    }
+    if seed is not None:
+        args["seed"] = int(seed)
+    if controlnet_depth_url and controlnet_scale is not None:
+        args["controlnet_unions"] = [
+            {
+                "path": "InstantX/FLUX.1-dev-Controlnet-Union",
+                "controls": [
+                    {
+                        "control_image_url": controlnet_depth_url,
+                        "control_mode": "depth",
+                        "conditioning_scale": controlnet_scale,
+                        "start_percentage": 0.0,
+                        "end_percentage": CONTROLNET_DEPTH_P1_END,
+                    }
+                ],
+            }
+        ]
+
+    # Retry once on transient errors.
+    for attempt in range(2):
+        try:
+            r = fal_client.subscribe(
+                "fal-ai/flux-general/image-to-image",
+                arguments=args,
+                with_logs=False,
+                client_timeout=FAL_CLIENT_TIMEOUT_S,
+            )
+            return _extract_fal_image_url(r)
+        except Exception as exc:  # noqa: BLE001
+            if attempt == 0:
+                logger.warning("flux-general transient (%s); retrying", exc)
+                time.sleep(10)
+                continue
+            raise
+
+
+def _extract_fal_image_url(r: dict[str, Any]) -> str:
+    imgs = r.get("images") or []
+    if imgs:
+        first = imgs[0]
+        if isinstance(first, dict) and first.get("url"):
+            return first["url"]
+        if isinstance(first, str):
+            return first
+    img = r.get("image")
+    if isinstance(img, dict) and img.get("url"):
+        return img["url"]
+    raise RuntimeError(f"fal response missing image url: {list(r.keys())}")
+
+
+def _generate_depth_url(image_url: str) -> Optional[str]:
+    import fal_client  # type: ignore
+    try:
+        r = fal_client.subscribe(
+            "fal-ai/imageutils/depth",
+            arguments={"image_url": image_url},
+            with_logs=False,
+        )
+        depth = r.get("image") or {}
+        if isinstance(depth, dict) and depth.get("url"):
+            return depth["url"]
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("depth call failed: %s", exc)
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Pass 2 — per-surface decor density
+# ---------------------------------------------------------------------------
+
+
+def _build_surface_mask(
+    width: int, height: int, surface_name: str
+) -> bytes:
+    """Heuristic surface mask — covers likely region of the named surface."""
+    import cv2  # type: ignore
+    import numpy as np
+
+    mask = np.zeros((height, width), dtype=np.uint8)
+    name = surface_name.lower()
+
+    # Surface heuristics — covers the band of the image where the surface
+    # typically sits. Fill Pro will only modify the masked region.
+    if "nightstand" in name and "left" in name:
+        mask[int(height * 0.45):int(height * 0.75), : int(width * 0.35)] = 255
+    elif "nightstand" in name and "right" in name:
+        mask[int(height * 0.45):int(height * 0.75), int(width * 0.65):] = 255
+    elif "dresser" in name or "sideboard" in name:
+        mask[int(height * 0.55):int(height * 0.80), int(width * 0.25):int(width * 0.75)] = 255
+    elif "coffee table" in name:
+        mask[int(height * 0.60):int(height * 0.85), int(width * 0.25):int(width * 0.75)] = 255
+    elif "side table" in name or "end table" in name:
+        mask[int(height * 0.50):int(height * 0.75), int(width * 0.70):] = 255
+    elif "desk" in name:
+        mask[int(height * 0.50):int(height * 0.75), int(width * 0.20):int(width * 0.80)] = 255
+    elif "bookshelf" in name or "shelf" in name or "console" in name:
+        mask[int(height * 0.30):int(height * 0.75), int(width * 0.05):int(width * 0.35)] = 255
+    elif "dining table" in name:
+        mask[int(height * 0.50):int(height * 0.70), int(width * 0.25):int(width * 0.75)] = 255
+    elif "vanity" in name:
+        mask[int(height * 0.40):int(height * 0.70), int(width * 0.25):int(width * 0.75)] = 255
+    else:
+        # generic accessory band
+        mask[int(height * 0.45):int(height * 0.60), int(width * 0.20):int(width * 0.80)] = 255
+
+    ok, enc = cv2.imencode(".png", mask)
+    if not ok:
+        raise RuntimeError(f"mask encode failed for {surface_name}")
+    return enc.tobytes()
+
+
+def _build_pass2_prompt(
+    primary_archetype: str,
+    style_rules: dict[str, Any],
+    surface_name: str,
+    vignette: str,
+) -> str:
+    trigger = LORA_REGISTRY[primary_archetype]["trigger"]
+    materials = ", ".join(
+        style_rules.get("materials", {}).get("top_materials", [])[:3]
+    )
+    return (
+        f"{trigger} {surface_name} styling, {vignette}, editorial interior photography, "
+        f"rule of three, asymmetric grouping, styled by professional interior designer, "
+        f"materials: {materials}, natural lighting, photorealistic"
+    )
+
+
+def _run_pass2(
+    pass1_url: str,
+    primary_archetype: str,
+    style_rules: dict[str, Any],
+    plan: dict[str, Any],
+    room_type: str,
+    loras_p2: list[dict[str, Any]],
+    seed: Optional[int],
+    personalization: dict[str, Any],
+) -> tuple[str, int]:
+    """Loop over pass2_surfaces; return (final_url, cost_calls_made)."""
+    pil = _get_image_bytes_as_pil(pass1_url)
+    width, height = pil.size
+    room_spec = ROOM_TYPE_SPECS.get(room_type.lower(), ROOM_TYPE_SPECS["bedroom"])
+    p2_cn_scale = float(room_spec["depth_controlnet_scale_p2"])
+
+    surfaces = plan.get("pass2_surfaces") or []
+    if not surfaces:
+        surfaces = [
+            {"surface_name": s, "vignette": "editorial grouping"}
+            for s in room_spec["default_surfaces"]
+        ]
+
+    # Add display-only identity objects as targeted pass2 vignettes.
+    if _has_identity(personalization):
+        for obj in (personalization.get("identity_objects") or []):
+            if isinstance(obj, dict) and obj.get("type") in DISPLAY_ONLY_IDENTITY:
+                t = obj["type"]
+                surfaces.append(
+                    {
+                        "surface_name": "display shelf",
+                        "vignette": (
+                            f"{t} artfully displayed, shelf or display unit, "
+                            f"editorial, photorealistic, interior magazine quality"
+                        ),
+                    }
+                )
+
+    # Surface cap — 4 total to keep pass2 bounded.
+    surfaces = surfaces[:4]
+
+    current_url = pass1_url
+    calls = 0
+    for entry in surfaces:
+        surface_name = entry.get("surface_name", "surface")
+        vignette = entry.get("vignette", "editorial grouping")
+        try:
+            mask_bytes = _build_surface_mask(width, height, surface_name)
+            mask_url = _upload_bytes_to_fal(mask_bytes, suffix=".png")
+            prompt = _build_pass2_prompt(
+                primary_archetype, style_rules, surface_name, vignette
+            )
+            current_url = _call_flux_general_i2i(
+                image_url=current_url,
+                prompt=prompt,
+                strength=PASS2_STRENGTH,
+                guidance=PASS2_GUIDANCE,
+                steps=PASS2_STEPS,
+                loras=loras_p2,
+                seed=seed,
+                controlnet_depth_url=None,  # rely on mask to localize
+                controlnet_scale=None,
+            )
+            calls += 1
+            _ = p2_cn_scale  # reserved for future CN pass
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("pass2 surface %s failed: %s", surface_name, exc)
+            continue
+    return current_url, calls
+
+
+# ---------------------------------------------------------------------------
+# Pass 3 — IC-Light v2
+# ---------------------------------------------------------------------------
+
+
+def _run_ic_light(pass2_url: str, preset: str) -> str:
+    import fal_client  # type: ignore
+
+    preset = preset if preset in IC_LIGHT_PROMPTS else "warm_cozy"
+    prompt = IC_LIGHT_PROMPTS[preset]
+    latent = IC_LIGHT_LATENT[preset]
+
+    r = fal_client.subscribe(
+        "fal-ai/iclight-v2",
+        arguments={
+            "image_url": pass2_url,
+            "prompt": prompt,
+            "initial_latent": latent,
+            "lowres_denoise": PASS3_LOWRES_DENOISE,
+            "highres_denoise": PASS3_HIGHRES_DENOISE,
+            "guidance_scale": PASS3_GUIDANCE,
+            "num_inference_steps": PASS3_STEPS,
+            "background_threshold": PASS3_BG_THRESHOLD,
+            "num_images": 1,
+            "output_format": "jpeg",
+        },
+        with_logs=False,
+        client_timeout=FAL_CLIENT_TIMEOUT_S,
+    )
+    return _extract_fal_image_url(r)
+
+
+# ---------------------------------------------------------------------------
+# Editorial post-processing (PIL + numpy)
+# ---------------------------------------------------------------------------
+
+
+def _editorial_post(url: str) -> str:
+    import numpy as np
+    from PIL import Image
+
+    raw = _fetch_bytes(url)
+    pil = Image.open(io.BytesIO(raw)).convert("RGB")
+    arr = np.asarray(pil, dtype=np.float32) / 255.0  # HxWx3
+
+    # 1. Warm white balance.
+    arr[..., 0] *= 1.04
+    arr[..., 2] *= 0.96
+
+    # 2. S-curve with lifted shadows.
+    shadow_lift = 0.06
+    highlight_roll = 0.94
+    arr = arr * (highlight_roll - shadow_lift) + shadow_lift
+
+    # Contrast S-curve (sigmoid-ish).
+    arr = _s_curve(arr)
+
+    # 3. Desaturate 8% toward luminance.
+    lum = 0.299 * arr[..., 0] + 0.587 * arr[..., 1] + 0.114 * arr[..., 2]
+    lum3 = np.stack([lum, lum, lum], axis=-1)
+    arr = arr * (1 - 0.08) + lum3 * 0.08
+
+    # 4. Film grain, shadow-weighted.
+    rng = np.random.default_rng(42)
+    grain = rng.normal(0, 0.012, size=arr.shape).astype(np.float32)
+    shadow_mask = 1.0 - np.clip(lum3, 0, 1)
+    arr = arr + grain * shadow_mask
+
+    # 5. Corner vignette.
+    h, w = arr.shape[:2]
+    cy, cx = h / 2.0, w / 2.0
+    yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
+    dist = np.sqrt(((xx - cx) / cx) ** 2 + ((yy - cy) / cy) ** 2)
+    vign = 1.0 - np.clip(dist * 0.18, 0, 0.20)
+    arr = arr * vign[..., None]
+
+    arr = np.clip(arr, 0.0, 1.0)
+    out = (arr * 255.0).astype(np.uint8)
+    out_pil = Image.fromarray(out)
+    buf = io.BytesIO()
+    out_pil.save(buf, "JPEG", quality=90)
+    return _upload_bytes_to_fal(buf.getvalue(), suffix=".jpg")
+
+
+def _s_curve(arr):
+    import numpy as np
+    return 1.0 / (1.0 + np.exp(-8.0 * (arr - 0.5))) * 1.0 + (arr - arr)  # shape-preserving
+
+
+# ---------------------------------------------------------------------------
+# QA check (Claude Vision)
+# ---------------------------------------------------------------------------
+
+
+def _qa_check(final_url: str, room_type: str, personalization: dict[str, Any]) -> Optional[QAResult]:
+    import anthropic
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return None
+
+    try:
+        raw = _fetch_bytes(final_url)
+        b64 = _shrink_for_vision(raw)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("qa: image fetch failed: %s", exc)
+        return None
+
+    client = anthropic.Anthropic(api_key=api_key)
+    system = (
+        "You are a strict interior design professional scoring a room render. "
+        "Return ONLY valid JSON."
+    )
+    user = f"""Score this final render on 10 dimensions 1-5 (1=poor, 5=excellent).
+
+Room type expected: {room_type}
+Personalization requested: {json.dumps(personalization)[:400]}
+
+Return JSON:
+{{
+  "scores": {{
+    "room_type_correct": 1-5,
+    "hero_furniture_quality": 1-5,
+    "style_accuracy": 1-5,
+    "decor_density": 1-5,
+    "lighting_quality": 1-5,
+    "personalization_features_visible": 1-5,
+    "lived_in_quality": 1-5,
+    "editorial_photography_quality": 1-5,
+    "perspective_and_scale": 1-5,
+    "art_accuracy": 1-5
+  }},
+  "suggested_chips": ["3 specific refinement suggestions based on what you actually see"]
+}}
+"""
+    try:
+        msg = client.messages.create(
+            model="claude-sonnet-4-5",
+            max_tokens=800,
+            system=system,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": "image/jpeg",
+                                "data": b64,
+                            },
+                        },
+                        {"type": "text", "text": user},
+                    ],
+                }
+            ],
+            timeout=45.0,
+        )
+        text = "".join(
+            [b.text for b in msg.content if getattr(b, "text", None)]
+        )
+        data = _extract_json(text) or {}
+        scores_dict = data.get("scores") or {}
+        chips = data.get("suggested_chips") or []
+
+        def _g(k: str) -> float:
+            v = scores_dict.get(k, 3)
+            try:
+                return float(v)
+            except Exception:  # noqa: BLE001
+                return 3.0
+
+        scores = QAScores(
+            room_type_correct=_g("room_type_correct"),
+            hero_furniture_quality=_g("hero_furniture_quality"),
+            style_accuracy=_g("style_accuracy"),
+            decor_density=_g("decor_density"),
+            lighting_quality=_g("lighting_quality"),
+            personalization_features_visible=_g("personalization_features_visible"),
+            lived_in_quality=_g("lived_in_quality"),
+            editorial_photography_quality=_g("editorial_photography_quality"),
+            perspective_and_scale=_g("perspective_and_scale"),
+            art_accuracy=_g("art_accuracy"),
+        )
+        composite = sum(
+            [
+                scores.room_type_correct,
+                scores.hero_furniture_quality,
+                scores.style_accuracy,
+                scores.decor_density,
+                scores.lighting_quality,
+                scores.personalization_features_visible,
+                scores.lived_in_quality,
+                scores.editorial_photography_quality,
+                scores.perspective_and_scale,
+                scores.art_accuracy,
+            ]
+        ) / 10.0
+        return QAResult(
+            scores=scores,
+            composite=round(composite, 3),
+            suggested_chips=[str(c) for c in chips][:3],
+            raw=data,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("qa call failed: %s", exc)
+        return None
+
+
+# ---------------------------------------------------------------------------
 # Modal class
 # ---------------------------------------------------------------------------
 
 
 @app.cls(
     image=redesign_image,
-    gpu="A10G",
-    timeout=720,
+    cpu=2.0,
+    memory=4096,
+    timeout=900,
     startup_timeout=60,
     min_containers=0,
     max_containers=4,
     secrets=[
-        modal.Secret.from_name("supabase-secrets"),
         modal.Secret.from_name("fal-secrets"),
+        modal.Secret.from_name("anthropic-credentials"),
     ],
 )
 class Redesign:
     @modal.enter()
     def load(self) -> None:
         logger.info(
-            "cova-redesign ready  archetypes=%d universal=%d strength=%.2f steps=%d guidance=%.2f scheduler=%s",
-            len(LORA_REGISTRY), len(UNIVERSAL_LORAS),
-            FLUX_STRENGTH, FLUX_NUM_STEPS, FLUX_GUIDANCE_SCALE, FLUX_SCHEDULER,
+            "cova-redesign V3 ready  archetypes=%d style_rules_dir=%s",
+            len(LORA_REGISTRY),
+            STYLE_RULES_DIR,
         )
 
     def _generate(self, req: RedesignRequest) -> RedesignResponse:
-        import cv2  # type: ignore
-        import numpy as np
-        from PIL import Image
-
         t0 = time.perf_counter()
 
-        normalized_archetype = _normalize_archetype_key(req.archetype_key)
-        if normalized_archetype not in LORA_REGISTRY:
-            raise RuntimeError(f"unknown_archetype:{req.archetype_key}")
-
+        personalization = req.personalization or {}
         scale_mult = float(req.lora_scale_multiplier or 1.0)
         scale_mult = min(max(scale_mult, 0.5), 1.3)
-        stack = _resolve_lora_stack(
-            normalized_archetype, req.style_blend, scale_mult
-        )
-        primary_trigger = LORA_REGISTRY[normalized_archetype]["trigger"]
 
-        prompt = (
-            req.prompt_override
-            if req.prompt_override
-            else _build_prompt(
-                normalized_archetype,
-                primary_trigger,
-                lifestyle_context=req.lifestyle_context,
-                budget_max=req.budget_max,
-                room_type=req.room_type,
-            )
-        )
+        primary_archetype = _primary_archetype(req.style_blend)
+        style_rules = _load_style_rules(primary_archetype)
 
-        strength = float(
-            req.strength_override if req.strength_override is not None else FLUX_STRENGTH
+        # Pass 0: layout plan.
+        plan = _layout_planner(
+            str(req.empty_room_url),
+            req.room_type,
+            primary_archetype,
+            personalization,
+            req.style_blend,
         )
-        guidance = float(
-            req.guidance_override if req.guidance_override is not None else FLUX_GUIDANCE_SCALE
-        )
-        steps = int(
-            req.steps_override if req.steps_override is not None else FLUX_NUM_STEPS
-        )
-        image_size = _infer_image_size(
-            str(req.empty_room_url), req.primary_image_size or "auto"
-        )
+        if req.lighting_preset_override:
+            plan["pass3_lighting_preset"] = req.lighting_preset_override
+
+        # Depth for Pass 1 (runs alongside layout in production via asyncio;
+        # here we run it sequentially to keep the code simple).
+        depth_url = _generate_depth_url(str(req.empty_room_url))
 
         cost = 0.0
-        provider: Literal["flux-general", "nano-banana-pro"]
-        fallback_reason: Optional[str] = None
-        stage_a_url: Optional[str] = None
-        inference_time: Optional[float] = None
-        out_dims: dict[str, int] = {"width": 1024, "height": 1024}
+        if depth_url:
+            cost += COST_DEPTH
 
-        # Generate depth + edge URLs (the LoRA-unblock fix).
-        depth_url: Optional[str] = None
-        edge_url: Optional[str] = None
-        if req.enable_controlnet and not req.force_nb_pro:
-            t_dep = time.perf_counter()
-            depth_url = _generate_depth_url(str(req.empty_room_url))
-            if depth_url is not None:
-                cost += COST_DEPTH
-            # Canny disabled in production: 3 LoRAs + 2 ControlNet controls
-            # hits fal-ai/flux-general's "Could not load pipeline" limit.
-            # Depth alone is the highest-leverage geometry lock per research.
-            edge_url = None
-            logger.info(
-                "controlnet urls ready  depth=%s edge=%s dt_s=%.2f",
-                bool(depth_url), bool(edge_url), time.perf_counter() - t_dep,
+        # Pass 1 — hero lock.
+        loras_p1 = _build_lora_stack(
+            primary_archetype, req.style_blend, scale_mult, pass_scale_modifier=0.90
+        )
+        pass1_prompt = (
+            req.prompt_override
+            if req.prompt_override
+            else _build_pass1_prompt(
+                primary_archetype,
+                req.room_type,
+                plan,
+                style_rules,
+                personalization,
+                req.budget_max,
             )
+        )
+        strength_p1 = float(req.strength_override or PASS1_STRENGTH)
+        guidance_p1 = float(req.guidance_override or PASS1_GUIDANCE)
 
-        # ---- Stage A ------------------------------------------------
-        if req.force_nb_pro:
-            fallback_reason = "force_nb_pro"
-            provider = "nano-banana-pro"
-            stage_a_url, out_dims = _call_nb_pro(str(req.empty_room_url), prompt)
-            cost += COST_NB_PRO_EDIT
-        else:
+        pass1_url = _call_flux_general_i2i(
+            image_url=str(req.empty_room_url),
+            prompt=pass1_prompt,
+            strength=strength_p1,
+            guidance=guidance_p1,
+            steps=PASS1_STEPS,
+            loras=loras_p1,
+            seed=req.seed,
+            controlnet_depth_url=depth_url,
+            controlnet_scale=CONTROLNET_DEPTH_P1,
+        )
+        cost += COST_FLUX_FILL
+
+        # Pass 2 — per-surface decor.
+        pass2_url = pass1_url
+        if not req.skip_pass2:
+            loras_p2 = _build_lora_stack(
+                primary_archetype, req.style_blend, scale_mult, pass_scale_modifier=0.65
+            )
+            # Push add-details higher in Pass 2.
+            loras_p2[-1]["scale"] = round(0.55, 4)
+            pass2_url, p2_calls = _run_pass2(
+                pass1_url,
+                primary_archetype,
+                style_rules,
+                plan,
+                req.room_type,
+                loras_p2,
+                req.seed,
+                personalization,
+            )
+            cost += COST_FLUX_FILL * p2_calls
+
+        # Pass 3 — IC-Light.
+        pass3_url = pass2_url
+        if not req.skip_pass3:
             try:
-                t_flux = time.perf_counter()
-                stage_a_url, out_dims, inference_time = _call_flux_general(
-                    str(req.empty_room_url),
-                    prompt,
-                    NEGATIVE_PROMPT,
-                    stack,
-                    image_size,
-                    strength,
-                    guidance,
-                    steps,
-                    req.seed,
-                    depth_url=depth_url,
-                    edge_url=edge_url,
+                pass3_url = _run_ic_light(
+                    pass2_url, plan.get("pass3_lighting_preset", "warm_cozy")
                 )
-                logger.info(
-                    "flux-general OK dt_s=%.2f dims=%dx%d inference_time=%s",
-                    time.perf_counter() - t_flux,
-                    out_dims["width"], out_dims["height"], inference_time,
-                )
-                provider = "flux-general"
-                cost += COST_FLUX_GENERAL
+                cost += COST_IC_LIGHT
             except Exception as exc:  # noqa: BLE001
-                fallback_reason = f"flux-general:{type(exc).__name__}:{exc}"
-                logger.warning("flux-general failed → NB-Pro: %s", exc)
-                stage_a_url, out_dims = _call_nb_pro(str(req.empty_room_url), prompt)
-                provider = "nano-banana-pro"
-                cost += COST_NB_PRO_EDIT
+                logger.warning("IC-Light failed, using pass2: %s", exc)
+                pass3_url = pass2_url
 
-        # ---- Stage B ------------------------------------------------
-        redesign_url = stage_a_url
-        stage_b_used = False
-        if req.enable_stage_b and provider == "flux-general" and stage_a_url:
-            try:
-                t_b = time.perf_counter()
-                raw = _fetch_bytes(stage_a_url)
-                stage_a_pil = Image.open(io.BytesIO(raw)).convert("RGB")
-                stage_a_arr = np.array(stage_a_pil)
-                vocab = ARCHETYPE_VOCAB.get(normalized_archetype, DEFAULT_VOCAB)
-                redesign_url = _call_stage_b(
-                    stage_a_url, vocab, primary_trigger, stage_a_arr
-                )
-                cost += COST_FLUX_FILL
-                stage_b_used = True
-                logger.info("stage_b OK dt_s=%.2f", time.perf_counter() - t_b)
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("stage_b failed (continuing with stage_a): %s", exc)
-                redesign_url = stage_a_url
+        # Editorial post-processing.
+        try:
+            render_url = _editorial_post(pass3_url)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("editorial post failed: %s", exc)
+            render_url = pass3_url
 
-        latency_ms = int((time.perf_counter() - t0) * 1000)
+        # QA check.
+        qa = _qa_check(render_url, req.room_type, personalization)
+        if qa is not None:
+            cost += COST_CLAUDE_VISION
+
+        latency_s = round(time.perf_counter() - t0, 2)
         logger.info(
-            "generate_redesign done  archetype=%s provider=%s stage_b=%s latency_ms=%d cost=$%.4f",
-            normalized_archetype, provider, stage_b_used, latency_ms, cost,
+            "redesign V3 done  archetype=%s room_type=%s latency=%.2fs cost=$%.4f qa=%s",
+            primary_archetype,
+            req.room_type,
+            latency_s,
+            cost,
+            (qa.composite if qa else None),
         )
 
         return RedesignResponse(
-            redesign_url=redesign_url,  # type: ignore[arg-type]
-            archetype_resolved=normalized_archetype,
-            primary_trigger=primary_trigger,
-            loras_used=[
-                LoraEntry(
-                    path=e["path"],
-                    scale=float(e["scale"]),
-                    trigger=e.get("trigger"),
-                    name=e.get("name"),
-                )
-                for e in stack
-            ],
-            prompt_used=prompt,
-            negative_prompt_used=NEGATIVE_PROMPT,
-            provider=provider,
-            provider_fallback_reason=fallback_reason,
-            strength=strength,
-            guidance_scale=guidance,
-            num_inference_steps=steps,
-            seed=req.seed,
-            image_width=out_dims["width"],
-            image_height=out_dims["height"],
-            latency_ms=latency_ms,
+            render_url=render_url,  # type: ignore[arg-type]
+            pass1_url=pass1_url,  # type: ignore[arg-type]
+            pass2_url=pass2_url,  # type: ignore[arg-type]
+            pass3_url=pass3_url,  # type: ignore[arg-type]
+            qa=qa,
+            pipeline_version="v3",
+            latency_seconds=latency_s,
+            room_type=req.room_type,
             cost_usd=round(cost, 4),
-            judge_score=None,
-            generated_at_iso=_iso_now(),
-            stage_a_url=stage_a_url,  # type: ignore[arg-type]
-            stage_b_used=stage_b_used,
-            lora_inference_time_s=inference_time,
+            layout_plan=plan,
         )
 
     @modal.asgi_app()
@@ -1119,18 +1449,9 @@ class Redesign:
                 "app": APP_NAME,
                 "api_version": API_VERSION,
                 "status": "ready",
+                "pipeline": "v3-3pass",
                 "archetypes": sorted(LORA_REGISTRY.keys()),
-                "universal_loras": [u["name"] for u in UNIVERSAL_LORAS],
-                "flux_params": {
-                    "strength": FLUX_STRENGTH,
-                    "guidance_scale": FLUX_GUIDANCE_SCALE,
-                    "num_inference_steps": FLUX_NUM_STEPS,
-                    "scheduler": FLUX_SCHEDULER,
-                },
-                "controlnet": {
-                    "depth_scale": CONTROLNET_DEPTH_SCALE,
-                    "canny_scale": CONTROLNET_CANNY_SCALE,
-                },
+                "room_types": sorted(ROOM_TYPE_SPECS.keys()),
             }
 
         @fapp.post(
@@ -1146,20 +1467,9 @@ class Redesign:
                     detail={"error": "bad_request", "message": str(exc)},
                 )
             except RuntimeError as exc:
-                msg = str(exc)
-                if msg.startswith("unknown_archetype:"):
-                    raise HTTPException(
-                        status_code=400,
-                        detail={"error": "unknown_archetype", "message": msg},
-                    )
-                if msg.startswith(("flux-general", "nb-pro", "fal")):
-                    raise HTTPException(
-                        status_code=502,
-                        detail={"error": "upstream_failure", "message": msg},
-                    )
                 raise HTTPException(
-                    status_code=500,
-                    detail={"error": "internal_error", "message": msg},
+                    status_code=502,
+                    detail={"error": "upstream_failure", "message": str(exc)},
                 )
 
         return fapp
@@ -1167,8 +1477,6 @@ class Redesign:
 
 if __name__ == "__main__":
     print(
-        f"{APP_NAME} module loaded  "
-        f"endpoint=/{API_VERSION}/generate_redesign  "
-        f"strength={FLUX_STRENGTH} steps={FLUX_NUM_STEPS} guidance={FLUX_GUIDANCE_SCALE}  "
-        f"scheduler={FLUX_SCHEDULER}"
+        f"{APP_NAME} V3 loaded  endpoint=/{API_VERSION}/generate_redesign  "
+        f"3-pass [Claude layout -> FLUX hero -> FLUX surfaces -> IC-Light]"
     )
