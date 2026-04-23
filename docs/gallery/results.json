@@ -1,0 +1,251 @@
+{
+  "generated_at": "2026-04-23T06:12:30",
+  "count": 8,
+  "completed": 7,
+  "empty_verified": 7,
+  "errors": 1,
+  "results": [
+    {
+      "id": "IMG_01",
+      "scenario_id": "S01",
+      "source_path": "/Users/daksh/Desktop/cova/bench/rooms/room-01_bedroom-cat-popcorn.webp",
+      "source_name": "room-01_bedroom-cat-popcorn.webp",
+      "room_type": "bedroom",
+      "style_blend": {
+        "COVAJAPANDI": 0.85,
+        "COVASCANDINAV": 0.15
+      },
+      "personalization": "Single large Japanese ink wash painting in black frame \u00b7 2 fiddle leaf figs flanking bed \u00b7 warm paper lantern pendant \u00b7 linen bedding in oatmeal",
+      "flux_prompt_suffix": "Japanese ink wash art panel on wall, teak platform bed, linen bedding, rattan pendant lamp, monstera plant, warm amber lighting",
+      "original_rel": "original/IMG_01.jpg",
+      "empty_rel": "empty/IMG_01.jpg",
+      "redesign_rel": "redesign/IMG_01.jpg",
+      "fal_upload_url": "https://v3b.fal.media/files/b/0a976685/HbYEaa6KisIQUJq3K5cUk_IMG_01.jpg",
+      "empty_room_url": "https://v3b.fal.media/files/b/0a97668b/SZYhzyuqz3f3O6twS_Hsc_NFWvkUhv.png",
+      "redesign_url": "https://v3b.fal.media/files/b/0a97669e/sjF3v4tcQEJSMXB2rL0Tw_tmp6hg60g8x.jpg",
+      "empty_validation": {
+        "verdict": "EMPTY",
+        "reason": "EMPTY"
+      },
+      "errors": [],
+      "timings_sec": {
+        "fal_upload": 0.87,
+        "empty_room": 89.61,
+        "empty_validation": 1.5,
+        "redesign": 167.01
+      }
+    },
+    {
+      "id": "IMG_02",
+      "scenario_id": "S02",
+      "source_path": "/Users/daksh/Desktop/cova/bench/rooms/room-02_livingroom-piano-joydivision.webp",
+      "source_name": "room-02_livingroom-piano-joydivision.webp",
+      "room_type": "living_room",
+      "style_blend": {
+        "COVABIOPHILIC": 0.9,
+        "COVAJAPANDI": 0.1
+      },
+      "personalization": "Entire wall of trailing pothos and monstera \u00b7 hanging macrame planter \u00b7 wicker sofa with sage cushions \u00b7 bamboo coffee table \u00b7 bright natural daylight",
+      "flux_prompt_suffix": "living wall of tropical plants, wicker furniture, sage green cushions, bamboo coffee table, natural light flooding room, biophilic oasis",
+      "original_rel": "original/IMG_02.jpg",
+      "empty_rel": "empty/IMG_02.jpg",
+      "redesign_rel": "redesign/IMG_02.jpg",
+      "fal_upload_url": "https://v3b.fal.media/files/b/0a97669f/eCl82fKgIP5z3hnZPDU8__IMG_02.jpg",
+      "empty_room_url": "https://v3b.fal.media/files/b/0a9766a6/q39xP5co3l4A6FSX15AFN_2x6XbPQW.png",
+      "redesign_url": "https://v3b.fal.media/files/b/0a9766d2/sCltrKg_iP5sg4EfkuHmH_tmpt2gb1xaf.jpg",
+      "empty_validation": {
+        "verdict": "EMPTY",
+        "reason": "EMPTY"
+      },
+      "errors": [],
+      "timings_sec": {
+        "fal_upload": 0.58,
+        "empty_room": 101.18,
+        "empty_validation": 0.95,
+        "redesign": 411.87
+      }
+    },
+    {
+      "id": "IMG_03",
+      "scenario_id": "S03",
+      "source_path": "/Users/daksh/Desktop/cova/bench/rooms/room-03_livingroom-leather-herringbone.webp",
+      "source_name": "room-03_livingroom-leather-herringbone.webp",
+      "room_type": "bedroom",
+      "style_blend": {
+        "COVAMINIMAL": 0.95,
+        "COVASCANDINAV": 0.05
+      },
+      "personalization": "Zero art on walls \u00b7 platform bed with single white duvet \u00b7 one sculptural table lamp \u00b7 nothing on floor except one sheepskin rug \u00b7 complete silence aesthetic",
+      "flux_prompt_suffix": "pure white walls, floating platform bed, single sculptural ceramic lamp, sheepskin rug, absolute minimalism, no clutter, zen stillness",
+      "original_rel": "original/IMG_03.jpg",
+      "empty_rel": "empty/IMG_03.jpg",
+      "redesign_rel": null,
+      "fal_upload_url": "https://v3b.fal.media/files/b/0a9766d2/Kp8Pd8wl0Pqnvbp6iqDec_IMG_03.jpg",
+      "empty_room_url": "https://v3b.fal.media/files/b/0a9766d5/R1SVySRXVFGAm5sdxQQ4b_YYF4Dskh.png",
+      "redesign_url": null,
+      "empty_validation": {
+        "verdict": "UNKNOWN",
+        "reason": "HTTPSConnectionPool(host='api.anthropic.com', port=443): Read timed out. (read timeout=60)"
+      },
+      "errors": [
+        "redesign: HTTPSConnectionPool(host='cova-interior--cova-redesign-v3-redesign-api.modal.run', port=443): Max retries exceeded with url: /v1/generate_redesign (Caused by NameResolutionError(\"HTTPSConnection(host='cova-interior--cova-redesign-v3-redesign-api.modal.run', port=443): Failed to resolve 'cova-interior--cova-redesign-v3-redesign-api.modal.run' ([Errno 8] nodename nor servname provided, or not known)\"))"
+      ],
+      "timings_sec": {
+        "fal_upload": 0.68,
+        "empty_room": 62.22,
+        "empty_validation": 2708.46,
+        "redesign": 0.01
+      }
+    },
+    {
+      "id": "IMG_04",
+      "scenario_id": "S04",
+      "source_path": "/Users/daksh/Desktop/cova/bench/rooms/room-04_attic-music-sloped.webp",
+      "source_name": "room-04_attic-music-sloped.webp",
+      "room_type": "living_room",
+      "style_blend": {
+        "COVAINDUSTRIAL": 0.8,
+        "COVAMIDCENTURY": 0.2
+      },
+      "personalization": "Herman Miller Aeron chair at standing desk \u00b7 full wall vinyl record shelf facing out \u00b7 Edison pendant cluster \u00b7 exposed brick accent \u00b7 many books on open shelving",
+      "flux_prompt_suffix": "Herman Miller ergonomic chair, vinyl record wall display, Edison bulb pendants, open metal shelving with books, industrial loft aesthetic",
+      "original_rel": "original/IMG_04.jpg",
+      "empty_rel": "empty/IMG_04.jpg",
+      "redesign_rel": "redesign/IMG_04.jpg",
+      "fal_upload_url": "https://fal.media/files/kangaroo/3UE1OrxZKnZ52FLKVsVh8_IMG_04.jpg",
+      "empty_room_url": "https://v3b.fal.media/files/b/0a97685c/dPOOKQwWv8_LBYDumzUzL_yNtfMDQe.png",
+      "redesign_url": "https://v3b.fal.media/files/b/0a97688e/x4t2sV2Jntic30fnMAOTm_tmpceqexpsv.jpg",
+      "empty_validation": {
+        "verdict": "EMPTY",
+        "reason": "EMPTY"
+      },
+      "errors": [],
+      "timings_sec": {
+        "fal_upload": 1139.53,
+        "empty_room": 66.08,
+        "empty_validation": 1.32,
+        "redesign": 459.47
+      }
+    },
+    {
+      "id": "IMG_05",
+      "scenario_id": "S05",
+      "source_path": "/Users/daksh/Desktop/cova/bench/rooms/room-05_office-gallery-rug.webp",
+      "source_name": "room-05_office-gallery-rug.webp",
+      "room_type": "bedroom",
+      "style_blend": {
+        "COVAARTDECO": 0.8,
+        "COVAINDUSTRIAL": 0.2
+      },
+      "personalization": "Single oversized music poster in black frame (concert art) \u00b7 Hue LED strip behind headboard in deep blue \u00b7 velvet headboard in forest green \u00b7 smart speaker on nightstand \u00b7 dramatic moody atmosphere",
+      "flux_prompt_suffix": "large music concert poster black frame, LED strip behind headboard blue glow, forest green velvet headboard, smart speaker, dramatic dark moody bedroom",
+      "original_rel": "original/IMG_05.jpg",
+      "empty_rel": "empty/IMG_05.jpg",
+      "redesign_rel": "redesign/IMG_05.jpg",
+      "fal_upload_url": "https://v3b.fal.media/files/b/0a97688f/UTMtLL7G3AatTyQlL66Nm_IMG_05.jpg",
+      "empty_room_url": "https://v3b.fal.media/files/b/0a976897/-9LvjN_tageSV3FRry_GN_yq7EhXWR.png",
+      "redesign_url": "https://v3b.fal.media/files/b/0a9768bd/rNt1MM4RKT-PdR72tYTSA_tmp_uou8_ad.jpg",
+      "empty_validation": {
+        "verdict": "EMPTY",
+        "reason": "EMPTY"
+      },
+      "errors": [],
+      "timings_sec": {
+        "fal_upload": 3.86,
+        "empty_room": 127.49,
+        "empty_validation": 1.08,
+        "redesign": 337.55
+      }
+    },
+    {
+      "id": "IMG_06",
+      "scenario_id": "S06",
+      "source_path": "/Users/daksh/Desktop/cova/bench/rooms/room-06_empty-bay-window.webp",
+      "source_name": "room-06_empty-bay-window.webp",
+      "room_type": "living_room",
+      "style_blend": {
+        "COVACOASTAL": 0.85,
+        "COVABIOPHILIC": 0.15
+      },
+      "personalization": "Triptych of vintage surf photography in white frames \u00b7 rattan daybed with white cushions \u00b7 hanging pampas grass arrangement \u00b7 linen curtains floor to ceiling \u00b7 bright coastal light",
+      "flux_prompt_suffix": "triptych surf photography white frames, rattan daybed white cushions, pampas grass dried arrangement, linen curtains, coastal bright airy room",
+      "original_rel": "original/IMG_06.jpg",
+      "empty_rel": "empty/IMG_06.jpg",
+      "redesign_rel": "redesign/IMG_06.jpg",
+      "fal_upload_url": "https://v3b.fal.media/files/b/0a9768be/qQnYV5GRlu---kTIeovpI_IMG_06.jpg",
+      "empty_room_url": "https://v3b.fal.media/files/b/0a9768be/DplDHBGyw8Fcpa_R5CGhl_cYs3tKxe.png",
+      "redesign_url": "https://v3b.fal.media/files/b/0a9768dd/5kuWDNJRgoC2HgWpQRTiI_tmptvemppov.jpg",
+      "empty_validation": {
+        "verdict": "EMPTY",
+        "reason": "EMPTY"
+      },
+      "errors": [],
+      "timings_sec": {
+        "fal_upload": 0.74,
+        "empty_room": 38.35,
+        "empty_validation": 1.13,
+        "redesign": 277.97
+      }
+    },
+    {
+      "id": "IMG_07",
+      "scenario_id": "S07",
+      "source_path": "/Users/daksh/Desktop/cova/bench/rooms/room-07_bedroom-desk-carpet.webp",
+      "source_name": "room-07_bedroom-desk-carpet.webp",
+      "room_type": "bedroom",
+      "style_blend": {
+        "COVABOHEMIAN": 0.78,
+        "COVABIOPHILIC": 0.22
+      },
+      "personalization": "Macrame wall hanging above bed \u00b7 6 mismatched gallery wall frames \u00b7 Turkish kilim rug layered over jute \u00b7 3 hanging planters at different heights \u00b7 fairy lights in corner",
+      "flux_prompt_suffix": "large macrame wall hanging, gallery wall of mismatched frames, Turkish kilim rug, hanging planters cascading, fairy lights warm glow, eclectic bohemian bedroom",
+      "original_rel": "original/IMG_07.jpg",
+      "empty_rel": "empty/IMG_07.jpg",
+      "redesign_rel": "redesign/IMG_07.jpg",
+      "fal_upload_url": "https://v3b.fal.media/files/b/0a9768de/Q5LujnqxxusHaqF33fjD-_IMG_07.jpg",
+      "empty_room_url": "https://v3b.fal.media/files/b/0a9768e0/uxCcFPtU1TtN-9SxVj9mt_vuj4UrQy.png",
+      "redesign_url": "https://v3b.fal.media/files/b/0a9768f5/UUIl9A1octmfX0fEhdOmj_tmp8jbfnjib.jpg",
+      "empty_validation": {
+        "verdict": "EMPTY",
+        "reason": "EMPTY"
+      },
+      "errors": [],
+      "timings_sec": {
+        "fal_upload": 0.57,
+        "empty_room": 56.35,
+        "empty_validation": 1.09,
+        "redesign": 180.4
+      }
+    },
+    {
+      "id": "IMG_08",
+      "scenario_id": "S08",
+      "source_path": "/Users/daksh/Desktop/cova/bench/rooms/room-08_livingroom-papasan-floral.webp",
+      "source_name": "room-08_livingroom-papasan-floral.webp",
+      "room_type": "home_office",
+      "style_blend": {
+        "COVAMIDCENTURY": 0.85,
+        "COVAJAPANDI": 0.15
+      },
+      "personalization": "Eames-style lounge chair in corner \u00b7 walnut credenza along wall \u00b7 architectural desk lamp \u00b7 framed blueprints as art \u00b7 record player on credenza \u00b7 warm tungsten lighting",
+      "flux_prompt_suffix": "Eames lounge chair, walnut credenza, architectural task lamp, framed blueprint art, record player on credenza, mid-century modern home office",
+      "original_rel": "original/IMG_08.jpg",
+      "empty_rel": "empty/IMG_08.jpg",
+      "redesign_rel": "redesign/IMG_08.jpg",
+      "fal_upload_url": "https://v3b.fal.media/files/b/0a9768f6/Jgv7V4WErNA_W9YKMGy38_IMG_08.jpg",
+      "empty_room_url": "https://v3b.fal.media/files/b/0a9768fb/gYNXXqPhv4kEX5xVAq8Nq_ZD21NkQg.png",
+      "redesign_url": "https://v3b.fal.media/files/b/0a976912/rYJxRqT7XgtU-g_C4EDIF_tmpjbyo735z.jpg",
+      "empty_validation": {
+        "verdict": "EMPTY",
+        "reason": "EMPTY"
+      },
+      "errors": [],
+      "timings_sec": {
+        "fal_upload": 0.75,
+        "empty_room": 92.98,
+        "empty_validation": 1.26,
+        "redesign": 193.41
+      }
+    }
+  ]
+}
