@@ -49,7 +49,7 @@ from pydantic import BaseModel, Field, HttpUrl
 # Constants
 # ---------------------------------------------------------------------------
 
-APP_NAME = "cova-redesign"
+APP_NAME = "cova-redesign-v3"
 API_VERSION = "v1"
 SCHEMA_VERSION: Literal["1.0"] = "1.0"
 
@@ -63,9 +63,11 @@ PASS2_STRENGTH: float = 0.55
 PASS2_STEPS: int = 22
 PASS2_GUIDANCE: float = 3.5
 
-# Pass 3 — IC-Light v2 (CRITICAL: non-default denoise values)
-PASS3_LOWRES_DENOISE: float = 0.88
-PASS3_HIGHRES_DENOISE: float = 0.45
+# Pass 3 — IC-Light v2. Iter 3 (2026-04-23): 0.70 was still washing out warm lighting
+# because IC-Light re-renders the scene lighting at its own temperature. Dropped to
+# 0.50 to let Pass 1/2's warm lighting survive more clearly.
+PASS3_LOWRES_DENOISE: float = 0.50
+PASS3_HIGHRES_DENOISE: float = 0.35
 PASS3_GUIDANCE: float = 5.0
 PASS3_STEPS: int = 28
 PASS3_BG_THRESHOLD: float = 0.75
@@ -232,16 +234,17 @@ ROOM_TYPE_SPECS: dict[str, dict[str, Any]] = {
 # Lighting presets.
 LIGHTING_PROMPTS: dict[str, str] = {
     "warm_cozy": (
-        "warm tungsten 2700K lamp pools, amber glow, chiaroscuro, soft shadows, "
-        "evening interior"
+        "warm tungsten 2700K lamp pools casting amber-gold light, "
+        "visible lit table lamps and floor lamps, deep chiaroscuro shadows, "
+        "golden hour evening interior, not bright, not flat"
     ),
     "bright_natural": (
-        "bright 5500K daylight from windows, soft diffused morning light, "
-        "airy and crisp"
+        "bright 5500K daylight streaming from windows, soft diffused morning light, "
+        "airy crisp and fresh, gentle shadows"
     ),
     "dramatic_moody": (
-        "Rembrandt single-source lighting, deep shadows, 2200K tungsten, "
-        "teal-amber contrast"
+        "Rembrandt single-source lighting, deep cinematic shadows, 2200K amber tungsten, "
+        "teal-amber contrast, moody dramatic atmosphere, low-key lighting"
     ),
 }
 
@@ -351,7 +354,11 @@ class RedesignRequest(BaseModel):
     lora_scale_multiplier: float | None = None
     seed: int | None = None
     skip_pass2: bool = False
-    skip_pass3: bool = False
+    # Iter 4 (2026-04-23): Pass 3 IC-Light disabled by default. It was fog-
+    # bombing renders with background_threshold=0.75 producing ghost images.
+    # Pass 1 LIGHTING prompt + editorial warm WB carry the lighting story.
+    # Callers who want IC-Light can opt in with skip_pass3=False.
+    skip_pass3: bool = True
     lighting_preset_override: Literal[
         "warm_cozy", "bright_natural", "dramatic_moody"
     ] | None = None
@@ -466,15 +473,20 @@ def _build_lora_stack(
     scale_multiplier: float,
     pass_scale_modifier: float = 1.0,
 ) -> list[dict[str, Any]]:
+    """Iter 3 (2026-04-23): default_scale was too dominant — it overrode
+    explicit prompt personalization (art disappeared, plants missing).
+    Cap the effective scale at 0.65 so the prompt has headroom to express
+    art/plants/tech/lighting requests."""
     loras: list[dict[str, Any]] = []
     primary_meta = LORA_REGISTRY[primary_archetype]
-    primary_scale = (
+    raw_scale = (
         primary_meta["default_scale"] * scale_multiplier * pass_scale_modifier
     )
+    primary_scale = min(raw_scale, 0.65)
     loras.append({"path": primary_meta["url"], "scale": round(primary_scale, 4)})
-    # Add-details universal.
+    # Add-details universal — slightly higher now that primary is lower.
     loras.append(
-        {"path": ADD_DETAILS_LORA_URL, "scale": round(0.40 * pass_scale_modifier, 4)}
+        {"path": ADD_DETAILS_LORA_URL, "scale": round(0.45 * pass_scale_modifier, 4)}
     )
     return loras
 
@@ -703,6 +715,160 @@ def _has_identity(p: dict[str, Any]) -> bool:
 # ---------------------------------------------------------------------------
 
 
+_IDENTITY_QUANTITY_PROMPTS: dict[str, dict[str, str]] = {
+    "plants": {
+        "few": "three healthy potted plants in ceramic and terracotta vessels",
+        "many": "six to eight lush potted plants of varied sizes",
+        "extensive": "ten or more abundant potted plants from floor planters to hanging trailing greenery",
+    },
+    "books": {
+        "few": "a small curated stack of hardcover books",
+        "many": "a dense bookshelf filled with books",
+        "extensive": "wall-to-wall bookshelves fully stocked with books",
+    },
+    "guitar": {
+        "few": "an acoustic guitar resting in a guitar stand in the corner",
+        "many": "two guitars displayed on wall mounts",
+    },
+    "sneakers": {
+        "few": "a small collection of sneakers displayed on a low shelf",
+        "many": "a prominent sneaker wall with floating shelves displaying at least six pairs of sneakers",
+        "extensive": "a full sneaker wall of floating shelves displaying ten or more pairs of sneakers as a featured display",
+    },
+    "vinyl": {
+        "few": "a small curated vinyl record display with sleeves facing outward",
+        "many": "a vinyl record collection on shelves with album sleeves facing out",
+        "extensive": "a wall of vinyl records on purpose-built shelving with sleeves proudly facing outward",
+    },
+    "camera": {
+        "few": "a vintage film camera and lens displayed on a shelf",
+        "many": "a curated camera gear collection displayed on shelves",
+    },
+    "candles": {
+        "few": "a small grouping of pillar candles",
+        "many": "abundant candles clustered on surfaces throughout the room",
+    },
+    "coffee": {
+        "few": "a French press and curated coffee setup on display",
+        "many": "a full coffee bar with grinder, press, mugs, and beans displayed",
+    },
+    "gaming": {
+        "few": "a gaming console and controllers visible near the television",
+        "many": "a gaming battlestation with console, headphones, and accessories displayed",
+    },
+    "art_supplies": {
+        "few": "art supplies displayed on an open shelf",
+        "many": "a creative corner with art supplies and works in progress displayed",
+    },
+    "sports": {
+        "few": "one piece of sports memorabilia displayed",
+        "many": "multiple pieces of sports memorabilia displayed on the wall",
+    },
+    "collectibles": {
+        "few": "a small curated display of collectibles on a shelf",
+        "many": "a dedicated shelf of collectibles arranged as a display",
+    },
+}
+
+
+def _identity_pass1_fragment(personalization: dict[str, Any]) -> str:
+    """Iter 5 (2026-04-23): include ALL identity objects in Pass 1, not just
+    layout-defining ones. Display-only objects (sneakers, vinyl, cameras,
+    etc.) need Pass 1 placement because Pass 2 surface masks don't cover
+    wall-display regions. Pass 2 still adds targeted vignettes for the
+    display-only types."""
+    if not _has_identity(personalization):
+        return ""
+    parts: list[str] = []
+    for obj in (personalization.get("identity_objects") or [])[:4]:
+        if not isinstance(obj, dict):
+            continue
+        t = str(obj.get("type") or "").lower()
+        q = str(obj.get("quantity") or "few").lower()
+        tpl = _IDENTITY_QUANTITY_PROMPTS.get(t, {}).get(q)
+        if tpl:
+            parts.append(tpl)
+        elif t:
+            parts.append(f"{q} {t}".strip())
+    return (", " + ", ".join(parts)) if parts else ""
+
+
+_SMART_TYPE_PROMPTS: dict[str, str] = {
+    "tv": "a large flat-screen wall-mounted television",
+    "monitor": "a widescreen computer monitor on a stand",
+    "soundbar": "a thin soundbar below the television",
+    "smart_speaker": "a small cylindrical smart speaker",
+    "hue_strips": "warm LED strip lighting glowing behind the headboard",
+    "desk_lamp": "an adjustable task lamp on the desk",
+    "smart_blinds": "motorized smart blinds on the windows",
+}
+
+
+def _smart_pass1_fragment(personalization: dict[str, Any]) -> str:
+    if not _has_smart(personalization):
+        return ""
+    descs: list[str] = []
+    for item in (personalization.get("smart_products") or [])[:4]:
+        if not isinstance(item, dict):
+            continue
+        t = str(item.get("type") or "").lower()
+        if t in _SMART_TYPE_PROMPTS:
+            descs.append(_SMART_TYPE_PROMPTS[t])
+        else:
+            descs.append(t.replace("_", " "))
+    # Handle dual-monitor case explicitly.
+    monitor_count = sum(
+        1
+        for it in (personalization.get("smart_products") or [])
+        if isinstance(it, dict) and str(it.get("type") or "").lower() == "monitor"
+    )
+    if monitor_count >= 2:
+        descs = [d for d in descs if "computer monitor" not in d]
+        descs.insert(0, "two computer monitors on stands in a dual-monitor setup")
+    return (", " + ", ".join(descs)) if descs else ""
+
+
+_ART_LAYOUT_DESCRIPTIONS: dict[str, str] = {
+    "single": "a single large framed artwork centered on the focal wall",
+    "pair": "a pair of matching framed artworks side by side on the focal wall",
+    "triptych": "a triptych of exactly three framed artworks in a horizontal row on the focal wall, identical frames, evenly spaced",
+    "gallery": "a gallery wall of five to seven framed artworks organized in a grid",
+    "salon": "a dense salon-hang gallery wall with mixed frame sizes and orientations",
+}
+
+
+def _art_pass1_fragment(personalization: dict[str, Any]) -> str:
+    if not _has_art(personalization):
+        return ""
+    art = personalization.get("art") or {}
+    layout = str(art.get("layout") or "single").lower()
+    frame = str(art.get("frame_style") or "black") or "black"
+    images = art.get("images") or []
+    descs = []
+    for img in images[:3]:
+        if isinstance(img, dict):
+            d = img.get("description") or ""
+            if d:
+                descs.append(str(d))
+    layout_desc = _ART_LAYOUT_DESCRIPTIONS.get(layout, _ART_LAYOUT_DESCRIPTIONS["single"])
+    content = ""
+    if descs:
+        content = ", depicting " + "; ".join(descs[:2])
+    return f", {layout_desc} with {frame} frames{content}"
+
+
+def _room_type_anchor(room_type: str) -> str:
+    key = (room_type or "").lower()
+    anchors = {
+        "bedroom": "this is a BEDROOM with a real bed and headboard as the primary hero piece",
+        "living_room": "this is a LIVING ROOM with a sofa as the primary seating hero",
+        "home_office": "this is a HOME OFFICE with a desk as the primary hero piece",
+        "dining_room": "this is a DINING ROOM with a dining table as the hero",
+        "bathroom": "this is a BATHROOM with a vanity and sink as the hero",
+    }
+    return anchors.get(key, f"this is a {key}")
+
+
 def _build_pass1_prompt(
     primary_archetype: str,
     room_type: str,
@@ -720,7 +886,13 @@ def _build_pass1_prompt(
     secondary = hero.get("secondary_pieces") or room_spec["hero_furniture"][1:]
     rug = hero.get("rug_placement") or room_spec["rug_rule"]
 
-    lighting_preset = plan.get("pass3_lighting_preset", "warm_cozy")
+    lighting_preset_raw = plan.get("pass3_lighting_preset", "warm_cozy")
+    # If user explicitly set a lighting mood, honor that over the planner's choice.
+    user_lighting = (personalization.get("lighting") or {}).get("mood") if isinstance(personalization.get("lighting"), dict) else None
+    if user_lighting in LIGHTING_PROMPTS:
+        lighting_preset = user_lighting
+    else:
+        lighting_preset = lighting_preset_raw
     lighting_frag = LIGHTING_PROMPTS.get(lighting_preset, LIGHTING_PROMPTS["warm_cozy"])
 
     materials_list = style_rules.get("materials", {}).get("top_materials", [])
@@ -729,32 +901,22 @@ def _build_pass1_prompt(
     materials = ", ".join(materials_list[:4]) if materials_list else "natural materials"
     palette = ", ".join(palette_list[:4]) if palette_list else "balanced palette"
 
-    tech_items = ""
-    if _has_smart(personalization):
-        sp = personalization.get("smart_products") or []
-        if sp:
-            names = [
-                item.get("type", "").replace("_", " ")
-                for item in sp[:3]
-                if isinstance(item, dict)
-            ]
-            tech_items = ", " + ", ".join(f"integrated {n}" for n in names if n)
+    art_frag = _art_pass1_fragment(personalization)
+    smart_frag = _smart_pass1_fragment(personalization)
+    identity_frag = _identity_pass1_fragment(personalization)
 
-    identity_frag = ""
-    if _has_identity(personalization):
-        ids = personalization.get("identity_objects") or []
-        layout_defining = [
-            i for i in ids
-            if isinstance(i, dict) and i.get("type") in LAYOUT_DEFINING_IDENTITY
-        ]
-        if layout_defining:
-            parts = []
-            for obj in layout_defining[:2]:
-                t = obj.get("type", "")
-                q = obj.get("quantity", "")
-                parts.append(f"{q} {t}".strip() if q else t)
-            if parts:
-                identity_frag = ", with " + " and ".join(parts)
+    # Specific items — call out by name in prompt for best chance of visual match.
+    spec_frag = ""
+    spec_items = personalization.get("specific_items") or []
+    if isinstance(spec_items, list) and spec_items:
+        names: list[str] = []
+        for it in spec_items[:2]:
+            if isinstance(it, dict):
+                nm = str(it.get("product_name") or "").strip()
+                if nm:
+                    names.append(nm)
+        if names:
+            spec_frag = ", prominently featuring " + " and ".join(f"a {n}" for n in names)
 
     budget_frag = ""
     if budget_max >= 10000:
@@ -763,15 +925,44 @@ def _build_pass1_prompt(
         budget_frag = ", accessible finishes"
 
     secondary_clause = ", ".join(secondary[:4]) if secondary else ""
+    room_anchor = _room_type_anchor(room_type)
+
+    def _clean(frag: str) -> str:
+        return frag.strip().lstrip(",").strip()
+
+    # Iter 3 also reads personalization.freetext.raw_text so the verification
+    # retry mechanism (MANDATORY REQUIREMENTS: ...) actually reaches the prompt.
+    freetext_extras = ""
+    ft = personalization.get("freetext") if isinstance(personalization.get("freetext"), dict) else None
+    if ft and isinstance(ft.get("raw_text"), str) and ft["raw_text"].strip():
+        freetext_extras = ". " + ft["raw_text"].strip()
+
+    # Iter 3 structure: art → plants/identity → tech → hero → lighting → style.
+    # Art-first gives the highest attention weight because FLUX weights the
+    # prompt left-to-right and prior iterations dropped art entirely when
+    # the LoRA dominated.
+    lead_parts: list[str] = [f"{trigger} {room_type} interior — {room_anchor}"]
+    if art_frag:
+        lead_parts.append(_clean(art_frag))
+    if identity_frag:
+        lead_parts.append(_clean(identity_frag))
+    if smart_frag:
+        lead_parts.append(_clean(smart_frag))
+    if spec_frag:
+        lead_parts.append(_clean(spec_frag))
+
+    lead = ". ".join(lead_parts)
 
     return (
-        f"{trigger} {room_type} interior, {primary}, {secondary_clause}, {rug}, "
-        f"{lighting_frag}, materials: {materials}, palette: {palette}"
-        f"{tech_items}{identity_frag}{budget_frag}, "
-        f"styled with open book, folded throw, small plant, "
-        f"photographed by Francois Halard, 35mm lens eye-level 44 inches, "
+        f"{lead}{freetext_extras}. "
+        f"HERO: {primary}, {secondary_clause}, {rug}. "
+        f"LIGHTING: {lighting_frag}. "
+        f"Materials: {materials}. Palette: {palette}{budget_frag}. "
+        f"Styled with open book, folded throw, layered textiles. "
+        f"Photographed by Francois Halard, 35mm lens eye-level 44 inches, "
         f"Architectural Digest editorial quality, asymmetric composition, "
-        f"one clear directional light source"
+        f"one clear directional light source, richly decorated, lived-in, "
+        f"preserve original room architecture, walls, windows, ceiling, floor"
     )
 
 
@@ -893,22 +1084,46 @@ def _call_flux_general_i2i(
             }
         ]
 
-    # Retry once on transient errors.
-    for attempt in range(2):
+    # Phase 5 pattern — fal-general's "Could not load pipeline" error is
+    # a transient issue with ControlNet + LoRAs together. 4 attempts, last
+    # drops ControlNet entirely (2 LoRAs + no CN is the most reliable combo).
+    max_attempts = 4
+    last_err: Exception | None = None
+    for attempt in range(max_attempts):
+        try_args = dict(args)
+        if attempt == max_attempts - 1 and "controlnet_unions" in try_args:
+            try_args.pop("controlnet_unions")
+            logger.warning(
+                "flux-general final retry %d/%d — dropping ControlNet",
+                attempt + 1, max_attempts,
+            )
         try:
             r = fal_client.subscribe(
                 "fal-ai/flux-general/image-to-image",
-                arguments=args,
+                arguments=try_args,
                 with_logs=False,
                 client_timeout=FAL_CLIENT_TIMEOUT_S,
             )
             return _extract_fal_image_url(r)
         except Exception as exc:  # noqa: BLE001
-            if attempt == 0:
-                logger.warning("flux-general transient (%s); retrying", exc)
-                time.sleep(10)
-                continue
-            raise
+            last_err = exc
+            msg = str(exc)
+            is_transient = (
+                "Could not load pipeline" in msg
+                or "FalClientTimeoutError" in type(exc).__name__
+                or "502" in msg or "503" in msg or "504" in msg
+                or "queue" in msg.lower()
+            )
+            if not is_transient or attempt == max_attempts - 1:
+                raise
+            wait = min(45, 10 * (attempt + 1))
+            logger.warning(
+                "flux-general transient (%s); retry %d/%d after %ds",
+                msg[:120], attempt + 1, max_attempts, wait,
+            )
+            time.sleep(wait)
+    # Should not reach here
+    raise last_err if last_err else RuntimeError("flux-general failed")
 
 
 def _extract_fal_image_url(r: dict[str, Any]) -> str:
@@ -986,18 +1201,45 @@ def _build_surface_mask(
     return enc.tobytes()
 
 
+def _identity_context_for_surface(
+    personalization: dict[str, Any], surface_name: str
+) -> str:
+    """Iter 5b: if there are identity objects that belong on this surface,
+    return a fragment describing them so Pass 2 doesn't erase them."""
+    if not _has_identity(personalization):
+        return ""
+    sn = surface_name.lower()
+    is_shelf_like = any(kw in sn for kw in ("shelf", "bookshelf", "console", "credenza", "wall"))
+    if not is_shelf_like:
+        return ""
+    # Look for identity objects that are displayed on shelves.
+    for obj in (personalization.get("identity_objects") or []):
+        if not isinstance(obj, dict):
+            continue
+        t = str(obj.get("type") or "").lower()
+        q = str(obj.get("quantity") or "few").lower()
+        if t in ("sneakers", "vinyl", "books", "collectibles", "camera", "sports"):
+            tpl = _IDENTITY_QUANTITY_PROMPTS.get(t, {}).get(q)
+            if tpl:
+                return f"featuring {tpl}"
+    return ""
+
+
 def _build_pass2_prompt(
     primary_archetype: str,
     style_rules: dict[str, Any],
     surface_name: str,
     vignette: str,
+    personalization: dict[str, Any] | None = None,
 ) -> str:
     trigger = LORA_REGISTRY[primary_archetype]["trigger"]
     materials = ", ".join(
         style_rules.get("materials", {}).get("top_materials", [])[:3]
     )
+    id_ctx = _identity_context_for_surface(personalization or {}, surface_name)
+    ctx_part = f", {id_ctx}" if id_ctx else ""
     return (
-        f"{trigger} {surface_name} styling, {vignette}, editorial interior photography, "
+        f"{trigger} {surface_name} styling, {vignette}{ctx_part}, editorial interior photography, "
         f"rule of three, asymmetric grouping, styled by professional interior designer, "
         f"materials: {materials}, natural lighting, photorealistic"
     )
@@ -1019,7 +1261,25 @@ def _run_pass2(
     room_spec = ROOM_TYPE_SPECS.get(room_type.lower(), ROOM_TYPE_SPECS["bedroom"])
     p2_cn_scale = float(room_spec["depth_controlnet_scale_p2"])
 
-    surfaces = plan.get("pass2_surfaces") or []
+    raw_surfaces = plan.get("pass2_surfaces") or []
+    surfaces: list[dict[str, Any]] = []
+    # Coerce: Claude may return list[dict], list[str], or dict[str, str].
+    if isinstance(raw_surfaces, list):
+        for s in raw_surfaces:
+            if isinstance(s, dict):
+                surfaces.append(
+                    {
+                        "surface_name": str(s.get("surface_name") or s.get("name") or "surface"),
+                        "vignette": str(s.get("vignette") or s.get("description") or "editorial grouping"),
+                    }
+                )
+            elif isinstance(s, str):
+                surfaces.append({"surface_name": s, "vignette": "editorial grouping"})
+    elif isinstance(raw_surfaces, dict):
+        for name, vignette in raw_surfaces.items():
+            surfaces.append(
+                {"surface_name": str(name), "vignette": str(vignette) if vignette else "editorial grouping"}
+            )
     if not surfaces:
         surfaces = [
             {"surface_name": s, "vignette": "editorial grouping"}
@@ -1053,7 +1313,8 @@ def _run_pass2(
             mask_bytes = _build_surface_mask(width, height, surface_name)
             mask_url = _upload_bytes_to_fal(mask_bytes, suffix=".png")
             prompt = _build_pass2_prompt(
-                primary_archetype, style_rules, surface_name, vignette
+                primary_archetype, style_rules, surface_name, vignette,
+                personalization=personalization,
             )
             current_url = _call_flux_general_i2i(
                 image_url=current_url,
@@ -1080,6 +1341,8 @@ def _run_pass2(
 
 
 def _run_ic_light(pass2_url: str, preset: str) -> str:
+    """Optional IC-Light relight pass. Iter 4 removes background_threshold
+    because 0.75 produced ghost-BG foggy renders. Let fal default it."""
     import fal_client  # type: ignore
 
     preset = preset if preset in IC_LIGHT_PROMPTS else "warm_cozy"
@@ -1096,7 +1359,6 @@ def _run_ic_light(pass2_url: str, preset: str) -> str:
             "highres_denoise": PASS3_HIGHRES_DENOISE,
             "guidance_scale": PASS3_GUIDANCE,
             "num_inference_steps": PASS3_STEPS,
-            "background_threshold": PASS3_BG_THRESHOLD,
             "num_images": 1,
             "output_format": "jpeg",
         },
@@ -1112,6 +1374,11 @@ def _run_ic_light(pass2_url: str, preset: str) -> str:
 
 
 def _editorial_post(url: str) -> str:
+    """Subtle editorial finishing — warm WB, gentle contrast, light grain.
+
+    Previous version clipped dynamic range so hard that midtones blew out
+    to white and shadows crushed to black. This version preserves range.
+    """
     import numpy as np
     from PIL import Image
 
@@ -1119,48 +1386,39 @@ def _editorial_post(url: str) -> str:
     pil = Image.open(io.BytesIO(raw)).convert("RGB")
     arr = np.asarray(pil, dtype=np.float32) / 255.0  # HxWx3
 
-    # 1. Warm white balance.
-    arr[..., 0] *= 1.04
-    arr[..., 2] *= 0.96
+    # 1. Warm white balance — subtle.
+    arr[..., 0] = np.clip(arr[..., 0] * 1.03, 0, 1)
+    arr[..., 2] = np.clip(arr[..., 2] * 0.97, 0, 1)
 
-    # 2. S-curve with lifted shadows.
-    shadow_lift = 0.06
-    highlight_roll = 0.94
-    arr = arr * (highlight_roll - shadow_lift) + shadow_lift
+    # 2. Gentle S-curve (preserves whites and blacks).
+    # y = 0.5 + 0.5 * tanh(k * (x - 0.5)); k=2 gives very mild contrast boost.
+    arr = 0.5 + 0.5 * np.tanh(2.0 * (arr - 0.5))
 
-    # Contrast S-curve (sigmoid-ish).
-    arr = _s_curve(arr)
-
-    # 3. Desaturate 8% toward luminance.
+    # 3. Tiny desaturation (3% toward luminance).
     lum = 0.299 * arr[..., 0] + 0.587 * arr[..., 1] + 0.114 * arr[..., 2]
     lum3 = np.stack([lum, lum, lum], axis=-1)
-    arr = arr * (1 - 0.08) + lum3 * 0.08
+    arr = arr * 0.97 + lum3 * 0.03
 
-    # 4. Film grain, shadow-weighted.
+    # 4. Film grain, shadow-weighted, very subtle.
     rng = np.random.default_rng(42)
-    grain = rng.normal(0, 0.012, size=arr.shape).astype(np.float32)
+    grain = rng.normal(0, 0.006, size=arr.shape).astype(np.float32)
     shadow_mask = 1.0 - np.clip(lum3, 0, 1)
-    arr = arr + grain * shadow_mask
+    arr = arr + grain * shadow_mask * 0.6
 
-    # 5. Corner vignette.
+    # 5. Corner vignette — very subtle (barely perceptible).
     h, w = arr.shape[:2]
     cy, cx = h / 2.0, w / 2.0
     yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
     dist = np.sqrt(((xx - cx) / cx) ** 2 + ((yy - cy) / cy) ** 2)
-    vign = 1.0 - np.clip(dist * 0.18, 0, 0.20)
+    vign = 1.0 - np.clip((dist - 0.9) * 0.10, 0, 0.08)
     arr = arr * vign[..., None]
 
     arr = np.clip(arr, 0.0, 1.0)
     out = (arr * 255.0).astype(np.uint8)
     out_pil = Image.fromarray(out)
     buf = io.BytesIO()
-    out_pil.save(buf, "JPEG", quality=90)
+    out_pil.save(buf, "JPEG", quality=92)
     return _upload_bytes_to_fal(buf.getvalue(), suffix=".jpg")
-
-
-def _s_curve(arr):
-    import numpy as np
-    return 1.0 / (1.0 + np.exp(-8.0 * (arr - 0.5))) * 1.0 + (arr - arr)  # shape-preserving
 
 
 # ---------------------------------------------------------------------------

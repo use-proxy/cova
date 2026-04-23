@@ -87,3 +87,7 @@ tests/e2e/progress.log
 
 # Claude Code worktrees
 .claude/worktrees/
+.claude/scheduled_tasks.lock
+
+# Bench outputs (verification renders)
+bench/overnight_verification/

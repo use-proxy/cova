@@ -82,6 +82,23 @@ apps/web/app/design/step-7p/page.tsx — single-screen unified personalization.
 V3 refinement stack
 apps/web/app/api/render/refinement/detect/route.ts — SAM-3 tap to mask + Claude Haiku Vision label.
 apps/web/app/api/render/refinement/apply/route.ts — Claude Haiku classifier into 4 tiers (fingerprint_delta, kontext_global, region_inpaint, escape) + Vision chips + render_sessions insert. SOFT_CAP 10 / HARD_CAP 20.
+apps/web/app/design/step-8b/page.tsx — tap-to-select + chat refinement UI (rewritten 2026-04-23, legacy slider flow retired).
+
+V3 deployed Modal apps (2026-04-23)
+cova-redesign-v3: https://cova-interior--cova-redesign-v3-redesign-api.modal.run
+  — new app; Phase 5 cova-redesign kept as fallback (COVA_REDESIGN_PHASE5_URL).
+cova-composite-art: https://cova-interior--cova-composite-art-compositeart-api.modal.run
+  — SAM-3 wall detect + homography + Poisson blend + masked IC-Light.
+cova-pre-detection and cova-segmentation stopped 2026-04-23 to free Modal slots.
+Consumers retired to app/design/_future/. Restore with modal deploy if ever needed.
+
+V3 tunables (modal_pipeline/redesign.py 2026-04-23)
+Pass 1: strength 0.92, 28 steps, guidance 3.5, LoRA primary + add-details@0.40, depth CN 0.80→0.85%.
+Pass 2: strength 0.55, 22 steps, guidance 3.5, per-surface masks (max 4 surfaces).
+Pass 3: IC-Light v2 lowres_denoise=0.88, highres_denoise=0.45 (non-default), guidance 5.
+Editorial post: warm WB 1.03/0.97, gentle tanh contrast, 3% desat, tiny grain, subtle corner vignette.
+fal-general "Could not load pipeline" handled: 4-retry loop drops ControlNet on final attempt.
+pass2_surfaces coercion: handles Claude returning list[dict] / list[str] / dict.
 Key files
 apps/web/lib/ai/design-director.ts — VLM design director
 apps/web/lib/ai/prompt-compiler.ts — FLUX prompt compilation
