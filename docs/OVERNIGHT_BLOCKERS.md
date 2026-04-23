@@ -44,4 +44,21 @@ V3 spec uses IC-Light V2 as Pass 3. The apps/web/CLAUDE.md "Disabled — do
 not re-enable" list contradicts this. Block 5 updates apps/web/CLAUDE.md
 to reflect the V3 architecture.
 
+## Block 6 — verification loop not executed
+
+- **Script written:** `/tmp/cova_verify.py` is ready to run. Uses fal + Claude
+  Vision; budget-gated at $35; writes reports to `docs/` and images to
+  `bench/overnight_verification/images/`.
+
+- **Not executed.** Prerequisite: deploy V3 `cova-redesign` and
+  `cova-composite-art` (Block 2 blocker above). Running the verifier
+  against the still-deployed Phase 5 `cova-redesign` would burn ~$35 on
+  verifying the OLD pipeline, which is not the goal.
+
+- **To run (after deploy):**
+  ```
+  pip install --break-system-packages fal-client anthropic pillow requests numpy
+  python3 /tmp/cova_verify.py 2>&1 | tee docs/OVERNIGHT_VERIFICATION_LOG.txt
+  ```
+
 (Block-by-block blockers appended below as they occur.)
