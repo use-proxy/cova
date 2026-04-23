@@ -49,7 +49,9 @@ export async function normalizeInputImage(sourceUrl: string): Promise<NormalizeR
 
   // fal.storage.upload takes a File / Blob. Buffer works via the File
   // constructor (Node 20+ ships a WHATWG-compliant File global).
-  const file = new File([data], "normalized.jpg", { type: "image/jpeg" });
+  const file = new File([new Uint8Array(data)], "normalized.jpg", {
+    type: "image/jpeg",
+  });
   const url = await fal.storage.upload(file);
 
   return { url, sizeBytes: data.length, width: info.width, height: info.height };

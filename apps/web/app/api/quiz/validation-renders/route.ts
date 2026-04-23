@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Replicate from "replicate";
 import type { StyleFingerprint } from "@/types/fingerprint";
 import { buildFluxPrompt } from "@/lib/ai/flux";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 // ── Validation renders for quiz Phase C ───────────────────────────────────────
 // Generates 3 FLUX 1.1 Pro text-to-image renders that visualize the user's
@@ -115,6 +116,15 @@ async function runSlot(
 
 export async function POST(request: Request) {
   try {
+    const supabase = await createServerSupabaseClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = (await request.json()) as Partial<ValidationRendersRequest>;
 
     if (

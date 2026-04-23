@@ -53,6 +53,8 @@ interface RoomRow {
   original_image_url: string | null;
   original_photo_url: string | null;
   preprocessed_image_url: string | null;
+  empty_room_url: string | null;
+  personalization: Record<string, unknown> | null;
   keep_remove_decisions: KeepRemoveDecision[] | null;
   user_id: string;
   generation_seed: number | null;
@@ -134,13 +136,20 @@ export async function POST(request: Request) {
     userId = user.id;
   }
 
-  const webhookUrl = process.env.REDESIGN_PIPELINE_WEBHOOK_URL;
+  // V9 redesign service preferred when COVA_REDESIGN_URL is set.
+  // Falls back to legacy REDESIGN_PIPELINE_WEBHOOK_URL otherwise.
+  const v9RedesignUrl = process.env.COVA_REDESIGN_URL;
+  const legacyWebhook = process.env.REDESIGN_PIPELINE_WEBHOOK_URL;
+  const webhookUrl = v9RedesignUrl
+    ? `${v9RedesignUrl.replace(/\/$/, "")}/v1/generate_redesign`
+    : legacyWebhook;
   if (!webhookUrl) {
     return NextResponse.json(
-      { error: "REDESIGN_PIPELINE_WEBHOOK_URL not configured" },
+      { error: "No redesign webhook configured (COVA_REDESIGN_URL or REDESIGN_PIPELINE_WEBHOOK_URL)" },
       { status: 503 },
     );
   }
+  const useV9 = Boolean(v9RedesignUrl);
 
   // Read personalization data
   const admin = createAdminSupabaseClient();
@@ -152,7 +161,7 @@ export async function POST(request: Request) {
       admin
         .from("rooms")
         .select(
-          "user_id, render_context, room_type, style_blend, original_image_url, original_photo_url, preprocessed_image_url, keep_remove_decisions, generation_seed, redesign_status, design_brief, personalization_context",
+          "user_id, render_context, room_type, style_blend, original_image_url, original_photo_url, preprocessed_image_url, empty_room_url, personalization, keep_remove_decisions, generation_seed, redesign_status, design_brief, personalization_context",
         )
         .eq("id", room_id)
         .eq("user_id", userId)
@@ -706,38 +715,42 @@ export async function POST(request: Request) {
   const floorChangeRequested = freshBrief?.floor_change_requested === true;
 
   try {
-    // Fire-and-forget style: send the request to Modal but don't wait for the full
-    // pipeline to complete. The Modal function writes directly to Supabase, so the
-    // client polls /api/rooms/status for progress.
+    // V9 body: matches modal_pipeline/redesign.py Block 2 rewrite.
+    // Legacy body: preserved for REDESIGN_PIPELINE_WEBHOOK_URL fallback.
+    const v9Body = {
+      room_id,
+      user_id: userId,
+      empty_room_url: room?.empty_room_url ?? photoUrlForPipeline ?? null,
+      room_type: roomType,
+      style_blend: room?.style_blend ?? renderContext?.styleBlend ?? null,
+      style_fingerprint: fingerprint ?? null,
+      personalization: room?.personalization ?? {},
+      budget_max: budgetMax,
+      seed: generationSeed,
+    };
+    const legacyBody = {
+      room_id,
+      user_id: userId,
+      compiled_prompt: compiledPrompt ?? null,
+      anchor_prompt: anchorPrompt ?? null,
+      style_reference_url: styleReferenceUrl ?? null,
+      chat_context: renderContext?.tabStates ?? null,
+      image_url: photoUrlForPipeline ?? null,
+      unsplash_references: unsplashReferences.length > 0 ? unsplashReferences : null,
+      loras_json: lorasJson,
+      seed: generationSeed,
+      remove_count: removeCount,
+      change_map_url: changeMapUrl ?? null,
+      kept_item_mask_urls: keptItemMaskUrls.length > 0 ? keptItemMaskUrls : null,
+      wall_change_requested: wallChangeRequested,
+      floor_change_requested: floorChangeRequested,
+      room_type: roomType,
+      style_blend: room?.style_blend ?? renderContext?.styleBlend ?? null,
+    };
     const response = await fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        room_id,
-        user_id: userId,
-        compiled_prompt: compiledPrompt ?? null,
-        anchor_prompt: anchorPrompt ?? null,
-        style_reference_url: styleReferenceUrl ?? null,
-        chat_context: renderContext?.tabStates ?? null,
-        // Preprocessed photo URL — DarkIR + OpenCV applied upstream.
-        // Falls back to raw photo if preprocessing was skipped/failed.
-        image_url: photoUrlForPipeline ?? null,
-        unsplash_references: unsplashReferences.length > 0 ? unsplashReferences : null,
-        // Stacked LoRA stack — JSON array of {url, scale, name}
-        loras_json: lorasJson,
-        seed: generationSeed,
-        // Dynamic generation parameters
-        remove_count: removeCount,
-        // Differential diffusion — change map for floor/wall/kept-item preservation
-        change_map_url: changeMapUrl ?? null,
-        kept_item_mask_urls: keptItemMaskUrls.length > 0 ? keptItemMaskUrls : null,
-        wall_change_requested: wallChangeRequested,
-        floor_change_requested: floorChangeRequested,
-        // Room type — critical for Fill Pro to generate correct furniture
-        room_type: roomType,
-        // Style blend for LoRA resolution on Python side
-        style_blend: room?.style_blend ?? renderContext?.styleBlend ?? null,
-      }),
+      body: JSON.stringify(useV9 ? v9Body : legacyBody),
       signal: AbortSignal.timeout(295_000),
     });
 

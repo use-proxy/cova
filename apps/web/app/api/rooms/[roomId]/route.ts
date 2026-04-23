@@ -37,11 +37,42 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json();
+  const PATCH_ALLOWLIST = new Set([
+    "name",
+    "room_type",
+    "status",
+    "personalization",
+    "design_step",
+    "budget",
+    "style_blend",
+    "style_blend_v3",
+    "keep_remove_decisions",
+    "required_objects",
+    "room_constraints",
+    "personalization_context",
+    "room_analysis",
+    "capture_photo_urls",
+    "capture_mode",
+    "wall_color_extracted",
+    "render_context",
+    "detection_status",
+  ]);
+
+  const body = (await request.json()) as Record<string, unknown>;
+  const sanitized = Object.fromEntries(
+    Object.entries(body).filter(([key]) => PATCH_ALLOWLIST.has(key)),
+  );
+
+  if (Object.keys(sanitized).length === 0) {
+    return NextResponse.json(
+      { error: "No valid fields to update" },
+      { status: 400 },
+    );
+  }
 
   const { error: updateError } = await supabase
     .from("rooms")
-    .update(body)
+    .update(sanitized)
     .eq("id", params.roomId)
     .eq("user_id", user.id);
 

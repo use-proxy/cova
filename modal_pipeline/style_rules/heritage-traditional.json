@@ -1,0 +1,131 @@
+{
+  "style_slug": "heritage-traditional",
+  "style_display": "Heritage Traditional",
+  "wall_decor": {
+    "avg_pieces_per_room": "1-2",
+    "arrangement_pattern": "single statement",
+    "wall_coverage_pct": "5-12",
+    "notes": "Large-scale classical landscape or portrait paintings in ornate gilded frames dominate, typically centered above mantels or key furniture pieces."
+  },
+  "surface_styling": {
+    "objects_per_surface": "3-6",
+    "typical_groupings": "stacked books + floral arrangement + decorative urn or brass candlestick + framed photo",
+    "vocabulary": [
+      "books",
+      "fresh flowers",
+      "brass candlesticks",
+      "ceramic urns",
+      "crystal decanters",
+      "silver trays",
+      "porcelain",
+      "globe",
+      "picture frames"
+    ]
+  },
+  "plants": {
+    "avg_per_room": "1-3",
+    "vessels": [
+      "white ceramic urn",
+      "brass planter",
+      "terracotta pot",
+      "cut crystal vase",
+      "stoneware"
+    ],
+    "placement": [
+      "mantel",
+      "side table",
+      "console",
+      "window sill",
+      "desk corner"
+    ]
+  },
+  "textile_layering": {
+    "pillows_per_seating": "4-6",
+    "throws_blankets": "occasional",
+    "rugs": "single anchor",
+    "window_treatment": "curtains"
+  },
+  "lighting": {
+    "avg_sources_per_room": "4-6",
+    "types_present": [
+      "crystal chandelier",
+      "wall sconce",
+      "table lamp with pleated shade",
+      "brass floor lamp",
+      "candelabra",
+      "recessed lighting",
+      "natural light"
+    ],
+    "warmth": "warm"
+  },
+  "materials": {
+    "top_materials": [
+      "dark wood",
+      "marble",
+      "brass",
+      "leather",
+      "silk"
+    ],
+    "wood_tones": "dark",
+    "metals": [
+      "brass",
+      "polished-nickel",
+      "chrome"
+    ]
+  },
+  "color_palette": {
+    "wall_color_family": "warm neutral",
+    "accent_colors": [
+      "deep green",
+      "burgundy",
+      "navy blue",
+      "cream",
+      "gold"
+    ],
+    "saturation": "muted"
+  },
+  "composition": {
+    "camera_angle": "eye level",
+    "floor_visible_pct": "30-45",
+    "ceiling_visible_pct": "15-25"
+  },
+  "negatives": [
+    "minimalist furniture",
+    "open shelving with sparse styling",
+    "concrete or industrial materials",
+    "bright white walls without molding",
+    "modern abstract art",
+    "acrylic or lucite furniture",
+    "geometric patterns",
+    "floating vanities",
+    "handleless cabinetry",
+    "Edison bulbs",
+    "raw wood or light oak",
+    "monochromatic color schemes"
+  ],
+  "density_tier": "high",
+  "density_axis": "ornamentation",
+  "hero_furniture_nouns": [
+    "carved four-poster mahogany bed",
+    "tufted leather chesterfield sofa",
+    "ornate white marble fireplace mantel",
+    "raised-panel cabinetry with glass doors",
+    "clawfoot tub",
+    "crystal chandelier",
+    "oval pedestal dining table",
+    "carved mahogany executive desk",
+    "upholstered wingback chair",
+    "built-in floor-to-ceiling bookcase"
+  ],
+  "pass1_fragment": "carved mahogany four-poster bed, tufted leather chesterfield, ornate marble fireplace, raised-panel cabinetry, clawfoot tub, crystal chandelier, dark wood paneling, brass hardware",
+  "pass2_fragment": "3-6 objects per surface including stacked leather-bound books, fresh floral arrangements in ceramic urns, brass candlesticks, 4-6 pillows per seat, single Persian or Oriental rug, 1-3 plants in white ceramic or brass vessels, large gilded-frame landscape painting above mantel",
+  "_rooms_analyzed": [
+    "bedroom",
+    "livingroom",
+    "kitchen",
+    "bathroom",
+    "diningroom",
+    "homeoffice"
+  ],
+  "_model": "claude-sonnet-4-5"
+}

@@ -1,0 +1,134 @@
+{
+  "style_slug": "maximalist-eclectic",
+  "style_display": "Maximalist Eclectic",
+  "wall_decor": {
+    "avg_pieces_per_room": "8-20",
+    "arrangement_pattern": "salon hang",
+    "wall_coverage_pct": "40-70",
+    "notes": "Dense salon-style gallery walls with mixed frame styles, sizes, and subjects including botanical prints, landscapes, portraits, and mirrors."
+  },
+  "surface_styling": {
+    "objects_per_surface": "5-12",
+    "typical_groupings": "stacked books + ceramic vessels + brass objects + plants + decorative bowls + candles",
+    "vocabulary": [
+      "books",
+      "ceramics",
+      "brass",
+      "copper",
+      "plants",
+      "terracotta",
+      "decorative plates",
+      "vases",
+      "bowls",
+      "candles",
+      "woven baskets",
+      "sculptures",
+      "vintage objects"
+    ]
+  },
+  "plants": {
+    "avg_per_room": "5-10",
+    "vessels": [
+      "terracotta",
+      "brass",
+      "copper",
+      "rattan basket",
+      "ceramic",
+      "stoneware",
+      "woven basket"
+    ],
+    "placement": [
+      "floor corner",
+      "tabletop",
+      "hanging",
+      "shelf",
+      "window",
+      "countertop",
+      "trailing from shelves"
+    ]
+  },
+  "textile_layering": {
+    "pillows_per_seating": "3-5",
+    "throws_blankets": "present",
+    "rugs": "layered",
+    "window_treatment": "curtains"
+  },
+  "lighting": {
+    "avg_sources_per_room": "3-5",
+    "types_present": [
+      "chandelier",
+      "table lamp",
+      "sconce",
+      "pendant",
+      "natural light",
+      "floor lamp"
+    ],
+    "warmth": "warm"
+  },
+  "materials": {
+    "top_materials": [
+      "velvet",
+      "brass",
+      "wood",
+      "patterned tile",
+      "Persian rug"
+    ],
+    "wood_tones": "medium",
+    "metals": [
+      "brass",
+      "copper",
+      "matte-black"
+    ]
+  },
+  "color_palette": {
+    "wall_color_family": "saturated",
+    "accent_colors": [
+      "emerald green",
+      "deep teal",
+      "magenta",
+      "coral",
+      "mustard yellow",
+      "navy blue"
+    ],
+    "saturation": "saturated"
+  },
+  "composition": {
+    "camera_angle": "eye level",
+    "floor_visible_pct": "30-45",
+    "ceiling_visible_pct": "15-25"
+  },
+  "negatives": [
+    "minimalist sparse walls",
+    "monochromatic color schemes",
+    "single small artwork",
+    "bare surfaces",
+    "industrial concrete",
+    "all-white palette",
+    "sleek modern minimalism",
+    "empty shelving",
+    "plain solid rugs",
+    "no pattern mixing"
+  ],
+  "density_tier": "high",
+  "density_axis": "object",
+  "hero_furniture_nouns": [
+    "tufted velvet upholstered bed",
+    "velvet tufted sofa with brass legs",
+    "ornate crystal chandelier",
+    "carved wood dining table",
+    "open wood shelving unit",
+    "vintage Persian rug",
+    "upholstered bench with turned legs"
+  ],
+  "pass1_fragment": "tufted velvet sofa with brass legs, carved wood furniture, ornate crystal chandelier, layered Persian rugs, patterned tile backsplash",
+  "pass2_fragment": "8-20 framed artworks in salon hang arrangement covering 40-70% of wall, 5-10 plants in terracotta and brass vessels on floor corners and shelves, 5-12 objects per surface including stacked books and ceramic bowls and brass candlesticks, 3-5 patterned pillows, layered rugs",
+  "_rooms_analyzed": [
+    "bedroom",
+    "livingroom",
+    "kitchen",
+    "bathroom",
+    "diningroom",
+    "homeoffice"
+  ],
+  "_model": "claude-sonnet-4-5"
+}

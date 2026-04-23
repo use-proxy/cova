@@ -1,0 +1,125 @@
+{
+  "style_slug": "dark-moody-glam",
+  "style_display": "Dark Moody Glam",
+  "wall_decor": {
+    "avg_pieces_per_room": "1-2",
+    "arrangement_pattern": "single statement",
+    "wall_coverage_pct": "5-12",
+    "notes": "Large statement mirrors or single framed art pieces centered on feature walls, often with ornate frames."
+  },
+  "surface_styling": {
+    "objects_per_surface": "3-5",
+    "typical_groupings": "books + brass vessel + ceramic bowl, candles + decorative sphere + small plant",
+    "vocabulary": [
+      "books",
+      "brass vessels",
+      "candles",
+      "ceramic bowls",
+      "decorative spheres",
+      "small plants",
+      "trays",
+      "glass vases"
+    ]
+  },
+  "plants": {
+    "avg_per_room": "1-2",
+    "vessels": [
+      "black ceramic",
+      "brass",
+      "concrete",
+      "matte black pot",
+      "glass vase"
+    ],
+    "placement": [
+      "floor corner",
+      "tabletop",
+      "shelf",
+      "window sill"
+    ]
+  },
+  "textile_layering": {
+    "pillows_per_seating": "4-6",
+    "throws_blankets": "present",
+    "rugs": "single anchor",
+    "window_treatment": "curtains"
+  },
+  "lighting": {
+    "avg_sources_per_room": "3-5",
+    "types_present": [
+      "chandelier",
+      "table lamp",
+      "sconce",
+      "pendant",
+      "task lamp",
+      "candles",
+      "LED strip lighting"
+    ],
+    "warmth": "warm"
+  },
+  "materials": {
+    "top_materials": [
+      "velvet",
+      "brass",
+      "marble",
+      "leather",
+      "glass"
+    ],
+    "wood_tones": "dark",
+    "metals": [
+      "brass",
+      "gold",
+      "matte-black"
+    ]
+  },
+  "color_palette": {
+    "wall_color_family": "dark",
+    "accent_colors": [
+      "emerald green",
+      "burgundy",
+      "navy blue",
+      "gold",
+      "white"
+    ],
+    "saturation": "saturated"
+  },
+  "composition": {
+    "camera_angle": "eye level",
+    "floor_visible_pct": "30-40",
+    "ceiling_visible_pct": "15-25"
+  },
+  "negatives": [
+    "light wood tones",
+    "white or cream walls",
+    "minimalist sparse styling",
+    "natural fiber baskets",
+    "rustic textures",
+    "bright saturated primary colors",
+    "casual cotton textiles",
+    "open shelving with clutter",
+    "chrome or polished nickel",
+    "Scandinavian simplicity"
+  ],
+  "density_tier": "medium",
+  "density_axis": "lighting",
+  "hero_furniture_nouns": [
+    "tufted velvet upholstered bed with nailhead trim",
+    "velvet sectional sofa with brass legs",
+    "round pedestal dining table",
+    "upholstered dining chairs with curved backs",
+    "trestle desk with leather inlay",
+    "freestanding brass bathtub",
+    "glass pendant chandelier with brass frame",
+    "built-in shelving with panel molding"
+  ],
+  "pass1_fragment": "tufted velvet upholstery with brass and gold accents, black marble surfaces, panel molding walls in charcoal and navy",
+  "pass2_fragment": "3-5 objects per surface including brass vessels and candles, 4-6 velvet pillows, 1-2 plants in black ceramic pots, single statement mirror or framed art, warm pendant and sconce lighting",
+  "_rooms_analyzed": [
+    "bedroom",
+    "livingroom",
+    "kitchen",
+    "bathroom",
+    "diningroom",
+    "homeoffice"
+  ],
+  "_model": "claude-sonnet-4-5"
+}

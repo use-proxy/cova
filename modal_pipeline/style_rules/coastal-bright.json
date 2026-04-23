@@ -1,0 +1,127 @@
+{
+  "style_slug": "coastal-bright",
+  "style_display": "Coastal Bright",
+  "wall_decor": {
+    "avg_pieces_per_room": "0-1",
+    "arrangement_pattern": "single statement",
+    "wall_coverage_pct": "3-8",
+    "notes": "Minimal wall art with preference for large single pieces in natural wood frames or abstract neutrals, many walls left bare."
+  },
+  "surface_styling": {
+    "objects_per_surface": "2-4",
+    "typical_groupings": "ceramic vase + small plant + stack of books, or bowl + candle + decorative object",
+    "vocabulary": [
+      "ceramic vessels",
+      "white pottery",
+      "small potted plants",
+      "wooden bowls",
+      "books",
+      "glass vases",
+      "woven baskets",
+      "natural shells",
+      "white candles"
+    ]
+  },
+  "plants": {
+    "avg_per_room": "2-4",
+    "vessels": [
+      "white ceramic",
+      "rattan basket",
+      "woven seagrass basket",
+      "terracotta",
+      "white stoneware",
+      "natural fiber basket"
+    ],
+    "placement": [
+      "floor corner",
+      "tabletop",
+      "window sill",
+      "countertop",
+      "desk surface"
+    ]
+  },
+  "textile_layering": {
+    "pillows_per_seating": "4-6",
+    "throws_blankets": "occasional",
+    "rugs": "single anchor",
+    "window_treatment": "sheer"
+  },
+  "lighting": {
+    "avg_sources_per_room": "3-5",
+    "types_present": [
+      "overhead pendant",
+      "rattan pendant",
+      "wall sconce",
+      "natural light",
+      "recessed lighting",
+      "table lamp"
+    ],
+    "warmth": "warm"
+  },
+  "materials": {
+    "top_materials": [
+      "light wood",
+      "white linen",
+      "rattan",
+      "white ceramic",
+      "natural jute"
+    ],
+    "wood_tones": "light",
+    "metals": [
+      "brass",
+      "polished-nickel",
+      "chrome"
+    ]
+  },
+  "color_palette": {
+    "wall_color_family": "cool neutral",
+    "accent_colors": [
+      "soft blue",
+      "warm natural wood",
+      "white",
+      "pale sage green",
+      "sandy beige"
+    ],
+    "saturation": "muted"
+  },
+  "composition": {
+    "camera_angle": "eye level",
+    "floor_visible_pct": "30-45",
+    "ceiling_visible_pct": "15-25"
+  },
+  "negatives": [
+    "dark wood tones",
+    "heavy drapery",
+    "ornate carved furniture",
+    "saturated jewel tones",
+    "dense gallery walls",
+    "industrial metal finishes",
+    "dark moody lighting",
+    "maximalist surface styling",
+    "bold geometric patterns",
+    "black accent furniture"
+  ],
+  "density_tier": "low",
+  "density_axis": "object",
+  "hero_furniture_nouns": [
+    "light oak platform bed",
+    "white linen slipcovered sofa",
+    "round pedestal dining table in natural wood",
+    "rattan dining chairs with white cushions",
+    "white shaker-style desk",
+    "woven rattan pendant light",
+    "driftwood coffee table",
+    "white ceramic farmhouse sink"
+  ],
+  "pass1_fragment": "light oak platform bed, white linen slipcovered sofa, round pedestal dining table, rattan chairs with white cushions, white shaker desk, natural wood and white ceramic",
+  "pass2_fragment": "2-4 plants in white ceramic or rattan baskets, 4-6 white linen pillows per seating, 2-4 objects per surface including ceramic vessels and small potted plants, single large neutral art piece or bare walls, sheer white curtains, jute area rug",
+  "_rooms_analyzed": [
+    "bedroom",
+    "livingroom",
+    "kitchen",
+    "bathroom",
+    "diningroom",
+    "homeoffice"
+  ],
+  "_model": "claude-sonnet-4-5"
+}
