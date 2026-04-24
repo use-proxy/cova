@@ -1,0 +1,121 @@
+{
+  "style_slug": "warm-japandi",
+  "style_display": "Warm Japandi",
+  "wall_decor": {
+    "avg_pieces_per_room": "0-1",
+    "arrangement_pattern": "single statement",
+    "wall_coverage_pct": "3-8",
+    "notes": "Minimal wall art, typically one framed piece with simple landscape or abstract motif in wood frame, or walls left bare."
+  },
+  "surface_styling": {
+    "objects_per_surface": "2-4",
+    "typical_groupings": "ceramic vase + branch arrangement + wooden bowl, or stacked books + small ceramic vessel",
+    "vocabulary": [
+      "ceramic bowls",
+      "stoneware vases",
+      "wooden vessels",
+      "books",
+      "branches",
+      "small sculptural objects",
+      "cutting boards"
+    ]
+  },
+  "plants": {
+    "avg_per_room": "1-2",
+    "vessels": [
+      "stoneware",
+      "ceramic",
+      "terracotta",
+      "rattan basket",
+      "concrete"
+    ],
+    "placement": [
+      "floor corner",
+      "tabletop",
+      "shelf",
+      "window"
+    ]
+  },
+  "textile_layering": {
+    "pillows_per_seating": "2-4",
+    "throws_blankets": "present",
+    "rugs": "single anchor",
+    "window_treatment": "curtains"
+  },
+  "lighting": {
+    "avg_sources_per_room": "2-3",
+    "types_present": [
+      "overhead pendant",
+      "table lamp",
+      "natural light",
+      "under-cabinet strip lighting"
+    ],
+    "warmth": "warm"
+  },
+  "materials": {
+    "top_materials": [
+      "light oak",
+      "linen",
+      "ceramic",
+      "stone",
+      "paper lantern"
+    ],
+    "wood_tones": "light",
+    "metals": [
+      "matte-black",
+      "brass",
+      "none"
+    ]
+  },
+  "color_palette": {
+    "wall_color_family": "warm neutral",
+    "accent_colors": [
+      "beige",
+      "cream",
+      "soft taupe",
+      "warm gray",
+      "terracotta"
+    ],
+    "saturation": "muted"
+  },
+  "composition": {
+    "camera_angle": "eye level",
+    "floor_visible_pct": "30-45",
+    "ceiling_visible_pct": "15-25"
+  },
+  "negatives": [
+    "dense gallery walls",
+    "saturated colors",
+    "ornate carved furniture",
+    "chrome or polished metals",
+    "heavy drapery with patterns",
+    "dark wood tones",
+    "clutter or excessive decor",
+    "industrial metal fixtures",
+    "bold geometric patterns",
+    "glossy finishes"
+  ],
+  "density_tier": "low",
+  "density_axis": "material",
+  "hero_furniture_nouns": [
+    "low-profile light oak platform bed",
+    "linen upholstered sofa with wooden legs",
+    "light oak round coffee table",
+    "flat-panel light wood cabinetry",
+    "freestanding oval soaking tub",
+    "solid oak pedestal dining table",
+    "floating light oak desk with drawers",
+    "curved-back wooden dining chairs with upholstered seats"
+  ],
+  "pass1_fragment": "low-profile light oak platform bed, linen sofa with wooden legs, flat-panel light wood cabinetry, freestanding oval tub, solid oak pedestal table, floating oak desk",
+  "pass2_fragment": "1-2 ceramic vases with branches per room, 2-4 objects per surface including wooden bowls and stoneware vessels, 2-4 linen pillows, single jute or wool area rug, paper globe pendant light, 1-2 floor plants in terracotta or rattan",
+  "_rooms_analyzed": [
+    "bedroom",
+    "livingroom",
+    "kitchen",
+    "bathroom",
+    "diningroom",
+    "homeoffice"
+  ],
+  "_model": "claude-sonnet-4-5"
+}

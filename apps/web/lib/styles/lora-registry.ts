@@ -95,7 +95,7 @@ export const COVA_TO_DNA_TRIGGER: Record<CovaStyleKey, string> = {
   COVAJAPANDI: "cvwmn",
   COVASCANDINAV: "cvscn",
   COVABIOPHILIC: "cvbio",
-  COVAMINIMAL: "cvscn",
+  COVAMINIMAL: "cvmin",
   COVAMIDCENTURY: "cvmcm",
   COVACOASTAL: "cvcst",
   COVABOHEMIAN: "cvboh",

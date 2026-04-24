@@ -152,31 +152,9 @@ describe("step-3b user-visible style label (BLOCKER 1 fix)", () => {
   });
 });
 
-describe("step-7d suggestion chips — no forbidden names (BLOCKER 2 fix)", () => {
-  it("no entry in SUGGESTION_CHIPS contains a bare forbidden style name", async () => {
-    const fs = await import("node:fs");
-    const src = fs.readFileSync(
-      new URL("../../app/design/step-7d/page.tsx", import.meta.url),
-      "utf8",
-    );
-    // Extract SUGGESTION_CHIPS block
-    const match = src.match(
-      /SUGGESTION_CHIPS:\s*Record<ChatTabId,\s*string\[\]>\s*=\s*\{([\s\S]*?)\n\};/,
-    );
-    expect(match, "SUGGESTION_CHIPS block must be present").not.toBeNull();
-    const block = match![1]!;
-    // Collect all string literals in the block and assert none contain a
-    // bare canonical forbidden token.
-    const stringLiterals = block.match(/"[^"]*"/g) ?? [];
-    expect(stringLiterals.length).toBeGreaterThan(0);
-    for (const lit of stringLiterals) {
-      expect(
-        containsForbiddenStyleName(lit),
-        `SUGGESTION_CHIPS entry contains forbidden token: ${lit}`,
-      ).toBe(false);
-    }
-  });
-});
+// step-7d retired to _future/ as of 2026-04-23 (V3 replaces with step-7p).
+// SUGGESTION_CHIPS forbidden-name surface test dropped — step-7p has no
+// equivalent chip array (uses Vision-generated chips from redesign QA).
 
 describe("design-director density=minimalist — no forbidden echo (P0E.4)", () => {
   it("lifestyle.density value 'minimalist' is mapped to 'RESTRAINED' token in the system-prompt assembly", async () => {

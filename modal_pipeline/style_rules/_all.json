@@ -1,0 +1,1007 @@
+{
+  "dark-moody-glam": {
+    "style_slug": "dark-moody-glam",
+    "style_display": "Dark Moody Glam",
+    "wall_decor": {
+      "avg_pieces_per_room": "1-2",
+      "arrangement_pattern": "single statement",
+      "wall_coverage_pct": "5-12",
+      "notes": "Large statement mirrors or single framed art pieces centered on feature walls, often with ornate frames."
+    },
+    "surface_styling": {
+      "objects_per_surface": "3-5",
+      "typical_groupings": "books + brass vessel + ceramic bowl, candles + decorative sphere + small plant",
+      "vocabulary": [
+        "books",
+        "brass vessels",
+        "candles",
+        "ceramic bowls",
+        "decorative spheres",
+        "small plants",
+        "trays",
+        "glass vases"
+      ]
+    },
+    "plants": {
+      "avg_per_room": "1-2",
+      "vessels": [
+        "black ceramic",
+        "brass",
+        "concrete",
+        "matte black pot",
+        "glass vase"
+      ],
+      "placement": [
+        "floor corner",
+        "tabletop",
+        "shelf",
+        "window sill"
+      ]
+    },
+    "textile_layering": {
+      "pillows_per_seating": "4-6",
+      "throws_blankets": "present",
+      "rugs": "single anchor",
+      "window_treatment": "curtains"
+    },
+    "lighting": {
+      "avg_sources_per_room": "3-5",
+      "types_present": [
+        "chandelier",
+        "table lamp",
+        "sconce",
+        "pendant",
+        "task lamp",
+        "candles",
+        "LED strip lighting"
+      ],
+      "warmth": "warm"
+    },
+    "materials": {
+      "top_materials": [
+        "velvet",
+        "brass",
+        "marble",
+        "leather",
+        "glass"
+      ],
+      "wood_tones": "dark",
+      "metals": [
+        "brass",
+        "gold",
+        "matte-black"
+      ]
+    },
+    "color_palette": {
+      "wall_color_family": "dark",
+      "accent_colors": [
+        "emerald green",
+        "burgundy",
+        "navy blue",
+        "gold",
+        "white"
+      ],
+      "saturation": "saturated"
+    },
+    "composition": {
+      "camera_angle": "eye level",
+      "floor_visible_pct": "30-40",
+      "ceiling_visible_pct": "15-25"
+    },
+    "negatives": [
+      "light wood tones",
+      "white or cream walls",
+      "minimalist sparse styling",
+      "natural fiber baskets",
+      "rustic textures",
+      "bright saturated primary colors",
+      "casual cotton textiles",
+      "open shelving with clutter",
+      "chrome or polished nickel",
+      "Scandinavian simplicity"
+    ],
+    "density_tier": "medium",
+    "hero_furniture_nouns": [
+      "tufted velvet upholstered bed with nailhead trim",
+      "velvet sectional sofa with brass legs",
+      "round pedestal dining table",
+      "upholstered dining chairs with curved backs",
+      "trestle desk with leather inlay",
+      "freestanding brass bathtub",
+      "glass pendant chandelier with brass frame",
+      "built-in shelving with panel molding"
+    ],
+    "pass1_fragment": "tufted velvet upholstery with brass and gold accents, black marble surfaces, panel molding walls in charcoal and navy",
+    "pass2_fragment": "3-5 objects per surface including brass vessels and candles, 4-6 velvet pillows, 1-2 plants in black ceramic pots, single statement mirror or framed art, warm pendant and sconce lighting",
+    "_rooms_analyzed": [
+      "bedroom",
+      "livingroom",
+      "kitchen",
+      "bathroom",
+      "diningroom",
+      "homeoffice"
+    ],
+    "_model": "claude-sonnet-4-5"
+  },
+  "warm-japandi": {
+    "style_slug": "warm-japandi",
+    "style_display": "Warm Japandi",
+    "wall_decor": {
+      "avg_pieces_per_room": "0-1",
+      "arrangement_pattern": "single statement",
+      "wall_coverage_pct": "3-8",
+      "notes": "Minimal wall art, typically one framed piece with simple landscape or abstract motif in wood frame, or walls left bare."
+    },
+    "surface_styling": {
+      "objects_per_surface": "2-4",
+      "typical_groupings": "ceramic vase + branch arrangement + wooden bowl, or stacked books + small ceramic vessel",
+      "vocabulary": [
+        "ceramic bowls",
+        "stoneware vases",
+        "wooden vessels",
+        "books",
+        "branches",
+        "small sculptural objects",
+        "cutting boards"
+      ]
+    },
+    "plants": {
+      "avg_per_room": "1-2",
+      "vessels": [
+        "stoneware",
+        "ceramic",
+        "terracotta",
+        "rattan basket",
+        "concrete"
+      ],
+      "placement": [
+        "floor corner",
+        "tabletop",
+        "shelf",
+        "window"
+      ]
+    },
+    "textile_layering": {
+      "pillows_per_seating": "2-4",
+      "throws_blankets": "present",
+      "rugs": "single anchor",
+      "window_treatment": "curtains"
+    },
+    "lighting": {
+      "avg_sources_per_room": "2-3",
+      "types_present": [
+        "overhead pendant",
+        "table lamp",
+        "natural light",
+        "under-cabinet strip lighting"
+      ],
+      "warmth": "warm"
+    },
+    "materials": {
+      "top_materials": [
+        "light oak",
+        "linen",
+        "ceramic",
+        "stone",
+        "paper lantern"
+      ],
+      "wood_tones": "light",
+      "metals": [
+        "matte-black",
+        "brass",
+        "none"
+      ]
+    },
+    "color_palette": {
+      "wall_color_family": "warm neutral",
+      "accent_colors": [
+        "beige",
+        "cream",
+        "soft taupe",
+        "warm gray",
+        "terracotta"
+      ],
+      "saturation": "muted"
+    },
+    "composition": {
+      "camera_angle": "eye level",
+      "floor_visible_pct": "30-45",
+      "ceiling_visible_pct": "15-25"
+    },
+    "negatives": [
+      "dense gallery walls",
+      "saturated colors",
+      "ornate carved furniture",
+      "chrome or polished metals",
+      "heavy drapery with patterns",
+      "dark wood tones",
+      "clutter or excessive decor",
+      "industrial metal fixtures",
+      "bold geometric patterns",
+      "glossy finishes"
+    ],
+    "density_tier": "low",
+    "hero_furniture_nouns": [
+      "low-profile light oak platform bed",
+      "linen upholstered sofa with wooden legs",
+      "light oak round coffee table",
+      "flat-panel light wood cabinetry",
+      "freestanding oval soaking tub",
+      "solid oak pedestal dining table",
+      "floating light oak desk with drawers",
+      "curved-back wooden dining chairs with upholstered seats"
+    ],
+    "pass1_fragment": "low-profile light oak platform bed, linen sofa with wooden legs, flat-panel light wood cabinetry, freestanding oval tub, solid oak pedestal table, floating oak desk",
+    "pass2_fragment": "1-2 ceramic vases with branches per room, 2-4 objects per surface including wooden bowls and stoneware vessels, 2-4 linen pillows, single jute or wool area rug, paper globe pendant light, 1-2 floor plants in terracotta or rattan",
+    "_rooms_analyzed": [
+      "bedroom",
+      "livingroom",
+      "kitchen",
+      "bathroom",
+      "diningroom",
+      "homeoffice"
+    ],
+    "_model": "claude-sonnet-4-5"
+  },
+  "coastal-bright": {
+    "style_slug": "coastal-bright",
+    "style_display": "Coastal Bright",
+    "wall_decor": {
+      "avg_pieces_per_room": "0-1",
+      "arrangement_pattern": "single statement",
+      "wall_coverage_pct": "3-8",
+      "notes": "Minimal wall art with preference for large single pieces in natural wood frames or abstract neutrals, many walls left bare."
+    },
+    "surface_styling": {
+      "objects_per_surface": "2-4",
+      "typical_groupings": "ceramic vase + small plant + stack of books, or bowl + candle + decorative object",
+      "vocabulary": [
+        "ceramic vessels",
+        "white pottery",
+        "small potted plants",
+        "wooden bowls",
+        "books",
+        "glass vases",
+        "woven baskets",
+        "natural shells",
+        "white candles"
+      ]
+    },
+    "plants": {
+      "avg_per_room": "2-4",
+      "vessels": [
+        "white ceramic",
+        "rattan basket",
+        "woven seagrass basket",
+        "terracotta",
+        "white stoneware",
+        "natural fiber basket"
+      ],
+      "placement": [
+        "floor corner",
+        "tabletop",
+        "window sill",
+        "countertop",
+        "desk surface"
+      ]
+    },
+    "textile_layering": {
+      "pillows_per_seating": "4-6",
+      "throws_blankets": "occasional",
+      "rugs": "single anchor",
+      "window_treatment": "sheer"
+    },
+    "lighting": {
+      "avg_sources_per_room": "3-5",
+      "types_present": [
+        "overhead pendant",
+        "rattan pendant",
+        "wall sconce",
+        "natural light",
+        "recessed lighting",
+        "table lamp"
+      ],
+      "warmth": "warm"
+    },
+    "materials": {
+      "top_materials": [
+        "light wood",
+        "white linen",
+        "rattan",
+        "white ceramic",
+        "natural jute"
+      ],
+      "wood_tones": "light",
+      "metals": [
+        "brass",
+        "polished-nickel",
+        "chrome"
+      ]
+    },
+    "color_palette": {
+      "wall_color_family": "cool neutral",
+      "accent_colors": [
+        "soft blue",
+        "warm natural wood",
+        "white",
+        "pale sage green",
+        "sandy beige"
+      ],
+      "saturation": "muted"
+    },
+    "composition": {
+      "camera_angle": "eye level",
+      "floor_visible_pct": "30-45",
+      "ceiling_visible_pct": "15-25"
+    },
+    "negatives": [
+      "dark wood tones",
+      "heavy drapery",
+      "ornate carved furniture",
+      "saturated jewel tones",
+      "dense gallery walls",
+      "industrial metal finishes",
+      "dark moody lighting",
+      "maximalist surface styling",
+      "bold geometric patterns",
+      "black accent furniture"
+    ],
+    "density_tier": "low",
+    "hero_furniture_nouns": [
+      "light oak platform bed",
+      "white linen slipcovered sofa",
+      "round pedestal dining table in natural wood",
+      "rattan dining chairs with white cushions",
+      "white shaker-style desk",
+      "woven rattan pendant light",
+      "driftwood coffee table",
+      "white ceramic farmhouse sink"
+    ],
+    "pass1_fragment": "light oak platform bed, white linen slipcovered sofa, round pedestal dining table, rattan chairs with white cushions, white shaker desk, natural wood and white ceramic",
+    "pass2_fragment": "2-4 plants in white ceramic or rattan baskets, 4-6 white linen pillows per seating, 2-4 objects per surface including ceramic vessels and small potted plants, single large neutral art piece or bare walls, sheer white curtains, jute area rug",
+    "_rooms_analyzed": [
+      "bedroom",
+      "livingroom",
+      "kitchen",
+      "bathroom",
+      "diningroom",
+      "homeoffice"
+    ],
+    "_model": "claude-sonnet-4-5"
+  },
+  "heritage-traditional": {
+    "style_slug": "heritage-traditional",
+    "style_display": "Heritage Traditional",
+    "wall_decor": {
+      "avg_pieces_per_room": "1-2",
+      "arrangement_pattern": "single statement",
+      "wall_coverage_pct": "5-12",
+      "notes": "Large-scale classical landscape or portrait paintings in ornate gilded frames dominate, typically centered above mantels or key furniture pieces."
+    },
+    "surface_styling": {
+      "objects_per_surface": "3-6",
+      "typical_groupings": "stacked books + floral arrangement + decorative urn or brass candlestick + framed photo",
+      "vocabulary": [
+        "books",
+        "fresh flowers",
+        "brass candlesticks",
+        "ceramic urns",
+        "crystal decanters",
+        "silver trays",
+        "porcelain",
+        "globe",
+        "picture frames"
+      ]
+    },
+    "plants": {
+      "avg_per_room": "1-3",
+      "vessels": [
+        "white ceramic urn",
+        "brass planter",
+        "terracotta pot",
+        "cut crystal vase",
+        "stoneware"
+      ],
+      "placement": [
+        "mantel",
+        "side table",
+        "console",
+        "window sill",
+        "desk corner"
+      ]
+    },
+    "textile_layering": {
+      "pillows_per_seating": "4-6",
+      "throws_blankets": "occasional",
+      "rugs": "single anchor",
+      "window_treatment": "curtains"
+    },
+    "lighting": {
+      "avg_sources_per_room": "4-6",
+      "types_present": [
+        "crystal chandelier",
+        "wall sconce",
+        "table lamp with pleated shade",
+        "brass floor lamp",
+        "candelabra",
+        "recessed lighting",
+        "natural light"
+      ],
+      "warmth": "warm"
+    },
+    "materials": {
+      "top_materials": [
+        "dark wood",
+        "marble",
+        "brass",
+        "leather",
+        "silk"
+      ],
+      "wood_tones": "dark",
+      "metals": [
+        "brass",
+        "polished-nickel",
+        "chrome"
+      ]
+    },
+    "color_palette": {
+      "wall_color_family": "warm neutral",
+      "accent_colors": [
+        "deep green",
+        "burgundy",
+        "navy blue",
+        "cream",
+        "gold"
+      ],
+      "saturation": "muted"
+    },
+    "composition": {
+      "camera_angle": "eye level",
+      "floor_visible_pct": "30-45",
+      "ceiling_visible_pct": "15-25"
+    },
+    "negatives": [
+      "minimalist furniture",
+      "open shelving with sparse styling",
+      "concrete or industrial materials",
+      "bright white walls without molding",
+      "modern abstract art",
+      "acrylic or lucite furniture",
+      "geometric patterns",
+      "floating vanities",
+      "handleless cabinetry",
+      "Edison bulbs",
+      "raw wood or light oak",
+      "monochromatic color schemes"
+    ],
+    "density_tier": "high",
+    "hero_furniture_nouns": [
+      "carved four-poster mahogany bed",
+      "tufted leather chesterfield sofa",
+      "ornate white marble fireplace mantel",
+      "raised-panel cabinetry with glass doors",
+      "clawfoot tub",
+      "crystal chandelier",
+      "oval pedestal dining table",
+      "carved mahogany executive desk",
+      "upholstered wingback chair",
+      "built-in floor-to-ceiling bookcase"
+    ],
+    "pass1_fragment": "carved mahogany four-poster bed, tufted leather chesterfield, ornate marble fireplace, raised-panel cabinetry, clawfoot tub, crystal chandelier, dark wood paneling, brass hardware",
+    "pass2_fragment": "3-6 objects per surface including stacked leather-bound books, fresh floral arrangements in ceramic urns, brass candlesticks, 4-6 pillows per seat, single Persian or Oriental rug, 1-3 plants in white ceramic or brass vessels, large gilded-frame landscape painting above mantel",
+    "_rooms_analyzed": [
+      "bedroom",
+      "livingroom",
+      "kitchen",
+      "bathroom",
+      "diningroom",
+      "homeoffice"
+    ],
+    "_model": "claude-sonnet-4-5"
+  },
+  "biophilic-jungle": {
+    "style_slug": "biophilic-jungle",
+    "style_display": "Biophilic Jungle",
+    "wall_decor": {
+      "avg_pieces_per_room": "0-1",
+      "arrangement_pattern": "none",
+      "wall_coverage_pct": "60-90",
+      "notes": "Walls are dominated by living green walls, moss panels, and cascading vines rather than traditional art."
+    },
+    "surface_styling": {
+      "objects_per_surface": "2-4",
+      "typical_groupings": "terracotta pots + small herbs + wooden cutting board, ceramic vessels + small potted plants + natural fiber basket",
+      "vocabulary": [
+        "terracotta pots",
+        "small plants",
+        "herbs",
+        "wooden bowls",
+        "ceramic vessels",
+        "natural fiber baskets",
+        "woven trays",
+        "wooden cutting boards"
+      ]
+    },
+    "plants": {
+      "avg_per_room": "12-20",
+      "vessels": [
+        "terracotta",
+        "ceramic",
+        "rattan basket",
+        "woven basket",
+        "concrete",
+        "stoneware"
+      ],
+      "placement": [
+        "floor corner",
+        "floor clustered",
+        "tabletop",
+        "hanging",
+        "shelf",
+        "window",
+        "integrated living wall",
+        "ceiling hanging"
+      ]
+    },
+    "textile_layering": {
+      "pillows_per_seating": "3-5",
+      "throws_blankets": "present",
+      "rugs": "single anchor",
+      "window_treatment": "bare"
+    },
+    "lighting": {
+      "avg_sources_per_room": "2-3",
+      "types_present": [
+        "natural light",
+        "overhead pendant",
+        "table lamp",
+        "sconce",
+        "floor lamp"
+      ],
+      "warmth": "warm"
+    },
+    "materials": {
+      "top_materials": [
+        "rattan",
+        "wood",
+        "terracotta",
+        "natural fiber",
+        "concrete"
+      ],
+      "wood_tones": "medium",
+      "metals": [
+        "brass",
+        "matte-black"
+      ]
+    },
+    "color_palette": {
+      "wall_color_family": "cool neutral",
+      "accent_colors": [
+        "deep green",
+        "moss green",
+        "terracotta",
+        "natural tan",
+        "cream"
+      ],
+      "saturation": "saturated"
+    },
+    "composition": {
+      "camera_angle": "eye level",
+      "floor_visible_pct": "30-40",
+      "ceiling_visible_pct": "15-25"
+    },
+    "negatives": [
+      "bare walls without greenery",
+      "chrome or polished metals",
+      "synthetic materials",
+      "bright saturated non-plant colors",
+      "minimal plant count",
+      "sleek modern minimalism",
+      "gallery walls with framed art",
+      "cool color temperature lighting",
+      "glass and steel furniture",
+      "formal symmetrical arrangements"
+    ],
+    "density_tier": "high",
+    "hero_furniture_nouns": [
+      "rattan platform bed with canopy",
+      "mid-century wood sofa with cane panels",
+      "reclaimed wood kitchen cabinetry with farmhouse sink",
+      "freestanding white soaking tub",
+      "solid wood dining table with rattan bistro chairs",
+      "wood trestle desk with black metal legs",
+      "woven rattan pouf",
+      "rattan pendant light"
+    ],
+    "pass1_fragment": "rattan and reclaimed wood furniture, terracotta and natural fiber accents, white upholstery, farmhouse sink, woven pendant lighting",
+    "pass2_fragment": "12-20 plants in terracotta and woven vessels on floor clusters and shelves, living green wall covering 60-90% of one wall with cascading vines, 3-5 textured pillows in cream and green tones, jute area rug, 2-4 ceramic and wooden objects per surface",
+    "_rooms_analyzed": [
+      "bedroom",
+      "livingroom",
+      "kitchen",
+      "bathroom",
+      "diningroom",
+      "homeoffice"
+    ],
+    "_model": "claude-sonnet-4-5"
+  },
+  "maximalist-eclectic": {
+    "style_slug": "maximalist-eclectic",
+    "style_display": "Maximalist Eclectic",
+    "wall_decor": {
+      "avg_pieces_per_room": "8-20",
+      "arrangement_pattern": "salon hang",
+      "wall_coverage_pct": "40-70",
+      "notes": "Dense salon-style gallery walls with mixed frame styles, sizes, and subjects including botanical prints, landscapes, portraits, and mirrors."
+    },
+    "surface_styling": {
+      "objects_per_surface": "5-12",
+      "typical_groupings": "stacked books + ceramic vessels + brass objects + plants + decorative bowls + candles",
+      "vocabulary": [
+        "books",
+        "ceramics",
+        "brass",
+        "copper",
+        "plants",
+        "terracotta",
+        "decorative plates",
+        "vases",
+        "bowls",
+        "candles",
+        "woven baskets",
+        "sculptures",
+        "vintage objects"
+      ]
+    },
+    "plants": {
+      "avg_per_room": "5-10",
+      "vessels": [
+        "terracotta",
+        "brass",
+        "copper",
+        "rattan basket",
+        "ceramic",
+        "stoneware",
+        "woven basket"
+      ],
+      "placement": [
+        "floor corner",
+        "tabletop",
+        "hanging",
+        "shelf",
+        "window",
+        "countertop",
+        "trailing from shelves"
+      ]
+    },
+    "textile_layering": {
+      "pillows_per_seating": "3-5",
+      "throws_blankets": "present",
+      "rugs": "layered",
+      "window_treatment": "curtains"
+    },
+    "lighting": {
+      "avg_sources_per_room": "3-5",
+      "types_present": [
+        "chandelier",
+        "table lamp",
+        "sconce",
+        "pendant",
+        "natural light",
+        "floor lamp"
+      ],
+      "warmth": "warm"
+    },
+    "materials": {
+      "top_materials": [
+        "velvet",
+        "brass",
+        "wood",
+        "patterned tile",
+        "Persian rug"
+      ],
+      "wood_tones": "medium",
+      "metals": [
+        "brass",
+        "copper",
+        "matte-black"
+      ]
+    },
+    "color_palette": {
+      "wall_color_family": "saturated",
+      "accent_colors": [
+        "emerald green",
+        "deep teal",
+        "magenta",
+        "coral",
+        "mustard yellow",
+        "navy blue"
+      ],
+      "saturation": "saturated"
+    },
+    "composition": {
+      "camera_angle": "eye level",
+      "floor_visible_pct": "30-45",
+      "ceiling_visible_pct": "15-25"
+    },
+    "negatives": [
+      "minimalist sparse walls",
+      "monochromatic color schemes",
+      "single small artwork",
+      "bare surfaces",
+      "industrial concrete",
+      "all-white palette",
+      "sleek modern minimalism",
+      "empty shelving",
+      "plain solid rugs",
+      "no pattern mixing"
+    ],
+    "density_tier": "high",
+    "hero_furniture_nouns": [
+      "tufted velvet upholstered bed",
+      "velvet tufted sofa with brass legs",
+      "ornate crystal chandelier",
+      "carved wood dining table",
+      "open wood shelving unit",
+      "vintage Persian rug",
+      "upholstered bench with turned legs"
+    ],
+    "pass1_fragment": "tufted velvet sofa with brass legs, carved wood furniture, ornate crystal chandelier, layered Persian rugs, patterned tile backsplash",
+    "pass2_fragment": "8-20 framed artworks in salon hang arrangement covering 40-70% of wall, 5-10 plants in terracotta and brass vessels on floor corners and shelves, 5-12 objects per surface including stacked books and ceramic bowls and brass candlesticks, 3-5 patterned pillows, layered rugs",
+    "_rooms_analyzed": [
+      "bedroom",
+      "livingroom",
+      "kitchen",
+      "bathroom",
+      "diningroom",
+      "homeoffice"
+    ],
+    "_model": "claude-sonnet-4-5"
+  },
+  "retro-mid-century": {
+    "style_slug": "retro-mid-century",
+    "style_display": "Retro Mid-Century",
+    "wall_decor": {
+      "avg_pieces_per_room": "1-2",
+      "arrangement_pattern": "single statement",
+      "wall_coverage_pct": "5-12",
+      "notes": "Iconic statement pieces like sunburst mirrors, geometric clocks, or bold abstract art in saturated colors dominate."
+    },
+    "surface_styling": {
+      "objects_per_surface": "3-5",
+      "typical_groupings": "ceramic vase + small plant + decorative bowl or books + small sculpture + candle",
+      "vocabulary": [
+        "ceramics",
+        "terracotta vases",
+        "small potted plants",
+        "decorative bowls",
+        "books",
+        "sculptural objects",
+        "fruit bowls",
+        "brass accents"
+      ]
+    },
+    "plants": {
+      "avg_per_room": "2-3",
+      "vessels": [
+        "terracotta",
+        "ceramic",
+        "rattan basket",
+        "brass planter",
+        "stoneware"
+      ],
+      "placement": [
+        "floor corner",
+        "tabletop",
+        "shelf",
+        "window sill"
+      ]
+    },
+    "textile_layering": {
+      "pillows_per_seating": "4-6",
+      "throws_blankets": "present",
+      "rugs": "single anchor",
+      "window_treatment": "curtains"
+    },
+    "lighting": {
+      "avg_sources_per_room": "2-4",
+      "types_present": [
+        "sputnik chandelier",
+        "starburst pendant",
+        "table lamp with tapered base",
+        "floor lamp",
+        "recessed lighting",
+        "natural light"
+      ],
+      "warmth": "warm"
+    },
+    "materials": {
+      "top_materials": [
+        "walnut wood",
+        "teak",
+        "brass",
+        "ceramic tile",
+        "molded plastic"
+      ],
+      "wood_tones": "medium",
+      "metals": [
+        "brass",
+        "chrome",
+        "black"
+      ]
+    },
+    "color_palette": {
+      "wall_color_family": "warm neutral",
+      "accent_colors": [
+        "mustard yellow",
+        "burnt orange",
+        "olive green",
+        "teal",
+        "rust red"
+      ],
+      "saturation": "saturated"
+    },
+    "composition": {
+      "camera_angle": "eye level",
+      "floor_visible_pct": "30-45",
+      "ceiling_visible_pct": "15-25"
+    },
+    "negatives": [
+      "cool gray walls",
+      "minimalist sparse decor",
+      "industrial exposed brick",
+      "farmhouse shiplap",
+      "all-white color schemes",
+      "contemporary glass furniture",
+      "rustic distressed wood",
+      "bohemian macrame",
+      "traditional ornate molding"
+    ],
+    "density_tier": "medium",
+    "hero_furniture_nouns": [
+      "tapered-leg platform bed in walnut",
+      "Eames-style lounge chair in cognac leather",
+      "tulip pedestal dining table",
+      "low-profile credenza with sliding doors",
+      "molded plastic shell chairs with wire bases",
+      "curved-arm sofa on tapered legs",
+      "hairpin-leg desk with drawers"
+    ],
+    "pass1_fragment": "tapered walnut legs, curved-arm olive sofa, tulip pedestal table, molded plastic shell chairs, low credenza with brass pulls, sunburst mirror accent",
+    "pass2_fragment": "2-3 plants in terracotta and brass planters, 4-6 mustard and olive pillows, 3-5 ceramic objects per surface including vases and bowls, single saturated geometric rug, sputnik or starburst pendant lighting",
+    "_rooms_analyzed": [
+      "bedroom",
+      "livingroom",
+      "kitchen",
+      "bathroom",
+      "diningroom",
+      "homeoffice"
+    ],
+    "_model": "claude-sonnet-4-5"
+  },
+  "industrial-loft": {
+    "_error": "Error code: 429 - {'type': 'error', 'error': {'type': 'rate_limit_error', 'message': \"This request would exceed your organization's rate limit of 30,000 input tokens per minute (org: 9e6b134b-4365-4579-ad69-aac1a114888f, model: claude-sonnet-4-5-20250929). For details, refer to: https://docs.claude.com/en/api/rate-limits. You can see the response headers for current usage. Please reduce the prompt length or the maximum tokens requested, or try again later. You may also contact sales at https://claude.com/contact-sales to discuss your options for a rate limit increase.\"}, 'request_id': 'req_011CaHUxxv2QNbvRyx5a3WVW'}",
+    "style_slug": "industrial-loft"
+  },
+  "pure-minimal-white": {
+    "style_slug": "pure-minimal-white",
+    "style_display": "Pure Minimal White",
+    "wall_decor": {
+      "avg_pieces_per_room": "0-1",
+      "arrangement_pattern": "single statement",
+      "wall_coverage_pct": "2-5",
+      "notes": "Walls are intentionally bare with rare single geometric or architectural pieces."
+    },
+    "surface_styling": {
+      "objects_per_surface": "1-3",
+      "typical_groupings": "single vase + fruit + ceramic vessel",
+      "vocabulary": [
+        "white ceramic vases",
+        "glass vessels",
+        "fresh fruit",
+        "minimal stationery",
+        "sculptural objects",
+        "orchids",
+        "branches"
+      ]
+    },
+    "plants": {
+      "avg_per_room": "1-2",
+      "vessels": [
+        "white ceramic",
+        "glass",
+        "white stoneware"
+      ],
+      "placement": [
+        "floor corner",
+        "tabletop",
+        "window",
+        "countertop"
+      ]
+    },
+    "textile_layering": {
+      "pillows_per_seating": "2-3",
+      "throws_blankets": "absent",
+      "rugs": "single anchor",
+      "window_treatment": "sheer"
+    },
+    "lighting": {
+      "avg_sources_per_room": "2-3",
+      "types_present": [
+        "recessed overhead",
+        "single pendant",
+        "natural light",
+        "linear recessed"
+      ],
+      "warmth": "cool"
+    },
+    "materials": {
+      "top_materials": [
+        "white marble",
+        "white lacquer",
+        "glass",
+        "polished concrete",
+        "white ceramic"
+      ],
+      "wood_tones": "light",
+      "metals": [
+        "chrome",
+        "polished-nickel",
+        "matte-black"
+      ]
+    },
+    "color_palette": {
+      "wall_color_family": "cool neutral",
+      "accent_colors": [
+        "white",
+        "light gray",
+        "pale yellow",
+        "soft green"
+      ],
+      "saturation": "muted"
+    },
+    "composition": {
+      "camera_angle": "eye level",
+      "floor_visible_pct": "30-45",
+      "ceiling_visible_pct": "15-25"
+    },
+    "negatives": [
+      "warm wood tones",
+      "saturated colors",
+      "dense gallery walls",
+      "patterned textiles",
+      "ornate details",
+      "brass fixtures",
+      "layered rugs",
+      "visible clutter",
+      "dark walls",
+      "heavy drapery",
+      "decorative pillows with patterns",
+      "warm lighting",
+      "rustic materials",
+      "vintage furniture"
+    ],
+    "density_tier": "low",
+    "hero_furniture_nouns": [
+      "floating white platform bed",
+      "white upholstered sofa with metal legs",
+      "white marble waterfall island",
+      "wall-mounted white vanity",
+      "white pedestal dining table",
+      "floating white desk",
+      "sculptural white tulip chair",
+      "white Eames wire chairs"
+    ],
+    "pass1_fragment": "floating white platform bed, white upholstered sofa with chrome legs, white marble waterfall island, white pedestal dining table, floating white lacquer desk, sculptural white molded chair",
+    "pass2_fragment": "1-2 white ceramic vases with single orchid or bare branches, 1-3 objects per surface including glass vessels and fresh fruit, 2-3 pale gray pillows, single light gray area rug, 1-2 floor plants in white ceramic pots",
+    "_rooms_analyzed": [
+      "bedroom",
+      "livingroom",
+      "kitchen",
+      "bathroom",
+      "diningroom",
+      "homeoffice"
+    ],
+    "_model": "claude-sonnet-4-5"
+  }
+}

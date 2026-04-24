@@ -55,13 +55,14 @@ describe("buildLorasFromBlend — fingerprint → cv-trigger map", () => {
     expect(n).toEqual({ cvwmn: 1.0 });
   });
 
-  it("merges duplicate cv-triggers (COVAMINIMAL and COVASCANDINAV both map to cvscn)", () => {
+  it("COVAMINIMAL -> cvmin and COVASCANDINAV -> cvscn are distinct (trigger collision fixed 2026-04-23)", () => {
     const { loras } = buildLorasFromBlend(
       { COVAMINIMAL: 0.5, COVASCANDINAV: 0.5 },
       FALLBACK,
     );
-    expect(Object.keys(loras)).toEqual(["cvscn"]);
-    expect(loras.cvscn).toBeCloseTo(1.0, 6);
+    expect(new Set(Object.keys(loras))).toEqual(new Set(["cvmin", "cvscn"]));
+    expect(loras.cvmin).toBeCloseTo(0.5, 6);
+    expect(loras.cvscn).toBeCloseTo(0.5, 6);
   });
 
   it("ignores unknown archetype keys", () => {
@@ -145,16 +146,15 @@ describe("normalizeLoras — raw cv-trigger map normalization", () => {
 });
 
 describe("canonical cv-trigger registry coverage", () => {
-  // The Cova implementation registry uses 9 unique cv* triggers even though
-  // there are 10 COVA* archetypes (COVAMINIMAL + COVASCANDINAV both map to
-  // cvscn). These are the canonical triggers the Director is allowed to
-  // emit in `loras`. The research doc references `cvjpd`, `cvlux`, `cvmax`
-  // which do NOT exist in the implementation registry — flagged as
-  // F3-NAMING.1 follow-up in docs/phase-3/follow-ups-deferred.md.
+  // 10 COVA* archetypes -> 10 unique cv* triggers after 2026-04-23 fix.
+  // Previously COVAMINIMAL collided with COVASCANDINAV at cvscn; now
+  // COVAMINIMAL -> cvmin. Research doc's cvjpd/cvlux/cvmax still do not
+  // exist in the implementation registry — F3-NAMING.1.
   const CANONICAL_TRIGGERS = [
     "cvwmn",
     "cvscn",
     "cvbio",
+    "cvmin",
     "cvmcm",
     "cvcst",
     "cvboh",

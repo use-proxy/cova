@@ -1,0 +1,122 @@
+{
+  "style_slug": "pure-minimal-white",
+  "style_display": "Pure Minimal White",
+  "wall_decor": {
+    "avg_pieces_per_room": "0-1",
+    "arrangement_pattern": "single statement",
+    "wall_coverage_pct": "2-5",
+    "notes": "Walls are intentionally bare with rare single geometric or architectural pieces."
+  },
+  "surface_styling": {
+    "objects_per_surface": "1-3",
+    "typical_groupings": "single vase + fruit + ceramic vessel",
+    "vocabulary": [
+      "white ceramic vases",
+      "glass vessels",
+      "fresh fruit",
+      "minimal stationery",
+      "sculptural objects",
+      "orchids",
+      "branches"
+    ]
+  },
+  "plants": {
+    "avg_per_room": "1-2",
+    "vessels": [
+      "white ceramic",
+      "glass",
+      "white stoneware"
+    ],
+    "placement": [
+      "floor corner",
+      "tabletop",
+      "window",
+      "countertop"
+    ]
+  },
+  "textile_layering": {
+    "pillows_per_seating": "2-3",
+    "throws_blankets": "absent",
+    "rugs": "single anchor",
+    "window_treatment": "sheer"
+  },
+  "lighting": {
+    "avg_sources_per_room": "2-3",
+    "types_present": [
+      "recessed overhead",
+      "single pendant",
+      "natural light",
+      "linear recessed"
+    ],
+    "warmth": "cool"
+  },
+  "materials": {
+    "top_materials": [
+      "white marble",
+      "white lacquer",
+      "glass",
+      "polished concrete",
+      "white ceramic"
+    ],
+    "wood_tones": "light",
+    "metals": [
+      "chrome",
+      "polished-nickel",
+      "matte-black"
+    ]
+  },
+  "color_palette": {
+    "wall_color_family": "cool neutral",
+    "accent_colors": [
+      "white",
+      "light gray",
+      "pale yellow",
+      "soft green"
+    ],
+    "saturation": "muted"
+  },
+  "composition": {
+    "camera_angle": "eye level",
+    "floor_visible_pct": "30-45",
+    "ceiling_visible_pct": "15-25"
+  },
+  "negatives": [
+    "warm wood tones",
+    "saturated colors",
+    "dense gallery walls",
+    "patterned textiles",
+    "ornate details",
+    "brass fixtures",
+    "layered rugs",
+    "visible clutter",
+    "dark walls",
+    "heavy drapery",
+    "decorative pillows with patterns",
+    "warm lighting",
+    "rustic materials",
+    "vintage furniture"
+  ],
+  "density_tier": "low",
+  "density_axis": "object",
+  "hero_furniture_nouns": [
+    "floating white platform bed",
+    "white upholstered sofa with metal legs",
+    "white marble waterfall island",
+    "wall-mounted white vanity",
+    "white pedestal dining table",
+    "floating white desk",
+    "sculptural white tulip chair",
+    "white Eames wire chairs"
+  ],
+  "pass1_fragment": "floating white platform bed, white upholstered sofa with chrome legs, white marble waterfall island, white pedestal dining table, floating white lacquer desk, sculptural white molded chair",
+  "pass2_fragment": "1-2 white ceramic vases with single orchid or bare branches, 1-3 objects per surface including glass vessels and fresh fruit, 2-3 pale gray pillows, single light gray area rug, 1-2 floor plants in white ceramic pots",
+  "_rooms_analyzed": [
+    "bedroom",
+    "livingroom",
+    "kitchen",
+    "bathroom",
+    "diningroom",
+    "homeoffice"
+  ],
+  "_model": "claude-sonnet-4-5"
+}

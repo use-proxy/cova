@@ -297,7 +297,7 @@ export default function StepSevenPage() {
     );
     if (hasRealData) {
       // Auto-navigate when detection was real
-      timers.push(setTimeout(() => router.push("/design/step-7b"), 2300));
+      timers.push(setTimeout(() => router.push("/design/step-7p"), 2300));
     } else {
       // Cosmetic mode — show Continue button
       timers.push(setTimeout(() => setShowContinue(true), 2300));
@@ -442,7 +442,7 @@ export default function StepSevenPage() {
           <button
             type="button"
             className="step7-cta-btn"
-            onClick={() => router.push("/design/step-7b")}
+            onClick={() => router.push("/design/step-7p")}
           >
             Continue →
           </button>

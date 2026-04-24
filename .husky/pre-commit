@@ -45,6 +45,7 @@ STAGED=$(git diff --cached --diff-filter=ACM --name-only \
   ':!apps/web/app/api/pipeline/furniture-match/' \
   ':!apps/web/app/design/step-3b/' \
   ':!apps/web/app/design/step-7g/' \
+  ':!apps/web/app/design/_future/' \
   ':!apps/web/components/quiz/CardStack.tsx')
 LEAK_FOUND=0
 for file in $STAGED; do

@@ -57,9 +57,12 @@ describe("step-2 → step-3", () => {
   });
 });
 
-describe("step-3 → step-4", () => {
-  it("pushes /design/step-4", () => {
-    expect(hasPush(readStep("step-3"), "/design/step-4")).toBe(true);
+describe("step-3 → step-3b → step-4", () => {
+  it("step-3 pushes to step-3b (fingerprint intermediate)", () => {
+    expect(hasPush(readStep("step-3"), "/design/step-3b")).toBe(true);
+  });
+  it("step-3b pushes to step-4", () => {
+    expect(hasPush(readStep("step-3b"), "/design/step-4")).toBe(true);
   });
 });
 
@@ -81,27 +84,15 @@ describe("step-6 → step-7", () => {
   });
 });
 
-describe("step-7 → step-7b", () => {
-  it("pushes /design/step-7b", () => {
-    expect(hasPush(readStep("step-7"), "/design/step-7b")).toBe(true);
+describe("step-7 → step-7p", () => {
+  it("pushes /design/step-7p", () => {
+    expect(hasPush(readStep("step-7"), "/design/step-7p")).toBe(true);
   });
 });
 
-describe("step-7b → step-7c", () => {
-  it("pushes /design/step-7c", () => {
-    expect(hasPush(readStep("step-7b"), "/design/step-7c")).toBe(true);
-  });
-});
-
-describe("step-7c → step-7d", () => {
-  it("pushes /design/step-7d", () => {
-    expect(hasPush(readStep("step-7c"), "/design/step-7d")).toBe(true);
-  });
-});
-
-describe("step-7d → step-8a", () => {
+describe("step-7p → step-8a", () => {
   it("pushes /design/step-8a", () => {
-    expect(hasPush(readStep("step-7d"), "/design/step-8a")).toBe(true);
+    expect(hasPush(readStep("step-7p"), "/design/step-8a")).toBe(true);
   });
 });
 
@@ -119,17 +110,7 @@ describe("step-8a → step-8b", () => {
 
 // ─── Back navigation ─────────────────────────────────────────────────────────
 
-describe("back: step-7b → step-7", () => {
-  it("back button pushes /design/step-7", () => {
-    expect(hasBackPush(readStep("step-7b"), "/design/step-7")).toBe(true);
-  });
-});
-
-describe("back: step-7c → step-7b", () => {
-  it("back button pushes /design/step-7b", () => {
-    expect(hasBackPush(readStep("step-7c"), "/design/step-7b")).toBe(true);
-  });
-});
+// V1 step-7b/c back-nav tests retired (pages moved to _future/).
 
 describe("back: step-9 → step-8a", () => {
   it("back button pushes /design/step-8a", () => {

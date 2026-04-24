@@ -1,0 +1,124 @@
+{
+  "style_slug": "industrial-loft",
+  "style_display": "Industrial Loft",
+  "wall_decor": {
+    "avg_pieces_per_room": "0-1",
+    "arrangement_pattern": "single statement",
+    "wall_coverage_pct": "3-8",
+    "notes": "Minimal wall art; exposed brick and concrete surfaces serve as primary visual texture."
+  },
+  "surface_styling": {
+    "objects_per_surface": "3-6",
+    "typical_groupings": "ceramic vessels + books + small plant + wooden cutting boards",
+    "vocabulary": [
+      "ceramics",
+      "books",
+      "plants",
+      "wooden bowls",
+      "metal containers",
+      "glass vases",
+      "candles",
+      "copper cookware"
+    ]
+  },
+  "plants": {
+    "avg_per_room": "2-3",
+    "vessels": [
+      "concrete",
+      "terracotta",
+      "black metal",
+      "woven basket",
+      "ceramic"
+    ],
+    "placement": [
+      "floor corner",
+      "tabletop",
+      "shelf",
+      "window sill"
+    ]
+  },
+  "textile_layering": {
+    "pillows_per_seating": "3-5",
+    "throws_blankets": "present",
+    "rugs": "single anchor",
+    "window_treatment": "bare"
+  },
+  "lighting": {
+    "avg_sources_per_room": "4-8",
+    "types_present": [
+      "Edison bulb pendant cluster",
+      "exposed filament bulbs",
+      "track lighting",
+      "task lamp",
+      "natural light from large windows"
+    ],
+    "warmth": "warm"
+  },
+  "materials": {
+    "top_materials": [
+      "exposed brick",
+      "concrete",
+      "reclaimed wood",
+      "black metal",
+      "polished concrete flooring"
+    ],
+    "wood_tones": "medium",
+    "metals": [
+      "matte-black",
+      "black",
+      "brass",
+      "copper"
+    ]
+  },
+  "color_palette": {
+    "wall_color_family": "cool neutral",
+    "accent_colors": [
+      "charcoal gray",
+      "warm brick red",
+      "cognac leather",
+      "natural wood",
+      "matte black"
+    ],
+    "saturation": "muted"
+  },
+  "composition": {
+    "camera_angle": "eye level",
+    "floor_visible_pct": "35-45",
+    "ceiling_visible_pct": "20-35"
+  },
+  "negatives": [
+    "ornate molding",
+    "wallpaper",
+    "bright saturated colors",
+    "traditional curtains or drapes",
+    "polished chrome fixtures",
+    "upholstered headboards with tufting",
+    "gallery walls with multiple frames",
+    "floral patterns",
+    "white-washed or light wood tones",
+    "decorative ceiling fixtures beyond exposed bulbs"
+  ],
+  "density_tier": "medium",
+  "density_axis": "material",
+  "hero_furniture_nouns": [
+    "low-profile platform bed with leather bench",
+    "deep-cushion charcoal linen sofa",
+    "round black metal coffee table",
+    "reclaimed wood dining table with metal base",
+    "black metal open shelving unit",
+    "sawhorse desk with wood plank top",
+    "floating wood vanity with vessel sink",
+    "leather dining chairs with metal frames"
+  ],
+  "pass1_fragment": "exposed brick walls, polished concrete floors, black metal frame furniture, reclaimed wood surfaces, Edison bulb pendant clusters, large factory windows",
+  "pass2_fragment": "2-3 floor plants in concrete or terracotta vessels, 3-5 pillows per seating in charcoal and leather tones, 3-6 ceramic vessels and books per surface, single area rug, 4-8 warm Edison bulb light sources, open metal shelving with curated objects",
+  "_rooms_analyzed": [
+    "bedroom",
+    "livingroom",
+    "kitchen",
+    "bathroom",
+    "diningroom",
+    "homeoffice"
+  ],
+  "_model": "claude-sonnet-4-5"
+}

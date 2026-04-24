@@ -1,0 +1,127 @@
+{
+  "style_slug": "biophilic-jungle",
+  "style_display": "Biophilic Jungle",
+  "wall_decor": {
+    "avg_pieces_per_room": "0-1",
+    "arrangement_pattern": "none",
+    "wall_coverage_pct": "60-90",
+    "notes": "Walls are dominated by living green walls, moss panels, and cascading vines rather than traditional art."
+  },
+  "surface_styling": {
+    "objects_per_surface": "2-4",
+    "typical_groupings": "terracotta pots + small herbs + wooden cutting board, ceramic vessels + small potted plants + natural fiber basket",
+    "vocabulary": [
+      "terracotta pots",
+      "small plants",
+      "herbs",
+      "wooden bowls",
+      "ceramic vessels",
+      "natural fiber baskets",
+      "woven trays",
+      "wooden cutting boards"
+    ]
+  },
+  "plants": {
+    "avg_per_room": "12-20",
+    "vessels": [
+      "terracotta",
+      "ceramic",
+      "rattan basket",
+      "woven basket",
+      "concrete",
+      "stoneware"
+    ],
+    "placement": [
+      "floor corner",
+      "floor clustered",
+      "tabletop",
+      "hanging",
+      "shelf",
+      "window",
+      "integrated living wall",
+      "ceiling hanging"
+    ]
+  },
+  "textile_layering": {
+    "pillows_per_seating": "3-5",
+    "throws_blankets": "present",
+    "rugs": "single anchor",
+    "window_treatment": "bare"
+  },
+  "lighting": {
+    "avg_sources_per_room": "2-3",
+    "types_present": [
+      "natural light",
+      "overhead pendant",
+      "table lamp",
+      "sconce",
+      "floor lamp"
+    ],
+    "warmth": "warm"
+  },
+  "materials": {
+    "top_materials": [
+      "rattan",
+      "wood",
+      "terracotta",
+      "natural fiber",
+      "concrete"
+    ],
+    "wood_tones": "medium",
+    "metals": [
+      "brass",
+      "matte-black"
+    ]
+  },
+  "color_palette": {
+    "wall_color_family": "cool neutral",
+    "accent_colors": [
+      "deep green",
+      "moss green",
+      "terracotta",
+      "natural tan",
+      "cream"
+    ],
+    "saturation": "saturated"
+  },
+  "composition": {
+    "camera_angle": "eye level",
+    "floor_visible_pct": "30-40",
+    "ceiling_visible_pct": "15-25"
+  },
+  "negatives": [
+    "bare walls without greenery",
+    "chrome or polished metals",
+    "synthetic materials",
+    "bright saturated non-plant colors",
+    "minimal plant count",
+    "sleek modern minimalism",
+    "gallery walls with framed art",
+    "cool color temperature lighting",
+    "glass and steel furniture",
+    "formal symmetrical arrangements"
+  ],
+  "density_tier": "high",
+  "density_axis": "plant",
+  "hero_furniture_nouns": [
+    "rattan platform bed with canopy",
+    "mid-century wood sofa with cane panels",
+    "reclaimed wood kitchen cabinetry with farmhouse sink",
+    "freestanding white soaking tub",
+    "solid wood dining table with rattan bistro chairs",
+    "wood trestle desk with black metal legs",
+    "woven rattan pouf",
+    "rattan pendant light"
+  ],
+  "pass1_fragment": "rattan and reclaimed wood furniture, terracotta and natural fiber accents, white upholstery, farmhouse sink, woven pendant lighting",
+  "pass2_fragment": "12-20 plants in terracotta and woven vessels on floor clusters and shelves, living green wall covering 60-90% of one wall with cascading vines, 3-5 textured pillows in cream and green tones, jute area rug, 2-4 ceramic and wooden objects per surface",
+  "_rooms_analyzed": [
+    "bedroom",
+    "livingroom",
+    "kitchen",
+    "bathroom",
+    "diningroom",
+    "homeoffice"
+  ],
+  "_model": "claude-sonnet-4-5"
+}

@@ -1,0 +1,122 @@
+{
+  "style_slug": "retro-mid-century",
+  "style_display": "Retro Mid-Century",
+  "wall_decor": {
+    "avg_pieces_per_room": "1-2",
+    "arrangement_pattern": "single statement",
+    "wall_coverage_pct": "5-12",
+    "notes": "Iconic statement pieces like sunburst mirrors, geometric clocks, or bold abstract art in saturated colors dominate."
+  },
+  "surface_styling": {
+    "objects_per_surface": "3-5",
+    "typical_groupings": "ceramic vase + small plant + decorative bowl or books + small sculpture + candle",
+    "vocabulary": [
+      "ceramics",
+      "terracotta vases",
+      "small potted plants",
+      "decorative bowls",
+      "books",
+      "sculptural objects",
+      "fruit bowls",
+      "brass accents"
+    ]
+  },
+  "plants": {
+    "avg_per_room": "2-3",
+    "vessels": [
+      "terracotta",
+      "ceramic",
+      "rattan basket",
+      "brass planter",
+      "stoneware"
+    ],
+    "placement": [
+      "floor corner",
+      "tabletop",
+      "shelf",
+      "window sill"
+    ]
+  },
+  "textile_layering": {
+    "pillows_per_seating": "4-6",
+    "throws_blankets": "present",
+    "rugs": "single anchor",
+    "window_treatment": "curtains"
+  },
+  "lighting": {
+    "avg_sources_per_room": "2-4",
+    "types_present": [
+      "sputnik chandelier",
+      "starburst pendant",
+      "table lamp with tapered base",
+      "floor lamp",
+      "recessed lighting",
+      "natural light"
+    ],
+    "warmth": "warm"
+  },
+  "materials": {
+    "top_materials": [
+      "walnut wood",
+      "teak",
+      "brass",
+      "ceramic tile",
+      "molded plastic"
+    ],
+    "wood_tones": "medium",
+    "metals": [
+      "brass",
+      "chrome",
+      "black"
+    ]
+  },
+  "color_palette": {
+    "wall_color_family": "warm neutral",
+    "accent_colors": [
+      "mustard yellow",
+      "burnt orange",
+      "olive green",
+      "teal",
+      "rust red"
+    ],
+    "saturation": "saturated"
+  },
+  "composition": {
+    "camera_angle": "eye level",
+    "floor_visible_pct": "30-45",
+    "ceiling_visible_pct": "15-25"
+  },
+  "negatives": [
+    "cool gray walls",
+    "minimalist sparse decor",
+    "industrial exposed brick",
+    "farmhouse shiplap",
+    "all-white color schemes",
+    "contemporary glass furniture",
+    "rustic distressed wood",
+    "bohemian macrame",
+    "traditional ornate molding"
+  ],
+  "density_tier": "medium",
+  "density_axis": "object",
+  "hero_furniture_nouns": [
+    "tapered-leg platform bed in walnut",
+    "Eames-style lounge chair in cognac leather",
+    "tulip pedestal dining table",
+    "low-profile credenza with sliding doors",
+    "molded plastic shell chairs with wire bases",
+    "curved-arm sofa on tapered legs",
+    "hairpin-leg desk with drawers"
+  ],
+  "pass1_fragment": "tapered walnut legs, curved-arm olive sofa, tulip pedestal table, molded plastic shell chairs, low credenza with brass pulls, sunburst mirror accent",
+  "pass2_fragment": "2-3 plants in terracotta and brass planters, 4-6 mustard and olive pillows, 3-5 ceramic objects per surface including vases and bowls, single saturated geometric rug, sputnik or starburst pendant lighting",
+  "_rooms_analyzed": [
+    "bedroom",
+    "livingroom",
+    "kitchen",
+    "bathroom",
+    "diningroom",
+    "homeoffice"
+  ],
+  "_model": "claude-sonnet-4-5"
+}
