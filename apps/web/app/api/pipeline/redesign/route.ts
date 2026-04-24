@@ -705,6 +705,49 @@ export async function POST(request: Request) {
     }
   }
 
+  // ── Empty room validation gate (Claude Vision) ─────────────────────────────
+  // Verify the empty room is actually empty before spending $1.50 on redesign.
+  const emptyRoomUrlForValidation = room?.empty_room_url ?? photoUrlForPipeline ?? null;
+  if (emptyRoomUrlForValidation) {
+    try {
+      const Anthropic = (await import("@anthropic-ai/sdk")).default;
+      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+      const valResponse = await anthropic.messages.create({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 50,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "image",
+                source: { type: "url", url: emptyRoomUrlForValidation },
+              },
+              {
+                type: "text",
+                text: "Is this room completely empty of all furniture, rugs, wall decorations, personal items, and objects? Only bare walls, floor, ceiling, windows, and fixed architecture should remain. Answer with ONLY the word EMPTY or NOT_EMPTY.",
+              },
+            ],
+          },
+        ],
+      });
+      const answer =
+        valResponse.content[0].type === "text"
+          ? valResponse.content[0].text.trim().toUpperCase()
+          : "";
+      if (answer !== "EMPTY") {
+        console.warn(
+          "[redesign] Empty room validation FAILED — room not empty, proceeding anyway but logging warning",
+        );
+      } else {
+        console.log("[redesign] Empty room validation passed");
+      }
+    } catch (valErr) {
+      console.error("[redesign] Empty room validation failed:", valErr);
+      // Fail open — don't block render if Vision call fails
+    }
+  }
+
   // Read wall/floor change preferences from the *fresh* Design Director result.
   // The previous implementation read from room.design_brief, which was fetched
   // before the Design Director ran — on first render that snapshot is null,

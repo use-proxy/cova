@@ -63,14 +63,13 @@ PASS2_STRENGTH: float = 0.55
 PASS2_STEPS: int = 22
 PASS2_GUIDANCE: float = 3.5
 
-# Pass 3 — IC-Light v2. Iter 3 (2026-04-23): 0.70 was still washing out warm lighting
-# because IC-Light re-renders the scene lighting at its own temperature. Dropped to
-# 0.50 to let Pass 1/2's warm lighting survive more clearly.
-PASS3_LOWRES_DENOISE: float = 0.50
-PASS3_HIGHRES_DENOISE: float = 0.35
+# Pass 3 — IC-Light v2. Iter 5 (2026-04-24): bg_threshold 0.75 caused fog-bombing.
+# Dropped to 0.50. Lowres/highres denoise tuned to preserve Pass 1/2 content.
+PASS3_LOWRES_DENOISE: float = 0.85
+PASS3_HIGHRES_DENOISE: float = 0.40
 PASS3_GUIDANCE: float = 5.0
-PASS3_STEPS: int = 28
-PASS3_BG_THRESHOLD: float = 0.75
+PASS3_STEPS: int = 20
+PASS3_BG_THRESHOLD: float = 0.50
 
 # ControlNet scales — Pass 2 varies per-room-type (see ROOM_TYPE_SPECS).
 CONTROLNET_DEPTH_P1: float = 0.80
@@ -354,11 +353,9 @@ class RedesignRequest(BaseModel):
     lora_scale_multiplier: float | None = None
     seed: int | None = None
     skip_pass2: bool = False
-    # Iter 4 (2026-04-23): Pass 3 IC-Light disabled by default. It was fog-
-    # bombing renders with background_threshold=0.75 producing ghost images.
-    # Pass 1 LIGHTING prompt + editorial warm WB carry the lighting story.
-    # Callers who want IC-Light can opt in with skip_pass3=False.
-    skip_pass3: bool = True
+    # Iter 5 (2026-04-24): IC-Light re-enabled with bg_threshold=0.50
+    # (was 0.75 → fog-bombing). Lowres/highres denoise tuned to preserve content.
+    skip_pass3: bool = False
     lighting_preset_override: Literal[
         "warm_cozy", "bright_natural", "dramatic_moody"
     ] | None = None
@@ -1341,8 +1338,8 @@ def _run_pass2(
 
 
 def _run_ic_light(pass2_url: str, preset: str) -> str:
-    """Optional IC-Light relight pass. Iter 4 removes background_threshold
-    because 0.75 produced ghost-BG foggy renders. Let fal default it."""
+    """IC-Light relight pass. Iter 5 (2026-04-24): re-enabled with
+    background_threshold=0.50 (was 0.75 → fog-bombing), tuned denoise."""
     import fal_client  # type: ignore
 
     preset = preset if preset in IC_LIGHT_PROMPTS else "warm_cozy"
@@ -1355,6 +1352,7 @@ def _run_ic_light(pass2_url: str, preset: str) -> str:
             "image_url": pass2_url,
             "prompt": prompt,
             "initial_latent": latent,
+            "background_threshold": PASS3_BG_THRESHOLD,
             "lowres_denoise": PASS3_LOWRES_DENOISE,
             "highres_denoise": PASS3_HIGHRES_DENOISE,
             "guidance_scale": PASS3_GUIDANCE,

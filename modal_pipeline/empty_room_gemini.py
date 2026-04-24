@@ -83,12 +83,30 @@ COST_AUDIT_USD = 0.05
 # ---------------------------------------------------------------------------
 
 STATIC_V1_PROMPT = (
-    "Remove all furniture, bedding, rugs, clothing, electronics, personal items, "
-    "decor, plants, lamps, posters, and clutter from this room. Keep the exact "
-    "same walls, wall color, ceiling, ceiling fixtures, floor, floor material, "
-    "windows, window treatments, doors, built-ins, architectural features, wall "
-    "text, and camera angle. The result should be a completely empty barren room "
-    "with only the architecture visible."
+    "Remove EVERYTHING that is not permanent architecture from this room. "
+    "This means remove ALL of the following without exception: "
+    "ALL furniture (beds, bed frames, mattresses, sofas, chairs, tables, "
+    "nightstands, dressers, wardrobes, desks, shelves, bookcases, ottomans, "
+    "benches, stools, cabinets, TV stands, media consoles), "
+    "ALL personal items (wall letters, monograms, name signs, photo garlands, "
+    "string lights, fairy lights, tapestries, flags, banners, posters, "
+    "framed photos, artwork, mirrors leaning against walls, decorative objects), "
+    "ALL textiles (rugs, carpets, throws, blankets, curtains, drapes, blinds "
+    "that are not built-in, cushions, pillows), "
+    "ALL technology (TVs, monitors, computers, speakers, gaming equipment, "
+    "lamps, floor lamps, table lamps, desk lamps), "
+    "ALL plants (potted plants, hanging plants, vases with flowers). "
+    "KEEP ONLY permanent architecture: bare walls with their original paint or "
+    "texture, bare floor with its original material, ceiling with original "
+    "texture and fixed light fixtures (recessed lights, ceiling fans with "
+    "light kits, chandelier if hardwired), windows with frames and glass, "
+    "built-in closets and their doors, doors and door frames, baseboards, "
+    "crown molding, exposed brick or concrete that is part of the structure. "
+    "If any text, letters, words, or names appear on the walls — remove them "
+    "completely. The walls must be completely bare. "
+    "The result must look like a vacant unfurnished apartment unit ready for "
+    "professional staging photography. No objects on the floor. No objects "
+    "on the walls. No objects on any surface."
 )
 
 OCCLUSION_PROMPT = """Analyze this room photo. Determine whether removing the furniture and clutter would require the image editor to paint in significant wall, floor, or ceiling regions that are currently covered. This is true when items are mounted on walls, when furniture is pushed flush against walls blocking them, when curtains or drapes cover wall sections, or when large freestanding items occlude architectural regions.
