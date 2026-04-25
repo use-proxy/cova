@@ -1,0 +1,60 @@
+{
+  "variant": "E",
+  "name": "CN Union (d+c) + LoRA 0.30",
+  "request": {
+    "image_url": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAQDA...<data_url_truncated>",
+    "prompt": "cvwmn modern Japandi bedroom, warm wood floors, paper lantern pendant, minimal furniture, editorial photography",
+    "guidance_scale": 3.5,
+    "num_inference_steps": 28,
+    "image_size": "square_hd",
+    "seed": 42,
+    "output_format": "jpeg",
+    "enable_safety_checker": false,
+    "loras": [
+      {
+        "path": "https://v3b.fal.media/files/b/0a968d9b/TbARCu6Zf_643uHs51Pkv_pytorch_lora_weights.safetensors",
+        "scale": 0.3
+      }
+    ],
+    "controlnet_unions": [
+      {
+        "path": "InstantX/FLUX.1-dev-Controlnet-Union",
+        "controls": [
+          {
+            "control_image_url": "https://v3b.fal.media/files/b/0a97b8e0/z9o4INN5tOQeC22ZU6tVV_ab8b8b5efa34423c968e730f17199ed7.png",
+            "control_mode": "depth",
+            "conditioning_scale": 0.6
+          },
+          {
+            "control_image_url": "https://v3b.fal.media/files/b/0a97b8e1/GVMXHHA51xbZSUQIZaDVW_c9916848a3c543c5b46f24233eef9b08.png",
+            "control_mode": "canny",
+            "conditioning_scale": 0.5
+          }
+        ]
+      }
+    ]
+  },
+  "status_code": 200,
+  "response": {
+    "images": [
+      {
+        "url": "https://v3b.fal.media/files/b/0a97b8fc/KNmDlnziCrv8Fm1xm-aCO.jpg",
+        "width": 1024,
+        "height": 1024,
+        "content_type": "image/jpeg"
+      }
+    ],
+    "timings": {
+      "inference": 11.927721688996826
+    },
+    "seed": 42,
+    "has_nsfw_concepts": [
+      false
+    ],
+    "prompt": "cvwmn modern Japandi bedroom, warm wood floors, paper lantern pendant, minimal furniture, editorial photography"
+  },
+  "elapsed_s": 13.74,
+  "mode": "sync",
+  "result": "PASS",
+  "image_url": "https://v3b.fal.media/files/b/0a97b8fc/KNmDlnziCrv8Fm1xm-aCO.jpg"
+}
