@@ -70,6 +70,12 @@
   ],
   "overrides": [
     {
+      "files": ["app/design/_future/**/*"],
+      "rules": {
+        "no-restricted-syntax": "off"
+      }
+    },
+    {
       "files": [
         "lib/ai/forbidden-names.ts",
         "lib/ai/canonical-archetypes.ts",
