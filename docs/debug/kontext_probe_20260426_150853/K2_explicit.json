@@ -1,0 +1,20 @@
+{
+  "images": [
+    {
+      "url": "https://v3b.fal.media/files/b/0a97dae7/CIxKJt-ZdIBQnFLnWerc2_377ebb283d3a47bfbd9a431497d0664a.jpg",
+      "content_type": "image/jpeg",
+      "file_name": null,
+      "file_size": null,
+      "width": 1024,
+      "height": 1024
+    }
+  ],
+  "timings": {},
+  "seed": 42,
+  "has_nsfw_concepts": [
+    false
+  ],
+  "prompt": "Apply Japandi interior design style to this bedroom: warm off-white plaster walls, linen bedding in neutral tones, a low teak nightstand, a paper lantern reading light, minimal decor. Preserve exactly: the tile floor with its existing pattern, the popcorn ceiling, the ceiling fan in its current position with its blade count, both windows with their blinds, the crucifix on the wall, the camera angle, and the overall room proportions.",
+  "_elapsed_s": 11.2,
+  "_mode": "sync"
+}

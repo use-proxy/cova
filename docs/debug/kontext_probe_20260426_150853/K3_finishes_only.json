@@ -1,0 +1,20 @@
+{
+  "images": [
+    {
+      "url": "https://v3b.fal.media/files/b/0a97dae8/8voOpnkpfJCybTJNjyOdw_61c3518eaa3f44e0a49bed398390ff1d.jpg",
+      "content_type": "image/jpeg",
+      "file_name": null,
+      "file_size": null,
+      "width": 1024,
+      "height": 1024
+    }
+  ],
+  "timings": {},
+  "seed": 42,
+  "has_nsfw_concepts": [
+    false
+  ],
+  "prompt": "Restyle only the soft furnishings (bed linens, decorative pillows, area rug) and add modest decor (a paper lantern reading light, a single ceramic vase) in Japandi style. Do not change the floor, walls, ceiling, fan, windows, or any architectural element. Keep the same camera angle and room layout.",
+  "_elapsed_s": 11.2,
+  "_mode": "sync"
+}

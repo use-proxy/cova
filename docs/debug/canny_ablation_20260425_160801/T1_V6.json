@@ -1,0 +1,9 @@
+{
+  "variant": "V6",
+  "name": "No CN, LoRA+img2img strength=0.7",
+  "status_code": 200,
+  "elapsed_s": 8.4,
+  "mode": "sync",
+  "result": "PASS",
+  "image_url": "https://v3b.fal.media/files/b/0a97baa9/HbKpp6BVihg_kYp0HUBuU.jpg"
+}

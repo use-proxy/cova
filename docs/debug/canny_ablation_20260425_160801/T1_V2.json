@@ -1,0 +1,9 @@
+{
+  "variant": "V2",
+  "name": "Depth only, scale=0.5, end=0.6",
+  "status_code": 200,
+  "elapsed_s": 9.91,
+  "mode": "sync",
+  "result": "PASS",
+  "image_url": "https://v3b.fal.media/files/b/0a97baa4/_qEp-P2YaXKy0Pn2Z69Eu.jpg"
+}

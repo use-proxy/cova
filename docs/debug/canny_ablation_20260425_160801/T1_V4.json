@@ -1,0 +1,9 @@
+{
+  "variant": "V4",
+  "name": "Depth+Canny, scale=0.5/0.5, end=0.4",
+  "status_code": 200,
+  "elapsed_s": 10.63,
+  "mode": "sync",
+  "result": "PASS",
+  "image_url": "https://v3b.fal.media/files/b/0a97baa6/oJ7AIf3Spr2AlxzRa-3kX.jpg"
+}

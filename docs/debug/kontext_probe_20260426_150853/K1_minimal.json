@@ -1,0 +1,20 @@
+{
+  "images": [
+    {
+      "url": "https://v3b.fal.media/files/b/0a97dae6/6EpKFLw6jSppATREkOt-P_c3c89866758d45f2ad51f855752bbfde.jpg",
+      "content_type": "image/jpeg",
+      "file_name": null,
+      "file_size": null,
+      "width": 1024,
+      "height": 1024
+    }
+  ],
+  "timings": {},
+  "seed": 42,
+  "has_nsfw_concepts": [
+    false
+  ],
+  "prompt": "Apply Japandi interior design style to this bedroom while preserving the room's architecture, fixtures, and layout.",
+  "_elapsed_s": 12.7,
+  "_mode": "sync"
+}

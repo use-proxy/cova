@@ -1,0 +1,9 @@
+{
+  "variant": "V5",
+  "name": "Canny only, scale=0.5, end=1.0",
+  "status_code": 200,
+  "elapsed_s": 10.57,
+  "mode": "sync",
+  "result": "PASS",
+  "image_url": "https://v3b.fal.media/files/b/0a97baa8/D_jeYVkdidpQfDG4CkNFo.jpg"
+}
