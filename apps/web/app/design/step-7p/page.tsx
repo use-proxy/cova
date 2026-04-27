@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import type { PersonalizationManifest } from "@/lib/types/personalization";
@@ -23,7 +23,7 @@ interface RoomRow {
   empty_room_url: string | null;
 }
 
-export default function Step7pPage() {
+function Step7pPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [room, setRoom] = useState<RoomRow | null>(null);
@@ -206,5 +206,13 @@ export default function Step7pPage() {
         <div style={{ color: "#C0504A", marginTop: 16 }}>Error: {error}</div>
       )}
     </main>
+  );
+}
+
+export default function Step7pPage() {
+  return (
+    <Suspense fallback={null}>
+      <Step7pPageInner />
+    </Suspense>
   );
 }

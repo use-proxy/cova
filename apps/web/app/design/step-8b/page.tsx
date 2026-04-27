@@ -2,7 +2,7 @@
 
 import "./step8b.css";
 
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { Suspense, useEffect, useRef, useState, type MouseEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 
@@ -43,7 +43,7 @@ function supabase() {
   );
 }
 
-export default function Step8BPage() {
+function Step8BPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const imgRef = useRef<HTMLImageElement | null>(null);
@@ -476,6 +476,14 @@ export default function Step8BPage() {
         </section>
       </main>
     </div>
+  );
+}
+
+export default function Step8BPage() {
+  return (
+    <Suspense fallback={null}>
+      <Step8BPageInner />
+    </Suspense>
   );
 }
 
