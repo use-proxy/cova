@@ -268,6 +268,45 @@ export type Database = {
           },
         ]
       }
+      empty_room_cache: {
+        Row: {
+          cost_usd: number | null
+          created_at: string
+          empty_room_url: string
+          expires_at: string
+          id: string
+          input_hash: string
+          pipeline_path: string | null
+          pipeline_version: string
+          quality_warning: boolean
+          residual_items: Json
+        }
+        Insert: {
+          cost_usd?: number | null
+          created_at?: string
+          empty_room_url: string
+          expires_at?: string
+          id?: string
+          input_hash: string
+          pipeline_path?: string | null
+          pipeline_version?: string
+          quality_warning?: boolean
+          residual_items?: Json
+        }
+        Update: {
+          cost_usd?: number | null
+          created_at?: string
+          empty_room_url?: string
+          expires_at?: string
+          id?: string
+          input_hash?: string
+          pipeline_path?: string | null
+          pipeline_version?: string
+          quality_warning?: boolean
+          residual_items?: Json
+        }
+        Relationships: []
+      }
       furniture_placements: {
         Row: {
           color_override: string | null
@@ -1004,6 +1043,96 @@ export type Database = {
           },
         ]
       }
+      render_cost_log: {
+        Row: {
+          cache_hit: boolean
+          cost_usd: number
+          created_at: string
+          id: string
+          is_retry: boolean
+          pipeline_version: string
+          render_id: string
+          retry_type: string | null
+          tokens_charged: number
+          user_id: string
+        }
+        Insert: {
+          cache_hit?: boolean
+          cost_usd: number
+          created_at?: string
+          id?: string
+          is_retry?: boolean
+          pipeline_version: string
+          render_id: string
+          retry_type?: string | null
+          tokens_charged?: number
+          user_id: string
+        }
+        Update: {
+          cache_hit?: boolean
+          cost_usd?: number
+          created_at?: string
+          id?: string
+          is_retry?: boolean
+          pipeline_version?: string
+          render_id?: string
+          retry_type?: string | null
+          tokens_charged?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      render_rate_limits: {
+        Row: {
+          hour_start: string
+          retries_last_hour: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          hour_start?: string
+          retries_last_hour?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          hour_start?: string
+          retries_last_hour?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      render_retries: {
+        Row: {
+          created_at: string
+          free_retries_used: number
+          id: string
+          last_retry_at: string | null
+          original_render_id: string
+          paid_retries_used: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          free_retries_used?: number
+          id?: string
+          last_retry_at?: string | null
+          original_render_id: string
+          paid_retries_used?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          free_retries_used?: number
+          id?: string
+          last_retry_at?: string | null
+          original_render_id?: string
+          paid_retries_used?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       render_sessions: {
         Row: {
           created_at: string
@@ -1063,7 +1192,6 @@ export type Database = {
           image_url: string | null
           is_panoramic: boolean | null
           is_public: boolean | null
-          q_align_score: number | null
           laion_score: number | null
           loras_used: Json | null
           marble_operation_id: string | null
@@ -1073,6 +1201,7 @@ export type Database = {
           panoramic_url: string | null
           pipeline_version: string | null
           prompt_used: string | null
+          q_align_score: number | null
           quality_tier: string
           redesign_splat_url: string | null
           render_type: string
@@ -1105,7 +1234,6 @@ export type Database = {
           image_url?: string | null
           is_panoramic?: boolean | null
           is_public?: boolean | null
-          q_align_score?: number | null
           laion_score?: number | null
           loras_used?: Json | null
           marble_operation_id?: string | null
@@ -1115,6 +1243,7 @@ export type Database = {
           panoramic_url?: string | null
           pipeline_version?: string | null
           prompt_used?: string | null
+          q_align_score?: number | null
           quality_tier?: string
           redesign_splat_url?: string | null
           render_type?: string
@@ -1147,7 +1276,6 @@ export type Database = {
           image_url?: string | null
           is_panoramic?: boolean | null
           is_public?: boolean | null
-          q_align_score?: number | null
           laion_score?: number | null
           loras_used?: Json | null
           marble_operation_id?: string | null
@@ -1157,6 +1285,7 @@ export type Database = {
           panoramic_url?: string | null
           pipeline_version?: string | null
           prompt_used?: string | null
+          q_align_score?: number | null
           quality_tier?: string
           redesign_splat_url?: string | null
           render_type?: string
@@ -1308,6 +1437,7 @@ export type Database = {
           detection_status: string | null
           dimensions: string | null
           dimensions_json: Json
+          empty_room_url: string | null
           engagement_seconds: number | null
           final_style_vector: Json | null
           fingerprint_id: string | null
@@ -1402,6 +1532,7 @@ export type Database = {
           detection_status?: string | null
           dimensions?: string | null
           dimensions_json?: Json
+          empty_room_url?: string | null
           engagement_seconds?: number | null
           final_style_vector?: Json | null
           fingerprint_id?: string | null
@@ -1496,6 +1627,7 @@ export type Database = {
           detection_status?: string | null
           dimensions?: string | null
           dimensions_json?: Json
+          empty_room_url?: string | null
           engagement_seconds?: number | null
           final_style_vector?: Json | null
           fingerprint_id?: string | null
@@ -1584,6 +1716,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sam_embeddings: {
+        Row: {
+          created_at: string
+          embedding: string
+          expires_at: string
+          id: string
+          image_hash: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          embedding: string
+          expires_at?: string
+          id?: string
+          image_hash: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          embedding?: string
+          expires_at?: string
+          id?: string
+          image_hash?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       saved_products: {
         Row: {
@@ -2088,6 +2247,7 @@ export type Database = {
         Args: { room_id: string }
         Returns: undefined
       }
+      prune_expired_empty_room_cache: { Args: never; Returns: number }
       search_products_by_embedding: {
         Args: {
           match_count?: number
