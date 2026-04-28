@@ -1356,24 +1356,37 @@ def _run_ic_light(pass2_url: str, preset: str) -> str:
     prompt = IC_LIGHT_PROMPTS[preset]
     latent = IC_LIGHT_LATENT[preset]
 
-    r = fal_client.subscribe(
-        "fal-ai/iclight-v2",
-        arguments={
-            "image_url": pass2_url,
-            "prompt": prompt,
-            "initial_latent": latent,
-            "background_threshold": PASS3_BG_THRESHOLD,
-            "lowres_denoise": PASS3_LOWRES_DENOISE,
-            "highres_denoise": PASS3_HIGHRES_DENOISE,
-            "guidance_scale": PASS3_GUIDANCE,
-            "num_inference_steps": PASS3_STEPS,
-            "num_images": 1,
-            "output_format": "jpeg",
-        },
-        with_logs=False,
-        client_timeout=FAL_CLIENT_TIMEOUT_S,
-    )
-    return _extract_fal_image_url(r)
+    # Phase 2.0c.2 — IC-Light is quality enhancement, not load-bearing.
+    # Use shorter timeout (90s) and fail-open to pass2_url if slow or
+    # erroring. Verified Modal container deaths from IC-Light queue stalls
+    # at 2026-04-28 01:04.
+    IC_LIGHT_TIMEOUT_S = 90.0
+
+    try:
+        r = fal_client.subscribe(
+            "fal-ai/iclight-v2",
+            arguments={
+                "image_url": pass2_url,
+                "prompt": prompt,
+                "initial_latent": latent,
+                "background_threshold": PASS3_BG_THRESHOLD,
+                "lowres_denoise": PASS3_LOWRES_DENOISE,
+                "highres_denoise": PASS3_HIGHRES_DENOISE,
+                "guidance_scale": PASS3_GUIDANCE,
+                "num_inference_steps": PASS3_STEPS,
+                "num_images": 1,
+                "output_format": "jpeg",
+            },
+            with_logs=False,
+            client_timeout=IC_LIGHT_TIMEOUT_S,
+        )
+        return _extract_fal_image_url(r)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "[ic-light] failed (%s: %s) — falling back to pass2_url",
+            type(exc).__name__, str(exc)[:200],
+        )
+        return pass2_url
 
 
 # ---------------------------------------------------------------------------
