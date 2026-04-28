@@ -807,13 +807,15 @@ export async function POST(request: Request) {
     }
 
     const result = (await response.json()) as {
-      status: string;
+      status?: string;
       room_id?: string;
-      redesigned_pano_url?: string;
+      render_url?: string;             // V3 (cova-redesign-v3) returns this
+      redesigned_pano_url?: string;    // legacy paths return this
       perspective_render_url?: string | null;
       prompt?: string;
       dominant_styles?: string[];
       error?: string;
+      qa?: Record<string, unknown>;
     };
 
     if (result.status === "error") {
@@ -824,10 +826,47 @@ export async function POST(request: Request) {
       );
     }
 
+    const finalRenderUrl = result.render_url ?? result.redesigned_pano_url ?? null;
+
+    if (finalRenderUrl) {
+      const { error: persistErr } = await admin
+        .from("rooms")
+        .update({
+          redesign_pano_url: finalRenderUrl,
+          render_url: finalRenderUrl,
+          redesign_status: "complete",
+        })
+        .eq("id", room_id);
+
+      if (persistErr) {
+        console.error("[redesign] CRITICAL: render produced but persist failed:", persistErr);
+        return NextResponse.json(
+          {
+            error: "Render produced but failed to persist",
+            render_url: finalRenderUrl,
+            persist_error: persistErr.message,
+          },
+          { status: 500 },
+        );
+      }
+      console.log("[redesign] persisted render_url to rooms.redesign_pano_url:", finalRenderUrl.slice(0, 80));
+    } else {
+      console.error("[redesign] CRITICAL: Modal returned 200 but no render_url in response:", result);
+      await admin
+        .from("rooms")
+        .update({ redesign_status: "failed" })
+        .eq("id", room_id);
+      return NextResponse.json(
+        { error: "Modal pipeline returned no render_url", detail: result },
+        { status: 502 },
+      );
+    }
+
     return NextResponse.json({
-      status: result.status,
-      room_id: result.room_id,
-      redesigned_pano_url: result.redesigned_pano_url ?? null,
+      status: "complete",
+      room_id: result.room_id ?? room_id,
+      render_url: finalRenderUrl,
+      redesigned_pano_url: finalRenderUrl,
       perspective_render_url: result.perspective_render_url ?? null,
       dominant_styles: result.dominant_styles ?? [],
     });
