@@ -1046,8 +1046,7 @@ export async function generateDesignBrief(
 
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 8192,
-    thinking: { type: "enabled", budget_tokens: 4096 },
+    max_tokens: 4096,
     tool_choice: { type: "tool", name: "emit_design_brief" },
     tools: [EMIT_DESIGN_BRIEF_TOOL],
     system: CALL1_SYSTEM,
