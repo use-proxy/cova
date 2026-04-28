@@ -794,7 +794,11 @@ export async function POST(request: Request) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(useV9 ? v9Body : legacyBody),
-      signal: AbortSignal.timeout(295_000),
+      // Phase 2.0c.3 — Modal V3 pipeline budget: ~3-5 min realistic runtime
+      // (FLUX Pass 1, IC-Light, refinement, Sonnet calls). 7 minutes gives
+      // ~2 min buffer for slow fal queues. Verified production timeout at
+      // 295s on 2026-04-28 01:02 — route returned 500 while Modal still ran.
+      signal: AbortSignal.timeout(420_000),
     });
 
     if (!response.ok) {
