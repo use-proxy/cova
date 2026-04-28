@@ -1081,6 +1081,16 @@ def _call_flux_general_i2i(
             }
         ]
 
+    # Phase 2.0c.1 — fal-general's flux-general endpoint cannot construct
+    # a runnable pipeline graph when LoRAs and controlnet_unions are both
+    # present. Skip CN from attempt 1 to avoid the 4-attempt retry death
+    # spiral. Verified in production logs 2026-04-28.
+    if loras and "controlnet_unions" in args:
+        args.pop("controlnet_unions")
+        logger.info(
+            "[flux-general] skipping ControlNet — incompatible with LoRAs (Phase 2.0c.1)",
+        )
+
     # Phase 5 pattern — fal-general's "Could not load pipeline" error is
     # a transient issue with ControlNet + LoRAs together. 4 attempts, last
     # drops ControlNet entirely (2 LoRAs + no CN is the most reliable combo).
