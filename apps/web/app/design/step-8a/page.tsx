@@ -84,6 +84,7 @@ export default function RevealStep8A() {
   const [error, setError] = useState<string | null>(null);
   const [pipelineStatus, setPipelineStatus] = useState<string>("");
   const [retryTick, setRetryTick] = useState(0);
+  const [retrying, setRetrying] = useState(false);
 
   const [pointer, setPointer] = useState<PointerState>({
     x: 0,
@@ -519,15 +520,15 @@ export default function RevealStep8A() {
         <div style={{ display: "flex", gap: 12 }}>
           <button
             type="button"
+            disabled={retrying}
             onClick={async () => {
+              if (retrying) return;
               const targetRoomId = effectiveRoomId;
               if (!targetRoomId) return;
+              setRetrying(true);
               setError(null);
               setLoading(true);
               setPipelineStatus("");
-              // Reset redesign_status to "pending" so Modal's idempotency guard
-              // does not block the re-run (setting "failed" would still block
-              // some guard paths).
               try {
                 const { createBrowserClient } =
                   await import("@/lib/supabase/client");
@@ -545,14 +546,26 @@ export default function RevealStep8A() {
               } catch (err) {
                 console.warn("[step-8a] status reset failed:", err);
               }
-              // Re-fire redesign pipeline
-              fetch("/api/pipeline/redesign", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ room_id: targetRoomId }),
-              }).catch((err) => console.warn("[step-8a] Retry failed:", err));
-              // Restart polling
-              setRetryTick((n) => n + 1);
+
+              try {
+                const res = await fetch("/api/pipeline/redesign", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ room_id: targetRoomId }),
+                });
+                if (!res.ok) {
+                  const txt = await res.text().catch(() => "");
+                  setError(`Retry failed: ${res.status} ${txt.slice(0, 200)}`);
+                  setLoading(false);
+                } else {
+                  setRetryTick((n) => n + 1);
+                }
+              } catch (err) {
+                setError(err instanceof Error ? err.message : String(err));
+                setLoading(false);
+              } finally {
+                setRetrying(false);
+              }
             }}
             style={{
               fontFamily: "Inter, sans-serif",
@@ -563,11 +576,12 @@ export default function RevealStep8A() {
               padding: "12px 28px",
               fontSize: "14px",
               fontWeight: 600,
-              cursor: "pointer",
+              cursor: retrying ? "wait" : "pointer",
               letterSpacing: "0.04em",
+              opacity: retrying ? 0.6 : 1,
             }}
           >
-            Retry
+            {retrying ? "Retrying…" : "Retry"}
           </button>
           <button
             type="button"
