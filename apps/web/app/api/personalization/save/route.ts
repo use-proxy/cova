@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     .from("rooms")
     .update({
       personalization: compiled as unknown as Record<string, unknown>,
-      design_step: "step-7p",
+      design_step: 7,
     })
     .eq("id", body.room_id);
   if (updateErr) {
