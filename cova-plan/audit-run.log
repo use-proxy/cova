@@ -1,0 +1,35 @@
+scope size: 1492
+will classify: 1492
+concurrency: 8
+  [50/1492] ok=50 err=0 tok in=88650 out=5172 cost=$0.3435 rate=1.6/s eta=15.0m
+  [100/1492] ok=100 err=0 tok in=177300 out=10334 cost=$0.6869 rate=1.6/s eta=14.1m
+  [150/1492] ok=150 err=0 tok in=265950 out=15569 cost=$1.0314 rate=1.7/s eta=13.4m
+  [200/1492] ok=200 err=0 tok in=354600 out=20696 cost=$1.3742 rate=1.7/s eta=12.9m
+  [250/1492] ok=250 err=0 tok in=443250 out=25840 cost=$1.7173 rate=1.7/s eta=12.3m
+  [300/1492] ok=300 err=0 tok in=531900 out=30949 cost=$2.0599 rate=1.7/s eta=11.8m
+  [350/1492] ok=350 err=0 tok in=620550 out=36229 cost=$2.4051 rate=1.7/s eta=11.3m
+  [400/1492] ok=399 err=1 tok in=707452 out=41347 cost=$2.7426 rate=1.7/s eta=10.8m
+  [450/1492] ok=449 err=1 tok in=797327 out=46526 cost=$3.0899 rate=1.7/s eta=10.2m
+  [500/1492] ok=499 err=1 tok in=887227 out=51682 cost=$3.4369 rate=1.7/s eta=9.8m
+  [550/1492] ok=549 err=1 tok in=977127 out=56880 cost=$3.7846 rate=1.7/s eta=9.2m
+  [600/1492] ok=599 err=1 tok in=1067027 out=62101 cost=$4.1326 rate=1.7/s eta=8.7m
+  [650/1492] ok=649 err=1 tok in=1156927 out=67274 cost=$4.4799 rate=1.7/s eta=8.2m
+  [700/1492] ok=699 err=1 tok in=1246827 out=72392 cost=$4.8264 rate=1.7/s eta=7.7m
+  [750/1492] ok=748 err=2 tok in=1334777 out=77468 cost=$5.1664 rate=1.7/s eta=7.2m
+  [800/1492] ok=798 err=2 tok in=1423897 out=82792 cost=$5.5136 rate=1.7/s eta=6.7m
+  [850/1492] ok=848 err=2 tok in=1513001 out=88015 cost=$5.8592 rate=1.7/s eta=6.3m
+  [900/1492] ok=898 err=2 tok in=1599022 out=93235 cost=$6.1956 rate=1.7/s eta=5.8m
+  [950/1492] ok=948 err=2 tok in=1685370 out=98453 cost=$6.5329 rate=1.7/s eta=5.3m
+  [1000/1492] ok=998 err=2 tok in=1771718 out=103867 cost=$6.8732 rate=1.7/s eta=4.8m
+  [1050/1492] ok=1047 err=3 tok in=1859820 out=109018 cost=$7.2147 rate=1.7/s eta=4.3m
+  [1100/1492] ok=1095 err=5 tok in=1942572 out=114168 cost=$7.5402 rate=1.7/s eta=3.9m
+  [1150/1492] ok=1144 err=6 tok in=2030674 out=119305 cost=$7.8816 rate=1.7/s eta=3.4m
+  [1200/1492] ok=1194 err=6 tok in=2120574 out=124400 cost=$8.2277 rate=1.7/s eta=2.9m
+  [1250/1492] ok=1244 err=6 tok in=2210474 out=129475 cost=$8.5735 rate=1.7/s eta=2.4m
+  [1300/1492] ok=1293 err=7 tok in=2298576 out=134596 cost=$8.9147 rate=1.7/s eta=1.9m
+  [1350/1492] ok=1343 err=7 tok in=2388476 out=139717 cost=$9.2612 rate=1.7/s eta=1.4m
+  [1400/1492] ok=1393 err=7 tok in=2478376 out=144779 cost=$9.6068 rate=1.7/s eta=0.9m
+  [1450/1492] ok=1443 err=7 tok in=2568276 out=150033 cost=$9.9553 rate=1.7/s eta=0.4m
+  [1492/1492] ok=1485 err=7 tok in=2643792 out=154457 cost=$10.2482 rate=1.7/s eta=0.0m
+
+Done. ok=1485 err=7 elapsed=14.8m cost=$10.2482
