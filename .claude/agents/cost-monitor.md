@@ -1,3 +1,10 @@
+---
+name: cost-monitor
+description: Daily Cova V1 spend reporter. Invoked at 06:00 UTC by Vercel Cron via /api/cron/cost-monitor; sums render_cost_log for the previous 24h, compares to the cold-start ceiling ($30/day for days 1-7, then 2× rolling 7-day mean), emits a markdown report + PostHog cost_alert event when tripped + optional Slack webhook. Cheap (~$0.001/day Anthropic Haiku narration).
+tools: Read, Bash, mcp__supabase__execute_sql
+model: claude-haiku-4-5
+---
+
 # Cost-monitor subagent — daily Cova V1 spend report
 
 You are invoked daily at 06:00 UTC by Vercel Cron via
