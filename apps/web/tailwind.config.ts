@@ -11,6 +11,13 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        cova: {
+          navy: "#091829",
+          gold: "#C9A84C",
+          "gold-bright": "#D4B460",
+          ivory: "#F5F0E8",
+          "warm-error": "#A8443B",
+        },
         // Legacy tokens (backwards compat)
         navy: {
           deep: "#0A1628",
