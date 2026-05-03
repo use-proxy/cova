@@ -410,22 +410,32 @@ function MicroLabel({ children, htmlFor }: { children: string; htmlFor: string }
 }
 
 /* ─── State 1 — VALIDATING ─────────────────────────────── */
+// Phase doc §6 1B "Reset-password 4-state machine motion":
+//   "VALIDATING: italic-serif 'Verifying your link…' with a 300ms minimum
+//   shimmer placeholder (prevents jarring sub-100ms flash on fast Supabase
+//   responses)." No spinner — Loading state α applies.
+// The 300ms minimum shimmer is enforced by the parent useEffect (300ms
+// setTimeout before transitioning to "valid"); here we render an opacity
+// pulse on the italic-serif label rather than a spinning ring.
 function ValidatingBlock() {
   return (
     <div>
       <Eyebrow>{`ACCOUNT ${EM_DASH} VERIFYING`}</Eyebrow>
       <div style={{ height: 12 }} />
-      <Headline>Verifying your reset link</Headline>
+      <Headline>Verifying your link&hellip;</Headline>
       <div style={{ height: 16 }} />
       <GoldHairline />
       <div style={{ height: 32 }} />
       <div className="flex justify-center">
-        <div
-          className="border border-cova-ivory/30 border-t-cova-ivory rounded-full animate-spin"
-          style={{ width: 16, height: 16 }}
+        <p
           role="status"
-          aria-label="Verifying"
-        />
+          aria-live="polite"
+          aria-label="Verifying your link"
+          className="font-serif italic text-[14px] text-cova-ivory/60 leading-snug animate-pulse motion-reduce:animate-none"
+          style={{ fontFamily: "var(--font-serif)" }}
+        >
+          Verifying your link&hellip;
+        </p>
       </div>
     </div>
   );
