@@ -91,8 +91,35 @@ columns; INSERTs would fail with `column "pipeline_version" of relation
 | Migration | Status |
 |---|---|
 | M1 (drop-dead-indexes) | ✓ APPLIED 2026-05-02 |
-| M2 (drop-dead-room-cols) | ⏸ HALTED — this back-bug |
+| M2 (drop-dead-room-cols) | ✓ APPLIED 2026-05-02 (round 2, tightened to 17 truly-dead cols; 11 load-bearing cols deferred — see §Deferred load-bearing column drops) |
 | M3 (drop-dead-tables) | ✓ APPLIED 2026-05-02 (post delete-account redeploy) |
-| M4 (render_cost_log-recreate) | ⏸ HALTED — this back-bug |
+| M4 (render_cost_log-recreate) | ✓ APPLIED 2026-05-02 (round 2, after migrating 2 callers to logCost()) |
 | M5 (feature-flags-table) | ✓ APPLIED 2026-05-02 |
 | M6 (rls-consolidation) | ✓ APPLIED 2026-05-02 (minus empty_room_cache policy — see schema mismatch note in `supabase-after-state.md`) |
+
+## Deferred load-bearing column drops (round 2 follow-ups)
+
+The tightened M2 (round 2) dropped 17 of the original 28 columns. The
+remaining 11 columns are still actively read or written by production code
+and must wait for the consuming code to retire. Each is mapped to the
+phase that owns the consumer:
+
+| Column | Active consumer(s) | Retiring phase |
+|---|---|---|
+| `pipeline_cost_log` | `apps/web/app/api/render/status/route.ts` (SELECT + UPDATE on V3 status polling) | P3 (pipeline reliability — replace with `render_cost_log` rows) |
+| `inpainting_mask_url` | `apps/web/app/api/render/status/route.ts` (SELECT + UPDATE) | P3 (V3 redesign hands off mask URL via the new pipeline contract) |
+| `personalization_context` | `apps/web/app/api/rooms/[roomId]/route.ts`, `apps/web/app/api/pipeline/redesign/route.ts`, `apps/web/lib/ai/design-director.ts` | P2 (quiz/capture refactor consolidates this onto `users.style_blend`) |
+| `capture_photo_urls` | `apps/web/app/api/rooms/[roomId]/route.ts`, `apps/web/app/capture/[roomId]/page.tsx` | P2 (capture flow rewrite drops the multi-photo array) |
+| `capture_mode` | `apps/web/app/api/rooms/[roomId]/route.ts`, `apps/web/app/capture/[roomId]/page.tsx` | P2 (single capture-mode constant after M4 hardening) |
+| `perspective_render_url` | `apps/web/app/api/pipeline/redesign/route.ts` (SELECT + UPDATE) | P3 (V3 redesign emits this through `renders` table; column on `rooms` becomes redundant) |
+| `video_url` | `apps/web/app/capture/[roomId]/page.tsx` (capture flow) | P2 (capture rewrite — only photo intake survives) |
+| `pipeline_mode` | (only auto-generated `lib/types/supabase.ts` + docs) | P3 (drop with `pipeline_cost_log`) — could also be folded into a future M2-tail migration |
+| `modal_job_id` | (only auto-generated `lib/types/supabase.ts` + docs) | P3 (V8 stages stopped; column is dead but kept for paranoia until P3 confirms) |
+| `calibration_data` | (only auto-generated `lib/types/supabase.ts` + docs) | P3 |
+| `scene_state` | (only auto-generated `lib/types/supabase.ts` + docs) | P3 |
+
+Note: 4 of the 11 columns above (`pipeline_mode`, `modal_job_id`,
+`calibration_data`, `scene_state`) are no longer referenced in active code
+paths but are kept on the table this round to avoid forcing a
+`lib/types/supabase.ts` regeneration mid-phase. P3 can sweep them when it
+regenerates types after its own surgery.

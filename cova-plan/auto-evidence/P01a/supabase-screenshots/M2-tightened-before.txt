@@ -1,0 +1,126 @@
+                                                              Table "public.rooms"
+           Column            |           Type           | Collation | Nullable |                            Default                             
+-----------------------------+--------------------------+-----------+----------+----------------------------------------------------------------
+ id                          | uuid                     |           | not null | gen_random_uuid()
+ user_id                     | uuid                     |           | not null | 
+ original_image_url          | text                     |           |          | 
+ depth_map_url               | text                     |           |          | 
+ depth_map_quality_score     | double precision         |           |          | 
+ detected_existing_style     | text                     |           |          | 
+ room_type                   | text                     |           |          | 'living_room'::text
+ calibration_data            | jsonb                    |           |          | 
+ room_dimensions             | jsonb                    |           |          | 
+ scene_state                 | jsonb                    |           |          | 
+ listing_id                  | uuid                     |           |          | 
+ created_at                  | timestamp with time zone |           | not null | now()
+ updated_at                  | timestamp with time zone |           | not null | now()
+ budget                      | integer                  |           | not null | 2500
+ name                        | text                     |           | not null | 'My Room'::text
+ style_blend                 | jsonb                    |           | not null | '{}'::jsonb
+ dimensions_json             | jsonb                    |           | not null | '{"unit": "ft", "depth": 14, "width": 16, "height": 9}'::jsonb
+ status                      | text                     |           | not null | 'active'::text
+ render_count                | integer                  |           | not null | 0
+ latest_render_url           | text                     |           |          | 
+ wall_color_extracted        | text                     |           |          | '#F5F0EB'::text
+ modal_job_id                | text                     |           |          | 
+ splat_path                  | text                     |           |          | 
+ video_url                   | text                     |           |          | 
+ final_style_vector          | jsonb                    |           |          | 
+ redesign_style              | text                     |           |          | 
+ user_feedback_score         | integer                  |           |          | 
+ marble_mini_world_id        | text                     |           |          | 
+ redesign_pano_url           | text                     |           |          | 
+ redesign_status             | text                     |           |          | 'pending'::text
+ marble_spz_url_500k         | text                     |           |          | 
+ marble_spz_url_100k         | text                     |           |          | 
+ marble_plus_thumbnail_url   | text                     |           |          | 
+ furniture_matches_count     | integer                  |           |          | 0
+ pipeline_mode               | text                     |           |          | 'mini_async_plus'::text
+ pipeline_cost_log           | jsonb                    |           |          | '{}'::jsonb
+ capture_photo_urls          | jsonb                    |           |          | 
+ capture_mode                | text                     |           |          | 'multi_image'::text
+ pre_detection_result        | jsonb                    |           |          | 
+ fixed_furniture             | jsonb                    |           |          | 
+ inpainting_mask_url         | text                     |           |          | 
+ flythrough_video_url        | text                     |           |          | 
+ flythrough_ready            | boolean                  |           |          | false
+ flythrough_duration_seconds | double precision         |           |          | 
+ depth_map_url_v2            | text                     |           |          | 
+ marble_mini_spz_url         | text                     |           |          | 
+ plus_upgrade_ready          | boolean                  |           |          | false
+ plus_started_at             | timestamp with time zone |           |          | 
+ plus_completed_at           | timestamp with time zone |           |          | 
+ hotspot_timing              | jsonb                    |           |          | 
+ plus_eligible               | boolean                  |           |          | true
+ engagement_seconds          | double precision         |           |          | 0
+ perspective_render_url      | text                     |           |          | 
+ render_ready                | boolean                  |           |          | false
+ original_photo_url          | text                     |           |          | 
+ render_url                  | text                     |           |          | 
+ keep_mask                   | jsonb                    |           |          | 
+ fingerprint_id              | uuid                     |           |          | 
+ dimensions                  | text                     |           |          | 
+ constraints                 | text[]                   |           |          | 
+ inclusions                  | text[]                   |           |          | 
+ room_analysis               | jsonb                    |           |          | 
+ preview_url                 | text                     |           |          | 
+ parallax_video_url          | text                     |           |          | 
+ room_context                | jsonb                    |           |          | 
+ room_constraints            | jsonb                    |           |          | 
+ personalization             | jsonb                    |           |          | 
+ detection_metadata          | jsonb                    |           |          | 
+ render_context              | jsonb                    |           |          | 
+ detection_status            | text                     |           |          | 'pending'::text
+ design_step                 | integer                  |           |          | 0
+ depth_conditioning_method   | text                     |           |          | 
+ render_detection_result     | jsonb                    |           |          | 
+ redesign_error              | text                     |           |          | 
+ matched_products            | jsonb                    |           |          | 
+ design_chat_history         | jsonb                    |           |          | 
+ keep_remove_decisions       | jsonb                    |           |          | 
+ professionalized_image_url  | text                     |           |          | 
+ design_brief                | jsonb                    |           |          | 
+ flux_prompt                 | text                     |           |          | 
+ aesthetic_score             | double precision         |           |          | 
+ unsplash_references         | jsonb                    |           |          | 
+ preprocessed_image_url      | text                     |           |          | 
+ negative_prompt             | text                     |           |          | 
+ generation_seed             | integer                  |           |          | 
+ wall_change_requested       | boolean                  |           |          | false
+ floor_change_requested      | boolean                  |           |          | false
+ required_objects            | jsonb                    |           |          | 
+ personalization_context     | jsonb                    |           |          | 
+ canny_map_url               | text                     |           |          | 
+ pipeline_version            | text                     |           |          | 'v3'::text
+ change_map_url              | text                     |           |          | 
+ empty_room_url              | text                     |           |          | 
+Indexes:
+    "rooms_pkey" PRIMARY KEY, btree (id)
+    "idx_rooms_created_at" btree (created_at)
+    "idx_rooms_room_type" btree (room_type)
+    "idx_rooms_user_id" btree (user_id)
+Check constraints:
+    "rooms_depth_map_url_check" CHECK (depth_map_url IS NULL OR char_length(depth_map_url) <= 2000)
+    "rooms_detected_existing_style_check" CHECK (detected_existing_style IS NULL OR char_length(detected_existing_style) <= 100)
+    "rooms_detection_status_check" CHECK (detection_status = ANY (ARRAY['pending'::text, 'running'::text, 'complete'::text, 'failed'::text]))
+    "rooms_original_image_url_check" CHECK (char_length(original_image_url) <= 2000)
+    "rooms_room_type_check" CHECK (room_type = ANY (ARRAY['living_room'::text, 'bedroom'::text, 'kitchen'::text, 'bathroom'::text, 'office'::text, 'dining'::text]))
+    "rooms_status_check" CHECK (status = ANY (ARRAY['active'::text, 'video_uploaded'::text, 'processing'::text, 'complete'::text, 'error'::text]))
+Foreign-key constraints:
+    "rooms_fingerprint_id_fkey" FOREIGN KEY (fingerprint_id) REFERENCES style_fingerprints(id) ON DELETE SET NULL
+    "rooms_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+Referenced by:
+    TABLE "chat_messages" CONSTRAINT "chat_messages_room_id_fkey" FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+    TABLE "interactions" CONSTRAINT "interactions_room_id_fkey" FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE SET NULL
+    TABLE "redesign_feedback" CONSTRAINT "redesign_feedback_room_id_fkey" FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+    TABLE "render_sessions" CONSTRAINT "render_sessions_room_id_fkey" FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+    TABLE "renders" CONSTRAINT "renders_room_id_fkey" FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+    TABLE "room_products" CONSTRAINT "room_products_room_id_fkey" FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+    TABLE "saved_products" CONSTRAINT "saved_products_room_id_fkey" FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+Policies:
+    POLICY "p1_rooms_self_all"
+      USING ((auth.uid() = user_id))
+      WITH CHECK ((auth.uid() = user_id))
+Triggers:
+    rooms_updated_at BEFORE UPDATE ON rooms FOR EACH ROW EXECUTE FUNCTION set_updated_at()
+

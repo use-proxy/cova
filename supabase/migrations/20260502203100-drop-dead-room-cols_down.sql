@@ -1,4 +1,5 @@
--- Reverse step 2. Original types/defaults from snapshot. Data NOT recoverable beyond the snapshot.
+-- Reverse step 2 (TIGHTENED — only restores the 17 truly-dead columns dropped above).
+-- Original types/defaults from snapshot. Data NOT recoverable beyond the snapshot.
 ALTER TABLE rooms
   ADD COLUMN IF NOT EXISTS splat_path text,
   ADD COLUMN IF NOT EXISTS marble_mini_world_id text,
@@ -10,21 +11,10 @@ ALTER TABLE rooms
   ADD COLUMN IF NOT EXISTS plus_started_at timestamptz,
   ADD COLUMN IF NOT EXISTS plus_completed_at timestamptz,
   ADD COLUMN IF NOT EXISTS plus_upgrade_ready boolean DEFAULT false,
-  ADD COLUMN IF NOT EXISTS pipeline_mode text DEFAULT 'mini_async_plus',
-  ADD COLUMN IF NOT EXISTS pipeline_cost_log jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS modal_job_id text,
-  ADD COLUMN IF NOT EXISTS calibration_data jsonb,
-  ADD COLUMN IF NOT EXISTS scene_state jsonb,
   ADD COLUMN IF NOT EXISTS flythrough_video_url text,
   ADD COLUMN IF NOT EXISTS flythrough_ready boolean DEFAULT false,
   ADD COLUMN IF NOT EXISTS flythrough_duration_seconds double precision,
-  ADD COLUMN IF NOT EXISTS perspective_render_url text,
   ADD COLUMN IF NOT EXISTS depth_map_url text,
   ADD COLUMN IF NOT EXISTS depth_map_url_v2 text,
   ADD COLUMN IF NOT EXISTS depth_map_quality_score double precision,
-  ADD COLUMN IF NOT EXISTS depth_conditioning_method text,
-  ADD COLUMN IF NOT EXISTS video_url text,
-  ADD COLUMN IF NOT EXISTS capture_photo_urls jsonb,
-  ADD COLUMN IF NOT EXISTS capture_mode text DEFAULT 'multi_image',
-  ADD COLUMN IF NOT EXISTS inpainting_mask_url text,
-  ADD COLUMN IF NOT EXISTS personalization_context jsonb;
+  ADD COLUMN IF NOT EXISTS depth_conditioning_method text;
