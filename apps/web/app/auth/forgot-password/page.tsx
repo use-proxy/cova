@@ -176,16 +176,15 @@ export default function ForgotPassword() {
   // ─────────────────────────────────────────────────────────────
 
   const eyebrowClass =
-    "font-sans text-[10px] tracking-[0.3em] uppercase text-cova-gold/60";
+    "font-sans text-[10px] tracking-[0.3em] uppercase text-cova-gold/80";
   const headlineClass =
-    "font-serif italic text-[24px] md:text-[28px] font-normal leading-[1.2] text-cova-ivory";
+    "font-serif italic text-[24px] md:text-[28px] font-normal leading-[1.2] text-cova-gold";
   const helperClass =
     "font-serif italic text-[14px] leading-snug text-cova-ivory/50";
 
   const buttonBaseClass =
-    "h-[44px] inline-flex items-center justify-center bg-transparent border border-cova-ivory/30 text-cova-ivory font-sans text-[11px] tracking-[0.3em] uppercase font-medium rounded-none transition-colors duration-200 ease-out focus:outline-none focus-visible:border-cova-gold/60";
-  const buttonHoverClass =
-    "hover:bg-cova-ivory hover:text-cova-navy hover:border-cova-ivory";
+    "group relative h-[44px] inline-flex items-center justify-center bg-transparent border border-cova-ivory/30 text-cova-ivory font-sans text-[11px] tracking-[0.3em] uppercase font-medium rounded-none transition-colors duration-200 ease-out focus:outline-none focus-visible:border-cova-gold/60 overflow-hidden";
+  const buttonHoverClass = "";
   const buttonDisabledClass = "opacity-50 cursor-not-allowed";
 
   // ─────────────────────────────────────────────────────────────
@@ -282,7 +281,7 @@ export default function ForgotPassword() {
       {/* FOOTER LINK — fixed-position, OUTSIDE form column */}
       <a
         href="/auth/signin"
-        className="fixed bottom-6 right-6 md:bottom-8 md:right-10 font-sans text-[10px] tracking-[0.25em] uppercase text-cova-ivory/40 hover:text-cova-ivory transition-colors duration-200 ease-out focus:outline-none focus-visible:text-cova-ivory"
+        className="fixed bottom-6 right-6 md:bottom-8 md:right-10 font-sans text-[10px] tracking-[0.25em] uppercase text-cova-gold/60 hover:text-cova-gold transition-colors duration-200 ease-out focus:outline-none focus-visible:text-cova-gold"
       >
         {isSubmitted
           ? "BACK TO SIGN IN"
@@ -368,7 +367,7 @@ function PreSubmit(props: PreSubmitProps) {
         {/* GOLD HAIRLINE RULE */}
         <div
           aria-hidden="true"
-          className="w-8 h-px bg-cova-gold/40"
+          className="w-8 h-px bg-cova-gold/60"
         />
 
         {/* 32px gap */}
@@ -410,7 +409,7 @@ function PreSubmit(props: PreSubmitProps) {
               "focus:outline-none transition-colors duration-200 ease-out",
               emailError
                 ? "border-b-cova-warm-error focus:border-b-cova-warm-error"
-                : "border-b-cova-ivory/15 focus:border-b-cova-gold/60",
+                : "border-b-cova-ivory/15 focus:border-b-cova-gold/80",
               isLoading ? "opacity-50 cursor-not-allowed" : "",
             ].join(" ")}
           />
@@ -447,7 +446,14 @@ function PreSubmit(props: PreSubmitProps) {
                 Sending reset link&hellip;
               </span>
             ) : (
-              <span>SEND RESET LINK</span>
+              <>
+                <span className="relative z-10">SEND RESET LINK</span>
+                {/* Hover-gold-reveal underline */}
+                <span
+                  className="absolute bottom-[10px] left-1/2 -translate-x-1/2 h-[2px] bg-cova-gold w-0 group-hover:w-[calc(100%-32px)] transition-[width] duration-200 ease-out"
+                  aria-hidden="true"
+                />
+              </>
             )}
           </button>
         </div>
@@ -528,7 +534,7 @@ function PostSubmit(props: PostSubmitProps) {
         <div className="h-4" />
 
         {/* GOLD HAIRLINE RULE */}
-        <div aria-hidden="true" className="w-8 h-px bg-cova-gold/40" />
+        <div aria-hidden="true" className="w-8 h-px bg-cova-gold/60" />
 
         {/* 32px gap */}
         <div className="h-8" />
@@ -554,7 +560,16 @@ function PostSubmit(props: PostSubmitProps) {
                 Resending&hellip;
               </span>
             ) : (
-              <span>{resendCopy}</span>
+              <>
+                <span className="relative z-10">{resendCopy}</span>
+                {/* Hover-gold-reveal underline — disabled state gets no reveal */}
+                {!resendDisabled && (
+                  <span
+                    className="absolute bottom-[10px] left-1/2 -translate-x-1/2 h-[2px] bg-cova-gold w-0 group-hover:w-[calc(100%-32px)] transition-[width] duration-200 ease-out"
+                    aria-hidden="true"
+                  />
+                )}
+              </>
             )}
           </button>
         </div>

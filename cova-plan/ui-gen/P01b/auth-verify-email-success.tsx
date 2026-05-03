@@ -54,7 +54,7 @@ export default function VerifyEmailSuccess(): JSX.Element {
         <div className="font-serif font-normal text-[12px] md:text-[16px] tracking-[0.4em] uppercase text-cova-ivory">
           COVA
         </div>
-        <div className="mt-2 font-sans font-normal text-[14px] tracking-normal text-cova-gold/50 leading-none">
+        <div className="mt-2 font-sans font-normal text-[14px] tracking-normal text-cova-gold/70 leading-none">
           —
         </div>
       </div>
@@ -75,7 +75,7 @@ export default function VerifyEmailSuccess(): JSX.Element {
 
         {/* 3. Eyebrow */}
         <div
-          className={`font-sans text-[10px] tracking-[0.3em] uppercase text-cova-gold/60 ${fadeBase} ${fadeState}`}
+          className={`font-sans text-[10px] tracking-[0.3em] uppercase text-cova-gold/80 ${fadeBase} ${fadeState}`}
         >
           ACCOUNT — VERIFIED
         </div>
@@ -85,7 +85,7 @@ export default function VerifyEmailSuccess(): JSX.Element {
 
         {/* 5. Headline */}
         <h1
-          className={`font-serif italic font-normal text-[28px] md:text-[32px] leading-[1.2] text-cova-ivory ${fadeBase} ${fadeState}`}
+          className={`font-serif italic font-normal text-[28px] md:text-[32px] leading-[1.2] text-cova-gold ${fadeBase} ${fadeState}`}
         >
           You&rsquo;re in
         </h1>
@@ -107,7 +107,7 @@ export default function VerifyEmailSuccess(): JSX.Element {
         {/* 9. Gold hairline rule — centered (deliberate break from siblings) */}
         <div
           aria-hidden="true"
-          className={`w-8 h-px bg-cova-gold/40 ${fadeBase} ${fadeState}`}
+          className={`w-8 h-px bg-cova-gold/60 ${fadeBase} ${fadeState}`}
         />
       </div>
     </main>

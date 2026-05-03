@@ -215,11 +215,11 @@ export default function SignUp() {
 
   const emailBorder = emailError
     ? "border-b-cova-warm-error focus:border-b-cova-warm-error"
-    : "border-b-cova-ivory/15 focus:border-b-cova-gold/60";
+    : "border-b-cova-ivory/15 focus:border-b-cova-gold/80";
 
   const passwordBorder = passwordError
     ? "border-b-cova-warm-error focus:border-b-cova-warm-error"
-    : "border-b-cova-ivory/15 focus:border-b-cova-gold/60";
+    : "border-b-cova-ivory/15 focus:border-b-cova-gold/80";
 
   // Microtype label class — slightly more recessed (ivory/35).
   const microLabel =
@@ -241,7 +241,7 @@ export default function SignUp() {
       {/* --- FOOTER LINK (bottom-right, mirrors wordmark) -------------- */}
       <a
         href="/auth/signin"
-        className="fixed z-10 bottom-8 right-10 max-md:bottom-6 max-md:right-6 font-sans text-[10px] tracking-[0.25em] uppercase text-cova-ivory/40 hover:text-cova-ivory transition-colors duration-200 ease-out"
+        className="fixed z-10 bottom-8 right-10 max-md:bottom-6 max-md:right-6 font-sans text-[10px] tracking-[0.25em] uppercase text-cova-gold/60 hover:text-cova-gold transition-colors duration-200 ease-out"
       >
         EXISTING ACCOUNT — SIGN IN
       </a>
@@ -284,7 +284,7 @@ export default function SignUp() {
           */}
           <div className="border-l border-cova-ivory/12 pl-6">
             {/* 1. EYEBROW */}
-            <div className="font-sans text-[10px] tracking-[0.3em] uppercase text-cova-gold/60">
+            <div className="font-sans text-[10px] tracking-[0.3em] uppercase text-cova-gold/80">
               ACCOUNT — NEW
             </div>
 
@@ -292,7 +292,7 @@ export default function SignUp() {
             <div className="h-3" aria-hidden="true" />
 
             {/* 2. HEADLINE */}
-            <h1 className="font-serif italic text-cova-ivory text-[28px] max-md:text-[24px] font-normal leading-[1.2]">
+            <h1 className="font-serif italic text-cova-gold text-[28px] max-md:text-[24px] font-normal leading-[1.2]">
               Create an account
             </h1>
 
@@ -308,7 +308,7 @@ export default function SignUp() {
             <div className="h-4" aria-hidden="true" />
 
             {/* 4. GOLD HAIRLINE RULE — left-aligned */}
-            <div className="w-8 h-px bg-cova-gold/40" aria-hidden="true" />
+            <div className="w-8 h-px bg-cova-gold/60" aria-hidden="true" />
 
             {/* 24px gap (tightened from 40px) */}
             <div className="h-6" aria-hidden="true" />
@@ -319,18 +319,22 @@ export default function SignUp() {
               onClick={handleOAuthClick}
               disabled={isLoading}
               className="
-                w-full h-12 bg-transparent
+                group relative w-full h-12 bg-transparent
                 border border-cova-ivory/20
                 text-cova-ivory font-sans font-medium
                 text-[12px] tracking-[0.2em] uppercase
                 transition-colors duration-200 ease-out
-                hover:bg-cova-ivory/8 hover:border-cova-ivory/40
                 focus:outline-none focus-visible:border-cova-gold/60
                 disabled:opacity-50 disabled:cursor-not-allowed
-                disabled:hover:bg-transparent disabled:hover:border-cova-ivory/20
+                flex items-center justify-center overflow-hidden
               "
             >
-              CONTINUE WITH GOOGLE
+              <span className="relative z-10">CONTINUE WITH GOOGLE</span>
+              {/* Hover-gold-reveal underline */}
+              <span
+                className="absolute bottom-[11px] left-1/2 -translate-x-1/2 h-[2px] bg-cova-gold w-0 group-hover:w-[calc(100%-32px)] group-disabled:w-0 transition-[width] duration-200 ease-out"
+                aria-hidden="true"
+              />
             </button>
 
             {/* 24px gap */}
@@ -432,26 +436,31 @@ export default function SignUp() {
                 disabled={submitDisabled}
                 aria-busy={isLoading || undefined}
                 className={
-                  "group h-11 w-[200px] whitespace-nowrap " +
+                  "group relative h-11 w-[200px] whitespace-nowrap " +
                   "bg-transparent border border-cova-ivory/30 text-cova-ivory " +
                   "font-sans font-medium text-[11px] tracking-[0.3em] uppercase " +
                   "transition-colors duration-200 ease-out " +
-                  "hover:bg-cova-ivory hover:text-cova-navy hover:border-cova-ivory " +
                   "focus:outline-none focus-visible:border-cova-gold/60 " +
                   "disabled:opacity-50 disabled:cursor-not-allowed " +
-                  "disabled:hover:bg-transparent disabled:hover:text-cova-ivory disabled:hover:border-cova-ivory/30 " +
-                  "flex items-center justify-center"
+                  "flex items-center justify-center overflow-hidden"
                 }
               >
                 {isLoading ? (
                   /* Loading state α (phase doc §6 1B): italic-serif
                      label change. NO spinner, NO dot-loader.
                      Locked label per §6 1B "Signup: Creating your account…". */
-                  <span className="font-serif italic normal-case tracking-normal text-[14px] text-cova-ivory group-hover:text-cova-navy">
+                  <span className="font-serif italic normal-case tracking-normal text-[14px] text-cova-ivory">
                     Creating your account&hellip;
                   </span>
                 ) : (
-                  "CREATE ACCOUNT"
+                  <>
+                    <span className="relative z-10">CREATE ACCOUNT</span>
+                    {/* Hover-gold-reveal: underline animates 0→100% width on hover */}
+                    <span
+                      className="absolute bottom-[10px] left-1/2 -translate-x-1/2 h-[2px] bg-cova-gold w-0 group-hover:w-[calc(100%-32px)] transition-[width] duration-200 ease-out"
+                      aria-hidden="true"
+                    />
+                  </>
                 )}
               </button>
             </div>

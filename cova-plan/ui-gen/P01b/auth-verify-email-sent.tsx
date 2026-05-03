@@ -134,7 +134,7 @@ export default function VerifyEmailSent() {
         <div className="font-serif text-[12px] md:text-[16px] tracking-[0.4em] text-cova-ivory uppercase">
           COVA
         </div>
-        <div className="mt-2 font-sans text-[14px] leading-none text-cova-gold/50">
+        <div className="mt-2 font-sans text-[14px] leading-none text-cova-gold/70">
           —
         </div>
       </div>
@@ -172,7 +172,7 @@ export default function VerifyEmailSent() {
             ) : null}
 
             {/* EYEBROW */}
-            <div className="font-sans text-[10px] tracking-[0.3em] uppercase text-cova-gold/60">
+            <div className="font-sans text-[10px] tracking-[0.3em] uppercase text-cova-gold/80">
               INBOX — VERIFY YOUR EMAIL
             </div>
 
@@ -180,7 +180,7 @@ export default function VerifyEmailSent() {
             <div className="h-3" />
 
             {/* HEADLINE */}
-            <h1 className="font-serif italic font-normal text-[24px] md:text-[28px] leading-[1.2] text-cova-ivory">
+            <h1 className="font-serif italic font-normal text-[24px] md:text-[28px] leading-[1.2] text-cova-gold">
               Check your inbox
             </h1>
 
@@ -214,7 +214,7 @@ export default function VerifyEmailSent() {
             <div className="h-4" />
 
             {/* GOLD HAIRLINE RULE */}
-            <div aria-hidden="true" className="h-px w-8 bg-cova-gold/40" />
+            <div aria-hidden="true" className="h-px w-8 bg-cova-gold/60" />
 
             {/* 32px gap */}
             <div className="h-8" />
@@ -235,17 +235,28 @@ export default function VerifyEmailSent() {
                     : "Resend verification link"
                 }
                 className={[
-                  "flex h-11 w-[200px] items-center justify-center",
+                  "group relative flex h-11 w-[200px] items-center justify-center",
                   "border border-cova-ivory/30 bg-transparent rounded-none",
                   "font-sans text-[11px] font-medium tracking-[0.3em] uppercase text-cova-ivory",
                   "transition-colors duration-200 ease-out motion-reduce:transition-none",
                   "focus:outline-none focus-visible:border-cova-gold/60",
+                  "overflow-hidden",
                   resendDisabled
                     ? "cursor-not-allowed opacity-50"
-                    : "hover:bg-cova-ivory hover:text-cova-navy hover:border-cova-ivory cursor-pointer",
+                    : "cursor-pointer",
                 ].join(" ")}
               >
-                {resendLabel}
+                {typeof resendLabel === "string" ? (
+                  <>
+                    <span className="relative z-10">{resendLabel}</span>
+                    {!resendDisabled && (
+                      <span
+                        className="absolute bottom-[10px] left-1/2 -translate-x-1/2 h-[2px] bg-cova-gold w-0 group-hover:w-[calc(100%-32px)] transition-[width] duration-200 ease-out"
+                        aria-hidden="true"
+                      />
+                    )}
+                  </>
+                ) : resendLabel}
               </button>
             </div>
 
@@ -294,9 +305,9 @@ export default function VerifyEmailSent() {
         href="/auth/signin"
         className={[
           "fixed bottom-6 right-6 md:bottom-8 md:right-10",
-          "font-sans text-[10px] tracking-[0.25em] uppercase text-cova-ivory/40",
+          "font-sans text-[10px] tracking-[0.25em] uppercase text-cova-gold/60",
           "transition-colors duration-200 ease-out motion-reduce:transition-none",
-          "hover:text-cova-ivory focus:outline-none focus-visible:underline focus-visible:text-cova-ivory",
+          "hover:text-cova-gold focus:outline-none focus-visible:underline focus-visible:text-cova-gold",
         ].join(" ")}
       >
         ALREADY VERIFIED — SIGN IN

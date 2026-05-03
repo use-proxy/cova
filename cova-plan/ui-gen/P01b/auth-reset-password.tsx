@@ -187,7 +187,7 @@ export default function ResetPassword() {
           COVA
         </div>
         <div
-          className="font-sans text-[14px] text-cova-gold/50 mt-2"
+          className="font-sans text-[14px] text-cova-gold/70 mt-2"
           style={{ letterSpacing: 0 }}
           aria-hidden="true">
           {EM_DASH}
@@ -251,7 +251,7 @@ export default function ResetPassword() {
       {(displayedState === "valid" || displayedState === "invalid") && (
         <a
           href="/auth/signin"
-          className="fixed right-6 bottom-6 md:right-10 md:bottom-8 font-sans text-[10px] text-cova-ivory/40 hover:text-cova-ivory transition-colors duration-200 ease-out"
+          className="fixed right-6 bottom-6 md:right-10 md:bottom-8 font-sans text-[10px] text-cova-gold/60 hover:text-cova-gold transition-colors duration-200 ease-out"
           style={{ letterSpacing: "0.25em", textTransform: "uppercase" }}>
           {displayedState === "valid"
             ? `REMEMBER YOUR PASSWORD ${EM_DASH} SIGN IN`
@@ -365,7 +365,7 @@ function StateBlock(props: StateBlockProps) {
 function Eyebrow({ children }: { children: string }) {
   return (
     <div
-      className="font-sans text-[10px] text-cova-gold/60"
+      className="font-sans text-[10px] text-cova-gold/80"
       style={{
         letterSpacing: "0.3em",
         textTransform: "uppercase",
@@ -378,7 +378,7 @@ function Eyebrow({ children }: { children: string }) {
 function Headline({ children }: { children: string }) {
   return (
     <h1
-      className="font-serif italic text-cova-ivory text-[24px] md:text-[28px] font-normal"
+      className="font-serif italic text-cova-gold text-[24px] md:text-[28px] font-normal"
       style={{ lineHeight: 1.2, fontFamily: "var(--font-serif)" }}>
       {children}
     </h1>
@@ -398,7 +398,7 @@ function Helper({ children }: { children: string }) {
 function GoldHairline() {
   return (
     <div
-      className="bg-cova-gold/40"
+      className="bg-cova-gold/60"
       style={{ width: 32, height: 1 }}
       aria-hidden="true"
     />
@@ -511,7 +511,7 @@ function ValidBlock(props: {
           "focus:outline-none focus:ring-0 transition-colors duration-200 ease-out",
           passwordError
             ? "border-b-cova-warm-error focus:border-b-cova-warm-error"
-            : "border-b-cova-ivory/15 focus:border-b-cova-gold/60",
+            : "border-b-cova-ivory/15 focus:border-b-cova-gold/80",
           isLoading ? "opacity-50 cursor-not-allowed" : "",
         ].join(" ")}
         style={{
@@ -558,7 +558,7 @@ function ValidBlock(props: {
           "focus:outline-none focus:ring-0 transition-colors duration-200 ease-out",
           confirmError
             ? "border-b-cova-warm-error focus:border-b-cova-warm-error"
-            : "border-b-cova-ivory/15 focus:border-b-cova-gold/60",
+            : "border-b-cova-ivory/15 focus:border-b-cova-gold/80",
           isLoading ? "opacity-50 cursor-not-allowed" : "",
         ].join(" ")}
         style={{
@@ -583,13 +583,14 @@ function ValidBlock(props: {
           type="submit"
           disabled={submitDisabled}
           className={[
-            "font-sans font-medium",
+            "group relative font-sans font-medium",
             "border bg-transparent text-cova-ivory",
             "transition-colors duration-200 ease-out",
             "focus:outline-none focus-visible:border-cova-gold/60",
+            "flex items-center justify-center overflow-hidden",
             submitDisabled
               ? "border-cova-ivory/15 text-cova-ivory/40 cursor-not-allowed"
-              : "border-cova-ivory/30 hover:bg-cova-ivory hover:text-cova-navy hover:border-cova-ivory",
+              : "border-cova-ivory/30",
           ].join(" ")}
           style={{
             width: 200,
@@ -609,7 +610,15 @@ function ValidBlock(props: {
               />
             </span>
           ) : (
-            "RESET PASSWORD"
+            <>
+              <span className="relative z-10">RESET PASSWORD</span>
+              {!submitDisabled && (
+                <span
+                  className="absolute bottom-[10px] left-1/2 -translate-x-1/2 h-[2px] bg-cova-gold w-0 group-hover:w-[calc(100%-32px)] transition-[width] duration-200 ease-out"
+                  aria-hidden="true"
+                />
+              )}
+            </>
           )}
         </button>
       </div>
@@ -645,7 +654,7 @@ function InvalidBlock(props: {
         <button
           type="button"
           onClick={onRequestNewLink}
-          className="font-sans font-medium border border-cova-ivory/30 bg-transparent text-cova-ivory hover:bg-cova-ivory hover:text-cova-navy hover:border-cova-ivory transition-colors duration-200 ease-out focus:outline-none focus-visible:border-cova-gold/60"
+          className="group relative font-sans font-medium border border-cova-ivory/30 bg-transparent text-cova-ivory transition-colors duration-200 ease-out focus:outline-none focus-visible:border-cova-gold/60 flex items-center justify-center overflow-hidden"
           style={{
             width: 200,
             height: 44,
@@ -654,7 +663,11 @@ function InvalidBlock(props: {
             letterSpacing: "0.3em",
             textTransform: "uppercase",
           }}>
-          REQUEST NEW LINK
+          <span className="relative z-10">REQUEST NEW LINK</span>
+          <span
+            className="absolute bottom-[10px] left-1/2 -translate-x-1/2 h-[2px] bg-cova-gold w-0 group-hover:w-[calc(100%-32px)] transition-[width] duration-200 ease-out"
+            aria-hidden="true"
+          />
         </button>
       </div>
     </div>

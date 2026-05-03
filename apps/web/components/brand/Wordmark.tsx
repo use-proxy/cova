@@ -18,7 +18,7 @@ export function Wordmark({ align = "left" }: WordmarkProps) {
           COVA
         </div>
         <div
-          className="font-sans text-[14px] text-cova-gold/50 mt-2 leading-none"
+          className="font-sans text-[14px] text-cova-gold/70 mt-2 leading-none"
           aria-hidden="true"
         >
           —
@@ -36,7 +36,7 @@ export function Wordmark({ align = "left" }: WordmarkProps) {
         COVA
       </div>
       <div
-        className="font-sans text-[14px] text-cova-gold/50 mt-2 leading-none"
+        className="font-sans text-[14px] text-cova-gold/70 mt-2 leading-none"
         aria-hidden="true"
       >
         —

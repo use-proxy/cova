@@ -31,11 +31,11 @@ export default function VerifyEmailSuccess() {
           <AnimatedCheckmark />
         </div>
         <div className="h-8" aria-hidden="true" />
-        <div className={`font-sans text-[10px] tracking-[0.3em] uppercase text-cova-gold/60 ${fadeBase} ${fadeState}`}>
+        <div className={`font-sans text-[10px] tracking-[0.3em] uppercase text-cova-gold/80 ${fadeBase} ${fadeState}`}>
           ACCOUNT — VERIFIED
         </div>
         <div className="h-3" aria-hidden="true" />
-        <h1 className={`font-serif italic font-normal text-[28px] md:text-[32px] leading-[1.2] text-cova-ivory ${fadeBase} ${fadeState}`}>
+        <h1 className={`font-serif italic font-normal text-[28px] md:text-[32px] leading-[1.2] text-cova-gold ${fadeBase} ${fadeState}`}>
           You&rsquo;re in
         </h1>
         <div className="h-2" aria-hidden="true" />
@@ -46,7 +46,7 @@ export default function VerifyEmailSuccess() {
           Redirecting you to set up your style...
         </p>
         <div className="h-6" aria-hidden="true" />
-        <div aria-hidden="true" className={`w-8 h-px bg-cova-gold/40 ${fadeBase} ${fadeState}`} />
+        <div aria-hidden="true" className={`w-8 h-px bg-cova-gold/60 ${fadeBase} ${fadeState}`} />
       </div>
     </main>
   );

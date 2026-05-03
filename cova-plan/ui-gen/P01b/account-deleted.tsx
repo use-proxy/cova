@@ -9,10 +9,12 @@ import { useEffect, useState } from "react";
  * Tone: matter-of-fact, dignified, brief. The user has just permanently
  * deleted their account; the brand acknowledges it without ceremony.
  *
- * Gold appears exactly 3 times on this screen:
- *   1. Wordmark em-dash (text-cova-gold/50)
- *   2. Eyebrow label (text-cova-gold/60)
- *   3. Hairline rule (bg-cova-gold/40)
+ * Gold appears exactly 5 times on this screen:
+ *   1. Wordmark em-dash (text-cova-gold/70)
+ *   2. Eyebrow label (text-cova-gold/80)
+ *   3. Italic serif headline (text-cova-gold, full opacity)
+ *   4. Hairline rule (bg-cova-gold/60)
+ *   5. Return Home link (text-cova-gold/60)
  */
 export default function AccountDeleted() {
   const [mounted, setMounted] = useState(false);
@@ -33,7 +35,7 @@ export default function AccountDeleted() {
         <div className="font-serif text-cova-ivory text-[12px] md:text-[16px] tracking-[0.4em] uppercase leading-none">
           COVA
         </div>
-        <div className="mt-2 font-sans text-cova-gold/50 text-[14px] leading-none">
+        <div className="mt-2 font-sans text-cova-gold/70 text-[14px] leading-none">
           —
         </div>
       </div>
@@ -52,7 +54,7 @@ export default function AccountDeleted() {
         {/* Hairline-bracketed region: from eyebrow top down to the gold rule */}
         <div className="border-l border-cova-ivory/[0.12] pl-6">
           {/* 1. Eyebrow */}
-          <p className="font-sans text-[10px] tracking-[0.3em] uppercase text-cova-gold/60">
+          <p className="font-sans text-[10px] tracking-[0.3em] uppercase text-cova-gold/80">
             Account — Removed
           </p>
 
@@ -60,7 +62,7 @@ export default function AccountDeleted() {
           <div className="h-3" aria-hidden="true" />
 
           {/* 3. Headline */}
-          <h1 className="font-serif italic font-normal text-cova-ivory text-[24px] md:text-[28px] leading-[1.2]">
+          <h1 className="font-serif italic font-normal text-cova-gold text-[24px] md:text-[28px] leading-[1.2]">
             Your account has been deleted.
           </h1>
 
@@ -81,7 +83,7 @@ export default function AccountDeleted() {
           {/* 7. Gold hairline rule — 32px wide, 1px tall, left-aligned */}
           <div
             aria-hidden="true"
-            className="w-8 h-px bg-cova-gold/40"
+            className="w-8 h-px bg-cova-gold/60"
           />
         </div>
 
@@ -92,7 +94,7 @@ export default function AccountDeleted() {
         <div className="text-center">
           <a
             href="/"
-            className="font-sans text-[10px] tracking-[0.25em] uppercase text-cova-ivory/40 hover:text-cova-ivory focus-visible:text-cova-ivory focus:outline-none transition-colors duration-200 ease-out"
+            className="font-sans text-[10px] tracking-[0.25em] uppercase text-cova-gold/60 hover:text-cova-gold focus-visible:text-cova-gold focus:outline-none transition-colors duration-200 ease-out"
           >
             Return Home — covainterior.com
           </a>

@@ -289,7 +289,7 @@ const LegalPage: React.FC<Partial<LegalPageProps>> = (userProps) => {
 
             {/* 1. Eyebrow */}
             <p
-              className="font-sans uppercase text-cova-gold/60"
+              className="font-sans uppercase text-cova-gold/80"
               style={{
                 fontSize: "10px",
                 letterSpacing: "0.3em",
@@ -303,7 +303,7 @@ const LegalPage: React.FC<Partial<LegalPageProps>> = (userProps) => {
 
             {/* 3. Document headline */}
             <h1
-              className="font-serif text-cova-ivory"
+              className="font-serif text-cova-gold"
               style={{
                 fontSize: "clamp(28px, 5vw, 36px)",
                 fontStyle: "normal",
@@ -319,7 +319,7 @@ const LegalPage: React.FC<Partial<LegalPageProps>> = (userProps) => {
 
             {/* 5. Gold hairline rule — left-aligned */}
             <div
-              className="bg-cova-gold/40"
+              className="bg-cova-gold/60"
               style={{ width: "32px", height: "1px" }}
               aria-hidden="true"
             />
@@ -354,7 +354,7 @@ const LegalPage: React.FC<Partial<LegalPageProps>> = (userProps) => {
             {/* 9. Closing gold hairline rule — centered */}
             <div className="flex justify-center" aria-hidden="true">
               <div
-                className="bg-cova-gold/40"
+                className="bg-cova-gold/60"
                 style={{ width: "32px", height: "1px" }}
               />
             </div>
@@ -391,7 +391,7 @@ const LegalPage: React.FC<Partial<LegalPageProps>> = (userProps) => {
             <div className="flex justify-center">
               <a
                 href="/"
-                className="font-sans uppercase text-cova-ivory/40 transition-colors duration-200 ease-out hover:text-cova-ivory focus-visible:text-cova-ivory focus-visible:outline-none"
+                className="font-sans uppercase text-cova-gold/60 transition-colors duration-200 ease-out hover:text-cova-gold focus-visible:text-cova-gold focus-visible:outline-none"
                 style={{
                   fontSize: "10px",
                   letterSpacing: "0.25em",

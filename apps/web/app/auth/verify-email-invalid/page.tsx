@@ -144,6 +144,7 @@ export default function VerifyEmailInvalid() {
           display: inline-flex;
           align-items: center;
           justify-content: center;
+          position: relative;
           height: 44px;
           background-color: transparent;
           border: 1px solid rgba(245, 240, 232, 0.30);
@@ -155,24 +156,33 @@ export default function VerifyEmailInvalid() {
           text-transform: uppercase;
           border-radius: 0;
           cursor: pointer;
-          transition: background-color 200ms ease-out,
-                      color 200ms ease-out,
-                      border-color 200ms ease-out;
+          transition: none;
           padding: 0 16px;
-        }
-        .cova-btn:hover:not(:disabled) {
-          background-color: #F5F0E8;
-          color: #091829;
-          border-color: #F5F0E8;
+          overflow: hidden;
         }
         .cova-btn:disabled {
           opacity: 0.5;
           cursor: not-allowed;
         }
-        /* Gold focus ring — 4th gold appearance */
+        /* Gold focus ring */
         .cova-btn:focus-visible {
-          outline: 1px solid rgba(201, 168, 76, 0.60);
+          outline: 1px solid rgba(201, 168, 76, 0.80);
           outline-offset: 2px;
+        }
+        /* Hover-gold-reveal underline via pseudo-element */
+        .cova-btn::after {
+          content: '';
+          position: absolute;
+          bottom: 10px;
+          left: 50%;
+          transform: translateX(-50%);
+          height: 2px;
+          background-color: #C9A84C;
+          width: 0;
+          transition: width 200ms ease-out;
+        }
+        .cova-btn:hover:not(:disabled)::after {
+          width: calc(100% - 32px);
         }
 
         /* ─── Footer link ─────────────────────────────────────────────── */
@@ -182,15 +192,15 @@ export default function VerifyEmailInvalid() {
           font-weight: 400;
           letter-spacing: 0.25em;
           text-transform: uppercase;
-          color: rgba(245, 240, 232, 0.40);
+          color: rgba(201, 168, 76, 0.60);
           text-decoration: none;
           transition: color 200ms ease-out;
         }
         .cova-footer-link:hover {
-          color: #F5F0E8;
+          color: rgba(201, 168, 76, 1);
         }
         .cova-footer-link:focus-visible {
-          outline: 1px solid rgba(201, 168, 76, 0.60);
+          outline: 1px solid rgba(201, 168, 76, 0.80);
           outline-offset: 2px;
         }
       `}</style>
@@ -228,14 +238,14 @@ export default function VerifyEmailInvalid() {
               <Toast message={topBannerError} onDismiss={() => setTopBannerError("")} />
             )}
 
-            {/* ── EYEBROW — gold appearance #1 ─────────────────────── */}
+            {/* ── EYEBROW — gold/80 ────────────────────────────────── */}
             <div
               className="cova-sans"
               style={{
                 fontSize: "10px",
                 letterSpacing: "0.3em",
                 textTransform: "uppercase",
-                color: "rgba(201, 168, 76, 0.60)",
+                color: "rgba(201, 168, 76, 0.80)",
                 fontWeight: 400,
                 lineHeight: 1,
               }}
@@ -246,14 +256,14 @@ export default function VerifyEmailInvalid() {
             {/* 12px gap */}
             <div style={{ height: "12px" }} />
 
-            {/* ── HEADLINE ─────────────────────────────────────────── */}
+            {/* ── HEADLINE — gold at full opacity ──────────────────── */}
             <h1
               className="cova-serif"
               style={{
                 fontSize: "clamp(24px, 4vw, 28px)",
                 fontStyle: "italic",
                 fontWeight: 400,
-                color: "var(--cova-ivory)",
+                color: "var(--cova-gold)",
                 lineHeight: 1.2,
                 margin: 0,
               }}
@@ -283,12 +293,12 @@ export default function VerifyEmailInvalid() {
             {/* 16px gap */}
             <div style={{ height: "16px" }} />
 
-            {/* ── GOLD HAIRLINE RULE — gold appearance #3 ──────────── */}
+            {/* ── GOLD HAIRLINE RULE — gold/60 ─────────────────────── */}
             <div
               style={{
                 width: "32px",
                 height: "1px",
-                backgroundColor: "rgba(201, 168, 76, 0.40)",
+                backgroundColor: "rgba(201, 168, 76, 0.60)",
               }}
             />
 

@@ -212,15 +212,24 @@ Split into 1A backend / 1B UI / 1C integration. Run in this order.
 
 ### 1B — UI (M2 screens)
 
-**Locked design language (all 9 screens — final via P01b prep iterations):**
+**Locked design language (all 10 screens — final via P01b prep iterations + post-close gold tuning Proposal C):**
 
 Reference vibe: Hermès, Aesop, Loro Piana, Saint Laurent. Modern dark luxury. Quiet, confident, editorial.
 
 Color palette:
 - bg-cova-navy (#091829) — full-bleed ground on every screen
-- text-cova-ivory (#F5F0E8) — primary text
-- text-cova-gold (#C9A84C) — used surgically: eyebrow microtype, brand mark em-dash, hairline rule, focus rings, primary button hover
+- text-cova-ivory (#F5F0E8) — primary text (body text, labels, input text — stays ivory)
+- text-cova-gold (#C9A84C) — used surgically, 5-6 times per screen: italic serif headline (full opacity), eyebrow microtype (gold/80), brand mark em-dash (gold/70), hairline rule (gold/60), focus ring on inputs (gold/80), footer microtype (gold/60). Hover-gold-reveal on primary buttons (gold underline, 0→100% width over 200ms).
 - text-cova-warm-error (#A8443B) — error states only
+
+**Per-element gold opacity table (post-Proposal-C):**
+- Italic serif headline: gold at full opacity (was ivory) — editorial luxury signature anchor.
+- Eyebrow microtype: gold/80 (was gold/60)
+- Brand mark em-dash: gold/70 (was gold/50)
+- Hairline rule (32px below headline): gold/60 (was gold/40)
+- Input focus ring / bottom border focus: gold/80 (was gold/60)
+- Footer microtype (fixed bottom-right link): gold/60 (was ivory/40)
+- Primary button hover: gold underline reveal — 2px solid cova-gold, animates 0→full button-text width over 200ms ease-out via ::after pseudo-element (or span pattern). Rest state unchanged (ivory text + ivory border). Disabled buttons: no hover effect.
 
 Typography:
 - font-serif (EB Garamond) — italic for editorial moments (auth screen headlines, helper lines, input placeholders); upright for legal prose (/terms, /privacy headings)
@@ -229,12 +238,12 @@ Typography:
 
 Layout invariants (8 form screens — all but verify-email-success and legal):
 - Full-bleed bg-cova-navy
-- Fixed COVA wordmark top-left (16px tracking-[0.4em] uppercase ivory + gold em-dash beneath at 50% opacity)
+- Fixed COVA wordmark top-left (16px tracking-[0.4em] uppercase ivory + gold em-dash beneath at gold/70 opacity)
 - 360px form column centered both axes
 - Vertical hairline rule on left of form column (border-l border-cova-ivory/12)
-- Eyebrow → italic serif headline → optional helper line → 32px gold hairline rule (left-aligned)
+- Eyebrow (gold/80) → italic serif headline (gold, full opacity) → optional helper line → 32px gold hairline rule (gold/60, left-aligned)
 - Italic serif placeholders inside bottom-border-only inputs
-- Fixed footer link bottom-right (mirrors wordmark for compositional symmetry)
+- Fixed footer link bottom-right (gold/60, mirrors wordmark for compositional symmetry)
 - Sharp corners (0px radius) everywhere
 - No shadows, no glows, no particles, no decorative elements
 

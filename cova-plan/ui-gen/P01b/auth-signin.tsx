@@ -100,7 +100,7 @@ export default function SignIn() {
           COVA
         </div>
         <div
-          className="font-sans text-[14px] text-cova-gold/50 mt-2 leading-none"
+          className="font-sans text-[14px] text-cova-gold/70 mt-2 leading-none"
           aria-hidden="true"
         >
           —
@@ -143,7 +143,7 @@ export default function SignIn() {
               )}
 
               {/* EYEBROW */}
-              <div className="font-sans text-[10px] tracking-[0.3em] uppercase text-cova-gold/60">
+              <div className="font-sans text-[10px] tracking-[0.3em] uppercase text-cova-gold/80">
                 ACCOUNT — RETURNING
               </div>
 
@@ -153,7 +153,7 @@ export default function SignIn() {
               {/* HEADLINE */}
               <h1
                 id="cova-signin-headline"
-                className="font-serif italic font-normal text-cova-ivory text-[24px] md:text-[28px] leading-[1.2]"
+                className="font-serif italic font-normal text-cova-gold text-[24px] md:text-[28px] leading-[1.2]"
               >
                 Sign in
               </h1>
@@ -163,7 +163,7 @@ export default function SignIn() {
 
               {/* GOLD HAIRLINE RULE — left-aligned, 32px wide */}
               <div
-                className="w-8 h-px bg-cova-gold/40"
+                className="w-8 h-px bg-cova-gold/60"
                 aria-hidden="true"
               />
 
@@ -176,16 +176,20 @@ export default function SignIn() {
                 onClick={handleOAuthClick}
                 disabled={isLoading}
                 className={[
-                  "w-full h-12",
+                  "group relative w-full h-12",
                   "bg-transparent border border-cova-ivory/20",
                   "text-cova-ivory font-sans text-[12px] tracking-[0.2em] uppercase font-medium",
                   "transition-colors duration-200 ease-out",
-                  "hover:bg-cova-ivory/[0.08] hover:border-cova-ivory/40",
                   "focus:outline-none focus-visible:border-cova-gold/60",
-                  "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-cova-ivory/20",
+                  "disabled:opacity-50 disabled:cursor-not-allowed",
+                  "flex items-center justify-center overflow-hidden",
                 ].join(" ")}
               >
-                CONTINUE WITH GOOGLE
+                <span className="relative z-10">CONTINUE WITH GOOGLE</span>
+                <span
+                  className="absolute bottom-[11px] left-1/2 -translate-x-1/2 h-[2px] bg-cova-gold w-0 group-hover:w-[calc(100%-32px)] group-disabled:w-0 transition-[width] duration-200 ease-out"
+                  aria-hidden="true"
+                />
               </button>
 
               {/* 24px gap */}
@@ -231,7 +235,7 @@ export default function SignIn() {
                   "transition-colors duration-200 ease-out",
                   emailError
                     ? "border-cova-warm-error focus:border-cova-warm-error"
-                    : "border-cova-ivory/15 focus:border-cova-gold/60",
+                    : "border-cova-ivory/15 focus:border-cova-gold/80",
                   "disabled:opacity-50 disabled:cursor-not-allowed",
                 ].join(" ")}
               />
@@ -282,7 +286,7 @@ export default function SignIn() {
                   "transition-colors duration-200 ease-out",
                   passwordError
                     ? "border-cova-warm-error focus:border-cova-warm-error"
-                    : "border-cova-ivory/15 focus:border-cova-gold/60",
+                    : "border-cova-ivory/15 focus:border-cova-gold/80",
                   "disabled:opacity-50 disabled:cursor-not-allowed",
                 ].join(" ")}
               />
@@ -307,7 +311,7 @@ export default function SignIn() {
                   href="/auth/forgot-password"
                   className={[
                     "font-sans text-[10px] tracking-[0.2em] uppercase",
-                    "text-cova-ivory/40 hover:text-cova-ivory",
+                    "text-cova-gold/60 hover:text-cova-gold",
                     "transition-colors duration-200 ease-out",
                     "focus:outline-none focus-visible:text-cova-ivory",
                   ].join(" ")}
@@ -331,9 +335,8 @@ export default function SignIn() {
                     "text-cova-ivory font-sans text-[11px] tracking-[0.3em] uppercase font-medium",
                     "transition-colors duration-200 ease-out",
                     "focus:outline-none focus-visible:border-cova-gold/60",
-                    canSubmit
-                      ? "hover:bg-cova-ivory hover:text-cova-navy hover:border-cova-ivory cursor-pointer"
-                      : "opacity-50 cursor-not-allowed",
+                    "flex items-center justify-center overflow-hidden",
+                    !canSubmit ? "opacity-50 cursor-not-allowed" : "cursor-pointer",
                   ].join(" ")}
                   aria-busy={isLoading}
                 >
@@ -346,7 +349,13 @@ export default function SignIn() {
                       <Spinner />
                     </span>
                   ) : (
-                    "SIGN IN"
+                    <>
+                      <span className="relative z-10">SIGN IN</span>
+                      <span
+                        className="absolute bottom-[10px] left-1/2 -translate-x-1/2 h-[2px] bg-cova-gold w-0 group-hover:w-[calc(100%-32px)] transition-[width] duration-200 ease-out"
+                        aria-hidden="true"
+                      />
+                    </>
                   )}
                 </button>
               </div>
@@ -362,7 +371,7 @@ export default function SignIn() {
           "fixed z-10",
           "bottom-6 right-6 md:bottom-8 md:right-10",
           "font-sans text-[10px] tracking-[0.25em] uppercase",
-          "text-cova-ivory/40 hover:text-cova-ivory",
+          "text-cova-gold/60 hover:text-cova-gold",
           "transition-colors duration-200 ease-out",
           "focus:outline-none focus-visible:text-cova-ivory",
         ].join(" ")}
