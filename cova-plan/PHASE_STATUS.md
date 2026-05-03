@@ -5,9 +5,9 @@
 > contradicts code, treat the code as authoritative and open a drift doc at
 > `cova-plan/drift/P{N}-detected.md`.
 
-**Last updated:** 2026-05-02 (P01a partial-execution, ready for verifier on safe subset; M2/M4 + 16 paidCall migrations + ESLint cleanup deferred to round 2)
-**Current phase pointer:** Phase 1A — Demolition + Ops Hardening (IN EXECUTION, partial)
-**Next phase to plan:** P01a remediation (M2/M4 + paidCall) → verifier sessions → P1B
+**Last updated:** 2026-05-02 (P01a CLOSED — 20 PASS / 3 acknowledged-deferred / 0 FAIL; final commit `0437fc9`; P01b READY TO START)
+**Current phase pointer:** Phase 1B — Auth + Legal + Account Deletion (READY TO START)
+**Next phase to plan:** P01b (Auth + Legal + Account Deletion)
 **Workflow:** Cloud chat → Planner (Claude Code + MCPs) → review → Executor (fresh Claude Code, multi-session) → Verifier Session 1 → Verifier Session 2 → Manual gate → Close
 
 ---
@@ -160,8 +160,8 @@ Daksh-side prerequisite has been confirmed (most close inside P1 itself).
 
 | Phase | Name | Status | Blocker / Dep | Doc |
 |---|---|---|---|---|
-| **P1A** | Demolition + Ops Hardening — schema demolition, subagents, Sentry, redactor, timeouts, EXIF strip, render_cost_log, failure_category namespace, PostHog, Cloudflare wiring, feature_flags table | IN EXECUTION (partial — safe subset applied; 2 migrations halted on active-refs back-bug; ESLint rules wired at "warn" pending cleanup) | none (P0 prerequisites Daksh-side; non-blocking). **Blocks P1B.** | `cova-plan/phases/P01a-demolition-ops.md`; partial-state evidence at `cova-plan/auto-evidence/P01a/INDEX.md` |
-| **P1B** | Auth + Legal + Account Deletion — 6 auth screens, 9 auth API routes, delete-user-cascade Edge Function, GDPR export, Termly /terms + /privacy, /account-deleted, auth feature flag rows | NOT STARTED | **depends on P1A CLOSED** + Resend DNS (G4) + Termly templates rendered (G5) + Apple OAuth status (G8). **Blocks Phase 2.** | `cova-plan/phases/P01b-auth-legal-deletion.md` |
+| **P1A** | Demolition + Ops Hardening — schema demolition, subagents, Sentry, redactor, timeouts, EXIF strip, render_cost_log, failure_category namespace, PostHog, Cloudflare wiring, feature_flags table | **CLOSED** (2026-05-02; final commit `0437fc9`; 20 PASS / 3 acknowledged-deferred / 0 FAIL) | — | `cova-plan/phases/P01a-demolition-ops.md`; final pre-close audit at `cova-plan/audit-reports/P01a-final-pre-close-audit.md` |
+| **P1B** | Auth + Legal + Account Deletion — 6 auth screens, 9 auth API routes, delete-user-cascade Edge Function, GDPR export, Termly /terms + /privacy, /account-deleted, auth feature flag rows | **READY TO START** | Resend DNS (G4) + Termly templates rendered (G5) + Apple OAuth status (G8). **Blocks Phase 2.** | `cova-plan/phases/P01b-auth-legal-deletion.md`; kickoff notes at `cova-plan/phases/P01b-kickoff-notes.md` |
 | **P2** | Quiz + Capture wiring (V3 fast path, swipe consumption, photo intake hardening) | NOT STARTED | depends on P1 (style_blend wiring, EXIF strip, RLS cleanup) | `cova-plan/phases/P02-quiz-capture.md` (TBD) |
 | **P3** | Pipeline reliability (timeout reconciliation, failure_category, render_cost_log writers) | NOT STARTED | depends on P1 (Sentry, redactor, error categories) | `cova-plan/phases/P03-pipeline-reliability.md` (TBD) |
 | **P4** | Render UI + Refinement (step-8a/b polish, before/after slider, token gating UI) | NOT STARTED | depends on P3 + P5 (token gating live) | `cova-plan/phases/P04-render-ui.md` (TBD) |
@@ -317,8 +317,8 @@ Handoffs land at `cova-plan/SESSION_HANDOFFS/{NN}-{slug}.md` and contain:
 | Phase | Status | Notes |
 |---|---|---|
 | P0 | IN PROGRESS | external Daksh-side work continues in parallel; non-blocking for P1 |
-| P1A | IN EXECUTION (partial, 2026-05-02) | M0 ✓ subagents/cron/CI; M1 ✓ except 2 halted migrations (M2 drop-dead-room-cols + M4 render_cost_log-recreate; back-bug `P01a-m2-m4-active-refs.md`); M3 ✓ except deferred 16 paidCall site migrations + 267 redactLogPayload wrappings (back-bug `P01a-eslint-rule-severity-pending-cleanup.md`); 4 V8-stage Modal apps stopped; delete-account redeployed; phantom env vars cleaned. Build + lint exit 0. See `cova-plan/auto-evidence/P01a/INDEX.md` |
-| P1B | NOT STARTED | doc drafted at `cova-plan/phases/P01b-auth-legal-deletion.md`; depends on P1A CLOSED before planner fires |
+| P1A | **CLOSED** (2026-05-02; final commit `0437fc9`) | 20 of 23 §13 criteria PASS, 3 PARTIAL (acknowledged-deferred via documented back-bugs), 0 FAIL. M2 tightened from 28→17 truly-dead rooms columns (11 deferred to P02/P03). 4 V8-stage Modal apps stopped. ESLint `no-direct-paid-fetch` at error (0 violations); `no-unsafe-console` at warn (199 residuals tracked). Sentry sample rates locked. 4 subagents shipped. See `cova-plan/audit-reports/P01a-final-pre-close-audit.md` |
+| P1B | **READY TO START** | doc at `cova-plan/phases/P01b-auth-legal-deletion.md`; supplementary planner context at `cova-plan/phases/P01b-kickoff-notes.md`; legacy `apps/web/app/auth/` from V0 era still present — planner must schedule archive-or-overwrite |
 | P2 | NOT STARTED | doc not authored |
 | P3 | NOT STARTED | doc not authored |
 | P4 | NOT STARTED | doc not authored |
