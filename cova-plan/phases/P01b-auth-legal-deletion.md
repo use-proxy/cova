@@ -91,7 +91,7 @@ The auth + legal + account-deletion half of the original P01. Three things happe
 
 2. **Legal pages.** `/terms` and `/privacy` rendered from Termly templates (16+ age gate, FTC affiliate disclosure, processor list, GDPR/CCPA rights). `/account-deleted` thank-you page.
 
-3. **Account deletion + GDPR export.** `account_deletions` table (service-role-only RLS). `delete-user-cascade` Supabase Edge Function. `POST /api/auth/delete-account` triggers the cascade. `account_deletions` row written with hashed user_id only (no PII retained). `POST /api/users/export` produces a zip of all user data with a 24h-TTL signed URL emailed via Resend.
+3. **Account deletion + GDPR export.** `account_deletions` table (service-role-only RLS). `delete-user-cascade` Supabase Edge Function. `POST /api/auth/delete-account` triggers the cascade. `account_deletions` row written with hashed user_id only (no PII retained). `POST /api/users/export` produces a zip of all user data with a 7-day signed URL emailed via Resend.
 
 > **Demolition, ops hardening, subagent setup are out of scope here.** They were completed in P01a — verifier confirms before P01b starts.
 
