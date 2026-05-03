@@ -20,8 +20,6 @@ const ENV_VARS: EnvVar[] = [
   { name: "FAL_KEY", required: true, serverOnly: true },
   { name: "ANTHROPIC_API_KEY", required: true, serverOnly: true },
   { name: "REPLICATE_API_TOKEN", required: false, serverOnly: true }, // Legacy, being deprecated
-  // Pipeline webhooks — required for render pipeline
-  { name: "REDESIGN_PIPELINE_WEBHOOK_URL", required: true, serverOnly: true },
   // Search — optional (used for product enrichment)
   { name: "SERPER_API_KEY", required: false, serverOnly: true },
   { name: "SEARCHAPI_KEY", required: false, serverOnly: true },

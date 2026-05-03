@@ -136,20 +136,18 @@ export async function POST(request: Request) {
     userId = user.id;
   }
 
-  // V9 redesign service preferred when COVA_REDESIGN_URL is set.
-  // Falls back to legacy REDESIGN_PIPELINE_WEBHOOK_URL otherwise.
+  // V9 redesign service: COVA_REDESIGN_URL is the only supported route.
+  // Legacy V8 orchestrator fallback removed in P01a M3 (phase-1a-m3) — the
+  // cova-redesign-pipeline orchestrator source was archived and the
+  // corresponding Modal app was stopped on 2026-05-02.
   const v9RedesignUrl = process.env.COVA_REDESIGN_URL;
-  const legacyWebhook = process.env.REDESIGN_PIPELINE_WEBHOOK_URL;
-  const webhookUrl = v9RedesignUrl
-    ? `${v9RedesignUrl.replace(/\/$/, "")}/v1/generate_redesign`
-    : legacyWebhook;
-  if (!webhookUrl) {
+  if (!v9RedesignUrl) {
     return NextResponse.json(
-      { error: "No redesign webhook configured (COVA_REDESIGN_URL or REDESIGN_PIPELINE_WEBHOOK_URL)" },
+      { error: "No redesign webhook configured (COVA_REDESIGN_URL)" },
       { status: 503 },
     );
   }
-  const useV9 = Boolean(v9RedesignUrl);
+  const webhookUrl = `${v9RedesignUrl.replace(/\/$/, "")}/v1/generate_redesign`;
 
   // Read personalization data
   const admin = createAdminSupabaseClient();
@@ -759,7 +757,6 @@ export async function POST(request: Request) {
 
   try {
     // V9 body: matches modal_pipeline/redesign.py Block 2 rewrite.
-    // Legacy body: preserved for REDESIGN_PIPELINE_WEBHOOK_URL fallback.
     const v9Body = {
       room_id,
       user_id: userId,
@@ -771,29 +768,10 @@ export async function POST(request: Request) {
       budget_max: budgetMax,
       seed: generationSeed,
     };
-    const legacyBody = {
-      room_id,
-      user_id: userId,
-      compiled_prompt: compiledPrompt ?? null,
-      anchor_prompt: anchorPrompt ?? null,
-      style_reference_url: styleReferenceUrl ?? null,
-      chat_context: renderContext?.tabStates ?? null,
-      image_url: photoUrlForPipeline ?? null,
-      unsplash_references: unsplashReferences.length > 0 ? unsplashReferences : null,
-      loras_json: lorasJson,
-      seed: generationSeed,
-      remove_count: removeCount,
-      change_map_url: changeMapUrl ?? null,
-      kept_item_mask_urls: keptItemMaskUrls.length > 0 ? keptItemMaskUrls : null,
-      wall_change_requested: wallChangeRequested,
-      floor_change_requested: floorChangeRequested,
-      room_type: roomType,
-      style_blend: room?.style_blend ?? renderContext?.styleBlend ?? null,
-    };
     const response = await fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(useV9 ? v9Body : legacyBody),
+      body: JSON.stringify(v9Body),
       // Phase 2.0c.3 — Modal V3 pipeline budget: ~3-5 min realistic runtime
       // (FLUX Pass 1, IC-Light, refinement, Sonnet calls). 7 minutes gives
       // ~2 min buffer for slow fal queues. Verified production timeout at

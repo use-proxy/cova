@@ -117,7 +117,7 @@ preprocessed_image_url, professionalized_image_url, design_brief (JSONB), flux_p
 New tables
 style_loras: id, style_name, trigger_word, lora_url, recommended_scale, quality_score, trained_at
 Required env vars
-FAL_KEY, ANTHROPIC_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SERPER_API_KEY, SEARCHAPI_KEY, UNSPLASH_ACCESS_KEY, REDESIGN_PIPELINE_WEBHOOK_URL, AMAZON_ASSOCIATE_TAG, REPLICATE_API_TOKEN (legacy)
+FAL_KEY, ANTHROPIC_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SERPER_API_KEY, SEARCHAPI_KEY, UNSPLASH_ACCESS_KEY, COVA_REDESIGN_URL, AMAZON_ASSOCIATE_TAG, REPLICATE_API_TOKEN (legacy)
 Session continuity
 Read SESSION_NOTES.md at project root before every session.
 Append after every session: files changed, pipeline stage status (✅/❌/⏳), decisions made, known issues, env vars added.

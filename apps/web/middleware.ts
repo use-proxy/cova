@@ -34,7 +34,6 @@ const PUBLIC_API_ROUTES = [
   "/api/quiz/validation-renders",
   "/api/style-references/match",
   "/api/rooms/public-count",
-  "/api/test-pipeline",
   "/api/pipeline", // Pipeline routes have their own auth + dev bypass
 ];
 
