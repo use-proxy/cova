@@ -27,28 +27,13 @@ export function redactLogString(input: string | null | undefined): string {
 
 /**
  * Recursively redact string values in an object/array/primitive tree.
- * Non-string leaves are returned untouched. Circular refs not supported;
- * tracked via WeakSet to avoid infinite recursion if a caller passes one.
+ *
+ * P01a M3 E.2 consolidated: this function is now re-exported from
+ * `@/lib/log/redact`, which performs PII redaction (email/phone/address +
+ * forbidden keys hashed/replaced) AND THEN forbidden-name scrubbing. New
+ * code should import from the new path. The old path is kept for back-compat.
  */
-export function redactLogPayload<T>(value: T, seen: WeakSet<object> = new WeakSet()): T {
-  if (typeof value === "string") {
-    return redactLogString(value) as unknown as T;
-  }
-  if (value === null || value === undefined) return value;
-  if (typeof value !== "object") return value;
-  if (seen.has(value as object)) return value;
-  seen.add(value as object);
-
-  if (Array.isArray(value)) {
-    return value.map((v) => redactLogPayload(v, seen)) as unknown as T;
-  }
-
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-    out[k] = redactLogPayload(v, seen);
-  }
-  return out as unknown as T;
-}
+export { redactLogPayload } from "../log/redact";
 
 /**
  * Wrap a logger's emit function (e.g., Sentry.captureMessage, posthog.capture,

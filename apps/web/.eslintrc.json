@@ -1,6 +1,9 @@
 {
   "extends": ["next/core-web-vitals", "next/typescript"],
+  "plugins": ["cova-rules"],
   "rules": {
+    "cova-rules/no-unsafe-console": "error",
+    "cova-rules/no-direct-paid-fetch": "error",
     "@typescript-eslint/no-explicit-any": "error",
     "@typescript-eslint/no-unused-vars": [
       "error",
@@ -11,6 +14,26 @@
     "react-hooks/exhaustive-deps": "warn",
     "no-restricted-syntax": [
       "error",
+      {
+        "selector": "Literal[value=180000]",
+        "message": "Hardcoded 180000ms timeout — use lib/config/timeouts.ts."
+      },
+      {
+        "selector": "Literal[value=290000]",
+        "message": "Hardcoded 290000ms timeout — use lib/config/timeouts.ts."
+      },
+      {
+        "selector": "Literal[value=300000]",
+        "message": "Hardcoded 300000ms timeout — use lib/config/timeouts.ts."
+      },
+      {
+        "selector": "Literal[value=320000]",
+        "message": "Hardcoded 320000ms timeout — use lib/config/timeouts.ts."
+      },
+      {
+        "selector": "Literal[value=420000]",
+        "message": "Hardcoded 420000ms timeout — use lib/config/timeouts.ts."
+      },
       {
         "selector": "Literal[value=/(?<!warm\\s)\\bjapandi\\b/i]",
         "message": "CLAUDE.md Rule 8 / Phase 3 F6.1: bare 'Japandi' is forbidden in source strings. Use qualified form 'Warm Japandi' or route through anchor-display.ts / forbidden-names.ts."
@@ -69,6 +92,19 @@
     "node_modules/"
   ],
   "overrides": [
+    {
+      "files": ["lib/paid/call.ts", "lib/config/timeouts.ts"],
+      "rules": {
+        "cova-rules/no-direct-paid-fetch": "off",
+        "no-restricted-syntax": "off"
+      }
+    },
+    {
+      "files": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx", "tests/**/*", "__tests__/**/*"],
+      "rules": {
+        "cova-rules/no-unsafe-console": "off"
+      }
+    },
     {
       "files": ["app/design/_future/**/*"],
       "rules": {
