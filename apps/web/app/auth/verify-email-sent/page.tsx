@@ -117,13 +117,14 @@ export default function VerifyEmailSent() {
 
   const resendDisabled = resendCountdown > 0 || isResending;
 
+  // Loading state α (phase doc §6 1B): italic-serif label change, no spinner.
+  // Locked label per §6 1B "Resend verification: Resending…".
   let resendLabel: React.ReactNode;
   if (isResending) {
     resendLabel = (
-      <span
-        aria-hidden="true"
-        className="inline-block h-[14px] w-[14px] animate-spin rounded-full border border-cova-ivory/30 border-t-cova-ivory"
-      />
+      <span className="font-serif italic normal-case tracking-normal text-[14px] text-cova-ivory">
+        Resending&hellip;
+      </span>
     );
   } else if (resendCountdown > 0) {
     resendLabel = `RESEND IN ${resendCountdown}S`;
