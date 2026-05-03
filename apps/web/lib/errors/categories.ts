@@ -28,9 +28,33 @@ export type CaptureFailurePreprocess =
   | "capture.image.too_large"
   | "capture.image.invalid_format";
 
+export type AuthFailure =
+  | "auth.signup.email_taken"
+  | "auth.signup.password_weak"
+  | "auth.signup.turnstile_fail"
+  | "auth.signup.rate_limit"
+  | "auth.signup.resend_send_fail"
+  | "auth.signin.invalid_credentials"
+  | "auth.signin.account_locked"
+  | "auth.oauth.provider_error"
+  | "auth.oauth.email_mismatch"
+  | "auth.forgot.send_fail"
+  | "auth.reset.token_expired"
+  | "auth.reset.token_used"
+  | "auth.reset.password_weak"
+  | "auth.verify.token_expired"
+  | "auth.verify.token_used"
+  | "auth.delete.confirm_mismatch"
+  | "auth.delete.cascade_fail"
+  | "auth.export.zip_fail"
+  | "auth.session.expired"
+  | "auth.signin.silent_lockout"
+  | "auth.oauth.email_exists";
+
 export type FailureCategory =
   | CostFailure
   | InfraFailure
   | SubagentFailure
-  | CaptureFailurePreprocess;
-// Phase 1B will extend with AuthFailure; Phase 2 with QuizFailure; etc.
+  | CaptureFailurePreprocess
+  | AuthFailure;
+// Phase 2 will extend with QuizFailure; etc.

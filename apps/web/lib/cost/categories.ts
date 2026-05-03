@@ -17,7 +17,11 @@ export type CostCategory =
   | "verifier_light"
   | "moderation_nsfw"
   | "moderation_borderline"
-  | "moderation_csam";
+  | "moderation_csam"
+  | "auth.email.verification"
+  | "auth.email.reset"
+  | "auth.email.export"
+  | "auth.email.deletion_confirmation";
 
 export const ALL_COST_CATEGORIES: ReadonlyArray<CostCategory> = [
   "render",
@@ -35,4 +39,8 @@ export const ALL_COST_CATEGORIES: ReadonlyArray<CostCategory> = [
   "moderation_nsfw",
   "moderation_borderline",
   "moderation_csam",
+  "auth.email.verification",
+  "auth.email.reset",
+  "auth.email.export",
+  "auth.email.deletion_confirmation",
 ] as const;
