@@ -111,7 +111,7 @@ The demolition + operational hardening half of the original P01. Two things happ
 |---|---|---|
 | STAGE5_AUDIT | ~30% of renders fail silently with empty `redesign_error` | failure_category enums + Sentry capture in M3 |
 | SCHEMA_AUDIT | 28 dead columns, 17 dead tables, 12 dead indexes | M1 drops everything (reversible migration) |
-| SUPABASE_AUDIT | RLS gaps on pipeline_runs, mood_feed_remixes; room-uploads bucket; quiz-images bucket missing policy | M1 RLS consolidation migration with `p1_` policy prefix |
+| SUPABASE_AUDIT | RLS gaps on mood_feed_remixes; room-uploads bucket; quiz-images bucket missing policy (`pipeline_runs` lockdown deferred to Phase 5 — table not yet created) | M1 RLS consolidation migration with `p1_` policy prefix |
 | TIMEOUT_AUDIT | 180/300/420 chain inverted | M3 locks 290/300/320 in `lib/config/timeouts.ts` |
 | TELEMETRY_AUDIT | Sentry only on client; `instrumentation.ts` missing; `redactLogPayload` missing; `render_cost_log` unwired | M3 wires all four |
 | LIB_AUDIT | ~20 dead lib files (orbit-controls, splat-loader, marble-client, etc.) | M1 archives all |
@@ -244,7 +244,7 @@ This is the most aggressive milestone of V1. Everything that doesn't directly se
 - **Component archive** — ~12 dead components moved (via `git mv`) to `_archive/components/`: `<SplatViewer />`, `<SplatThumbnail />`, `<MarbleEmbed />`, `<MarblePlusViewer />`, `<FlythroughPlayer />`, `<GLBFurnitureRenderer />`, `<LegacyQuizCard />`, `<LegacyQuizSwiper />`, plus others enumerated by planner.
 - **Archive READMEs.** Each archived chunk gets a `README.md` at `_archive/{category}/README.md` explaining what was archived and why (e.g., `_archive/lib/README.md`: "dead 3D rendering libs from V0 splat pipeline; replaced by FLUX 2D pipeline in V1"). All archives use `git mv` to preserve file history. `_archive/` is committed to the repo (NOT gitignored).
 - **Stale data flagging** — 138 stale "failed" rooms tagged `internal_test_data_pre_v1` in `tags` jsonb for analytics filter.
-- **RLS consolidation** — single migration codifies explicit policies on every table, every CREATE POLICY prefixed `p1_` (e.g., `p1_rooms_self_all`, `p1_users_self_read`). `pipeline_runs` service-role-only. `swipe_history` self-read + self-insert. `room-uploads` bucket users-own-folder, server full. `quiz-images` bucket read-anyone, server-only write. **Two-user isolation tests at `tests/rls/two-user-isolation.test.ts` contain ONE test case per kept user-scoped table.** Planner enumerates kept user-scoped tables after demolition and writes one test per table verifying User A cannot SELECT/UPDATE/DELETE User B's rows.
+- **RLS consolidation** — single migration codifies explicit policies on every table, every CREATE POLICY prefixed `p1_` (e.g., `p1_rooms_self_all`, `p1_users_self_read`). `pipeline_runs` lockdown deferred to Phase 5 (the table is not yet created in this phase; Phase 5 will add it with RLS enabled and no policies). `swipe_history` self-read + self-insert. `room-uploads` bucket users-own-folder, server full. `quiz-images` bucket read-anyone, server-only write. **Two-user isolation tests at `tests/rls/two-user-isolation.test.ts` contain ONE test case per kept user-scoped table.** Planner enumerates kept user-scoped tables after demolition and writes one test per table verifying User A cannot SELECT/UPDATE/DELETE User B's rows.
 - **Verifier confirms** no live code references any `_archive/` path (greps imports).
 
 **M3 — Operational hardening**
@@ -498,8 +498,8 @@ CREATE POLICY p1_users_self_read ON users FOR SELECT USING (auth.uid() = id);
 CREATE POLICY p1_rooms_self_all ON rooms FOR ALL USING (auth.uid() = user_id);
 
 -- Service-role-only on infrastructure tables
-ALTER TABLE pipeline_runs ENABLE ROW LEVEL SECURITY;
--- No policies = service-role-only
+-- (pipeline_runs lockdown moved to Phase 5: that phase creates the table.
+--  Round 2 verifier finding #4: table is absent from public schema today.)
 
 -- Storage bucket policies (also p1_-prefixed)
 INSERT INTO storage.buckets (id, name, public) VALUES ('quiz-images', 'quiz-images', true) ON CONFLICT DO NOTHING;
@@ -604,7 +604,7 @@ Verifier session 1 reviews by criterion. Each acceptance criterion mapped to a v
 | 12 dead indexes dropped | Supabase MCP confirms each named index gone |
 | Test classification correct | Every test file is one of: kept-and-passing (category a), in `_archive/tests/` (category b), or absent (category c). Default-to-archive bias verifiable in planner output. |
 | Dead code archived via `git mv` | `find _archive/` shows lib/, components/, scripts/, modal_pipeline/, tests/ subdirs populated; `git log --follow` on a sample archived file shows full history preserved; `_archive/{cat}/README.md` exists for each |
-| RLS policies on user-scoped tables exist with `p1_` prefix; service-role-only tables (account_deletions [P01b], render_cost_log writes, pipeline_runs) have RLS enabled with no policies | Supabase MCP query enumerates policies on each table |
+| RLS policies on user-scoped tables exist with `p1_` prefix; service-role-only tables (account_deletions [P01b], render_cost_log writes) have RLS enabled with no policies. (`pipeline_runs` lockdown deferred to Phase 5: it owns table creation.) | Supabase MCP query enumerates policies on each table |
 | Two-user isolation tests pass per-table | **Test case count >= count of kept user-scoped tables; each table has at least one isolation test** (Decision 6) |
 | Sentry on all runtimes | `instrumentation.ts` exists; all 3 sentry.*.config.ts exist; `next.config.js` wraps |
 | `redactLogPayload` enforced via ESLint | `apps/web/eslint-rules/no-unsafe-console.ts` exists, registered in `eslint.config.js`; `pnpm lint` returns 0 violations on a clean tree; intentionally bad fixture trips the rule |
