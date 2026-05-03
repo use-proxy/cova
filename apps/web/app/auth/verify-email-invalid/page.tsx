@@ -138,19 +138,6 @@ export default function VerifyEmailInvalid() {
           .cova-banner-enter { animation: none; }
         }
 
-        /* ─── Spinner ─────────────────────────────────────────────────── */
-        @keyframes covaSpin {
-          to { transform: rotate(360deg); }
-        }
-        .cova-spinner {
-          display: inline-block;
-          width: 14px;
-          height: 14px;
-          border: 1.5px solid rgba(245, 240, 232, 0.25);
-          border-top-color: #F5F0E8;
-          border-radius: 50%;
-          animation: covaSpin 700ms linear infinite;
-        }
 
         /* ─── Primary button ──────────────────────────────────────────── */
         .cova-btn {
@@ -318,14 +305,28 @@ export default function VerifyEmailInvalid() {
                   onClick={handleResend}
                   disabled={isResending}
                   aria-label={
-                    isResending
-                      ? "Sending verification email…"
-                      : "Resend verification email"
+                    isResending ? "Resending…" : "Resend verification email"
                   }
                   style={{ width: "240px" }}
                 >
                   {isResending ? (
-                    <span className="cova-spinner" />
+                    /* Loading state α (phase doc §6 1B): italic-serif
+                       label change. NO spinner, NO dot-loader, NO keyframe
+                       rotation. Locked label per §6 1B "Resend verification:
+                       Resending…" (same lock as verify-email-sent). */
+                    <span
+                      className="cova-serif"
+                      style={{
+                        fontStyle: "italic",
+                        fontSize: "14px",
+                        fontWeight: 400,
+                        letterSpacing: "normal",
+                        textTransform: "none",
+                        color: "var(--cova-ivory)",
+                      }}
+                    >
+                      Resending…
+                    </span>
                   ) : (
                     "RESEND VERIFICATION EMAIL"
                   )}
