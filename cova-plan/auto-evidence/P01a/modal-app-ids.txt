@@ -1,0 +1,9 @@
+# Resolved app-ids for the 4 V8-stage Modal apps targeted for archival in P01a M1.
+# Source: `modal app list` snapshot at cova-plan/auto-evidence/P01a/modal-app-list.before.txt
+# Captured: 2026-05-02
+# Status at capture: ALL 4 deployed; `modal app stop` DEFERRED to destructive-action gate.
+
+cova-preprocessing-pipeline ap-FElGd2FhTf5QKGfuE4b9vF
+cova-structural-extraction  ap-8cm6jU3O64tyLwJhNbVLkf
+cova-professionalization    ap-QMSansNQCC0ob67UmemjPw
+cova-generation             ap-hpMfKgb0I8y0FgIbERk81F

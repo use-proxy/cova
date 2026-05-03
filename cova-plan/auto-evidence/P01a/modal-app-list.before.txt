@@ -1,0 +1,15 @@
+                                                       Apps                                                       
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┓
+┃ App ID                    ┃ Description                 ┃ State    ┃ Tasks ┃ Created at           ┃ Stopped at ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━┩
+│ ap-FElGd2FhTf5QKGfuE4b9vF │ cova-preprocessing-pipeline │ deployed │ 0     │ 2026-04-13 12:30 PDT │            │
+│ ap-8cm6jU3O64tyLwJhNbVLkf │ cova-structural-extraction  │ deployed │ 0     │ 2026-04-13 13:33 PDT │            │
+│ ap-QMSansNQCC0ob67UmemjPw │ cova-professionalization    │ deployed │ 0     │ 2026-04-13 13:34 PDT │            │
+│ ap-hpMfKgb0I8y0FgIbERk81F │ cova-generation             │ deployed │ 0     │ 2026-04-13 21:18 PDT │            │
+│ ap-nv9OX1gqVNv45HrwA534o5 │ cova-perception             │ deployed │ 0     │ 2026-04-20 14:13 PDT │            │
+│ ap-VgL6Z3W6LkjOWztqp3dYCz │ cova-empty-room             │ deployed │ 0     │ 2026-04-20 17:34 PDT │            │
+│ ap-yJnwoDnY2kg7340mo0jpUs │ cova-redesign               │ deployed │ 0     │ 2026-04-20 19:00 PDT │            │
+│ ap-S1IRDAwidcOb0h73xK8PvU │ cova-empty-room-v3          │ deployed │ 0     │ 2026-04-21 19:57 PDT │            │
+│ ap-bqisd8gVJADm82QNrP5Vfc │ cova-composite-art          │ deployed │ 0     │ 2026-04-23 01:15 PDT │            │
+│ ap-wJEjhF5Ey6Uvvz3sjSS46Y │ cova-redesign-v3            │ deployed │ 0     │ 2026-04-24 20:30 PDT │            │
+└───────────────────────────┴─────────────────────────────┴──────────┴───────┴──────────────────────┴────────────┘
