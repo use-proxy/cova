@@ -1,0 +1,24 @@
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+psql:supabase/migrations/20260502203200-drop-dead-tables.sql:25: ERROR:  permission denied for table job
+ unschedule 
+------------
+ t
+(1 row)
+
+DROP FUNCTION

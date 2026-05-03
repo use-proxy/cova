@@ -22,7 +22,14 @@ DROP TABLE IF EXISTS anchor_renders CASCADE;   -- 10 rows; legacy step-2 data
 DROP TABLE IF EXISTS user_style_profiles CASCADE;
 
 -- Drop the now-orphan cron job that called the aggregate-style-profiles edge fn.
-DELETE FROM cron.job WHERE jobname = 'aggregate-style-profiles';
+-- Use cron.unschedule() (proper API; DELETE FROM cron.job hits permission_denied
+-- under the standard postgres role on Supabase-hosted projects).
+DO $$
+BEGIN
+  PERFORM cron.unschedule('aggregate-style-profiles');
+EXCEPTION
+  WHEN OTHERS THEN NULL; -- already unscheduled or never scheduled
+END $$;
 
 -- Drop the now-orphan deduct_tokens_atomic function (token system disabled per D-019).
 DROP FUNCTION IF EXISTS public.deduct_tokens_atomic(uuid, int, text, uuid);

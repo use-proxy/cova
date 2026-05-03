@@ -83,8 +83,10 @@ CREATE POLICY p1_render_sessions_via_room ON render_sessions FOR ALL
 CREATE POLICY p1_room_products_via_room_read ON room_products FOR SELECT
   USING (EXISTS (SELECT 1 FROM rooms WHERE rooms.id = room_products.room_id AND rooms.user_id = auth.uid()));
 
--- empty_room_cache: read-only for owning user (cache keyed by image hash + user)
-CREATE POLICY p1_empty_room_cache_self_read ON empty_room_cache FOR SELECT USING (auth.uid() = user_id);
+-- empty_room_cache: SKIPPED — table is keyed by input_hash, not user.
+-- Cache is shared across users; reads happen via service-role admin client
+-- (bypassing RLS). Deny-by-default RLS (enabled above) is the correct posture.
+-- (Spec assumed user_id column existed; live schema has no such column.)
 
 -- rate_limits stays service-role-only (no policy), so a user cannot tamper with their own counters
 

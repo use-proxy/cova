@@ -153,12 +153,10 @@ describe("RLS two-user isolation per kept user-scoped table", () => {
     await admin.from("rooms").delete().eq("id", room.data!.id);
   });
 
-  it("empty_room_cache — User B cannot read User A's cache entry", async () => {
-    const r = await admin.from("empty_room_cache").insert({ user_id: userA.id, input_hash: `h-${Date.now()}`, output_url: "https://x" }).select("id").single();
-    if (!r.error && r.data) {
-      const sel = await userB.client.from("empty_room_cache").select("id").eq("id", r.data.id);
-      expect(sel.data ?? []).toHaveLength(0);
-      await admin.from("empty_room_cache").delete().eq("id", r.data.id);
-    }
+  // empty_room_cache — SKIPPED: table is keyed by input_hash, not user.
+  // Cache is shared across users; reads happen via service-role admin client
+  // (bypassing RLS). Deny-by-default RLS is the correct posture.
+  it.skip("empty_room_cache — shared cache; no user-scoped policy applies", () => {
+    // intentional skip; see migration 20260502203500-rls-consolidation.sql
   });
 });
