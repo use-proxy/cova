@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { paidCall } from "@/lib/paid/call";
 
 export const maxDuration = 120;
 
@@ -36,22 +37,27 @@ async function classifyIntent(
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return null;
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 250,
-        system:
-          "Classify interior design refinement instructions. Return ONLY JSON.",
-        messages: [
-          {
-            role: "user",
-            content: `Classify: "${instruction.slice(0, 400)}"
+    const data = await paidCall<{
+      content?: Array<{ text?: string }>;
+    }>({
+      provider: "anthropic",
+      url: "https://api.anthropic.com/v1/messages",
+      init: {
+        method: "POST",
+        headers: {
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 250,
+          system:
+            "Classify interior design refinement instructions. Return ONLY JSON.",
+          messages: [
+            {
+              role: "user",
+              content: `Classify: "${instruction.slice(0, 400)}"
 
 Tiers:
 - fingerprint_delta: mood/feel words (cozier, more grounded, softer)
@@ -61,15 +67,18 @@ Tiers:
 
 Return JSON:
 {"tier": "...", "refined_instruction": "...", "target_object": "... or null"}`,
-          },
-        ],
-      }),
-      signal: AbortSignal.timeout(12_000),
+            },
+          ],
+        }),
+        signal: AbortSignal.timeout(12_000),
+      },
+      costEstimate: {
+        category: "refine",
+        stage: "intent_classify",
+        costUsd: 0.003,
+        model: "claude-haiku-4-5-20251001",
+      },
     });
-    if (!res.ok) return null;
-    const data = (await res.json()) as {
-      content?: Array<{ text?: string }>;
-    };
     const text = data.content?.map((c) => c.text ?? "").join("") ?? "";
     const start = text.indexOf("{");
     const end = text.lastIndexOf("}");
@@ -94,26 +103,34 @@ async function callKontextPro(
   const apiKey = process.env.FAL_KEY;
   if (!apiKey) return null;
   try {
-    const res = await fetch("https://fal.run/fal-ai/flux-kontext-pro", {
-      method: "POST",
-      headers: {
-        Authorization: `Key ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        image_url: imageUrl,
-        prompt,
-        strength,
-        num_inference_steps: 28,
-        guidance_scale: 3.5,
-        output_format: "jpeg",
-      }),
-      signal: AbortSignal.timeout(90_000),
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as {
+    const data = await paidCall<{
       images?: Array<{ url?: string } | string>;
-    };
+    }>({
+      provider: "fal",
+      url: "https://fal.run/fal-ai/flux-kontext-pro",
+      init: {
+        method: "POST",
+        headers: {
+          Authorization: `Key ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          image_url: imageUrl,
+          prompt,
+          strength,
+          num_inference_steps: 28,
+          guidance_scale: 3.5,
+          output_format: "jpeg",
+        }),
+        signal: AbortSignal.timeout(90_000),
+      },
+      costEstimate: {
+        category: "refine",
+        stage: "kontext_global",
+        costUsd: 0.045,
+        model: "fal-ai/flux-kontext-pro",
+      },
+    });
     const first = data.images?.[0];
     if (!first) return null;
     return typeof first === "string" ? first : first.url ?? null;
@@ -130,27 +147,35 @@ async function callFillPro(
   const apiKey = process.env.FAL_KEY;
   if (!apiKey) return null;
   try {
-    const res = await fetch("https://fal.run/fal-ai/flux-pro/v1/fill", {
-      method: "POST",
-      headers: {
-        Authorization: `Key ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        image_url: imageUrl,
-        mask_url: maskUrl,
-        prompt,
-        num_inference_steps: 30,
-        guidance_scale: 3.8,
-        output_format: "jpeg",
-        safety_tolerance: "6",
-      }),
-      signal: AbortSignal.timeout(90_000),
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as {
+    const data = await paidCall<{
       images?: Array<{ url?: string } | string>;
-    };
+    }>({
+      provider: "fal",
+      url: "https://fal.run/fal-ai/flux-pro/v1/fill",
+      init: {
+        method: "POST",
+        headers: {
+          Authorization: `Key ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          image_url: imageUrl,
+          mask_url: maskUrl,
+          prompt,
+          num_inference_steps: 30,
+          guidance_scale: 3.8,
+          output_format: "jpeg",
+          safety_tolerance: "6",
+        }),
+        signal: AbortSignal.timeout(90_000),
+      },
+      costEstimate: {
+        category: "refine",
+        stage: "region_inpaint",
+        costUsd: 0.045,
+        model: "fal-ai/flux-pro/v1/fill",
+      },
+    });
     const first = data.images?.[0];
     if (!first) return null;
     return typeof first === "string" ? first : first.url ?? null;
@@ -166,43 +191,51 @@ async function visionChips(imageUrl: string): Promise<string[]> {
     const imgRes = await fetch(imageUrl, { signal: AbortSignal.timeout(15_000) });
     if (!imgRes.ok) return [];
     const b64 = Buffer.from(await imgRes.arrayBuffer()).toString("base64");
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 200,
-        system: "Return 3 short refinement suggestions. ONLY JSON array of strings.",
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "image",
-                source: {
-                  type: "base64",
-                  media_type: "image/jpeg",
-                  data: b64,
-                },
-              },
-              {
-                type: "text",
-                text: "Suggest 3 specific refinements a user might want, based on what you see. Return JSON array of 3 short strings (under 8 words each).",
-              },
-            ],
-          },
-        ],
-      }),
-      signal: AbortSignal.timeout(15_000),
-    });
-    if (!res.ok) return [];
-    const data = (await res.json()) as {
+    const data = await paidCall<{
       content?: Array<{ text?: string }>;
-    };
+    }>({
+      provider: "anthropic",
+      url: "https://api.anthropic.com/v1/messages",
+      init: {
+        method: "POST",
+        headers: {
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 200,
+          system: "Return 3 short refinement suggestions. ONLY JSON array of strings.",
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "image",
+                  source: {
+                    type: "base64",
+                    media_type: "image/jpeg",
+                    data: b64,
+                  },
+                },
+                {
+                  type: "text",
+                  text: "Suggest 3 specific refinements a user might want, based on what you see. Return JSON array of 3 short strings (under 8 words each).",
+                },
+              ],
+            },
+          ],
+        }),
+        signal: AbortSignal.timeout(15_000),
+      },
+      costEstimate: {
+        category: "refine",
+        stage: "vision_chips",
+        costUsd: 0.005,
+        model: "claude-haiku-4-5-20251001",
+      },
+    });
     const text = data.content?.map((c) => c.text ?? "").join("") ?? "";
     const start = text.indexOf("[");
     const end = text.lastIndexOf("]");

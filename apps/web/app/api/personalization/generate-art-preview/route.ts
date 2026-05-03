@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { paidCall } from "@/lib/paid/call";
 
 export const maxDuration = 60;
 
@@ -20,23 +21,31 @@ async function callSchnell(
   const apiKey = process.env.FAL_KEY;
   if (!apiKey) return null;
   try {
-    const res = await fetch("https://fal.run/fal-ai/flux/schnell", {
-      method: "POST",
-      headers: {
-        Authorization: `Key ${apiKey}`,
-        "Content-Type": "application/json",
+    const data = await paidCall<FalImageResponse>({
+      provider: "fal",
+      url: "https://fal.run/fal-ai/flux/schnell",
+      init: {
+        method: "POST",
+        headers: {
+          Authorization: `Key ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt,
+          image_size: { width: 512, height: 682 },
+          num_inference_steps: 4,
+          num_images: 1,
+          seed,
+        }),
+        signal: AbortSignal.timeout(45_000),
       },
-      body: JSON.stringify({
-        prompt,
-        image_size: { width: 512, height: 682 },
-        num_inference_steps: 4,
-        num_images: 1,
-        seed,
-      }),
-      signal: AbortSignal.timeout(45_000),
+      costEstimate: {
+        category: "art_generate",
+        stage: "schnell_preview",
+        costUsd: 0.003,
+        model: "fal-ai/flux/schnell",
+      },
     });
-    if (!res.ok) return null;
-    const data = (await res.json()) as FalImageResponse;
     const first = data.images?.[0];
     if (!first) return null;
     if (typeof first === "string") return first;

@@ -12,6 +12,7 @@ import type {
   IdentityObject,
   FreeTextSlot,
 } from "@/lib/types/personalization";
+import { paidCall } from "@/lib/paid/call";
 
 const LAYOUT_DEFINING_IDENTITY = new Set<IdentityObject["type"]>([
   "plants",
@@ -105,33 +106,41 @@ async function parseFreetext(
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey || !raw?.trim()) return [];
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 400,
-        system:
-          "Parse user-written interior preferences into structured signals. Return ONLY JSON array.",
-        messages: [
-          {
-            role: "user",
-            content: `Input: ${raw.slice(0, 600)}
+    const data = await paidCall<{
+      content?: Array<{ type: string; text?: string }>;
+    }>({
+      provider: "anthropic",
+      url: "https://api.anthropic.com/v1/messages",
+      init: {
+        method: "POST",
+        headers: {
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 400,
+          system:
+            "Parse user-written interior preferences into structured signals. Return ONLY JSON array.",
+          messages: [
+            {
+              role: "user",
+              content: `Input: ${raw.slice(0, 600)}
 
 Return JSON array: [{"type": "short-tag", "description": "prompt fragment", "priority": "high|medium|low"}]. Max 6 signals.`,
-          },
-        ],
-      }),
-      signal: AbortSignal.timeout(15_000),
+            },
+          ],
+        }),
+        signal: AbortSignal.timeout(15_000),
+      },
+      costEstimate: {
+        category: "render",
+        stage: "personalization_freetext_parse",
+        costUsd: 0.005,
+        model: "claude-haiku-4-5-20251001",
+      },
     });
-    if (!res.ok) return [];
-    const data = (await res.json()) as {
-      content?: Array<{ type: string; text?: string }>;
-    };
     const text =
       data.content?.map((c) => c.text ?? "").join("").trim() ?? "";
     const start = text.indexOf("[");

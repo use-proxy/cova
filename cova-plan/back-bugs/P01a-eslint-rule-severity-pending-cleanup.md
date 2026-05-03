@@ -19,6 +19,19 @@ After `npm install` + `npm run lint`:
 
 Both rules **temporarily downgraded to "warn"** in `apps/web/.eslintrc.json` so the production build does not fail before the cleanup lands. Lint exits 0; warnings still surface so cleanup is visible in CI.
 
+## Round 2 update (2026-05-02)
+
+- **`no-direct-paid-fetch` RESTORED to "error".** All 15 production sites
+  migrated to `paidCall<T>()` per executor prompt §E.3 mapping. The single
+  surviving raw fetch in `apps/web/tests/ai/llm-judge.test.ts:248` carries
+  an inline `// eslint-disable-next-line cova-rules/no-direct-paid-fetch`
+  per spec. `npm run lint` exits 0 at error severity; rule is now load-bearing
+  for any future paid-fetch additions.
+- **`no-unsafe-console` REMAINS at "warn".** Pre-T5 baseline of 265 warnings
+  (down from 267 because two ESLint plugin index files were filtered).
+  Progressive cleanup tracked in T5 of the round-2 executor prompt; final
+  promotion to "error" deferred to P02–P04 once the residue clears.
+
 ## Suggested upgrade path
 
 1. **`no-direct-paid-fetch` first.** Migrate the 15 sites per executor prompt §E.3

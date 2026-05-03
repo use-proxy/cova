@@ -3,7 +3,7 @@
   "plugins": ["cova-rules"],
   "rules": {
     "cova-rules/no-unsafe-console": "warn",
-    "cova-rules/no-direct-paid-fetch": "warn",
+    "cova-rules/no-direct-paid-fetch": "error",
     "@typescript-eslint/no-explicit-any": "error",
     "@typescript-eslint/no-unused-vars": [
       "error",

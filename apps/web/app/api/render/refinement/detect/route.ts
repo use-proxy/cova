@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { paidCall } from "@/lib/paid/call";
 
 export const maxDuration = 30;
 
@@ -28,20 +29,28 @@ async function callSam3Point(
   const apiKey = process.env.FAL_KEY;
   if (!apiKey) return null;
   try {
-    const res = await fetch("https://fal.run/fal-ai/sam-3/image", {
-      method: "POST",
-      headers: {
-        Authorization: `Key ${apiKey}`,
-        "Content-Type": "application/json",
+    return await paidCall<Sam3PointResp>({
+      provider: "fal",
+      url: "https://fal.run/fal-ai/sam-3/image",
+      init: {
+        method: "POST",
+        headers: {
+          Authorization: `Key ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          image_url: imageUrl,
+          point_prompts: [{ x: pixelX, y: pixelY, label: 1 }],
+        }),
+        signal: AbortSignal.timeout(25_000),
       },
-      body: JSON.stringify({
-        image_url: imageUrl,
-        point_prompts: [{ x: pixelX, y: pixelY, label: 1 }],
-      }),
-      signal: AbortSignal.timeout(25_000),
+      costEstimate: {
+        category: "refine",
+        stage: "sam3_point_detect",
+        costUsd: 0.02,
+        model: "fal-ai/sam-3/image",
+      },
     });
-    if (!res.ok) return null;
-    return (await res.json()) as Sam3PointResp;
   } catch {
     return null;
   }
@@ -59,42 +68,50 @@ async function claudeVisionLabel(
     if (!imgFetch.ok) return null;
     const buf = Buffer.from(await imgFetch.arrayBuffer());
     const b64 = buf.toString("base64");
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 40,
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "image",
-                source: {
-                  type: "base64",
-                  media_type: "image/jpeg",
-                  data: b64,
-                },
-              },
-              {
-                type: "text",
-                text: `The user tapped at normalized position (${tapX.toFixed(3)}, ${tapY.toFixed(3)}). What interior design object is at that location? 1-4 words only.`,
-              },
-            ],
-          },
-        ],
-      }),
-      signal: AbortSignal.timeout(15_000),
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as {
+    const data = await paidCall<{
       content?: Array<{ text?: string }>;
-    };
+    }>({
+      provider: "anthropic",
+      url: "https://api.anthropic.com/v1/messages",
+      init: {
+        method: "POST",
+        headers: {
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 40,
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "image",
+                  source: {
+                    type: "base64",
+                    media_type: "image/jpeg",
+                    data: b64,
+                  },
+                },
+                {
+                  type: "text",
+                  text: `The user tapped at normalized position (${tapX.toFixed(3)}, ${tapY.toFixed(3)}). What interior design object is at that location? 1-4 words only.`,
+                },
+              ],
+            },
+          ],
+        }),
+        signal: AbortSignal.timeout(15_000),
+      },
+      costEstimate: {
+        category: "refine",
+        stage: "tap_label",
+        costUsd: 0.002,
+        model: "claude-haiku-4-5-20251001",
+      },
+    });
     const text = data.content
       ?.map((c) => c.text ?? "")
       .join(" ")

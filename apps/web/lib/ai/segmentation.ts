@@ -10,6 +10,8 @@
  *   - Typed input/output matching fal.ai SDK types
  */
 
+import { paidCall } from "@/lib/paid/call";
+
 // Approximate cost per SAM3 call (fal.ai pricing)
 const SAM3_COST_PER_CALL = 0.02;
 const MAX_SESSION_COST = 5.0;
@@ -90,22 +92,25 @@ export async function callSam3(
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const response = await fetch("https://fal.run/fal-ai/sam-3/image", {
-        method: "POST",
-        headers: {
-          Authorization: `Key ${falKey}`,
-          "Content-Type": "application/json",
+      const result = await paidCall<Sam3Result>({
+        provider: "fal",
+        url: "https://fal.run/fal-ai/sam-3/image",
+        init: {
+          method: "POST",
+          headers: {
+            Authorization: `Key ${falKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(input),
+          signal: AbortSignal.timeout(60_000),
         },
-        body: JSON.stringify(input),
-        signal: AbortSignal.timeout(60_000),
+        costEstimate: {
+          category: "render",
+          stage: "sam3_segment",
+          costUsd: SAM3_COST_PER_CALL,
+          model: "fal-ai/sam-3/image",
+        },
       });
-
-      if (!response.ok) {
-        const text = await response.text().catch(() => response.statusText);
-        throw new Error(`SAM3 HTTP ${response.status}: ${text.slice(0, 200)}`);
-      }
-
-      const result = (await response.json()) as Sam3Result;
       sessionCumulativeCost += SAM3_COST_PER_CALL;
 
       // Parse into typed instances

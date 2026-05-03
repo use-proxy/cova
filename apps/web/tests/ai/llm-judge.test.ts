@@ -245,6 +245,7 @@ describe("LLM-as-judge prompt evaluation", () => {
     async () => {
       const prompt = buildFluxPrompt(WARM_NATURAL);
 
+      // eslint-disable-next-line cova-rules/no-direct-paid-fetch
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {

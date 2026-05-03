@@ -22,6 +22,7 @@ export const maxDuration = 120;
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { paidCall } from "@/lib/paid/call";
 
 interface BBoxPct {
   x: number;
@@ -234,27 +235,29 @@ async function callEvfSam(
   falKey: string,
 ): Promise<string | null> {
   try {
-    const response = await fetch("https://fal.run/fal-ai/evf-sam", {
-      method: "POST",
-      headers: {
-        Authorization: `Key ${falKey}`,
-        "Content-Type": "application/json",
+    const result = await paidCall<EvfSamResult>({
+      provider: "fal",
+      url: "https://fal.run/fal-ai/evf-sam",
+      init: {
+        method: "POST",
+        headers: {
+          Authorization: `Key ${falKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          image_url: imageUrl,
+          prompt: label.toLowerCase(),
+          mask_only: true,
+        }),
+        signal: AbortSignal.timeout(45_000),
       },
-      body: JSON.stringify({
-        image_url: imageUrl,
-        prompt: label.toLowerCase(),
-        mask_only: true,
-      }),
-      signal: AbortSignal.timeout(45_000),
+      costEstimate: {
+        category: "render",
+        stage: "evf_sam_mask",
+        costUsd: 0.005,
+        model: "fal-ai/evf-sam",
+      },
     });
-
-    if (!response.ok) {
-      const text = await response.text().catch(() => response.statusText);
-      console.warn(`[segment-masks] EVF-SAM failed for "${label}": ${response.status} ${text.slice(0, 100)}`);
-      return null;
-    }
-
-    const result = (await response.json()) as EvfSamResult;
     return result?.image?.url ?? result?.output?.url ?? (typeof result?.url === "string" ? result.url : null);
   } catch (err) {
     console.warn(`[segment-masks] EVF-SAM error for "${label}":`, err);
@@ -269,24 +272,28 @@ async function callSam2(
   falKey: string,
 ): Promise<string | null> {
   try {
-    const response = await fetch("https://fal.run/fal-ai/sam2/image", {
-      method: "POST",
-      headers: {
-        Authorization: `Key ${falKey}`,
-        "Content-Type": "application/json",
+    const result = await paidCall<Sam2Result>({
+      provider: "fal",
+      url: "https://fal.run/fal-ai/sam2/image",
+      init: {
+        method: "POST",
+        headers: {
+          Authorization: `Key ${falKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          image_url: imageUrl,
+          box_prompts: [box],
+        }),
+        signal: AbortSignal.timeout(45_000),
       },
-      body: JSON.stringify({
-        image_url: imageUrl,
-        box_prompts: [box],
-      }),
-      signal: AbortSignal.timeout(45_000),
+      costEstimate: {
+        category: "render",
+        stage: "sam2_mask",
+        costUsd: 0.005,
+        model: "fal-ai/sam2/image",
+      },
     });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const result = (await response.json()) as Sam2Result;
     return result?.image?.url ?? null;
   } catch (err) {
     console.warn(`[segment-masks] SAM2 error for "${label}":`, err);

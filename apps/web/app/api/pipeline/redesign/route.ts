@@ -22,6 +22,7 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { buildFluxPrompt, buildAnchorFallbackPrompt } from "@/lib/ai/flux";
 import { fetchTopStyleReference } from "@/lib/ai/style-references";
 import { TIMEOUTS } from "@/lib/config/timeouts";
+import { paidCall } from "@/lib/paid/call";
 import {
   analyzeRoomArchitecture,
   type RoomArchitecture,
@@ -609,27 +610,32 @@ export async function POST(request: Request) {
       await Promise.all(
         keepItems.map(async (label) => {
           try {
-            const resp = await fetch("https://fal.run/fal-ai/evf-sam", {
-              method: "POST",
-              headers: {
-                Authorization: `Key ${falKey}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                image_url: photoUrlForPipeline,
-                text_prompt: label.toLowerCase(),
-              }),
-              signal: AbortSignal.timeout(30_000),
-            });
-            if (!resp.ok) {
-              console.warn(`[redesign] EVF-SAM inline failed for "${label}": ${resp.status}`);
-              return;
-            }
-            const result = (await resp.json()) as {
+            const result = await paidCall<{
               image?: { url: string };
               output?: { url: string };
               url?: string;
-            };
+            }>({
+              provider: "fal",
+              url: "https://fal.run/fal-ai/evf-sam",
+              init: {
+                method: "POST",
+                headers: {
+                  Authorization: `Key ${falKey}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  image_url: photoUrlForPipeline,
+                  text_prompt: label.toLowerCase(),
+                }),
+                signal: AbortSignal.timeout(30_000),
+              },
+              costEstimate: {
+                category: "render",
+                stage: "evf_sam_keep_inline",
+                costUsd: 0.005,
+                model: "fal-ai/evf-sam",
+              },
+            });
             const maskUrl =
               result?.image?.url ??
               result?.output?.url ??

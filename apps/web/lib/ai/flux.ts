@@ -7,6 +7,7 @@ import {
   type RoomArchitecture,
 } from "./room-analyzer";
 import { expandForPrompt } from "./style-match";
+import { paidCall } from "@/lib/paid/call";
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
@@ -1606,29 +1607,32 @@ export async function submitFalKontextRender(params: {
   const falKey = process.env.FAL_KEY;
   if (!falKey) throw new Error("FAL_KEY not configured");
 
-  const resp = await fetch("https://queue.fal.run/fal-ai/flux-pro/kontext", {
-    method: "POST",
-    headers: {
-      Authorization: `Key ${falKey}`,
-      "Content-Type": "application/json",
+  const data = await paidCall<{ request_id: string }>({
+    provider: "fal",
+    url: "https://queue.fal.run/fal-ai/flux-pro/kontext",
+    init: {
+      method: "POST",
+      headers: {
+        Authorization: `Key ${falKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        image_url: params.imageUrl,
+        prompt: params.prompt,
+        num_inference_steps: 30,
+        guidance_scale: 5.5,
+        seed: params.seed ?? Math.floor(Math.random() * 999999),
+        output_format: "jpeg",
+        safety_tolerance: "5",
+      }),
     },
-    body: JSON.stringify({
-      image_url: params.imageUrl,
-      prompt: params.prompt,
-      num_inference_steps: 30,
-      guidance_scale: 5.5,
-      seed: params.seed ?? Math.floor(Math.random() * 999999),
-      output_format: "jpeg",
-      safety_tolerance: "5",
-    }),
+    costEstimate: {
+      category: "refine",
+      stage: "kontext_pro_submit",
+      costUsd: 0.045,
+      model: "fal-ai/flux-pro/kontext",
+    },
   });
-
-  if (!resp.ok) {
-    const text = await resp.text().catch(() => resp.statusText);
-    throw new Error(`fal.ai Kontext submit failed: ${resp.status} ${text}`);
-  }
-
-  const data = (await resp.json()) as { request_id: string };
   return { requestId: data.request_id };
 }
 
@@ -1646,30 +1650,33 @@ export async function submitFalFillRender(params: {
   const falKey = process.env.FAL_KEY;
   if (!falKey) throw new Error("FAL_KEY not configured");
 
-  const resp = await fetch("https://queue.fal.run/fal-ai/flux-pro/v1/fill", {
-    method: "POST",
-    headers: {
-      Authorization: `Key ${falKey}`,
-      "Content-Type": "application/json",
+  const data = await paidCall<{ request_id: string }>({
+    provider: "fal",
+    url: "https://queue.fal.run/fal-ai/flux-pro/v1/fill",
+    init: {
+      method: "POST",
+      headers: {
+        Authorization: `Key ${falKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        image_url: params.imageUrl,
+        mask_url: params.maskUrl,
+        prompt: params.prompt,
+        num_inference_steps: 30,
+        guidance_scale: 30,
+        seed: params.seed ?? Math.floor(Math.random() * 999999),
+        output_format: "jpeg",
+        safety_tolerance: "5",
+      }),
     },
-    body: JSON.stringify({
-      image_url: params.imageUrl,
-      mask_url: params.maskUrl,
-      prompt: params.prompt,
-      num_inference_steps: 30,
-      guidance_scale: 30,
-      seed: params.seed ?? Math.floor(Math.random() * 999999),
-      output_format: "jpeg",
-      safety_tolerance: "5",
-    }),
+    costEstimate: {
+      category: "refine",
+      stage: "flux_fill_submit",
+      costUsd: 0.045,
+      model: "fal-ai/flux-pro/v1/fill",
+    },
   });
-
-  if (!resp.ok) {
-    const text = await resp.text().catch(() => resp.statusText);
-    throw new Error(`fal.ai Fill Pro submit failed: ${resp.status} ${text}`);
-  }
-
-  const data = (await resp.json()) as { request_id: string };
   return { requestId: data.request_id };
 }
 

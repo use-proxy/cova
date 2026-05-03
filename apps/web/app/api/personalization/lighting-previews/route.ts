@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { paidCall } from "@/lib/paid/call";
 
 export const maxDuration = 90;
 
@@ -51,27 +52,35 @@ async function callIcLight(
   const apiKey = process.env.FAL_KEY;
   if (!apiKey) return null;
   try {
-    const res = await fetch("https://fal.run/fal-ai/iclight-v2", {
-      method: "POST",
-      headers: {
-        Authorization: `Key ${apiKey}`,
-        "Content-Type": "application/json",
+    const data = await paidCall<FalResp>({
+      provider: "fal",
+      url: "https://fal.run/fal-ai/iclight-v2",
+      init: {
+        method: "POST",
+        headers: {
+          Authorization: `Key ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          image_url: imageUrl,
+          prompt: preset.prompt,
+          initial_latent: preset.latent,
+          lowres_denoise: preset.lowres,
+          highres_denoise: preset.highres,
+          guidance_scale: 5,
+          num_inference_steps: 28,
+          num_images: 1,
+          output_format: "jpeg",
+        }),
+        signal: AbortSignal.timeout(75_000),
       },
-      body: JSON.stringify({
-        image_url: imageUrl,
-        prompt: preset.prompt,
-        initial_latent: preset.latent,
-        lowres_denoise: preset.lowres,
-        highres_denoise: preset.highres,
-        guidance_scale: 5,
-        num_inference_steps: 28,
-        num_images: 1,
-        output_format: "jpeg",
-      }),
-      signal: AbortSignal.timeout(75_000),
+      costEstimate: {
+        category: "lighting_recommend",
+        stage: `iclight_${preset.name}`,
+        costUsd: 0.04,
+        model: "fal-ai/iclight-v2",
+      },
     });
-    if (!res.ok) return null;
-    const data = (await res.json()) as FalResp;
     const first = data.images?.[0];
     if (!first) return null;
     if (typeof first === "string") return first;
