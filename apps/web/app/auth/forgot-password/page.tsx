@@ -440,7 +440,12 @@ function PreSubmit(props: PreSubmitProps) {
             ].join(" ")}
           >
             {isLoading ? (
-              <Spinner />
+              /* Loading state α (phase doc §6 1B): italic-serif label
+                 change. NO spinner, NO dot-loader.
+                 Locked label per §6 1B "Forgot password: Sending reset link…". */
+              <span className="font-serif italic normal-case tracking-normal text-[14px] text-cova-ivory">
+                Sending reset link&hellip;
+              </span>
             ) : (
               <span>SEND RESET LINK</span>
             )}
