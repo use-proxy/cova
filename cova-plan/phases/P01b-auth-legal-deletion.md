@@ -190,38 +190,106 @@ Split into 1A backend / 1B UI / 1C integration. Run in this order.
 
 ### 1B — UI (M2 screens)
 
-**Shared layout** for all 6 auth screens. Centered ivory `#F5F0E8` card 480px on full-bleed navy `#091829`. 4px border-radius, 48px padding, `box-shadow: 0 8px 64px rgba(9,24,41,0.4)`. Cova logotype gold `#C9A84C` top-left always. Subtle ambient gold radial glow upper-left + 4-6 drifting gold particles low opacity. Disabled on `prefers-reduced-motion`.
+**Locked design language (all 9 screens — final via P01b prep iterations):**
 
-**Mobile:** card becomes 100% width minus 24px each side, padding 32px.
+Reference vibe: Hermès, Aesop, Loro Piana, Saint Laurent. Modern dark luxury. Quiet, confident, editorial.
 
-**Form input.** 100% width, 48px height, ivory bg, navy 12% border, 4px radius. DM Sans 16px navy. Placeholder navy 40%. Focus state: 1.5px gold border, no glow. Error state: 1.5px warm-error `#A8443B` border, error message DM Sans 13px below. Label above: DM Sans 13px medium tracking 0.05em uppercase navy 70%.
+Color palette:
+- bg-cova-navy (#091829) — full-bleed ground on every screen
+- text-cova-ivory (#F5F0E8) — primary text
+- text-cova-gold (#C9A84C) — used surgically: eyebrow microtype, brand mark em-dash, hairline rule, focus rings, primary button hover
+- text-cova-warm-error (#A8443B) — error states only
 
-**Primary button.** 100% width, 52px height. Bg navy, ivory text, DM Sans 16px medium tracking 0.02em. 4px radius. Hover: shifts to gold bg, navy text (200ms ease-out). Disabled: 40% opacity.
+Typography:
+- font-serif (EB Garamond) — italic for editorial moments (auth screen headlines, helper lines, input placeholders); upright for legal prose (/terms, /privacy headings)
+- font-sans (DM Sans) — uppercase tracked microtype for all functional labels (eyebrows, button copy, footer links, input labels)
+- Always apply utilities explicitly; never rely on body inheritance (back-bug P01b-prep-globals-css-font-bug.md tracks the underlying body font issue)
 
-**Secondary button (OAuth).** Same dims, ivory transparent bg, navy 20% border, navy 90% text. Provider icon 20px left + 12px gap. Hover: bg fills navy 5%, border 30%.
+Layout invariants (8 form screens — all but verify-email-success and legal):
+- Full-bleed bg-cova-navy
+- Fixed COVA wordmark top-left (16px tracking-[0.4em] uppercase ivory + gold em-dash beneath at 50% opacity)
+- 360px form column centered both axes
+- Vertical hairline rule on left of form column (border-l border-cova-ivory/12)
+- Eyebrow → italic serif headline → optional helper line → 32px gold hairline rule (left-aligned)
+- Italic serif placeholders inside bottom-border-only inputs
+- Fixed footer link bottom-right (mirrors wordmark for compositional symmetry)
+- Sharp corners (0px radius) everywhere
+- No shadows, no glows, no particles, no decorative elements
 
-The 6 screens:
+Intentional breaks from the layout invariants:
+- /auth/verify-email-success: NO hairline rule, NO fixed footer, gold rule CENTERED (closing typographic punctuation), animated gold checkmark via Frontend Visionary component
+- /account-deleted: NO fixed footer (single inline "RETURN HOME" link below content)
+- /terms and /privacy: NO form column, NO hairline rule, NO fixed footer — long-form prose layout, max-w-[720px] reading column, sticky page header, upright (non-italic) serif for legal prose
 
-| Screen | Route | Purpose |
-|---|---|---|
-| Signup | /auth/signup | Email + Google + Apple |
-| Sign in | /auth/signin | + magic link option |
-| Forgot password | /auth/forgot-password | Anti-enumeration |
-| Reset password | /auth/reset-password?token | zxcvbn meter |
-| Verify email sent | /auth/verify-email-sent | Auto-poll Supabase Auth, redirect on verify |
-| Verify email success | /auth/verify-email-success | Animated gold checkmark, 3s auto-redirect to /welcome |
+Motion budget per screen (max 3 moments):
+1. Form column mount: opacity 0->1 + translateY(8px->0), 400ms ease-out
+2. All hover transitions: 200ms ease-out
+3. Error banner: opacity 0->1 + translateY(-4px->0), 150ms ease-out
 
-**Behavior:**
+Reduced-motion: mount fades and crossfades replaced with instant render. Hover transitions stay (state changes, not motion). Auto-redirect timers (verify-email-success 3s, reset-password submitted 2s) remain unchanged regardless of motion preference.
+
+**Pre-built UI components live at cova-plan/ui-gen/P01b/. Executor wires them into apps/web/app/auth/* and apps/web/app/{terms,privacy,account-deleted}/* during M2.**
+
+**The 9 screens:**
+
+| Screen | Route | UI source | Bespoke component | Notes |
+|---|---|---|---|---|
+| Signup | /auth/signup | cova-plan/ui-gen/P01b/auth-signup.tsx | password-strength-meter | Single Google OAuth (Apple deferred per spec) |
+| Sign in | /auth/signin | cova-plan/ui-gen/P01b/auth-signin.tsx | — | Single Google OAuth + forgot-password microtype link below password field |
+| Forgot password | /auth/forgot-password | cova-plan/ui-gen/P01b/auth-forgot-password.tsx | — | Anti-enumeration: "If an account exists for that email..." |
+| Reset password | /auth/reset-password | cova-plan/ui-gen/P01b/auth-reset-password.tsx | password-strength-meter | 4-state machine (validating/valid/invalid/submitted), token from URL ?token= param |
+| Verify email sent | /auth/verify-email-sent | cova-plan/ui-gen/P01b/auth-verify-email-sent.tsx | — | Email displayed inline at full opacity within helper line, 60s resend cooldown |
+| Verify email success | /auth/verify-email-success | cova-plan/ui-gen/P01b/auth-verify-email-success.tsx | animated-checkmark | Celebration moment — only screen with bigger motion. 3s auto-redirect to /welcome |
+| Account deleted | /account-deleted | cova-plan/ui-gen/P01b/account-deleted.tsx | — | No survey link (deliberate brand decision). Single "RETURN HOME" exit |
+| Terms of Service | /terms | cova-plan/ui-gen/P01b/legal-page.tsx | — | Shared LegalPage component, instantiated with documentType="terms" + Termly HTML |
+| Privacy Policy | /privacy | cova-plan/ui-gen/P01b/legal-page.tsx | — | Shared LegalPage component, instantiated with documentType="privacy" + Termly HTML |
+
+**Locked copy strings (do not change without product approval):**
+
+Anti-enumeration:
+- /auth/signin invalid credentials error (under password input): "Email or password is incorrect" — never disclose which is wrong
+- /auth/forgot-password POST_SUBMIT helper: "If an account exists for that email, we sent a reset link." — never confirm or deny email registration
+
+Headlines (no period unless declarative complete sentence):
+- Signup: "Create an account"
+- Signin: "Sign in"
+- Forgot password (PRE): "Reset your password"
+- Forgot password (POST): "Check your inbox"
+- Reset password (VALID): "Set a new password"
+- Reset password (INVALID expired): "This link has expired"
+- Reset password (INVALID used): "This link has already been used"
+- Reset password (SUBMITTED): "Your password has been reset"
+- Verify email sent: "Check your inbox"
+- Verify email success: "You're in"
+- Account deleted: "Your account has been deleted." (PERIOD — declarative complete sentence)
+
+Eyebrows (uppercase tracked microtype with em-dash separator):
+- ACCOUNT — NEW (signup)
+- ACCOUNT — RETURNING (signin)
+- ACCOUNT — RECOVERY (forgot password PRE)
+- INBOX — CHECK YOUR EMAIL (forgot password POST, verify email sent)
+- ACCOUNT — VERIFYING / RESET PASSWORD / LINK EXPIRED / LINK USED / PASSWORD UPDATED (reset password 4 states)
+- INBOX — VERIFY YOUR EMAIL (verify email sent)
+- ACCOUNT — VERIFIED (verify email success)
+- ACCOUNT — REMOVED (account deleted)
+- LEGAL — TERMS OF SERVICE / PRIVACY POLICY (legal pages)
+
+**Brand decisions locked during P01b prep (diverge from original phase doc spec):**
+
+1. Apple OAuth deferred — V1 ships Google-only on signup AND signin. Apple revisited post-launch. Original spec implied both; spec narrowed for V1 simplicity. Phase doc D-rule G8 covers this.
+
+2. Magic link sign-in dropped from V1 — Original spec described inline expansion on /auth/signin. Removed for V1 simplicity (forgot-password covers password recovery; magic link adds complexity for marginal value). Revisit post-launch.
+
+3. Particles + ambient glow on auth screens dropped — Original spec called for drifting gold particles and ambient navy glow. Removed; modern luxury aesthetic favors restraint. Particles never appear; ambient glow never appears.
+
+4. Account deletion survey link dropped — Original spec called for "optional 1-question survey link" on /account-deleted. Removed; luxury brand pattern is to let users go without exit-data extraction. Survey moved to deletion modal in Phase 9 if needed (closer to point of decision).
+
+**Behavior (functional contract, independent of visual design):**
 - OAuth flows on success → /welcome (not /dashboard yet — quiz required first)
 - Email signup: Supabase Auth creates user → Resend sends verification → /auth/verify-email-sent
 - All `/auth/*` routes check session on load. If authenticated, redirect to /dashboard (or /welcome if quiz incomplete)
-- Magic link inline expansion on sign-in
-- Error states: "Incorrect email or password." (don't disclose which); generic "If that email is registered..." for forgot; "Account locked. Try again in 15 minutes" after 5 failed attempts; toast top-of-card on network error (5s auto-dismiss)
+- Error states: "Email or password is incorrect" on /auth/signin (don't disclose which); generic "If an account exists for that email..." for forgot; "Account locked. Try again in 15 minutes" after 5 failed attempts; toast top-of-card on network error (5s auto-dismiss)
 - Accessibility: proper `<label>` associations, focus order top-to-bottom, visible gold focus rings on `:focus-visible`, form errors via `aria-live="polite"`, Enter submits, Escape doesn't dismiss, WCAG AA color contrast
-
-**/account-deleted page.** Centered card with "We're sorry to see you go." headline, brief copy, optional 1-question survey link.
-
-**/terms and /privacy pages.** Long-form Termly content rendered with consistent typography. Sticky "Last updated: YYYY-MM-DD" header. Anchor links for sections. Accessible navigation. No card wrap — full-bleed prose with max-width 720px centered.
 
 ### 1C — Integration + review
 
@@ -429,7 +497,8 @@ Verifier session 1 reviews by criterion. Each acceptance criterion mapped to a v
 | Criterion | Verifier check |
 |---|---|
 | P01a is CLOSED | `cova-plan/PHASE_STATUS.md` shows P01a CLOSED |
-| 6 auth screens functional | Each route renders without error; form submission paths work |
+| Pre-built UI components imported correctly | `apps/web/app/auth/*/page.tsx` (and `app/{terms,privacy,account-deleted}/page.tsx`) imports from `cova-plan/ui-gen/P01b/*` (or files copied to `apps/web/components/auth/*` with normalized paths). Verifier confirms each of the 9 screens renders with the locked design language: COVA wordmark fixed top-left, navy ground, italic serif headlines, uppercase tracked microtype, sharp corners (0px radius), no shadows, no particles, no ambient glow |
+| 9 screens functional | Each route renders without error; form submission paths work |
 | Turnstile + rate limit | Trigger 4 signups in 1 hour from same IP; 4th returns 429 |
 | /terms + /privacy live | URLs return 200 with non-empty content; FTC disclosure present; processor list present |
 | Account-deletion cascade | Test user deletion: rooms, renders, swipes all cascade; `account_deletions` row written with `hashed_user_id` only (no email or other PII) |
@@ -471,6 +540,8 @@ Verifier specifically hunts for these patterns in Phase 1B surface:
 ---
 
 ## 15. Manual click-script (human gate after verifier passes)
+
+> All 9 screens are visually pre-locked via `cova-plan/ui-gen/P01b/*` artifacts (P01b prep, May 2026). Manual click-script verifies functional behavior + brand consistency, not visual design — the design contract is fixed.
 
 You execute this sequence, capturing screenshots at marked steps. Save to `cova-plan/manual-evidence/P1b/`.
 
