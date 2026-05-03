@@ -45,19 +45,21 @@ If reality diverges from `PHASE_STATUS.md`, halt and write `cova-plan/drift/P1b-
 - `cova-plan/PHASE_STATUS.md` shows **Phase 1A as CLOSED** and Phase 1B as NOT STARTED. **Halt if P01a status ≠ CLOSED.**
 - `cova-plan/SESSION_HANDOFFS/` exists; the P01a close handoff is present
 - `apps/web/.env.local` contains `RESEND_API_KEY`, `TURNSTILE_SECRET_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
+- `apps/web/.env.local` contains `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`
 
 ### External dependency checks
 - Supabase project `xdeacbmkdwqrwxonqaqh` reachable via Supabase MCP; `p1_*` policies from P01a present
 - Vercel project deployed at covainterior.com
 - Supabase tier: Pro · Vercel tier: Pro
 - EXA MCP, Context7 MCP, Supabase MCP all connected in Claude Code
-- Resend DNS for `hi@covainterior.com` (SPF/DKIM/DMARC) verified in Resend dashboard
+- Resend DNS for both `hi@covainterior.com` (existing G4) AND `auth@send.covainterior.com` (new transactional subdomain — SPF/DKIM/DMARC on `send.covainterior.com`) verified in Resend dashboard
 - Termly free-tier templates rendered with Cova specifics (16+ age gate, FTC disclosure, processor list — see G5) and HTML in hand
 - Apple OAuth status known (G8): if Apple Developer Program membership active, Apple OAuth ships in V1; else V1.5
 
 ### Halt conditions
 - P01a not CLOSED → halt
 - Resend DNS unverified → halt (cannot send verification emails)
+- Transactional subdomain `send.covainterior.com` DNS unverified → halt (cannot send anti-enumeration verification emails)
 - Termly templates not rendered → halt (cannot populate `/terms` and `/privacy`)
 - Any required MCP not connected → halt, install MCP first
 
@@ -67,11 +69,11 @@ If reality diverges from `PHASE_STATUS.md`, halt and write `cova-plan/drift/P1b-
 
 Three gaps owned by P01b. Cloud chat resolves them in conversation with Daksh before invoking the planner. Numbering preserved from the pre-split doc for traceability.
 
-**G4. Resend DNS records for `hi@covainterior.com`** (SPF/DKIM/DMARC). *Resolution:* Daksh checks Namecheap before cloud chat. Configured → verifier confirms test send. Not configured → Phase 1B blocker (cannot start until DNS verified — see §2 halt conditions).
+**G4. Resend DNS records.** Two domains required: (a) `hi@covainterior.com` for human-reply email (existing); (b) `auth@send.covainterior.com` for all transactional auth/account email (new — verification, reset, deletion confirmation, GDPR export delivery). Transactional separation prevents bounce/spam reputation damage to the primary `hi@` mailbox. *Resolution:* Daksh checks Namecheap before cloud chat. Both configured → verifier confirms test send from each. Either unconfigured → Phase 1B blocker (see §2 halt conditions).
 
 **G5. Termly templating output.** Free tier locked. Templates not generated yet. *Resolution:* Daksh logs into Termly, generates ToS + Privacy with Cova specifics (16+ age gate, FTC affiliate disclosure, processor list: fal.ai, Anthropic, SearchApi.io, Hive, PhotoDNA, Resend, PostHog, Sentry, Cloudflare, Vercel, Supabase, Modal). Hands rendered HTML to executor. **DEF-002:** Termly free-tier capability check (badge insertion, policy count caps, impression limits) — verified before P01b ships, not before P01a. If free tier insufficient, decision pivots to paid tier or alternative.
 
-**G8. Apple Sign In approval status.** Apple Developer Program membership required. *Resolution:* Daksh confirms Apple Developer account active before Phase 1B. If not, Apple OAuth deferred to V1.5 — only Google OAuth ships in V1. Behavior of `auth_apple_oauth` feature flag (seeded in M3 of this phase) reflects the decision.
+**G8. Apple Sign In approval status — two-step gate.** Apple OAuth is enabled in V1 only when BOTH conditions are true: **G8a** Apple Developer Program membership active, **G8b** Apple OAuth provider configured in Supabase Auth dashboard with valid Service ID + Team ID + Key ID + signing key. *Resolution:* Daksh confirms G8a (developer account active) and G8b (Supabase provider wired) before Phase 1B. If either is false, Apple OAuth deferred to V1.5 — only Google OAuth ships in V1. The `auth_apple_oauth` feature flag (seeded in M3 of this phase) reflects: `true` only when G8a AND G8b both verified, `false` otherwise.
 
 ---
 
@@ -128,6 +130,7 @@ The auth + legal + account-deletion half of the original P01. Three things happe
 | Errors | Sentry | client + server + edge runtimes |
 | Analytics | PostHog | EU instance |
 | Bot protection | Cloudflare Turnstile | invisible mode |
+| Rate limiting | Upstash Redis (per-route/per-user) + Cloudflare WAF (coarse IP layer) | Free tier |
 | Password strength | zxcvbn | client-side meter |
 | Image processing | Sharp (libvips) | EXIF strip via `.withMetadata({})` |
 | Legal templating | Termly | free tier (DEF-002 caveat) |
@@ -172,20 +175,39 @@ Split into 1A backend / 1B UI / 1C integration. Run in this order.
 ### 1A — Backend / Auth APIs
 
 **M2 — Auth + Legal**
-- Email + password signup with Resend verification (subject "Verify your email — Cova", from `hi@covainterior.com`, single CTA, 24h token expiry, single-use)
+- Email + password signup with Resend verification (subject "Verify your email — Cova", from `auth@send.covainterior.com` on transactional subdomain, single CTA, 24h token expiry, single-use)
 - Google OAuth via Supabase Auth dashboard config
 - Apple OAuth (if G8 resolves; else V1.5)
-- Forgot-password with anti-enumeration (always returns "If that email is registered, we sent a reset link.")
+- Forgot-password with anti-enumeration. **Constant-time response via `waitUntil()`**: the API route returns 200 with `{ok:true}` immediately for both registered and unregistered emails (identical body, identical timing). Resend send happens asynchronously inside `waitUntil()` for the registered branch only; send failures captured to Sentry as `auth.forgot.send_fail` (logged, never surfaced to user). User-visible message at the UI layer: "If that email is registered, we sent a reset link."
 - Reset-password with zxcvbn 5-segment strength meter, min 8 chars (NIST), 1h token expiry, single-use
 - Cloudflare Turnstile invisible mode on signup form, server-side verification
-- Rate limit middleware: 3 signups/hour/IP via Upstash Redis or Cloudflare WAF
+- Rate limiting via **Upstash Redis** for per-route/per-user limits, with Cloudflare WAF as a coarse outer IP layer. Per-route limits:
+  - `/api/auth/signup` — 3/hr/IP
+  - `/api/auth/signin` — 20/hr/IP. Plus per-email lockout: 5 failed attempts → 15-minute silent lockout (option γ — see below)
+  - `/api/auth/forgot-password` — 5/hr/IP. Plus 60s per-email cooldown.
+  - `/api/auth/reset-password` — 10/hr/IP. Token-bound single-use enforced by Supabase.
+  - `/api/auth/resend-verification` — 5/hr/IP. Plus 60s per-email cooldown.
+  - `/api/auth/delete-account` — 1 attempt per user. On failure, 1-hour Upstash lockout before retry permitted.
+  - `/api/users/export` — 1 per 24h per user.
+  - `/api/auth/sign-out` — no limit.
+  **Account lockout (option γ — silent):** Upstash key `lockout:signin:{lowercased_email}`, 15min sliding TTL, increment on every failed signin. At count ≥ 5, the route silently rejects with `auth.signin.invalid_credentials` to the user (identical to a wrong-password response — preserves anti-enumeration AND prevents enumeration via the lockout message itself). Internal log entry uses `auth.signin.silent_lockout` for ops visibility. Accepted UX cost: a legitimate user who keeps trying their correct password during a lockout window sees "Email or password is incorrect" — they may be confused. Documented in EMPIRICAL_FINDINGS.md at phase close. Upstash client wrapper at `apps/web/lib/rate-limit/upstash.ts`.
 - 60s resend cooldown on verification + reset emails
 - `/terms` page with Termly-templated ToS (16+ age requirement, FTC affiliate disclosure, governing law: Delaware after incorporation)
 - `/privacy` page with full Privacy Policy (lists all processors, GDPR/CCPA rights enumerated)
-- Account-deletion flow: type-DELETE-to-confirm modal + email confirmation field → POST `/api/auth/delete-account` → Supabase Edge Function `delete-user-cascade` → cascade delete via FK → `account_deletions` audit row (hashed user_id only via SHA256, no PII retained) → redirect to `/account-deleted`
+- Account-deletion flow: type-DELETE-to-confirm modal + email confirmation field → POST `/api/auth/delete-account` → Supabase Edge Function `delete-user-cascade` → **immediate hard-delete** of `auth.users` row at t=0 → cascade delete via FK → `account_deletions` audit row (hashed user_id via SHA256, no PII retained, `deletion_reason='user_initiated'`, `audit_retention_days` defaulted to 30) → redirect to `/account-deleted`. Audit row is purged by nightly cron at `/api/cron/purge-deletion-audit` once `deleted_at + audit_retention_days < now()`. The `audit_retention_days` field controls the audit-row retention window only; the user account itself is gone immediately.
 - `account_deletions` table created with RLS service-role-only
-- GDPR data export endpoint at `POST /api/users/export`. Returns zip of all user data (rooms, renders, swipes, refines as JSON + image URLs). Generated on-demand. Signed URL with 24h TTL emailed via Resend.
+- GDPR data export endpoint at `POST /api/users/export`. **Sync-with-fallback execution**: the route attempts to generate the zip synchronously with a 7-second internal timeout. If completed within 7s, returns `{ok:true, downloadUrl, expiresAt}` immediately (downloadUrl signed for 7 days). If the timeout fires, returns `{ok:true, status:'queued'}`, the in-flight zip generation continues via `waitUntil()`, and Resend emails the downloadUrl to the user when ready (also 7-day TTL). No new queue dependency. Zip contents (lock):
+  - `rooms.json`, `renders.json`, `swipes.json`, `style_fingerprints.json`, `account_deletions.json` (empty for active users)
+  - `refines.json` (empty in P01b — Phase 6 populates), `chat_sessions.json` (empty in P01b — Phase 9 populates)
+  - `images/rooms/{room_id}.{ext}` — actual bytes downloaded from Cloudflare Images / R2 and packed
+  - `images/renders/{render_id}/final.{ext}` — actual bytes; **final render only**, no intermediate stages
+  Forward-extensible: each later phase that adds a user-data table extends this endpoint to include it.
 - `/account-deleted` page with copy "We're sorry to see you go." Optional brief survey link.
+- Cost telemetry on every Resend send. Add to `apps/web/lib/cost/categories.ts`: `auth.email.verification`, `auth.email.reset`, `auth.email.export`, `auth.email.deletion_confirmation`. Add to `apps/web/lib/cost/rates.ts`: `RESEND_BLENDED_RATE_USD = 0.0008` (refined post-launch in EMPIRICAL_FINDINGS.md). Every Resend send wrapped in `paidCall<>()` with the appropriate category + rate. D-011 enforced by P01a ESLint rule.
+- Identity merge on email/password → OAuth same-email collision: merge IS allowed if the existing email/password account is **unverified** (OAuth provider's verification supersedes pending email verification). If the existing account is already verified, the OAuth flow returns `auth.oauth.email_exists` and the user is asked to sign in with their original method. New `auth.oauth.email_exists` entry added to AuthFailure union (§11).
+- Email-verification flag scope: `email_verification_required` governs only the email/password signup path. OAuth signups (Google now, Apple-if-G8) bypass the gate — providers deliver pre-verified emails.
+- V0 demolition is the first step of M2 implementation. Run `git mv apps/web/app/auth/ _archive/web/app/auth/` BEFORE any new auth files land — prevents `/auth/callback` path collision between V0 and the new spec. Add a README.md inside `_archive/web/app/auth/` documenting that the V0 plain email/password + Google surface was deprecated when the luxury auth flow shipped in P01b. After demolition: `apps/web/app/auth/page.tsx` is recreated as a redirect to `/auth/signin`.
+- Nightly cron at `/api/cron/purge-deletion-audit/route.ts` purges `account_deletions` rows where `deleted_at + (audit_retention_days * interval '1 day') < now()`. Auth: `Authorization: Bearer ${CRON_SECRET}` header check matching the pattern P01a established in `apps/web/app/api/cron/*` — read existing P01a cron implementation and mirror exactly. Halt at boot if `CRON_SECRET` env var missing.
 
 ### 1B — UI (M2 screens)
 
@@ -229,7 +251,7 @@ Reduced-motion: mount fades and crossfades replaced with instant render. Hover t
 
 **Pre-built UI components live at cova-plan/ui-gen/P01b/. Executor wires them into apps/web/app/auth/* and apps/web/app/{terms,privacy,account-deleted}/* during M2.**
 
-**The 9 screens:**
+**The 10 screens:**
 
 | Screen | Route | UI source | Bespoke component | Notes |
 |---|---|---|---|---|
@@ -242,6 +264,25 @@ Reduced-motion: mount fades and crossfades replaced with instant render. Hover t
 | Account deleted | /account-deleted | cova-plan/ui-gen/P01b/account-deleted.tsx | — | No survey link (deliberate brand decision). Single "RETURN HOME" exit |
 | Terms of Service | /terms | cova-plan/ui-gen/P01b/legal-page.tsx | — | Shared LegalPage component, instantiated with documentType="terms" + Termly HTML |
 | Privacy Policy | /privacy | cova-plan/ui-gen/P01b/legal-page.tsx | — | Shared LegalPage component, instantiated with documentType="privacy" + Termly HTML |
+| Verify email invalid | /auth/verify-email-invalid | cova-plan/ui-gen/P01b/auth-verify-email-invalid.tsx | — | 2 substates via URL `?reason=` param: `?reason=expired` (CTA: RESEND VERIFICATION EMAIL → /api/auth/resend-verification → /auth/verify-email-sent with email pre-populated, 60s cooldown reset) and `?reason=used` (CTA: SIGN IN → /auth/signin). Layout invariants apply (full-bleed navy, fixed wordmark, 360px column, hairline rule, eyebrow, italic serif headline, gold rule, sharp corners). Eyebrow / headline / helper / CTA copy locked per the diff and reproduced in §6 1B verify-invalid sub-spec. |
+
+**/auth/verify-email-invalid — copy lock**
+
+`?reason=expired`:
+- Eyebrow: "ACCOUNT — LINK EXPIRED"
+- Headline: "This link has expired"
+- Helper: "Verification links expire after 24 hours. We can send you a new one."
+- Primary CTA: "RESEND VERIFICATION EMAIL" → fires `POST /api/auth/resend-verification` → on success transitions to `/auth/verify-email-sent` with the email pre-populated and the 60s cooldown reset.
+- Footer: "ALREADY VERIFIED — SIGN IN" → `/auth/signin`.
+
+`?reason=used`:
+- Eyebrow: "ACCOUNT — LINK USED"
+- Headline: "This link has already been used"
+- Helper: "Looks like you've already verified. You can sign in below."
+- Primary CTA: "SIGN IN" → `/auth/signin`.
+- No footer (CTA already routes to signin).
+
+The verify-email API route classifies the failure → redirects to `/auth/verify-email-invalid?reason=expired` or `?reason=used`. Success continues to `/auth/verify-email-success`. New ui-gen file `cova-plan/ui-gen/P01b/auth-verify-email-invalid.tsx` is generated post-State-5 via Manus using the established design language.
 
 **Locked copy strings (do not change without product approval):**
 
@@ -287,8 +328,83 @@ Eyebrows (uppercase tracked microtype with em-dash separator):
 - OAuth flows on success → /welcome (not /dashboard yet — quiz required first)
 - Email signup: Supabase Auth creates user → Resend sends verification → /auth/verify-email-sent
 - All `/auth/*` routes check session on load. If authenticated, redirect to /dashboard (or /welcome if quiz incomplete)
-- Error states: "Email or password is incorrect" on /auth/signin (don't disclose which); generic "If an account exists for that email..." for forgot; "Account locked. Try again in 15 minutes" after 5 failed attempts; toast top-of-card on network error (5s auto-dismiss)
+- Error states: "Email or password is incorrect" on /auth/signin (don't disclose which); identical message during silent-lockout window per option γ (no "account locked" string ever surfaced to user); generic "If an account exists for that email..." for forgot; toast top-of-card on network error (5s auto-dismiss) using the new shared `apps/web/components/ui/Toast.tsx` component; "Couldn't sign in with Google. Try email instead." toast on /auth/signin when arriving with `?error=oauth` query param (set by `/auth/callback` on OAuth provider error).
 - Accessibility: proper `<label>` associations, focus order top-to-bottom, visible gold focus rings on `:focus-visible`, form errors via `aria-live="polite"`, Enter submits, Escape doesn't dismiss, WCAG AA color contrast
+
+**Loading state pattern (option α — locked across all 6 form screens):**
+
+When a form is submitting:
+- Submit button: italic-serif label change. No spinner, no dot-loader.
+- Inputs: visually disabled at 60% opacity, semantically disabled.
+- Per-screen labels (lock):
+  - Signup: "Creating your account…"
+  - Signin: "Signing you in…"
+  - Forgot password: "Sending reset link…"
+  - Reset password: "Updating your password…"
+  - Resend verification: "Resending…"
+  - Delete-account modal (Phase 9 territory): "Deleting your account…" (named here for forward consistency)
+
+**Reset-password 4-state machine motion:**
+
+- VALIDATING: italic-serif "Verifying your link…" with a 300ms minimum shimmer placeholder (prevents jarring sub-100ms flash on fast Supabase responses).
+- VALIDATING → terminal state (VALID | INVALID-expired | INVALID-used): 200ms ease-out crossfade.
+- VALID → SUBMITTED: 200ms ease-out crossfade after API success.
+- SUBMITTED → /auth/signin: 2-second auto-redirect (already locked).
+
+**Forgot-password PRE→POST motion:**
+
+Same-route state change (NOT a route navigation). 200ms ease-out crossfade: form fades out as "Check your inbox" + email-displayed-inline fades in. URL stays `/auth/forgot-password`.
+
+**Mobile form-column scaling:**
+
+`width: min(360px, calc(100vw - 32px))`. On viewports ≥392px the column is the full 360px. On iPhone SE (375px) the column is 343px (16px each side). Hairline rule scales accordingly. Wordmark stays top-left and shrinks from 16px tracking-[0.4em] to 14px tracking-[0.4em] on viewports <400px. Wordmark never rotates to top-center — top-left anchor is the system's compositional invariant.
+
+**Footer link copy (locked, mirrors copy in `cova-plan/ui-gen/P01b/*` artifacts):**
+
+| Screen | Footer copy | Routes to |
+|---|---|---|
+| /auth/signup | EXISTING ACCOUNT — SIGN IN | /auth/signin |
+| /auth/signin | NEW TO COVA — CREATE ACCOUNT | /auth/signup |
+| /auth/forgot-password (PRE_SUBMIT) | REMEMBER YOUR PASSWORD — SIGN IN | /auth/signin |
+| /auth/forgot-password (POST_SUBMIT) | BACK TO SIGN IN | /auth/signin |
+| /auth/reset-password (VALIDATING, VALID, INVALID*) | REMEMBER YOUR PASSWORD — SIGN IN | /auth/signin |
+| /auth/reset-password (SUBMITTED) | (no footer — auto-redirect) | — |
+| /auth/verify-email-sent | ALREADY VERIFIED — SIGN IN | /auth/signin |
+| /auth/verify-email-success | (no fixed footer — locked spec) | — |
+| /auth/verify-email-invalid (?reason=expired) | ALREADY VERIFIED — SIGN IN | /auth/signin |
+| /auth/verify-email-invalid (?reason=used) | (no footer — CTA already routes to signin) | — |
+| /account-deleted | (no fixed footer — single inline RETURN HOME link) | / |
+
+`/account-deleted` RETURN HOME destination is `/` (covainterior.com root marketing landing).
+
+The "DIDN'T REQUEST THIS — CONTACT US" security-affordance pattern was discussed and **deferred to V1.5** — introduces a new pattern not in the locked design system.
+
+**Toast component (new, reusable):**
+
+Built fresh at `apps/web/components/ui/Toast.tsx`. Used from this phase forward across the app. Spec:
+- Full-width banner inside the form column (not viewport-wide).
+- Mounts with 4px slide-down from top of card + 200ms opacity fade.
+- Background: `#A8443B` (warm-error) at 8% opacity.
+- Text: italic serif, ivory `#F5F0E8`.
+- Auto-dismisses after 5 seconds.
+- Manual dismiss via inline "DISMISS" close-X (uppercase tracked microtype, gold).
+- Reduced-motion: instant render, no slide.
+- ARIA: `role="alert"`, `aria-live="polite"`.
+
+**Wordmark component (new, reusable):**
+
+Extracted to `apps/web/components/brand/Wordmark.tsx`. Single source of truth used across all 10 P01b screens, Phase 9 dashboard navbar, Phase 10 landing redesign. Props:
+- `align?: "left" | "center"` (default "left"). "left" = fixed top-left for auth screens. "center" = in-flow for legal pages.
+- Renders the COVA wordmark with gold em-dash beneath at 50% opacity.
+- Scales font size on viewports <400px per mobile spec above.
+
+**OAuth error landing (T25):**
+
+`/auth/callback` on OAuth provider error redirects to `/auth/signin?error=oauth`. The signin page consumes the query param on mount and renders the Toast with copy "Couldn't sign in with Google. Try email instead." from §11 recovery table. No separate `/auth/oauth-error` page.
+
+**Legal page layout (T23 clarification):**
+
+`/terms` and `/privacy` use the shared `LegalPage` component instantiated with the Termly HTML. Eyebrow + serif headline + 32px gold hairline rule are all **left-aligned** with the body prose's reading flow inside the max-w-[720px] reading column. Centered placement was rejected as inconsistent with left-aligned long-form prose. Matches the existing locked `cova-plan/ui-gen/P01b/legal-page.tsx`.
 
 ### 1C — Integration + review
 
@@ -298,6 +414,7 @@ Eyebrows (uppercase tracked microtype with em-dash separator):
 - Schema-reviewer pass on `account_deletions` migration
 - Adversarial probes pass (see §14)
 - Seed feature flag rows for `auth_apple_oauth`, `email_verification_required`
+- Frontend Visionary subagent fires per-screen post-implementation. 10 screens, 10 invocations checking design-system tokens, layout invariants, contrast, focus order, ARIA, touch targets, D-008 (no internal style codenames). Findings filed at `cova-plan/frontend-visionary-reports/P1b/`.
 
 ---
 
@@ -336,15 +453,31 @@ Eyebrows (uppercase tracked microtype with em-dash separator):
 - `apps/web/app/privacy/page.tsx`
 - `apps/web/app/api/auth/signup/route.ts`
 - `apps/web/app/api/auth/signin/route.ts`
-- `apps/web/app/api/auth/oauth-callback/route.ts`
+- `apps/web/app/auth/callback/route.ts` (OAuth callback path matches Supabase SSR docs; `/api/auth/oauth-callback` rejected as inconsistent with Supabase pattern)
 - `apps/web/app/api/auth/forgot-password/route.ts`
 - `apps/web/app/api/auth/reset-password/route.ts`
 - `apps/web/app/api/auth/resend-verification/route.ts`
 - `apps/web/app/api/auth/delete-account/route.ts`
 - `apps/web/app/api/auth/sign-out/route.ts`
+- `apps/web/app/auth/verify-email-invalid/page.tsx`
+- `apps/web/app/api/cron/purge-deletion-audit/route.ts`
+- `apps/web/components/ui/Toast.tsx`
+- `apps/web/components/brand/Wordmark.tsx`
+- `apps/web/lib/rate-limit/upstash.ts`
+- `apps/web/lib/cost/rates.ts` (if not already present from P01a — verify before creating)
 - `apps/web/app/api/users/export/route.ts`
 - `supabase/functions/delete-user-cascade/index.ts`
 - `apps/web/lib/errors/categories.ts` — **extended** with the full `AuthFailure` dotted union (P01b owns the `auth.*` prefix)
+
+### Demolition (runs FIRST in M2)
+
+Before any new auth file is created, run:
+- `git mv apps/web/app/auth/ _archive/web/app/auth/` (mirrors P01a Decision 11 demolition pattern; `_archive/` lives at REPO ROOT, NOT under `apps/web/`)
+- Write `_archive/web/app/auth/README.md` documenting that the V0 plain email/password + Google OAuth surface was deprecated in P01b when the luxury auth flow shipped. Reference: `cova-plan/phases/P01b-auth-legal-deletion.md`.
+
+After demolition completes, `apps/web/app/auth/page.tsx` is recreated as a single-purpose redirect to `/auth/signin` (server component, `redirect("/auth/signin")` from `next/navigation`).
+
+This step prevents `/auth/callback` path collision between the V0 callback and the new spec's callback at the same path.
 
 ### Migrations (reversible with paired _down.sql)
 - `supabase/migrations/{ts}-account-deletions-table.sql`
@@ -352,6 +485,9 @@ Eyebrows (uppercase tracked microtype with em-dash separator):
 ### Modified
 - `apps/web/lib/feature-flags/index.ts` (consumer of seeded auth flags)
 - Whatever existing files need to wire the new auth screens into the navigation surface (cloud chat may add specifics during planning)
+- `apps/web/lib/cost/categories.ts` — extend with `auth.email.verification`, `auth.email.reset`, `auth.email.export`, `auth.email.deletion_confirmation` (T15)
+- `apps/web/lib/errors/categories.ts` — extend `FailureCategory` union by importing existing P01a slices unchanged and unioning with the full `AuthFailure` type. **Do NOT redeclare from scratch** — that would silently drop other phases' slices when later phases extend. New AuthFailure entries beyond §11's original list: `auth.signin.silent_lockout` (C-3a γ) and `auth.oauth.email_exists` (B-12a).
+- `apps/web/app/auth/page.tsx` — replaced with redirect to `/auth/signin` (post-demolition recreation, T24)
 
 ---
 
@@ -396,12 +532,42 @@ Returns: { ok: true, redirectTo: "/account-deleted" }
 Side effects: triggers Edge Function delete-user-cascade
 ```
 
-### POST /api/users/export
-```
+### GET /auth/callback (OAuth)
+
+OAuth callback path matches Supabase SSR docs (was `/api/auth/oauth-callback` — rejected as inconsistent). Planner details full contract; on provider error, redirects to `/auth/signin?error=oauth` (T25).
+
+### POST /api/auth/sign-out
 Body: {} (auth from session)
-Returns: { ok: true, downloadUrl: string, expiresAt: ISO }
-Side effects: generates zip, signed URL with 24h TTL, Resend email with link
-```
+Returns: { ok: true, redirectTo: '/' } or error envelope
+Side effects: clears Supabase session cookie via createServerClient signOut(); client also calls posthog.reset() so subsequent anonymous events aren't attributed to the signed-out user
+Rate limit: none
+
+### POST /api/users/export
+Body: {} (auth from session)
+Returns (sync — completed within 7s):
+  { ok: true, downloadUrl: string, expiresAt: ISO }
+Returns (queued — internal timeout fired):
+  { ok: true, status: 'queued' }
+Side effects (sync): generates zip in-process; signed URL with 7-day TTL
+Side effects (queued): waitUntil() continues zip generation; Resend email at auth@send.covainterior.com with downloadUrl when ready (also 7-day TTL)
+Rate limit: 1 per 24h per user
+
+Zip contents per §6 1A. Forward-extensible across phases.
+
+### Rate-limit summary (full T2 table)
+
+| Route | Per-IP | Per-email/user | Storage |
+|---|---|---|---|
+| /api/auth/signup | 3/hr | — | Upstash |
+| /api/auth/signin | 20/hr | 5 fails → 15min silent lockout (option γ) | Upstash |
+| /api/auth/forgot-password | 5/hr | 60s cooldown | Upstash |
+| /api/auth/reset-password | 10/hr | token-bound (single use, Supabase-managed) | Upstash + Supabase |
+| /api/auth/resend-verification | 5/hr | 60s cooldown | Upstash |
+| /api/auth/delete-account | — | 1 attempt / user; 1h release on failure | Upstash |
+| /api/users/export | — | 1 / 24h / user | Upstash |
+| /api/auth/sign-out | — | — | — |
+
+Cloudflare WAF rules sit above Upstash as a coarse outer IP layer (configured in CF dashboard, no code dep).
 
 All routes use Unit-1 error envelope: `{ ok: false, failure_category: '<dotted.category>', user_message: '<safe>', detail: '<dev-only>' }`
 
@@ -416,7 +582,7 @@ CREATE TABLE account_deletions (
   hashed_user_id text NOT NULL,
   deleted_at timestamptz NOT NULL DEFAULT now(),
   deletion_reason text CHECK (deletion_reason IN ('user_initiated','admin_initiated','gdpr_request','ccpa_request')),
-  retention_period_days int NOT NULL DEFAULT 30
+  audit_retention_days int NOT NULL DEFAULT 30
 );
 CREATE INDEX account_deletions_deleted_at_idx ON account_deletions(deleted_at DESC);
 ALTER TABLE account_deletions ENABLE ROW LEVEL SECURITY;
@@ -425,6 +591,8 @@ ALTER TABLE account_deletions ENABLE ROW LEVEL SECURITY;
 Down: `DROP TABLE account_deletions;`
 
 > Service-role-only tables get no policies, just RLS enabled — consistent with the P01a pattern for `pipeline_runs`. No `p1_` prefix needed because no policy is created.
+
+> 30-day audit-row retention. The `account_deletions` row holds the audit hash only; the user's auth.users row is hard-deleted at t=0. The audit row is purged by nightly cron at /api/cron/purge-deletion-audit once `deleted_at + audit_retention_days < now()`.
 
 ---
 
@@ -453,7 +621,9 @@ export type AuthFailure =
   | 'auth.delete.confirm_mismatch'
   | 'auth.delete.cascade_fail'
   | 'auth.export.zip_fail'
-  | 'auth.session.expired';
+  | 'auth.session.expired'
+  | 'auth.signin.silent_lockout'
+  | 'auth.oauth.email_exists';
 ```
 
 The umbrella `FailureCategory` union (defined in P01a) is extended with `AuthFailure` here.
@@ -467,6 +637,9 @@ The umbrella `FailureCategory` union (defined in P01a) is extended with `AuthFai
 | `auth.oauth.provider_error` | Show generic "Couldn't sign in with Google. Try email instead." |
 | `auth.delete.cascade_fail` | Email Daksh + retry once + alert PostHog |
 | Network / Sentry / DB transient | Toast "Couldn't reach our servers. Please try again." (5s auto-dismiss) |
+| `auth.signin.silent_lockout` | Internal log only. User-facing response is `auth.signin.invalid_credentials` (silent — preserves anti-enumeration per option γ). |
+| `auth.oauth.email_exists` | Toast on /auth/signin: "An account already exists for that email. Sign in with your password instead." |
+| `auth.forgot.send_fail` | Captured to Sentry only; user-visible response is identical to success branch (anti-enumeration via `waitUntil()`). |
 
 ---
 
@@ -504,6 +677,21 @@ Verifier session 1 reviews by criterion. Each acceptance criterion mapped to a v
 | Anti-enumeration on forgot-password | Same response for registered + unregistered email |
 | Token invalidation | Reset and verify tokens single-use; second use returns "token used/expired" |
 | Session cookie flags | `SameSite=Strict`, `Secure`, `HttpOnly` |
+| Demolition ran | `apps/web/app/auth/` contains only files in the new spec; V0 surface lives at `_archive/web/app/auth/` with README; `_archive/` is at repo root |
+| /auth root redirect | GET /auth returns 307 to /auth/signin |
+| OAuth callback path | Callback at `/auth/callback`, NOT `/api/auth/oauth-callback` |
+| Toast component reused | All 6 form screens render network errors via `apps/web/components/ui/Toast.tsx`, not bespoke per-screen |
+| Wordmark component reused | All 10 screens render the wordmark via `apps/web/components/brand/Wordmark.tsx` |
+| Loading state α | All 6 form screens implement italic-serif label change with locked label strings |
+| /auth/verify-email-invalid | Both `?reason=expired` and `?reason=used` substates render correct copy + correct CTA |
+| Account lockout silent | After 5 failed signins, the 6th signin returns `auth.signin.invalid_credentials` to user; internal log emits `auth.signin.silent_lockout` |
+| Constant-time forgot-password | Response time variance between registered + unregistered email ≤ 50ms across 20 trials |
+| GDPR export sync/queued | Small-user fixture returns `{downloadUrl}`; power-user fixture (forced timeout) returns `{status: 'queued'}` and Resend email arrives within 5min |
+| GDPR export contains bytes | Downloaded zip's `images/` folder contains actual JPEG/PNG bytes, not URL files |
+| Resend cost telemetry | Every Resend send writes a `render_cost_log` row with `category` in `auth.email.*` namespace and `provider='resend'` |
+| FailureCategory union extension | TypeScript-level assertion: every P01a-owned slice still resolves; full AuthFailure union including silent_lockout + email_exists is part of the umbrella |
+| Cron auth | /api/cron/purge-deletion-audit returns 401 without Bearer CRON_SECRET; returns 200 with it; halts at boot if env missing |
+| audit_retention_days field | account_deletions DDL uses the new column name; old name (retention_period_days) absent everywhere |
 
 ### Verifier session 2 cross-check
 
@@ -532,6 +720,18 @@ Verifier specifically hunts for these patterns in Phase 1B surface:
 - [ ] Any Turnstile call without server-side verification (client-only would be bypassable)
 - [ ] Any direct `fetch()` to api.resend.com from outside `apps/web/lib/paid/call.ts` (the P01a ESLint rule must catch this)
 - [ ] Any `console.error|log|warn|info|debug` of an object not wrapped in `redactLogPayload` (the P01a ESLint rule must catch this)
+- [ ] Any rate-limit middleware that doesn't actually call Upstash (mock that always returns "allowed")
+- [ ] Any signin endpoint that surfaces lockout state to the user (must be silent per option γ — "Email or password is incorrect" is the only message)
+- [ ] Any GDPR export that includes URLs to private storage instead of bytes
+- [ ] Any OAuth callback at `/api/auth/oauth-callback` (path must be `/auth/callback`)
+- [ ] Any account-deletion route that retries cascade more than the spec allows (1 attempt + 1h Upstash lockout on failure)
+- [ ] Any V0 file remaining in `apps/web/app/auth/` that should have moved to `_archive/web/app/auth/`
+- [ ] Any cron route without `Authorization: Bearer ${CRON_SECRET}` check
+- [ ] Any direct `fetch()` to api.upstash.com from outside `apps/web/lib/rate-limit/upstash.ts`
+
+**CSRF mitigation note (verifier should NOT flag absence as a gap):**
+
+P01b uses defense-in-depth via SameSite=Strict on the session cookie + business-logic confirmation (confirmText="DELETE" + confirmEmail = user.email on /api/auth/delete-account; `/api/users/export` is non-destructive and only emails to the user's own address). No separate CSRF middleware is included. If V1.5 adds non-confirming destructive endpoints, revisit.
 
 ---
 
@@ -548,6 +748,8 @@ You execute this sequence, capturing screenshots at marked steps. Save to `cova-
 4. Submit → /auth/verify-email-sent loads **[screenshot A2: verify-sent.png]**
 5. Open Resend dashboard → confirm email sent → open in inbox → click "Verify email"
 6. /auth/verify-email-success loads with gold checkmark animation → 3s auto-redirect to /welcome **[screenshot A3: verify-success.png]**
+6a. Open Resend dashboard → resend the verification email to test user → click the same verify link a second time → /auth/verify-email-invalid?reason=used loads with eyebrow ACCOUNT — LINK USED + headline "This link has already been used" + SIGN IN CTA **[screenshot A8a: verify-link-used.png]**
+6b. Manually expire a verification token via Supabase admin (or wait 24h) → click the expired link → /auth/verify-email-invalid?reason=expired loads with eyebrow ACCOUNT — LINK EXPIRED + headline "This link has expired" + RESEND VERIFICATION EMAIL CTA. Click the CTA → expects transition to /auth/verify-email-sent with email pre-populated and the 60s cooldown timer reset **[screenshot A8b: verify-link-expired.png]**
 7. Sign out → return to /auth/signin **[screenshot A4: signin-empty.png]**
 8. Enter wrong password 5 times → see lockout message **[screenshot A5: signin-locked.png]**
 9. Wait 15 min OR clear lockout via Supabase admin → sign in successfully → /dashboard or /welcome
@@ -563,9 +765,16 @@ You execute this sequence, capturing screenshots at marked steps. Save to `cova-
 15. Enter new strong password → submit → success → redirect to /auth/signin
 16. Sign in with new password → success
 17. Try old reset link → "Token expired" message **[screenshot A12: reset-token-expired.png]**
+17a. After successful reset (step 15), reopen the SAME reset link from email → /auth/reset-password renders the INVALID-used state with eyebrow LINK USED + headline "This link has already been used" **[screenshot A12a: reset-link-used.png]**
 
 ### Rate limit
-18. Open 4 incognito windows → attempt signup with 4 different emails from same IP within 1 hour → 4th returns 429 with countdown **[screenshot A13: rate-limit.png]**
+18. Test the full T2 rate-limit table (use 4+ incognito windows + Postman as needed):
+  - Signup: 4th attempt within 1 hour from same IP returns 429 **[A13a]**
+  - Signin: 21st attempt/hour from same IP returns 429 **[A13b]**
+  - Signin per-email: 6th failed attempt for the same email from any IP returns `auth.signin.invalid_credentials` (silent lockout — same message as wrong password, NOT a separate "locked" message) **[A13c]**
+  - Forgot-password: 6th attempt/hour from same IP returns 429; 2nd attempt within 60s for the same email returns cooldown **[A13d]**
+  - Resend-verification: 6th attempt/hour from same IP returns 429 **[A13e]**
+  - Export: 2nd attempt within 24h from same user returns 429 **[A13f]**
 
 ### Turnstile
 19. Disable JS in browser → attempt signup → submit blocked because Turnstile didn't fire **[screenshot A14: turnstile-block.png]**
@@ -585,10 +794,22 @@ You execute this sequence, capturing screenshots at marked steps. Save to `cova-
 27. Sign in → POST `/api/users/export` → wait → check email for download link → download zip → confirm contains rooms.json, renders.json, swipes.json, image_urls.txt **[screenshot A18: gdpr-export.png]**
 
 ### Reduced motion
-28. Set OS preference to reduce motion → reload /auth/signup → particles disabled, ambient glow disabled **[screenshot A19: reduced-motion.png]**
+28. Enable OS reduce-motion → reload /auth/signup → mount fade replaced with instant render (no opacity/translate animation); hover state changes still trigger (color only, no easing); auto-redirect timers (verify-email-success 3s, reset-password submitted 2s) remain unchanged regardless of motion preference **[screenshot A19: reduced-motion.png]**
 
 ### Mobile responsive
 29. Open all 6 auth screens on iPhone Safari → confirm card resizes to 100% minus 24px each side **[screenshots A20-A25: mobile-{signup,signin,forgot,reset,verify-sent,verify-success}.png]**
+
+### OAuth + identity merge + GDPR
+30. OAuth provider error path: open Google OAuth flow from /auth/signup → click "Cancel" / deny consent on Google's screen → return to /auth/signin?error=oauth → toast renders with copy "Couldn't sign in with Google. Try email instead." **[screenshot A26: oauth-error-toast.png]**
+
+31. Identity merge (B-12a):
+  (a) Sign up with email/password using a fresh email; do NOT click the verification link.
+  (b) Sign out → /auth/signup → click "Continue with Google" using the SAME email → expect successful merge into Google identity, account flips to verified, redirect to /welcome **[screenshot A27: identity-merge-success.png]**
+  (c) Repeat the test but with a verified email/password account; OAuth sign-in attempt with same email returns toast "An account already exists for that email. Sign in with your password instead." (failure category: `auth.oauth.email_exists`) **[screenshot A28: identity-merge-blocked.png]**
+
+32. GDPR export queued path: force a power-user fixture (test user with 100+ rooms) → POST /api/users/export → expects `{ok:true, status:'queued'}` body → check the test inbox within 5min for the Resend email containing the downloadUrl **[screenshot A29: gdpr-export-queued-email.png]**
+
+33. GDPR export zip content verification: open the downloaded zip → confirm `images/rooms/*` directory contains actual JPEG/PNG byte streams (open one in an image viewer to verify) → confirm `rooms.json`, `renders.json`, `swipes.json`, `style_fingerprints.json`, `account_deletions.json` are all present (some may be empty arrays for newly-active users — that's expected) **[screenshot A30: gdpr-export-zip-contents.png]**
 
 ---
 
@@ -629,6 +850,12 @@ If manual click-script fails after verifier passes → fresh executor session vi
 - [ ] Verifier reports archived at `cova-plan/verifier-reports/P1b-session-1.md` and `P1b-session-2.md`
 - [ ] Session handoffs at `cova-plan/SESSION_HANDOFFS/` for every executor session
 - [ ] `git log` shows clean commits per milestone (no fixup commits squashed)
+- [ ] EMPIRICAL_FINDINGS.md documents option γ silent-lockout DoS surface + decision rationale
+- [ ] EMPIRICAL_FINDINGS.md documents Resend blended cost rate vs actuals after first month of production sends
+- [ ] Frontend Visionary reports archived for all 10 screens at `cova-plan/frontend-visionary-reports/P1b/`
+- [ ] All V0 auth files moved to `_archive/web/app/auth/` with README
+- [ ] /auth root redirects to /auth/signin (verifier confirmed)
+- [ ] OAuth callback at /auth/callback (verifier confirmed)
 
 ---
 
@@ -653,7 +880,7 @@ P01b **seeds** the following rows into the `feature_flags` table (table itself w
 
 | Flag key | Description | Default |
 |---|---|---|
-| `auth_apple_oauth` | Apple Sign In available on auth screens | false (true if G8 resolves) |
+| `auth_apple_oauth` | Apple Sign In available on auth screens | `false` by default; `true` only when **both** G8a (Apple Developer Program membership active) AND G8b (Supabase Apple provider configured in dashboard with valid Service ID, Team ID, Key ID, signing key) are verified per §3 |
 | `email_verification_required` | Block signup completion until email verified | true |
 
 Phase 5+ adds more flag rows; the table schema does not change.
@@ -666,7 +893,7 @@ These docs get updated/created when Phase 1B closes:
 
 1. **`PHASE_STATUS.md`** — Phase 1B → CLOSED with date; Phase 2 → READY TO START
 2. **`OPEN_DECISIONS.md`** — append any new D-NNN decisions surfaced during P01b execution; `DEF-002` (Termly free-tier capability check) is resolved here — update accordingly
-3. **`EMPIRICAL_FINDINGS.md`** — **created at this point**. Seeded with: zxcvbn score-2 threshold validated against 50 sample passwords; Resend deliverability rate (target: 100% on 50 test sends); Apple OAuth final ship/defer decision; Termly free-tier sufficiency note
+3. **`EMPIRICAL_FINDINGS.md`** — **created at this point**. Seeded with: zxcvbn score-2 threshold validated against 50 sample passwords; Resend deliverability rate (target: 100% on 50 test sends); Resend blended cost rate ($0.0008 estimated, refined post-launch with first-month actuals); Apple OAuth final ship/defer decision (per G8a + G8b); Termly free-tier sufficiency note; **option γ silent-lockout DoS-surface tradeoff documented** (per-email lockout enables limited DoS against arbitrary email addresses with 15min recovery; accepted as acceptable for early-stage product).
 4. **`cova-plan/phases/P02-quiz.md`** — review prereq section (§2 of P02) for any assumptions changed during Phase 1B execution
 5. **Phase 1B handoff at `cova-plan/SESSION_HANDOFFS/NN-P1b-close.md`** — final handoff capturing everything done
 
