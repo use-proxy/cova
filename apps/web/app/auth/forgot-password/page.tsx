@@ -546,7 +546,16 @@ function PostSubmit(props: PostSubmitProps) {
               resendDisabled ? buttonDisabledClass : buttonHoverClass,
             ].join(" ")}
           >
-            {isLoading ? <Spinner /> : <span>{resendCopy}</span>}
+            {isLoading ? (
+              /* Loading state α (phase doc §6 1B): italic-serif label
+                 change. NO spinner. Locked label per §6 1B "Resend
+                 verification: Resending…" (same lock as verify-email-sent). */
+              <span className="font-serif italic normal-case tracking-normal text-[14px] text-cova-ivory">
+                Resending&hellip;
+              </span>
+            ) : (
+              <span>{resendCopy}</span>
+            )}
           </button>
         </div>
       </div>
@@ -558,12 +567,3 @@ function PostSubmit(props: PostSubmitProps) {
 // Atoms
 // ─────────────────────────────────────────────────────────────
 
-function Spinner() {
-  return (
-    <span
-      role="status"
-      aria-label="Loading"
-      className="inline-block w-[14px] h-[14px] rounded-full border border-current border-t-transparent animate-spin"
-    />
-  );
-}
