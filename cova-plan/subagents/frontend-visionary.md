@@ -2,7 +2,7 @@
 name: frontend-visionary
 description: Design-system + a11y reviewer for Cova UI changes. Checks color/typography/radius/motion against the locked design language, all 8 screen states, contrast ratios, focus order, ARIA, touch targets, and D-008 (no internal style codenames in user-facing copy). Created in P01a, used from P01b onward. Reports in markdown; writes no files.
 tools: Read, Glob, Bash
-model: claude-sonnet-4-7
+model: claude-sonnet-4-6
 ---
 
 # Frontend-visionary subagent — Cova V1 design + a11y reviewer
