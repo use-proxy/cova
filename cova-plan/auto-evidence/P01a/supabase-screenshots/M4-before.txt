@@ -1,0 +1,23 @@
+                             Table "public.render_cost_log"
+      Column      |           Type           | Collation | Nullable |      Default      
+------------------+--------------------------+-----------+----------+-------------------
+ id               | uuid                     |           | not null | gen_random_uuid()
+ render_id        | uuid                     |           | not null | 
+ user_id          | uuid                     |           | not null | 
+ pipeline_version | text                     |           | not null | 
+ is_retry         | boolean                  |           | not null | false
+ retry_type       | text                     |           |          | 
+ cost_usd         | numeric(10,4)            |           | not null | 
+ tokens_charged   | integer                  |           | not null | 0
+ cache_hit        | boolean                  |           | not null | false
+ created_at       | timestamp with time zone |           | not null | now()
+Indexes:
+    "render_cost_log_pkey" PRIMARY KEY, btree (id)
+    "idx_render_cost_log_pipeline_date" btree (pipeline_version, created_at)
+    "idx_render_cost_log_user_date" btree (user_id, created_at)
+Check constraints:
+    "render_cost_log_retry_type_check" CHECK ((retry_type = ANY (ARRAY['free'::text, 'paid'::text])) OR retry_type IS NULL)
+Foreign-key constraints:
+    "render_cost_log_user_id_fkey" FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+Policies (row security enabled): (none)
+

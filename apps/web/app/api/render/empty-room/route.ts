@@ -24,6 +24,8 @@ import {
 } from "@/lib/tokens";
 import { callEmptyRoomV3 } from "@/lib/render/empty-room-v3";
 import { normalizeInputImage } from "@/lib/render/normalize-input-image";
+import { logCost } from "@/lib/cost/log";
+import type { CostCategory } from "@/lib/cost/categories";
 
 interface EmptyRoomRequestBody {
   image_url: string;
@@ -109,15 +111,13 @@ export async function POST(request: Request) {
         pipeline_path: string;
       };
 
-      await admin.from("render_cost_log").insert({
-        render_id,
-        user_id: user.id,
-        pipeline_version: RENDER_CONFIG.CACHE_PIPELINE_VERSION,
-        is_retry: false,
-        retry_type: null,
+      await logCost({
+        category: "render" satisfies CostCategory,
+        stage: "empty_room_cache_hit",
         cost_usd: 0,
-        tokens_charged: 0,
-        cache_hit: true,
+        model: RENDER_CONFIG.CACHE_PIPELINE_VERSION,
+        user_id: user.id,
+        render_id,
       });
 
       return NextResponse.json({
@@ -209,15 +209,13 @@ export async function POST(request: Request) {
     );
 
     // 6. Cost log
-    await admin.from("render_cost_log").insert({
-      render_id,
-      user_id: user.id,
-      pipeline_version: RENDER_CONFIG.CACHE_PIPELINE_VERSION,
-      is_retry: false,
-      retry_type: null,
+    await logCost({
+      category: "render" satisfies CostCategory,
+      stage: "empty_room_v3",
       cost_usd: v3.cost_usd,
-      tokens_charged: RENDER_CONFIG.BASE_RENDER_TOKEN_COST,
-      cache_hit: false,
+      model: RENDER_CONFIG.CACHE_PIPELINE_VERSION,
+      user_id: user.id,
+      render_id,
     });
 
     return NextResponse.json({

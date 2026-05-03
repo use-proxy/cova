@@ -1,17 +1,20 @@
 /**
  * GET /api/admin/render-costs
  *
- * Aggregate cost + retry stats from render_cost_log. Service-role reads via
- * admin client. Callable only by user_ids in ADMIN_TEST_USER_IDS.
+ * Aggregate cost stats from render_cost_log (V1 shape per D-022).
+ * Service-role reads via admin client. Callable only by user_ids in
+ * ADMIN_TEST_USER_IDS.
  *
  * Query params:
  *   window: "24h" | "7d" | "30d"   (default "24h")
+ *
+ * Schema reference (post-M4): category, stage, model, cost_usd, duration_ms,
+ * failure_category, user_id, render_id, created_at.
  */
 
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
-import { RENDER_CONFIG } from "@/lib/render-config";
 
 const WINDOW_HOURS: Record<string, number> = {
   "24h": 24,
@@ -28,12 +31,12 @@ function isAdmin(userId: string): boolean {
 }
 
 interface CostRow {
-  pipeline_version: string;
-  is_retry: boolean;
-  retry_type: "free" | "paid" | null;
+  category: string;
+  stage: string | null;
+  model: string | null;
   cost_usd: number;
-  tokens_charged: number;
-  cache_hit: boolean;
+  duration_ms: number | null;
+  failure_category: string | null;
 }
 
 export async function GET(request: Request) {
@@ -55,7 +58,7 @@ export async function GET(request: Request) {
     const admin = createAdminSupabaseClient();
     const { data, error } = await admin
       .from("render_cost_log")
-      .select("pipeline_version, is_retry, retry_type, cost_usd, tokens_charged, cache_hit")
+      .select("category, stage, model, cost_usd, duration_ms, failure_category")
       .gte("created_at", since)
       .limit(50_000);
 
@@ -65,79 +68,69 @@ export async function GET(request: Request) {
 
     const rows = (data ?? []) as CostRow[];
 
-    // Accumulators
     let totalCost = 0;
     let totalRows = 0;
-    let primaryRenders = 0;
-    let primaryRendersCost = 0;
-    let cacheHits = 0;
-    let freeRetries = 0;
-    let paidRetries = 0;
-    let paidRetryTokensCharged = 0;
-    const byPipeline: Record<string, { count: number; cost: number }> = {};
+    let totalDurationMs = 0;
+    let durationSamples = 0;
+    let failures = 0;
+    const byCategory: Record<string, { count: number; cost: number }> = {};
+    const byStage: Record<string, { count: number; cost: number }> = {};
+    const byFailure: Record<string, number> = {};
 
     for (const r of rows) {
       totalRows += 1;
       const cost = Number(r.cost_usd ?? 0);
       totalCost += cost;
-      byPipeline[r.pipeline_version] = byPipeline[r.pipeline_version] ?? {
-        count: 0,
-        cost: 0,
-      };
-      byPipeline[r.pipeline_version].count += 1;
-      byPipeline[r.pipeline_version].cost += cost;
-
-      if (r.cache_hit) cacheHits += 1;
-      if (r.is_retry) {
-        if (r.retry_type === "free") freeRetries += 1;
-        else if (r.retry_type === "paid") {
-          paidRetries += 1;
-          paidRetryTokensCharged += Number(r.tokens_charged ?? 0);
-        }
-      } else {
-        primaryRenders += 1;
-        primaryRendersCost += cost;
+      const cat = r.category;
+      byCategory[cat] = byCategory[cat] ?? { count: 0, cost: 0 };
+      byCategory[cat].count += 1;
+      byCategory[cat].cost += cost;
+      const stage = r.stage ?? "(unstaged)";
+      byStage[stage] = byStage[stage] ?? { count: 0, cost: 0 };
+      byStage[stage].count += 1;
+      byStage[stage].cost += cost;
+      if (typeof r.duration_ms === "number") {
+        totalDurationMs += r.duration_ms;
+        durationSamples += 1;
+      }
+      if (r.failure_category) {
+        failures += 1;
+        byFailure[r.failure_category] = (byFailure[r.failure_category] ?? 0) + 1;
       }
     }
 
-    const totalRetries = freeRetries + paidRetries;
-    const retryRate = totalRows > 0 ? totalRetries / totalRows : 0;
-    const costPerPrimary = primaryRenders > 0 ? primaryRendersCost / primaryRenders : 0;
-    const cacheHitRate = totalRows > 0 ? cacheHits / totalRows : 0;
+    const meanDurationMs = durationSamples > 0 ? totalDurationMs / durationSamples : 0;
+    const failureRate = totalRows > 0 ? failures / totalRows : 0;
 
     return NextResponse.json({
       window: windowKey,
       since,
       counts: {
         total_rows: totalRows,
-        primary_renders: primaryRenders,
-        retries_total: totalRetries,
-        retries_free: freeRetries,
-        retries_paid: paidRetries,
-        cache_hits: cacheHits,
+        failures,
       },
       totals_usd: {
         all: Number(totalCost.toFixed(4)),
-        primary_renders: Number(primaryRendersCost.toFixed(4)),
       },
-      averages_usd: {
-        per_primary_render: Number(costPerPrimary.toFixed(4)),
+      averages: {
+        duration_ms: Math.round(meanDurationMs),
       },
       ratios: {
-        retry_rate: Number(retryRate.toFixed(4)),
-        cache_hit_rate: Number(cacheHitRate.toFixed(4)),
+        failure_rate: Number(failureRate.toFixed(4)),
       },
-      by_pipeline_version: Object.fromEntries(
-        Object.entries(byPipeline).map(([k, v]) => [
+      by_category: Object.fromEntries(
+        Object.entries(byCategory).map(([k, v]) => [
           k,
           { count: v.count, cost_usd: Number(v.cost.toFixed(4)) },
         ]),
       ),
-      retry_revenue: {
-        tokens_charged: paidRetryTokensCharged,
-        paid_retries: paidRetries,
-        token_cost_per_paid_retry: RENDER_CONFIG.PAID_RETRY_TOKEN_COST,
-      },
+      by_stage: Object.fromEntries(
+        Object.entries(byStage).map(([k, v]) => [
+          k,
+          { count: v.count, cost_usd: Number(v.cost.toFixed(4)) },
+        ]),
+      ),
+      by_failure_category: byFailure,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Internal server error";

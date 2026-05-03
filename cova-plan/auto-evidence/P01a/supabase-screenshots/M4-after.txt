@@ -1,0 +1,25 @@
+                             Table "public.render_cost_log"
+      Column      |           Type           | Collation | Nullable |      Default      
+------------------+--------------------------+-----------+----------+-------------------
+ id               | uuid                     |           | not null | gen_random_uuid()
+ user_id          | uuid                     |           |          | 
+ render_id        | uuid                     |           |          | 
+ category         | text                     |           | not null | 
+ stage            | text                     |           |          | 
+ cost_usd         | numeric(8,4)             |           | not null | 
+ model            | text                     |           |          | 
+ duration_ms      | integer                  |           |          | 
+ failure_category | text                     |           |          | 
+ created_at       | timestamp with time zone |           | not null | now()
+Indexes:
+    "render_cost_log_pkey" PRIMARY KEY, btree (id)
+    "render_cost_log_category_idx" btree (category)
+    "render_cost_log_created_idx" btree (created_at DESC)
+    "render_cost_log_render_idx" btree (render_id)
+    "render_cost_log_user_idx" btree (user_id)
+Foreign-key constraints:
+    "render_cost_log_user_id_fkey" FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL
+Policies:
+    POLICY "p1_render_cost_log_self_read" FOR SELECT
+      USING ((auth.uid() = user_id))
+
