@@ -5,9 +5,9 @@
 > contradicts code, treat the code as authoritative and open a drift doc at
 > `cova-plan/drift/P{N}-detected.md`.
 
-**Last updated:** 2026-05-02 (initial baseline)
+**Last updated:** 2026-05-02 (P01 split into P01a + P01b)
 **Current phase pointer:** Phase 0 (in progress, parallel external work)
-**Next phase to plan:** Phase 1 — Foundations
+**Next phase to plan:** Phase 1A — Demolition + Ops Hardening
 **Workflow:** Cloud chat → Planner (Claude Code + MCPs) → review → Executor (fresh Claude Code, multi-session) → Verifier Session 1 → Verifier Session 2 → Manual gate → Close
 
 ---
@@ -160,7 +160,8 @@ Daksh-side prerequisite has been confirmed (most close inside P1 itself).
 
 | Phase | Name | Status | Blocker / Dep | Doc |
 |---|---|---|---|---|
-| **P1** | Foundations — schema + auth + accounts + observability + cleanup | NOT STARTED | none (P0 prerequisites Daksh-side; non-blocking) | `cova-plan/phases/P01-foundations.md` |
+| **P1A** | Demolition + Ops Hardening — schema demolition, subagents, Sentry, redactor, timeouts, EXIF strip, render_cost_log, failure_category namespace, PostHog, Cloudflare wiring, feature_flags table | NOT STARTED | none (P0 prerequisites Daksh-side; non-blocking). **Blocks P1B.** | `cova-plan/phases/P01a-demolition-ops.md` |
+| **P1B** | Auth + Legal + Account Deletion — 6 auth screens, 9 auth API routes, delete-user-cascade Edge Function, GDPR export, Termly /terms + /privacy, /account-deleted, auth feature flag rows | NOT STARTED | **depends on P1A CLOSED** + Resend DNS (G4) + Termly templates rendered (G5) + Apple OAuth status (G8). **Blocks Phase 2.** | `cova-plan/phases/P01b-auth-legal-deletion.md` |
 | **P2** | Quiz + Capture wiring (V3 fast path, swipe consumption, photo intake hardening) | NOT STARTED | depends on P1 (style_blend wiring, EXIF strip, RLS cleanup) | `cova-plan/phases/P02-quiz-capture.md` (TBD) |
 | **P3** | Pipeline reliability (timeout reconciliation, failure_category, render_cost_log writers) | NOT STARTED | depends on P1 (Sentry, redactor, error categories) | `cova-plan/phases/P03-pipeline-reliability.md` (TBD) |
 | **P4** | Render UI + Refinement (step-8a/b polish, before/after slider, token gating UI) | NOT STARTED | depends on P3 + P5 (token gating live) | `cova-plan/phases/P04-render-ui.md` (TBD) |
@@ -316,7 +317,8 @@ Handoffs land at `cova-plan/SESSION_HANDOFFS/{NN}-{slug}.md` and contain:
 | Phase | Status | Notes |
 |---|---|---|
 | P0 | IN PROGRESS | external Daksh-side work continues in parallel; non-blocking for P1 |
-| P1 | NOT STARTED | doc drafted at `cova-plan/phases/P01-foundations.md`; awaiting cloud chat to resolve known gaps and fire planner |
+| P1A | NOT STARTED | doc drafted at `cova-plan/phases/P01a-demolition-ops.md` (split from original `P01-foundations.md`, archived at `cova-plan/phases/_archive/P01-foundations-pre-split.md`); awaiting cloud chat to resolve known gaps and fire planner |
+| P1B | NOT STARTED | doc drafted at `cova-plan/phases/P01b-auth-legal-deletion.md`; depends on P1A CLOSED before planner fires |
 | P2 | NOT STARTED | doc not authored |
 | P3 | NOT STARTED | doc not authored |
 | P4 | NOT STARTED | doc not authored |
