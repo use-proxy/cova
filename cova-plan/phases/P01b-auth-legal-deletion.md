@@ -85,7 +85,7 @@ AI interior design product for end consumers. User signs up → takes a 12-pick 
 
 The auth + legal + account-deletion half of the original P01. Three things happen:
 
-1. **Auth surface (6 screens + 9 API routes).** Email + password signup with Resend verification, Google OAuth (Apple OAuth conditional on G8), magic link sign-in, forgot-password with anti-enumeration, reset-password with zxcvbn meter, Cloudflare Turnstile invisible mode, rate limiting via Upstash Redis or Cloudflare WAF, 60s resend cooldowns.
+1. **Auth surface (9 screens + 8 API routes).** Email + password signup with Resend verification, Google OAuth (Apple OAuth conditional on G8), forgot-password with anti-enumeration, reset-password with zxcvbn meter, Cloudflare Turnstile invisible mode, rate limiting via Upstash Redis or Cloudflare WAF, 60s resend cooldowns.
 
 2. **Legal pages.** `/terms` and `/privacy` rendered from Termly templates (16+ age gate, FTC affiliate disclosure, processor list, GDPR/CCPA rights). `/account-deleted` thank-you page.
 
@@ -97,7 +97,7 @@ The auth + legal + account-deletion half of the original P01. Three things happe
 
 | Audit | Gap | Phase 1B fix |
 |---|---|---|
-| AUTH_AUDIT | No Apple OAuth, no magic link, no anti-enumeration on forgot, no Turnstile, no rate limit, no account-deletion flow | M2 rebuilds entire auth surface |
+| AUTH_AUDIT | No Apple OAuth, no anti-enumeration on forgot, no Turnstile, no rate limit, no account-deletion flow | M2 rebuilds entire auth surface |
 | INFRA_AUDIT (DNS) | DNS for Resend not set | M2 wires Resend after DNS confirmed (G4 resolves before phase start) |
 
 ### 4.4 Existing infrastructure to preserve
@@ -175,7 +175,6 @@ Split into 1A backend / 1B UI / 1C integration. Run in this order.
 - Email + password signup with Resend verification (subject "Verify your email — Cova", from `hi@covainterior.com`, single CTA, 24h token expiry, single-use)
 - Google OAuth via Supabase Auth dashboard config
 - Apple OAuth (if G8 resolves; else V1.5)
-- Magic link sign-in (60s resend cooldown)
 - Forgot-password with anti-enumeration (always returns "If that email is registered, we sent a reset link.")
 - Reset-password with zxcvbn 5-segment strength meter, min 8 chars (NIST), 1h token expiry, single-use
 - Cloudflare Turnstile invisible mode on signup form, server-side verification
@@ -298,7 +297,7 @@ Eyebrows (uppercase tracked microtype with em-dash separator):
 - Verifier 7-phase pass on M2 (1A backend, 1B UI, 1C integration separately)
 - Schema-reviewer pass on `account_deletions` migration
 - Adversarial probes pass (see §14)
-- Seed feature flag rows for `auth_apple_oauth`, `auth_magic_link`, `email_verification_required`
+- Seed feature flag rows for `auth_apple_oauth`, `email_verification_required`
 
 ---
 
@@ -340,7 +339,6 @@ Eyebrows (uppercase tracked microtype with em-dash separator):
 - `apps/web/app/api/auth/oauth-callback/route.ts`
 - `apps/web/app/api/auth/forgot-password/route.ts`
 - `apps/web/app/api/auth/reset-password/route.ts`
-- `apps/web/app/api/auth/magic-link/route.ts`
 - `apps/web/app/api/auth/resend-verification/route.ts`
 - `apps/web/app/api/auth/delete-account/route.ts`
 - `apps/web/app/api/auth/sign-out/route.ts`
@@ -370,7 +368,7 @@ Side effects: Supabase Auth user created, Resend verification email sent, token_
 
 ### POST /api/auth/signin
 ```
-Body: { email: string, password: string } | { email: string, magicLink: true }
+Body: { email: string, password: string }
 Returns: { ok: true, redirectTo: string } or error envelope
 Side effects: session cookie set, sign-in event PostHog
 ```
@@ -446,8 +444,6 @@ export type AuthFailure =
   | 'auth.signin.account_locked'
   | 'auth.oauth.provider_error'
   | 'auth.oauth.email_mismatch'
-  | 'auth.magic_link.send_fail'
-  | 'auth.magic_link.expired'
   | 'auth.forgot.send_fail'        // returns generic to user, logged as detail
   | 'auth.reset.token_expired'
   | 'auth.reset.token_used'
@@ -504,7 +500,7 @@ Verifier session 1 reviews by criterion. Each acceptance criterion mapped to a v
 | Account-deletion cascade | Test user deletion: rooms, renders, swipes all cascade; `account_deletions` row written with `hashed_user_id` only (no email or other PII) |
 | GDPR export | POST `/api/users/export` returns signed URL; downloaded zip contains expected JSON files; signed URL TTL is 24h |
 | `auth.*` failure categories present | `lib/errors/categories.ts` exports `AuthFailure` dotted union; every auth route's error path emits an `auth.*` category |
-| Auth feature flags seeded | `feature_flags` table contains rows for `auth_apple_oauth`, `auth_magic_link`, `email_verification_required` with correct defaults |
+| Auth feature flags seeded | `feature_flags` table contains rows for `auth_apple_oauth`, `email_verification_required` with correct defaults |
 | Anti-enumeration on forgot-password | Same response for registered + unregistered email |
 | Token invalidation | Reset and verify tokens single-use; second use returns "token used/expired" |
 | Session cookie flags | `SameSite=Strict`, `Secure`, `HttpOnly` |
@@ -560,42 +556,39 @@ You execute this sequence, capturing screenshots at marked steps. Save to `cova-
 10. Sign out → /auth/signup → click "Continue with Google" → Google OAuth flow → return to /welcome **[screenshot A6: oauth-google.png]**
 11. (If Apple OAuth approved) Sign out → /auth/signup → "Continue with Apple" → return to /welcome **[screenshot A7: oauth-apple.png]**
 
-### Magic link
-12. Sign out → /auth/signin → click "Email me a magic link" → enter email → check inbox → click link → /welcome **[screenshot A8: magic-link.png]**
-
 ### Forgot/reset password
-13. /auth/signin → "Forgot password?" → enter registered email → see "If that email is registered..." message **[screenshot A9: forgot-confirm.png]**
-14. Repeat with unregistered email → SAME message (anti-enumeration verified) **[screenshot A10: forgot-anti-enum.png]**
-15. Click reset link in email → /auth/reset-password loads with token in URL **[screenshot A11: reset-form.png]**
-16. Enter new strong password → submit → success → redirect to /auth/signin
-17. Sign in with new password → success
-18. Try old reset link → "Token expired" message **[screenshot A12: reset-token-expired.png]**
+12. /auth/signin → "Forgot password?" → enter registered email → see "If that email is registered..." message **[screenshot A9: forgot-confirm.png]**
+13. Repeat with unregistered email → SAME message (anti-enumeration verified) **[screenshot A10: forgot-anti-enum.png]**
+14. Click reset link in email → /auth/reset-password loads with token in URL **[screenshot A11: reset-form.png]**
+15. Enter new strong password → submit → success → redirect to /auth/signin
+16. Sign in with new password → success
+17. Try old reset link → "Token expired" message **[screenshot A12: reset-token-expired.png]**
 
 ### Rate limit
-19. Open 4 incognito windows → attempt signup with 4 different emails from same IP within 1 hour → 4th returns 429 with countdown **[screenshot A13: rate-limit.png]**
+18. Open 4 incognito windows → attempt signup with 4 different emails from same IP within 1 hour → 4th returns 429 with countdown **[screenshot A13: rate-limit.png]**
 
 ### Turnstile
-20. Disable JS in browser → attempt signup → submit blocked because Turnstile didn't fire **[screenshot A14: turnstile-block.png]**
+19. Disable JS in browser → attempt signup → submit blocked because Turnstile didn't fire **[screenshot A14: turnstile-block.png]**
 
 ### Legal pages
-21. Open `/terms` → confirm full ToS renders, "Last updated" date present, FTC affiliate disclosure present **[screenshot A15: terms.png]**
-22. Open `/privacy` → confirm full Privacy Policy, all processors listed, GDPR/CCPA rights enumerated **[screenshot A16: privacy.png]**
+20. Open `/terms` → confirm full ToS renders, "Last updated" date present, FTC affiliate disclosure present **[screenshot A15: terms.png]**
+21. Open `/privacy` → confirm full Privacy Policy, all processors listed, GDPR/CCPA rights enumerated **[screenshot A16: privacy.png]**
 
 ### Account deletion
-23. Sign in as test user → navigate to (placeholder; real path lives in Phase 9 settings) → trigger delete-account API directly via Postman/curl
-24. POST `/api/auth/delete-account` with `{confirmText: "DELETE", confirmEmail: "<email>"}` → returns 200 with redirectTo
-25. Open /account-deleted → confirm page renders **[screenshot A17: account-deleted.png]**
-26. Verify Supabase: user row gone from auth.users, all rooms cascade-deleted, `account_deletions` audit row exists with hashed_user_id only (no email)
-27. Try to sign in with deleted email → fails normally (not "this account was deleted" — anti-enumeration)
+22. Sign in as test user → navigate to (placeholder; real path lives in Phase 9 settings) → trigger delete-account API directly via Postman/curl
+23. POST `/api/auth/delete-account` with `{confirmText: "DELETE", confirmEmail: "<email>"}` → returns 200 with redirectTo
+24. Open /account-deleted → confirm page renders **[screenshot A17: account-deleted.png]**
+25. Verify Supabase: user row gone from auth.users, all rooms cascade-deleted, `account_deletions` audit row exists with hashed_user_id only (no email)
+26. Try to sign in with deleted email → fails normally (not "this account was deleted" — anti-enumeration)
 
 ### GDPR export
-28. Sign in → POST `/api/users/export` → wait → check email for download link → download zip → confirm contains rooms.json, renders.json, swipes.json, image_urls.txt **[screenshot A18: gdpr-export.png]**
+27. Sign in → POST `/api/users/export` → wait → check email for download link → download zip → confirm contains rooms.json, renders.json, swipes.json, image_urls.txt **[screenshot A18: gdpr-export.png]**
 
 ### Reduced motion
-29. Set OS preference to reduce motion → reload /auth/signup → particles disabled, ambient glow disabled **[screenshot A19: reduced-motion.png]**
+28. Set OS preference to reduce motion → reload /auth/signup → particles disabled, ambient glow disabled **[screenshot A19: reduced-motion.png]**
 
 ### Mobile responsive
-30. Open all 6 auth screens on iPhone Safari → confirm card resizes to 100% minus 24px each side **[screenshots A20-A25: mobile-{signup,signin,forgot,reset,verify-sent,verify-success}.png]**
+29. Open all 6 auth screens on iPhone Safari → confirm card resizes to 100% minus 24px each side **[screenshots A20-A25: mobile-{signup,signin,forgot,reset,verify-sent,verify-success}.png]**
 
 ---
 
@@ -648,7 +641,7 @@ If Phase 1B merge breaks production:
    - `account-deletions-table` down (`DROP TABLE account_deletions`)
 3. Disable `delete-user-cascade` Edge Function in Supabase dashboard
 4. Empty / unpublish `/terms` and `/privacy` Termly content if a content issue triggered the rollback
-5. Reset auth feature flag rows (`auth_apple_oauth`, `auth_magic_link`, `email_verification_required`) to safe defaults
+5. Reset auth feature flag rows (`auth_apple_oauth`, `email_verification_required`) to safe defaults
 6. Update `PHASE_STATUS.md` Phase 1B → REMEDIATING
 7. Open cloud chat, diagnose, prepare remediation prompt
 
@@ -661,7 +654,6 @@ P01b **seeds** the following rows into the `feature_flags` table (table itself w
 | Flag key | Description | Default |
 |---|---|---|
 | `auth_apple_oauth` | Apple Sign In available on auth screens | false (true if G8 resolves) |
-| `auth_magic_link` | Magic link option visible on /auth/signin | true |
 | `email_verification_required` | Block signup completion until email verified | true |
 
 Phase 5+ adds more flag rows; the table schema does not change.
