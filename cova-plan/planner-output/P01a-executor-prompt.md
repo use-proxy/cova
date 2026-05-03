@@ -71,6 +71,12 @@ These are LOCKED. Do not re-litigate. Reference: `cova-plan/OPEN_DECISIONS.md`.
 15. Modal CLI auth as P01a prereq.
 16. Supabase publishable/secret key format active (legacy JWT keys disabled).
 
+#### Deferred decisions (reference only)
+
+- **DEF-001:** `instrumentation.ts` Sentry pattern revisited at Phase 12 if Next 15 upgrade lands. Current pattern is Next 14 stable.
+- **DEF-002:** Termly free-tier capability check — verified before P01b ships, not before P01a.
+- **DEF-003:** Phase doc empirical verification precedent. The original P01a phase doc named 6 Modal apps for archival that did not exist in the live workspace; `cova-plan/audit-reports/modal-deadness-2026-05.md` (2026-05-03) corrected the list. Process rule: when a phase doc names a specific artifact for deletion/archival, the planner MUST verify the artifact exists and is dead before the executor acts. **This executor prompt was patched (commit history: `b347462` doc fix → subsequent surgical patch) after audit revealed phase doc named wrong Modal apps.** See `cova-plan/audit-reports/modal-deadness-2026-05.md` and `cova-plan/SESSION_HANDOFFS/04-P01a-modal-doc-correction.md`.
+
 ### A.3 Session-handoff discipline
 
 You are operating in a fresh Claude Code session. Context is finite.
@@ -141,7 +147,21 @@ Must return ≥ 14 (planner enumerated 17 candidates; some may have already been
 ```bash
 modal app list
 ```
-Must succeed (CLI authenticated). Confirm these LIVE apps remain deployed: `cova-perception`, `cova-empty-room` (or `cova-empty-room-v3`), `cova-redesign` (or `cova-redesign-v3`), `cova-composite-art`. If any missing, drift (live infra removed).
+Must succeed (CLI authenticated).
+
+**B.4.a — KEEP apps (must remain deployed):** `cova-perception`, `cova-empty-room` (or `cova-empty-room-v3`), `cova-redesign` (or `cova-redesign-v3`), `cova-composite-art`. If any missing, halt — drift (live infra removed).
+
+**B.4.b — Archive-target apps (must STILL be in `modal app list` until §D.5 stops them):**
+The corrected archive list per `cova-plan/audit-reports/modal-deadness-2026-05.md`:
+- `cova-preprocessing-pipeline` — must appear in list
+- `cova-structural-extraction` — must appear in list
+- `cova-professionalization` — must appear in list
+- `cova-generation` — must appear in list
+
+If ANY of those 4 are NOT in `modal app list`, halt — the audit's basis has shifted (e.g., a prior session already stopped some). Fix forward by reading the most-recent SESSION_HANDOFF to discover what's been done.
+
+**B.4.c — Confirmed-undeployed orchestrator (must NOT appear):**
+- `cova-redesign-pipeline` — audit confirmed `modal app history cova-redesign-pipeline` returns "Could not find a deployed app". If it IS deployed today, halt — state has changed since audit (someone re-deployed the V8 orchestrator); investigate before continuing. The repo file `modal_pipeline/redesign_pipeline.py` is archived as source-only, no `modal app stop` needed.
 
 ### B.5 Vercel landing
 
@@ -150,14 +170,11 @@ curl -sI https://covainterior.com 2>&1 | head -5
 ```
 Must return 2xx or 3xx (the live landing redirects to `www.`). If 5xx, drift.
 
-### B.6 Spec-vs-reality discrepancy log (read-only awareness)
+### B.6 Spec-vs-reality discrepancy log (resolved — read-only history)
 
-The planner identified ONE contradiction between the phase doc and live state, surfaced here so you don't waste time chasing a wrong list:
-
-> **Phase doc names 6 dead Modal apps to archive:** `anysplat`, `marble-mini`, `marble-plus`, `colmap-fastgs`, `flythrough`, `glb-render`.
-> **Live Modal workspace contains NONE of those names.** Those names came from an older audit. The actual deployed-but-dead Modal apps in the workspace today are 4 V8-era apps from Apr 13, 2026: `cova-preprocessing-pipeline`, `cova-structural-extraction`, `cova-professionalization`, `cova-generation`. Your archive scope uses **the live MODAL_AUDIT** (`docs/audit/modal.md`) as source of truth for which Modal Python files in `modal_pipeline/` are dead, NOT the phase-doc list.
-
-Acknowledge this in your first handoff. Don't drift-halt over it.
+> **Original discrepancy:** Planner-time, the phase doc named 6 Modal apps for archival (`anysplat`, `marble-mini`, `marble-plus`, `colmap-fastgs`, `flythrough`, `glb-render`) that did not exist in the live Modal workspace.
+> **Resolution:** The phase doc was corrected (commit `b347462`) per `cova-plan/audit-reports/modal-deadness-2026-05.md`. The verified archive list is the 4 deployed V8-stage apps + 1 source-only orchestrator, encoded in §D.5 of this prompt. This executor prompt was surgically patched to match (DEF-003).
+> **Action for the executor:** none — just be aware of the history. If you see references to the old 6-app names anywhere, they are stale; reach for the verified list in §D.5.
 
 ---
 
@@ -1059,6 +1076,14 @@ imports — the planner's classification is provisional, not authoritative.**
 | apps/web/tests/stores/room.test.ts | KEEP | store |
 | apps/web/tests/stores/session.test.ts | KEEP | store |
 | apps/web/tests/types/supabase.test.ts | KEEP — but UPDATE | references dead columns (`splat_path`, `marble_*`, etc.); regenerate after migrations |
+| tests/e2e/fire_v6_diagnostic.py | ARCHIVE | references `cova-generation` (V8 orchestrator stage, archived per `cova-plan/audit-reports/modal-deadness-2026-05.md`); destination `_archive/tests/e2e/fire_v6_diagnostic.py` |
+| tests/e2e/fire_v6_tests.py | ARCHIVE | references `cova-generation` (same); destination `_archive/tests/e2e/fire_v6_tests.py` |
+| tests/e2e/fire_v7_tests.py | ARCHIVE | references `cova-generation` (same); destination `_archive/tests/e2e/fire_v7_tests.py` |
+| tests/e2e/fire_v8_tests.py | ARCHIVE | references `cova-generation` (same); destination `_archive/tests/e2e/fire_v8_tests.py` |
+
+> Note on the 4 e2e files above: they live at REPO ROOT `tests/e2e/`, NOT under
+> `apps/web/`. Use `git mv tests/e2e/fire_v6_diagnostic.py _archive/tests/e2e/fire_v6_diagnostic.py`
+> (mirror path under `_archive/` per Decision 11).
 
 #### Your action
 
@@ -1539,7 +1564,60 @@ Verifier reads this file in §F.
 
 ### D.5 Modal app archival
 
-Use the live Modal state, NOT the phase doc's hardcoded names (see §B.6).
+Source of truth: `cova-plan/audit-reports/modal-deadness-2026-05.md` (per DEF-003).
+
+#### D.5.0 Priority archive list — the 5 verified artifacts
+
+These are the items the audit explicitly marked CONFIDENT-ARCHIVE. Process these FIRST, before the broader "ARCHIVE FILE; STOP if deployed" sweep in §D.5.1.
+
+**4 deployed V8-stage apps — `git mv` .py + `modal app stop` + dashboard delete:**
+
+| Local .py file | Modal app name | Action |
+|---|---|---|
+| `modal_pipeline/preprocessing.py` | `cova-preprocessing-pipeline` | (a) `git mv modal_pipeline/preprocessing.py _archive/modal_pipeline/preprocessing.py` (b) `modal app stop <app-id>` (c) Manual dashboard delete + screenshot |
+| `modal_pipeline/structural_extraction.py` | `cova-structural-extraction` | same pattern |
+| `modal_pipeline/professionalization.py` | `cova-professionalization` | same pattern |
+| `modal_pipeline/generation.py` | `cova-generation` | same pattern |
+
+**App-id resolution at execute time** (the planner's prior session captured these but state may have shifted):
+
+```bash
+# Resolve all 4 app-ids in one shot, write to evidence
+modal app list --json 2>/dev/null \
+  | jq -r '.[] | select(.description=="cova-preprocessing-pipeline" or .description=="cova-structural-extraction" or .description=="cova-professionalization" or .description=="cova-generation") | "\(.description) \(.app_id)"' \
+  | tee cova-plan/auto-evidence/P01a/modal-app-ids.txt
+```
+
+If `modal app list --json` is not supported by the installed Modal CLI version, fall back to parsing the table form:
+
+```bash
+COLUMNS=200 modal app list 2>&1 | tee cova-plan/auto-evidence/P01a/modal-app-list.before.txt
+# Then read the table and extract the 4 app-ids manually into modal-app-ids.txt.
+```
+
+**Halt condition:** if any of the 4 app names is missing from `modal app list`, halt — the audit's basis has shifted (a prior session likely already stopped some). Read the latest SESSION_HANDOFF before proceeding.
+
+**Stop loop:**
+
+```bash
+while read -r name app_id; do
+  echo "Stopping $name ($app_id)..."
+  modal app stop "$app_id" >> cova-plan/auto-evidence/P01a/modal-stops.log 2>&1
+done < cova-plan/auto-evidence/P01a/modal-app-ids.txt
+```
+
+**Dashboard URL pattern** for the manual delete + screenshot step:
+`https://modal.com/apps/cova-interior/main/<app-id>` — open each, click "Delete app", screenshot. Capture all 4 screenshots into `cova-plan/auto-evidence/P01a/modal-deletions/{app-name}.png`. (The executor cannot click in the dashboard; if dashboard delete is required, instruct Daksh in the handoff.)
+
+**1 source-only orchestrator (NOT deployed):**
+
+| Local .py file | Modal app name | Action |
+|---|---|---|
+| `modal_pipeline/redesign_pipeline.py` | `cova-redesign-pipeline` | `git mv modal_pipeline/redesign_pipeline.py _archive/modal_pipeline/redesign_pipeline.py` only. **No `modal app stop`** — verified undeployed (`modal app history cova-redesign-pipeline` returns "Could not find a deployed app"). **No dashboard action.** Document this fact in the §D.5.3 README + the handoff. |
+
+> **Defensive verification before archival:** re-run `modal app history cova-redesign-pipeline` and confirm the "Could not find" error. If it resolves successfully (i.e., someone re-deployed it since the audit), halt and add it to the stop loop above.
+
+After the 5 priority artifacts are archived, proceed with §D.5.1 for the broader sweep (older versions, dead helpers, AnySplat vendored directory, .bak files, etc.).
 
 #### D.5.1 File→Modal-app mapping (planner-enumerated)
 
@@ -3052,13 +3130,54 @@ jobs:
 
 Required GitHub secrets: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`. Daksh sets these manually (instruct in handoff).
 
-### E.11 M3 commit boundaries
+### E.11 Phantom env var cleanup (NEW — per `cova-plan/audit-reports/modal-deadness-2026-05.md`)
 
-Group into 4 commits:
+The V8 orchestrator (`cova-redesign-pipeline`) and its preprocessing stage left
+phantom env-var entries in the web app that point at infrastructure now
+archived. Boot would currently succeed only because the values are set to
+some-string-or-other; the runtime fallback paths dead-end at the missing
+orchestrator. Remove the entries.
+
+#### E.11.1 Files to edit
+
+| File | Edit |
+|---|---|
+| `apps/web/lib/env.ts` | REMOVE the `REDESIGN_PIPELINE_WEBHOOK_URL` entry from the env schema entirely (do NOT just flip `required: true` → `required: false` — remove the row). Audit located it at line 24 of the current code; verify the line at execute time before editing. |
+| `apps/web/.env.example` | REMOVE the `PREPROCESS_PIPELINE_WEBHOOK_URL` entry (audit located it at line 25). Also REMOVE `REDESIGN_PIPELINE_WEBHOOK_URL` if present. |
+| `apps/web/app/api/pipeline/redesign/route.ts` | REMOVE the legacy `REDESIGN_PIPELINE_WEBHOOK_URL` fallback branch. Audit found it at lines 142, 148, 762 with comments like "Falls back to legacy REDESIGN_PIPELINE_WEBHOOK_URL otherwise" — confirm exact line numbers at execute time. The V9 path uses `COVA_REDESIGN_URL` only. After the edit, the route returns the standard error envelope when `COVA_REDESIGN_URL` is missing (no fallback). |
+| `apps/web/app/api/test-pipeline/route.ts` | **PREFERRED:** `git rm` the entire route — it's a V8 test harness for an orchestrator that no longer exists. **ALTERNATE:** rewire to `COVA_REDESIGN_URL`. Executor decides based on whether the route is referenced by any active test or smoke script (`rg 'test-pipeline' apps/web/ tests/ scripts/ -- --not-archive`). Document the choice in the handoff. |
+
+#### E.11.2 Verifier check (becomes a §13 row when added to phase-doc verifier focus area)
+
+Run this at the end of E.11 work AND embed it into both verifier sessions (§F.1 and §F.2):
+
+```bash
+rg 'REDESIGN_PIPELINE_WEBHOOK_URL|PREPROCESS_PIPELINE_WEBHOOK_URL' apps/web/ supabase/ scripts/ -g '!_archive/**' -g '!docs/**'
+```
+Must return zero matches. If it returns anything, the cleanup is incomplete.
+
+Also confirm boot still works:
+
+```bash
+cd apps/web && npm run build
+```
+Must complete without env-validation errors mentioning the removed vars.
+
+#### E.11.3 Commit boundary
+
+```bash
+git add apps/web/lib/env.ts apps/web/.env.example apps/web/app/api/pipeline/redesign/route.ts apps/web/app/api/test-pipeline/
+git commit -m "phase-1a-m3: remove phantom V8-orchestrator env vars + dead fallback (REDESIGN_PIPELINE_WEBHOOK_URL, PREPROCESS_PIPELINE_WEBHOOK_URL)"
+```
+
+### E.12 M3 commit boundaries
+
+Group into 5 commits (was 4 before E.11 added):
 1. `phase-1a-m3: Sentry triplet + instrumentation`
 2. `phase-1a-m3: log redactor + ESLint custom rules + paidCall wrapper + cost log`
 3. `phase-1a-m3: timeouts + failure categories + EXIF strip + tests`
 4. `phase-1a-m3: PostHog + Cloudflare media + feature flags + CI workflows`
+5. `phase-1a-m3: remove phantom V8-orchestrator env vars + dead fallback` (E.11)
 
 ---
 
@@ -3101,7 +3220,9 @@ Save to `cova-plan/auto-evidence/P01a/`:
 
 - `INDEX.md` (linking each artifact to a §13 criterion)
 - Supabase dashboard screenshots (before/after, dropped tables/columns, p1_ policies)
-- Modal control-panel screenshot showing dead-app deletion
+- Modal control-panel screenshots: 4 deployed apps stopped + removed (`cova-preprocessing-pipeline`, `cova-structural-extraction`, `cova-professionalization`, `cova-generation`) — one PNG per app at `cova-plan/auto-evidence/P01a/modal-deletions/{app-name}.png`. The 5th archive artifact (`cova-redesign-pipeline` orchestrator) is **source-only** in the repo (`_archive/modal_pipeline/redesign_pipeline.py`); no dashboard action needed — it was never deployed (verified via `modal app history cova-redesign-pipeline` returning "Could not find a deployed app"). Cross-reference: `cova-plan/audit-reports/modal-deadness-2026-05.md`.
+- `modal-app-ids.txt` (resolved app-ids for the 4 deployed apps; output of §D.5.0 resolution step)
+- `modal-app-list.before.txt` and `modal-app-list.after.txt` (`modal app list` snapshots before and after `modal app stop` loop)
 - `verifier-reports/P01a-session-{1,2}.md`
 - Schema-reviewer reports per migration PR (auto-generated by GitHub Action; copy from PR comments)
 - ESLint clean log: `cd apps/web && npm run lint > ../cova-plan/auto-evidence/P01a/eslint.log`
@@ -3138,7 +3259,20 @@ Save to `cova-plan/auto-evidence/P01a/`:
 | PostHog wired | `posthog-init-trace.txt` |
 | Feature flags infra | `supabase-feature-flags-shape.png` |
 | Cost-monitor cron live | `cost-reports-day-1.md` |
+| 5 Modal artifacts archived correctly | `modal-app-list.before.txt`, `modal-app-list.after.txt`, `modal-stops.log`, `modal-deletions/*.png` (4 files), plus `_archive/modal_pipeline/redesign_pipeline.py` exists in repo |
+| Phantom env vars removed | `eslint.log` clean + `rg-phantom-env.txt` (output of `rg 'REDESIGN_PIPELINE_WEBHOOK_URL\|PREPROCESS_PIPELINE_WEBHOOK_URL' apps/web/ supabase/ scripts/ -g '!_archive/**' -g '!docs/**'` — must be empty file or "no results") |
 ```
+
+#### F.3.a — Verifier session checks for the patched items
+
+In addition to §13 of the phase doc, both verifier sessions (F.1 + F.2) must
+explicitly confirm:
+
+- `_archive/modal_pipeline/{preprocessing,structural_extraction,professionalization,generation,redesign_pipeline}.py` all exist; original paths are absent.
+- `modal app list` shows ZERO of the 4 V8-stage apps (state ≠ deployed, OR not present at all).
+- `modal app history cova-redesign-pipeline` still returns "Could not find a deployed app" (orchestrator was never re-deployed during the M1 work).
+- `rg 'REDESIGN_PIPELINE_WEBHOOK_URL|PREPROCESS_PIPELINE_WEBHOOK_URL' apps/web/ supabase/ scripts/ -g '!_archive/**' -g '!docs/**'` returns 0 matches.
+- The 4 fire_v6/v7/v8 e2e files are absent from `tests/e2e/` and present at `_archive/tests/e2e/`.
 
 ### F.4 Phase close
 
