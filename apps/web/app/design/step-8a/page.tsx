@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { flowLog } from "@/lib/debug/flow-logger";
 import { useRoomStore } from "@/lib/store/room";
 import { useFingerprintStore } from "@/lib/store/fingerprint";
+import { TIMEOUTS } from "@/lib/config/timeouts";
 import "../step-1/step1.css";
 import "./step8a.css";
 
@@ -18,7 +19,7 @@ const DEFAULT_RENDER_COUNT = 3;
 
 // Named constants for polling — do not inline magic numbers in effects
 const POLL_INTERVAL_MS = 3_000;   // how often to check redesign_status
-const RENDER_TIMEOUT_MS = 180_000; // 3 min — after this show error state with Retry CTA
+const RENDER_TIMEOUT_MS = TIMEOUTS.CLIENT_POLL_LONG; // 3 min — after this show error state with Retry CTA
 
 type PointerState = {
   x: number;

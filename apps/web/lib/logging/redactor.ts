@@ -14,6 +14,7 @@
  */
 
 import { sanitizeForbiddenNames } from "@/lib/ai/forbidden-names";
+import { redactLogPayload } from "../log/redact";
 
 /**
  * Redact bare forbidden style tokens from a single log string. Qualified
@@ -33,7 +34,7 @@ export function redactLogString(input: string | null | undefined): string {
  * forbidden keys hashed/replaced) AND THEN forbidden-name scrubbing. New
  * code should import from the new path. The old path is kept for back-compat.
  */
-export { redactLogPayload } from "../log/redact";
+export { redactLogPayload };
 
 /**
  * Wrap a logger's emit function (e.g., Sentry.captureMessage, posthog.capture,

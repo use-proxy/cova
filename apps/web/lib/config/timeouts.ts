@@ -14,4 +14,8 @@ export const TIMEOUTS = {
   ANTHROPIC_DIRECTOR: 30_000,
   /** Anthropic Haiku classifier. */
   HAIKU_CLASSIFIER: 15_000,
+  /** Long client-side polling window (step-7 / step-8a render-status polling). */
+  CLIENT_POLL_LONG: 180_000,
+  /** Redesign Modal call upper bound (~7 min; V9 path runs longer than MODAL_APP). */
+  REDESIGN_MODAL: 420_000,
 } as const;

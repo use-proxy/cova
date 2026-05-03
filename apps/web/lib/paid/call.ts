@@ -28,7 +28,7 @@ export async function paidCall<T = unknown>(opts: PaidCallOpts): Promise<T> {
     }
     parsed = (await res.json()) as T;
     return parsed;
-  } catch (e: any) {
+  } catch (e: unknown) {
     if (!failure) failure = `cost.paidcall.parse_fail`;
     throw e;
   } finally {

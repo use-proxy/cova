@@ -34,10 +34,11 @@ export async function logCost(input: LogCostInput): Promise<void> {
       const Sentry = await import("@sentry/nextjs");
       Sentry.captureMessage(`cost.log.write_fail: ${error.message}`, "warning");
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "unknown";
     try {
       const Sentry = await import("@sentry/nextjs");
-      Sentry.captureMessage(`cost.log.write_fail: ${err?.message ?? "unknown"}`, "warning");
+      Sentry.captureMessage(`cost.log.write_fail: ${message}`, "warning");
     } catch {}
   }
 }

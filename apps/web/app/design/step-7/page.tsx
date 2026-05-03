@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { flowLog } from "@/lib/debug/flow-logger";
 import { useRoomStore } from "@/lib/store/room";
 import { useArea2Store } from "@/lib/stores/area2Store";
+import { TIMEOUTS } from "@/lib/config/timeouts";
 import "../step-1/step1.css";
 import "./step7.css";
 
@@ -94,7 +95,7 @@ export default function StepSevenPage() {
     let msgIntervalId: ReturnType<typeof setInterval> | null = null;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let cancelled = false;
-    const POLL_TIMEOUT_MS = 180_000; // 3-minute ceiling
+    const POLL_TIMEOUT_MS = TIMEOUTS.CLIENT_POLL_LONG; // 3-minute ceiling
 
     const runDetection = async () => {
       try {

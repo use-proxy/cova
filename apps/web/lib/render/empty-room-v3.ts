@@ -4,6 +4,7 @@
  * Kept out of the API route file so both the /api/render/empty-room route
  * and the /api/render/retry route can share a single typed call-site.
  */
+import { TIMEOUTS } from "@/lib/config/timeouts";
 
 export interface EmptyRoomV3Response {
   empty_room_url: string;
@@ -41,7 +42,7 @@ export async function callEmptyRoomV3(
       skip_cache: params.skipCache ?? false,
     }),
     // Gemini + audits can take ~45s; allow headroom.
-    signal: AbortSignal.timeout(300_000),
+    signal: AbortSignal.timeout(TIMEOUTS.MODAL_APP),
   });
 
   if (!res.ok) {

@@ -17,9 +17,10 @@ export async function GET(req: NextRequest) {
   try {
     const r = await runCostMonitor();
     return NextResponse.json({ ok: r.ok, tripped: r.tripped, total: r.total, ceiling: r.ceiling });
-  } catch (e: any) {
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "unknown";
     return NextResponse.json(
-      { ok: false, failure_category: "cost.monitor.cron_fail", user_message: "internal", detail: e?.message },
+      { ok: false, failure_category: "cost.monitor.cron_fail", user_message: "internal", detail: message },
       { status: 500 },
     );
   }

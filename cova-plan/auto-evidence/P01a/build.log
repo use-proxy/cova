@@ -1,0 +1,617 @@
+
+> web@0.1.0 build
+> next build
+
+  ▲ Next.js 14.2.35
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+
+./app/api/chat/history/route.ts
+48:42  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/api/chat/route.ts
+97:70  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+150:52  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+162:38  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/api/design-chat/route.ts
+126:9  Warning: console.warn called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+249:69  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/api/detect/render/route.ts
+131:13  Warning: console.warn called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+151:60  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/api/dev-log/route.ts
+56:46  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/api/fingerprint/explain/route.ts
+80:59  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/api/interactions/route.ts
+55:54  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+60:44  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/api/match/complete-room/route.ts
+180:70  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/api/match/route.ts
+165:42  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+169:47  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+332:75  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+367:56  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+371:55  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+409:7  Warning: console.warn called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+433:61  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/api/parallax/route.ts
+59:9  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+60:9  Warning: console.error called with potentially sensitive value at argument 2; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+71:52  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+99:51  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/api/personalization/generate-art-preview/route.ts
+23:23  Warning: fetch('fal.run') outside lib/paid/call.ts; use paidCall().  cova-rules/no-direct-paid-fetch
+
+./app/api/personalization/lighting-previews/route.ts
+54:23  Warning: fetch('fal.run') outside lib/paid/call.ts; use paidCall().  cova-rules/no-direct-paid-fetch
+
+./app/api/personalization/save/route.ts
+66:60  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/api/pipeline/furniture-match/route.ts
+189:9  Warning: console.warn called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+255:9  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+256:9  Warning: console.error called with potentially sensitive value at argument 2; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+268:9  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+347:71  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+359:11  Warning: console.warn called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+431:26  Warning: console.warn called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+454:15  Warning: console.warn called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+464:11  Warning: console.warn called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+465:11  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+477:11  Warning: console.warn called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+482:11  Warning: console.warn called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+581:72  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+602:9  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+632:58  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/api/pipeline/pre-detect/route.ts
+93:58  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+93:75  Warning: console.error called with potentially sensitive value at argument 2; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+109:53  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+129:11  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+142:53  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/api/pipeline/redesign/route.ts
+177:49  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+232:68  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+262:57  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+379:80  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+381:13  Warning: Unexpected console statement.  no-console
+381:82  Warning: console.log called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+390:7  Warning: Unexpected console statement.  no-console
+390:19  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+416:9  Warning: Unexpected console statement.  no-console
+417:11  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+427:84  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+428:16  Warning: Unexpected console statement.  no-console
+428:70  Warning: console.log called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+463:80  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+464:16  Warning: Unexpected console statement.  no-console
+464:72  Warning: console.log called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+467:7  Warning: Unexpected console statement.  no-console
+468:9  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+471:72  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+473:57  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+499:18  Warning: console.warn called with potentially sensitive value at argument 3; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+528:5  Warning: Unexpected console statement.  no-console
+529:7  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+535:7  Warning: Unexpected console statement.  no-console
+536:9  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+539:70  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+556:5  Warning: Unexpected console statement.  no-console
+556:17  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+559:5  Warning: Unexpected console statement.  no-console
+559:17  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+562:5  Warning: Unexpected console statement.  no-console
+562:17  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+570:76  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+595:7  Warning: Unexpected console statement.  no-console
+595:19  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+598:66  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+605:7  Warning: Unexpected console statement.  no-console
+606:9  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+612:32  Warning: fetch('fal.run') outside lib/paid/call.ts; use paidCall().  cova-rules/no-direct-paid-fetch
+625:28  Warning: console.warn called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+639:26  Warning: console.warn called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+639:77  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+646:9  Warning: Unexpected console statement.  no-console
+647:11  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+662:13  Warning: Unexpected console statement.  no-console
+664:73  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+679:5  Warning: Unexpected console statement.  no-console
+680:7  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+692:9  Warning: Unexpected console statement.  no-console
+692:21  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+694:88  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+735:9  Warning: Unexpected console statement.  no-console
+738:65  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+777:56  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+777:73  Warning: console.error called with potentially sensitive value at argument 2; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+797:51  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+817:83  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+827:7  Warning: Unexpected console statement.  no-console
+829:95  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+850:51  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/api/pipeline/segment-masks/route.ts
+91:5  Warning: Unexpected console statement.  no-console
+96:5  Warning: Unexpected console statement.  no-console
+111:9  Warning: console.warn called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+118:76  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+123:5  Warning: Unexpected console statement.  no-console
+131:66  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+149:5  Warning: Unexpected console statement.  no-console
+149:17  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+175:5  Warning: Unexpected console statement.  no-console
+175:17  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+178:57  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+226:71  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+237:28  Warning: fetch('fal.run') outside lib/paid/call.ts; use paidCall().  cova-rules/no-direct-paid-fetch
+253:20  Warning: console.warn called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+260:18  Warning: console.warn called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+260:67  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+272:28  Warning: fetch('fal.run') outside lib/paid/call.ts; use paidCall().  cova-rules/no-direct-paid-fetch
+292:18  Warning: console.warn called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+292:64  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+407:3  Warning: Unexpected console statement.  no-console
+408:5  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+426:5  Warning: Unexpected console statement.  no-console
+426:17  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+436:7  Warning: Unexpected console statement.  no-console
+436:19  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+445:9  Warning: Unexpected console statement.  no-console
+470:63  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+477:5  Warning: Unexpected console statement.  no-console
+498:3  Warning: Unexpected console statement.  no-console
+499:5  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+538:7  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+541:5  Warning: Unexpected console statement.  no-console
+
+./app/api/quiz/fingerprint/route.ts
+430:3  Warning: Unexpected console statement.  no-console
+430:60  Warning: console.log called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+435:5  Warning: Unexpected console statement.  no-console
+435:59  Warning: console.log called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+739:3  Warning: Unexpected console statement.  no-console
+739:67  Warning: console.log called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+981:62  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+1139:13  Warning: console.error called with potentially sensitive value at argument 3; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+1141:13  Warning: console.error called with potentially sensitive value at argument 5; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+1152:52  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+1172:13  Warning: console.error called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+1178:11  Warning: console.error called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/api/quiz/next-pair/route.ts
+113:5  Warning: Unexpected console statement.  no-console
+113:59  Warning: console.log called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+114:5  Warning: Unexpected console statement.  no-console
+141:7  Warning: Unexpected console statement.  no-console
+147:9  Warning: Unexpected console statement.  no-console
+147:53  Warning: console.log called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/api/quiz/style-preview/route.ts
+133:64  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/api/quiz/tweak/route.ts
+183:65  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+351:66  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+364:67  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/api/quiz/update-fingerprint/route.ts
+92:58  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+138:59  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+173:65  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+183:61  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/api/render/refinement/apply/route.ts
+39:23  Warning: fetch('api.anthropic.com') outside lib/paid/call.ts; use paidCall().  cova-rules/no-direct-paid-fetch
+97:23  Warning: fetch('fal.run') outside lib/paid/call.ts; use paidCall().  cova-rules/no-direct-paid-fetch
+133:23  Warning: fetch('fal.run') outside lib/paid/call.ts; use paidCall().  cova-rules/no-direct-paid-fetch
+169:23  Warning: fetch('api.anthropic.com') outside lib/paid/call.ts; use paidCall().  cova-rules/no-direct-paid-fetch
+304:71  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/api/render/refinement/detect/route.ts
+31:23  Warning: fetch('fal.run') outside lib/paid/call.ts; use paidCall().  cova-rules/no-direct-paid-fetch
+62:23  Warning: fetch('api.anthropic.com') outside lib/paid/call.ts; use paidCall().  cova-rules/no-direct-paid-fetch
+
+./app/api/render/status/route.ts
+36:9  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+41:55  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+56:70  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+114:7  Warning: console.warn called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+117:46  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+275:11  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+437:67  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+552:9  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/api/render/tweak/route.ts
+196:52  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+202:55  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/api/rooms/capture/route.ts
+9:47  Warning: console.log called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+15:49  Warning: console.log called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+18:45  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/api/swap/route.ts
+227:51  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+233:54  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/auth/callback/route.ts
+103:17  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+108:17  Warning: console.log called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+124:17  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+138:73  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/capture/[roomId]/page.tsx
+120:17  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+139:21  Warning: console.error called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+144:57  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+148:25  Warning: console.error called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+148:67  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/capture/new/page.tsx
+57:49  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/design/_future/step-7b/page.tsx
+537:67  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+588:69  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+592:62  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/design/_future/step-7c/page.tsx
+155:76  Warning: React Hook useEffect has a missing dependency: 'isMounted'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+251:76  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+291:65  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+315:75  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+410:62  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+578:62  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+649:59  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/design/_future/step-7f/page.tsx
+193:58  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/design/step-3/page.tsx
+308:61  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/design/step-3b/page.tsx
+154:46  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/design/step-4/page.tsx
+234:64  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+269:73  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+366:61  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+405:65  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+847:50  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/design/step-5/page.tsx
+1203:25  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/design/step-6/page.tsx
+1515:27  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+1520:67  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/design/step-7/page.tsx
+138:58  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+144:11  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/design/step-8a/page.tsx
+203:72  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+548:64  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./app/design/step-9/page.tsx
+445:23  Warning: console.warn called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+592:21  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+794:53  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+1113:64  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+1165:64  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./components/capture/QRMode.tsx
+56:51  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./components/chat/ChatPanel.tsx
+79:53  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+79:65  Warning: console.error called with potentially sensitive value at argument 2; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+117:38  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./components/quiz/CardStack.tsx
+84:51  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+135:53  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+156:55  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./lib/ai/design-director.ts
+1041:3  Warning: Unexpected console statement.  no-console
+1042:5  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+1158:3  Warning: Unexpected console statement.  no-console
+1159:5  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+1160:5  Warning: console.log called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+1161:5  Warning: console.log called with potentially sensitive value at argument 2; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+1162:5  Warning: console.log called with potentially sensitive value at argument 3; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+1163:5  Warning: console.log called with potentially sensitive value at argument 4; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+1164:5  Warning: console.log called with potentially sensitive value at argument 5; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+1178:3  Warning: Unexpected console statement.  no-console
+1180:5  Warning: console.log called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+1182:5  Warning: console.log called with potentially sensitive value at argument 3; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+1191:5  Warning: Unexpected console statement.  no-console
+1192:7  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+1199:3  Warning: Unexpected console statement.  no-console
+1200:5  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./lib/ai/detection/depth.ts
+216:9  Warning: console.warn called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./lib/ai/flux.ts
+1609:22  Warning: fetch('fal.run') outside lib/paid/call.ts; use paidCall().  cova-rules/no-direct-paid-fetch
+1649:22  Warning: fetch('fal.run') outside lib/paid/call.ts; use paidCall().  cova-rules/no-direct-paid-fetch
+
+./lib/ai/grounding.ts
+303:59  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./lib/ai/inpainting.ts
+131:54  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+339:52  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+349:53  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./lib/ai/lora-registry.ts
+135:7  Warning: Unexpected console statement.  no-console
+136:9  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+152:21  Warning: console.error called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+152:68  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+157:3  Warning: Unexpected console statement.  no-console
+158:5  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+183:5  Warning: Unexpected console statement.  no-console
+192:5  Warning: Unexpected console statement.  no-console
+192:17  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+197:3  Warning: Unexpected console statement.  no-console
+197:15  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+213:5  Warning: Unexpected console statement.  no-console
+213:17  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+227:19  Warning: console.error called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+227:74  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+230:3  Warning: Unexpected console statement.  no-console
+230:15  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./lib/ai/mask-assembly.ts
+44:3  Warning: Unexpected console statement.  no-console
+45:5  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+59:22  Warning: console.warn called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+81:7  Warning: Unexpected console statement.  no-console
+81:19  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+83:20  Warning: console.warn called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+83:74  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+153:3  Warning: Unexpected console statement.  no-console
+154:5  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./lib/ai/personalization-compiler.ts
+108:23  Warning: fetch('api.anthropic.com') outside lib/paid/call.ts; use paidCall().  cova-rules/no-direct-paid-fetch
+201:9  Warning: console.error called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+213:21  Warning: console.error called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+213:76  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./lib/ai/prompt-compiler.ts
+256:7  Warning: console.warn called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+267:21  Warning: console.error called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+279:3  Warning: Unexpected console statement.  no-console
+279:15  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./lib/ai/renderContext/persist.ts
+50:7  Warning: console.warn called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./lib/ai/renderCrop.ts
+120:52  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+127:48  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./lib/ai/room-analyzer.ts
+62:55  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./lib/ai/segmentation.ts
+93:30  Warning: fetch('fal.run') outside lib/paid/call.ts; use paidCall().  cova-rules/no-direct-paid-fetch
+130:7  Warning: Unexpected console statement.  no-console
+139:9  Warning: console.warn called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+140:9  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./lib/ai/style-references.ts
+84:72  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./lib/ai/upscaler.ts
+56:72  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+71:70  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./lib/dashboard/queries.ts
+61:42  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+101:48  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+142:46  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+189:50  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./lib/debug/flow-logger.ts
+27:15  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+43:15  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./lib/env.ts
+72:21  Warning: console.error called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./lib/errors.ts
+78:34  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+87:34  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./lib/interactions.ts
+42:50  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+46:47  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./lib/logger.ts
+288:19  Warning: console.error called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+290:18  Warning: console.warn called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+292:17  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+314:19  Warning: console.error called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+314:27  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+314:40  Warning: console.error called with potentially sensitive value at argument 3; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+316:18  Warning: console.warn called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+316:26  Warning: console.warn called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+316:39  Warning: console.warn called with potentially sensitive value at argument 3; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+318:17  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+318:25  Warning: console.log called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+318:38  Warning: console.log called with potentially sensitive value at argument 3; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./lib/stores/area2Store.ts
+395:11  Warning: console.log called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+./lib/unsplash.ts
+111:23  Warning: console.error called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+117:21  Warning: console.error called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+117:70  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+135:3  Warning: Unexpected console statement.  no-console
+136:5  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+140:5  Warning: Unexpected console statement.  no-console
+141:7  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+250:7  Warning: console.error called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+293:7  Warning: Unexpected console statement.  no-console
+293:19  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+306:5  Warning: Unexpected console statement.  no-console
+307:7  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+311:62  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+331:5  Warning: Unexpected console statement.  no-console
+331:17  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+334:65  Warning: console.error called with potentially sensitive value at argument 1; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+379:5  Warning: Unexpected console statement.  no-console
+379:17  Warning: console.log called with potentially sensitive value at argument 0; wrap in redactLogPayload(...)  cova-rules/no-unsafe-console
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/basic-features/eslint#disabling-rules
+   Collecting page data ...
+No allowed endpoints specified, all endpoints will be allowed. This is not recommended for production use cases.
+Allowing unauthenticated requests. Make sure you protect your proxy endpoint or handle unauthenticated users appropriately.
+   Generating static pages (0/86) ...
+Chat history error: B [Error]: Dynamic server usage: Route /api/chat/history couldn't be rendered statically because it used `request.url`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at V (/Users/daksh/Desktop/cova/apps/web/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:21778)
+    at Object.get (/Users/daksh/Desktop/cova/apps/web/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:29465)
+    at d (/Users/daksh/Desktop/cova/apps/web/.next/server/app/api/chat/history/route.js:1:863)
+    at /Users/daksh/Desktop/cova/apps/web/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:38417
+    at /Users/daksh/Desktop/cova/apps/web/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+    at NoopContextManager.with (/Users/daksh/Desktop/cova/apps/web/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:14:19)
+    at ContextAPI.with (/Users/daksh/Desktop/cova/apps/web/node_modules/@opentelemetry/api/build/src/api/context.js:51:46)
+    at NoopTracer.startActiveSpan (/Users/daksh/Desktop/cova/apps/web/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:54:31)
+    at ProxyTracer.startActiveSpan (/Users/daksh/Desktop/cova/apps/web/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:27:24)
+    at /Users/daksh/Desktop/cova/apps/web/node_modules/next/dist/server/lib/trace/tracer.js:122:103 {
+  description: "Route /api/chat/history couldn't be rendered statically because it used `request.url`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+   Generating static pages (21/86) 
+   Generating static pages (42/86) 
+   Generating static pages (64/86) 
+ ✓ Generating static pages (86/86)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                    Size     First Load JS
+┌ ○ /                                          18.3 kB         163 kB
+├ ○ /_not-found                                879 B          88.5 kB
+├ ƒ /api/admin/render-costs                    0 B                0 B
+├ ƒ /api/capture/generate-token                0 B                0 B
+├ ƒ /api/capture/validate-token                0 B                0 B
+├ ƒ /api/chat                                  0 B                0 B
+├ ƒ /api/chat/history                          0 B                0 B
+├ ƒ /api/cron/cost-monitor                     0 B                0 B
+├ ƒ /api/design-chat                           0 B                0 B
+├ ƒ /api/design-dna/card                       0 B                0 B
+├ ƒ /api/detect                                0 B                0 B
+├ ƒ /api/detect/material                       0 B                0 B
+├ ƒ /api/detect/render                         0 B                0 B
+├ ƒ /api/detect/status                         0 B                0 B
+├ ƒ /api/dev-log                               0 B                0 B
+├ ƒ /api/dev/rerun                             0 B                0 B
+├ ƒ /api/fal/proxy                             0 B                0 B
+├ ƒ /api/fingerprint/explain                   0 B                0 B
+├ ƒ /api/generate-art                          0 B                0 B
+├ ƒ /api/interactions                          0 B                0 B
+├ ○ /api/local-ip                              0 B                0 B
+├ ƒ /api/match                                 0 B                0 B
+├ ƒ /api/match/accessories                     0 B                0 B
+├ ƒ /api/match/coherence                       0 B                0 B
+├ ƒ /api/match/complete-room                   0 B                0 B
+├ ƒ /api/match/room-budget                     0 B                0 B
+├ ƒ /api/parallax                              0 B                0 B
+├ ƒ /api/parse-constraints                     0 B                0 B
+├ ƒ /api/personalization/generate-art-preview  0 B                0 B
+├ ƒ /api/personalization/lighting-previews     0 B                0 B
+├ ƒ /api/personalization/save                  0 B                0 B
+├ ƒ /api/pipeline/furniture-match              0 B                0 B
+├ ƒ /api/pipeline/pre-detect                   0 B                0 B
+├ ƒ /api/pipeline/redesign                     0 B                0 B
+├ ƒ /api/pipeline/segment-masks                0 B                0 B
+├ ƒ /api/quiz/fingerprint                      0 B                0 B
+├ ƒ /api/quiz/mood-board                       0 B                0 B
+├ ƒ /api/quiz/mood-strip                       0 B                0 B
+├ ƒ /api/quiz/next-card                        0 B                0 B
+├ ƒ /api/quiz/next-pair                        0 B                0 B
+├ ƒ /api/quiz/style-preview                    0 B                0 B
+├ ƒ /api/quiz/tweak                            0 B                0 B
+├ ƒ /api/quiz/update-fingerprint               0 B                0 B
+├ ƒ /api/quiz/validation-renders               0 B                0 B
+├ ƒ /api/render                                0 B                0 B
+├ ƒ /api/render/empty-room                     0 B                0 B
+├ ƒ /api/render/from-context                   0 B                0 B
+├ ƒ /api/render/previews                       0 B                0 B
+├ ƒ /api/render/previews/status                0 B                0 B
+├ ƒ /api/render/refine                         0 B                0 B
+├ ƒ /api/render/refinement/apply               0 B                0 B
+├ ƒ /api/render/refinement/detect              0 B                0 B
+├ ƒ /api/render/status                         0 B                0 B
+├ ƒ /api/render/tweak                          0 B                0 B
+├ ƒ /api/render/tweak/status                   0 B                0 B
+├ ƒ /api/rooms/[roomId]                        0 B                0 B
+├ ƒ /api/rooms/capture                         0 B                0 B
+├ ƒ /api/rooms/create                          0 B                0 B
+├ ○ /api/rooms/public-count                    0 B                0 B
+├ ƒ /api/rooms/status                          0 B                0 B
+├ ƒ /api/style-references/match                0 B                0 B
+├ ƒ /api/swap                                  0 B                0 B
+├ ƒ /api/swap/status                           0 B                0 B
+├ ○ /auth                                      8.36 kB         159 kB
+├ ƒ /auth/callback                             0 B                0 B
+├ ○ /budget                                    2.9 kB          134 kB
+├ ƒ /capture/[roomId]                          6.2 kB          162 kB
+├ ƒ /capture/mobile/[token]                    4.59 kB         160 kB
+├ ○ /capture/new                               835 B          88.5 kB
+├ ○ /chatbot                                   2.02 kB        93.6 kB
+├ ƒ /dashboard                                 4.89 kB        92.6 kB
+├ ƒ /dashboard/profile                         1.08 kB        97.4 kB
+├ ƒ /dashboard/saved                           6.19 kB        93.9 kB
+├ ƒ /dashboard/settings                        7.79 kB        95.5 kB
+├ ○ /design/step-1                             2.54 kB        90.2 kB
+├ ○ /design/step-2                             3.48 kB        93.2 kB
+├ ○ /design/step-3                             8.84 kB        98.6 kB
+├ ○ /design/step-3b                            4 kB           93.7 kB
+├ ○ /design/step-4                             7.77 kB        97.5 kB
+├ ○ /design/step-5                             5.93 kB         126 kB
+├ ○ /design/step-6                             7.39 kB         133 kB
+├ ○ /design/step-7                             3.72 kB         124 kB
+├ ○ /design/step-7p                            2.82 kB         153 kB
+├ ○ /design/step-8a                            6.15 kB        95.9 kB
+├ ○ /design/step-8b                            4.11 kB         154 kB
+├ ○ /design/step-9                             10.2 kB         107 kB
+├ ○ /product-panel                             1.82 kB        94.6 kB
+└ ƒ /room/[roomId]/3d                          2.67 kB        99.4 kB
++ First Load JS shared by all                  87.7 kB
+  ├ chunks/7115-782c2f9cd1ce656d.js            31.7 kB
+  ├ chunks/fd9d1056-62f7e59fdc0bc169.js        53.7 kB
+  └ other shared chunks (total)                2.29 kB
+
+
+ƒ Middleware                                   77.7 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

@@ -21,6 +21,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { buildFluxPrompt, buildAnchorFallbackPrompt } from "@/lib/ai/flux";
 import { fetchTopStyleReference } from "@/lib/ai/style-references";
+import { TIMEOUTS } from "@/lib/config/timeouts";
 import {
   analyzeRoomArchitecture,
   type RoomArchitecture,
@@ -244,13 +245,11 @@ export async function POST(request: Request) {
 
   // Fetch style reference anchor (used by design director and fallback paths)
   let anchorPrompt: string | null = null;
-  let styleReferenceUrl: string | null = null;
   if (fingerprint) {
     const styleRef = await fetchTopStyleReference(fingerprint, roomType).catch(
       () => null,
     );
     anchorPrompt = styleRef?.flux_prompt ?? null;
-    styleReferenceUrl = styleRef?.image_url ?? null;
   }
 
   // Gemini room architecture analysis (used by fallback prompt compiler)
@@ -304,7 +303,6 @@ export async function POST(request: Request) {
     .filter((d) => d.decision === "keep")
     .map((d) => d.name)
     .filter(Boolean);
-  const removeCount = removeItems.length;
 
   // Extract chat history as a flat formatted string (highest priority signal for design director)
   // Try renderContext.tabStates first, fall back to chat_context from POST body
@@ -520,29 +518,25 @@ export async function POST(request: Request) {
 
   // ── LoRA stack resolution ─────────────────────────────────────────────────
   // Resolves COVA* trained LoRAs from the style blend.
-  // Fill Pro doesn't accept loras param — trigger words in the prompt are
-  // the primary mechanism. The stack is sent to Modal for trigger word extraction.
-  let lorasJson: string;
+  // V9 path: trigger words in the prompt are the primary mechanism — Modal's
+  // cova-redesign service extracts them and applies the LoRA stack server-side.
+  // (Legacy V8 fallback that serialized lorasJson into the request body was
+  // removed in P01a M3 along with the orchestrator archival.)
   const covaLoraStack = getLoraStackFromBlend(styleBlendForAnchor);
 
   if (covaLoraStack.length > 0) {
     console.log(
       `[redesign] COVA LoRA stack: ${covaLoraStack.map((l) => `${l.name}@${l.scale.toFixed(2)}`).join(" + ")}`,
     );
-    lorasJson = JSON.stringify(covaLoraStack);
   } else {
-    // Fallback: try DB-based lookup via flux_prompt trigger extraction
+    // DB-based lookup via flux_prompt trigger extraction (logging only).
     try {
       const loraResult = await getLorasFromFluxPrompt(compiledPrompt, admin);
       console.log(
         `[redesign] LoRA stack (DB fallback): ${loraResult.loras.map((l) => `${l.name}@${l.scale}`).join(" + ")}`,
       );
-      lorasJson = JSON.stringify(
-        loraResult.loras.map((l) => ({ url: l.url, scale: l.scale, name: l.name, trigger: "" })),
-      );
     } catch (loraErr) {
       console.error("[redesign] LoRA resolution failed — no LoRAs:", loraErr);
-      lorasJson = JSON.stringify([]);
     }
   }
 
@@ -750,10 +744,9 @@ export async function POST(request: Request) {
   // The previous implementation read from room.design_brief, which was fetched
   // before the Design Director ran — on first render that snapshot is null,
   // so walls always changed. Reading from designDirectorResult uses the brief
-  // produced by the current run.
-  const freshBrief = designDirectorResult?.stagingJson ?? null;
-  const wallChangeRequested = freshBrief?.wall_change_requested !== false;
-  const floorChangeRequested = freshBrief?.floor_change_requested === true;
+  // produced by the current run. (Wall/floor change flags were consumed by the
+  // archived V8 legacy body; V9 service derives them server-side.)
+  void designDirectorResult;
 
   try {
     // V9 body: matches modal_pipeline/redesign.py Block 2 rewrite.
@@ -776,7 +769,7 @@ export async function POST(request: Request) {
       // (FLUX Pass 1, IC-Light, refinement, Sonnet calls). 7 minutes gives
       // ~2 min buffer for slow fal queues. Verified production timeout at
       // 295s on 2026-04-28 01:02 — route returned 500 while Modal still ran.
-      signal: AbortSignal.timeout(420_000),
+      signal: AbortSignal.timeout(TIMEOUTS.REDESIGN_MODAL),
     });
 
     if (!response.ok) {
