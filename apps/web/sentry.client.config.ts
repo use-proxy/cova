@@ -6,7 +6,8 @@ Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
   environment: process.env.NEXT_PUBLIC_SENTRY_ENV ?? process.env.NODE_ENV,
   tracesSampleRate: SAMPLE_TRACES,
-  replaysOnErrorSampleRate: 1.0,
+  profilesSampleRate: 0.05,
+  replaysOnErrorSampleRate: 0.5,
   replaysSessionSampleRate: 0.0,
   integrations: [
     Sentry.replayIntegration({
