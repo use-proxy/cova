@@ -97,3 +97,24 @@ None new. Pre-existing P01a/P01b backlog unchanged.
 - 4 hard FAILs/PARTIALs from session 1 addressed (criteria #7, #18 a + b, #27).
 - Typecheck + lint + build all green.
 - Ready for verifier session 2 (fresh, no knowledge of these fixes).
+
+---
+
+## Remediation 1.5 follow-up
+
+**Date:** 2026-05-03
+**Triggered by:** residuals flagged in session 1 handoff notes (lines 29, 83, 85 of this file).
+
+### Fixes
+
+- **Fix 1.5.1** — `apps/web/app/auth/reset-password/page.tsx`: Removed the third `animate-spin` spinner on the `ValidBlock` submit button (`isLoading` branch, previously lines 621-629). Replaced with italic-serif span `"Updating your password…"` — matching the Loading state α locked label from §6 1B. No spinner element remains. Commit: `62f47d8`.
+- **Fix 1.5.2** — `cova-plan/phases/P01b-auth-legal-deletion.md`: §1 summary prose at line 94 changed from `24h-TTL signed URL` to `7-day signed URL`. Resolves the lone TTL outlier in §1 to match §6 1A, §9, and §13 (all of which already said 7-day). Grep for `24h` in the export-URL context now returns zero results. Commit: `1434f91`.
+
+### Build / typecheck / lint
+
+All green. `npx tsc --noEmit` exit 0, `npx next lint` zero new warnings in `app/auth/reset-password/page.tsx`, `npx next build` succeeded.
+
+### Verifier session 2 notes
+
+- Criterion **#18** (Loading state α): verifier should now re-check the `ValidBlock` submit button specifically (previously flagged as residual). The italic-serif label "Updating your password…" is now rendered when `isLoading` is true, with no spinner element.
+- **§1 TTL prose**: resolved. The `24h-TTL` in §1 summary is now `7-day`, consistent with §6 1A / §9 / §13. No further TTL inconsistencies remain in the phase doc.
