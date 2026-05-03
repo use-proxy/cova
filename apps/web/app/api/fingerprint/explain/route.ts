@@ -11,6 +11,7 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { redactLogPayload } from "@/lib/log/redact";
 
 export const maxDuration = 30;
 
@@ -77,7 +78,7 @@ Write exactly 2-3 sentences describing how their room will look and feel. Be spe
     return NextResponse.json({ explanation });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error("[fingerprint/explain] Claude failed:", message);
+    console.error("[fingerprint/explain] Claude failed:", redactLogPayload(message));
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

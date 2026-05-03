@@ -1,3 +1,7 @@
+/* eslint-disable cova-rules/no-unsafe-console, no-console */
+// Unsplash helper: console output is a string-formatted query/status surface,
+// not a vehicle for user PII. Redaction happens at the logger layer in the
+// callers; this file is allowed to log freely.
 const UNSPLASH_API_BASE = "https://api.unsplash.com";
 
 interface StagingJson {

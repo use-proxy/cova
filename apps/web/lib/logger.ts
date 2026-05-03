@@ -283,7 +283,7 @@ function formatConsoleServer(entry: CováLogEntry): string {
 
 function emitConsoleServer(entry: CováLogEntry): void {
   const formatted = formatConsoleServer(entry);
-  /* eslint-disable no-console */
+  /* eslint-disable no-console, cova-rules/no-unsafe-console */
   if (entry.level === "ERROR" || entry.level === "FATAL") {
     console.error(formatted);
   } else if (entry.level === "WARN") {
@@ -291,7 +291,7 @@ function emitConsoleServer(entry: CováLogEntry): void {
   } else {
     console.log(formatted);
   }
-  /* eslint-enable no-console */
+  /* eslint-enable no-console, cova-rules/no-unsafe-console */
 }
 
 function emitConsoleBrowser(entry: CováLogEntry): void {
@@ -309,7 +309,7 @@ function emitConsoleBrowser(entry: CováLogEntry): void {
   const prefix = `%c[${ts}] ${entry.level} ${entry.category} #${seqStr} ${entry.event}`;
   const style = levelColors[entry.level];
 
-  /* eslint-disable no-console */
+  /* eslint-disable no-console, cova-rules/no-unsafe-console */
   if (entry.level === "ERROR" || entry.level === "FATAL") {
     console.error(prefix, style, "\n", entry.message, entry.data ?? "", entry.error ?? "");
   } else if (entry.level === "WARN") {
@@ -317,7 +317,7 @@ function emitConsoleBrowser(entry: CováLogEntry): void {
   } else {
     console.log(prefix, style, "\n", entry.message, entry.data ?? "");
   }
-  /* eslint-enable no-console */
+  /* eslint-enable no-console, cova-rules/no-unsafe-console */
 }
 
 // ─── Core emit ───────────────────────────────────────────────────────────────

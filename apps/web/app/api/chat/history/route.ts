@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { redactLogPayload } from "@/lib/log/redact";
 
 export async function GET(request: Request) {
   try {
@@ -45,7 +46,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ messages: messages || [] });
   } catch (error) {
-    console.error("Chat history error:", error);
+    console.error("Chat history error:", redactLogPayload(error));
     return NextResponse.json(
       { error: "Failed to fetch history" },
       { status: 500 },

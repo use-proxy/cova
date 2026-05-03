@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { redactLogPayload } from "@/lib/log/redact";
 import type { StyleFingerprint } from "@/types/fingerprint";
 import {
   cropAndUploadRenderRegion,
@@ -162,14 +163,14 @@ export async function POST(request: Request) {
       primary_wall_usable_inches,
     } = body;
 
-    console.warn("[match] called with:", {
+    console.warn("[match] called with:", redactLogPayload({
       item_label,
       render_url: render_url?.slice(0, 60),
-    });
-    console.warn("[match] env keys present:", {
+    }));
+    console.warn("[match] env keys present:", redactLogPayload({
       searchapi: !!process.env.SEARCHAPI_KEY,
       serper: !!process.env.SERPER_API_KEY,
-    });
+    }));
 
     // Per-item budget target (designer allocation ratios by room type)
     const itemBudgetRange: [number, number] | null = budget_range
@@ -329,7 +330,7 @@ export async function POST(request: Request) {
         };
       }
     } catch (err) {
-      console.warn("[match] Claude Vision structured extraction failed:", err);
+      console.warn("[match] Claude Vision structured extraction failed:", redactLogPayload(err));
     }
 
     // Build item description from structured attributes, capped at 20 words.
@@ -364,11 +365,11 @@ export async function POST(request: Request) {
     const [lensTightResult, lensWideResult, serper1, serper2, serper3] =
       await Promise.allSettled([
         searchGoogleLens(cropUrl).catch((e) => {
-          console.warn("[match] Lens (tight) failed:", (e as Error).message);
+          console.warn("[match] Lens (tight) failed:", redactLogPayload((e as Error).message));
           return [] as SerperProduct[];
         }),
         searchGoogleLens(widerCropUrl).catch((e) => {
-          console.warn("[match] Lens (wide) failed:", (e as Error).message);
+          console.warn("[match] Lens (wide) failed:", redactLogPayload((e as Error).message));
           return [] as SerperProduct[];
         }),
         searchProducts(serperQueries[0]!, 20),
@@ -406,7 +407,8 @@ export async function POST(request: Request) {
     const preFilterCount = merged.length;
     const filtered = merged.filter(isFurnitureProduct);
     console.warn(
-      `[match] candidates: ${preFilterCount} RRF-merged → ${filtered.length} after furniture filter`,
+      "[match] candidates:",
+      redactLogPayload({ preFilterCount, filtered: filtered.length }),
     );
 
     const topForClip = filtered.slice(0, 25);
@@ -430,7 +432,7 @@ export async function POST(request: Request) {
       )) as Array<{ input: string; embedding: number[] }>;
       allEmbeddings = batchOutput;
     } catch (err) {
-      console.error("[match] CLIP batch embedding failed:", err);
+      console.error("[match] CLIP batch embedding failed:", redactLogPayload(err));
       const fallbackProducts = topForClip.slice(0, 8).map((p) => ({
         id: crypto.randomUUID(),
         name: p.title,

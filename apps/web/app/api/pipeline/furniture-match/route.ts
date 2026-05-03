@@ -13,6 +13,7 @@
 export const maxDuration = 300;
 
 import { NextResponse } from "next/server";
+import { redactLogPayload } from "@/lib/log/redact";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { searchProducts, type SerperProduct } from "@/lib/ai/serper";
@@ -186,7 +187,8 @@ export async function POST(request: Request) {
         (roomRow as { redesign_status?: string } | null)?.redesign_status ??
         "unknown";
       console.warn(
-        `[furniture-match] Room ${room_id} skipped — current status: ${currentStatus}`,
+        "[furniture-match] Room skipped:",
+        redactLogPayload({ room_id, currentStatus }),
       );
       // Distinguish between in-flight and already-done so step-9 can act correctly:
       //   "matching_products" → still running, client should poll
@@ -253,7 +255,7 @@ export async function POST(request: Request) {
       console.error(
         "[furniture-match] Detection webhook error:",
         first.status,
-        first.body,
+        redactLogPayload(first.body),
       );
       return NextResponse.json(
         { error: "Furniture detection failed", detail: first.body },
@@ -265,7 +267,7 @@ export async function POST(request: Request) {
     if (detectionResult.status === "error") {
       console.error(
         "[furniture-match] Detection error:",
-        detectionResult.error,
+        redactLogPayload(detectionResult.error),
       );
       return NextResponse.json(
         { error: detectionResult.error ?? "Furniture detection failed" },
@@ -344,7 +346,7 @@ export async function POST(request: Request) {
             .from("room_products")
             .insert(fallbackRows);
           if (fbErr)
-            console.error("[furniture-match] Fallback insert error:", fbErr);
+            console.error("[furniture-match] Fallback insert error:", redactLogPayload(fbErr));
         }
         await supabase
           .from("rooms")
@@ -356,7 +358,8 @@ export async function POST(request: Request) {
           .eq("id", room_id);
 
         console.warn(
-          `[furniture-match] furniture_count 0 after retry — inserted ${fallbackRows.length} detection-only rows`,
+          "[furniture-match] furniture_count 0 after retry — inserted detection-only rows:",
+          redactLogPayload({ count: fallbackRows.length }),
         );
         return NextResponse.json({
           status: "complete",
@@ -428,7 +431,7 @@ export async function POST(request: Request) {
             .replace(/\s{2,}/g, " ")
             .trim();
           if (colorStripped !== searchQuery && colorStripped.split(" ").length >= 3) {
-            console.warn(`[furniture-match] "${item.label}" color-fallback: "${colorStripped}"`);
+            console.warn("[furniture-match] color-fallback:", redactLogPayload({ label: item.label, colorStripped }));
             const fallbackResult = await searchProducts(colorStripped, 10);
             const fallbackFiltered = fallbackResult.products.filter(isFurnitureProduct);
             if (fallbackFiltered.length > products.length) {
@@ -451,7 +454,8 @@ export async function POST(request: Request) {
             const sizeResult = await searchProducts(sizeStripped, 10);
             const sizeFiltered = sizeResult.products.filter(isFurnitureProduct);
             console.warn(
-              `[furniture-match] zero-result fallback: original=${products.length}, retry=${sizeFiltered.length} for query: "${sizeStripped}"`,
+              "[furniture-match] zero-result fallback:",
+              redactLogPayload({ original: products.length, retry: sizeFiltered.length, sizeStripped }),
             );
             if (sizeFiltered.length > products.length) {
               products = sizeFiltered;
@@ -461,8 +465,8 @@ export async function POST(request: Request) {
         }
       } catch (err) {
         console.warn(
-          `[furniture-match] Serper search failed for "${item.label}":`,
-          err,
+          "[furniture-match] Serper search failed:",
+          redactLogPayload({ label: item.label, err }),
         );
         continue;
       }
@@ -474,12 +478,14 @@ export async function POST(request: Request) {
       if (products.length === 0 && rawResults.length > 0) {
         const relaxed = rawResults.filter((p) => p.price >= 30);
         console.warn(
-          `[furniture-match] "${item.label}" pre-filter=${rawResults.length} post-filter=0 → relaxed fallback=${relaxed.length}`,
+          "[furniture-match] relaxed fallback:",
+          redactLogPayload({ label: item.label, preFilter: rawResults.length, relaxed: relaxed.length }),
         );
         products = relaxed;
       } else {
         console.warn(
-          `[furniture-match] "${item.label}" pre-filter=${rawResults.length} post-filter=${products.length}`,
+          "[furniture-match] filter results:",
+          redactLogPayload({ label: item.label, preFilter: rawResults.length, postFilter: products.length }),
         );
       }
 
@@ -578,7 +584,7 @@ export async function POST(request: Request) {
       .eq("room_id", room_id);
 
     if (deleteError) {
-      console.error("[furniture-match] Delete error (before insert):", deleteError);
+      console.error("[furniture-match] Delete error (before insert):", redactLogPayload(deleteError));
       // Do not proceed with insert if delete failed — existing data is still intact
       await supabase
         .from("rooms")
@@ -599,7 +605,7 @@ export async function POST(request: Request) {
       // Log clearly so the team can investigate.
       console.error(
         "[furniture-match] DATA LOSS: delete succeeded but insert failed.",
-        { room_id, recordCount: roomProductRecords.length, insertError },
+        redactLogPayload({ room_id, recordCount: roomProductRecords.length, insertError }),
       );
     }
 
@@ -629,7 +635,7 @@ export async function POST(request: Request) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error("[furniture-match] Unexpected error:", message);
+    console.error("[furniture-match] Unexpected error:", redactLogPayload(message));
 
     // Matching failure must NOT block the user from seeing their render.
     // Set status back to 'complete' (the render itself succeeded), not 'error'.

@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
+import { redactLogPayload } from "@/lib/log/redact";
 
 const DEPTHFLOW_WEBHOOK_URL = process.env.DEPTHFLOW_WEBHOOK_URL;
 
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
       console.error(
         "[parallax] Modal function returned error:",
         response.status,
-        text,
+        redactLogPayload(text),
       );
       return NextResponse.json({ video_url: null });
     }
@@ -68,7 +69,7 @@ export async function POST(req: NextRequest) {
     };
 
     if (result.error) {
-      console.error("[parallax] DepthFlow error:", result.error);
+      console.error("[parallax] DepthFlow error:", redactLogPayload(result.error));
       return NextResponse.json({ video_url: null });
     }
 
@@ -96,7 +97,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ video_url: videoUrl });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error("[parallax] Unexpected error:", message);
+    console.error("[parallax] Unexpected error:", redactLogPayload(message));
     // Non-fatal: step-7 skips to comparison mode
     return NextResponse.json({ video_url: null });
   }

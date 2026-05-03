@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { redactLogPayload } from "@/lib/log/redact";
 import type { StyleFingerprint } from "@/types/fingerprint";
 import type { MatchedProduct } from "@/lib/types/match";
 
@@ -177,7 +178,7 @@ export async function POST(request: Request) {
           .filter((it) => it.label);
       }
     } catch (err) {
-      console.warn("[complete-room] Claude structured pick failed:", err);
+      console.warn("[complete-room] Claude structured pick failed:", redactLogPayload(err));
     }
 
     // Filter to labels that actually exist in all_hotspots, preserve order,

@@ -23,6 +23,7 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { redactLogPayload } from "@/lib/log/redact";
 import { buildSystemPrompt } from "@/lib/ai/chat/systemPrompts";
 import {
   extractStructuredData,
@@ -123,7 +124,8 @@ export async function POST(req: Request) {
     if (priorIdx !== -1) {
       const cachedReply = activeTabMessages[priorIdx + 1];
       console.warn(
-        `[design-chat] Skipping duplicate image hash: ${contentHash.slice(0, 8)}`,
+        "[design-chat] Skipping duplicate image hash:",
+        redactLogPayload(contentHash.slice(0, 8)),
       );
       return NextResponse.json({
         reply:
@@ -246,7 +248,7 @@ export async function POST(req: Request) {
         visualDirection: extraction.extractedData.visualDirection,
         roomId,
       }),
-    }).catch((e) => console.error("[generate-art fire-and-forget]", e));
+    }).catch((e) => console.error("[generate-art fire-and-forget]", redactLogPayload(e)));
   }
 
   return NextResponse.json({

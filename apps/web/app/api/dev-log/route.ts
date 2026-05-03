@@ -13,6 +13,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import fs from "fs";
 import path from "path";
+import { redactLogPayload } from "@/lib/log/redact";
 
 // In production: hard 404 — no log file I/O, no overhead
 if (process.env.NODE_ENV !== "development") {
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: true, written: entries.length });
   } catch (err) {
     // Never surface log I/O errors to the client app
-    console.error("[dev-log] relay failed:", err);
+    console.error("[dev-log] relay failed:", redactLogPayload(err));
     return NextResponse.json({ ok: false }, { status: 200 });
   }
 }

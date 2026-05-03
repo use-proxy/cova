@@ -12,6 +12,7 @@ export const maxDuration = 60;
 
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { redactLogPayload } from "@/lib/log/redact";
 
 interface PreDetectBody {
   room_id?: string;
@@ -90,7 +91,7 @@ export async function POST(request: Request) {
 
     if (!response.ok) {
       const text = await response.text().catch(() => response.statusText);
-      console.error("[pre-detect] Modal webhook error:", response.status, text);
+      console.error("[pre-detect] Modal webhook error:", response.status, redactLogPayload(text));
       return NextResponse.json(
         { error: "Pre-detection pipeline failed", detail: text },
         { status: 502 },
@@ -106,7 +107,7 @@ export async function POST(request: Request) {
     };
 
     if (result.status === "error") {
-      console.error("[pre-detect] Pipeline error:", result.error);
+      console.error("[pre-detect] Pipeline error:", redactLogPayload(result.error));
       return NextResponse.json(
         { error: result.error ?? "Pre-detection failed" },
         { status: 500 },
@@ -126,7 +127,7 @@ export async function POST(request: Request) {
       } catch (err) {
         console.warn(
           "[pre-detect] Failed to backfill pre_detection_result:",
-          err,
+          redactLogPayload(err),
         );
       }
     }
@@ -139,7 +140,7 @@ export async function POST(request: Request) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error("[pre-detect] Unexpected error:", message);
+    console.error("[pre-detect] Unexpected error:", redactLogPayload(message));
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

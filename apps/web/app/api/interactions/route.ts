@@ -5,6 +5,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
+import { redactLogPayload } from "@/lib/log/redact";
 
 interface InteractionBody {
   room_id?: string | null;
@@ -52,12 +53,12 @@ export async function POST(request: Request) {
       action: body.action,
     });
     if (error) {
-      console.error("[interactions] insert failed:", error.message);
+      console.error("[interactions] insert failed:", redactLogPayload(error.message));
       // Don't fail the client flow — analytics is best-effort
     }
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
-    console.error("[interactions] error:", error);
+    console.error("[interactions] error:", redactLogPayload(error));
     return NextResponse.json({ success: false }, { status: 200 });
   }
 }

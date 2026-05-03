@@ -13,6 +13,7 @@ import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import Anthropic from "@anthropic-ai/sdk";
+import { redactLogPayload } from "@/lib/log/redact";
 
 export const maxDuration = 60;
 
@@ -128,7 +129,8 @@ Be precise with bounding boxes — they should tightly contain each item. Do not
         const ch = Math.max(1, Math.min(100, height));
         if (cx !== x || cy !== y || cw !== width || ch !== height) {
           console.warn(
-            `[detect/render] OOB bbox clamped for "${item.label}": x=${x} y=${y} w=${width} h=${height} → x=${cx} y=${cy} w=${cw} h=${ch}`,
+            "[detect/render] OOB bbox clamped:",
+            redactLogPayload({ label: item.label, x, y, width, height, cx, cy, cw, ch }),
           );
         }
         return {
@@ -148,7 +150,7 @@ Be precise with bounding boxes — they should tightly contain each item. Do not
     return NextResponse.json({ items: validatedItems });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error("[detect/render] Claude Vision failed:", message);
+    console.error("[detect/render] Claude Vision failed:", redactLogPayload(message));
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

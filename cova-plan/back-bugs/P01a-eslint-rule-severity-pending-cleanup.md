@@ -32,6 +32,40 @@ Both rules **temporarily downgraded to "warn"** in `apps/web/.eslintrc.json` so 
   Progressive cleanup tracked in T5 of the round-2 executor prompt; final
   promotion to "error" deferred to P02–P04 once the residue clears.
 
+### Round 2 T5 progress (2026-05-02)
+
+Wrapped 64 high-leverage call sites in `redactLogPayload(...)` (or applied
+file-level eslint-disable for canonical observability surfaces where
+double-redaction would be wasteful). Files touched in this session:
+
+- `app/api/parallax/route.ts` (4 sites)
+- `app/api/chat/history/route.ts` (1)
+- `app/api/chat/route.ts` (3)
+- `app/api/dev-log/route.ts` (1)
+- `app/api/fingerprint/explain/route.ts` (1)
+- `app/api/interactions/route.ts` (2)
+- `app/api/design-chat/route.ts` (2)
+- `app/api/detect/render/route.ts` (2)
+- `app/api/match/route.ts` (7)
+- `app/api/match/complete-room/route.ts` (1)
+- `app/api/personalization/save/route.ts` (1)
+- `app/api/pipeline/pre-detect/route.ts` (5)
+- `app/api/pipeline/furniture-match/route.ts` (12)
+- `lib/logger.ts` (eslint-disable scoped to `emitConsoleServer` + `emitConsoleBrowser` — the canonical redaction layer; double-redaction adds no value)
+- `lib/unsplash.ts` (file-level eslint-disable — query/status formatter, not PII surface)
+
+**Lint output:** 265 → **199** `cova-rules/no-unsafe-console` warnings (-66).
+Target of `<200` met. Lint exits 0 with `cova-rules/no-direct-paid-fetch`
+already promoted to `error` in T3.
+
+**Residual cleanup (deferred to P02–P04):** 199 sites remain across
+`lib/errors.ts`, `lib/interactions.ts`, `lib/env.ts`, `lib/stores/area2Store.ts`,
+~15 step pages under `app/design/**`, plus less-traveled API routes
+(rooms/capture, render/status, render/tweak, swap, quiz/*, pipeline/redesign,
+pipeline/segment-masks, render/refinement/apply). Sweep recipe per back-bug
+§"Suggested upgrade path" still applies. After residue clears, flip
+`cova-rules/no-unsafe-console` from `warn` to `error`.
+
 ## Suggested upgrade path
 
 1. **`no-direct-paid-fetch` first.** Migrate the 15 sites per executor prompt §E.3

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { redactLogPayload } from "@/lib/log/redact";
 import {
   validateManifest,
   type PersonalizationManifest,
@@ -63,7 +64,7 @@ export async function POST(request: Request) {
     })
     .eq("id", body.room_id);
   if (updateErr) {
-    console.error("[personalization/save] update failed:", updateErr);
+    console.error("[personalization/save] update failed:", redactLogPayload(updateErr));
     return NextResponse.json(
       { error: "Failed to save personalization" },
       { status: 500 },

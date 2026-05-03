@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { redactLogPayload } from "@/lib/log/redact";
 
 interface RoomContext {
   styleFingerprint?: Record<string, string | null>;
@@ -94,7 +95,7 @@ export async function POST(request: Request) {
           );
         }
       } catch (err) {
-        console.error("Failed to fetch room context from Supabase:", err);
+        console.error("Failed to fetch room context from Supabase:", redactLogPayload(err));
       }
     }
 
@@ -147,7 +148,7 @@ Never mention that you are Claude or made by Anthropic. You are Cova AI.`;
             }
           }
         } catch (err) {
-          console.error("Stream iteration error:", err);
+          console.error("Stream iteration error:", redactLogPayload(err));
           // Send error text so frontend can display it
           controller.enqueue(encoder.encode(`[Error: ${String(err)}]`));
         }
@@ -159,7 +160,7 @@ Never mention that you are Claude or made by Anthropic. You are Cova AI.`;
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
   } catch (error) {
-    console.error("Chat API error:", error);
+    console.error("Chat API error:", redactLogPayload(error));
     return new Response(JSON.stringify({ error: String(error) }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
