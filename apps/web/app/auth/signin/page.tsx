@@ -369,12 +369,11 @@ function SignIn() {
                   aria-busy={isLoading}
                 >
                   {isLoading ? (
-                    <span
-                      className="inline-block align-middle"
-                      aria-label="Signing in"
-                      role="status"
-                    >
-                      <Spinner />
+                    /* Loading state α (phase doc §6 1B): italic-serif label
+                       change. NO spinner, NO dot-loader.
+                       Locked label per §6 1B "Signin: Signing you in…". */
+                    <span className="font-serif italic normal-case tracking-normal text-[14px] text-cova-ivory">
+                      Signing you in&hellip;
                     </span>
                   ) : (
                     "SIGN IN"
@@ -425,12 +424,3 @@ function FieldLabel({
   );
 }
 
-function Spinner() {
-  // 14px circular spinner. Ivory by default, navy when the button hover
-  // state inverts the background — handled via group-hover.
-  return (
-    <span
-      className="inline-block w-[14px] h-[14px] rounded-full border border-current border-t-transparent animate-spin text-cova-ivory group-hover:text-cova-navy align-middle"
-    />
-  );
-}
