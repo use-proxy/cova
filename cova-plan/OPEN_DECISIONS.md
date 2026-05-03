@@ -35,9 +35,11 @@ Hard-locked decisions that bind all phases. Append-only after lock; never re-lit
 
 - **DEF-001:** `instrumentation.ts` Sentry pattern revisited at Phase 12 if Next 15 upgrade lands. Current pattern is Next 14 stable.
 - **DEF-002:** Termly free-tier capability check (badge insertion, policy count caps, impression limits) — verified before P01b ships, not before P01a. If free tier insufficient, decision pivots to paid tier or alternative.
+- **DEF-003:** Phase doc empirical verification precedent. The original P01a phase doc named 6 Modal apps (anysplat, marble-mini, marble-plus, colmap-fastgs, flythrough, glb-render) for archival; cova-plan/audit-reports/modal-deadness-2026-05.md proved none of those names exist in the live workspace and identified the actual 5-artifact archive scope. **Process rule for future planners:** when a phase doc names a specific artifact for deletion/archival (Modal app, Supabase table, file path, env var, etc.), the planner MUST verify the artifact exists and is dead before the executor acts. Verification methods: live MCP queries (Supabase, Modal CLI), repo grep, deployment-tool inspection. If the doc is wrong, halt and update the doc — DO NOT silently substitute names from audit docs or other secondary sources. Update the phase doc + corresponding handoff before re-firing the planner. Established via `cova-plan/SESSION_HANDOFFS/04-P01a-modal-doc-correction.md`.
 
 ---
 
 ## Revision log
 
 - **2026-05-02** — Initial creation during the P01 split planning conversation. D-001..D-022 locked (D-001..D-021 ported verbatim from `cova-plan/phases/_archive/P01-foundations-pre-split.md` §5; D-022 added as part of the split). DEF-001, DEF-002 noted.
+- **2026-05-03** — DEF-003 added after `cova-plan/audit-reports/modal-deadness-2026-05.md` proved the original P01a phase doc named 6 Modal apps that did not exist. Codifies "verify artifacts exist before archival" process rule for future planners. See `cova-plan/SESSION_HANDOFFS/04-P01a-modal-doc-correction.md`.

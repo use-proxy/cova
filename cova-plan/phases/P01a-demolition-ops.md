@@ -80,7 +80,12 @@ Seven gaps owned by P01a. Cloud chat resolves them in conversation with Daksh be
 
 **G9. Existing Supabase Edge Functions.** Audit mentions one nightly cron at 2am UTC (style data aggregation). *Resolution:* planner audits `supabase/functions/`, identifies which to keep/delete. Account-deletion cascade Edge Function lives in P01b, not here.
 
-**G10. Modal app cleanup scope.** ~6 dead Modal apps mentioned (anysplat, marble-mini, marble-plus, colmap-fastgs, flythrough, glb-render). *Resolution:* planner queries Modal CLI to list deployed apps, generates archive + delete-from-Modal-control-panel commands.
+**G10. Modal app cleanup scope.** Verified per `cova-plan/audit-reports/modal-deadness-2026-05.md` (2026-05-03): the original phase doc listed 6 Modal app names (anysplat, marble-mini, marble-plus, colmap-fastgs, flythrough, glb-render) that **do not exist** in the live workspace. The actual archive scope is **5 artifacts**:
+
+- 4 deployed V8-stage apps (Tasks=0, no containers, last deploys 2026-04-13/14/14/17): `cova-preprocessing-pipeline`, `cova-structural-extraction`, `cova-professionalization`, `cova-generation`
+- 1 undeployed orchestrator source file: `modal_pipeline/redesign_pipeline.py` deploys to `cova-redesign-pipeline` which is NOT deployed (`modal app history` returns "Could not find a deployed app"). No `modal app stop` needed; archive the .py only.
+
+The 4 deployed apps were stages of the (now-undeployed) `cova-redesign-pipeline` orchestrator; with the orchestrator gone, no production path reaches them. *Resolution:* planner reads the audit report; executor archives 5 .py files via `git mv`, runs `modal app stop` on the 4 deployed apps, captures Modal dashboard deletion screenshot.
 
 ---
 
@@ -94,7 +99,7 @@ AI interior design product for end consumers. User signs up → takes a 12-pick 
 
 The demolition + operational hardening half of the original P01. Two things happen:
 
-1. **Demolition.** Drop 28 dead columns, 17 dead tables, ~12 dead indexes. Archive ~70 `fix_*.mjs` scripts. Archive 6 dead Modal apps. Archive ~20 dead lib files. Archive ~12 dead components. Selectively classify existing tests (keep / archive / delete per G6). Strip all V0 references from active code. Drop-dead-tables migration is gated by a cron-table dependency audit (Decision 5).
+1. **Demolition.** Drop 28 dead columns, 17 dead tables, ~12 dead indexes. Archive ~70 `fix_*.mjs` scripts. Archive 5 Modal artifacts (4 deployed V8-stage apps + 1 undeployed orchestrator source file — see G10). Archive ~20 dead lib files. Archive ~12 dead components. Selectively classify existing tests (keep / archive / delete per G6 — including 4 V6/V7/V8 e2e diagnostic scripts that referenced archived apps). Strip all V0 references from active code. Drop-dead-tables migration is gated by a cron-table dependency audit (Decision 5).
 
 2. **Operational hardening.** Sentry across all runtimes. `redactLogPayload()` enforced via ESLint custom rule (not CI grep). Timeout chain locked. EXIF strip pipeline + CI fixture test. `render_cost_log` wired with `paidCall<T>()` wrapper at `apps/web/lib/paid/call.ts` and a corresponding ESLint rule that forbids direct paid `fetch()` calls. `failure_category` dotted-namespace TypeScript union (auth.*, capture.*, render.*, refine.*, shop.*, quiz.*, cost.*, infra.*, subagent.*). PostHog client. Cloudflare Images + R2 wired. Feature flag infrastructure (table only — auth flag rows seeded in P01b).
 
@@ -226,7 +231,15 @@ This is the most aggressive milestone of V1. Everything that doesn't directly se
 
   Default to archive when uncertain. New Phase 1A tests added fresh.
 - **Script archive** — `~70 fix_*.mjs` scripts moved (via `git mv`) to `_archive/scripts/`. Single PR.
-- **Modal app archive** — 6 dead apps moved (via `git mv`) to `_archive/modal_pipeline/`: anysplat, marble-mini, marble-plus, colmap-fastgs, flythrough, glb-render. Modal control panel deletes the deployments.
+- **Modal app archive** — 5 artifacts per `cova-plan/audit-reports/modal-deadness-2026-05.md`:
+  - 4 deployed V8-stage apps moved (via `git mv`) to `_archive/modal_pipeline/`: `preprocessing.py` (cova-preprocessing-pipeline), `structural_extraction.py` (cova-structural-extraction), `professionalization.py` (cova-professionalization), `generation.py` (cova-generation). For each: also run `modal app stop <app-id>` and delete from Modal control panel (screenshot evidence).
+  - 1 undeployed orchestrator source file: `modal_pipeline/redesign_pipeline.py` → `_archive/modal_pipeline/redesign_pipeline.py`. The corresponding Modal app `cova-redesign-pipeline` is NOT deployed; no `modal app stop` needed.
+  - Also `git mv` the 4 V6/V7/V8 e2e diagnostic scripts (next bullet) to keep test-archive aligned with code archive.
+- **V6/V7/V8 e2e test archival** — per Decision 4 ARCHIVE bucket, `git mv` the following test files (each invokes `modal.Function.from_name("cova-generation", ...)` and is no longer relevant):
+  - `tests/e2e/fire_v6_diagnostic.py` → `_archive/tests/e2e/fire_v6_diagnostic.py`
+  - `tests/e2e/fire_v6_tests.py` → `_archive/tests/e2e/fire_v6_tests.py`
+  - `tests/e2e/fire_v7_tests.py` → `_archive/tests/e2e/fire_v7_tests.py`
+  - `tests/e2e/fire_v8_tests.py` → `_archive/tests/e2e/fire_v8_tests.py`
 - **Lib file archive** — ~20 dead files moved (via `git mv`) to `_archive/lib/`: `orbit-controls.js`, `camera-anchor*.ts`, `splat-loader.ts`, `splat-renderer.ts`, `marble-client.ts`, `marble-poller.ts`, `flythrough-builder.ts`, `colmap-client.ts`, `fastgs-client.ts`, `glb-loader.ts`, `glb-furniture-manifest.ts`, `legacy-auth-session.ts`, plus others enumerated by planner.
 - **Component archive** — ~12 dead components moved (via `git mv`) to `_archive/components/`: `<SplatViewer />`, `<SplatThumbnail />`, `<MarbleEmbed />`, `<MarblePlusViewer />`, `<FlythroughPlayer />`, `<GLBFurnitureRenderer />`, `<LegacyQuizCard />`, `<LegacyQuizSwiper />`, plus others enumerated by planner.
 - **Archive READMEs.** Each archived chunk gets a `README.md` at `_archive/{category}/README.md` explaining what was archived and why (e.g., `_archive/lib/README.md`: "dead 3D rendering libs from V0 splat pipeline; replaced by FLUX 2D pipeline in V1"). All archives use `git mv` to preserve file history. `_archive/` is committed to the repo (NOT gitignored).
@@ -255,6 +268,12 @@ This is the most aggressive milestone of V1. Everything that doesn't directly se
 - PostHog dashboard alerts: verifier 7-day rolling mean drop, failure rate > 5%/24h, p95 render latency > 90s/1h, daily cost > 2× 7-day rolling avg.
 - Cloudflare Images zone configured + R2 bucket `cova-renders` ready
 - Feature flag infrastructure: `feature_flags` table (id, key, enabled bool, percent_rollout int, environment) + typed reader at `apps/web/lib/feature-flags/index.ts`. **NO flag rows seeded yet** (auth flags are P01b's domain). Phase 5+ consumes.
+- **Env hygiene — phantom env vars left by archived V8 orchestrator** (per `cova-plan/audit-reports/modal-deadness-2026-05.md` §What I couldn't determine):
+  - `apps/web/lib/env.ts` line 24: REMOVE the `REDESIGN_PIPELINE_WEBHOOK_URL` entry entirely (currently `required: true, serverOnly: true`). The V9 path uses `COVA_REDESIGN_URL`; the legacy fallback in `apps/web/app/api/pipeline/redesign/route.ts` would dead-end at the missing orchestrator anyway. Remove the fallback branch in that route file as well so boot doesn't require a phantom var.
+  - `apps/web/.env.example` line 25: REMOVE the `PREPROCESS_PIPELINE_WEBHOOK_URL` entry (no consuming code anywhere — confirmed via grep).
+  - `apps/web/.env.example`: REMOVE the `REDESIGN_PIPELINE_WEBHOOK_URL` entry (now archived alongside the orchestrator).
+  - `apps/web/app/api/test-pipeline/route.ts`: this route reads `REDESIGN_PIPELINE_WEBHOOK_URL` directly. Either delete the route (preferred — it tested the V8 orchestrator that no longer exists) or update it to point at `COVA_REDESIGN_URL`. Prefer deletion; document choice in handoff.
+  - Verifier check: `rg 'REDESIGN_PIPELINE_WEBHOOK_URL|PREPROCESS_PIPELINE_WEBHOOK_URL' apps/web/ --not-archive` returns 0 matches.
 
 ### 1B — Integration + review
 
@@ -344,11 +363,20 @@ This is the most aggressive milestone of V1. Everything that doesn't directly se
 
 ### Archived (moved via `git mv`, not deleted — recoverable; `_archive/` is committed)
 - `_archive/scripts/` — ~70 `fix_*.mjs` files
-- `_archive/modal_pipeline/` — 6 dead apps (anysplat, marble-mini, marble-plus, colmap-fastgs, flythrough, glb-render)
+- `_archive/modal_pipeline/preprocessing.py` (cova-preprocessing-pipeline; deployed app)
+- `_archive/modal_pipeline/structural_extraction.py` (cova-structural-extraction; deployed app)
+- `_archive/modal_pipeline/professionalization.py` (cova-professionalization; deployed app, code header marks DORMANT/DISABLED 2026-04-13)
+- `_archive/modal_pipeline/generation.py` (cova-generation; deployed app, ~1,826 LOC)
+- `_archive/modal_pipeline/redesign_pipeline.py` (cova-redesign-pipeline orchestrator source; app NOT deployed, archive .py only)
+- `_archive/modal_pipeline/README.md` per Decision 11 — explains the 5-artifact archive and references `cova-plan/audit-reports/modal-deadness-2026-05.md`
 - `_archive/lib/` — ~20 dead files
 - `_archive/components/` — ~12 dead components
 - `_archive/lib/legacy-auth.ts` (former `apps/web/lib/auth/legacy.ts`)
-- `_archive/tests/` — category-(b) tests (tests of archived components/lib)
+- `_archive/tests/` — category-(b) tests (tests of archived components/lib), including:
+  - `_archive/tests/e2e/fire_v6_diagnostic.py`
+  - `_archive/tests/e2e/fire_v6_tests.py`
+  - `_archive/tests/e2e/fire_v7_tests.py`
+  - `_archive/tests/e2e/fire_v8_tests.py`
 
 ### Deleted (not recoverable; intentional, narrow)
 - Only category-(c) tests per G6 / Decision 4: genuinely orphaned tests that import nothing kept and test no V1 surface. Default-to-archive when uncertain.
@@ -357,6 +385,10 @@ This is the most aggressive milestone of V1. Everything that doesn't directly se
 - Every file currently using `console.error|console.log|console.warn` of objects — wrapped in `redactLogPayload`
 - Every file currently using direct `fetch()` against fal.ai / Anthropic / Modal / SearchApi / Resend — refactored to call `paidCall<T>()`
 - `next.config.js` — `withSentryConfig` wrap
+- `apps/web/lib/env.ts` — remove `REDESIGN_PIPELINE_WEBHOOK_URL` entry
+- `apps/web/.env.example` — remove `PREPROCESS_PIPELINE_WEBHOOK_URL` and `REDESIGN_PIPELINE_WEBHOOK_URL` entries
+- `apps/web/app/api/pipeline/redesign/route.ts` — remove the legacy `REDESIGN_PIPELINE_WEBHOOK_URL` fallback branch (dead code; orchestrator gone)
+- `apps/web/app/api/test-pipeline/route.ts` — preferred: DELETE (V8 test harness; no longer relevant). Alternate: rewire to `COVA_REDESIGN_URL`. Executor decides; documents in handoff.
 
 ---
 
@@ -584,6 +616,8 @@ Verifier session 1 reviews by criterion. Each acceptance criterion mapped to a v
 | PostHog wired | `lib/analytics/posthog.ts` exists; events typed; dashboard alerts configured |
 | Feature flags infra | `feature_flags` table exists with `p1_feature_flags_read_all` policy; reader at `lib/feature-flags/index.ts`; **NO seeded rows yet** |
 | Cost-monitor cron live | Vercel Cron registered to `/api/cron/cost-monitor` daily 06:00 UTC; first cold-start report exists at `cova-plan/cost-reports/{YYYY-MM-DD}.md` |
+| 5 Modal artifacts archived correctly | 4 deployed apps (cova-preprocessing-pipeline, cova-structural-extraction, cova-professionalization, cova-generation) confirmed stopped via `modal app list` (state ≠ deployed) + Modal dashboard screenshot; `_archive/modal_pipeline/` contains the 5 .py files (4 stages + redesign_pipeline.py) plus README.md per Decision 11 |
+| Phantom env vars removed | `REDESIGN_PIPELINE_WEBHOOK_URL` absent from `apps/web/lib/env.ts` and `apps/web/.env.example`; `PREPROCESS_PIPELINE_WEBHOOK_URL` absent from `apps/web/.env.example`; `rg 'REDESIGN_PIPELINE_WEBHOOK_URL\|PREPROCESS_PIPELINE_WEBHOOK_URL' apps/web/ -- --not-archive` returns 0 matches |
 
 ### Verifier session 2 cross-check
 
@@ -619,6 +653,8 @@ Verifier specifically hunts for these patterns in Phase 1A surface:
 - [ ] Any `supabase/functions/*` reference to a dropped table (cron-table dependency audit)
 - [ ] Any CREATE POLICY in P01a migrations missing the `p1_` prefix
 - [ ] Any `failure_category` literal in code that does not follow `<prefix>.<surface>.<reason>` and does not use one of the locked prefixes
+- [ ] Any reference to archived V8 orchestrator (`cova-redesign-pipeline`) or its 4 stages (`cova-preprocessing-pipeline`, `cova-structural-extraction`, `cova-professionalization`, `cova-generation`) in active code outside `_archive/`
+- [ ] Any remaining reference to `REDESIGN_PIPELINE_WEBHOOK_URL` or `PREPROCESS_PIPELINE_WEBHOOK_URL` in `apps/web/` outside `_archive/` (phantom env vars; should be 0)
 
 ---
 
@@ -634,7 +670,7 @@ Save to `cova-plan/auto-evidence/P01a/`:
 
 - Supabase dashboard screenshots of dropped tables / dropped columns / dropped indexes
 - Supabase dashboard screenshot showing `p1_*` policies on each kept user-scoped table
-- Modal control panel screenshot showing 6 dead apps removed (anysplat, marble-mini, marble-plus, colmap-fastgs, flythrough, glb-render)
+- Modal control panel screenshot showing the 4 deployed V8-stage apps removed (cova-preprocessing-pipeline, cova-structural-extraction, cova-professionalization, cova-generation). The 5th archive artifact (cova-redesign-pipeline orchestrator) is source-only — never deployed; archived via `git mv` of `modal_pipeline/redesign_pipeline.py`. Cross-reference: `cova-plan/audit-reports/modal-deadness-2026-05.md`.
 - Verifier reports archived at `cova-plan/verifier-reports/P1a-session-1.md` and `P1a-session-2.md`
 - Schema-reviewer reports for every migration (`cova-plan/verifier-reports/P1a-schema-{filename}.md`)
 - ESLint config (`apps/web/eslint.config.js`) snapshot showing both custom rules registered + `pnpm lint` clean log
