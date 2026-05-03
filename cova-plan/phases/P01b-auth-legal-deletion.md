@@ -674,7 +674,7 @@ Verifier session 1 reviews by criterion. Each acceptance criterion mapped to a v
 | Turnstile + rate limit | Trigger 4 signups in 1 hour from same IP; 4th returns 429 |
 | /terms + /privacy live (placeholder) | URLs return 200 with LegalPage chrome rendering correctly; placeholder htmlContent visible; version="0.1" indicating Termly deferred. Real Termly HTML deferred to V1.5 per back-bug. |
 | Account-deletion cascade | Test user deletion: rooms, renders, swipes all cascade; `account_deletions` row written with `hashed_user_id` only (no email or other PII) |
-| GDPR export | POST `/api/users/export` returns signed URL; downloaded zip contains expected JSON files; signed URL TTL is 24h |
+| GDPR export | POST `/api/users/export` returns signed URL; downloaded zip contains expected JSON files; signed URL TTL is 7-day (matches §6 1A and §9; locked in phase chat State 2 decision T8) |
 | `auth.*` failure categories present | `lib/errors/categories.ts` exports `AuthFailure` dotted union; every auth route's error path emits an `auth.*` category |
 | Auth feature flags seeded | `feature_flags` table contains rows for `auth_apple_oauth`, `email_verification_required` with correct defaults |
 | Anti-enumeration on forgot-password | Same response for registered + unregistered email |
