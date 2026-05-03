@@ -443,7 +443,16 @@ export default function SignUp() {
                   "flex items-center justify-center"
                 }
               >
-                {isLoading ? <Spinner /> : "CREATE ACCOUNT"}
+                {isLoading ? (
+                  /* Loading state α (phase doc §6 1B): italic-serif
+                     label change. NO spinner, NO dot-loader.
+                     Locked label per §6 1B "Signup: Creating your account…". */
+                  <span className="font-serif italic normal-case tracking-normal text-[14px] text-cova-ivory group-hover:text-cova-navy">
+                    Creating your account&hellip;
+                  </span>
+                ) : (
+                  "CREATE ACCOUNT"
+                )}
               </button>
             </div>
           </div>
@@ -455,25 +464,3 @@ export default function SignUp() {
   );
 }
 
-/* --------------------------------------------------------------------------
- * Top error banner — italic, warm-error tinted
- * ------------------------------------------------------------------------ */
-
-/* --------------------------------------------------------------------------
- * Spinner — 14px circular ring; ivory by default, navy on hover background
- * ------------------------------------------------------------------------ */
-
-function Spinner() {
-  return (
-    <span
-      role="status"
-      aria-label="Loading"
-      className="
-        inline-block h-[14px] w-[14px] rounded-full
-        border border-cova-ivory/30 border-t-cova-ivory
-        group-hover:border-cova-navy/30 group-hover:border-t-cova-navy
-        animate-spin
-      "
-    />
-  );
-}
