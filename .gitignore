@@ -91,3 +91,16 @@ tests/e2e/progress.log
 
 # Bench outputs (verification renders)
 bench/overnight_verification/
+
+# Dev/scratch artifacts (P01a triage)
+apps/web/.dev-logs/*.ndjson
+scripts/bakeoff.ts
+scripts/bakeoff-empty.ts
+scripts/bakeoff/
+scripts/bakeoff-empty/
+scripts/bakeoff-final/
+scripts/camera-anchor-test/
+scripts/density-test/
+scripts/minimal-prompt-test/
+scripts/structural-conditioning-test/
+scripts/audit-quiz-catalog/
