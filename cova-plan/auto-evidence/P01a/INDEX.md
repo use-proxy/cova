@@ -23,6 +23,7 @@ Date: 2026-05-02
 | Dead code archived via git mv (Decision 11) | ✓ | `_archive/{modal_pipeline,lib,components,scripts,tests,web,web-scripts}/` + per-folder README.md |
 | Two-user RLS isolation tests (Decision 6) | ✓ | `apps/web/tests/rls/two-user-isolation.test.ts` (12 active per-table cases + 1 documented skip for empty_room_cache) |
 | Sentry triplet + instrumentation | ✓ (round 2: client sample rates aligned with spec §6 M3) | `apps/web/{instrumentation,sentry.client.config,sentry.server.config,sentry.edge.config}.ts`; round 2 commit `e8e9b2f` set replaysOnErrorSampleRate=0.5 + profilesSampleRate=0.05 |
+| `next.config.mjs` withSentryConfig wrap (sourcemap upload) | ✓ COMPLETE (verifier session 2 finding) | `apps/web/next.config.mjs` — `withSentryConfig(nextConfig, { silent, org, project, authToken, hideSourceMaps, disableLogger })`; build exits 0 with creds-at-deploy-time warning |
 | redactLogPayload via ESLint (Decision 7 — author-time enforcement) | ✓ rule wired ("warn"; round 2 reduced 267 → 199 violations) | `apps/web/eslint-rules/no-unsafe-console.js` + tests; back-bug `P01a-eslint-rule-severity-pending-cleanup.md` §"Round 2 T5 progress" — final promotion to "error" deferred to P02–P04 sweep |
 | paidCall<T>() wrapper + ESLint rule | ✓ ALL 15 SITES MIGRATED, rule promoted to "error" | `apps/web/lib/paid/call.ts`; `apps/web/eslint-rules/no-direct-paid-fetch.js` + tests; round 2 commit `db638e6` migrated 15 paid-fetch sites; lint exits 0 at error severity |
 | Timeout chain locked (lib/config/timeouts.ts) | ✓ | `apps/web/lib/config/timeouts.ts` (8 consts incl. CLIENT_POLL_LONG + REDESIGN_MODAL); 4 in-tree call sites migrated to use TIMEOUTS; `eslint.log` shows 0 hardcoded timeout violations |
@@ -54,7 +55,6 @@ Date: 2026-05-02
 |---|---|---|
 | 11 load-bearing room columns (rooms.pipeline_cost_log, inpainting_mask_url, capture_*, video_url, perspective_render_url, personalization_context, pipeline_mode, modal_job_id, calibration_data, scene_state) | P02 (capture/quiz refactor) + P03 (pipeline reliability) | `cova-plan/back-bugs/P01a-m2-m4-active-refs.md` §"Deferred load-bearing column drops" |
 | 199 residual redactLogPayload wrappings | progressive cleanup over P02–P04, then promote `no-unsafe-console` to `error` | `cova-plan/back-bugs/P01a-eslint-rule-severity-pending-cleanup.md` §"Round 2 T5 progress" |
-| `next.config.mjs` withSentryConfig wrap (sourcemap upload) | any time before P12 | spec §E.1 — low priority |
 | Stale data flagging on 138 failed-status rooms | Phase 9 dashboard | `cova-plan/back-bugs/P01a-stale-data-flagging.md` |
 | Mixed pnpm/npm split between Vercel deploy and CI | any time the apps/mobile freeze lifts | `cova-plan/notes/package-managers.md` |
 
