@@ -104,3 +104,7 @@ scripts/density-test/
 scripts/minimal-prompt-test/
 scripts/structural-conditioning-test/
 scripts/audit-quiz-catalog/
+
+# Pre-P01a debug audit dumps (tracked siblings remain)
+docs/debug/cova_full_audit.md
+docs/debug/cova_pipeline_diagnostic.md
