@@ -118,3 +118,70 @@ All green. `npx tsc --noEmit` exit 0, `npx next lint` zero new warnings in `app/
 
 - Criterion **#18** (Loading state α): verifier should now re-check the `ValidBlock` submit button specifically (previously flagged as residual). The italic-serif label "Updating your password…" is now rendered when `isLoading` is true, with no spinner element.
 - **§1 TTL prose**: resolved. The `24h-TTL` in §1 summary is now `7-day`, consistent with §6 1A / §9 / §13. No further TTL inconsistencies remain in the phase doc.
+
+---
+
+## Remediation 2 follow-up
+
+**Date:** 2026-05-03
+**Triggered by:** verifier session 2 (`cova-plan/verifier-reports/P01b/session-2.md`) — fresh §13 pass found 5 additional spinner sites that violated §6 1B "Loading state α" (italic-serif label, NO spinner, NO dot-loader). These were class-of-violation regressions session 1 missed; remediation 1 + 1.5 only swept 3 of 8 total sites (verify-email-sent resend, reset-password VALIDATING, reset-password ValidBlock submit).
+
+### Fixes
+
+- **Fix 2.a** — `apps/web/app/auth/signup/page.tsx`: replaced `<Spinner />` on the submit button (`isLoading` branch, line 446) with locked italic-serif label `"Creating your account…"` (per §6 1B). Removed the dead `Spinner()` helper at the bottom of the file (lines 466-479). Commit: `0de2852`.
+- **Fix 2.b** — `apps/web/app/auth/signin/page.tsx`: replaced `<Spinner />` (wrapped in a status-role span) on the submit button at line 377 with locked italic-serif label `"Signing you in…"` (per §6 1B). Removed the dead `Spinner()` helper at lines 428-436. Commit: `a1c4b90`.
+- **Fix 2.c** — `apps/web/app/auth/forgot-password/page.tsx` PRE_SUBMIT: replaced `<Spinner />` on the submit button at line 443 with locked italic-serif label `"Sending reset link…"` (per §6 1B). Spinner helper kept temporarily because POST resend still referenced it. Commit: `5525ffe`.
+- **Fix 2.d** — `apps/web/app/auth/forgot-password/page.tsx` POST_SUBMIT: replaced `<Spinner />` on the resend button at line 544 with locked italic-serif label `"Resending…"` (same lock as `/auth/verify-email-sent`'s resend per §6 1B). Removed the now-fully-dead `Spinner()` helper at lines 556-564. Commit: `d34c075`.
+- **Fix 2.e** — `apps/web/app/auth/verify-email-invalid/page.tsx`: removed the custom `@keyframes covaSpin` definition and `.cova-spinner` CSS class from the inline `<style>` block (previously lines 141-153). Replaced the `<span className="cova-spinner" />` element at line 328 with an italic-serif `"Resending…"` span. Tightened the button `aria-label` from `"Sending verification email…"` to `"Resending…"` so the assistive-tech text matches the visible label. Commit: `3016bbe`.
+
+### Full sweep performed
+
+After fixing the 5 named sites, ran a global grep across `apps/web/app/auth/` and `apps/web/app/account-deleted/` for: `animate-spin`, `<Spinner`, `spinner`, `cova-spinner`, `covaSpin`, `@keyframes spin`. Results post-remediation:
+
+- `animate-spin` — zero matches in `app/auth/` and `app/account-deleted/`.
+- `<Spinner` — zero matches in `app/auth/` and `app/account-deleted/`.
+- `cova-spinner` / `covaSpin` — zero matches.
+- `@keyframes spin` / `@keyframes covaSpin` — zero matches in `app/auth/` and `app/account-deleted/`.
+- "spinner" string hits remaining are all either (a) code comments documenting the §6 1B rule (e.g. "NO spinner") or (b) outside scope (`app/design/_future/...` retired V1 steps and `app/design/step-8a/page.tsx` — none of these are P01b auth surfaces).
+
+`account-deleted` was clean before this remediation; no edits needed there.
+
+### Build / typecheck / lint
+
+- `pnpm exec tsc --noEmit` — exit 0, no output.
+- `pnpm lint` — zero errors. All warnings (~120) are P01a baseline residuals in `lib/ai/*`, `lib/dashboard/*`, `lib/errors.ts`, `lib/env.ts`, etc. None in any of the 4 files touched in remediation 2.
+- `pnpm exec next build` — succeeded. All 4 modified auth routes build:
+  - `/auth/signup` 3.31 kB / 268 kB First Load JS.
+  - `/auth/signin` 4.23 kB / 266 kB First Load JS.
+  - `/auth/forgot-password` 4.17 kB / 202 kB First Load JS.
+  - `/auth/verify-email-invalid` 3.9 kB / 202 kB First Load JS.
+
+### Verifier handoff for fresh S1 + S2
+
+Criterion **#18** (Loading state α): all 7 submit/resend surfaces in the P01b auth flow now render the locked italic-serif labels per §6 1B. Spec compliance:
+
+| Screen | Loading site | Locked label | Source |
+|--------|--------------|--------------|--------|
+| `/auth/signup` | submit button | "Creating your account…" | commit `0de2852` |
+| `/auth/signin` | submit button | "Signing you in…" | commit `a1c4b90` |
+| `/auth/forgot-password` | PRE submit | "Sending reset link…" | commit `5525ffe` |
+| `/auth/forgot-password` | POST resend | "Resending…" | commit `d34c075` |
+| `/auth/reset-password` | VALIDATING | "Verifying your link…" (animate-pulse shimmer allowed) | remediation 1 |
+| `/auth/reset-password` | ValidBlock submit | "Updating your password…" | remediation 1.5 commit `62f47d8` |
+| `/auth/verify-email-sent` | resend button | "Resending…" | remediation 1 commit `6e09b9d` |
+| `/auth/verify-email-invalid` | expired resend | "Resending…" | commit `3016bbe` |
+
+All `animate-spin` and `cova-spinner` rotation primitives have been removed from `apps/web/app/auth/`. The §6 1B regression is fully closed; verifier S1 + S2 should re-run criterion #18 and confirm.
+
+### New issues / open questions
+
+- **Spec ambiguity (verifier S2 §Open spec questions item 1):** §6 1B "all 6 form screens" canonical list is signup, signin, forgot-password, reset-password, verify-email-sent (resend), and the delete-account modal (Phase 9). Verify-email-invalid (expired resend) is the 7th surface; spec is silent on whether it inherits the rule. This remediation treated it as inheriting (any submit/resend across the auth flow). If cloud chat rules otherwise, the fix can be reverted, but the cleaner spec-compliant default is to keep it.
+- **Husky deprecation warning** appears on every commit (`Please remove the following two lines from .husky/pre-commit: …`). Pre-commit checks still pass; tracked as P01c housekeeping.
+
+### Status after remediation 2
+
+- All 5 spinner sites flagged by verifier session 2 fixed.
+- Global sweep across `app/auth/` and `app/account-deleted/` clean (zero `animate-spin`, zero `<Spinner`, zero rotation keyframes).
+- 5 commits landed: `0de2852`, `a1c4b90`, `5525ffe`, `d34c075`, `3016bbe`.
+- Typecheck + lint + build all green.
+- Ready for fresh verifier S1 + S2 against the remediation-2 SHA.
