@@ -332,7 +332,7 @@ Eyebrows (uppercase tracked microtype with em-dash separator):
 - Error states: "Email or password is incorrect" on /auth/signin (don't disclose which); identical message during silent-lockout window per option γ (no "account locked" string ever surfaced to user); generic "If an account exists for that email..." for forgot; toast top-of-card on network error (5s auto-dismiss) using the new shared `apps/web/components/ui/Toast.tsx` component; "Couldn't sign in with Google. Try email instead." toast on /auth/signin when arriving with `?error=oauth` query param (set by `/auth/callback` on OAuth provider error).
 - Accessibility: proper `<label>` associations, focus order top-to-bottom, visible gold focus rings on `:focus-visible`, form errors via `aria-live="polite"`, Enter submits, Escape doesn't dismiss, WCAG AA color contrast
 
-**Loading state pattern (option α — locked across all 6 form screens):**
+**Loading state pattern (option α — locked across all form screens with submit-driven loading states):**
 
 When a form is submitting:
 - Submit button: italic-serif label change. No spinner, no dot-loader.
@@ -344,6 +344,7 @@ When a form is submitting:
   - Reset password: "Updating your password…"
   - Resend verification: "Resending…"
   - Delete-account modal (Phase 9 territory): "Deleting your account…" (named here for forward consistency)
+  - Verify-email-invalid expired-variant resend: "Resending…" (same label string as the verify-email-sent resend, applied when the expired variant's RESEND VERIFICATION EMAIL CTA is in flight)
 
 **Reset-password 4-state machine motion:**
 
@@ -685,7 +686,7 @@ Verifier session 1 reviews by criterion. Each acceptance criterion mapped to a v
 | OAuth callback path | Callback at `/auth/callback`, NOT `/api/auth/oauth-callback` |
 | Toast component reused | All 6 form screens render network errors via `apps/web/components/ui/Toast.tsx`, not bespoke per-screen |
 | Wordmark component reused | All 10 screens render the wordmark via `apps/web/components/brand/Wordmark.tsx` |
-| Loading state α | All 6 form screens implement italic-serif label change with locked label strings |
+| Loading state α | All form screens with submit-driven loading states implement italic-serif label change with locked label strings (signup/signin/forgot/reset/verify-email-sent resend/verify-email-invalid expired resend; delete-account modal deferred to Phase 9) |
 | /auth/verify-email-invalid | Both `?reason=expired` and `?reason=used` substates render correct copy + correct CTA |
 | Account lockout silent | After 5 failed signins, the 6th signin returns `auth.signin.invalid_credentials` to user; internal log emits `auth.signin.silent_lockout` |
 | Constant-time forgot-password | Response time variance between registered + unregistered email ≤ 50ms across 20 trials |
