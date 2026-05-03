@@ -27,7 +27,21 @@ import type {
 } from "react";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { Toast } from "@/components/ui/Toast";
+import { PasswordStrengthMeter } from "@/components/ui/PasswordStrengthMeter";
 import { createBrowserClient } from "@/lib/supabase/client";
+
+// Lightweight client-side password score heuristic — mirrors /auth/signup.
+// Server-side zxcvbn-ts is authoritative; this is just for the meter UX.
+function zxcvbnScore(pw: string): 0 | 1 | 2 | 3 | 4 {
+  if (pw.length === 0) return 0;
+  if (pw.length < 8) return 0;
+  let score = 1;
+  if (pw.length >= 10) score++;
+  if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) score++;
+  if (/\d/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  return Math.min(4, score) as 0 | 1 | 2 | 3 | 4;
+}
 
 type ScreenState = "validating" | "valid" | "invalid" | "submitted";
 type InvalidReason = "expired" | "used" | null;
@@ -530,8 +544,13 @@ function ValidBlock(props: {
 
       <div style={{ height: 12 }} />
 
-      {/* Strength meter mount — FV component imported here during executor wiring (reused from signup) */}
-      <div id="password-strength-meter-mount" className="h-12" />
+      {/* Strength meter — reused from /auth/signup. Visible iff a password is being typed. */}
+      <div id="password-strength-meter-mount">
+        <PasswordStrengthMeter
+          score={zxcvbnScore(passwordValue)}
+          isVisible={passwordValue.length > 0}
+        />
+      </div>
 
       <div style={{ height: 12 }} />
 
