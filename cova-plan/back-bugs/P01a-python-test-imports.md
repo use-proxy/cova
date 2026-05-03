@@ -45,3 +45,7 @@ is fully retired).
 
 Recommendation: Option A. Cheapest, preserves history, doesn't pretend the
 tests still run.
+
+---
+
+RESOLVED in commit c87df47 (Option A applied).
