@@ -3,5 +3,11 @@
   "outputDirectory": ".next",
   "installCommand": "pnpm install",
   "framework": "nextjs",
-  "regions": ["sfo1"]
+  "regions": ["sfo1"],
+  "crons": [
+    {
+      "path": "/api/cron/cost-monitor",
+      "schedule": "0 6 * * *"
+    }
+  ]
 }
