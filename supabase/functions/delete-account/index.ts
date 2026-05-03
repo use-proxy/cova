@@ -43,13 +43,18 @@ Deno.serve(async (req: Request) => {
     // Delete in FK-safe order
     await adminClient.from('chat_messages').delete().eq('user_id', userId);
 
-    if (roomIds.length > 0) {
-      await adminClient.from('furniture_placements').delete().in('room_id', roomIds);
-    }
+    // Drop furniture_placements deletion: handled by FK cascade on rooms drop
+    // (Pre-V1 cleanup; table dropped 2026-05-02 per P01a M1)
+    // if (roomIds.length > 0) {
+    //   await adminClient.from('furniture_placements').delete().in('room_id', roomIds);
+    // }
+    void roomIds;
 
     await adminClient.from('renders').delete().eq('user_id', userId);
     await adminClient.from('rooms').delete().eq('user_id', userId);
-    await adminClient.from('token_transactions').delete().eq('user_id', userId);
+    // Drop token_transactions deletion: token system disabled per D-019
+    // (Pre-V1 cleanup; table dropped 2026-05-02 per P01a M1)
+    // await adminClient.from('token_transactions').delete().eq('user_id', userId);
 
     // Clean up storage buckets
     for (const bucket of ['room-photos', 'renders']) {

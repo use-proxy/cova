@@ -1,3 +1,8 @@
+// DEPRECATED 2026-05-02 — V1 demolition; references to anchor_renders + token_transactions
+// no longer resolve (tables dropped in P01a M1). render-room is dormant per Phase 0
+// modal audit; the V9 render path goes through cova-redesign Modal app instead.
+// Retained per CLAUDE.md Rule 12 (frozen Edge Functions). Do not extend.
+
 // render-room Edge Function
 // Runtime: Deno — NO Node.js imports (no fs, path, crypto, buffer)
 // Pipeline:

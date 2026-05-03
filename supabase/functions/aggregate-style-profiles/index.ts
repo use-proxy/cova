@@ -1,3 +1,9 @@
+// DEPRECATED 2026-05-02 — V1 demolition; tables dropped (swipe_history schema
+// changed; product_interactions, user_style_profiles, style_purchase_signals
+// removed). The aggregate-style-profiles cron job was also removed in P01a M1.
+// This file is retained per CLAUDE.md Rule 12 (frozen Edge Functions). It will
+// no longer be invoked by any production caller. Do not extend.
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 
