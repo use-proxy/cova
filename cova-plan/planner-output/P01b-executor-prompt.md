@@ -106,20 +106,55 @@ The planner ran research via Context7, EXA, Web Search, and Supabase MCP. You in
 6. **jose (`/panva/jose`):** stable. `SignJWT` + `jwtVerify`. HS256 with `new TextEncoder().encode(secret)`. P01b's only JWT need is the Apple OAuth client_secret JWT, but Supabase Auth dashboard handles regeneration when configured with .p8 key + IDs — no executor code generates this JWT.
 7. **Vercel waitUntil — Next.js 14:** `import { waitUntil } from "@vercel/functions"`. Used in route handlers to extend the function isolate's lifetime past the response without delaying the user-visible response. **Use this for forgot-password constant-time pattern, GDPR export queued path, and Resend send fire-and-forget.** (Next 15.1+ replaces this with `import { after } from "next/server"`; we are on 14.2.x — use `@vercel/functions`.)
 8. **Anti-enumeration constant-time:** OWASP-blessed pattern. Route returns `{ ok: true }` immediately for both registered and unregistered email; the registered branch's Resend send happens inside `waitUntil()`. Verifier checks ≤ 50ms response-time variance across 20 trials.
-9. **Resend transactional subdomain (G4):** `auth@send.covainterior.com` lives on its own SPF/DKIM/DMARC on `send.covainterior.com`. Best practice (2025): isolate transactional from marketing reputation; distinct DKIM keys; gradual DMARC policy (monitor → quarantine → reject). Resend handles SPF/DKIM automatically per added domain. **You do not configure DNS — Daksh confirms verification status before this phase starts.** If `send.covainterior.com` is unverified, halt at boot of any route that sends from `auth@send.covainterior.com`.
+9. **Resend transactional subdomain (G4) — DEFERRED to V1.5 launch prep:** `auth@send.covainterior.com` is the planned from-address on its own SPF/DKIM/DMARC on `send.covainterior.com`. Best practice (2025): isolate transactional from marketing reputation; distinct DKIM keys; gradual DMARC policy (monitor → quarantine → reject). Resend handles SPF/DKIM automatically per added domain. **V1 ships email-sending code fully implemented but inactive: gated behind `EMAIL_SENDING_ENABLED` env var (default false). When false, `sendAuthEmail` short-circuits with synthetic success and signup auto-marks users as verified server-side via `supabaseAdmin.auth.admin.updateUserById(user.id, { email_confirm: true })`. When Daksh configures Resend DNS post-launch and sets `EMAIL_SENDING_ENABLED=true` + `RESEND_API_KEY`, full email flow activates with zero code changes.** No DNS verification gate at executor time. Back-bug: `cova-plan/back-bugs/P01b-launch-prep-email-deferred.md`.
 10. **auth.users CASCADE chain — verified live via Supabase MCP at planner time:**
     - Direct CASCADE FKs to `auth.users`: `public.users`, `public.rate_limits`, `public.redesign_feedback`, `public.sam_embeddings`, `public.saved_products`.
     - SET NULL: `public.render_cost_log` (preserves cost audit; nulls user_id), `public.interactions`.
     - Through public.users CASCADE: `chat_messages`, `renders`, `rooms`, `style_fingerprints`, `swipe_history`. Transitively `room_products` (via rooms), `render_sessions` (via renders).
     - **Conclusion:** `delete-user-cascade` Edge Function only needs `await supabaseAdmin.auth.admin.deleteUser(user_id)` — the DB layer cascades the rest. No manual table-by-table delete needed.
-11. **Termly free tier (DEF-002 resolution):** **Free tier supports only 1 policy per domain.** Cova needs 2 (ToS + Privacy). Daksh's resolution: either upgrade to Starter $10/mo or hand-write second policy. **You receive rendered HTML for both `/terms` and `/privacy` from Daksh via G5 — you do not generate them.** If Daksh has not delivered HTML for both, halt 1A step 8 (legal pages wiring) until he does.
+11. **Termly (DEF-002 resolution) — DEFERRED to V1.5 launch prep:** Termly free tier supports only 1 policy per domain; Cova needs 2 (ToS + Privacy). **V1 ships `/terms` and `/privacy` routes wired with the LegalPage component rendering PLACEHOLDER `htmlContent`** — single paragraph "This document is coming soon. Contact hi@covainterior.com if you have questions." Full LegalPage chrome (sticky header, eyebrow, headline, gold rule, document footer, return-home link) renders fully. `version="0.1"` signals pre-launch placeholder. When Termly HTML delivered post-launch, swap `htmlContent` + bump `version` to "1" — no other code changes. Do NOT halt waiting for Termly HTML. Back-bug: `cova-plan/back-bugs/P01b-launch-prep-termly-deferred.md`.
 12. **Apple Sign In Supabase (G8):** Service ID + Team ID + Key ID + .p8 signing key. JWT client_secret max 6mo validity, Supabase Auth handles regeneration. **G8a + G8b two-step gate:** Apple Developer Program membership active (G8a) AND Supabase provider configured in dashboard (G8b). Default `auth_apple_oauth` flag: `false` unless Daksh confirms both — flag value is your runtime gate; UI checks the flag and conditionally renders the Apple button.
 13. **pg_cron is installed but unused — `/api/cron/purge-deletion-audit` runs as Vercel Cron** via `vercel.json` schedule, not pg_cron.
+
+### A.4.5 — V1 Deferral Pattern Summary
+
+═══════════════════════════════════════════════════════════════════════
+
+Two infrastructure dependencies are deferred to V1.5 launch prep:
+
+1. Resend (email sending) — code fully implemented, gated behind EMAIL_SENDING_ENABLED env var (default false in V1)
+2. Termly (legal page content) — routes wired with placeholder htmlContent
+
+Neither deferral changes user-facing flows or executor implementation work — they change which env vars are required at runtime and what content renders inside /terms and /privacy.
+
+What V1 ships:
+- Full auth flow (signup, signin, OAuth, password reset request UI, account deletion, GDPR export)
+- All UI screens (10 routes including /terms, /privacy, /account-deleted)
+- Email-sending code (lib/email/resend.ts + 4 React Email templates) implemented but inactive
+- Server-side auto-verification on signup when EMAIL_SENDING_ENABLED=false
+- Legal pages render placeholder "coming soon" content
+
+What V1 does NOT ship:
+- Real verification emails
+- Real password reset emails
+- Real GDPR export delivery emails
+- Real ToS or Privacy Policy content
+
+Launch prerequisites (tracked as back-bugs):
+- cova-plan/back-bugs/P01b-launch-prep-email-deferred.md
+- cova-plan/back-bugs/P01b-launch-prep-termly-deferred.md
+
+When ready to enable email post-launch: configure Resend DNS for send.covainterior.com, generate API key, set EMAIL_SENDING_ENABLED=true and RESEND_API_KEY=<key> in production env, redeploy. No code changes.
+
+When ready to enable legal: paste Termly HTML into /terms and /privacy page files, bump version from "0.1" to "1", redeploy. No code changes.
+
+═══════════════════════════════════════════════════════════════════════
 
 ### A.5 New env vars introduced this phase (document in `apps/web/.env.example` if present)
 
 ```
-RESEND_API_KEY                    # server-only
+EMAIL_SENDING_ENABLED             # server-only; default false in V1; flip to true when Resend DNS configured and RESEND_API_KEY set
+RESEND_API_KEY                    # server-only; only required when EMAIL_SENDING_ENABLED=true
 TURNSTILE_SECRET_KEY              # server-only
 NEXT_PUBLIC_TURNSTILE_SITE_KEY    # client-allowed (public site key)
 UPSTASH_REDIS_REST_URL            # server-only
@@ -127,7 +162,7 @@ UPSTASH_REDIS_REST_TOKEN          # server-only
 CRON_SECRET                       # server-only (already in P01a; reuse same secret)
 ```
 
-Halt at boot of any route that needs an env var that's missing.
+Halt at boot of any route that needs an env var that's missing. Conditional halt for RESEND_API_KEY: only required when EMAIL_SENDING_ENABLED=true. When EMAIL_SENDING_ENABLED is unset or false, RESEND_API_KEY may be absent without halt.
 
 ---
 
@@ -324,6 +359,17 @@ DO NOT redeclare from scratch — that would silently drop other phases' slices 
   - `gdpr-export-ready.tsx` — same; CTA "DOWNLOAD YOUR DATA" linking to signed URL.
   - `deletion-confirmation.tsx` — same; copy "Your Cova account has been deleted." (per phase doc §6 1A — sent post-deletion).
 
+**Email-sending feature flag (V1 deferral pattern):**
+
+The sendAuthEmail wrapper checks EMAIL_SENDING_ENABLED before calling resend.emails.send(). Behavior:
+
+- When EMAIL_SENDING_ENABLED=true: full Resend API call, paidCall<> wraps as normal, render_cost_log row written, real email sent.
+- When EMAIL_SENDING_ENABLED is unset or false: short-circuit. Skip resend.emails.send(). Return synthetic success: `{ data: { id: \`email-disabled-${nanoid(8)}\` }, error: null }`. paidCall<> still wraps the call but the cost is recorded as 0 (use category-specific zero rate or pass a flag indicating "disabled" to paidCall).
+- The flag check happens INSIDE sendAuthEmail at the wrapper level — callers (signup route, forgot-password route, etc.) do not branch on the flag. The wrapper handles it transparently.
+- Logging: when short-circuited, write a single console.info (NOT console.error, NOT redacted log of the email content) noting "[email-disabled] Skipped send: {category}" so dev/staging environments make it obvious email isn't actually sending.
+
+Critical: ALL routes that send email call this wrapper unconditionally. They do NOT branch on EMAIL_SENDING_ENABLED themselves. The user-facing flow is identical whether email is enabled or not.
+
 ### 1A.8 API routes — implement in this order
 
 For each route, mirror the failure-handling table in §F of this prompt (which is the verbatim §11 recovery table from the phase doc). Every error path emits a typed `failure_category` envelope: `{ ok: false, failure_category, user_message, detail? }`. Use `createServerClient` from `@supabase/ssr` for session reads; service-role admin client (`@supabase/supabase-js` `createClient` with service-role key) only for `auth.admin.*` ops + Edge Function invocation.
@@ -331,6 +377,14 @@ For each route, mirror the failure-handling table in §F of this prompt (which i
 **Order:**
 
 1. `apps/web/app/api/auth/signup/route.ts` — Body `{ email, password, turnstileToken }`. Validate via Zod. Call Turnstile siteverify (see A.4 #3). Call zxcvbn-ts; reject score < 2. Call `supabase.auth.signUp({ email, password })`. On success → `sendAuthEmail` with `signup-verify.tsx`. Rate-limit 3/hr/IP via `checkPerIp`. PostHog `auth.signup.attempt` + `auth.signup.success` events.
+
+   **Verification bypass when email disabled:**
+
+   After supabase.auth.signUp() succeeds, check EMAIL_SENDING_ENABLED:
+   - If true: send verification email via sendAuthEmail wrapper as normal. User must click link to verify.
+   - If false: immediately mark the user as verified server-side via `supabaseAdmin.auth.admin.updateUserById(user.id, { email_confirm: true })`. User can sign in without verification. The sendAuthEmail wrapper still gets called (it short-circuits internally per §1A.7 deferral pattern), but the user is already verified by the time the call returns.
+
+   This preserves the user-facing flow: in both cases, the user is redirected to `/auth/verify-email-sent`. In the email-disabled case, the user can immediately navigate to `/auth/signin` and sign in successfully — the verification screen is informational only when email is off, but the redirect path stays identical so no UI branching is needed.
 2. `apps/web/app/api/auth/signin/route.ts` — Body `{ email, password }`. Check `incrSigninLockout` first; if count ≥ 5, return `{ ok: false, failure_category: 'auth.signin.invalid_credentials' }` to user (silent lockout option γ); internal log emits `auth.signin.silent_lockout`. Call `supabase.auth.signInWithPassword`. On success: `clearSigninLockout`, set session cookie via createServerClient. Rate-limit 20/hr/IP.
 3. `apps/web/app/auth/callback/route.ts` — OAuth callback (NOT under `/api/`). Exchange code via `supabase.auth.exchangeCodeForSession`. **On provider error → `redirect('/auth/signin?error=oauth')`.** On success → check email existence collision (B-12a identity-merge logic): if existing email/password account is unverified, allow OAuth merge (verify flag flips); if verified, return `auth.oauth.email_exists` → toast on signin.
 4. `apps/web/app/api/auth/forgot-password/route.ts` — Body `{ email }`. **Always** return `{ ok: true }` with identical body & timing for both branches. Lookup user via service-role `admin.getUserByEmail` (or equivalent) — if found, kick off Resend send + Supabase `resetPasswordForEmail` inside `waitUntil(...)`. If unfound, do nothing inside `waitUntil()`. Per-email 60s cooldown. Per-IP 5/hr.
@@ -356,7 +410,19 @@ The current middleware does session refresh + protected-route redirects. Add:
 
 ### 1A.10 .env.local additions documented
 
-Append to `apps/web/.env.example` (or create if absent — verify first) the env-var block from §A.5 of this prompt. Halt-at-boot guards in each route + `lib/rate-limit/upstash.ts` + `lib/email/resend.ts` enforce presence.
+Append to `apps/web/.env.example` (or create if absent — verify first) the env-var block from §A.5 of this prompt:
+
+```
+EMAIL_SENDING_ENABLED             # server-only; default false in V1; flip to true when Resend DNS configured and RESEND_API_KEY set
+RESEND_API_KEY                    # server-only; only required when EMAIL_SENDING_ENABLED=true
+TURNSTILE_SECRET_KEY              # server-only
+NEXT_PUBLIC_TURNSTILE_SITE_KEY    # client-allowed (public site key)
+UPSTASH_REDIS_REST_URL            # server-only
+UPSTASH_REDIS_REST_TOKEN          # server-only
+CRON_SECRET                       # server-only (already in P01a; reuse same secret)
+```
+
+Halt-at-boot guards in each route + `lib/rate-limit/upstash.ts` + `lib/email/resend.ts` enforce presence. RESEND_API_KEY halt is conditional on `EMAIL_SENDING_ENABLED=true` per the deferral pattern in §1A.7 — when EMAIL_SENDING_ENABLED is unset or false, the wrapper short-circuits without ever touching RESEND_API_KEY.
 
 ### 1A close
 
@@ -414,7 +480,7 @@ Map (from phase doc §6 1B "The 10 screens" table):
 | `cova-plan/ui-gen/P01b/auth-verify-email-success.tsx` | `apps/web/app/auth/verify-email-success/page.tsx` |
 | `cova-plan/ui-gen/P01b/auth-verify-email-invalid.tsx` | `apps/web/app/auth/verify-email-invalid/page.tsx` |
 | `cova-plan/ui-gen/P01b/account-deleted.tsx` | `apps/web/app/account-deleted/page.tsx` |
-| `cova-plan/ui-gen/P01b/legal-page.tsx` | shared — instantiated at `apps/web/app/terms/page.tsx` and `apps/web/app/privacy/page.tsx` (different `documentType` prop + Termly HTML) |
+| `cova-plan/ui-gen/P01b/legal-page.tsx` | shared — instantiated at `apps/web/app/terms/page.tsx` and `apps/web/app/privacy/page.tsx` (different `documentType` prop + PLACEHOLDER htmlContent — Termly deferred to V1.5) |
 
 For each:
 - Use `Wordmark` and `Toast` from §1B.1/1B.2 — **never inline**.
@@ -426,6 +492,25 @@ For each:
 - Reset-password 4-state machine: VALIDATING (300ms shimmer min) → VALID|INVALID-expired|INVALID-used (200ms ease-out crossfade) → SUBMITTED (2s auto-redirect to /auth/signin).
 - Forgot-password PRE→POST: same-route 200ms ease-out crossfade. URL stays `/auth/forgot-password`.
 - Reduced-motion: mount fades + crossfades replaced with instant render. Auto-redirect timers unchanged regardless.
+
+**Legal pages — placeholder content (Termly deferred):**
+
+Both /terms and /privacy use placeholder htmlContent until Termly HTML is delivered:
+
+````html
+<p>This document is coming soon. Contact <a href="mailto:hi@covainterior.com">hi@covainterior.com</a> if you have questions.</p>
+````
+
+The LegalPage component renders the full chrome (sticky header, eyebrow, headline, gold rule, document footer, return-home link) around this placeholder. Layout is launch-ready; only the htmlContent prop changes when real content is delivered.
+
+For each page:
+- documentType prop set correctly ("terms" or "privacy")
+- documentTitle prop: "Terms of Service" or "Privacy Policy"
+- htmlContent prop: the placeholder string above
+- lastUpdatedISO + effectiveDateISO: today's date in ISO format
+- version: "0.1" (signals pre-launch placeholder; flip to "1" when Termly content lands)
+
+When Termly HTML is delivered post-launch, swap htmlContent + bump version to "1" + update lastUpdatedISO. No other code changes.
 
 ### 1B.4 OAuth-error toast on /auth/signin
 
@@ -565,7 +650,7 @@ At 93–94% context utilization:
 | Pre-built UI components imported correctly | `apps/web/app/auth/*/page.tsx` (and `app/{terms,privacy,account-deleted}/page.tsx`) imports from `cova-plan/ui-gen/P01b/*` (or files copied to `apps/web/components/auth/*` with normalized paths). Verifier confirms each of the 9 screens renders with the locked design language: COVA wordmark fixed top-left, navy ground, italic serif headlines, uppercase tracked microtype, sharp corners (0px radius), no shadows, no particles, no ambient glow |
 | 9 screens functional | Each route renders without error; form submission paths work |
 | Turnstile + rate limit | Trigger 4 signups in 1 hour from same IP; 4th returns 429 |
-| /terms + /privacy live | URLs return 200 with non-empty content; FTC disclosure present; processor list present |
+| /terms + /privacy live (placeholder) | URLs return 200 with LegalPage chrome rendering correctly; placeholder htmlContent visible; version="0.1" indicating Termly deferred. Real Termly HTML deferred to V1.5 per back-bug. |
 | Account-deletion cascade | Test user deletion: rooms, renders, swipes all cascade; `account_deletions` row written with `hashed_user_id` only (no email or other PII) |
 | GDPR export | POST `/api/users/export` returns signed URL; downloaded zip contains expected JSON files; signed URL TTL is 24h |
 | `auth.*` failure categories present | `lib/errors/categories.ts` exports `AuthFailure` dotted union; every auth route's error path emits an `auth.*` category |
@@ -584,10 +669,11 @@ At 93–94% context utilization:
 | Constant-time forgot-password | Response time variance between registered + unregistered email ≤ 50ms across 20 trials |
 | GDPR export sync/queued | Small-user fixture returns `{downloadUrl}`; power-user fixture (forced timeout) returns `{status: 'queued'}` and Resend email arrives within 5min |
 | GDPR export contains bytes | Downloaded zip's `images/` folder contains actual JPEG/PNG bytes, not URL files |
-| Resend cost telemetry | Every Resend send writes a `render_cost_log` row with `category` in `auth.email.*` namespace and `provider='resend'` |
+| Resend cost telemetry (when enabled) | When EMAIL_SENDING_ENABLED=true: every Resend send writes a render_cost_log row with category in auth.email.* namespace and provider='resend'. When EMAIL_SENDING_ENABLED=false (V1 default): sendAuthEmail short-circuits, no Resend API call, no render_cost_log row written for the deferred send. Verifier confirms both branches behave correctly in their respective environment configurations. |
 | FailureCategory union extension | TypeScript-level assertion: every P01a-owned slice still resolves; full AuthFailure union including silent_lockout + email_exists is part of the umbrella |
 | Cron auth | /api/cron/purge-deletion-audit returns 401 without Bearer CRON_SECRET; returns 200 with it; halts at boot if env missing |
 | audit_retention_days field | account_deletions DDL uses the new column name; old name (retention_period_days) absent everywhere |
+| Email deferral pattern functional | With EMAIL_SENDING_ENABLED=false (V1 default): signup flow completes, user is auto-verified server-side, can sign in immediately. With EMAIL_SENDING_ENABLED=true (post-launch): full email verification flow active, user must click verify link before signing in. Same code path, same UI, gated by single env var. |
 
 You self-check this list before writing the 1C-complete handoff. If any criterion is FAIL, do not declare complete — either remediate (preferred) or write a "partial-with-known-gaps" handoff and stop.
 

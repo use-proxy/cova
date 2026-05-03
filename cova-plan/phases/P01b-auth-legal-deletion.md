@@ -69,7 +69,7 @@ If reality diverges from `PHASE_STATUS.md`, halt and write `cova-plan/drift/P1b-
 
 Three gaps owned by P01b. Cloud chat resolves them in conversation with Daksh before invoking the planner. Numbering preserved from the pre-split doc for traceability.
 
-**G4. Resend DNS records.** Two domains required: (a) `hi@covainterior.com` for human-reply email (existing); (b) `auth@send.covainterior.com` for all transactional auth/account email (new — verification, reset, deletion confirmation, GDPR export delivery). Transactional separation prevents bounce/spam reputation damage to the primary `hi@` mailbox. *Resolution:* Daksh checks Namecheap before cloud chat. Both configured → verifier confirms test send from each. Either unconfigured → Phase 1B blocker (see §2 halt conditions).
+**G4. Resend DNS records.** Two domains required: (a) `hi@covainterior.com` for human-reply email (existing); (b) `auth@send.covainterior.com` for all transactional auth/account email (new — verification, reset, deletion confirmation, GDPR export delivery). Transactional separation prevents bounce/spam reputation damage to the primary `hi@` mailbox. *Resolution:* Resend DNS configuration deferred to V1.5 launch prep. EMAIL_SENDING_ENABLED env var (default false) gates whether Resend API is actually called. P01b ships email code fully implemented but inactive. Daksh configures DNS and flips the flag post-launch. Back-bug: cova-plan/back-bugs/P01b-launch-prep-email-deferred.md.
 
 **G5. Termly templating output.** Free tier locked. Templates not generated yet. *Resolution:* Daksh logs into Termly, generates ToS + Privacy with Cova specifics (16+ age gate, FTC affiliate disclosure, processor list: fal.ai, Anthropic, SearchApi.io, Hive, PhotoDNA, Resend, PostHog, Sentry, Cloudflare, Vercel, Supabase, Modal). Hands rendered HTML to executor. **DEF-002:** Termly free-tier capability check (badge insertion, policy count caps, impression limits) — verified before P01b ships, not before P01a. If free tier insufficient, decision pivots to paid tier or alternative.
 
@@ -176,6 +176,7 @@ Split into 1A backend / 1B UI / 1C integration. Run in this order.
 
 **M2 — Auth + Legal**
 - Email + password signup with Resend verification (subject "Verify your email — Cova", from `auth@send.covainterior.com` on transactional subdomain, single CTA, 24h token expiry, single-use)
+- Email-sending feature flag (V1 deferral): All Resend code is implemented per §1A.7 of the executor prompt. Actual sending is gated by EMAIL_SENDING_ENABLED env var (default false in V1). When disabled, sendAuthEmail wrapper short-circuits with synthetic success; signup auto-marks users as verified server-side. User-facing flow is identical whether email is enabled or not. When ready to enable post-launch, set EMAIL_SENDING_ENABLED=true + RESEND_API_KEY in env, redeploy. Back-bug: cova-plan/back-bugs/P01b-launch-prep-email-deferred.md.
 - Google OAuth via Supabase Auth dashboard config
 - Apple OAuth (if G8 resolves; else V1.5)
 - Forgot-password with anti-enumeration. **Constant-time response via `waitUntil()`**: the API route returns 200 with `{ok:true}` immediately for both registered and unregistered emails (identical body, identical timing). Resend send happens asynchronously inside `waitUntil()` for the registered branch only; send failures captured to Sentry as `auth.forgot.send_fail` (logged, never surfaced to user). User-visible message at the UI layer: "If that email is registered, we sent a reset link."
@@ -405,6 +406,8 @@ Extracted to `apps/web/components/brand/Wordmark.tsx`. Single source of truth us
 **Legal page layout (T23 clarification):**
 
 `/terms` and `/privacy` use the shared `LegalPage` component instantiated with the Termly HTML. Eyebrow + serif headline + 32px gold hairline rule are all **left-aligned** with the body prose's reading flow inside the max-w-[720px] reading column. Centered placement was rejected as inconsistent with left-aligned long-form prose. Matches the existing locked `cova-plan/ui-gen/P01b/legal-page.tsx`.
+
+Legal pages render PLACEHOLDER htmlContent in V1 (Termly deferred). Placeholder: single paragraph 'This document is coming soon. Contact hi@covainterior.com if you have questions.' LegalPage chrome renders fully (sticky header, eyebrow, headline, gold rule, document footer, return-home link). Version='0.1' signals pre-launch placeholder. When Termly HTML delivered, swap htmlContent + bump to version='1'. No code changes needed beyond prop value updates. Back-bug: cova-plan/back-bugs/P01b-launch-prep-termly-deferred.md.
 
 ### 1C — Integration + review
 
@@ -669,7 +672,7 @@ Verifier session 1 reviews by criterion. Each acceptance criterion mapped to a v
 | Pre-built UI components imported correctly | `apps/web/app/auth/*/page.tsx` (and `app/{terms,privacy,account-deleted}/page.tsx`) imports from `cova-plan/ui-gen/P01b/*` (or files copied to `apps/web/components/auth/*` with normalized paths). Verifier confirms each of the 9 screens renders with the locked design language: COVA wordmark fixed top-left, navy ground, italic serif headlines, uppercase tracked microtype, sharp corners (0px radius), no shadows, no particles, no ambient glow |
 | 9 screens functional | Each route renders without error; form submission paths work |
 | Turnstile + rate limit | Trigger 4 signups in 1 hour from same IP; 4th returns 429 |
-| /terms + /privacy live | URLs return 200 with non-empty content; FTC disclosure present; processor list present |
+| /terms + /privacy live (placeholder) | URLs return 200 with LegalPage chrome rendering correctly; placeholder htmlContent visible; version="0.1" indicating Termly deferred. Real Termly HTML deferred to V1.5 per back-bug. |
 | Account-deletion cascade | Test user deletion: rooms, renders, swipes all cascade; `account_deletions` row written with `hashed_user_id` only (no email or other PII) |
 | GDPR export | POST `/api/users/export` returns signed URL; downloaded zip contains expected JSON files; signed URL TTL is 24h |
 | `auth.*` failure categories present | `lib/errors/categories.ts` exports `AuthFailure` dotted union; every auth route's error path emits an `auth.*` category |
@@ -688,10 +691,11 @@ Verifier session 1 reviews by criterion. Each acceptance criterion mapped to a v
 | Constant-time forgot-password | Response time variance between registered + unregistered email ≤ 50ms across 20 trials |
 | GDPR export sync/queued | Small-user fixture returns `{downloadUrl}`; power-user fixture (forced timeout) returns `{status: 'queued'}` and Resend email arrives within 5min |
 | GDPR export contains bytes | Downloaded zip's `images/` folder contains actual JPEG/PNG bytes, not URL files |
-| Resend cost telemetry | Every Resend send writes a `render_cost_log` row with `category` in `auth.email.*` namespace and `provider='resend'` |
+| Resend cost telemetry (when enabled) | When EMAIL_SENDING_ENABLED=true: every Resend send writes a render_cost_log row with category in auth.email.* namespace and provider='resend'. When EMAIL_SENDING_ENABLED=false (V1 default): sendAuthEmail short-circuits, no Resend API call, no render_cost_log row written for the deferred send. Verifier confirms both branches behave correctly in their respective environment configurations. |
 | FailureCategory union extension | TypeScript-level assertion: every P01a-owned slice still resolves; full AuthFailure union including silent_lockout + email_exists is part of the umbrella |
 | Cron auth | /api/cron/purge-deletion-audit returns 401 without Bearer CRON_SECRET; returns 200 with it; halts at boot if env missing |
 | audit_retention_days field | account_deletions DDL uses the new column name; old name (retention_period_days) absent everywhere |
+| Email deferral pattern functional | With EMAIL_SENDING_ENABLED=false (V1 default): signup flow completes, user is auto-verified server-side, can sign in immediately. With EMAIL_SENDING_ENABLED=true (post-launch): full email verification flow active, user must click verify link before signing in. Same code path, same UI, gated by single env var. |
 
 ### Verifier session 2 cross-check
 
