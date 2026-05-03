@@ -5,9 +5,9 @@
 > contradicts code, treat the code as authoritative and open a drift doc at
 > `cova-plan/drift/P{N}-detected.md`.
 
-**Last updated:** 2026-05-02 (P01a CLOSED — 20 PASS / 3 acknowledged-deferred / 0 FAIL; final commit `0437fc9`; P01b READY TO START)
-**Current phase pointer:** Phase 1B — Auth + Legal + Account Deletion (READY TO START)
-**Next phase to plan:** P01b (Auth + Legal + Account Deletion)
+**Last updated:** 2026-05-03 (P01b CLOSED — 18 PASS / 7 PASS-CODE / 1 PARTIAL / 2 PENDING-VERIFIER / 0 FAIL across §13; verifier sessions 1+2+3 + 2 remediation rounds; deferrals tracked via back-bugs)
+**Current phase pointer:** Phase 2 — Quiz + Capture wiring (NOT STARTED — pre-milestone conversation needed before planner fires)
+**Next phase to plan:** P2 (Quiz + Capture)
 **Workflow:** Cloud chat → Planner (Claude Code + MCPs) → review → Executor (fresh Claude Code, multi-session) → Verifier Session 1 → Verifier Session 2 → Manual gate → Close
 
 ---
@@ -161,7 +161,7 @@ Daksh-side prerequisite has been confirmed (most close inside P1 itself).
 | Phase | Name | Status | Blocker / Dep | Doc |
 |---|---|---|---|---|
 | **P1A** | Demolition + Ops Hardening — schema demolition, subagents, Sentry, redactor, timeouts, EXIF strip, render_cost_log, failure_category namespace, PostHog, Cloudflare wiring, feature_flags table | **CLOSED** (2026-05-02; final commit `0437fc9`; 20 PASS / 3 acknowledged-deferred / 0 FAIL) | — | `cova-plan/phases/P01a-demolition-ops.md`; final pre-close audit at `cova-plan/audit-reports/P01a-final-pre-close-audit.md` |
-| **P1B** | Auth + Legal + Account Deletion — 6 auth screens, 9 auth API routes, delete-user-cascade Edge Function, GDPR export, Termly /terms + /privacy, /account-deleted, auth feature flag rows | **READY TO START** | Resend DNS (G4) + Termly templates rendered (G5) + Apple OAuth status (G8). **Blocks Phase 2.** | `cova-plan/phases/P01b-auth-legal-deletion.md`; kickoff notes at `cova-plan/phases/P01b-kickoff-notes.md` |
+| **P1B** | Auth + Legal + Account Deletion — 10 screens (signup/signin/forgot/reset/verify-email-sent/success/invalid/account-deleted/terms/privacy), 9 auth API routes, delete-user-cascade Edge Function, GDPR export with 7-day signed URL, /terms + /privacy placeholder pages, auth feature flag rows | **CLOSED** (2026-05-03; final commit see close handoff; 18 PASS / 7 PASS-CODE / 1 PARTIAL / 2 PENDING-VERIFIER / 0 FAIL across §13; 3 verifier sessions + 2 remediation rounds; 3 launch-prep deferrals tracked via back-bugs) | — | `cova-plan/phases/P01b-auth-legal-deletion.md`; final verifier report `cova-plan/verifier-reports/P01b/session-3.md`; close handoff `cova-plan/SESSION_HANDOFFS/17-P01b-close.md` |
 | **P2** | Quiz + Capture wiring (V3 fast path, swipe consumption, photo intake hardening) | NOT STARTED | depends on P1 (style_blend wiring, EXIF strip, RLS cleanup) | `cova-plan/phases/P02-quiz-capture.md` (TBD) |
 | **P3** | Pipeline reliability (timeout reconciliation, failure_category, render_cost_log writers) | NOT STARTED | depends on P1 (Sentry, redactor, error categories) | `cova-plan/phases/P03-pipeline-reliability.md` (TBD) |
 | **P4** | Render UI + Refinement (step-8a/b polish, before/after slider, token gating UI) | NOT STARTED | depends on P3 + P5 (token gating live) | `cova-plan/phases/P04-render-ui.md` (TBD) |
@@ -318,7 +318,7 @@ Handoffs land at `cova-plan/SESSION_HANDOFFS/{NN}-{slug}.md` and contain:
 |---|---|---|
 | P0 | IN PROGRESS | external Daksh-side work continues in parallel; non-blocking for P1 |
 | P1A | **CLOSED** (2026-05-02; final commit `0437fc9`) | 20 of 23 §13 criteria PASS, 3 PARTIAL (acknowledged-deferred via documented back-bugs), 0 FAIL. M2 tightened from 28→17 truly-dead rooms columns (11 deferred to P02/P03). 4 V8-stage Modal apps stopped. ESLint `no-direct-paid-fetch` at error (0 violations); `no-unsafe-console` at warn (199 residuals tracked). Sentry sample rates locked. 4 subagents shipped. See `cova-plan/audit-reports/P01a-final-pre-close-audit.md` |
-| P1B | **READY TO START** | doc at `cova-plan/phases/P01b-auth-legal-deletion.md`; supplementary planner context at `cova-plan/phases/P01b-kickoff-notes.md`; legacy `apps/web/app/auth/` from V0 era still present — planner must schedule archive-or-overwrite |
+| P1B | **CLOSED** (2026-05-03) | 10 screens shipped, 9 auth API routes live, account_deletions table + RLS live, GDPR export with 7-day signed URL via service-role storage download, Resend wrapper present but gated behind `EMAIL_SENDING_ENABLED=false`, Termly /terms + /privacy ship as placeholder htmlContent. Verifier sessions 1+2+3 + 2 remediation rounds. Final §13 tally: 18 PASS / 7 PASS-CODE / 1 PARTIAL (cron boot-halt — pragmatic accept, P01a precedent) / 2 PENDING-VERIFIER (constant-time forgot-password timing, GDPR queued path — both require deploy + fixtures, roll forward to manual gate). Launch-prep deferrals tracked: P01b-launch-prep-email-deferred (Resend), P01b-launch-prep-termly-deferred (legal content), P01b-prep-globals-css-font-bug. Apple OAuth deferred (G8a + G8b not confirmed) — `auth_apple_oauth=false@0%`. |
 | P2 | NOT STARTED | doc not authored |
 | P3 | NOT STARTED | doc not authored |
 | P4 | NOT STARTED | doc not authored |
