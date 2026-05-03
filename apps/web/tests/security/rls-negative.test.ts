@@ -3,7 +3,9 @@
  *
  * Verifies that Row-Level Security policies on user-scoped tables correctly
  * block cross-user reads and writes. Mirrors the Negative Test Plan in
- * docs/audit/supabase.md (14 test groups).
+ * docs/audit/supabase.md. Groups 8 (product_impressions), 9
+ * (product_interactions), 10 (style_purchase_signals), and 12
+ * (token_transactions) were removed in P01a M3 — those tables were dropped.
  *
  * Requires:
  *   - SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY in env.
@@ -109,10 +111,6 @@ d("RLS negative tests — cross-user access must be denied", () => {
     await admin
       .from("chat_messages")
       .insert({ user_id: userB.id, role: "user", content: "seed" })
-      .then(() => null, () => null);
-    await admin
-      .from("token_transactions")
-      .insert({ user_id: userB.id, delta: 0, reason: "seed" })
       .then(() => null, () => null);
 
     // Phase 1: seed one sam_embeddings row for userB.
@@ -290,33 +288,6 @@ d("RLS negative tests — cross-user access must be denied", () => {
     expect(error).toBeTruthy();
   });
 
-  // 8. product_impressions
-  it("8.1 User A cannot SELECT User B's product_impressions", async () => {
-    const { data } = await userA.client
-      .from("product_impressions")
-      .select("user_id")
-      .eq("user_id", userB.id);
-    expect(data?.length ?? 0).toBe(0);
-  });
-
-  // 9. product_interactions
-  it("9.1 User A cannot SELECT User B's product_interactions", async () => {
-    const { data } = await userA.client
-      .from("product_interactions")
-      .select("user_id")
-      .eq("user_id", userB.id);
-    expect(data?.length ?? 0).toBe(0);
-  });
-
-  // 10. style_purchase_signals
-  it("10.1 User A cannot SELECT User B's style_purchase_signals", async () => {
-    const { data } = await userA.client
-      .from("style_purchase_signals")
-      .select("user_id")
-      .eq("user_id", userB.id);
-    expect(data?.length ?? 0).toBe(0);
-  });
-
   // 11. chat_messages
   it("11.1 User A cannot SELECT User B's chat_messages", async () => {
     const { data } = await userA.client
@@ -330,15 +301,6 @@ d("RLS negative tests — cross-user access must be denied", () => {
       .from("chat_messages")
       .insert({ user_id: userB.id, role: "user", content: "x" });
     expect(error).toBeTruthy();
-  });
-
-  // 12. token_transactions
-  it("12.1 User A cannot SELECT User B's token_transactions", async () => {
-    const { data } = await userA.client
-      .from("token_transactions")
-      .select("user_id")
-      .eq("user_id", userB.id);
-    expect(data?.length ?? 0).toBe(0);
   });
 
   // 13. users
