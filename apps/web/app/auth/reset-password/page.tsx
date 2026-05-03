@@ -619,13 +619,10 @@ function ValidBlock(props: {
             textTransform: "uppercase",
           }}>
           {isLoading ? (
-            <span className="inline-flex items-center justify-center">
-              <span
-                className="border border-cova-ivory/30 border-t-cova-ivory rounded-full animate-spin"
-                style={{ width: 14, height: 14 }}
-                aria-label="Submitting"
-                role="status"
-              />
+            <span
+              className="font-serif italic text-[14px] normal-case tracking-normal"
+              style={{ fontFamily: "var(--font-serif)", letterSpacing: 0 }}>
+              Updating your password&hellip;
             </span>
           ) : (
             "RESET PASSWORD"
