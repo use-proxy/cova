@@ -21,7 +21,6 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { buildFluxPrompt, buildAnchorFallbackPrompt } from "@/lib/ai/flux";
 import { fetchTopStyleReference } from "@/lib/ai/style-references";
-import { TIMEOUTS } from "@/lib/config/timeouts";
 import { paidCall } from "@/lib/paid/call";
 import {
   analyzeRoomArchitecture,
@@ -36,6 +35,8 @@ import { getLoraStackFromBlend, getDnaTriggerFromBlend } from "@/lib/styles/lora
 import { STYLE_DISPLAY_NAMES } from "@/lib/ai/anchor-display";
 import type { StyleFingerprint } from "@/types/fingerprint";
 import type { RenderContext } from "@/lib/types/area2";
+import { chooseRedesignJobs, runRedesignJobs } from "@/lib/ai/redesign-provider";
+import { RedesignError } from "@/lib/ai/redesign-client";
 import { logger } from "@/lib/logger";
 import { LogEvents } from "@/lib/logEvents";
 
@@ -767,91 +768,79 @@ export async function POST(request: Request) {
       budget_max: budgetMax,
       seed: generationSeed,
     };
-    const response = await fetch(webhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(v9Body),
-      // Phase 2.0c.3 — Modal V3 pipeline budget: ~3-5 min realistic runtime
-      // (FLUX Pass 1, IC-Light, refinement, Sonnet calls). 7 minutes gives
-      // ~2 min buffer for slow fal queues. Verified production timeout at
-      // 295s on 2026-04-28 01:02 — route returned 500 while Modal still ran.
-      signal: AbortSignal.timeout(TIMEOUTS.REDESIGN_MODAL),
+
+    // NB-Pro edit by default; V3 when the flag is off or NB-Pro fails.
+    const jobs = await chooseRedesignJobs(userId);
+    const { primary, variants, fallbackReason } = await runRedesignJobs(jobs, {
+      emptyRoomUrl: room?.empty_room_url ?? null,
+      prompt: compiledPrompt,
+      seed: generationSeed,
+      v3WebhookUrl: webhookUrl,
+      v3Body: v9Body,
     });
+    const finalRenderUrl = primary.renderUrl;
+    console.log(
+      `[redesign] provider: ${primary.provider} (${variants.length} variant(s))` +
+        (fallbackReason ? ` — fallback: ${fallbackReason}` : ""),
+    );
 
-    if (!response.ok) {
-      const text = await response.text().catch(() => response.statusText);
-      console.error("[redesign] Modal webhook error:", response.status, text);
+    const { error: persistErr } = await admin
+      .from("rooms")
+      .update({
+        redesign_pano_url: finalRenderUrl,
+        render_url: finalRenderUrl,
+        redesign_status: "complete",
+      })
+      .eq("id", room_id);
+
+    if (persistErr) {
+      console.error("[redesign] CRITICAL: render produced but persist failed:", persistErr);
       return NextResponse.json(
-        { error: "Redesign pipeline failed", detail: text },
-        { status: 502 },
-      );
-    }
-
-    const result = (await response.json()) as {
-      status?: string;
-      room_id?: string;
-      render_url?: string;             // V3 (cova-redesign-v3) returns this
-      redesigned_pano_url?: string;    // legacy paths return this
-      perspective_render_url?: string | null;
-      prompt?: string;
-      dominant_styles?: string[];
-      error?: string;
-      qa?: Record<string, unknown>;
-    };
-
-    if (result.status === "error") {
-      console.error("[redesign] Pipeline error:", result.error);
-      return NextResponse.json(
-        { error: result.error ?? "Redesign pipeline failed" },
+        {
+          error: "Render produced but failed to persist",
+          render_url: finalRenderUrl,
+          persist_error: persistErr.message,
+        },
         { status: 500 },
       );
     }
+    console.log("[redesign] persisted render_url to rooms.redesign_pano_url:", finalRenderUrl.slice(0, 80));
 
-    const finalRenderUrl = result.render_url ?? result.redesigned_pano_url ?? null;
-
-    if (finalRenderUrl) {
-      const { error: persistErr } = await admin
+    // Two-variant mode: keep both renders for the picker. Re-read so the
+    // fire-and-forget design_memory / itemMasks writes above aren't clobbered.
+    if (variants.length > 1) {
+      const { data: latestRow } = await admin
         .from("rooms")
-        .update({
-          redesign_pano_url: finalRenderUrl,
-          render_url: finalRenderUrl,
-          redesign_status: "complete",
-        })
-        .eq("id", room_id);
-
-      if (persistErr) {
-        console.error("[redesign] CRITICAL: render produced but persist failed:", persistErr);
-        return NextResponse.json(
-          {
-            error: "Render produced but failed to persist",
-            render_url: finalRenderUrl,
-            persist_error: persistErr.message,
-          },
-          { status: 500 },
-        );
-      }
-      console.log("[redesign] persisted render_url to rooms.redesign_pano_url:", finalRenderUrl.slice(0, 80));
-    } else {
-      console.error("[redesign] CRITICAL: Modal returned 200 but no render_url in response:", result);
-      await admin
+        .select("render_context")
+        .eq("id", room_id)
+        .single();
+      const latestCtx = (latestRow?.render_context as Record<string, unknown>) ?? {};
+      const { error: variantsErr } = await admin
         .from("rooms")
-        .update({ redesign_status: "failed" })
+        .update({ render_context: { ...latestCtx, redesign_variants: variants } })
         .eq("id", room_id);
-      return NextResponse.json(
-        { error: "Modal pipeline returned no render_url", detail: result },
-        { status: 502 },
-      );
+      if (variantsErr) console.error("[redesign] redesign_variants write failed:", variantsErr);
     }
 
     return NextResponse.json({
       status: "complete",
-      room_id: result.room_id ?? room_id,
+      room_id,
       render_url: finalRenderUrl,
       redesigned_pano_url: finalRenderUrl,
-      perspective_render_url: result.perspective_render_url ?? null,
-      dominant_styles: result.dominant_styles ?? [],
+      perspective_render_url: primary.perspectiveRenderUrl ?? null,
+      dominant_styles: primary.dominantStyles ?? [],
+      provider: primary.provider,
+      variants,
     });
   } catch (err) {
+    if (err instanceof RedesignError) {
+      console.error("[redesign] Pipeline error:", err.message, err.detail);
+      await admin.from("rooms").update({ redesign_status: "failed" }).eq("id", room_id);
+      return NextResponse.json(
+        { error: err.message, detail: err.detail },
+        { status: err.status ?? 502 },
+      );
+    }
     const message = err instanceof Error ? err.message : String(err);
     console.error("[redesign] Unexpected error:", message);
     return NextResponse.json({ error: message }, { status: 500 });

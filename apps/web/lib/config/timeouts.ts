@@ -18,4 +18,6 @@ export const TIMEOUTS = {
   CLIENT_POLL_LONG: 180_000,
   /** Redesign Modal call upper bound (~7 min; V9 path runs longer than MODAL_APP). */
   REDESIGN_MODAL: 420_000,
+  /** Single fal redesign call (NB-Pro edit / depth-ControlNet); V3 fallback must still fit after it. */
+  REDESIGN_NB_PRO: 150_000,
 } as const;
