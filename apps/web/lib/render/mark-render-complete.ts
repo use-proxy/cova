@@ -6,6 +6,9 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+// Strategy A: remember, in this server process, which rooms already fired.
+const completedRooms = new Set<string>();
+
 // Flip the room to "complete" (only from pending / null), then fire the
 // post-render work: detection on the render, then furniture matching.
 export async function markRenderComplete(
@@ -14,6 +17,8 @@ export async function markRenderComplete(
   userId: string,
   onComplete: () => void,
 ): Promise<void> {
+  if (completedRooms.has(roomId)) return;
+  completedRooms.add(roomId);
   await admin
     .from("rooms")
     .update({ redesign_status: "complete" })
