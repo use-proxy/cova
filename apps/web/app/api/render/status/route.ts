@@ -7,6 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { submitArchitectureCorrection, runUpscale } from "@/lib/ai/flux";
 import { upscaleRender } from "@/lib/ai/upscaler";
 import type { RoomArchitecture } from "@/lib/ai/room-analyzer";
+import { markRenderComplete } from "@/lib/render/mark-render-complete";
 
 const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
 
@@ -286,12 +287,6 @@ export async function GET(request: NextRequest) {
           .update({ render_url: fallbackUrl })
           .eq("id", roomId)
           .eq("user_id", userId);
-        await admin
-          .from("rooms")
-          .update({ redesign_status: "complete" })
-          .eq("id", roomId!)
-          .eq("user_id", userId)
-          .or("redesign_status.eq.pending,redesign_status.is.null");
         const fallbackSession: InsertTables<"render_sessions"> = {
           room_id: roomId!,
           render_url: fallbackUrl,
@@ -304,8 +299,10 @@ export async function GET(request: NextRequest) {
           .insert(fallbackSession)
           .select("id")
           .single();
-        void triggerRenderDetection(fallbackUrl, roomId!, admin);
-        triggerDetectionThenMatching(roomId!, fallbackUrl);
+        await markRenderComplete(admin, roomId!, userId, () => {
+          void triggerRenderDetection(fallbackUrl, roomId!, admin);
+          triggerDetectionThenMatching(roomId!, fallbackUrl);
+        });
         return NextResponse.json({
           status: "complete",
           render_url: fallbackUrl,
@@ -413,13 +410,9 @@ export async function GET(request: NextRequest) {
           .update({ render_url: pass1Url })
           .eq("id", roomId)
           .eq("user_id", userId);
-        await admin
-          .from("rooms")
-          .update({ redesign_status: "complete" })
-          .eq("id", roomId!)
-          .eq("user_id", userId)
-          .or("redesign_status.eq.pending,redesign_status.is.null");
-        triggerDetectionThenMatching(roomId!, pass1Url);
+        await markRenderComplete(admin, roomId!, userId, () =>
+          triggerDetectionThenMatching(roomId!, pass1Url),
+        );
         return NextResponse.json({ status: "complete", render_url: pass1Url });
       }
 
@@ -440,13 +433,9 @@ export async function GET(request: NextRequest) {
           .update({ render_url: pass1Url })
           .eq("id", roomId)
           .eq("user_id", userId);
-        await admin
-          .from("rooms")
-          .update({ redesign_status: "complete" })
-          .eq("id", roomId!)
-          .eq("user_id", userId)
-          .or("redesign_status.eq.pending,redesign_status.is.null");
-        triggerDetectionThenMatching(roomId!, pass1Url);
+        await markRenderComplete(admin, roomId!, userId, () =>
+          triggerDetectionThenMatching(roomId!, pass1Url),
+        );
         return NextResponse.json({
           status: "complete",
           render_url: pass1Url,
