@@ -336,7 +336,6 @@ export async function GET(request: NextRequest) {
           .from("rooms")
           .update({
             render_url: finalUrl,
-            redesign_status: "complete",
             pipeline_cost_log: { ...costLog, pass2_url: finalUrl },
           } as Record<string, unknown>)
           .eq("id", roomId)
@@ -355,8 +354,10 @@ export async function GET(request: NextRequest) {
           .select("id")
           .single();
 
-        void triggerRenderDetection(finalUrl, roomId!, admin);
-        triggerDetectionThenMatching(roomId!, finalUrl);
+        await markRenderComplete(admin, roomId!, userId, () => {
+          void triggerRenderDetection(finalUrl, roomId!, admin);
+          triggerDetectionThenMatching(roomId!, finalUrl);
+        });
 
         return NextResponse.json({
           status: "complete",
@@ -546,7 +547,6 @@ export async function GET(request: NextRequest) {
       .from("rooms")
       .update({
         render_url: finalUrl,
-        redesign_status: "complete",
         pipeline_cost_log: {
           ...(costLog ?? {}),
           upscaled: finalUrl !== renderUrl,
@@ -558,8 +558,10 @@ export async function GET(request: NextRequest) {
 
     // Re-detect on the rendered image (async — don't block response)
     // Rendered images are clean AI images, detection works better on them
-    void triggerRenderDetection(finalUrl, roomId!, admin);
-    triggerDetectionThenMatching(roomId!, finalUrl);
+    await markRenderComplete(admin, roomId!, userId, () => {
+      void triggerRenderDetection(finalUrl, roomId!, admin);
+      triggerDetectionThenMatching(roomId!, finalUrl);
+    });
 
     return NextResponse.json({
       status: "complete",
