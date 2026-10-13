@@ -102,12 +102,14 @@ test.describe("Complete Cova Flow — Zero Tolerance", () => {
     await anonPage.goto(BASE_URL, { waitUntil: "networkidle" });
     await snap(anonPage, "00-landing");
 
-    // Hero copy is "Your room, redesigned." — verified in DOM map
-    await expect(anonPage.getByText(/Your room/i).first()).toBeVisible();
-    // Primary CTA reads "Design My Room →" (multiple instances on landing)
+    // Hero headline is "Every room has another life in it."
     await expect(
-      anonPage.locator("button", { hasText: /Design My Room/i }).first(),
+      anonPage.getByRole("heading", { level: 1, name: /Every room/i }),
     ).toBeVisible();
+    // Primary CTA reads "Design my room →" and links to /auth (several on the page)
+    const heroCta = anonPage.locator("a", { hasText: /Design my room/i }).first();
+    await expect(heroCta).toBeVisible();
+    await expect(heroCta).toHaveAttribute("href", "/auth");
     checkAnonErrors();
     await anonContext.close();
 
